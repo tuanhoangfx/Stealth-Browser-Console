@@ -5,7 +5,8 @@
 - Version: `0.5.2`
 - Timestamp: 2026-06-18 15:00 (UTC+7)
 - Type: Minor
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.5.2
 
 Mục tiêu xác nhận: **quản lý 10k–50k profile, chạy ~20–30 đồng thời**.
 
