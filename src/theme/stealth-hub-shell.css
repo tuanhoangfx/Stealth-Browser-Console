@@ -1,0 +1,92 @@
+/* Stealth console — Hub shell layout (P0001 / P0016 parity) */
+
+.hub-app.stealth-hub-app {
+  min-height: 100vh;
+  min-width: 1180px;
+}
+
+/* Header bleed (1.5rem) vs content frame (0.75rem) — decoupled Stealth gutters. */
+.stealth-hub-app {
+  --stealth-chrome-bleed: var(--app-tab-header-px, 1.5rem);
+  --stealth-frame-gutter: var(--stealth-frame-px, 0.75rem);
+}
+
+.stealth-hub-app .app-tab-header {
+  margin-left: calc(-1 * var(--stealth-chrome-bleed));
+  margin-right: calc(-1 * var(--stealth-chrome-bleed));
+  padding-left: var(--stealth-chrome-bleed);
+  padding-right: var(--stealth-chrome-bleed);
+}
+
+.stealth-hub-app .hub-chrome-sticky {
+  margin-left: calc(-1 * var(--stealth-chrome-bleed));
+  margin-right: calc(-1 * var(--stealth-chrome-bleed));
+}
+
+.stealth-hub-app .hub-filter-sticky {
+  margin-left: calc(-1 * var(--stealth-chrome-bleed));
+  margin-right: calc(-1 * var(--stealth-chrome-bleed));
+  padding-left: var(--stealth-chrome-bleed);
+  padding-right: var(--stealth-chrome-bleed);
+}
+
+.stealth-hub-app .hub-chrome-sticky > .px-6 {
+  padding-left: var(--stealth-chrome-bleed);
+  padding-right: var(--stealth-chrome-bleed);
+}
+
+.hub-app.stealth-hub-app > main.stealth-hub-main {
+  padding: 0 var(--stealth-frame-gutter) var(--stealth-frame-gutter);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Split-pane tabs: bottom inset handled by panes, not main padding */
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--profiles,
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--workflow {
+  padding-bottom: 0;
+  scroll-padding-top: 0;
+}
+
+.stealth-hub-main .hub-tab-chrome,
+.stealth-hub-main .hub-directory-screen {
+  min-height: 0;
+}
+
+.stealth-hub-main > .stealth-profile-layout,
+.stealth-hub-main > .stealth-settings-directory {
+  flex: 1;
+  min-height: 0;
+}
+
+.stealth-api-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stealth-api-pill--ready {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.stealth-api-pill--checking {
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.stealth-api-pill--offline {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+}
+

@@ -1,0 +1,70 @@
+/* Stealth Browser Console — app-specific tokens (modals, forms, logs) */
+
+.stealth-log-line--error {
+  color: #fca5a5;
+}
+
+.stealth-log-line--success {
+  color: #86efac;
+}
+
+.stealth-modal-backdrop {
+  backdrop-filter: blur(2px);
+}
+
+.stealth-modal {
+  color: var(--hub-text, #e8ecff);
+}
+
+.hub-input {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 0.65rem;
+  color: inherit;
+}
+
+.hub-btn {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.45rem 0.75rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.hub-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hub-btn--primary {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: white;
+}
+
+.hub-btn--danger {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+
+.hub-btn--ghost {
+  background: transparent;
+}
+
+.stealth-fingerprint-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.stealth-fingerprint-presets button {
+  font-size: 11px;
+  padding: 0.35rem 0.55rem;
+}
+
+.view-loading-fallback {
+  color: var(--muted);
+}

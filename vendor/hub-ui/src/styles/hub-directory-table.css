@@ -1,0 +1,407 @@
+/* Directory tables — select chrome + layout skin. Bulk: CSS colClass widths; read-only: buildDirectoryColgroup inline %. */
+
+/* Select column SSOT — 36px col + 16px hub-checkbox; applies when shell sets data-hub-directory-select */
+table.hub-users-table[data-hub-directory-select] col.hub-users-col--select,
+table.hub-users-table[data-hub-directory-select] th.hub-users-col--select,
+table.hub-users-table[data-hub-directory-select] td.hub-users-col--select {
+  width: 36px;
+  max-width: 36px;
+  min-width: 36px;
+  padding: 4px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-select-all,
+table.hub-users-table[data-hub-directory-select] .hub-users-select-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  margin: 0 auto;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Legacy variant hooks — same geometry when data-hub-directory-select is present */
+table.hub-users-table.hub-users-table--directory col.hub-users-col--select,
+table.hub-users-table.hub-users-table--directory th.hub-users-col--select,
+table.hub-users-table.hub-users-table--directory td.hub-users-col--select,
+table.hub-users-table.hub-users-table--hub-tools col.hub-users-col--select,
+table.hub-users-table.hub-users-table--hub-tools th.hub-users-col--select,
+table.hub-users-table.hub-users-table--hub-tools td.hub-users-col--select,
+table.hub-users-table.hub-users-table--dashboard-screens col.hub-users-col--select,
+table.hub-users-table.hub-users-table--dashboard-screens th.hub-users-col--select,
+table.hub-users-table.hub-users-table--dashboard-screens td.hub-users-col--select,
+table.hub-users-table.hub-users-table--route-access-modal col.hub-users-col--select,
+table.hub-users-table.hub-users-table--route-access-modal th.hub-users-col--select,
+table.hub-users-table.hub-users-table--route-access-modal td.hub-users-col--select,
+table.hub-users-table.hub-users-table--route-access col.hub-users-col--select,
+table.hub-users-table.hub-users-table--route-access th.hub-users-col--select,
+table.hub-users-table.hub-users-table--route-access td.hub-users-col--select,
+table.hub-users-table.hub-users-table--twofa col.hub-users-col--select,
+table.hub-users-table.hub-users-table--twofa th.hub-users-col--select,
+table.hub-users-table.hub-users-table--twofa td.hub-users-col--select,
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--select,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--select,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--select {
+  width: 36px;
+  max-width: 36px;
+  min-width: 36px;
+  padding: 4px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+table.hub-users-table.hub-users-table--directory {
+  min-width: 48rem;
+}
+
+/* Data columns — colgroup inline width is SSOT; neutralize legacy .hub-users-col--* % from hub-users-table.css */
+table.hub-users-table[data-hub-directory-select] th[class*="hub-users-col--"]:not(.hub-users-col--select),
+table.hub-users-table[data-hub-directory-select] td[class*="hub-users-col--"]:not(.hub-users-col--select),
+table.hub-users-table.hub-users-table--directory th[class*="hub-users-col--"]:not(.hub-users-col--select),
+table.hub-users-table.hub-users-table--directory td[class*="hub-users-col--"]:not(.hub-users-col--select) {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.hub-directory-table-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.hub-directory-table-actions .hub-users-copy-badge {
+  max-width: 5.5rem;
+}
+
+/* Trailing actions column (posts table) — fixed width via colgroup trailingCols */
+table.hub-users-table--directory col.hub-users-col--actions,
+table.hub-users-table--directory .hub-users-col--actions {
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 8.5rem;
+}
+
+.page-health-status--ok {
+  color: #6ee7b7;
+}
+
+.page-health-status--warn {
+  color: #fcd34d;
+}
+
+.page-health-status--error {
+  color: #fca5a5;
+}
+
+.page-health-status--muted {
+  color: var(--muted);
+}
+
+.hub-users-row.is-allowlisted {
+  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.45);
+}
+
+.hub-users-row.is-allowlisted.is-selected {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* Bulk directory row states — scoped to checkbox tables (Hub/Users/Dashboard/Agent) */
+table.hub-users-table[data-hub-directory-select] .hub-users-row:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-row.is-selected {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-row.is-selected:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-row.is-detail {
+  background: rgba(52, 211, 153, 0.08);
+  box-shadow: inset 3px 0 0 rgba(52, 211, 153, 0.5);
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-row.is-detail:hover {
+  background: rgba(52, 211, 153, 0.1);
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-row.is-highlighted {
+  background: rgba(99, 102, 241, 0.07);
+  box-shadow: inset 3px 0 0 rgba(129, 140, 248, 0.45);
+}
+
+table.hub-users-table[data-hub-directory-select] .hub-users-row.is-highlighted:hover {
+  background: rgba(99, 102, 241, 0.09);
+}
+
+/* Modal read-only directory tables (Hub Details versions/links) */
+.hub-tool-detail-modal__content table.hub-users-table:not([data-hub-directory-select]) .hub-users-row:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.hub-tool-detail-modal__content table.hub-users-table:not([data-hub-directory-select]) .hub-users-row.is-detail {
+  background: rgba(99, 102, 241, 0.07);
+  box-shadow: inset 3px 0 0 rgba(129, 140, 248, 0.45);
+}
+
+.hub-tool-detail-modal__content .hub-users-table-wrap.hub-modal-directory-table-wrap,
+.hub-tool-detail-modal__content .hub-modal-directory-section .hub-users-table-wrap {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  margin-bottom: 0;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.hub-tool-detail-modal__content .hub-modal-directory-section .hub-paginated-table-shell {
+  min-width: 0;
+}
+
+.hub-tool-detail-modal__content .hub-modal-directory-section .hub-table-pager {
+  margin-top: 8px;
+  padding: 0 4px 4px;
+}
+
+.hub-tool-detail-modal__content .hub-modal-directory-section .hub-users-table-wrap + .hub-table-pager,
+.hub-tool-detail-modal__content .hub-paginated-table-shell > .hub-table-pager {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 8px;
+}
+
+.hub-tool-detail-modal__content table.hub-users-table:not([data-hub-directory-select]) thead th {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hub-tool-detail-modal__content table.hub-users-table:not([data-hub-directory-select]) td {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Directory metric / extension columns — unique colClass typography */
+.hub-users-col--metric-a,
+.hub-users-col--metric-b,
+.hub-users-col--metric-c,
+.hub-users-col--metric-d,
+.hub-users-col--metric-e,
+.hub-users-col--metric-f,
+.hub-users-col--metric-g,
+.hub-users-col--metric-h,
+.hub-users-col--metric-i,
+.hub-users-col--metric-j,
+.hub-users-col--metric-k,
+.hub-users-col--last-active,
+.hub-users-col--threads,
+.hub-users-col--groups,
+.hub-users-col--friends,
+.hub-users-col--gender {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.hub-users-col--metric-a,
+.hub-users-col--metric-b,
+.hub-users-col--metric-c,
+.hub-users-col--metric-d,
+.hub-users-col--metric-e,
+.hub-users-col--metric-f,
+.hub-users-col--metric-g,
+.hub-users-col--metric-h,
+.hub-users-col--metric-i,
+.hub-users-col--metric-j,
+.hub-users-col--metric-k,
+.hub-users-col--threads,
+.hub-users-col--groups,
+.hub-users-col--friends {
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-directory-avatar-img {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  object-fit: cover;
+  border: 1px solid rgba(129, 140, 248, 0.18);
+}
+
+/* Directory golden header — P0004 subtle thead + compact row; icons keep role colors (hub-users-table.css) */
+table.hub-users-table.hub-users-table--directory thead th,
+table.hub-users-table[data-hub-directory-select] thead th {
+  background: var(--hub-directory-thead-surface, rgba(255, 255, 255, 0.02));
+  border-bottom: 1px solid var(--hub-directory-thead-border, rgba(255, 255, 255, 0.08));
+  box-shadow: none;
+}
+
+table.hub-users-table.hub-users-table--directory .hub-users-th-btn,
+table.hub-users-table[data-hub-directory-select] .hub-users-th-btn {
+  min-height: 28px;
+  padding: 2px 6px;
+}
+
+table.hub-users-table.hub-users-table--directory .hub-users-th-label,
+table.hub-users-table[data-hub-directory-select] .hub-users-th-label {
+  gap: 5px;
+}
+
+table.hub-users-table.hub-users-table--directory thead .hub-users-th-text,
+table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Split scroll — thead fixed outside scroll; scrollbar only on tbody pane */
+.hub-directory-table-split {
+  --hub-directory-thead-surface: rgba(255, 255, 255, 0.02);
+  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden !important;
+  max-height: none;
+  scrollbar-gutter: auto;
+}
+
+.hub-directory-table-split.hub-directory-table-scroll--flex-pane {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  /* Constant gutter — empty + loaded same geometry (Notes-style stable gutter) */
+  --hub-directory-split-scrollbar-pad: var(--hub-split-scroll-size, 10px);
+}
+
+.hub-directory-table-split.hub-directory-table-scroll--flex-pane .hub-directory-table-body-scroll {
+  scrollbar-gutter: stable;
+}
+
+.hub-directory-table-split.hub-directory-table-scroll--flex-pane .hub-directory-table-head::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--hub-directory-split-scrollbar-pad, 0px);
+  height: 100%;
+  background: var(--hub-directory-thead-surface);
+  pointer-events: none;
+}
+
+.hub-directory-table-split table.hub-users-table.hub-users-table--directory,
+.hub-directory-table-split table.hub-users-table[data-hub-directory-select] {
+  min-width: 0;
+  width: 100%;
+}
+
+.hub-directory-table-head {
+  flex: 0 0 auto;
+  overflow: hidden;
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--hub-directory-thead-surface);
+  border-bottom: 1px solid var(--hub-directory-thead-border);
+  padding-right: var(--hub-directory-split-scrollbar-pad, 0px);
+}
+
+.hub-directory-table-head table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.hub-directory-table-split .hub-directory-table-head table.hub-users-table thead th {
+  background: var(--hub-directory-thead-surface);
+  border-bottom: none;
+}
+
+/* Pane-chrome split wrap — clip head track to inner golden radius */
+.hub-directory-table-wrap--pane-chrome > .hub-directory-table-head {
+  border-top-left-radius: calc(1rem - 1px);
+  border-top-right-radius: calc(1rem - 1px);
+  clip-path: inset(0 round 1rem 1rem 0 0);
+}
+
+.hub-directory-table-wrap--pane-chrome > .hub-directory-table-head table.hub-users-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.hub-directory-table-wrap--pane-chrome > .hub-directory-table-head thead th:first-child {
+  border-top-left-radius: calc(1rem - 1px);
+}
+
+.hub-directory-table-wrap--pane-chrome > .hub-directory-table-head thead th:last-child {
+  border-top-right-radius: calc(1rem - 1px);
+}
+
+/* Directory icon + label cell — platform / proxy / status body parity */
+.hub-directory-icon-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hub-directory-icon-cell__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.hub-directory-icon-cell__icon img,
+.hub-directory-icon-cell__img {
+  display: block;
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.hub-directory-icon-cell__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 820;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.hub-directory-table-body-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hub-split-scroll-thumb, #2a3158) var(--hub-directory-thead-surface, rgba(255, 255, 255, 0.02));
+  -webkit-overflow-scrolling: touch;
+}
+
+.hub-directory-table-body-scroll::-webkit-scrollbar {
+  width: var(--hub-split-scroll-size, 10px);
+  height: var(--hub-split-scroll-size, 10px);
+}
+
+.hub-directory-table-body-scroll::-webkit-scrollbar-track {
+  background: var(--hub-directory-thead-surface, rgba(255, 255, 255, 0.02));
+}
+
+.hub-directory-table-body-scroll::-webkit-scrollbar-thumb {
+  background: var(--hub-split-scroll-thumb, #2a3158);
+  border-radius: var(--hub-split-scroll-radius, 6px);
+}
+
+.hub-directory-table-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--hub-split-scroll-thumb-hover, #3a4178);
+}

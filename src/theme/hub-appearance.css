@@ -1,0 +1,26 @@
+/* Hub theme — tokens synced with P0020 (see p0020-align.css) */
+
+@import "./p0020-align.css";
+
+.theme-hub .traffic-lights {
+  display: none;
+}
+
+.theme-hub .brand strong {
+  color: #e0e7ff;
+}
+
+.theme-hub .sidebar-nav-btn.active {
+  background: rgba(99, 102, 241, 0.22);
+  color: #c7d2fe;
+}
+
+.theme-hub .sidebar-nav-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--text);
+}
+
+.theme-hub .btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--color-brand-600));
+  border-color: transparent;
+}

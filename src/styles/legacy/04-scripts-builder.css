@@ -1,0 +1,171 @@
+/* GPM legacy — scripts scope (split from styles.css) */
+.script-builder {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.82fr) minmax(360px, 1.28fr);
+  gap: 12px;
+  height: calc(100vh - 104px);
+  min-height: 0;
+  scrollbar-width: thin;
+}
+
+/* Grey corner strip where scrollbars meet — purely visual blend with scrollbar track */
+.script-builder::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.script-editor-stack::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.workflow-script-flow-shell::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.script-editor-stack {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.script-workflows,
+.script-main {
+  display: grid;
+  min-height: 0;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.script-inspector {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+  padding: 6px 8px;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  align-content: start;
+  overflow: visible;
+}
+
+.script-inspector.is-collapsed {
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.script-inspector-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.script-inspector-toggle .section-title {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.script-inspector-head {
+  min-width: 0;
+}
+
+.script-inspector-head-top {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.script-inspector-head-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  grid-column: 1;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.script-inspector-head-title h2 {
+  margin: 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.script-inspector-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 720;
+  white-space: nowrap;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-3) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.script-inspector-type-badge-label {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.script-inspector-type-badge-value {
+  color: var(--text);
+  font-weight: 760;
+}
+
+.script-inspector-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: 3;
+  justify-self: end;
+  min-width: 28px;
+  padding: 0;
+}
+
+.script-inspector.is-expanded .script-inspector-head {
+  margin-bottom: 4px;
+}
+
+.script-inspector-empty {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.script-workflows {
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.script-workflows-table-region {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.script-workflows-table-region > .job-list.table-panel {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}

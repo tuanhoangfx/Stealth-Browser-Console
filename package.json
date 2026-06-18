@@ -1,0 +1,142 @@
+{
+  "name": "stealth-browser-console",
+  "version": "0.5.2",
+  "private": true,
+  "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
+  "author": "Stealth Browser Console",
+  "main": "electron/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console.git"
+  },
+  "scripts": {
+    "predev": "node scripts/predev.mjs",
+    "predev:web": "node scripts/predev.mjs",
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5175 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5175/ electron .\"",
+    "dev:recover": "node scripts/dev-recover.cjs",
+    "dev:recover:open": "node scripts/dev-recover.cjs --open",
+    "dev:node": "node scripts/predev.mjs && node scripts/dev-node.mjs",
+    "dev:web": "vite --host 127.0.0.1",
+    "build": "node scripts/run-build.mjs",
+    "test": "pnpm test:unit",
+    "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:smoke": "pnpm build",
+    "preview": "vite preview --host 127.0.0.1",
+    "start": "node scripts/run-prod-start.mjs",
+    "start:electron": "cross-env VITE_DEV_SERVER_URL= electron .",
+    "start:prod": "node scripts/run-prod-start.mjs",
+    "pack": "node scripts/run-electron-package.mjs --target dir",
+    "pack:portable": "node scripts/run-portable-pack.mjs",
+    "desktop:dist": "node scripts/run-electron-package.mjs --publish never",
+    "desktop:open": "node scripts/desktop-open.mjs",
+    "desktop:shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
+    "desktop:release": "powershell -ExecutionPolicy Bypass -File scripts/release-desktop.ps1",
+    "desktop:release:patch": "pnpm desktop:release -- -Bump patch -Publish",
+    "desktop:release:minor": "pnpm desktop:release -- -Bump minor -Publish",
+    "desktop:release:major": "pnpm desktop:release -- -Bump major -Publish",
+    "dist": "node scripts/run-electron-package.mjs --publish never",
+    "release": "node scripts/run-electron-package.mjs --publish always"
+  },
+  "dependencies": {
+    "@tool-workspace/hub-ui": "file:./vendor/hub-ui",
+    "@types/dagre": "^0.7.54",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@xyflow/react": "12.10.2",
+    "@xyflow/system": "0.0.76",
+    "better-sqlite3": "^11.10.0",
+    "sql.js": "1.12.0",
+    "cloakbrowser": "^0.3.31",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "dagre": "^0.8.5",
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^0.561.0",
+    "mmdb-lib": "^3.0.2",
+    "ms": "^2.1.3",
+    "playwright-core": "^1.59.1",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "vite": "^7.2.7",
+    "wait-on": "^9.0.3"
+  },
+  "devDependencies": {
+    "@electron/asar": "^4.2.0",
+    "@electron/rebuild": "^4.0.4",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.5.0",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.8.1",
+    "postcss": "^8.5.15",
+    "tailwindcss": "3.4.13",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "com.stealth.browser-console",
+    "productName": "Stealth Browser Console",
+    "artifactName": "Stealth-Browser-Console-Setup-${version}.${ext}",
+    "npmRebuild": true,
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json",
+      "RELEASE.md"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**",
+      "**/node_modules/sql.js/**",
+      "**/node_modules/cloakbrowser/**",
+      "**/node_modules/playwright-core/**"
+    ],
+    "win": {
+      "icon": "build/icons/app.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "installerIcon": "build/icons/app.ico",
+      "uninstallerIcon": "build/icons/app.ico",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "Stealth-Browser-Console-Portable-${version}.${ext}",
+      "requestExecutionLevel": "user"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tuanhoangfx",
+        "repo": "Stealth-Browser-Console",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild"
+    ]
+  }
+}

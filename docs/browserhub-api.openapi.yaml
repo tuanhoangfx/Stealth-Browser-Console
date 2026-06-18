@@ -1,0 +1,284 @@
+openapi: 3.0.3
+info:
+  title: BrowserHub API (P0003 Stealth Browser Console)
+  version: 0.5.0
+  description: >
+    Local automation API cấp profile lifecycle, CDP passthrough và job queue cho
+    các tool trong workspace E:\Dev\Tool. Bind 127.0.0.1:6003. Auth tùy chọn qua
+    bearer token (env STEALTH_API_TOKEN); nếu không set token, API mở cho localhost.
+servers:
+  - url: http://127.0.0.1:6003
+security:
+  - bearerAuth: []
+  - {}
+paths:
+  /api/health:
+    get:
+      summary: Health probe (luôn mở, không cần auth)
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  product: { type: string, example: P0003 }
+                  apiPort: { type: integer, example: 6003 }
+                  authRequired: { type: boolean }
+                  features:
+                    type: array
+                    items: { type: string }
+  /api/proxy/check:
+    post:
+      summary: Kiểm proxy sống + geoip-consistency (timezone/country vs IP thật)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                proxy: { type: string, description: "proxy string trực tiếp" }
+                profile_id: { type: string, description: "hoặc lấy proxy từ profile + check consistency" }
+                timeout_ms: { type: integer, default: 8000 }
+      responses:
+        "200":
+          description: Health + geo report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  health:
+                    type: object
+                    properties:
+                      alive: { type: boolean, nullable: true }
+                      exitIp: { type: string }
+                      countryCode: { type: string }
+                      timezone: { type: string }
+                      latencyMs: { type: integer }
+                  geo:
+                    type: object
+                    nullable: true
+                    properties:
+                      consistent: { type: boolean }
+                      warnings: { type: array, items: { type: string } }
+  /api/jobs/stats:
+    get:
+      summary: Thống kê hàng đợi job (giám sát lô)
+      responses:
+        "200": { description: "{ concurrency, queued, running, done, error, total }" }
+  /api/profiles:
+    get:
+      summary: Liệt kê profile (không param = tất cả; có limit/offset = phân trang)
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 1000 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: search, in: query, schema: { type: string }, description: "name/note/proxy LIKE" }
+        - { name: group, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [updated_at, created_at, name, last_opened_at, status] } }
+        - { name: dir, in: query, schema: { type: string, enum: [asc, desc] } }
+      responses:
+        "200":
+          description: Danh sách profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  profiles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        status: { type: string }
+                        running: { type: boolean }
+                        debugPort: { type: integer, nullable: true }
+  /api/profiles/{id}/launch:
+    post:
+      summary: Launch profile (idempotent — đang chạy thì trả running)
+      parameters: [{ $ref: "#/components/parameters/ProfileId" }]
+      responses:
+        "200": { $ref: "#/components/responses/LaunchResult" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/profiles/{id}/close:
+    post:
+      summary: Đóng profile
+      parameters: [{ $ref: "#/components/parameters/ProfileId" }]
+      responses:
+        "200": { description: Đã đóng }
+  /api/profiles/{id}/status:
+    get:
+      summary: Trạng thái 1 profile
+      parameters: [{ $ref: "#/components/parameters/ProfileId" }]
+      responses:
+        "200": { description: Trạng thái }
+  /api/profiles/{id}/cdp:
+    get:
+      summary: CDP endpoint của profile đang chạy (cho connect_over_cdp)
+      parameters: [{ $ref: "#/components/parameters/ProfileId" }]
+      responses:
+        "200":
+          description: CDP info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  port: { type: integer }
+                  endpoint: { type: string, example: "http://127.0.0.1:54231" }
+                  webSocketDebuggerUrl: { type: string }
+                  browser: { type: string }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/automation/open-url:
+    post:
+      summary: Mở URL + (tùy chọn) chạy script steps, đồng bộ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OpenUrlPayload" }
+      responses:
+        "200": { description: Kết quả run }
+  /api/automation/run:
+    post:
+      summary: Alias của open-url (generic automation run)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OpenUrlPayload" }
+      responses:
+        "200": { description: Kết quả run }
+  /api/jobs:
+    post:
+      summary: Enqueue job async (trả jobId ngay)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [open-url, fb-create-pages] }
+                payload: { type: object }
+                retries: { type: integer, default: 0, description: "số lần retry khi lỗi (backoff luỹ thừa)" }
+                jitter_ms: { type: integer, default: 0, description: "trễ ngẫu nhiên trước launch (chống lockstep)" }
+      responses:
+        "202":
+          description: Đã nhận job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  jobId: { type: string }
+                  status: { type: string, example: queued }
+    get:
+      summary: Liệt kê job
+      responses:
+        "200": { description: Danh sách job }
+  /api/jobs/{jobId}:
+    get:
+      summary: Trạng thái + result + buffer event của job
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Job snapshot }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/jobs/{jobId}/events:
+    get:
+      summary: Stream tiến trình job (Server-Sent Events)
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: text/event-stream
+          content:
+            text/event-stream:
+              schema: { type: string }
+  /api/fb/create-pages:
+    post:
+      summary: "[plugin] Tạo nhiều Facebook Page (SSE)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profile_id, names]
+              properties:
+                profile_id: { type: string }
+                names: { type: array, items: { type: string } }
+      responses:
+        "200": { description: text/event-stream tiến trình }
+  /api/fb/oauth-import:
+    post:
+      summary: "[plugin] Chạy Facebook OAuth flow"
+      responses:
+        "200": { description: Kết quả OAuth }
+  /api/meta/save-oauth-redirects:
+    post:
+      summary: "[plugin] Lưu redirect URIs cho Meta app"
+      responses:
+        "200": { description: Kết quả }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    ProfileId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Lỗi
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: { type: boolean, example: false }
+              error: { type: string }
+    LaunchResult:
+      description: Kết quả launch
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: { type: boolean }
+              status: { type: string }
+              debugPort: { type: integer }
+  schemas:
+    OpenUrlPayload:
+      type: object
+      properties:
+        profile_id: { type: string }
+        profile_name: { type: string }
+        target_url: { type: string }
+        screenshot: { type: boolean, default: true }
+        close_when_done: { type: boolean, default: false }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [navigate, wait, click, type, delay, scroll, screenshot, condition, action] }
+              selector: { type: string }
+              value: { type: string }
+              timeoutMs: { type: integer }

@@ -1,0 +1,428 @@
+/* P0003 — Workflow Steps editor Hub-UI parity (overrides legacy 05-directory-misc) */
+@import "../styles/legacy/05-directory-misc.css";
+
+.stealth-hub-main .script-main {
+  padding: 0;
+  gap: var(--hub-chrome-content-gap, 0.75rem);
+}
+
+.stealth-hub-main .script-steps-intro--compact {
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0;
+}
+
+.stealth-hub-main .script-steps-head-line {
+  align-items: center;
+}
+
+.stealth-hub-main .script-steps-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.stealth-hub-main .script-steps-workflow-meta {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* AI composer — Hub panel card */
+.stealth-hub-main .workflow-ai-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.875rem;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent) 8%, var(--panel)), color-mix(in srgb, var(--panel) 96%, transparent));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+.stealth-hub-main .workflow-ai-composer__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.stealth-hub-main .workflow-ai-composer__brand {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  border: 1px solid rgb(129 140 248 / 0.35);
+  background: rgb(99 102 241 / 0.15);
+  color: #c7d2fe;
+  flex-shrink: 0;
+}
+
+.stealth-hub-main .workflow-ai-composer__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.stealth-hub-main .workflow-ai-composer__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stealth-hub-main .workflow-ai-composer__subtitle {
+  margin: 0.125rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.stealth-hub-main .workflow-ai-composer__sparkle {
+  flex-shrink: 0;
+  color: rgb(129 140 248 / 0.65);
+}
+
+.stealth-hub-main .workflow-ai-composer__input {
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.stealth-hub-main .workflow-ai-composer__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stealth-hub-main .workflow-ai-composer__foot-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.stealth-hub-main .workflow-ai-composer__preview {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.5rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid rgb(129 140 248 / 0.28);
+  background: rgb(99 102 241 / 0.12);
+  font-size: 0.6875rem;
+  color: var(--text);
+}
+
+.stealth-hub-main .workflow-ai-composer__model {
+  color: var(--muted);
+}
+
+.stealth-hub-main .workflow-ai-composer__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.stealth-hub-main .workflow-ai-composer__alert {
+  margin: 0;
+  font-size: 0.6875rem;
+}
+
+/* Step add picker */
+.stealth-hub-main .workflow-step-add-picker__panel {
+  z-index: 45;
+}
+
+.stealth-hub-main .workflow-step-add-picker__list {
+  max-height: min(20rem, 52dvh);
+}
+
+.stealth-hub-main .workflow-step-add-picker__row {
+  align-items: flex-start;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.stealth-hub-main .workflow-step-add-picker__icon {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0.125rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  color: #c7d2fe;
+  flex-shrink: 0;
+}
+
+.stealth-hub-main .script-steps-toolbar-row--add {
+  justify-content: flex-start;
+}
+
+/* Step palette — neutral hub chips (no neon category blocks) */
+.stealth-hub-main .script-steps-toolbar-frame {
+  padding: 0.5rem 0.625rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  gap: 0.5rem;
+}
+
+.stealth-hub-main .script-steps-toolbar-row {
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.stealth-hub-main .script-step-palette-segment {
+  padding: 0.25rem 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  border-radius: 0.5rem;
+  background: transparent;
+}
+
+.stealth-hub-main .script-step-palette-segment--page,
+.stealth-hub-main .script-step-palette-segment--interact,
+.stealth-hub-main .script-step-palette-segment--capture,
+.stealth-hub-main .script-step-palette-segment--logic {
+  border-color: rgb(255 255 255 / 0.06);
+}
+
+.stealth-hub-main .script-step-palette-label,
+.stealth-hub-main .script-step-palette-segment--page .script-step-palette-label,
+.stealth-hub-main .script-step-palette-segment--interact .script-step-palette-label,
+.stealth-hub-main .script-step-palette-segment--capture .script-step-palette-label,
+.stealth-hub-main .script-step-palette-segment--logic .script-step-palette-label {
+  color: var(--muted);
+  font-size: 0.5625rem;
+  font-weight: 700;
+}
+
+.stealth-hub-main button.script-step-add.ghost.compact,
+.stealth-hub-main button.script-step-add--page.ghost.compact,
+.stealth-hub-main button.script-step-add--interact.ghost.compact,
+.stealth-hub-main button.script-step-add--capture.ghost.compact,
+.stealth-hub-main button.script-step-add--logic.ghost.compact {
+  min-height: 1.625rem;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: color-mix(in srgb, var(--surface-2) 75%, transparent);
+  color: var(--text);
+  font-size: 0.625rem;
+  font-weight: 650;
+  box-shadow: none;
+}
+
+.stealth-hub-main button.script-step-add:hover {
+  background: color-mix(in srgb, var(--surface-3) 85%, transparent);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+/* Inspector — row 1 meta + row 2 bulk (P0020 filter bar parity) */
+.stealth-hub-main .workflow-step-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.stealth-hub-main .workflow-step-inspector__meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.stealth-hub-main .workflow-step-inspector__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.stealth-hub-main .workflow-step-inspector__kind-icon {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  color: #c7d2fe;
+  flex-shrink: 0;
+}
+
+.stealth-hub-main .workflow-step-inspector__kind-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.stealth-hub-main .workflow-step-inspector__status-filter {
+  flex-shrink: 0;
+}
+
+.stealth-hub-main .workflow-step-inspector__fields {
+  width: 100%;
+}
+
+.stealth-hub-main .workflow-step-inspector__bulk-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  padding-top: 0.125rem;
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.stealth-hub-main .workflow-step-bulk-action-bar {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+/* Legacy chips — kept for canvas nodes */
+.stealth-hub-main .script-step-name-chip {
+  max-width: min(220px, 34vw);
+  min-height: var(--hub-control-h, 31px);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.stealth-hub-main .inspector-power-pill {
+  min-height: var(--hub-control-h, 31px);
+  padding: 0 0.625rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.stealth-hub-main .inspector-power-pill--on {
+  color: #86efac;
+  border: 1px solid rgb(34 197 94 / 0.35);
+  background: rgb(34 197 94 / 0.12);
+}
+
+.stealth-hub-main .inspector-power-pill--off {
+  color: var(--muted);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+}
+
+.stealth-hub-main .script-inspector-actions {
+  justify-content: flex-start;
+  margin-left: auto;
+  gap: 0.375rem;
+}
+
+.stealth-hub-main .inspector-action-btn {
+  min-height: var(--hub-control-h, 31px);
+  padding: 0 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.stealth-hub-main .script-inspector-form--toolbar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  padding-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .stealth-hub-main .script-inspector-form--toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.stealth-hub-main .script-inspector-form--toolbar .inspector-field label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stealth-hub-main .script-inspector-form--toolbar input,
+.stealth-hub-main .script-inspector-form--toolbar select {
+  width: 100%;
+  min-height: var(--hub-control-h, 31px);
+  padding: 0 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
+.stealth-hub-main .workflow-step-inspector-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.stealth-hub-main .workflow-step-inspector-toolbar {
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.stealth-hub-main .script-inspector-form--toolbar .hub-form-field-label {
+  margin-bottom: 0.25rem;
+}
+
+.stealth-hub-main .script-inspector-form--toolbar label.block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stealth-hub-main .script-step-board-wrap {
+  margin: 0 0.75rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--bg) 65%, var(--panel));
+}
+
+.stealth-hub-main .script-step-board-hint-bar {
+  padding: 0.375rem 0.5rem;
+}
+
+.stealth-hub-main .script-step-board-hint-toggle {
+  min-height: 1.5rem;
+  min-width: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+/* Profiles workspace body — same flex chain as Scripts */
+.stealth-profiles-workspace__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hub-main--profiles .stealth-profiles-workspace__body > .stealth-profile-layout {
+  flex: 1 1 0;
+  min-height: 0;
+}

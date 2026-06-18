@@ -1,0 +1,65 @@
+/* P0003 workflow rail — profile pane uses hub-directory-frame-table.css (hub-ui SSOT). */
+
+.stealth-workflow-directory-frame table.hub-users-table.stealth-workflow-rail-table {
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table th {
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 700;
+  padding: 8px 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table td {
+  padding: 6px 10px;
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+  vertical-align: top;
+}
+
+.stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-users-th-text {
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 700;
+}
+
+.stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-users-name-title,
+.stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-directory-table-body-text,
+.stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-directory-icon-cell__label {
+  display: block;
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--text);
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-split-directory-pane__body {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell > .hub-users-table-wrap {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: hidden;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-pager {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  padding-top: 0;
+}

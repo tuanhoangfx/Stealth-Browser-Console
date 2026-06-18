@@ -1,0 +1,82 @@
+/* Hub sidebar/footer — P0016 golden; Stealth console */
+
+.hub-app.stealth-hub-app > aside {
+  overflow: visible;
+}
+
+.hub-app.stealth-hub-app > aside > div:first-child {
+  min-width: 0;
+}
+
+.hub-app.stealth-hub-app > aside > div:first-child > div:last-child {
+  min-width: 0;
+}
+
+.hub-app.stealth-hub-app > aside .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-app.stealth-hub-app > aside > div:first-child .text-\[10px\] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  max-height: 2.7em;
+}
+
+.hub-app.stealth-hub-app > aside nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+}
+
+.hub-app.stealth-hub-app > aside nav button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: var(--hub-control-h, 31px);
+  place-items: unset;
+  justify-content: flex-start;
+}
+
+.hub-app.stealth-hub-app > aside footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: auto;
+}
+
+.hub-app.stealth-hub-app > aside footer button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: var(--hub-control-h, 31px);
+  place-items: unset;
+}
+
+.stealth-runtime-history,
+.stealth-runtime-console {
+  min-height: 0;
+}
+
+.stealth-runtime-stack .console-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stealth-runtime-stack .history-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 11px;
+}

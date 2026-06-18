@@ -1,0 +1,325 @@
+const path = require("node:path");
+const fs = require("node:fs");
+const { pathToFileURL } = require("node:url");
+const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-cleanup.cjs");
+const { ensureProfileToolbarExtension } = require("../lib/profile-identity-extension.cjs");
+const { createLaunchTimer } = require("../lib/profile-launch-timer.cjs");
+
+/** cloakbrowser is ESM-only — lazy dynamic import for Electron CJS main. */
+let cloakModulePromise = null;
+
+const CLOAK_IGNORE_DEFAULT_ARGS = ["--enable-automation", "--enable-unsafe-swiftshader"];
+const SANDBOX_FLAGS = ["--no-sandbox", "--no-sandbox-and-elevated"];
+const EXTENSION_BLOCK_FLAGS = ["--disable-extensions"];
+
+function loadCloakbrowser() {
+  if (!cloakModulePromise) {
+    cloakModulePromise = import("cloakbrowser");
+  }
+  return cloakModulePromise;
+}
+
+function cloakDistImport(relativePath) {
+  const pkgJson = require.resolve("cloakbrowser/package.json");
+  const filePath = path.join(path.dirname(pkgJson), "dist", relativePath);
+  return import(pathToFileURL(filePath).href);
+}
+
+function profileDataDir(userDataRoot, profileId) {
+  return path.join(userDataRoot, "profiles", String(profileId));
+}
+
+function proxyLaunchExtras(proxy) {
+  if (!proxy) return {};
+  try {
+    require.resolve("mmdb-lib");
+    return { proxy, geoip: true };
+  } catch {
+    return { proxy };
+  }
+}
+
+function shouldStripSandboxFlags() {
+  return process.platform === "win32" || process.platform === "darwin";
+}
+
+/** Spoofed OS reported to detection sites — from the profile, fallback to host. */
+function resolveSpoofPlatform(profile) {
+  const wanted = String(profile.platform || "").toLowerCase();
+  if (wanted === "windows" || wanted === "macos" || wanted === "linux") return wanted;
+  if (process.platform === "darwin") return "macos";
+  if (process.platform === "linux") return "linux";
+  return "windows";
+}
+
+const VALID_WINDOW_MODES = new Set(["host-maximized", "preset-viewport", "engine-default"]);
+
+function resolveWindowMode(profile) {
+  const mode = String(profile.windowMode || "host-maximized").toLowerCase();
+  return VALID_WINDOW_MODES.has(mode) ? mode : "host-maximized";
+}
+
+function buildStealthChromeArgs(profile) {
+  const seed = profile.fingerprintSeed;
+  const args = [`--fingerprint=${seed}`];
+
+  // Host-level sandbox flag (not the spoofed platform).
+  if (process.platform === "linux") {
+    args.push("--no-sandbox");
+  }
+
+  args.push(`--fingerprint-platform=${resolveSpoofPlatform(profile)}`);
+
+  if (process.platform === "win32" || process.platform === "darwin") {
+    args.push("--ignore-gpu-blocklist");
+  }
+
+  if (resolveWindowMode(profile) === "host-maximized") {
+    args.push("--start-maximized");
+  }
+
+  args.push("--disable-infobars");
+  return args;
+}
+
+function buildIgnoreDefaultArgs() {
+  if (!shouldStripSandboxFlags()) return [...CLOAK_IGNORE_DEFAULT_ARGS];
+  return [...CLOAK_IGNORE_DEFAULT_ARGS, ...SANDBOX_FLAGS, ...EXTENSION_BLOCK_FLAGS];
+}
+
+function chromeExtensionArgs(extensionDirs) {
+  if (!extensionDirs.length) return [];
+  const joined = extensionDirs
+    .map((dir) => path.resolve(String(dir)).replace(/\\/g, "/"))
+    .join(",");
+  return [`--disable-extensions-except=${joined}`, `--load-extension=${joined}`];
+}
+
+function sanitizeChromeArgs(args) {
+  if (!shouldStripSandboxFlags()) return args;
+  return args.filter((arg) => {
+    const key = arg.split("=")[0];
+    return !SANDBOX_FLAGS.includes(key) && !EXTENSION_BLOCK_FLAGS.includes(key);
+  });
+}
+
+function resolveExtraExtensionDirs() {
+  const dirs = [];
+
+  const env = String(process.env.STEALTH_EXTRA_EXTENSION_DIRS || "").trim();
+  if (env) {
+    for (const raw of env.split(";")) {
+      const candidate = raw.trim();
+      if (!candidate) continue;
+      dirs.push(candidate);
+    }
+  }
+
+  // Portable: allow `extensions/<id>` next to the exe.
+  try {
+    const exeDir = path.dirname(process.execPath);
+    dirs.push(path.join(exeDir, "extensions", "E0001-cookie-bridge"));
+  } catch {
+    // ignore
+  }
+
+  // Dev workspace default: E:\Dev\Extension\E0001-cookie-bridge
+  try {
+    const projectRoot = path.resolve(__dirname, "..", "..");
+    dirs.push(path.resolve(projectRoot, "..", "..", "Extension", "E0001-cookie-bridge"));
+  } catch {
+    // ignore
+  }
+
+  const unique = [];
+  const seen = new Set();
+  for (const dir of dirs) {
+    const abs = path.resolve(String(dir));
+    if (seen.has(abs)) continue;
+    try {
+      if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
+      seen.add(abs);
+      unique.push(abs);
+    } catch {
+      // ignore unreadable paths
+    }
+  }
+
+  return unique;
+}
+
+function buildLaunchOptions(profile, userDataDir) {
+  const proxy = String(profile.proxy || "").trim();
+  const options = {
+    userDataDir,
+    headless: profile.headless === true,
+    humanize: profile.humanize !== false,
+    stealthArgs: false,
+    ...proxyLaunchExtras(proxy),
+    args: [...buildStealthChromeArgs(profile)],
+    profile
+  };
+
+  // Engine-honored device surface (cloakbrowser routes these to undetectable
+  // binary flags / context options). Empty values fall back to geoip/auto.
+  if (profile.timezone) options.timezone = String(profile.timezone);
+  if (profile.locale) options.locale = String(profile.locale);
+  if (profile.userAgent) options.userAgent = String(profile.userAgent);
+
+  const windowMode = resolveWindowMode(profile);
+  const vw = Number(profile.viewportW) || 0;
+  const vh = Number(profile.viewportH) || 0;
+  if (windowMode === "host-maximized") {
+    // Playwright viewport:null — use native OS window size (no fixed 1920×947 lock).
+    options.viewport = null;
+  } else if (windowMode === "preset-viewport" && vw > 0 && vh > 0) {
+    options.viewport = { width: vw, height: vh };
+  }
+  // engine-default: omit viewport → cloakbrowser DEFAULT_VIEWPORT (1920×947).
+
+  if (profile.colorScheme) options.colorScheme = String(profile.colorScheme);
+
+  return options;
+}
+
+async function ensureEngineBinary() {
+  const { ensureBinary, binaryInfo } = await loadCloakbrowser();
+  await ensureBinary();
+  return binaryInfo();
+}
+
+async function getBinaryInfo() {
+  const { binaryInfo } = await loadCloakbrowser();
+  return binaryInfo();
+}
+
+/**
+ * Desktop launch — ignoreDefaultArgs:true blocks Playwright injecting --no-sandbox.
+ */
+async function launchStealthPersistentContext(profileOptions) {
+  const cloak = await loadCloakbrowser();
+  const { buildLaunchOptions: cbBuildLaunchOptions, buildContextOptions, ensureBinary } = cloak;
+  const { chromium } = await import("playwright-core");
+
+  const options = profileOptions;
+  const userDataDir = options.userDataDir;
+  if (!userDataDir) throw new Error("userDataDir is required");
+
+  const cloakOptions = options;
+
+  await ensureBinary();
+  const launchOpts = await cbBuildLaunchOptions({
+    ...cloakOptions,
+    stealthArgs: false,
+    headless: options.headless ?? false
+  });
+
+  let args = sanitizeChromeArgs(launchOpts.args || []);
+  const extraExtensionDirs = [...resolveExtraExtensionDirs()];
+  if (options.identityExtensionDir) {
+    const identityDir = path.resolve(String(options.identityExtensionDir));
+    if (fs.existsSync(path.join(identityDir, "manifest.json"))) {
+      extraExtensionDirs.push(identityDir);
+    }
+  }
+  const seenExt = new Set();
+  const uniqueExtDirs = [];
+  for (const dir of extraExtensionDirs) {
+    const abs = path.resolve(String(dir));
+    if (seenExt.has(abs)) continue;
+    if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
+    seenExt.add(abs);
+    uniqueExtDirs.push(abs);
+  }
+  if (uniqueExtDirs.length) {
+    args = [...args, ...chromeExtensionArgs(uniqueExtDirs)];
+  }
+
+  // CDP passthrough: mở remote-debugging-port (localhost-only) để tool workspace
+  // khác connect_over_cdp vào context sống. Vô hình với website (chỉ bind 127.0.0.1).
+  const debugPort = Number(options.debugPort) || 0;
+  if (debugPort > 0) {
+    args = [...args, `--remote-debugging-port=${debugPort}`, "--remote-debugging-address=127.0.0.1"];
+  }
+
+  const context = await chromium.launchPersistentContext(userDataDir, {
+    executablePath: launchOpts.executablePath,
+    headless: options.headless ?? false,
+    args,
+    ignoreDefaultArgs: buildIgnoreDefaultArgs(),
+    ...(launchOpts.proxy ? { proxy: launchOpts.proxy } : {}),
+    ...buildContextOptions(options)
+  });
+
+  // host-maximized (viewport:null): the CloakBrowser binary sizes the window
+  // from the fingerprint seed, which silently overrides `--start-maximized`.
+  // Force-maximize the OS window via CDP so the profile opens full-screen.
+  if (options.viewport === null) {
+    try {
+      const page = context.pages()[0] ?? (await context.newPage());
+      const cdp = await context.newCDPSession(page);
+      const { windowId } = await cdp.send("Browser.getWindowForTarget");
+      await cdp.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "maximized" } });
+      await cdp.detach().catch(() => undefined);
+    } catch {
+      // best-effort — non-fatal if the platform rejects window bounds
+    }
+  }
+
+  if (options.humanize) {
+    try {
+      const { patchContext } = await cloakDistImport("human/index.js");
+      const { resolveConfig } = await cloakDistImport("human/config.js");
+      const cfg = resolveConfig(options.humanPreset ?? "default", options.humanConfig);
+      patchContext(context, cfg);
+    } catch {
+      // humanize optional — launch still succeeds
+    }
+  }
+
+  return context;
+}
+
+async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
+  const timer = createLaunchTimer(profile.id);
+  timer.mark("prep-start");
+  const userDataDir = profileDataDir(userDataRoot, profile.id);
+  purgeLegacyProfileIdentityChrome(userDataDir, userDataRoot, profile.id);
+  fs.mkdirSync(userDataDir, { recursive: true });
+  const identity = ensureProfileToolbarExtension(userDataRoot, profile);
+  timer.mark("identity-ready");
+  const launchOptions = buildLaunchOptions(profile, userDataDir);
+  launchOptions.profile = profile;
+  launchOptions.identityExtensionDir = identity.dir;
+  if (Number(debugPort) > 0) launchOptions.debugPort = Number(debugPort);
+  timer.mark("spawn-start");
+  const context = await launchStealthPersistentContext(launchOptions);
+  timer.mark("spawn-done");
+  timer.flush("openProfile");
+  return {
+    context,
+    userDataDir,
+    debugPort: Number(debugPort) || 0,
+    identityExtensionDir: identity.dir,
+    identityExtensionId: identity.extensionId,
+  };
+}
+
+async function closeContext(context) {
+  if (context) {
+    await context.close().catch(() => undefined);
+  }
+}
+
+module.exports = {
+  profileDataDir,
+  buildLaunchOptions,
+  buildStealthChromeArgs,
+  buildIgnoreDefaultArgs,
+  sanitizeChromeArgs,
+  resolveWindowMode,
+  ensureEngineBinary,
+  getBinaryInfo,
+  openProfile,
+  closeContext
+};

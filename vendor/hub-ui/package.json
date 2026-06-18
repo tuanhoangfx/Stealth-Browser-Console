@@ -1,0 +1,38 @@
+{
+  "name": "@tool-workspace/hub-ui",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "description": "Shared Hub shell UI — DisplayPrefs menu and hub-check-indicator styles.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles/hub-check-indicator.css": "./src/styles/hub-check-indicator.css",
+    "./styles/hub-shell-layout.css": "./src/styles/hub-shell-layout.css",
+    "./styles/hub-fields.css": "./src/styles/hub-fields.css",
+    "./styles/hub-app-tab-header.css": "./src/styles/hub-app-tab-header.css",
+    "./styles/hub-users-table.css": "./src/styles/hub-users-table.css",
+    "./styles/hub-modal.css": "./src/styles/hub-modal.css",
+    "./styles/hub-route-detail.css": "./src/styles/hub-route-detail.css",
+    "./styles/hub-thread-preview.css": "./src/styles/hub-thread-preview.css"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=0.451.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "5.2.8",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "jsdom": "^26.1.0",
+    "lucide-react": "^0.561.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

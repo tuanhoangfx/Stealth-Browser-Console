@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs (regenerate: pnpm build / desktop:dist)
+dist/
+dist-desktop/
+out/
+*.tgz
+
+# Logs & runtime artifacts
+*.log
+*.pid
+.smoke-ui-render.json
+
+# Env & secrets (hub keys, tokens)
+.env.local
+.env*.local
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,103 @@
+/* Shared top rail — Hub, System, future tabs */
+.app-tab-header {
+  font-family: var(--font-sans);
+  isolation: isolate;
+  padding: var(--app-tab-header-py) var(--app-tab-header-px);
+  min-height: var(--app-tab-header-min-h);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.app-tab-header__start {
+  min-width: 0;
+}
+
+.app-tab-header__end {
+  position: relative;
+  z-index: 1;
+  max-width: min(100%, 22rem);
+  background: var(--bg);
+}
+
+.app-tab-header h1 {
+  margin: 0;
+  padding: 0;
+}
+
+.app-tab-header svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Center stats rail — scroll without visible track (P0004 golden; fixes faint gray streak). */
+.app-tab-header-center-stats {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-tab-header-center-stats::-webkit-scrollbar {
+  display: none;
+}
+
+/* Narrow viewports — KPI rail on second row; avoid overlap with title/meta. */
+@media (max-width: 1100px) {
+  .app-tab-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    row-gap: 6px;
+    align-items: center;
+  }
+
+  .app-tab-header__start {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .app-tab-header__end {
+    grid-column: 2;
+    grid-row: 1;
+    max-width: min(100%, 14rem);
+  }
+
+  .app-tab-header-center-stats {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-tab-header-meta {
+    display: none;
+  }
+}
+
+/* Header ops — borderless ghost (Notify · Log · Settings · trailing). */
+.hub-header-panel-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.hub-header-panel-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.app-tab-header__end .btn-ghost {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-tab-header__end .btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: transparent;
+  box-shadow: none;
+}

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "code": "P0003",
+  "id": "stealth-browser-console",
+  "aliases": [
+    "P0003",
+    "Stealth",
+    "Stealth Browser Console"
+  ],
+  "name": "Stealth Browser Console",
+  "type": "Desktop",
+  "owner": "Tool",
+  "status": "Beta",
+  "summary": "Standalone desktop console for CloakBrowser antidetect profiles — no GPM dependency.",
+  "stack": [
+    "Electron",
+    "React",
+    "Vite",
+    "CloakBrowser",
+    "SQLite"
+  ],
+  "devPort": 5175,
+  "commands": {
+    "dev": "corepack pnpm dev",
+    "dev:web": "corepack pnpm dev:web",
+    "build": "corepack pnpm build",
+    "smoke": "corepack pnpm test:smoke",
+    "preview": "corepack pnpm preview",
+    "package": "corepack pnpm desktop:dist",
+    "release": "corepack pnpm desktop:release"
+  },
+  "docs": {
+    "readme": "README.md",
+    "context": "PROJECT_CONTEXT.md",
+    "release": "RELEASE.md",
+    "architecture": "ARCHITECTURE.md"
+  },
+  "health": {
+    "status": "Beta",
+    "note": "Requires CloakBrowser binary (auto-download on first launch). No external antidetect app."
+  },
+  "uiScreens": [
+    {
+      "screen": "profiles",
+      "template": "inbox-split",
+      "golden": "P0020/notes",
+      "notes": "HubDirectoryScreen + Open URL rail"
+    },
+    {
+      "screen": "workflow",
+      "template": "inbox-split",
+      "golden": "P0001/scripts-pane",
+      "notes": "HubSplitWorkspaceScreen header; WorkflowFilterPane in left pane (Scripts parity)"
+    },
+    {
+      "screen": "settings",
+      "template": "settings-modal",
+      "golden": "P0004/system",
+      "notes": "StealthDisplayPrefs modal — engine health, data dir, theme (not a nav tab)"
+    }
+  ],
+  "urls": {
+    "local": "http://127.0.0.1:5175"
+  },
+  "deployTarget": "github-release",
+  "github": {
+    "repo": "tuanhoangfx/Stealth-Browser-Console",
+    "branch": "main",
+    "manifestPath": "tool.manifest.json"
+  },
+  "manifestUpdatedAt": "2026-06-18T00:00:00.000Z",
+  "release": {
+    "version": "0.5.2"
+  }
+}

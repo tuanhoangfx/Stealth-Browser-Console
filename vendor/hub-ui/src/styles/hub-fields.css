@@ -1,0 +1,140 @@
+.field {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid #2a3158;
+  border-radius: 8px;
+  font-size: 13px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.15);
+}
+
+.field:hover:not(:focus) {
+  border-color: #3a4178;
+}
+
+/* Native selects in Hub modals — dark options (fallback) */
+select.field,
+select.hub-filter-select-native,
+.hub-users-role-select {
+  appearance: none;
+  background-color: var(--panel-2);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+select.field option,
+select.hub-filter-select-native option,
+.hub-users-role-select option {
+  background-color: var(--panel);
+  color: var(--text);
+}
+
+/* HubFilterSelect — FilterBar dropdown chrome */
+.hub-filter-select-trigger {
+  display: inline-flex;
+  width: 100%;
+  min-height: var(--hub-control-h);
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(99 102 241 / 0.4);
+  background: rgb(99 102 241 / 0.1);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(199 210 254);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hub-filter-select-trigger:hover:not(:disabled) {
+  background: rgb(99 102 241 / 0.16);
+  border-color: rgb(99 102 241 / 0.5);
+}
+
+.hub-filter-select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.hub-filter-select-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 80;
+  max-height: 16rem;
+  overflow: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--panel);
+  padding: 0.25rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.hub-filter-select-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--text);
+  transition: background 0.12s;
+}
+
+.hub-filter-select-option:hover,
+.hub-filter-select-option[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hub-filter-select-option-check {
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  place-items: center;
+}
+
+/* Modal form field label + filter trigger prefix */
+.hub-form-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.hub-form-field-label__icon {
+  color: #a5b4fc;
+  flex-shrink: 0;
+}
+
+.hub-modal-filter-field {
+  min-width: 0;
+}
+
+.hub-filter-trigger-text__prefix {
+  color: var(--muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.hub-filter-trigger-text__value {
+  color: inherit;
+  font-weight: 500;
+}

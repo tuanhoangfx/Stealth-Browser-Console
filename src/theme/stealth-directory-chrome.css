@@ -1,0 +1,9 @@
+/* Stealth directory shell — workflow rail table chrome (P0001 gpm-directory-chrome parity) */
+
+.workflow-platform-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}

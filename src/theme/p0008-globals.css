@@ -1,0 +1,497 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+.theme-hub {
+  --hub-user-zoom-pct: 100;
+  --hub-compact-scale: 0.9;
+  --hub-control-h: 31px;
+  --hub-card-min-h: 198px;
+  --hub-search-min-w: 180px;
+  --hub-count-badge-min-w: 14px;
+  --hub-metric-badge-h: 20px;
+  --hub-card-meta-min-h: 6.75rem;
+  --hub-card-chip-row-min-h: 20px;
+  --personality-dot-size: 7px;
+  --personality-dot-size-badge: 5px;
+  /* Directory tables — body/header/muted; P0020 Sheet parity */
+  --hub-table-body-size: 12px;
+  --hub-table-header-size: 12px;
+  --hub-table-body-size-dense: 13px;
+  --hub-table-muted-size: 11px;
+  --hub-table-body-line-height: 1.45;
+  --hub-directory-row-h: 1.875rem;
+  --hub-directory-head-row-h: 2.125rem;
+  --overview-toc-w: 135px;
+  --overview-toc-h: 263px;
+  --overview-toc-row-h: 30px;
+  --schema-graph-h: 414px;
+  --schema-graph-compact-h: 252px;
+  --schema-graph-side-w: 198px;
+  --schema-hover-min-h: 126px;
+  --version-table-min-w: 738px;
+  --version-title-max-w: 144px;
+  --version-note-max-w: 180px;
+  --app-tab-header-py: 0.75rem;
+  /* P0004 Hub-UI golden header bleed — aligns actions to outer frame without edge clipping. */
+  --app-tab-header-px: 1.5rem;
+  /* Stealth content frame — tighter than header bleed (Profiles/Workflow split layout). */
+  --stealth-frame-px: 0.75rem;
+  --app-tab-header-min-h: 2.75rem;
+  --app-tab-header-gap-below: 0.75rem;
+  /* Hub scrollbar — global + hub-split-scroll panes */
+  --hub-split-scroll-size: 10px;
+  --hub-split-scroll-track: transparent;
+  --hub-split-scroll-thumb: #2a3158;
+  --hub-split-scroll-thumb-hover: #3a4178;
+  --hub-split-scroll-radius: 6px;
+  /* Total block height (padding is inside min-height via box-border on .app-tab-header) */
+  --app-tab-header-sticky-h: var(--app-tab-header-min-h);
+  --hub-filter-pin-est-h: 6.75rem;
+  --hub-chrome-content-gap: var(--app-tab-header-gap-below);
+  --hub-chrome-gap-below: var(--hub-chrome-content-gap);
+  --hub-chrome-sticky-est-h: calc(
+    var(--app-tab-header-min-h) + var(--hub-filter-pin-est-h) + var(--hub-chrome-gap-below)
+  );
+  --bg: #0b1020;
+  --panel: #121830;
+  --panel-2: #1a2140;
+  --text: #e6e8ef;
+  --muted: #8a93b2;
+  --accent: #6366f1;
+  --accent-2: #818cf8;
+  --success: #22c55e;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+}
+
+html {
+  font-size: calc(16px * var(--hub-user-zoom-pct, 90) / 100);
+}
+
+/* Chart legend — wide enough for “Needs review”, bar flexes */
+.hub-chart-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr) 2.25rem;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.125rem;
+}
+
+.hub-chart-legend-label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+  overflow: hidden;
+  color: var(--muted);
+}
+
+.hub-chart-legend-label__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Personality accent dots — table, card, bulk menu, filters, badges */
+.personality-color-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--personality-dot-size, 7px);
+  height: var(--personality-dot-size, 7px);
+  border-radius: 9999px;
+}
+
+.personality-color-dot--badge {
+  width: var(--personality-dot-size-badge, 5px);
+  height: var(--personality-dot-size-badge, 5px);
+}
+
+.hub-ui-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hub-ui-zoom-row__label {
+  width: 2rem;
+}
+
+.hub-ui-zoom-row__pct {
+  width: 2.25rem;
+  text-align: right;
+}
+
+.hub-ui-zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.125rem;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.hub-ui-zoom-slider:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+.hub-ui-zoom-slider::-webkit-slider-runnable-track {
+  height: 0.3rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+    color-mix(in srgb, var(--accent-2) 70%, transparent) var(--hub-zoom-fill, 33%),
+    rgba(255, 255, 255, 0.07) var(--hub-zoom-fill, 33%),
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.hub-ui-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-top: -0.26rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(145deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 2px 8px rgba(99, 102, 241, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.hub-ui-zoom-slider:active::-webkit-slider-thumb {
+  transform: scale(1.08);
+}
+
+.hub-ui-zoom-slider::-moz-range-track {
+  height: 0.3rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.hub-ui-zoom-slider::-moz-range-progress {
+  height: 0.3rem;
+  border-radius: 9999px 0 0 9999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.hub-ui-zoom-slider::-moz-range-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--accent-2), var(--accent));
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.45);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: var(--hub-split-scroll-size, 10px);
+  height: var(--hub-split-scroll-size, 10px);
+}
+::-webkit-scrollbar-track {
+  background: var(--hub-split-scroll-track, transparent);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hub-split-scroll-thumb, #2a3158);
+  border-radius: var(--hub-split-scroll-radius, 6px);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hub-split-scroll-thumb-hover, #3a4178);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes shimmer-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.anim-fade {
+  opacity: 1;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade,
+  .anim-slide,
+  .anim-right,
+  .anim-pop {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+.anim-slide {
+  animation: slideUp 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.anim-right {
+  animation: slideInRight 0.3s ease-out both;
+}
+.anim-pop {
+  animation: pop 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.anim-spin {
+  animation: spin 1s linear infinite;
+}
+.anim-pulse {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.stagger > *:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.stagger > *:nth-child(8) {
+  animation-delay: 0.16s;
+}
+.stagger > *:nth-child(n + 9) {
+  animation-delay: 0.18s;
+}
+
+.skeleton {
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: shimmer-sweep 1.4s ease-in-out infinite;
+}
+
+.field {
+  width: 100%;
+  padding: 7px 9px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid #2a3158;
+  border-radius: 8px;
+  font-size: 12px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.15);
+}
+.field:hover:not(:focus) {
+  border-color: #3a4178;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--accent);
+  color: white;
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 0.08s,
+    box-shadow 0.15s,
+    background 0.15s;
+}
+.btn:hover {
+  background: var(--accent-2);
+  box-shadow: 0 4px 14px rgb(99 102 241 / 0.35);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid #2a3158;
+}
+.btn-ghost:hover {
+  background: #1f2647;
+  border-color: #3a4178;
+  box-shadow: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Shell — viewport-locked; scroll chỉ trong main */
+.hub-app {
+  --hub-sidebar-width: 15rem;
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+.hub-app > aside {
+  position: relative;
+  z-index: 50;
+  width: 15rem;
+  flex-shrink: 0;
+  min-height: 0;
+  /* Nav scrolls inside Sidebar; footer popouts (Settings) must not clip */
+  overflow: visible;
+}
+.hub-app > main,
+.hub-main {
+  position: relative;
+  z-index: 0;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  /* pt must stay 0 — padding-top pushes the sticky header down and shows a gap at the viewport top */
+  padding: 0 1.5rem 1.5rem;
+  scroll-padding-top: calc(
+    var(--app-tab-header-sticky-h) + var(--app-tab-header-gap-below)
+  );
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
+}
+
+.hub-filter-sticky {
+  isolation: isolate;
+}
+
+.hub-main:has([data-search-pin][data-header-pin]) {
+  scroll-padding-top: var(--hub-chrome-sticky-est-h);
+}
+
+.hub-main:has([data-search-pin]):not(:has([data-header-pin])) {
+  scroll-padding-top: var(--hub-filter-pin-est-h);
+}
+
+.hub-app > main a,
+.hub-app > main button,
+.hub-main a,
+.hub-main button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Hub boot + tab loader: /hub-boot.css (index.html) + main.tsx import */

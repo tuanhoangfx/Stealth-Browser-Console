@@ -1,0 +1,1373 @@
+/* GPM legacy — scripts / workflow flow (scoped via ScriptsView import) */
+.script-main {
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  padding: 10px;
+}
+
+.script-steps-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.script-steps-intro--compact {
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.script-steps-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.script-steps-head-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.script-steps-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.script-workflow-summary {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.script-steps-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.script-steps-intro .script-steps-title-row h2 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.script-steps-workflow-meta {
+  font-size: 11px;
+  font-weight: 720;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.script-steps-toolbar {
+  min-width: 0;
+}
+
+.script-steps-toolbar-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+
+.script-steps-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.script-steps-toolbar-row--edit {
+  gap: 8px;
+}
+
+.script-step-edit-hint {
+  margin: 0;
+  padding: 4px 0;
+  font-size: 11px;
+  text-align: center;
+  width: 100%;
+}
+
+.script-step-name-chip {
+  max-width: min(240px, 38vw);
+  padding: 4px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-3) 85%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.script-steps-toolbar-row .script-inspector-actions {
+  grid-column: auto;
+  justify-self: auto;
+  width: auto;
+  max-width: none;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.inspector-power-pill {
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inspector-power-pill--on {
+  color: #ecfdf5;
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  border-color: rgb(34 197 94 / 0.72);
+  box-shadow: 0 0 0 1px rgb(34 197 94 / 0.2);
+}
+
+.inspector-power-pill--off {
+  color: #fef2f2;
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+  border-color: rgb(239 68 68 / 0.72);
+  box-shadow: 0 0 0 1px rgb(239 68 68 / 0.2);
+}
+
+.script-step-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+
+.script-step-palette-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid rgb(148 163 184 / 0.2);
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+.script-step-palette-segment--page {
+  border-color: rgb(103 232 249 / 0.35);
+}
+
+.script-step-palette-segment--interact {
+  border-color: rgb(251 144 239 / 0.35);
+}
+
+.script-step-palette-segment--capture {
+  border-color: rgb(252 211 77 / 0.38);
+}
+
+.script-step-palette-segment--logic {
+  border-color: rgb(52 239 163 / 0.35);
+}
+
+.script-step-palette-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.script-step-palette-segment--page .script-step-palette-label {
+  color: rgb(125 239 253 / 0.92);
+}
+
+.script-step-palette-segment--interact .script-step-palette-label {
+  color: rgb(251 185 239 / 0.9);
+}
+
+.script-step-palette-segment--capture .script-step-palette-label {
+  color: rgb(254 230 157 / 0.92);
+}
+
+.script-step-palette-segment--logic .script-step-palette-label {
+  color: rgb(173 246 217 / 0.9);
+}
+
+.script-step-palette-buttons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+
+.script-step-header-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.script-step-header-group {
+  display: flex;
+  flex: 1 1 min(200px, 100%);
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 9px 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgb(148 163 184 / 0.18);
+  background: linear-gradient(165deg, rgb(248 250 252 / 0.04), transparent);
+}
+
+.script-step-header-group--page {
+  border-color: rgb(103 232 249 / 0.42);
+  background: linear-gradient(155deg, rgb(56 189 248 / 0.14), rgb(15 118 148 / 0.06)),
+    radial-gradient(circle at 12% -20%, rgb(56 211 239 / 0.18), transparent 55%);
+}
+
+.script-step-header-group--interact {
+  border-color: rgb(251 144 239 / 0.44);
+  background: linear-gradient(155deg, rgb(251 133 239 / 0.13), rgb(126 61 246 / 0.08)),
+    radial-gradient(circle at 94% -10%, rgb(244 114 164 / 0.16), transparent 50%);
+}
+
+.script-step-header-group--capture {
+  border-color: rgb(252 211 77 / 0.45);
+  background: linear-gradient(155deg, rgb(251 191 36 / 0.16), rgb(180 83 9 / 0.07)),
+    radial-gradient(circle at 78% -30%, rgb(253 224 71 / 0.2), transparent 48%);
+}
+
+.script-step-header-group--logic {
+  border-color: rgb(52 239 163 / 0.44);
+  background: linear-gradient(155deg, rgb(62 239 181 / 0.12), rgb(5 150 105 / 0.08)),
+    radial-gradient(circle at 30% -18%, rgb(52 239 169 / 0.16), transparent 52%);
+}
+
+.script-step-header-group-label {
+  font-size: 9px;
+  font-weight: 860;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.script-step-header-group--page .script-step-header-group-label {
+  color: rgb(125 239 253 / 0.98);
+}
+
+.script-step-header-group--interact .script-step-header-group-label {
+  color: rgb(251 185 239 / 0.96);
+}
+
+.script-step-header-group--capture .script-step-header-group-label {
+  color: rgb(254 230 157 / 0.98);
+}
+
+.script-step-header-group--logic .script-step-header-group-label {
+  color: rgb(173 246 217 / 0.96);
+}
+
+.script-step-header-group-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+button.script-step-add.ghost.compact {
+  min-height: 22px;
+  padding: 0 7px;
+  font-size: 10px;
+  gap: 3px;
+  font-weight: 720;
+}
+
+button.script-step-add--page.ghost.compact {
+  border: 1px solid rgb(103 232 249 / 0.35);
+  color: rgb(222 246 253);
+  background: linear-gradient(175deg, rgb(56 189 248 / 0.34), rgb(8 145 178 / 0.12));
+  box-shadow: 0 0 12px rgb(56 211 239 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+button.script-step-add--interact.ghost.compact {
+  border: 1px solid rgb(251 146 239 / 0.38);
+  color: rgb(253 239 247);
+  background: linear-gradient(175deg, rgb(251 133 239 / 0.3), rgb(126 61 246 / 0.18));
+  box-shadow: 0 0 14px rgb(244 114 182 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+button.script-step-add--capture.ghost.compact {
+  border: 1px solid rgb(252 211 77 / 0.42);
+  color: rgb(255 246 226);
+  background: linear-gradient(175deg, rgb(251 191 36 / 0.36), rgb(217 119 6 / 0.16));
+  box-shadow: 0 0 14px rgb(251 146 66 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+button.script-step-add--logic.ghost.compact {
+  border: 1px solid rgb(52 239 173 / 0.38);
+  color: rgb(232 251 239);
+  background: linear-gradient(175deg, rgb(52 239 187 / 0.28), rgb(16 185 129 / 0.2));
+  box-shadow: 0 0 14px rgb(74 239 183 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+button.script-step-add--page:hover,
+button.script-step-add--interact:hover,
+button.script-step-add--capture:hover,
+button.script-step-add--logic:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.script-step-add--page:hover,
+  button.script-step-add--interact:hover,
+  button.script-step-add--capture:hover,
+  button.script-step-add--logic:hover {
+    transform: none;
+    filter: none;
+  }
+}
+
+.workflow-script-steps-area.script-step-board-wrap {
+  gap: 0;
+}
+
+.script-step-board-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+}
+
+.script-step-board-empty {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.script-steps-intro--compact + .script-step-board-wrap .workflow-script-flow-shell {
+  margin-top: 4px;
+  min-height: clamp(280px, 54vh, 680px);
+}
+
+.workflow-script-flow-shell {
+  flex: 1 1 auto;
+  min-height: clamp(288px, 42vh, 560px);
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 94%, rgb(148 163 184 / 0.32));
+  background:
+    radial-gradient(ellipse 120% 80% at 12% -8%, rgb(56 189 248 / 0.07), transparent 48%),
+    radial-gradient(circle at 96% -20%, rgb(167 139 250 / 0.06), transparent 52%),
+    color-mix(in srgb, var(--surface-2) 93%, rgb(248 250 252 / 0.02));
+  overflow: hidden;
+}
+
+html[data-theme="dark"] .workflow-script-flow-shell {
+  background:
+    radial-gradient(ellipse 120% 80% at 12% -8%, rgb(56 189 248 / 0.05), transparent 48%),
+    radial-gradient(circle at 96% -20%, rgb(167 139 250 / 0.05), transparent 52%),
+    color-mix(in srgb, var(--surface-2) 97%, rgb(17 24 39 / 0.15));
+}
+
+.workflow-script-flow-inner {
+  width: 100%;
+  height: 100%;
+}
+
+.workflow-script-flow.rf-theme {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  background: transparent;
+}
+
+.workflow-script-flow.rf-theme .react-flow__background {
+  opacity: 0.55;
+}
+
+.workflow-script-flow.rf-theme .react-flow__pane {
+  cursor: grab;
+}
+
+.workflow-script-flow.rf-theme .react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.workflow-script-flow.rf-theme .react-flow__controls {
+  box-shadow:
+    0 2px 8px rgb(0 0 0 / 0.18),
+    0 0 0 1px color-mix(in srgb, var(--border) 88%, transparent);
+  overflow: hidden;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 98%, rgb(248 250 252 / 0.04));
+}
+
+.workflow-script-flow.rf-theme .react-flow__controls-button {
+  background: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.workflow-script-flow.rf-theme .react-flow__controls-button:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.workflow-script-flow.rf-theme .react-flow__controls-button svg path {
+  fill: color-mix(in srgb, var(--text) 78%, rgb(226 232 240 / 1));
+}
+
+.workflow-script-flow-panel-toolbar {
+  margin: 6px 10px 0 0;
+}
+
+.workflow-script-layout-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 2px 2px 2px 8px;
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+  border-radius: 8px;
+  box-shadow:
+    0 2px 8px rgb(0 0 0 / 0.16),
+    0 0 0 1px color-mix(in srgb, var(--border) 86%, transparent);
+  background: color-mix(in srgb, var(--surface) 96%, rgb(248 250 252 / 0.04));
+}
+
+.workflow-script-layout-picker:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.workflow-script-layout-picker-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.workflow-script-layout-picker-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.workflow-script-layout-picker-label {
+  font-size: 10px;
+  font-weight: 780;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--muted) 94%, rgb(226 232 240 / 0.12));
+}
+
+.workflow-script-layout-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 26px;
+  max-width: 240px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 96%, rgb(15 23 42 / 0.08));
+  cursor: pointer;
+}
+
+.workflow-script-layout-trigger-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.workflow-script-layout-trigger:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.workflow-script-layout-menu {
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, rgb(148 163 184 / 0.35));
+  background: color-mix(in srgb, var(--surface) 98%, rgb(15 23 42 / 0.08));
+  box-shadow:
+    0 14px 40px rgb(0 0 0 / 0.28),
+    0 0 0 1px rgb(148 163 184 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+.workflow-script-layout-menu__opt {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 690;
+  line-height: 1.38;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.workflow-script-layout-menu__opt:hover {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+}
+
+.workflow-script-layout-menu__opt.is-active {
+  font-weight: 780;
+  background: color-mix(in srgb, var(--accent) 26%, rgb(248 250 252 / 0.04));
+  color: color-mix(in srgb, var(--text) 98%, rgb(226 232 240 / 0.08));
+}
+
+html[data-theme="light"] .workflow-script-layout-menu {
+  background: rgb(255 255 255 / 0.96);
+}
+
+html[data-theme="light"] .workflow-script-layout-menu__opt.is-active {
+  background: rgb(239 246 255 / 0.95);
+  color: rgb(30 58 138);
+}
+
+.workflow-script-flow.rf-theme .react-flow__panel.react-flow__minimap.workflow-script-minimap {
+  bottom: 26px !important;
+  right: 76px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 10px !important;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, rgb(148 163 184 / 0.45));
+  background: color-mix(in srgb, var(--surface) 92%, rgb(15 23 42 / 0.18));
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.28),
+    0 0 0 1px rgb(148 163 184 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.workflow-script-flow.rf-theme .react-flow__panel.react-flow__controls.workflow-script-controls-panel {
+  bottom: 10px !important;
+  right: 10px !important;
+}
+
+.workflow-script-flow.rf-theme .workflow-script-minimap .react-flow__minimap-svg {
+  display: block;
+  border-radius: 10px !important;
+}
+
+.workflow-script-flow.rf-theme .workflow-script-minimap .react-flow__minimap-mask {
+  opacity: 0.62;
+}
+
+.workflow-script-flow.rf-theme .react-flow__panel.react-flow__minimap.workflow-script-minimap.workflow-script-minimap--edges-layer {
+  bottom: 26px !important;
+  right: 76px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none;
+  overflow: visible;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.workflow-script-minimap-edges-svg {
+  display: block;
+  border-radius: 10px;
+}
+
+.workflow-script-minimap-edge-base {
+  fill: none;
+  stroke: rgba(148, 210, 255, 0.9);
+  stroke-width: 1.65px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.workflow-script-minimap-edge-sheen {
+  fill: none;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.75px;
+  opacity: 0.95;
+  stroke-dasharray: 0.14 0.86;
+  animation: workflow-edge-sheen-travel 2.6s linear infinite;
+}
+
+@keyframes workflow-edge-sheen-travel {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-script-minimap-edge-sheen {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+html[data-theme="light"] .script-step-header-group {
+  border-color: rgb(148 163 184 / 0.38);
+}
+
+html[data-theme="light"] .script-step-add--page {
+  border-color: rgb(14 165 233 / 0.45);
+  color: rgb(12 74 110);
+}
+
+html[data-theme="light"] .script-step-add--interact {
+  border-color: rgb(217 70 239 / 0.4);
+  color: rgb(88 28 135);
+}
+
+html[data-theme="light"] .script-step-add--capture {
+  border-color: rgb(217 119 6 / 0.52);
+  color: rgb(120 53 15);
+}
+
+html[data-theme="light"] .script-step-add--logic {
+  border-color: rgb(22 163 74 / 0.45);
+  color: rgb(6 95 70);
+}
+
+html[data-theme="light"] .script-step-header-group--page .script-step-header-group-label {
+  color: rgb(21 115 169);
+}
+
+html[data-theme="light"] .script-step-header-group--interact .script-step-header-group-label {
+  color: rgb(134 52 173);
+}
+
+html[data-theme="light"] .script-step-header-group--capture .script-step-header-group-label {
+  color: rgb(180 93 13);
+}
+
+html[data-theme="light"] .script-step-header-group--logic .script-step-header-group-label {
+  color: rgb(21 138 109);
+}
+
+html[data-theme="light"] .workflow-script-node__status-chip {
+  color: rgb(5 71 61);
+}
+
+html[data-theme="light"] .workflow-script-node__status-chip--off {
+  color: rgb(71 85 105);
+}
+
+html[data-theme="light"] .workflow-script-node__status-dot {
+  background: radial-gradient(circle at 38% 32%, rgb(255 255 255 / 0.92), rgb(22 163 74));
+}
+
+html[data-theme="light"] .workflow-script-node__status-chip--off .workflow-script-node__status-dot {
+  background: rgb(148 163 184 / 0.75);
+}
+
+.workflow-script-handle {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.workflow-script-edge__ambient {
+  fill: none;
+  pointer-events: none;
+  stroke: rgb(56 189 248 / 0.48);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: blur(3px);
+  opacity: 0.62;
+}
+
+.workflow-script-edge__base {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.45;
+  stroke: rgba(148, 210, 255, 0.96);
+  filter: drop-shadow(0 0 2px rgb(56 189 248 / 0.48));
+}
+
+.workflow-script-edge__sheen {
+  fill: none;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3.4;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.9;
+  stroke-dasharray: 0.12 0.88;
+  animation: workflow-edge-sheen-travel 2.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-script-edge__sheen {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+html[data-theme="light"] .workflow-script-edge__base {
+  stroke: rgb(12 117 169 / 0.92);
+  filter: drop-shadow(0 0 1px rgb(14 165 233 / 0.42));
+}
+
+html[data-theme="light"] .workflow-script-edge__ambient {
+  stroke: rgb(14 165 233 / 0.35);
+  opacity: 0.45;
+}
+
+.workflow-script-node {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 178px;
+  min-height: 168px;
+  max-width: 100%;
+  padding: 11px 9px;
+  outline: none;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition:
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.26s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.workflow-script-node:not(.is-selected):hover {
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045);
+}
+
+.workflow-script-node:not(.is-selected):hover .workflow-script-node__orb {
+  transform: none;
+}
+
+.workflow-script-node.is-selected {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 50%, rgb(148 163 184 / 0.35));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent),
+    0 10px 26px rgb(15 23 42 / 0.24);
+}
+
+html[data-theme="light"] .workflow-script-node:not(.is-selected):hover {
+  background: color-mix(in srgb, var(--accent) 9%, rgb(248 250 252 / 1));
+}
+
+html[data-theme="light"] .workflow-script-node.is-selected {
+  background: color-mix(in srgb, var(--accent) 12%, rgb(255 255 255 / 1));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, rgb(226 232 240 / 1));
+}
+
+.workflow-script-node__orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 999px;
+  color: rgb(15 23 42);
+  border: 1px solid color-mix(in srgb, var(--surface) 20%, rgb(226 232 240 / 0.45));
+  box-shadow:
+    0 14px 32px rgb(15 23 42 / 0.18),
+    0 0 0 1px rgb(255 255 255 / 0.06) inset,
+    0 -6px 16px rgb(255 255 255 / 0.04) inset;
+  transition:
+    transform 0.28s cubic-bezier(0.33, 1, 0.68, 1),
+    box-shadow 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.workflow-script-node--page .workflow-script-node__orb {
+  border-color: rgb(186 239 251 / 0.35);
+  background:
+    radial-gradient(circle at 26% 14%, rgb(255 255 255 / 0.68), transparent 42%),
+    linear-gradient(142deg, rgb(34 234 239), rgb(56 189 248), rgb(29 117 226));
+  box-shadow:
+    0 16px 36px rgb(14 165 233 / 0.38),
+    0 0 0 1px rgb(255 255 255 / 0.08) inset,
+    0 -7px 18px rgb(255 255 255 / 0.05) inset;
+}
+
+.workflow-script-node--interact .workflow-script-node__orb {
+  border-color: rgb(251 186 239 / 0.38);
+  background:
+    radial-gradient(circle at 26% 14%, rgb(255 255 255 / 0.54), transparent 42%),
+    linear-gradient(142deg, rgb(251 113 133), rgb(232 121 249), rgb(147 112 239));
+  box-shadow:
+    0 16px 38px rgb(217 70 239 / 0.42),
+    0 0 0 1px rgb(255 255 255 / 0.08) inset,
+    0 -7px 18px rgb(255 255 255 / 0.045) inset;
+}
+
+.workflow-script-node--capture .workflow-script-node__orb {
+  border-color: rgb(254 229 173 / 0.42);
+  background:
+    radial-gradient(circle at 26% 14%, rgb(255 255 255 / 0.62), transparent 42%),
+    linear-gradient(142deg, rgb(251 237 143), rgb(251 191 36), rgb(249 115 22));
+  box-shadow:
+    0 16px 38px rgb(245 158 11 / 0.42),
+    0 0 0 1px rgb(255 255 255 / 0.09) inset,
+    0 -7px 18px rgb(255 255 255 / 0.045) inset;
+}
+
+.workflow-script-node--logic .workflow-script-node__orb {
+  border-color: rgb(152 239 207 / 0.42);
+  background:
+    radial-gradient(circle at 26% 14%, rgb(255 255 255 / 0.58), transparent 42%),
+    linear-gradient(142deg, rgb(110 245 218), rgb(52 239 173), rgb(21 173 147));
+  box-shadow:
+    0 16px 36px rgb(16 185 129 / 0.42),
+    0 0 0 1px rgb(255 255 255 / 0.08) inset,
+    0 -7px 18px rgb(255 255 255 / 0.04) inset;
+}
+
+html[data-theme="dark"] .workflow-script-node__orb {
+  color: rgb(241 245 249);
+}
+
+.workflow-script-node__labels {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  flex: 1 1 auto;
+  margin-top: auto;
+  min-height: 40px;
+  justify-content: flex-end;
+}
+
+.workflow-script-node__title {
+  max-width: 100%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1.35;
+}
+
+.workflow-script-node__sub {
+  max-width: 100%;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 640;
+  line-height: 1.38;
+  color: color-mix(in srgb, var(--muted) 96%, rgb(226 232 240 / 0.12));
+}
+
+.workflow-script-node__status-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.workflow-script-node__status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  line-height: 1.35;
+  color: rgb(222 246 239);
+  background: linear-gradient(175deg, rgb(74 233 154 / 0.92), rgb(22 138 119 / 0.88));
+  border: 1px solid rgb(144 239 196 / 0.55);
+  box-shadow:
+    0 0 0 1px rgb(15 118 92 / 0.22),
+    0 2px 12px rgb(34 211 154 / 0.22);
+}
+
+.workflow-script-node__status-chip--off {
+  color: color-mix(in srgb, var(--muted) 96%, rgb(226 232 240 / 0.4));
+  background: linear-gradient(175deg, rgb(148 163 184 / 0.22), rgb(71 85 105 / 0.42));
+  border-color: rgb(148 163 184 / 0.35);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+.workflow-script-node__status-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 38% 32%, rgb(255 255 255 / 0.85), rgb(52 239 149));
+  box-shadow: 0 0 10px rgb(110 239 173 / 0.75);
+}
+
+.workflow-script-node__status-chip--off .workflow-script-node__status-dot {
+  background: rgb(148 163 184 / 0.55);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-script-node__status-chip {
+    box-shadow: none;
+  }
+}
+
+.workflow-script-node.is-disabled .workflow-script-node__orb {
+  filter: saturate(0.78) brightness(0.92);
+}
+
+.workflow-script-node.is-selected .workflow-script-node__orb {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workflow-script-node__status-chip:not(.workflow-script-node__status-chip--off) {
+    animation: workflow-status-chip-glow 2.4s ease-in-out infinite alternate;
+  }
+
+  .workflow-script-node__status-chip:not(.workflow-script-node__status-chip--off) .workflow-script-node__status-dot {
+    animation: workflow-status-dot-pulse 1.55s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes workflow-status-chip-glow {
+  from {
+    opacity: 0.9;
+    box-shadow:
+      0 0 0 1px rgb(15 118 92 / 0.18),
+      0 3px 10px rgb(34 211 154 / 0.25);
+  }
+
+  to {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px rgb(15 118 92 / 0.36),
+      0 6px 18px rgb(52 239 173 / 0.42);
+  }
+}
+
+@keyframes workflow-status-dot-pulse {
+  from {
+    transform: scale(0.96);
+    box-shadow: 0 0 8px rgb(110 239 173 / 0.55);
+  }
+
+  to {
+    transform: scale(1);
+    box-shadow: 0 0 14px rgb(134 239 186 / 0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-script-node__orb {
+    transition: none;
+  }
+
+  .workflow-script-node__status-chip:not(.workflow-script-node__status-chip--off),
+  .workflow-script-node__status-chip:not(.workflow-script-node__status-chip--off) .workflow-script-node__status-dot {
+    animation: none !important;
+  }
+}
+
+.workflow-script-flow .react-flow__node:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  outline-offset: 5px;
+}
+
+.script-step-kind-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 820;
+}
+
+.script-step-kind-chip-page {
+  color: rgb(225 239 254);
+  background: rgb(56 189 248 / 0.22);
+}
+
+.script-step-kind-chip-interact {
+  color: rgb(237 233 254);
+  background: rgb(167 139 250 / 0.26);
+}
+
+.script-step-kind-chip-capture {
+  color: rgb(254 249 231);
+  background: rgb(251 191 36 / 0.24);
+}
+
+.script-step-kind-chip-logic {
+  color: rgb(209 250 229);
+  background: rgb(52 211 153 / 0.26);
+}
+
+.script-step-on-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  vertical-align: middle;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.24s ease;
+}
+
+.script-step-on-dot.is-on {
+  background: linear-gradient(180deg, #4ade80, #22c55e);
+  box-shadow:
+    0 0 0 4px rgb(34 197 94 / 0.22),
+    0 0 12px rgb(34 197 94 / 0.45);
+}
+
+.script-step-on-dot.is-off {
+  background: var(--muted);
+  opacity: 0.45;
+  transform: scale(0.86);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .script-step-on-dot {
+    transition: none;
+  }
+}
+
+.script-step-board-hint-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+  margin: 6px 0 0;
+  min-height: 22px;
+}
+
+.script-step-board-hint-toggle {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.script-step-board-hint-toggle:hover,
+.script-step-board-hint-toggle.is-open {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+}
+
+.script-step-board-hint {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.script-inspector .section-title {
+  margin-bottom: 2px;
+  gap: 6px;
+}
+
+.script-inspector .section-title h2 {
+  font-size: 13px;
+}
+
+.script-inspector .section-title span {
+  font-size: 10px;
+}
+
+.script-inspector-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px 6px;
+  align-items: end;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.script-inspector-form--compact {
+  grid-template-columns: minmax(72px, 1fr) minmax(64px, 0.75fr) minmax(56px, 0.65fr) auto;
+  grid-template-areas:
+    "name type timeout enabled"
+    "selector value value .";
+  gap: 3px 6px;
+}
+
+.script-inspector-form--toolbar {
+  display: grid;
+  grid-template-columns:
+    minmax(108px, 1.1fr)
+    minmax(88px, 0.85fr)
+    minmax(72px, 0.65fr)
+    minmax(140px, 1.35fr)
+    minmax(140px, 1.35fr);
+  gap: 4px 8px;
+  align-items: end;
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.script-inspector-form--toolbar input,
+.script-inspector-form--toolbar select {
+  width: 100%;
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+.script-inspector-form--toolbar .inspector-field label {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.script-inspector-form--compact .inspector-field--name {
+  grid-area: name;
+  max-width: 168px;
+}
+
+.script-inspector-form--compact .inspector-field--type {
+  grid-area: type;
+}
+
+.script-inspector-form--compact .inspector-field--timeout {
+  grid-area: timeout;
+}
+
+.script-inspector-form--compact .inspector-field--enabled {
+  grid-area: enabled;
+}
+
+.script-inspector-form--compact .inspector-field--selector {
+  grid-area: selector;
+  max-width: 220px;
+}
+
+.script-inspector-form--compact .inspector-field--value {
+  grid-area: value;
+}
+
+.script-inspector-form--compact .inspector-field label:not(.script-enabled) {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.inspector-enabled-heading {
+  margin: 0;
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+  line-height: 1.1;
+}
+
+.inspector-enabled-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  margin: 0;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 640;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.inspector-enabled-control input {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.inspector-enabled-control span {
+  color: var(--muted);
+}
+
+.inspector-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inspector-field label:not(.script-enabled) {
+  margin: 0;
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.inspector-col-1 {
+  grid-column: span 1;
+}
+
+.inspector-col-2 {
+  grid-column: span 2;
+}
+
+.inspector-field-checkbox {
+  justify-content: flex-end;
+  padding-bottom: 1px;
+}
+
+.inspector-field-checkbox .script-enabled {
+  margin: 0;
+}
+
+.script-inspector input,
+.script-inspector select {
+  width: 100%;
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+.script-inspector-form--compact input,
+.script-inspector-form--compact select {
+  min-height: 22px;
+}
+
+.script-enabled {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.script-enabled input {
+  width: auto;
+}
+
+.script-inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  grid-column: 2;
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  min-width: 0;
+}
+
+.script-inspector-actions--empty {
+  grid-column: 2;
+  min-height: 28px;
+}
+
+.inspector-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.inspector-action-btn.saved {
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  border-color: rgb(34 197 94 / 0.82);
+}
+
+.inspector-action-undo {
+  color: #dbeafe;
+  background: color-mix(in srgb, var(--blue) 22%, var(--surface-3));
+  border-color: color-mix(in srgb, var(--blue) 58%, var(--border));
+}
+
+.inspector-action-redo {
+  color: #d8b4fe;
+  background: color-mix(in srgb, var(--violet) 22%, var(--surface-3));
+  border-color: color-mix(in srgb, var(--violet) 58%, var(--border));
+}
+
+.inspector-action-move {
+  color: #bae6fd;
+  background: color-mix(in srgb, #0284c7 24%, var(--surface-3));
+  border-color: color-mix(in srgb, #38bdf8 54%, var(--border));
+}
+
+.step-tool-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+}

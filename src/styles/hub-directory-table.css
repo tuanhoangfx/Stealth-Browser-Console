@@ -1,0 +1,28 @@
+/* P0003 directory table variants — col widths via buildDirectoryColgroup SSOT */
+@import "../../vendor/hub-ui/src/styles/hub-directory-table.css";
+
+.hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table.hub-users-table--directory-6,
+.hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table--directory-6 {
+  min-width: 52rem;
+}
+
+.hub-directory-table-split table.hub-users-table.hub-users-table--directory-6,
+.hub-directory-table-split table.hub-users-table--directory-6 {
+  min-width: 0;
+  width: 100%;
+}
+
+.hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table.hub-users-table--directory-5,
+.hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table--directory-5 {
+  min-width: 44rem;
+}
+
+.hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table--directory-6,
+.hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table--directory-4 {
+  min-width: 0;
+  width: 100%;
+}
+
+.hub-split-directory-pane--fixed-rows table.hub-users-table--directory-5 {
+  min-width: 0;
+}
