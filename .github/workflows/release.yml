@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish installer + portable to GitHub Releases (electron-updater feed)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          CI: "true"
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify quality gates
+        run: pnpm test:unit
+
+      - name: Rebuild native modules for Electron
+        run: node scripts/ensure-better-sqlite3.mjs
+
+      - name: Package desktop artifacts
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $shouldPublish = $false
+          if ($env:GITHUB_EVENT_NAME -eq 'push') { $shouldPublish = $true }
+          elseif ('${{ inputs.publish }}' -eq 'true') { $shouldPublish = $true }
+
+          if ($shouldPublish) {
+            node scripts/run-electron-package.mjs --publish always
+          } else {
+            node scripts/run-electron-package.mjs --publish never
+          }
+
+      - name: Upload desktop artifacts
+        if: github.event_name == 'workflow_dispatch' && inputs.publish != true
+        uses: actions/upload-artifact@v4
+        with:
+          name: stealth-browser-console-desktop
+          path: |
+            dist-desktop/Stealth-Browser-Console-Setup-*.exe
+            dist-desktop/Stealth-Browser-Console-Portable-*.exe
+            dist-desktop/latest.yml
+            dist-desktop/*.blockmap
+          if-no-files-found: error
