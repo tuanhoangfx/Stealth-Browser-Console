@@ -71,7 +71,7 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-06-18T21:34:55.934Z",
+  "manifestUpdatedAt": "2026-06-19T02:46:50.823Z",
   "release": {
     "version": "0.5.2",
     "updatedAt": "2026-06-19",
@@ -79,7 +79,7 @@
     "latestPublished": {
       "tag": "v0.5.2",
       "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.5.2",
-      "publishedAt": "2026-06-18T21:34:55.934Z"
+      "publishedAt": "2026-06-19T02:46:50.822Z"
     }
   }
 }
