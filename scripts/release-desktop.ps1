@@ -97,6 +97,10 @@ try {
       node (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "../../scripts")).Path "post-gh-release.mjs") `
         --product-root $RepoRoot --tag $tag
     }
+    Invoke-Step "Verify auto-update feed (latest.yml + assets)" {
+      node (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "../../scripts")).Path "verify-desktop-auto-update.mjs") `
+        --product-root $RepoRoot --tag $tag --release
+    }
   }
 }
 finally {
