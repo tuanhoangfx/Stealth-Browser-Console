@@ -55,6 +55,16 @@ function rmDir(dir) {
 runNodeScript("scripts/sync-app-icon.cjs");
 runNodeScript("scripts/run-build.mjs");
 
+if (process.platform === "win32") {
+  const ensureVs = spawnSync(
+    "powershell",
+    ["-ExecutionPolicy", "Bypass", "-File", path.join(root, "scripts", "ensure-vs-build-tools.ps1")],
+    winSpawnOpts({ cwd: root, stdio: "inherit" }),
+  );
+  if ((ensureVs.status ?? 1) !== 0) process.exit(ensureVs.status ?? 1);
+  runNodeScript("scripts/ensure-better-sqlite3.mjs");
+}
+
 const stagingOutput = path.join(os.tmpdir(), `p0003-eb-${Date.now()}`);
 rmDir(stagingOutput);
 

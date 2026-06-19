@@ -51,6 +51,18 @@ try {
     }
   }
 
+  Invoke-Step "Quality gates (unit tests)" {
+    pnpm test:unit
+  }
+
+  Invoke-Step "Verify Visual Studio Build Tools" {
+    powershell -ExecutionPolicy Bypass -File scripts/ensure-vs-build-tools.ps1
+  }
+
+  Invoke-Step "Rebuild native modules for Electron" {
+    node scripts/ensure-better-sqlite3.mjs
+  }
+
   $PublishMode = if ($Publish) { "always" } else { "never" }
   Invoke-Step "Build Windows installer (publish: $PublishMode)" {
     node scripts/run-electron-package.mjs --publish $PublishMode
