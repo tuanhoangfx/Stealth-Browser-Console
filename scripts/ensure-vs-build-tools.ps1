@@ -36,35 +36,37 @@ if ($installPath) {
 }
 
 if (-not $Install) {
-  Write-Host @"
-
-ensure-vs-build-tools: Visual Studio Build Tools (C++ x64) required for electron native rebuild (better-sqlite3).
-
-Fix:
-  powershell -ExecutionPolicy Bypass -File scripts/ensure-vs-build-tools.ps1 -Install
-
-Or install manually: Visual Studio 2022 Build Tools -> workload ""Desktop development with C++"".
-"@ -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "ensure-vs-build-tools: Visual Studio Build Tools (C++ x64) required for electron native rebuild (better-sqlite3)." -ForegroundColor Yellow
+  Write-Host "Fix: powershell -ExecutionPolicy Bypass -File scripts/ensure-vs-build-tools.ps1 -Install"
+  Write-Host "Or install manually: Visual Studio 2022 Build Tools with Desktop development with C++ workload."
+  Write-Host ""
   exit 1
 }
 
-Write-Info "ensure-vs-build-tools: installing VS 2022 Build Tools (C++ workload, passive)…"
+Write-Info "ensure-vs-build-tools: installing VS 2022 Build Tools (C++ workload, passive)..."
 $winget = Get-Command winget -ErrorAction SilentlyContinue
 if (-not $winget) {
   throw "winget not found. Install Visual Studio Build Tools manually."
 }
 
 $override = "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-& winget install --id Microsoft.VisualStudio.2022.BuildTools -e `
+& winget install --id Microsoft.VisualStudio.2022.BuildTools -e --source winget `
   --accept-package-agreements --accept-source-agreements `
   --override $override
 if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
-  throw "winget install failed (exit $LASTEXITCODE)"
+  Write-Info "ensure-vs-build-tools: winget failed (exit $LASTEXITCODE), trying vs_buildtools bootstrapper..."
+  $bootstrap = Join-Path $env:TEMP "vs_buildtools.exe"
+  Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_buildtools.exe" -OutFile $bootstrap -UseBasicParsing
+  & $bootstrap $override.Split(" ")
+  if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
+    throw "VS Build Tools install failed (exit $LASTEXITCODE)"
+  }
 }
 
 $installPath = Get-VcToolsInstallPath
 if (-not $installPath) {
-  throw "Build Tools install finished but VC++ tools not detected — restart shell and retry."
+  throw "Build Tools install finished but VC++ tools not detected. Restart shell and retry."
 }
 
 Write-Info "ensure-vs-build-tools: installed OK ($installPath)"
