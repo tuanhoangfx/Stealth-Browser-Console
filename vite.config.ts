@@ -33,13 +33,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/@xyflow") || id.includes("node_modules/@xyflow/")) {
-            return "xyflow";
-          }
           if (id.includes("node_modules/dagre")) {
             return "dagre";
           }
-          if (id.includes("ScriptsEditorPane") || id.includes("WorkflowScriptFlow")) {
+          if (
+            id.includes("node_modules/@xyflow") ||
+            id.includes("ScriptsEditorPane") ||
+            id.includes("WorkflowScriptFlow")
+          ) {
             return "workflow-editor";
           }
         },

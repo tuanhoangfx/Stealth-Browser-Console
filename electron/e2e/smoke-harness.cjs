@@ -20,7 +20,7 @@ async function main() {
     await openDatabase(tmpRoot);
 
   // IPC contracts
-  assert(validateTargetUrl("https://example.com") === "https://example.com", "validateTargetUrl");
+  assert(validateTargetUrl("https://example.com") === "https://example.com/", "validateTargetUrl");
   assert(validateCreateProfilePayload({ name: "E2E" }).name === "E2E", "validateCreateProfilePayload");
   const openPayload = validateOpenUrlPayload({ profileId: "p1", targetUrl: "https://example.com" });
   assert(openPayload.profileId === "p1" && openPayload.screenshot === true, "validateOpenUrlPayload");
