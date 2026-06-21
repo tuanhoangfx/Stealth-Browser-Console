@@ -5,6 +5,7 @@ import { WORKFLOW_RAIL_PAGE_SIZE } from "../../app/constants";
 import type { WorkflowConfig } from "./workflow-types";
 import { StealthWorkflowDirectoryTable } from "./StealthWorkflowDirectoryTable";
 import { WorkflowFilterPane } from "./WorkflowFilterPane";
+import { WorkflowQuickRunButton } from "./WorkflowQuickRunButton";
 import { useWorkflowDirectoryFilters } from "./useWorkflowDirectoryFilters";
 
 export type WorkflowRailPanelProps = {
@@ -68,7 +69,7 @@ export const WorkflowRailPanel = memo(function WorkflowRailPanel({
 
   return (
     <HubSplitDirectoryPane
-      className="stealth-workflow-directory-frame hub-directory-frame min-h-0 flex-1"
+      className="stealth-workflow-directory-frame hub-directory-frame shrink-0"
       variant="rail"
       fixedRows={WORKFLOW_RAIL_PAGE_SIZE}
       filterBar={
@@ -81,6 +82,7 @@ export const WorkflowRailPanel = memo(function WorkflowRailPanel({
           setWorkflowSearch={setWorkflowSearch}
           filteredCount={filteredWorkflows.length}
           totalCount={workflowConfigs.length}
+          searchTrailing={<WorkflowQuickRunButton />}
         />
       }
     >

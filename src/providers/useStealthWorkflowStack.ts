@@ -99,6 +99,26 @@ export function useStealthWorkflowStack({
     [setView, workflow.setActiveWorkflow, workflow.setSelectedWorkflowIds]
   );
 
+  const runWorkflowOnOpenProfiles = useCallback(
+    async (workflowId: string) => {
+      const wf = workflow.workflowConfigs.find((item) => item.id === workflowId);
+      if (!wf) {
+        addLog("error", "Workflow", `Workflow ${workflowId} not found.`);
+        return;
+      }
+      const isOpen = (profile: ProfileRow) =>
+        profile.status === "running" || profile.status === "opening";
+      const openSelected = selectedProfiles.filter(isOpen);
+      const targets = openSelected.length ? openSelected : profiles.filter(isOpen);
+      if (!targets.length) {
+        addLog("error", "Workflow", "No open profiles — launch a profile first.");
+        return;
+      }
+      await automation.runBatch(targets, [wf]);
+    },
+    [addLog, automation, profiles, selectedProfiles, workflow.workflowConfigs],
+  );
+
   const workflowPicker = useMemo<WorkflowPickerContextValue>(
     () => ({
       workflowConfigs: workflow.workflowConfigs,
@@ -181,9 +201,10 @@ export function useStealthWorkflowStack({
       runWorkflowLabel: automation.runWorkflowLabel,
       automationRunning: automation.automationRunning,
       runAutomationQueue: automation.runAutomationQueue,
+      runWorkflowOnOpenProfiles,
       openProfilesForWorkflow
     }),
-    [automation, openProfilesForWorkflow]
+    [automation, openProfilesForWorkflow, runWorkflowOnOpenProfiles]
   );
 
   return { workflowPicker, workflowEditor, workflowRuntime, error, view, profiles };

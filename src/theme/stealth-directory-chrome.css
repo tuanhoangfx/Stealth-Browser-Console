@@ -7,3 +7,49 @@
   max-width: 100%;
   min-width: 0;
 }
+
+/* fixedRows rail — clip table inside pane; explicit min-height fits 5 rows + pager */
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows {
+  --hub-workflow-rail-rows: 5;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-split-directory-pane__body {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
+  flex: 0 0 auto;
+  min-height: calc(
+    var(--hub-directory-head-row-h, 2.125rem) + var(--hub-directory-row-h, 1.875rem) *
+      var(--hub-workflow-rail-rows, 5) + 1.75rem
+  );
+  overflow: hidden;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell > .hub-users-table-wrap {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: hidden;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-pager {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.stealth-workflow-rail .hub-split-directory-pane--fixed-rows .hub-users-table-wrap {
+  overflow: hidden;
+}
+
+.stealth-workflow-rail .hub-split-directory-pane--fixed-rows table.hub-users-table--directory-4,
+.stealth-workflow-rail .hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {
+  min-width: 0;
+}

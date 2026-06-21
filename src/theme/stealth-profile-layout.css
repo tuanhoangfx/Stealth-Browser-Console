@@ -136,13 +136,19 @@
   font-weight: 600;
 }
 
-.stealth-profile-directory-frame .hub-split-directory-pane__body,
-.stealth-workflow-directory-frame .hub-split-directory-pane__body {
+.stealth-profile-directory-frame .hub-split-directory-pane__body {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Workflow rail body — do NOT flex-grow (fixedRows pane sizes to N rows + pager). */
+.stealth-workflow-directory-frame .hub-split-directory-pane__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Panel-fill stretches row height — center select checkbox (hub-directory-frame-table uses top align). */
@@ -182,6 +188,20 @@
   flex: 0 0 auto;
   min-height: 0;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Compact history + console stack — fills rail remainder below workflow table. */
+.stealth-workflow-rail > .stealth-runtime-stack {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-rows: minmax(4.5rem, 1fr) minmax(5rem, 1fr);
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
 }
 
 /* Workflow rail panel-fill — same row geometry + checkbox centering as Profiles pane. */
@@ -206,10 +226,20 @@
   min-height: var(--hub-directory-row-h);
 }
 
-.stealth-workflow-rail > .stealth-runtime-history,
-.stealth-workflow-rail > .stealth-runtime-console {
-  flex: 1 1 0;
-  min-height: 7rem;
+.stealth-workflow-rail > .stealth-runtime-stack .stealth-runtime-history,
+.stealth-workflow-rail > .stealth-runtime-stack .stealth-runtime-console {
+  min-height: 0;
+  height: 100%;
+}
+
+.stealth-runtime-stack .stealth-runtime-history header,
+.stealth-runtime-stack .stealth-runtime-console header {
+  padding: 0.5rem 0.75rem;
+}
+
+.stealth-runtime-stack .stealth-runtime-history > div:last-child,
+.stealth-runtime-stack .stealth-runtime-console > div:last-child {
+  padding: 0.5rem 0.75rem;
 }
 
 /* Workflow rail table — fixed rows (typography: hub-users-table.css) */
@@ -235,6 +265,13 @@
   overflow: hidden;
 }
 
+.stealth-runtime-stack .stealth-runtime-history__body,
+.stealth-runtime-stack .stealth-console-log {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+}
+
 @media (max-width: 1200px) {
   .stealth-profile-layout {
     grid-template-columns: minmax(0, 1fr) minmax(320px, 26rem);
@@ -243,10 +280,10 @@
   .stealth-workflow-rail {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto minmax(5.5rem, 1fr);
+    grid-template-rows: auto auto;
     grid-template-areas:
       "workflow workflow"
-      "history console";
+      "runtime runtime";
     gap: 6px;
   }
 
@@ -254,14 +291,18 @@
     grid-area: workflow;
   }
 
-  .stealth-workflow-rail > .stealth-runtime-history {
-    grid-area: history;
-    min-height: 5.5rem;
+  .stealth-workflow-rail > .stealth-runtime-stack {
+    grid-area: runtime;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(5rem, 1fr);
+    gap: 6px;
   }
 
-  .stealth-workflow-rail > .stealth-runtime-console {
-    grid-area: console;
-    min-height: 5.5rem;
+  .stealth-workflow-rail > .stealth-runtime-stack .stealth-runtime-history,
+  .stealth-workflow-rail > .stealth-runtime-stack .stealth-runtime-console {
+    min-height: 5rem;
+    height: 100%;
   }
 }
 

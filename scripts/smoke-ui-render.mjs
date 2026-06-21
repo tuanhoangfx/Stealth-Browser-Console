@@ -70,7 +70,10 @@ app.whenReady().then(async () => {
     probe = { error: err instanceof Error ? err.message : String(err) };
   }
 
-  const errors = logs.filter((l) => l.level >= 2 || /error|Error|before initialization|fail/i.test(l.message));
+  const errors = logs.filter((l) => {
+    if (/Failed to decode downloaded font|OTS parsing error/i.test(l.message)) return false;
+    return l.level >= 2 || /error|Error|before initialization|fail/i.test(l.message);
+  });
   const ok = Boolean(probe.hubApp && probe.rootLen > 200 && !probe.bootPresent);
   fs.writeFileSync(outFile, JSON.stringify({ url, ok, probe, errors: errors.slice(0, 30) }, null, 2));
   app.exit(ok ? 0 : 1);

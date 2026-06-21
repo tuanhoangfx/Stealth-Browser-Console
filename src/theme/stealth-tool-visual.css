@@ -1,0 +1,24 @@
+/* Tool avatar — P0004 visual.css parity (sidebar brand + directory cards). */
+
+.tool-avatar {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-brand-400, #818cf8), var(--color-brand-700, #4338ca));
+  box-shadow: var(--shadow-warm, 0 2px 8px rgba(99, 102, 241, 0.2));
+  overflow: hidden;
+}
+
+.tool-avatar.tool-avatar-svg {
+  background: var(--color-surface, var(--panel));
+  box-shadow: none;
+  border: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.08));
+  display: grid;
+  place-items: center;
+  overflow: visible;
+}
+
+.tool-avatar.tool-avatar-svg img {
+  object-fit: contain;
+  display: block;
+}

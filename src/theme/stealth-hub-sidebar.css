@@ -4,12 +4,21 @@
   overflow: visible;
 }
 
+/* Brand row — avatar + title vertically centered */
 .hub-app.stealth-hub-app > aside > div:first-child {
   min-width: 0;
+  align-items: center;
 }
 
 .hub-app.stealth-hub-app > aside > div:first-child > div:last-child {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hub-app.stealth-hub-app > aside .tool-avatar {
+  align-self: center;
 }
 
 .hub-app.stealth-hub-app > aside .truncate {
@@ -43,6 +52,19 @@
   min-height: var(--hub-control-h, 31px);
   place-items: unset;
   justify-content: flex-start;
+  align-items: center;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Remove default white focus ring (Electron/Win); keep a11y ring on keyboard only */
+.hub-app.stealth-hub-app > aside nav button:focus {
+  outline: none;
+}
+
+.hub-app.stealth-hub-app > aside nav button:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 2px;
 }
 
 .hub-app.stealth-hub-app > aside footer {
@@ -58,6 +80,18 @@
   height: auto;
   min-height: var(--hub-control-h, 31px);
   place-items: unset;
+  align-items: center;
+  border: 0;
+  box-shadow: none;
+}
+
+.hub-app.stealth-hub-app > aside footer button:focus {
+  outline: none;
+}
+
+.hub-app.stealth-hub-app > aside footer button:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 2px;
 }
 
 .stealth-runtime-history,

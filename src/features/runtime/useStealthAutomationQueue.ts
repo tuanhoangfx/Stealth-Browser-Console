@@ -7,42 +7,67 @@ import type { ProfileRow, RunHistoryItem } from "../../types";
 
 type LogFn = (level: "info" | "success" | "error", source: string, message: string) => void;
 
+type RunHistoryAppender = (
+  result: Awaited<ReturnType<typeof executeWorkflowAction>>,
+  profile: ProfileRow,
+  targetUrl: string,
+  workflow: WorkflowConfig,
+) => void;
+
+export async function executeAutomationBatch(
+  profiles: ProfileRow[],
+  workflows: WorkflowConfig[],
+  addLog: LogFn,
+  appendRunToHistory: RunHistoryAppender,
+) {
+  if (!profiles.length || !workflows.length) return;
+  for (const workflow of workflows) {
+    for (const profile of profiles) {
+      const url = resolveWorkflowRunUrl(workflow, profile);
+      addLog("info", profile.name, `${workflow.name} started${url ? `: ${url}` : ""}`);
+      const result = await executeWorkflowAction({
+        action: workflow.action,
+        profile,
+        targetUrl: url,
+        takeScreenshot: workflow.takeScreenshot,
+        closeWhenDone: workflow.closeWhenDone,
+        inspectMode: workflow.inspectMode,
+        steps: workflowStepsForRun(workflow, url),
+        workflowId: workflow.id,
+      });
+      for (const entry of result.logs) {
+        addLog(entry.level, profile.name, entry.message);
+      }
+      appendRunToHistory(result, profile, url, workflow);
+    }
+  }
+}
+
 export function useStealthAutomationQueue(input: {
   selectedProfiles: ProfileRow[];
   runWorkflowConfigs: WorkflowConfig[];
   addLog: LogFn;
-  appendRunToHistory: (result: Awaited<ReturnType<typeof executeWorkflowAction>>, profile: ProfileRow, targetUrl: string, workflow: WorkflowConfig) => void;
+  appendRunToHistory: RunHistoryAppender;
 }) {
   const [automationRunning, setAutomationRunning] = useState(false);
 
-  const runAutomationQueue = useCallback(async () => {
-    if (!input.selectedProfiles.length || !input.runWorkflowConfigs.length) return;
-    setAutomationRunning(true);
-    try {
-      for (const workflow of input.runWorkflowConfigs) {
-        for (const profile of input.selectedProfiles) {
-          const url = resolveWorkflowRunUrl(workflow, profile);
-          input.addLog("info", profile.name, `${workflow.name} started${url ? `: ${url}` : ""}`);
-          const result = await executeWorkflowAction({
-            action: workflow.action,
-            profile,
-            targetUrl: url,
-            takeScreenshot: workflow.takeScreenshot,
-            closeWhenDone: workflow.closeWhenDone,
-            inspectMode: workflow.inspectMode,
-            steps: workflowStepsForRun(workflow, url),
-            workflowId: workflow.id
-          });
-          for (const entry of result.logs) {
-            input.addLog(entry.level, profile.name, entry.message);
-          }
-          input.appendRunToHistory(result, profile, url, workflow);
-        }
+  const runBatch = useCallback(
+    async (profiles: ProfileRow[], workflows: WorkflowConfig[]) => {
+      if (!profiles.length || !workflows.length) return;
+      setAutomationRunning(true);
+      try {
+        await executeAutomationBatch(profiles, workflows, input.addLog, input.appendRunToHistory);
+      } finally {
+        setAutomationRunning(false);
       }
-    } finally {
-      setAutomationRunning(false);
-    }
-  }, [input]);
+    },
+    [input],
+  );
+
+  const runAutomationQueue = useCallback(
+    () => void runBatch(input.selectedProfiles, input.runWorkflowConfigs),
+    [input.runWorkflowConfigs, input.selectedProfiles, runBatch],
+  );
 
   const runWorkflowLabel =
     input.runWorkflowConfigs.length === 1
@@ -53,11 +78,10 @@ export function useStealthAutomationQueue(input: {
     () => ({
       automationRunning,
       runAutomationQueue: () => void runAutomationQueue(),
+      runBatch,
       runWorkflowConfigs: input.runWorkflowConfigs,
-      runWorkflowLabel
+      runWorkflowLabel,
     }),
-    [automationRunning, input.runWorkflowConfigs, runAutomationQueue, runWorkflowLabel]
+    [automationRunning, input.runWorkflowConfigs, runAutomationQueue, runBatch, runWorkflowLabel],
   );
 }
-
-export type StealthRunHistoryPatch = Partial<RunHistoryItem>;

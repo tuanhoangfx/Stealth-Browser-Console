@@ -59,6 +59,30 @@
   min-height: 0;
 }
 
+.stealth-hub-app .app-tab-header__start {
+  align-items: center;
+}
+
+.stealth-hub-app .app-tab-header__start > h1 {
+  line-height: 1.25;
+}
+
+/* Directory table header — icon + label on one baseline */
+.stealth-profile-directory-frame table.hub-directory-frame-table .hub-users-th-label,
+.stealth-workflow-directory-frame table.hub-directory-frame-table .hub-users-th-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+}
+
+.stealth-profile-directory-frame table.hub-directory-frame-table .hub-users-th-icon,
+.stealth-workflow-directory-frame table.hub-directory-frame-table .hub-users-th-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
 .stealth-api-pill {
   display: inline-flex;
   align-items: center;

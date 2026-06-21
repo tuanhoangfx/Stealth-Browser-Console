@@ -16,7 +16,12 @@ export function StealthHeaderUpdateButton() {
     if (!supportsUpdates) return;
 
     void api.getUpdateStatus?.().then(setStatus).catch(() => {});
-    return api.onUpdateStatus?.(setStatus);
+    return api.onUpdateStatus?.((next) => {
+      setStatus(next);
+      if (next.state === "available" && api.downloadUpdate && next.runtime === "installer") {
+        void api.downloadUpdate().then(setStatus).catch(() => {});
+      }
+    });
   }, []);
 
   if (!hasDesktopApi) return null;

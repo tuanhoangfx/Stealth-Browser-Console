@@ -54,12 +54,6 @@
   overflow: visible;
 }
 
-.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {
-  min-width: 0;
-  width: 100%;
-  table-layout: fixed;
-}
-
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
   flex: 0 0 auto;
   min-height: auto;
@@ -69,7 +63,7 @@
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell > .hub-users-table-wrap {
   flex: 0 0 auto;
   min-height: auto;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-pager {

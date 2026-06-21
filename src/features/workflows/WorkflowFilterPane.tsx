@@ -21,6 +21,7 @@ export type WorkflowFilterPaneProps = {
   onTablePageSizeChange?: (size: number) => void;
   row2Actions?: ReactNode;
   row2Trailing?: ReactNode;
+  searchTrailing?: ReactNode;
 };
 
 export const WorkflowFilterPane = memo(function WorkflowFilterPane({
@@ -36,6 +37,7 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
   onTablePageSizeChange,
   row2Actions,
   row2Trailing,
+  searchTrailing,
 }: WorkflowFilterPaneProps) {
   const isPanel = variant === "panel";
 
@@ -64,6 +66,7 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
       }
       row2Actions={row2Actions}
       row2Trailing={row2Trailing}
+      searchTrailing={searchTrailing}
     />
   );
 });

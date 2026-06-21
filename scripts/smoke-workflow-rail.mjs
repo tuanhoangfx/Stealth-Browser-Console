@@ -57,6 +57,17 @@ app.whenReady().then(async () => {
         const pageSizeBtn = [...rail.querySelectorAll("button")].find((b) =>
           /\\\\d+\\\\s*rows/i.test(b.textContent || ""),
         );
+        const quickRunBtn = [...rail.querySelectorAll("button")].find((b) =>
+          /quick run/i.test(b.textContent || ""),
+        );
+        const table = rail.querySelector(".stealth-workflow-rail-table");
+        const history = rail.querySelector(".stealth-runtime-history");
+        let tableOverlapsHistory = false;
+        if (table && history) {
+          const tr = table.getBoundingClientRect();
+          const hr = history.getBoundingClientRect();
+          tableOverlapsHistory = tr.bottom > hr.top + 2;
+        }
         const pagerText = rail.querySelector(".hub-table-pager")?.textContent?.trim() || "";
         const totalMatch = pagerText.match(/Showing\\s+\\d+-\\d+\\s+of\\s+(\\d+)/i);
         const catalogTotal = totalMatch ? Number(totalMatch[1]) : rowCount;
@@ -65,7 +76,9 @@ app.whenReady().then(async () => {
           !boot &&
           rowCount > 0 &&
           rowCount === expectedRows &&
-          !pageSizeBtn;
+          !pageSizeBtn &&
+          Boolean(quickRunBtn) &&
+          !tableOverlapsHistory;
         return {
           ok,
           rowCount,
@@ -73,6 +86,8 @@ app.whenReady().then(async () => {
           catalogTotal,
           pagerText,
           pageSizeBtnText: pageSizeBtn?.textContent || null,
+          quickRunPresent: Boolean(quickRunBtn),
+          tableOverlapsHistory,
           bootPresent: Boolean(boot),
         };
       })()

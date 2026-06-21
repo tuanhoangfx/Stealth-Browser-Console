@@ -1,6 +1,20 @@
 # Changelog — P0003 Stealth Browser Console
 
-## 2026-06-21 — v0.5.15 — Electron dev reload
+## 2026-06-21 — v0.5.16 — Auto-update feed + silent installer updates
+
+- Version: `0.5.16`
+- Timestamp: 2026-06-21 00:28 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Auto-update fix:** GitHub repo public — `latest.yml` feed reachable without token (v0.5.2+ can check updates).
+- Installer channel: `autoDownload` + `autoInstallOnAppQuit`; download on `update-available`.
+- Header Update button auto-downloads when installer detects new version.
+- `verify-desktop-auto-update`: public feed URL gate; `agent-verify-gate` prod-desktop for Release.
+
+## 2026-06-21 — v0.5.15 — Catalog 10k–50k + batch runner + proxy pool
 
 - Version: `0.5.15`
 - Timestamp: 2026-06-21 23:18 (UTC+7)
@@ -10,29 +24,33 @@
 
 ### Changes
 
-- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- Profile catalog scale (10k–50k), batch runner, proxy pool UI.
+- Directory ID search, identity extension purge, Chrome prefs wipe, launch perf panel.
+- Hub-UI directory search highlight + display prefs parity (P0004/P0020 golden).
+- Desktop release pipeline + electron-updater (NSIS + portable).
+- *Includes dev-reload iterations v0.5.3–v0.5.14 (identity purge / reload gate).*
 
 ## 2026-06-21 — v0.5.14 — Electron dev reload
 
 - Version: `0.5.14`
 - Timestamp: 2026-06-21 22:58 (UTC+7)
 - Type: Patch
-- Status: Dev
+- Status: Superseded (v0.5.15)
 
 ### Changes
 
-- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- Internal dev reload iteration — see v0.5.15 consolidated notes.
 
 ## 2026-06-21 — v0.5.13 — Electron dev reload
 
 - Version: `0.5.13`
 - Timestamp: 2026-06-21 22:42 (UTC+7)
 - Type: Patch
-- Status: Dev
+- Status: Superseded (v0.5.15)
 
 ### Changes
 
-- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- Internal dev reload iteration — see v0.5.15 consolidated notes.
 
 ## 2026-06-19 — v0.5.12 — Electron dev reload
 

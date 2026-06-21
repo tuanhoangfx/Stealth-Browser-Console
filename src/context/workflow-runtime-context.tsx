@@ -7,6 +7,8 @@ export type WorkflowRuntimeContextValue = {
   runWorkflowLabel: string;
   automationRunning: boolean;
   runAutomationQueue: () => void;
+  /** Run a single workflow on open profiles (selected running first, else any running). */
+  runWorkflowOnOpenProfiles: (workflowId: string) => Promise<void>;
   openProfilesForWorkflow: (workflowId: string) => void;
 };
 
