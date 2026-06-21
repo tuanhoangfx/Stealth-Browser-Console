@@ -7,7 +7,7 @@ import {
 
 describe("ipc-contracts", () => {
   it("validates target URL", () => {
-    expect(validateTargetUrl("https://example.com")).toBe("https://example.com");
+    expect(validateTargetUrl("https://example.com")).toBe("https://example.com/");
     expect(() => validateTargetUrl("ftp://x.com")).toThrow();
   });
 
