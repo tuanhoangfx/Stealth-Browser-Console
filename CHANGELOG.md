@@ -5,7 +5,8 @@
 - Version: `0.5.15`
 - Timestamp: 2026-06-21 23:18 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.5.15
 
 ### Changes
 
