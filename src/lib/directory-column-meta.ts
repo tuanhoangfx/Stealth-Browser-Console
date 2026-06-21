@@ -13,7 +13,7 @@ export type { DirectoryColumnHeaderMeta } from "@tool-workspace/hub-ui";
 export const STEALTH_PROFILE_COLUMN_META = {
   profile: col("Profile", "hub-users-col--name", "name", "col.directory.account", "22%"),
   group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "4.5rem"),
-  status: col("Run", "hub-users-col--tools", "tools", "col.directory.actions", "4.5rem"),
+  status: col("Run", "hub-users-col--tools", "tools", "col.directory.status", "4.5rem"),
   lastOpened: col("Last opened", "hub-users-col--created", "created", "col.directory.lastActive", "5.5rem"),
   startupUrl: col("Startup URL", "hub-users-col--email", "email", "col.directory.username", "18%"),
   proxy: col("Proxy", "hub-users-col--metric-a", "name", "col.directory.username", "12%"),

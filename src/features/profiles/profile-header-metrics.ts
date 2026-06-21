@@ -16,18 +16,18 @@ const STAT_DEFS: Record<
 
 /** Header center stats — filtered by Display → Header stats (P0004 Users parity). */
 export function buildProfileHeaderStats(visibleKeys: Set<string>, counts: ProfileKpiNumbers): TabHeaderStatItem[] {
-  return PROFILES_DISPLAY_PREFS.headerStats
-    .filter((item) => visibleKeys.has(item.key))
-    .map((item) => {
-      const def = STAT_DEFS[item.key as ProfileHeaderStatKey];
-      if (!def) return null;
-      return {
-        key: item.key,
-        icon: def.icon,
-        label: item.label,
-        value: def.pick(counts),
-        toneClass: def.toneClass,
-      };
-    })
-    .filter((item): item is TabHeaderStatItem => item !== null);
+  const items: TabHeaderStatItem[] = [];
+  for (const item of PROFILES_DISPLAY_PREFS.headerStats) {
+    if (!visibleKeys.has(item.key)) continue;
+    const def = STAT_DEFS[item.key as ProfileHeaderStatKey];
+    if (!def) continue;
+    items.push({
+      key: item.key,
+      icon: def.icon,
+      label: item.label,
+      value: def.pick(counts),
+      toneClass: def.toneClass,
+    });
+  }
+  return items;
 }

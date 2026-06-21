@@ -1,5 +1,5 @@
 import { matchesDirectoryIdSearch } from "@tool-workspace/hub-ui";
-import type { ProfileRow } from "../types";
+import type { ProfileRow } from "../../types";
 
 /** Trailing profile code — mirrors `electron/lib/profile-identity.cjs`. */
 export function extractProfileCode(name: string, id = ""): string {

@@ -48,8 +48,9 @@ export const profileDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
 export function readProfileDirectoryColumns(): ProfileDirectoryColumnKey[] {
   const visible = profileDirectoryColumnPrefs.read();
   // Status + Action merged — drop legacy action key from saved prefs.
-  if (visible.has("action")) {
-    visible.delete("action");
+  const legacy = visible as Set<string>;
+  if (legacy.has("action")) {
+    legacy.delete("action");
     visible.add("status");
   }
   return PROFILE_DIRECTORY_GOLDEN_ORDER.filter((key) => visible.has(key));
