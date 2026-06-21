@@ -7,7 +7,7 @@ import {
   readHubListPrefsCore,
   type HubDisplayPrefsProps
 } from "@tool-workspace/hub-ui";
-import { SCREEN_DISPLAY_PREFS } from "../lib/display-prefs-registry";
+import { SCREEN_DISPLAY_PREFS, resolveScreenDisplayPrefs } from "../lib/display-prefs-registry";
 import type { StealthScreen } from "../lib/stealth-screen";
 import {
   useStealthGeneralSettingsToolSections,
@@ -59,6 +59,8 @@ export function StealthDisplayPrefs({
     return () => window.removeEventListener(PROFILE_DIRECTORY_COLUMNS_CHANGE, sync);
   }, [showTabProfilePanels]);
 
+  const screenPrefs = resolveScreenDisplayPrefs(screen) ?? SCREEN_DISPLAY_PREFS[screen];
+
   const hub = (
     <HubDisplayPrefs
       title="Settings"
@@ -72,14 +74,14 @@ export function StealthDisplayPrefs({
       patchPrefs={(patch) => patchHubListPrefs(patch)}
       getScreen={() => screen}
       getSubTab={() => ""}
-      kpis={SCREEN_DISPLAY_PREFS[screen]?.kpis}
-      charts={SCREEN_DISPLAY_PREFS[screen]?.charts}
-      filters={SCREEN_DISPLAY_PREFS[screen]?.filters}
-      headerStats={SCREEN_DISPLAY_PREFS[screen]?.headerStats}
-      defaultKpiKeys={SCREEN_DISPLAY_PREFS[screen]?.defaultKpiKeys}
-      defaultChartKeys={SCREEN_DISPLAY_PREFS[screen]?.defaultChartKeys}
-      defaultFilterKeys={SCREEN_DISPLAY_PREFS[screen]?.defaultFilterKeys}
-      defaultHeaderStatKeys={SCREEN_DISPLAY_PREFS[screen]?.defaultHeaderStatKeys}
+      kpis={screenPrefs?.kpis}
+      charts={screenPrefs?.charts}
+      filters={screenPrefs?.filters}
+      headerStats={screenPrefs?.headerStats}
+      defaultKpiKeys={screenPrefs?.defaultKpiKeys}
+      defaultChartKeys={screenPrefs?.defaultChartKeys}
+      defaultFilterKeys={screenPrefs?.defaultFilterKeys}
+      defaultHeaderStatKeys={screenPrefs?.defaultHeaderStatKeys}
       toolSections={toolSections}
       footerActions={showTabProfilePanels ? <StealthProfileSettingsFooterSave /> : undefined}
       tablePanel={

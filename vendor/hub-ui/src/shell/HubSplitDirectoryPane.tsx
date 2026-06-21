@@ -64,8 +64,12 @@ export function HubSplitDirectoryPane({
       {...(panelFillRows ? { "data-panel-fill-rows": panelFillRows } : {})}
     >
       <div className="hub-split-directory-pane__filters shrink-0 border-b border-white/5 px-3 py-3">{filterBar}</div>
+      {kpiBand ? (
+        <div className="hub-split-directory-pane__kpi-band shrink-0 min-w-0 border-b border-white/5 px-3 py-3">
+          {kpiBand}
+        </div>
+      ) : null}
       <div className={`hub-split-directory-pane__body flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-3${scrollClass}`}>
-        {kpiBand ? <div className="hub-split-directory-pane__kpi-band shrink-0 min-w-0">{kpiBand}</div> : null}
         {children}
       </div>
     </section>

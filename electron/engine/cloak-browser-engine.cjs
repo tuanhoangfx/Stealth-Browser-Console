@@ -1,9 +1,16 @@
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
-const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-cleanup.cjs");
-const { ensureProfileToolbarExtension } = require("../lib/profile-identity-extension.cjs");
+const { purgeLegacyProfileIdentityChrome, purgeProfileIdentityToolbar } = require("../lib/profile-chrome-cleanup.cjs");
+const { profileIdentityUiEnabled } = require("../lib/profile-identity-ui.cjs");
 const { createLaunchTimer } = require("../lib/profile-launch-timer.cjs");
+const {
+  COOKIE_BRIDGE_STORE_ID,
+  cookieBridgeEnabled,
+  ensureCookieBridgeStoreExtension,
+  resolveCookieBridgeExtensionDirSync,
+} = require("../lib/cookie-bridge-store.cjs");
+const { pinStoreExtension } = require("../lib/profile-chrome-preferences.cjs");
 
 /** cloakbrowser is ESM-only — lazy dynamic import for Electron CJS main. */
 let cloakModulePromise = null;
@@ -103,7 +110,9 @@ function sanitizeChromeArgs(args) {
   });
 }
 
-function resolveExtraExtensionDirs() {
+function resolveExtraExtensionDirs(userDataRoot) {
+  if (!cookieBridgeEnabled()) return [];
+
   const dirs = [];
 
   const env = String(process.env.STEALTH_EXTRA_EXTENSION_DIRS || "").trim();
@@ -115,21 +124,8 @@ function resolveExtraExtensionDirs() {
     }
   }
 
-  // Portable: allow `extensions/<id>` next to the exe.
-  try {
-    const exeDir = path.dirname(process.execPath);
-    dirs.push(path.join(exeDir, "extensions", "E0001-cookie-bridge"));
-  } catch {
-    // ignore
-  }
-
-  // Dev workspace default: E:\Dev\Extension\E0001-cookie-bridge
-  try {
-    const projectRoot = path.resolve(__dirname, "..", "..");
-    dirs.push(path.resolve(projectRoot, "..", "..", "Extension", "E0001-cookie-bridge"));
-  } catch {
-    // ignore
-  }
+  const cached = resolveCookieBridgeExtensionDirSync(userDataRoot);
+  if (cached) dirs.push(cached);
 
   const unique = [];
   const seen = new Set();
@@ -215,7 +211,8 @@ async function launchStealthPersistentContext(profileOptions) {
   });
 
   let args = sanitizeChromeArgs(launchOpts.args || []);
-  const extraExtensionDirs = [...resolveExtraExtensionDirs()];
+  const userDataRoot = options.userDataRoot || path.resolve(options.userDataDir, "..", "..");
+  const extraExtensionDirs = [...resolveExtraExtensionDirs(userDataRoot)];
   if (options.identityExtensionDir) {
     const identityDir = path.resolve(String(options.identityExtensionDir));
     if (fs.existsSync(path.join(identityDir, "manifest.json"))) {
@@ -233,6 +230,9 @@ async function launchStealthPersistentContext(profileOptions) {
   }
   if (uniqueExtDirs.length) {
     args = [...args, ...chromeExtensionArgs(uniqueExtDirs)];
+  } else if (!profileIdentityUiEnabled()) {
+    // Sau sanitize — chặn extension persist trong Chrome profile (identity-toolbar cũ).
+    args = [...args, "--disable-extensions"];
   }
 
   // CDP passthrough: mở remote-debugging-port (localhost-only) để tool workspace
@@ -255,15 +255,17 @@ async function launchStealthPersistentContext(profileOptions) {
   // from the fingerprint seed, which silently overrides `--start-maximized`.
   // Force-maximize the OS window via CDP so the profile opens full-screen.
   if (options.viewport === null) {
-    try {
-      const page = context.pages()[0] ?? (await context.newPage());
-      const cdp = await context.newCDPSession(page);
-      const { windowId } = await cdp.send("Browser.getWindowForTarget");
-      await cdp.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "maximized" } });
-      await cdp.detach().catch(() => undefined);
-    } catch {
-      // best-effort — non-fatal if the platform rejects window bounds
-    }
+    void (async () => {
+      try {
+        const page = context.pages()[0] ?? (await context.newPage());
+        const cdp = await context.newCDPSession(page);
+        const { windowId } = await cdp.send("Browser.getWindowForTarget");
+        await cdp.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "maximized" } });
+        await cdp.detach().catch(() => undefined);
+      } catch {
+        // best-effort — non-fatal if the platform rejects window bounds
+      }
+    })();
   }
 
   if (options.humanize) {
@@ -281,16 +283,31 @@ async function launchStealthPersistentContext(profileOptions) {
 }
 
 async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
-  const timer = createLaunchTimer(profile.id);
+  const timer = createLaunchTimer(profile.id, profile.name);
   timer.mark("prep-start");
   const userDataDir = profileDataDir(userDataRoot, profile.id);
   purgeLegacyProfileIdentityChrome(userDataDir, userDataRoot, profile.id);
   fs.mkdirSync(userDataDir, { recursive: true });
-  const identity = ensureProfileToolbarExtension(userDataRoot, profile);
-  timer.mark("identity-ready");
+
+  if (!profileIdentityUiEnabled()) {
+    purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
+  }
+
+  if (cookieBridgeEnabled()) {
+    try {
+      await ensureCookieBridgeStoreExtension(userDataRoot);
+      const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot);
+      if (bridgeDir) {
+        pinStoreExtension(userDataDir, COOKIE_BRIDGE_STORE_ID, bridgeDir);
+      }
+    } catch (error) {
+      console.warn("[cookie-bridge] store extension unavailable:", error instanceof Error ? error.message : error);
+    }
+  }
+
   const launchOptions = buildLaunchOptions(profile, userDataDir);
   launchOptions.profile = profile;
-  launchOptions.identityExtensionDir = identity.dir;
+  launchOptions.userDataRoot = userDataRoot;
   if (Number(debugPort) > 0) launchOptions.debugPort = Number(debugPort);
   timer.mark("spawn-start");
   const context = await launchStealthPersistentContext(launchOptions);
@@ -300,8 +317,8 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
     context,
     userDataDir,
     debugPort: Number(debugPort) || 0,
-    identityExtensionDir: identity.dir,
-    identityExtensionId: identity.extensionId,
+    identityExtensionDir: "",
+    identityExtensionId: "",
   };
 }
 
@@ -318,6 +335,7 @@ module.exports = {
   buildIgnoreDefaultArgs,
   sanitizeChromeArgs,
   resolveWindowMode,
+  resolveExtraExtensionDirs,
   ensureEngineBinary,
   getBinaryInfo,
   openProfile,

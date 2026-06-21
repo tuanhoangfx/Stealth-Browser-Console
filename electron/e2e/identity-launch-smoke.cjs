@@ -14,9 +14,15 @@ const { identityDebugEnabled } = require("../lib/profile-taskbar-overlay.cjs");
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-identity-"));
 
+const { profileIdentityUiEnabled } = require("../lib/profile-identity-ui.cjs");
+
 async function main() {
   if (process.env.STEALTH_SKIP_LIVE === "1") {
     console.log("identity-launch-smoke: skipped (STEALTH_SKIP_LIVE=1)");
+    return;
+  }
+  if (!profileIdentityUiEnabled()) {
+    console.log("identity-launch-smoke: skipped (STEALTH_PROFILE_IDENTITY_UI=0)");
     return;
   }
 

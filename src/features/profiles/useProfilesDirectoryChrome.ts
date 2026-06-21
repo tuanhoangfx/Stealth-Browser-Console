@@ -4,37 +4,37 @@ import { defaultsForPrefItems, isHubPrefVisible } from "../../lib/display-pref-h
 import { PROFILES_DISPLAY_PREFS } from "../../lib/display-prefs-registry";
 import { useStealthHubListPrefs } from "../../lib/useStealthHubListPrefs";
 import type { ProfileCatalogStats, ProfileRow } from "../../types";
+import {
+  catalogStatsToKpiNumbers,
+} from "./profile-catalog-stats-patch";
 import { buildProfileHeaderStats } from "./profile-header-metrics";
 import {
   buildProfileKpiItems,
   buildProfileKpiNumbers,
-  buildProfileKpiNumbersFromStats,
   type ProfileKpiNumbers,
 } from "./profile-kpi-items";
 
-function resolveProfileKpiNumbers(
+function resolveCatalogKpiNumbers(
   catalogStats: ProfileCatalogStats | null,
   profiles: ProfileRow[],
-  filteredTotal: number,
 ): ProfileKpiNumbers {
-  const base = catalogStats
-    ? buildProfileKpiNumbersFromStats(catalogStats)
-    : buildProfileKpiNumbers(profiles);
-  return { ...base, total: filteredTotal };
+  if (catalogStats) return catalogStatsToKpiNumbers(catalogStats);
+  return buildProfileKpiNumbers(profiles);
 }
 
 /** KPI strip + header stats wired to URL display prefs (P0004 Users parity). */
 export function useProfilesDirectoryChrome(
   catalogStats: ProfileCatalogStats | null,
   profiles: ProfileRow[],
-  filteredTotal: number,
 ) {
   const hubPrefs = useStealthHubListPrefs();
 
-  const kpiNumbers = useMemo(
-    () => resolveProfileKpiNumbers(catalogStats, profiles, filteredTotal),
-    [catalogStats, profiles, filteredTotal],
+  const catalogKpis = useMemo(
+    () => resolveCatalogKpiNumbers(catalogStats, profiles),
+    [catalogStats, profiles],
   );
+
+  const kpiNumbers = catalogKpis;
 
   const kpiDefaults = useMemo(
     () => defaultsForPrefItems(PROFILES_DISPLAY_PREFS.kpis, PROFILES_DISPLAY_PREFS.defaultKpiKeys),
@@ -64,8 +64,8 @@ export function useProfilesDirectoryChrome(
         .filter((item) => isHubPrefVisible(hubPrefs.headerStats, headerStatDefaults, item.key))
         .map((item) => item.key),
     );
-    return buildProfileHeaderStats(visibleKeys, kpiNumbers);
-  }, [headerStatDefaults, hubPrefs.headerStats, kpiNumbers]);
+    return buildProfileHeaderStats(visibleKeys, catalogKpis);
+  }, [headerStatDefaults, hubPrefs.headerStats, catalogKpis]);
 
   return { kpis, centerStats };
 }

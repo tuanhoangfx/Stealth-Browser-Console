@@ -7,6 +7,7 @@
  * Usage: node scripts/dev-node.mjs   (or: pnpm dev:node)
  */
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +16,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 5175;
 const node = process.execPath;
 const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
-const electronCli = path.join(root, "node_modules", "electron", "cli.js");
+const require = createRequire(path.join(root, "package.json"));
+const electronCli = require.resolve("electron/cli.js");
 
 function waitForPort(port, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;

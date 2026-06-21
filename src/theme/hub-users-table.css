@@ -14,10 +14,24 @@
 }
 
 .stealth-workflow-directory-frame table.stealth-workflow-rail-table td {
-  padding: 6px 10px;
+  padding: 7px 10px;
   font-size: var(--hub-table-body-size, 12px);
   line-height: var(--hub-table-body-line-height, 1.45);
-  vertical-align: top;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table th.hub-users-col--select,
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table td.hub-users-col--select {
+  vertical-align: middle;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table .hub-users-select-all,
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table .hub-users-select-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hub-directory-row-h);
 }
 
 .stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-users-th-text {

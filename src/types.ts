@@ -165,12 +165,22 @@ export type StealthUpdateStatus = {
   progress: StealthUpdateProgress | null;
 };
 
+export type LaunchPerfEntry = {
+  profileId: string;
+  profileName: string;
+  label: string;
+  totalMs: number;
+  marks: Array<{ phase: string; ms: number }>;
+  at: string;
+};
+
 declare global {
   interface Window {
     stealthApi: {
       engineHealth: () => Promise<EngineHealth>;
       updateBinary: () => Promise<{ ok: boolean; info?: Record<string, unknown> }>;
       listProfiles: () => Promise<{ ok: boolean; profiles: StealthProfile[]; groups: StealthGroup[] }>;
+      profileBootstrap: () => Promise<{ ok: boolean; groups: StealthGroup[]; stats: ProfileCatalogStats }>;
       listProfilesPage: (payload?: {
         search?: string;
         groupIds?: string[];
@@ -200,8 +210,18 @@ declare global {
       } & Partial<DeviceConfig>) => Promise<{ ok: boolean; profile: StealthProfile }>;
       updateProfile: (payload: Partial<StealthProfile> & { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       bulkUpdateStartupUrl: (payload: { ids: string[]; startupUrl: string }) => Promise<{ ok: boolean; count: number }>;
-      deleteProfile: (payload: { id: string }) => Promise<{ ok: boolean }>;
-      deleteProfiles: (payload: { ids: string[] }) => Promise<{ ok: boolean; count: number }>;
+      deleteProfile: (payload: { id: string }) => Promise<{
+        ok: boolean;
+        count?: number;
+        names?: string[];
+        storagePurged?: number;
+      }>;
+      deleteProfiles: (payload: { ids: string[] }) => Promise<{
+        ok: boolean;
+        count: number;
+        names?: string[];
+        storagePurged?: number;
+      }>;
       launchProfile: (payload: { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       closeProfile: (payload: { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       focusProfile: (payload: { id: string }) => Promise<{ ok: boolean; reason?: string }>;
@@ -225,6 +245,9 @@ declare global {
       openDataFolder: () => Promise<{ ok: boolean; path: string }>;
       getIdentityDebug: () => Promise<{ ok: boolean; enabled: boolean }>;
       setIdentityDebug: (payload: { enabled: boolean }) => Promise<{ ok: boolean; enabled: boolean }>;
+      listLaunchPerf: (payload?: { limit?: number }) => Promise<{ ok: boolean; entries: LaunchPerfEntry[] }>;
+      clearLaunchPerf: () => Promise<{ ok: boolean }>;
+      purgeIdentityExtensions: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
       onProfileSession: (
         handler: (payload: { profile: StealthProfile; event: string }) => void
       ) => () => void;

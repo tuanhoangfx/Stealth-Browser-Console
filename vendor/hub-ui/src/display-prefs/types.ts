@@ -1,7 +1,18 @@
 import type { ReactNode } from "react";
 import type { TimeRange } from "./constants";
 
-export type PrefItem = { key: string; label: string };
+export type PrefIcon = React.ComponentType<{
+  size?: number;
+  className?: string;
+  "aria-hidden"?: boolean;
+}>;
+
+export type PrefItem = {
+  key: string;
+  label: string;
+  icon?: PrefIcon;
+  iconClassName?: string;
+};
 
 /** Extra settings tab (e.g. Cookie bridge / vault) between General and Display. */
 export type SettingsExtraTab = {

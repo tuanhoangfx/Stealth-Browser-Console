@@ -42,7 +42,13 @@ export function DirectoryTableColumnsSettings<K extends string>({
             <li key={col.key} className={col.required ? "opacity-80" : undefined}>
               <div className="flex items-center gap-2">
                 <div className={col.required ? "pointer-events-none flex-1" : "flex-1"}>
-                  <ToggleRow label={col.label} on={on} onChange={() => toggle(col.key)} />
+                  <ToggleRow
+                    label={col.label}
+                    icon={col.icon}
+                    iconClassName={col.iconClassName}
+                    on={on}
+                    onChange={() => toggle(col.key)}
+                  />
                 </div>
                 {col.required ? (
                   <span className="shrink-0 pr-2 text-[9px] uppercase text-[var(--muted)]">Required</span>

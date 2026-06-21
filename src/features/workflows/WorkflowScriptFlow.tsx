@@ -326,6 +326,16 @@ function mergeNodeStepData(
   return out;
 }
 
+function edgesSignature(edges: Edge[]): string {
+  return edges.map((edge) => edge.id).join("|");
+}
+
+function nodesVisualSignature(nodes: Node<ScriptFlowNodeData>[]): string {
+  return nodes
+    .map((node) => `${node.id}:${node.selected ? 1 : 0}:${node.position.x},${node.position.y}`)
+    .join("|");
+}
+
 function buildEdges(steps: ScriptStep[], layoutMode: WorkflowLayoutMode): Edge[] {
   const pathOptions = workflowScriptSmoothStepPathOptions(layoutMode);
 
@@ -387,40 +397,30 @@ function WorkflowScriptFlowInner({
 
   useEffect(() => {
     const nextEdges = buildEdges(steps, layoutMode);
-
-    setEdges(nextEdges);
+    setEdges((prev) => (edgesSignature(prev) === edgesSignature(nextEdges) ? prev : nextEdges));
 
     const relayoutSig = `${structuralKey}|${layoutMode}`;
     const shouldRelayoutPositions = lastRelayoutSig.current !== relayoutSig;
 
     if (shouldRelayoutPositions) {
       lastRelayoutSig.current = relayoutSig;
-
       const skeleton = buildSkeletonNodes(steps, selectedStepId);
-
       const layouted = layoutWorkflowScriptNodes(skeleton, nextEdges, layoutMode);
-
       setNodes(layouted);
-
       requestAnimationFrame(() => {
         void fitViewRef.current(WORKFLOW_CANVAS_FIT_VIEW);
       });
-
       return;
     }
 
     setNodes((prev) => {
+      if (prev.length !== steps.length) return prev;
       const merged = mergeNodeStepData(prev, steps, selectedStepId);
-
-      if (!merged) {
-        const skeleton = buildSkeletonNodes(steps, selectedStepId);
-
-        return layoutWorkflowScriptNodes(skeleton, nextEdges, layoutMode);
-      }
-
+      if (!merged) return prev;
+      if (nodesVisualSignature(prev) === nodesVisualSignature(merged)) return prev;
       return merged;
     });
-  }, [steps, structuralKey, selectedStepId, layoutMode, setEdges, setNodes]);
+  }, [steps, structuralKey, selectedStepId, layoutMode]);
 
   useLayoutEffect(() => {
     if (!layoutMenuOpen) {

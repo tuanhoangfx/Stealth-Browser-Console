@@ -89,4 +89,58 @@ function pinToolbarExtension(userDataDir, extensionDir) {
   return extId;
 }
 
-module.exports = { pinToolbarExtension, unpackedExtensionId };
+/** Pin Chrome Web Store extension (fixed extension id). */
+function pinStoreExtension(userDataDir, extId, extensionDir) {
+  const absPath = path.resolve(extensionDir).replace(/\\/g, "/");
+  const prefsFile = path.join(userDataDir, "Default", "Preferences");
+  const prefs = readJson(prefsFile);
+
+  prefs.extensions = prefs.extensions || {};
+  const existingSettings = prefs.extensions.settings?.[extId];
+  if (
+    Array.isArray(prefs.extensions.pinned_extensions) &&
+    prefs.extensions.pinned_extensions[0] === extId &&
+    existingSettings?.path === absPath &&
+    Number(existingSettings?.state) === 1
+  ) {
+    return extId;
+  }
+
+  for (const key of PIN_KEYS) {
+    prefs.extensions[key] = mergePinnedList(prefs.extensions[key], extId);
+  }
+
+  prefs.extensions.toolbar = prefs.extensions.toolbar || {};
+  prefs.extensions.toolbar.pinned_extension_ids = mergePinnedList(
+    prefs.extensions.toolbar.pinned_extension_ids,
+    extId,
+  );
+
+  prefs.extensions.settings = prefs.extensions.settings || {};
+  const existing = prefs.extensions.settings[extId] || {};
+  let manifest = existing.manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(absPath, "manifest.json"), "utf8"));
+  } catch {
+    manifest = manifest || { name: "E0001 Cookie Bridge" };
+  }
+
+  prefs.extensions.settings[extId] = {
+    ...existing,
+    creation_flags: 1,
+    from_webstore: true,
+    incognito: true,
+    location: 4,
+    path: absPath,
+    state: 1,
+    was_installed_by_default: false,
+    was_installed_by_oem: false,
+    install_time: existing.install_time || String(Date.now() * 1000),
+    manifest,
+  };
+
+  writeJson(prefsFile, prefs);
+  return extId;
+}
+
+module.exports = { pinToolbarExtension, pinStoreExtension, unpackedExtensionId };

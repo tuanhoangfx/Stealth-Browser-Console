@@ -7,18 +7,11 @@ function asObject(value, label = "payload") {
   return value;
 }
 
+const { normalizeStartupUrl } = require("./lib/startup-url.cjs");
+
 function validateTargetUrl(targetUrl) {
-  const value = String(targetUrl || "").trim();
-  if (!value) throw new Error("Missing automation URL");
-  let parsed;
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new Error("Automation URL must be a valid URL.");
-  }
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("Automation URL must use http or https.");
-  }
+  const value = normalizeStartupUrl(String(targetUrl || "").trim());
+  if (!value) throw new Error("Automation URL must be a valid URL (e.g. google.com or http://host).");
   return value;
 }
 

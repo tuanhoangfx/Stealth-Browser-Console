@@ -9,12 +9,17 @@ const profileService = require("../db/profile-service.cjs");
 const { SessionManager } = require("../engine/session-manager.cjs");
 const { buildPillChipText } = require("../lib/profile-identity.cjs");
 const { toolbarExtensionDir } = require("../lib/profile-identity-extension.cjs");
+const { profileIdentityUiEnabled } = require("../lib/profile-identity-ui.cjs");
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-multi-"));
 
 async function main() {
   if (process.env.STEALTH_SKIP_LIVE === "1") {
     console.log("identity-multi-launch-smoke: skipped (STEALTH_SKIP_LIVE=1)");
+    return;
+  }
+  if (!profileIdentityUiEnabled()) {
+    console.log("identity-multi-launch-smoke: skipped (STEALTH_PROFILE_IDENTITY_UI=0)");
     return;
   }
 

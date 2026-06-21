@@ -8,9 +8,8 @@ import {
   deleteGroup,
   deleteProfiles,
   exportProfilesBundle,
-  fetchEngineHealth,
+  fetchProfileBootstrap,
   fetchProfileCatalogStats,
-  fetchProfilesAndGroups,
   fetchRunHistory,
   importProfilesBundle,
   launchProfile,
@@ -18,6 +17,12 @@ import {
   updateGroup,
   updateProfile,
 } from "../api";
+import {
+  catalogStatsToKpiNumbers,
+  patchCatalogStatsForSessionEvent,
+  patchCatalogStatsForStatusChange,
+  reconcileCatalogStats,
+} from "../features/profiles/profile-catalog-stats-patch";
 import { useRunLogs } from "../features/runtime/RunLogsContext";
 import { downloadJson } from "../lib/stealth-profile-utils";
 import { resolveStartupUrlSave } from "../lib/startup-url";
@@ -95,17 +100,24 @@ export function ProfilesRuntimeProvider({
   const refreshProfiles = useCallback(async () => {
     setSyncBusy(true);
     try {
-      const [data, stats] = await Promise.all([fetchProfilesAndGroups(), fetchProfileCatalogStats()]);
-      setProfiles(data.profiles);
+      const data = await fetchProfileBootstrap();
       setGroups(data.groups);
-      setCatalogStats(stats);
-      await fetchEngineHealth();
+      setCatalogStats(data.stats);
     } catch (error) {
       addLog("error", "System", error instanceof Error ? error.message : "Unable to refresh profiles.");
     } finally {
       setSyncBusy(false);
     }
   }, [addLog]);
+
+  const refreshCatalogStats = useCallback(async () => {
+    try {
+      const stats = await fetchProfileCatalogStats();
+      setCatalogStats(stats);
+    } catch {
+      // non-fatal — directory page fetch also supplies stats
+    }
+  }, []);
 
   useEffect(() => {
     const api = window.stealthApi;
@@ -118,18 +130,29 @@ export function ProfilesRuntimeProvider({
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
         refreshTimer = undefined;
-        void refreshProfiles();
+        void refreshCatalogStats();
       }, 1500);
     };
     const off = api.onProfileSession(({ profile, event }) => {
+      let prevStatus: ProfileRow["status"] | undefined;
       setProfiles((prev) => {
         const index = prev.findIndex((row) => row.id === profile.id);
         if (index < 0) return prev;
+        prevStatus = prev[index]!.status;
         const next = [...prev];
         next[index] = { ...next[index], ...profile };
         return next;
       });
-      if (event === "closed") {
+      setCatalogStats((stats) => {
+        if (!stats) return stats;
+        if (prevStatus && prevStatus !== profile.status) {
+          return reconcileCatalogStats(
+            patchCatalogStatsForStatusChange(stats, prevStatus, profile.status),
+          );
+        }
+        return reconcileCatalogStats(patchCatalogStatsForSessionEvent(stats, event));
+      });
+      if (event === "closed" || event === "failed" || event === "storage-released") {
         scheduleReconcile();
       }
     });
@@ -137,7 +160,7 @@ export function ProfilesRuntimeProvider({
       if (refreshTimer) clearTimeout(refreshTimer);
       off?.();
     };
-  }, [refreshProfiles]);
+  }, [refreshCatalogStats]);
 
   useEffect(() => {
     if (view === "workflow") {
@@ -226,9 +249,25 @@ export function ProfilesRuntimeProvider({
 
   const handleDeleteSelected = useCallback(
     async (ids: string[]) => {
-      await deleteProfiles(ids);
-      addLog("info", "Profiles", `Deleted ${ids.length} profile(s)`);
-      await refreshProfiles();
+      if (!ids.length) return;
+      try {
+        const result = await deleteProfiles(ids);
+        const label =
+          result.names?.length === 1
+            ? `"${result.names[0]}"`
+            : `${result.count} profile(s)`;
+        const disk =
+          result.storagePurged === result.count
+            ? "Chrome profile data removed from disk"
+            : result.storagePurged
+              ? `Chrome data removed for ${result.storagePurged}/${result.count}`
+              : "database row removed";
+        addLog("success", "Profiles", `Deleted ${label} — ${disk}`);
+        await refreshProfiles();
+      } catch (error) {
+        addLog("error", "Profiles", error instanceof Error ? error.message : "Delete failed");
+        throw error;
+      }
     },
     [addLog, refreshProfiles],
   );
@@ -319,11 +358,13 @@ export function ProfilesRuntimeProvider({
 
   const handleReplayRun = useCallback(
     async (run: RunHistoryItem) => {
-      const profile = profiles.find((row) => row.id === run.profileId);
-      if (!profile) {
-        addLog("error", "Workflow", "Profile no longer exists for this run.");
-        return;
-      }
+      const profile =
+        profiles.find((row) => row.id === run.profileId) ??
+        ({
+          id: run.profileId,
+          name: run.profileName || run.profileId,
+          status: "closed",
+        } as ProfileRow);
       if (!run.targetUrl) {
         addLog("error", "Workflow", "Run has no target URL to replay.");
         return;

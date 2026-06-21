@@ -542,6 +542,7 @@ One semantic key maps icon + tone across **badge**, **KPI strip**, **tab header 
 - Sub-tab screens (System, Fanpages): `HubDisplayPrefs` must bump `displayTick` after `adapter.patch()` so the open Settings modal re-reads `sessionStorage` (avoid overwrite on 2nd toggle).
 - Toggle `on` uses `isVisible(stored, defaults, key)` — not `resolveVisibleKpiKeys().has(key)`.
 - When `n >= MAX_VISIBLE_KPI` / `MAX_VISIBLE_CHART`, **disable** unselected toggles; click shows cap message via `onLog` (app log toast). Do **not** silently swap selections — block at cap.
+- **Toggle row icons (golden)** — `PrefItem` / `DirectoryTableColumnItem` accept optional `icon` + `iconClassName`. Tools attach via `withPrefItemIcons(defs, ICON_MAP)` and `withDirectoryColumnIcons(cols, ICON_MAP)` from hub-ui; `ToggleRow` renders checkbox + icon + label in `HubDirectoryDisplayPanel`, `HubDisplayVisibilityMenu`, and Settings modal filter sections.
 - **Hide analytics frame** when zero KPI and zero charts: pass `kpis={undefined}` / `charts={undefined}` (use `directoryChartBandNode`, not a bare `<DirectoryChartBand />` element).
 
 **Per-tool wiring**

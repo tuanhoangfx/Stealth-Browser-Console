@@ -124,6 +124,12 @@ select.hub-filter-select-native option,
   flex-shrink: 0;
 }
 
+.hub-form-field-label__emoji {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .hub-modal-filter-field {
   min-width: 0;
 }

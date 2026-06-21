@@ -405,3 +405,12 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 .hub-directory-table-body-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--hub-split-scroll-thumb-hover, #3a4178);
 }
+.hub-directory-search-highlight {
+  background: rgba(34, 211, 238, 0.5);
+  color: #ffffff;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45);
+}
+

@@ -7,6 +7,7 @@ import {
   HUB_TOOL_DETAIL_SECTIONS_CLASS
 } from "@tool-workspace/hub-ui";
 import { Globe, Link2, MonitorSmartphone, User } from "lucide-react";
+import { formatStartupUrlOnBlur } from "../../lib/startup-url";
 import { PROXY_PRESETS, randomFingerprintSeed } from "../../lib/stealth-profile-utils";
 import {
   LOCALE_OPTIONS,
@@ -101,6 +102,10 @@ export function ProfileFormFields({
           className="hub-input w-full"
           value={startupUrl}
           onChange={(e) => setStartupUrl(e.target.value)}
+          onBlur={() => {
+            const next = formatStartupUrlOnBlur(startupUrl);
+            if (next !== startupUrl) setStartupUrl(next);
+          }}
           placeholder="https://myaccount.google.com/"
         />
       </label>

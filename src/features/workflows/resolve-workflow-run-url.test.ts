@@ -25,7 +25,7 @@ const baseProfile = (patch: Partial<ProfileRow> = {}): ProfileRow =>
 describe("resolveWorkflowRunUrl", () => {
   it("prefers workflow targetUrl when set", () => {
     expect(resolveWorkflowRunUrl(baseWorkflow({ targetUrl: "https://example.com" }), baseProfile())).toBe(
-      "https://example.com"
+      "https://example.com/"
     );
   });
 

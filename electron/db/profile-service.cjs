@@ -131,16 +131,15 @@ function resolveOrderExpr(sort) {
   return `p.${col}`;
 }
 
+const { buildProfileSearchWhere } = require("../lib/directory-id-search.cjs");
+
 function buildProfileFilter({ search, groupId, groupIds, status, statuses } = {}) {
   const where = [];
   const params = [];
-  const term = String(search || "").trim();
-  if (term) {
-    where.push(
-      "(p.name LIKE ? OR p.note LIKE ? OR p.proxy LIKE ? OR p.startup_url LIKE ? OR CAST(p.fingerprint_seed AS TEXT) LIKE ? OR g.name LIKE ?)",
-    );
-    const like = `%${term}%`;
-    params.push(like, like, like, like, like, like);
+  const searchWhere = buildProfileSearchWhere(search);
+  if (searchWhere) {
+    where.push(searchWhere.clause);
+    params.push(...searchWhere.params);
   }
   const resolvedGroupIds =
     Array.isArray(groupIds) && groupIds.length
@@ -175,7 +174,8 @@ function listActiveProfileIds() {
 
 function countProfiles(filter = {}) {
   const { clause, params } = buildProfileFilter(filter);
-  const needsGroupJoin = Boolean(String(filter.search || "").trim());
+  const searchWhere = buildProfileSearchWhere(filter.search);
+  const needsGroupJoin = searchWhere?.needsGroupJoin ?? false;
   const from = needsGroupJoin
     ? "FROM profiles p LEFT JOIN profile_groups g ON g.id = p.group_id"
     : "FROM profiles p";
@@ -383,14 +383,20 @@ function updateProfile(id, patch) {
 }
 
 function deleteProfile(id) {
-  getDb().prepare("DELETE FROM profiles WHERE id = ?").run(String(id));
+  const result = getDb().prepare("DELETE FROM profiles WHERE id = ?").run(String(id));
+  if (!result.changes) throw new Error("Profile not found or already deleted.");
   return { ok: true };
 }
 
 function deleteProfiles(ids) {
   const stmt = getDb().prepare("DELETE FROM profiles WHERE id = ?");
-  for (const id of ids) stmt.run(String(id));
-  return { ok: true, count: ids.length };
+  let count = 0;
+  for (const id of ids) {
+    const result = stmt.run(String(id));
+    count += result.changes ?? 0;
+  }
+  if (ids.length > 0 && count === 0) throw new Error("No profiles were deleted.");
+  return { ok: true, count };
 }
 
 function listGroups() {
@@ -613,6 +619,9 @@ function getCatalogStats() {
     const gid = String(row.group_id || "");
     if (gid) stats.groupCounts[gid] = Number(row.c) || 0;
   }
+  const accounted = stats.closed + stats.opening + stats.running + stats.failed;
+  if (accounted < total) stats.closed += total - accounted;
+  else if (accounted > total) stats.closed = Math.max(0, total - stats.opening - stats.running - stats.failed);
   return stats;
 }
 

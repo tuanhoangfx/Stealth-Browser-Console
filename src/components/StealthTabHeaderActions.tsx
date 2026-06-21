@@ -10,18 +10,18 @@ import type { StealthScreen } from "../lib/stealth-screen";
 
 export function StealthTabHeaderActions({ screen }: { screen: StealthScreen }) {
   const { engineStatus, syncBusy } = useStealthShell();
-  const { profiles, history } = useProfilesRuntime();
+  const { catalogStats, history } = useProfilesRuntime();
 
   const notify = useMemo(
     () =>
       buildStealthNotifyPanelProps({
         engineStatus,
         syncBusy,
-        profileFailed: profiles.filter((p) => p.status === "failed").length,
-        profileRunning: profiles.filter((p) => p.status === "running").length,
+        profileFailed: catalogStats?.failed ?? 0,
+        profileRunning: catalogStats?.running ?? 0,
         runHistoryFailed: history.filter((item) => item.status === "failed").length
       }),
-    [engineStatus, syncBusy, profiles, history]
+    [engineStatus, syncBusy, catalogStats, history]
   );
 
   return (

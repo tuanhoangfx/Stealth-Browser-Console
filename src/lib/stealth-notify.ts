@@ -40,7 +40,7 @@ export function buildStealthNotifyPanelProps(input: {
       id: "profile-failed",
       severity: "bad",
       label: "Failed profiles",
-      detail: `${input.profileFailed} profile(s) in failed state.`
+      detail: `${input.profileFailed} profile(s) in failed state — filter Status → Failed to review.`,
     });
   }
   if (input.profileRunning > 0) {

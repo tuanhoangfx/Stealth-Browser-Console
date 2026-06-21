@@ -15,6 +15,7 @@ import {
   GitBranch,
   Globe2,
   Hash,
+  KeyRound,
   Layers,
   Link2,
   LockKeyhole,
@@ -85,7 +86,9 @@ export type HubTableColumnRole =
   | "active"
   | "password"
   | "period"
-  | "service";
+  | "service"
+  | "browser"
+  | "totp";
 
 export type HubTableColumnMeta = {
   icon: LucideIcon;
@@ -142,6 +145,8 @@ export const HUB_TABLE_COLUMN_META: Record<HubTableColumnRole, HubTableColumnMet
   password: { icon: LockKeyhole, iconClassName: "hub-users-th-icon--role" },
   period: { icon: Timer, iconClassName: "hub-users-th-icon--actions" },
   service: { icon: ShieldCheck, iconClassName: "hub-users-th-icon--tools" },
+  browser: { icon: Globe2, iconClassName: "hub-users-th-icon--email" },
+  totp: { icon: KeyRound, iconClassName: "hub-users-th-icon--role" },
 };
 
 export function resolveHubTableColumnMeta(role: HubTableColumnRole): HubTableColumnMeta {

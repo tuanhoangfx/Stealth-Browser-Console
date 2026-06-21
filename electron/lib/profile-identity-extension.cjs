@@ -8,6 +8,7 @@ const {
 } = require("./profile-identity.cjs");
 const { writeProfileCodeTileIconPngs } = require("./profile-icon-png.cjs");
 const { pinToolbarExtension, unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
+const { profileIdentityUiEnabled } = require("./profile-identity-ui.cjs");
 
 const EXT_ROOT = "identity-toolbar";
 const DESIGN_VARIANT = "V2";
@@ -25,6 +26,9 @@ function identityBundleHash(parts) {
  * Auto-pinned via Chromium Preferences before launch.
  */
 function ensureProfileToolbarExtension(userDataRoot, profile) {
+  if (!profileIdentityUiEnabled()) {
+    return { dir: "", extensionId: "", variant: DESIGN_VARIANT, chipText: "", tooltip: "", code: "" };
+  }
   const code = extractProfileCode(profile.name, profile.id);
   const chipText = buildPillChipText(profile);
   const tooltip = buildCodeTileTooltip(profile);

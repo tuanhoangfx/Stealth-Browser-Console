@@ -46,11 +46,13 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
   useEffect(() => {
     const workflow = workflowConfigs.find((item) => item.id === activeWorkflow);
     if (!workflow?.steps.length) {
-      setSelectedScriptStepId("");
+      if (selectedScriptStepId !== "") setSelectedScriptStepId("");
       return;
     }
-    if (!workflow.steps.some((step) => step.id === selectedScriptStepId)) {
-      setSelectedScriptStepId(workflow.steps[0].id);
+    const firstId = workflow.steps[0]?.id;
+    if (!firstId) return;
+    if (!workflow.steps.some((step) => step.id === selectedScriptStepId) && selectedScriptStepId !== firstId) {
+      setSelectedScriptStepId(firstId);
     }
   }, [activeWorkflow, selectedScriptStepId, workflowConfigs]);
 

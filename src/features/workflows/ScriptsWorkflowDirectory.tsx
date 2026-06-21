@@ -39,6 +39,8 @@ export const ScriptsWorkflowDirectory = memo(function ScriptsWorkflowDirectory({
     DEFAULT_WORKFLOWS,
   } = useWorkflowEditor();
 
+  const workflowRowId = useCallback((workflow: WorkflowConfig) => workflow.id, []);
+
   const {
     selectedIds: bulkSelectedIds,
     setSelectedIds: setBulkSelectedIds,
@@ -46,7 +48,7 @@ export const ScriptsWorkflowDirectory = memo(function ScriptsWorkflowDirectory({
     toggleSelect: toggleWorkflowBulkSelect,
     toggleSelectAll: toggleBulkSelectAll,
     allVisibleSelected: bulkAllVisibleSelected,
-  } = useHubDirectorySelection(filteredWorkflows, (workflow) => workflow.id);
+  } = useHubDirectorySelection(filteredWorkflows, workflowRowId);
 
   const handleBulkCopy = useCallback(() => {
     if (bulkSelectedWorkflows.length === 0) {

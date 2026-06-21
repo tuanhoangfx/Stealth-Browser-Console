@@ -27,7 +27,15 @@ function loadBetterSqliteCtor() {
     return Database;
   } catch (error) {
     const hint = error instanceof Error ? error.message : String(error);
-    console.warn(`[db] better-sqlite3 unavailable (${hint.slice(0, 120)}) — using sql.js fallback`);
+    const isAbiMismatch =
+      /NODE_MODULE_VERSION|was compiled against|not a valid Win32 application/i.test(hint);
+    if (isAbiMismatch) {
+      console.warn(
+        `[db] better-sqlite3 ABI mismatch — run: pnpm exec electron-rebuild -f -w better-sqlite3 (${hint.slice(0, 80)})`,
+      );
+    } else {
+      console.warn(`[db] better-sqlite3 unavailable (${hint.slice(0, 120)}) — using sql.js fallback`);
+    }
     return null;
   }
 }

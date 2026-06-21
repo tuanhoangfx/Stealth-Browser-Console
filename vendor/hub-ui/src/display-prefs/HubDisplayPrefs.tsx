@@ -417,6 +417,8 @@ export function HubDisplayPrefs({
             <ToggleRow
               key={f.key}
               label={f.label}
+              icon={f.icon}
+              iconClassName={f.iconClassName}
               on={isVisible(visHubFilters, filterDefaults, f.key)}
               onChange={() => toggle(filterParam, tabFilters, filterDefaults, f.key)}
             />

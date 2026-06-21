@@ -73,6 +73,8 @@ export function HubDisplayVisibilityMenu({
               <ToggleRow
                 key={item.key}
                 label={item.label}
+                icon={item.icon}
+                iconClassName={item.iconClassName}
                 on={selected}
                 disabled={atMax && !selected}
                 onDisabledClick={onCapReached}

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("stealthApi", {
   engineHealth: () => invoke("engine:health"),
   updateBinary: () => invoke("engine:updateBinary"),
   listProfiles: () => invoke("profile:list"),
+  profileBootstrap: () => invoke("profile:bootstrap"),
   listProfilesPage: (payload) => invoke("profile:listPage", payload),
   catalogStats: () => invoke("profile:catalogStats"),
   createProfile: (payload) => invoke("profile:create", payload),
@@ -29,6 +30,9 @@ contextBridge.exposeInMainWorld("stealthApi", {
   openDataFolder: () => invoke("app:openDataFolder"),
   getIdentityDebug: () => invoke("settings:getIdentityDebug"),
   setIdentityDebug: (payload) => invoke("settings:setIdentityDebug", payload),
+  listLaunchPerf: (payload) => invoke("launchPerf:list", payload),
+  clearLaunchPerf: () => invoke("launchPerf:clear"),
+  purgeIdentityExtensions: () => invoke("identity:purgeAll"),
   onProfileSession: (handler) => {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on("profile:session", listener);

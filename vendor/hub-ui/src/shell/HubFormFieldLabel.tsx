@@ -5,6 +5,8 @@ import { compactIconSize } from "../ui-scale";
 export type HubFormFieldLabelProps = {
   icon?: LucideIcon;
   iconClassName?: string;
+  /** Emoji glyph — matches filter trigger icons in task modal (📁, 🗓️, etc.). */
+  emoji?: string;
   children: ReactNode;
   className?: string;
 };
@@ -13,12 +15,19 @@ export type HubFormFieldLabelProps = {
 export function HubFormFieldLabel({
   icon: Icon,
   iconClassName = "hub-form-field-label__icon",
+  emoji,
   children,
   className = "",
 }: HubFormFieldLabelProps) {
   return (
     <span className={`hub-form-field-label${className ? ` ${className}` : ""}`}>
-      {Icon ? <Icon size={compactIconSize(12)} className={iconClassName} aria-hidden /> : null}
+      {emoji ? (
+        <span className="hub-form-field-label__emoji" aria-hidden>
+          {emoji}
+        </span>
+      ) : Icon ? (
+        <Icon size={compactIconSize(12)} className={iconClassName} aria-hidden />
+      ) : null}
       {children}
     </span>
   );

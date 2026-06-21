@@ -51,6 +51,7 @@ describe("startup-url renderer/main parity", () => {
     expect(resolveStartupUrlSave("adobe", "https://google.com/")).toBe(
       electronStartup.resolveStartupUrlSave("adobe", "https://google.com/"),
     );
-    expect(resolveStartupUrlSave("adobe", "")).toBe(DEFAULT_BROWSER_HOME_URL);
+    expect(resolveStartupUrlSave("adobe", "")).toBe(electronStartup.resolveStartupUrlSave("adobe", ""));
+    expect(resolveStartupUrlSave("adobe", "")).toBe("http://adobe/");
   });
 });

@@ -50,11 +50,18 @@ export type {
   HubDisplayPrefsProps,
   HubDisplayPrefsToolSection,
   PrefItem,
+  PrefIcon,
   SettingsExtraTab,
   SubTabDisplayConfig,
   SystemDisplayAdapter,
 } from "./display-prefs/types";
 export { SUBTAB_DISPLAY_CHANGE } from "./display-prefs/types";
+export {
+  withPrefItemIcons,
+  withDirectoryColumnIcons,
+  type PrefIconMap,
+  type PrefIconMeta,
+} from "./display-prefs/pref-item-icons";
 export {
   countHiddenDirectoryTableColumns,
   createDirectoryTableColumnPrefs,
@@ -170,7 +177,10 @@ export {
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
   HubFilterDropdownCircle,
+  HubFilterDropdownPanelSearch,
   HubFilterDropdownTrigger,
+  HUB_FILTER_OPTION_EMOJI_CLASS,
+  filterDropdownPanelSearchPlaceholder,
   folderFilterButtonLabel,
   multiFilterTriggerTitle,
   hubFilterTriggerClass,
@@ -314,6 +324,18 @@ export {
   type DirectoryRelativeTimeCellProps,
 } from "./content/DirectoryRelativeTimeCell";
 export { formatHubRelativeTime } from "./lib/format-hub-relative-time";
+export {
+  extractNumericSearchTerm,
+  matchesDirectoryIdSearch,
+  getDirectorySearchHighlight,
+  buildHighlightSegments,
+  type DirectoryIdSearchInput,
+  type DirectoryIdSearchOptions,
+  type DirectorySearchHighlight,
+  type HighlightSegment,
+} from "./lib/directory-id-search";
+export { HubDirectorySearchHighlightText } from "./content/HubDirectorySearchHighlightText";
+
 export { useRelativeNow } from "./lib/use-relative-now";
 export {
   configureDirectoryPager,

@@ -32,7 +32,7 @@ import {
   writeBrowserDefaults,
   type BrowserDefaults
 } from "../../lib/stealth-app-prefs";
-import { normalizeStartupUrl } from "../../lib/startup-url";
+import { formatStartupUrlOnBlur, normalizeStartupUrl } from "../../lib/startup-url";
 import type { EngineHealth } from "../../types";
 
 const SETTINGS_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_2_CLASS} stealth-settings-form min-w-0`;
@@ -157,6 +157,10 @@ function BrowserDefaultsSectionBody() {
           className="hub-input w-full min-w-0"
           value={defaults.defaultStartupUrl}
           onChange={(e) => editLaunch({ defaultStartupUrl: e.target.value })}
+          onBlur={() => {
+            const next = formatStartupUrlOnBlur(defaults.defaultStartupUrl);
+            if (next !== defaults.defaultStartupUrl) editLaunch({ defaultStartupUrl: next });
+          }}
           placeholder="https://myaccount.google.com/"
         />
       </label>

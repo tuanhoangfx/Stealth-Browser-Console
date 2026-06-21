@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleAlert, Database, RefreshCw } from "lucide-react";
+import { CheckCircle2, Database, Play } from "lucide-react";
 import type { KpiTileData } from "@tool-workspace/hub-ui";
 import type { ProfileRow, ProfileCatalogStats } from "../../types";
 
@@ -17,10 +17,16 @@ const PROFILE_KPI_TILES: Array<{
   pick: (k: ProfileKpiNumbers) => number;
   iconClassName?: string;
 }> = [
-  { key: "total", label: "Profiles (shown)", tone: "indigo", icon: Database, pick: (k) => k.total },
-  { key: "running", label: "Running", tone: "cyan", icon: RefreshCw, pick: (k) => k.running },
+  { key: "total", label: "Profiles", tone: "indigo", icon: Database, pick: (k) => k.total },
+  {
+    key: "running",
+    label: "Running",
+    tone: "emerald",
+    icon: Play,
+    pick: (k) => k.running,
+    iconClassName: "text-emerald-400",
+  },
   { key: "ready", label: "Ready", tone: "emerald", icon: CheckCircle2, pick: (k) => k.ready },
-  { key: "failed", label: "Failed", tone: "rose", icon: CircleAlert, pick: (k) => k.failed },
 ];
 
 export function buildProfileKpiNumbersFromStats(stats: ProfileCatalogStats): ProfileKpiNumbers {
@@ -49,7 +55,7 @@ export function buildProfileKpiItems(kpis: ProfileKpiNumbers): KpiTileData[] {
     value: row.pick(kpis),
     icon: row.icon,
     tone: row.tone,
-    iconClassName: row.key === "running" && kpis.running > 0 ? "animate-spin" : undefined,
+    iconClassName: row.iconClassName,
   }));
 }
 
@@ -72,17 +78,10 @@ export function buildProfileHeaderCenterStats(counts: ProfileKpiNumbers) {
     },
     {
       key: "profiles-running",
-      icon: RefreshCw,
+      icon: Play,
       label: "running",
       value: counts.running,
-      toneClass: "text-cyan-300",
-    },
-    {
-      key: "profiles-failed",
-      icon: CircleAlert,
-      label: "failed",
-      value: counts.failed,
-      toneClass: "text-rose-300",
+      toneClass: "text-emerald-400",
     },
   ];
 }

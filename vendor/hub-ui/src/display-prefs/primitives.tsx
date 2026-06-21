@@ -86,12 +86,16 @@ export function SettingsSubsection({
 
 export function ToggleRow({
   label,
+  icon: Icon,
+  iconClassName = "text-indigo-300/90",
   on,
   onChange,
   disabled = false,
   onDisabledClick,
 }: {
   label: string;
+  icon?: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>;
+  iconClassName?: string;
   on: boolean;
   onChange: () => void;
   /** Gray out when cap reached (e.g. KPI max visible). */
@@ -118,6 +122,9 @@ export function ToggleRow({
       <span className={`hub-check-indicator${on ? " is-on" : ""}`} aria-hidden>
         {on ? <Check size={compactIconSize(9)} strokeWidth={2.75} /> : null}
       </span>
+      {Icon ? (
+        <Icon size={compactIconSize(11)} className={`shrink-0 ${iconClassName}`} aria-hidden />
+      ) : null}
       <span className={on ? "text-[var(--text)]" : "text-[var(--muted)]"}>{label}</span>
     </button>
   );

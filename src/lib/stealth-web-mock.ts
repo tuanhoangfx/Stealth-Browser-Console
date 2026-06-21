@@ -5,6 +5,7 @@
 import type { EngineHealth, OpenUrlResult, RunHistoryItem, StealthGroup, StealthProfile } from "../types";
 import { DEFAULT_DEVICE, deviceConfigFromProfile } from "./device-presets";
 import { normalizeStartupUrl, resolveStartupUrlSave } from "./startup-url";
+import { matchesProfileDirectorySearch } from "../features/profiles/profile-directory-search";
 
 const DEMO_SEED = 424242;
 const groups: StealthGroup[] = [{ id: "default", name: "Default", sortOrder: 0 }];
@@ -57,6 +58,21 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       seedIfEmpty();
       return { ok: true, profiles: [...profiles], groups: [...groups] };
     },
+    profileBootstrap: async () => {
+      seedIfEmpty();
+      const total = profiles.length;
+      const groupCounts: Record<string, number> = {};
+      const stats = { total, closed: 0, opening: 0, running: 0, failed: 0, groupCounts };
+      for (const p of profiles) {
+        if (p.status === "closed") stats.closed += 1;
+        else if (p.status === "opening") stats.opening += 1;
+        else if (p.status === "running") stats.running += 1;
+        else if (p.status === "failed") stats.failed += 1;
+        const gid = String(p.groupId ?? "");
+        if (gid) groupCounts[gid] = (groupCounts[gid] ?? 0) + 1;
+      }
+      return { ok: true, groups: [...groups], stats };
+    },
     listProfilesPage: async (input: {
       search?: string;
       groupIds?: string[];
@@ -65,24 +81,14 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       offset?: number;
     } = {}) => {
       seedIfEmpty();
-      const term = String(input.search || "")
-        .trim()
-        .toLowerCase();
+      const term = String(input.search || "").trim();
       const groupIds = Array.isArray(input.groupIds) ? input.groupIds.map(String) : [];
       const statuses = Array.isArray(input.statuses) ? input.statuses.map(String) : [];
       let rows = [...profiles];
       if (groupIds.length) rows = rows.filter((p) => groupIds.includes(String(p.groupId ?? "")));
       if (statuses.length) rows = rows.filter((p) => statuses.includes(p.status));
       if (term) {
-        rows = rows.filter(
-          (p) =>
-            p.name.toLowerCase().includes(term) ||
-            (p.groupName || "").toLowerCase().includes(term) ||
-            (p.proxy || "").toLowerCase().includes(term) ||
-            (p.startupUrl || "").toLowerCase().includes(term) ||
-            (p.note || "").toLowerCase().includes(term) ||
-            String(p.fingerprintSeed).includes(term),
-        );
+        rows = rows.filter((p) => matchesProfileDirectorySearch(p, term));
       }
       const limit = Math.min(50_000, Math.max(1, Number(input.limit) || 100));
       const offset = Math.max(0, Number(input.offset) || 0);
@@ -150,17 +156,22 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       }
       return { ok: true, count: ids.length };
     },
-    deleteProfile: async (payload) => {
+      deleteProfile: async (payload) => {
       const idx = profiles.findIndex((row) => row.id === String(payload.id));
+      const name = idx >= 0 ? profiles[idx]!.name : String(payload.id);
       if (idx >= 0) profiles.splice(idx, 1);
-      return { ok: true };
+      return { ok: true, count: 1, names: [name], storagePurged: 1 };
     },
     deleteProfiles: async (payload) => {
       const ids = new Set((payload.ids || []).map(String));
+      const names: string[] = [];
       for (let i = profiles.length - 1; i >= 0; i -= 1) {
-        if (ids.has(profiles[i]!.id)) profiles.splice(i, 1);
+        if (ids.has(profiles[i]!.id)) {
+          names.push(profiles[i]!.name);
+          profiles.splice(i, 1);
+        }
       }
-      return { ok: true, count: ids.size };
+      return { ok: true, count: names.length, names, storagePurged: names.length };
     },
     launchProfile: async (payload) => {
       const profile = findProfile(String(payload.id));
@@ -220,6 +231,9 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
     openDataFolder: async () => ({ ok: false, path: "" }),
     getIdentityDebug: async () => ({ ok: true, enabled: false }),
     setIdentityDebug: async (payload) => ({ ok: true, enabled: Boolean(payload?.enabled) }),
+    listLaunchPerf: async () => ({ ok: true, entries: [] }),
+    clearLaunchPerf: async () => ({ ok: true }),
+    purgeIdentityExtensions: async () => ({ ok: true, profiles: 0, removed: 0, prefsCleaned: 0 }),
     onProfileSession: () => () => undefined
   };
 }

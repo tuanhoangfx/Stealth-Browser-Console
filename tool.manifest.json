@@ -71,9 +71,9 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-06-19T02:46:50.823Z",
+  "manifestUpdatedAt": "2026-06-21T16:18:35.048Z",
   "release": {
-    "version": "0.5.2",
+    "version": "0.5.15",
     "updatedAt": "2026-06-19",
     "desktopAutoUpdate": "GitHub Releases via electron-updater (NSIS installer). Startup check + header Update button. Publish: pnpm desktop:release -- -Publish or tag push CI.",
     "latestPublished": {

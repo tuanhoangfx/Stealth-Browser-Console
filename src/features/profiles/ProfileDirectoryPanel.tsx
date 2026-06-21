@@ -1,6 +1,6 @@
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useMemo, type CSSProperties, type ReactNode } from "react";
 import {
-  HubSplitDirectoryPane,
+  HUB_SPLIT_DIRECTORY_PANE_CLASS,
   KpiStrip,
   hubDirectoryListResetKey,
   type KpiTileData,
@@ -9,6 +9,11 @@ import {
 import type { ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
 import { ProfileFilterPane } from "./ProfileFilterPane";
 import { ProfilesHubChrome } from "./ProfilesHubChrome";
+import {
+  hasActiveProfileDirectoryFilters,
+  resolveCatalogTotal,
+  resolveProfileDirectoryVisibleTotal,
+} from "./profile-directory-counts";
 import { StealthProfileDirectoryTable } from "./StealthProfileDirectoryTable";
 import { profileStateToFilterValues } from "./profile-filters";
 
@@ -94,6 +99,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     [selectedGroupIds, selectedStatuses],
   );
   const listResetKey = hubDirectoryListResetKey(search, filterValues);
+  const panelFillStyle = useMemo(
+    () => ({ "--hub-directory-page-rows": String(pageSize) }) as CSSProperties,
+    [pageSize],
+  );
   const emptyMessage =
     apiStatus === "offline"
       ? "CloakBrowser engine offline — check Settings or run pnpm dev in Electron."
@@ -101,21 +110,34 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
         ? "No profiles found."
         : undefined;
 
+  const directoryQuery = useMemo(
+    () => ({ search, groupIds: selectedGroupIds, statuses: selectedStatuses }),
+    [search, selectedGroupIds, selectedStatuses],
+  );
+  const catalogTotal = resolveCatalogTotal(catalogStats, profiles.length);
+  const directoryVisibleTotal = resolveProfileDirectoryVisibleTotal(
+    directoryQuery,
+    catalogTotal,
+    filteredTotal ?? filteredProfiles.length,
+  );
+  const filtersActive = hasActiveProfileDirectoryFilters(directoryQuery);
+  const paginationTotal = filtersActive ? directoryVisibleTotal : catalogTotal;
+
   return (
     <ProfilesHubChrome centerStats={centerStats} headerActions={headerActions}>
       <div className="stealth-profile-layout flex min-h-0 flex-1 overflow-hidden">
         <div className="stealth-profile-directory-pane min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
-          <HubSplitDirectoryPane
-            className="stealth-profile-directory-frame hub-directory-frame"
-            variant="panel"
-            kpiBand={kpis?.length ? <KpiStrip items={kpis} /> : undefined}
-            filterBar={
+          <section
+            className={`${HUB_SPLIT_DIRECTORY_PANE_CLASS} stealth-profile-directory-frame hub-directory-frame hub-directory-frame--panel-fill`}
+            style={panelFillStyle}
+          >
+            <div className="hub-split-directory-pane__filters shrink-0 border-b border-white/5 px-3 py-3">
               <ProfileFilterPane
                 catalogStats={catalogStats}
                 groups={groups}
                 filteredProfiles={filteredProfiles}
-                totalProfiles={catalogStats?.total ?? profiles.length}
-                shownProfiles={filteredTotal ?? filteredProfiles.length}
+                totalProfiles={catalogTotal}
+                shownProfiles={directoryVisibleTotal}
                 search={search}
                 setSearch={setSearch}
                 selectedGroupIds={selectedGroupIds}
@@ -137,9 +159,14 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 onExport={onExport}
                 onImport={onImport}
               />
-            }
-          >
-            <StealthProfileDirectoryTable
+            </div>
+            {kpis?.length ? (
+              <div className="hub-split-directory-pane__kpi-band shrink-0 min-w-0 border-b border-white/5 px-3 py-3">
+                <KpiStrip items={kpis} />
+              </div>
+            ) : null}
+            <div className="hub-split-directory-pane__body flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-3">
+              <StealthProfileDirectoryTable
                 items={filteredProfiles}
                 selectedIds={selectedIds}
                 resetKey={listResetKey}
@@ -147,7 +174,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 serverPagination={
                   onPageChange
                     ? {
-                        total: filteredTotal ?? filteredProfiles.length,
+                        total: paginationTotal,
                         pageIndex,
                         onPageChange,
                       }
@@ -160,9 +187,12 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 onToggleSelectAll={onToggleSelectAll}
                 allVisibleSelected={allVisibleSelected}
                 onOpen={openOne}
+                onClose={closeOne}
+                searchQuery={search}
                 emptyMessage={emptyMessage}
               />
-          </HubSplitDirectoryPane>
+            </div>
+          </section>
         </div>
         {rail}
       </div>

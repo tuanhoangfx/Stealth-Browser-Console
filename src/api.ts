@@ -1,4 +1,4 @@
-import type { EngineHealth, OpenUrlResult, ProfileRow, ProfileCatalogStats, RunHistoryItem, StealthGroup, StealthProfile } from "./types";
+import type { EngineHealth, LaunchPerfEntry, OpenUrlResult, ProfileRow, ProfileCatalogStats, RunHistoryItem, StealthGroup, StealthProfile } from "./types";
 import { installStealthWebMock } from "./lib/stealth-web-mock";
 
 if (import.meta.env.DEV) {
@@ -22,6 +22,11 @@ export async function fetchEngineHealth(): Promise<EngineHealth> {
 
 export async function updateEngineBinary() {
   return api().updateBinary();
+}
+
+export async function fetchProfileBootstrap(): Promise<{ groups: StealthGroup[]; stats: ProfileCatalogStats }> {
+  const data = await api().profileBootstrap();
+  return { groups: data.groups, stats: data.stats };
 }
 
 export async function fetchProfilesAndGroups(): Promise<{ profiles: StealthProfile[]; groups: StealthGroup[] }> {
@@ -147,4 +152,23 @@ export async function fetchIdentityDebugEnabled(): Promise<boolean> {
 export async function setIdentityDebugEnabled(enabled: boolean): Promise<boolean> {
   const data = await api().setIdentityDebug({ enabled });
   return Boolean(data.enabled);
+}
+
+export async function fetchLaunchPerfEntries(limit = 24): Promise<LaunchPerfEntry[]> {
+  const data = await api().listLaunchPerf({ limit });
+  return data.entries;
+}
+
+export async function clearLaunchPerfEntries(): Promise<void> {
+  await api().clearLaunchPerf();
+}
+
+export async function purgeAllIdentityExtensions(): Promise<{ profiles: number; removed: number; prefsCleaned: number }> {
+  const data = await api().purgeIdentityExtensions();
+  if (!data.ok) throw new Error(data.error || "Purge failed");
+  return {
+    profiles: data.profiles ?? 0,
+    removed: data.removed ?? 0,
+    prefsCleaned: data.prefsCleaned ?? 0,
+  };
 }

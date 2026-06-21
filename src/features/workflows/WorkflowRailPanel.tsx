@@ -68,7 +68,7 @@ export const WorkflowRailPanel = memo(function WorkflowRailPanel({
 
   return (
     <HubSplitDirectoryPane
-      className="stealth-workflow-directory-frame min-h-0 flex-1"
+      className="stealth-workflow-directory-frame hub-directory-frame min-h-0 flex-1"
       variant="rail"
       fixedRows={WORKFLOW_RAIL_PAGE_SIZE}
       filterBar={

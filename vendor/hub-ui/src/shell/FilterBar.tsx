@@ -30,6 +30,9 @@ import {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
   HubFilterDropdownCircle,
+  HubFilterDropdownPanelSearch,
+  HUB_FILTER_OPTION_EMOJI_CLASS,
+  filterDropdownPanelSearchPlaceholder,
   hubFilterTriggerClass,
   multiFilterTriggerTitle,
 } from "./filter-dropdown-primitives";
@@ -37,14 +40,21 @@ import { compactIconSize } from "../ui-scale";
 import { registerHubSearchClear, registerHubSearchFocus } from "../keyboard/hub-keyboard-shortcuts";
 import { HubSearchField } from "./HubSearchField";
 
-export type FilterOption = { value: string; label: string; color?: string; count?: number; iconSrc?: string };
+export type FilterOption = {
+  value: string;
+  label: string;
+  color?: string;
+  count?: number;
+  iconSrc?: string;
+  emoji?: string;
+};
 export type FilterDef = {
   key: string;
   label: string;
   options: FilterOption[];
   showAllLabel?: boolean;
-  /** Items matching query + other active filters (shown on “All …” row). */
   totalCount?: number;
+  triggerEmoji?: string;
 };
 
 const FILTER_ICONS: Record<string, React.ElementType> = {
@@ -289,6 +299,13 @@ function FilterOptionCount({ value }: { value?: number }) {
 }
 
 function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: FilterOption }) {
+  if (option.emoji) {
+    return (
+      <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+        {option.emoji}
+      </span>
+    );
+  }
   if (option.iconSrc) {
     return (
       <img
@@ -306,6 +323,23 @@ function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: F
     ) : null;
   }
   return <FilterIconGlyph meta={meta} />;
+}
+
+function FilterAllRowGlyph({ filter }: { filter: FilterDef }) {
+  if (filter.triggerEmoji) {
+    return (
+      <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+        {filter.triggerEmoji}
+      </span>
+    );
+  }
+  const allIcon = resolveFilterAllIcon(filter.key);
+  if (allIcon) return <FilterIconGlyph meta={allIcon} />;
+  return null;
+}
+
+function filterAllRowLabel(filter: FilterDef): string {
+  return filter.showAllLabel ? `All ${filter.label}` : filter.label;
 }
 
 function resolveFilterTriggerIcon(filter: FilterDef, selected: string[]): FilterIconMeta | null {
@@ -328,10 +362,12 @@ export type HubMultiFilterDropdownProps = {
   selected: string[];
   onChange: (values: string[]) => void;
   className?: string;
+  triggerClassName?: string;
   /** `label-value` (default): `Label: value`. `value`: selected option label only. */
   triggerFormat?: "label-value" | "value";
   /** Native button title — assignee tooltip, etc. */
   triggerTitle?: string;
+  usePortal?: boolean;
 };
 
 export function HubMultiFilterDropdown({
@@ -339,21 +375,38 @@ export function HubMultiFilterDropdown({
   selected,
   onChange,
   className = "",
+  triggerClassName = "",
   triggerFormat = "label-value",
   triggerTitle,
+  usePortal = true,
 }: HubMultiFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 288 });
+
+  useLayoutEffect(() => {
+    if (!open || !usePortal || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPanelPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: Math.max(rect.width, 288),
+    });
+  }, [open, usePortal]);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (ref.current?.contains(t)) return;
+      if (usePortal && (e.target as Element).closest?.("[data-hub-multi-filter-panel]")) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
+  }, [open, usePortal]);
 
   const filtered = filter.options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()));
   const allValues = filter.options.map((o) => o.value);
@@ -387,9 +440,8 @@ export function HubMultiFilterDropdown({
   })();
 
   const triggerIcon = resolveFilterTriggerIcon(filter, selected);
-  const triggerIconSrc =
-    selected.length === 1 ? filter.options.find((o) => o.value === selected[0])?.iconSrc : undefined;
-  const allIcon = resolveFilterAllIcon(filter.key);
+  const selectedOpt = selected.length === 1 ? filter.options.find((o) => o.value === selected[0]) : undefined;
+  const triggerIconSrc = selectedOpt?.iconSrc;
   const showTotalOnTrigger = selected.length === 0 && filter.totalCount !== undefined;
   const resolvedTriggerTitle =
     triggerTitle ??
@@ -402,15 +454,28 @@ export function HubMultiFilterDropdown({
   return (
     <div ref={ref} className={`relative ${className}`.trim()}>
       <button
+        ref={triggerRef}
         type="button"
         title={resolvedTriggerTitle}
         onClick={() => setOpen((v) => !v)}
-        className={hubFilterTriggerClass(selected.length > 0)}
+        className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
         {triggerIconSrc ? (
           <img src={triggerIconSrc} alt="" className="h-3 w-3 shrink-0 rounded-sm object-contain" aria-hidden />
+        ) : selected.length === 1 && selectedOpt?.color ? (
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
+        ) : filter.triggerEmoji ? (
+          <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+            {filter.triggerEmoji}
+          </span>
+        ) : selectedOpt?.emoji ? (
+          <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+            {selectedOpt.emoji}
+          </span>
         ) : triggerIcon ? (
           <FilterIconGlyph meta={triggerIcon} size={compactIconSize(12)} />
+        ) : selectedOpt?.color ? (
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
         ) : null}
         <span>{buttonLabel}</span>
         {showTotalOnTrigger ? (
@@ -421,57 +486,91 @@ export function HubMultiFilterDropdown({
       </button>
 
       {open ? (
-        <div className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} absolute left-0 top-full z-30 mt-1`}>
-          <div className="border-b border-white/5 p-2">
-            <div className="relative">
-              <Search size={compactIconSize(12)} className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]" />
-              <input
+        usePortal ? (
+          createPortal(
+            <div
+              data-hub-multi-filter-panel
+              className={HUB_FILTER_DROPDOWN_PANEL_CLASS}
+              style={{
+                position: "fixed",
+                top: panelPos.top,
+                left: panelPos.left,
+                width: panelPos.width,
+                zIndex: 2500,
+              }}
+              role="listbox"
+            >
+              <HubFilterDropdownPanelSearch
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={`Search ${filter.label.toLowerCase()}...`}
-                className="field text-xs"
-                style={{ paddingLeft: 25, paddingTop: 4, paddingBottom: 4 }}
-                autoFocus
+                onChange={setSearch}
+                placeholder={filterDropdownPanelSearchPlaceholder(filter.label)}
               />
+              <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
+                <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                  <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
+                  <FilterAllRowGlyph filter={filter} />
+                  <span>{filterAllRowLabel(filter)}</span>
+                  <FilterOptionCount
+                    value={
+                      filter.totalCount ??
+                      (filter.options.some((o) => o.count !== undefined)
+                        ? filter.options.reduce((sum, o) => sum + (o.count ?? 0), 0)
+                        : filter.options.length)
+                    }
+                  />
+                </button>
+                <div className="my-1 border-t border-white/5" />
+                {filtered.map((o) => (
+                  <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                    <HubFilterDropdownCircle checked={selected.includes(o.value)} />
+                    <FilterOptionGlyph filterKey={filter.key} option={o} />
+                    <span className="flex-1 truncate text-left" title={o.label}>
+                      {o.label}
+                    </span>
+                    <FilterOptionCount value={o.count} />
+                  </button>
+                ))}
+                {filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        ) : (
+          <div className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} absolute left-0 top-full z-30 mt-1`} role="listbox">
+            <HubFilterDropdownPanelSearch
+              value={search}
+              onChange={setSearch}
+              placeholder={filterDropdownPanelSearchPlaceholder(filter.label)}
+            />
+            <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
+              <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
+                <FilterAllRowGlyph filter={filter} />
+                <span>{filterAllRowLabel(filter)}</span>
+                <FilterOptionCount
+                  value={
+                    filter.totalCount ??
+                    (filter.options.some((o) => o.count !== undefined)
+                      ? filter.options.reduce((sum, o) => sum + (o.count ?? 0), 0)
+                      : filter.options.length)
+                  }
+                />
+              </button>
+              <div className="my-1 border-t border-white/5" />
+              {filtered.map((o) => (
+                <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                  <HubFilterDropdownCircle checked={selected.includes(o.value)} />
+                  <FilterOptionGlyph filterKey={filter.key} option={o} />
+                  <span className="flex-1 truncate text-left" title={o.label}>
+                    {o.label}
+                  </span>
+                  <FilterOptionCount value={o.count} />
+                </button>
+              ))}
+              {filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
             </div>
           </div>
-          <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-            <button
-              type="button"
-              onClick={toggleAll}
-              className={HUB_FILTER_DROPDOWN_ROW_CLASS}
-            >
-              <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
-              {allIcon ? <FilterIconGlyph meta={allIcon} /> : null}
-              <span>All {filter.label}</span>
-              <FilterOptionCount
-                value={
-                  filter.totalCount ??
-                  (filter.options.some((o) => o.count !== undefined)
-                    ? filter.options.reduce((sum, o) => sum + (o.count ?? 0), 0)
-                    : filter.options.length)
-                }
-              />
-            </button>
-            <div className="my-1 border-t border-white/5" />
-            {filtered.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => toggle(o.value)}
-                className={HUB_FILTER_DROPDOWN_ROW_CLASS}
-              >
-                <HubFilterDropdownCircle checked={selected.includes(o.value)} />
-                <FilterOptionGlyph filterKey={filter.key} option={o} />
-                <span className="flex-1 truncate text-left" title={o.label}>
-                  {o.label}
-                </span>
-                <FilterOptionCount value={o.count} />
-              </button>
-            ))}
-            {filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
-          </div>
-        </div>
+        )
       ) : null}
     </div>
   );
@@ -485,6 +584,7 @@ export type HubSingleFilterDropdownProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  triggerClassName?: string;
   usePortal?: boolean;
   /** `label-value` (default): `Label: value`. `value`: selected option label only — pair with external `HubFormFieldLabel`. */
   triggerFormat?: "label-value" | "value";
@@ -499,6 +599,7 @@ export function HubSingleFilterDropdown({
   onChange,
   disabled = false,
   className = "",
+  triggerClassName = "",
   usePortal = true,
   triggerFormat = "label-value",
 }: HubSingleFilterDropdownProps) {
@@ -539,25 +640,21 @@ export function HubSingleFilterDropdown({
 
   const opt = options.find((o) => o.value === value);
   const triggerIcon = resolveFilterTriggerIcon(filter, selected);
+  const triggerIconNode = opt?.emoji ? (
+    <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+      {opt.emoji}
+    </span>
+  ) : triggerIcon ? (
+    <FilterIconGlyph meta={triggerIcon} size={compactIconSize(12)} />
+  ) : undefined;
 
   const panelInner = (
     <>
-      <div className="border-b border-white/5 p-2">
-        <div className="relative">
-          <Search
-            size={compactIconSize(12)}
-            className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]"
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`Search ${label.toLowerCase()}...`}
-            className="field text-xs"
-            style={{ paddingLeft: 25, paddingTop: 4, paddingBottom: 4 }}
-            autoFocus
-          />
-        </div>
-      </div>
+      <HubFilterDropdownPanelSearch
+        value={search}
+        onChange={setSearch}
+        placeholder={filterDropdownPanelSearchPlaceholder(label)}
+      />
       <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
         {filtered.map((o) => (
           <button
@@ -614,9 +711,9 @@ export function HubSingleFilterDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => !disabled && setOpen((v) => !v)}
-        className={hubFilterTriggerClass(selected.length > 0)}
+        className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
-        {triggerIcon ? <FilterIconGlyph meta={triggerIcon} size={compactIconSize(12)} /> : null}
+        {triggerIconNode}
         <span className="min-w-0 truncate">
           {triggerFormat === "value" ? (
             opt?.label ?? label

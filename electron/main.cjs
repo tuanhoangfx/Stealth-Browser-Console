@@ -15,6 +15,9 @@ const {
   getIdentityDebugEnabled,
   setIdentityDebugEnabled,
 } = require("./lib/app-settings.cjs");
+const { purgeIdentityToolbarRoot, purgeAllProfilesIdentityToolbar } = require("./lib/profile-chrome-cleanup.cjs");
+const { warmCookieBridgeStoreCache } = require("./lib/cookie-bridge-store.cjs");
+const { profileIdentityUiEnabled } = require("./lib/profile-identity-ui.cjs");
 const { runOpenUrl } = require("./automation/open-url.cjs");
 const {
   validateProfileId,
@@ -60,22 +63,27 @@ function bindIpc() {
   });
 
   ipcMain.handle("profile:listPage", (_event, payload = {}) => {
-    sessionManager.syncProfileStatuses();
     const page = profileService.listProfilesPage(payload);
     return { ok: true, ...page };
   });
 
   ipcMain.handle("profile:catalogStats", () => {
-    sessionManager.syncProfileStatuses();
     return { ok: true, stats: profileService.getCatalogStats() };
   });
 
-  ipcMain.handle("profile:list", () => {
-    sessionManager.syncProfileStatuses();
+  ipcMain.handle("profile:bootstrap", () => {
     return {
       ok: true,
-      profiles: profileService.listProfiles(),
-      groups: profileService.listGroups()
+      groups: profileService.listGroups(),
+      stats: profileService.getCatalogStats(),
+    };
+  });
+
+  ipcMain.handle("profile:list", () => {
+    return {
+      ok: true,
+      profiles: profileService.listProfilesLite(),
+      groups: profileService.listGroups(),
     };
   });
 
@@ -97,24 +105,29 @@ function bindIpc() {
     return { ok: true, ...result };
   });
 
-  ipcMain.handle("profile:delete", (_event, payload = {}) => {
+  ipcMain.handle("profile:delete", async (_event, payload = {}) => {
     const id = validateProfileId(payload.id);
-    if (sessionManager.isRunning(id)) {
-      throw new Error("Close the profile before deleting.");
-    }
+    const profile = profileService.getProfile(id);
+    const release = await sessionManager.releaseProfileStorage(id);
     profileService.deleteProfile(id);
-    return { ok: true };
+    return {
+      ok: true,
+      count: 1,
+      names: [profile?.name || id],
+      storagePurged: release.storagePurged ? 1 : 0,
+    };
   });
 
-  ipcMain.handle("profile:deleteMany", (_event, payload = {}) => {
+  ipcMain.handle("profile:deleteMany", async (_event, payload = {}) => {
     const ids = Array.isArray(payload.ids) ? payload.ids.map(String) : [];
+    const names = ids.map((id) => profileService.getProfile(id)?.name || id);
+    let storagePurged = 0;
     for (const id of ids) {
-      if (sessionManager.isRunning(id)) {
-        throw new Error(`Close profile ${id} before deleting.`);
-      }
+      const release = await sessionManager.releaseProfileStorage(id);
+      if (release.storagePurged) storagePurged += 1;
     }
-    profileService.deleteProfiles(ids);
-    return { ok: true, count: ids.length };
+    const result = profileService.deleteProfiles(ids);
+    return { ok: true, count: result.count, names, storagePurged };
   });
 
   ipcMain.handle("profile:launch", async (_event, payload = {}) => {
@@ -246,6 +259,23 @@ function bindIpc() {
     ok: true,
     enabled: setIdentityDebugEnabled(Boolean(payload.enabled)),
   }));
+
+  const { listLaunchPerf, clearLaunchPerf } = require("./lib/profile-launch-perf.cjs");
+
+  ipcMain.handle("launchPerf:list", (_event, payload = {}) => ({
+    ok: true,
+    entries: listLaunchPerf(payload?.limit),
+  }));
+
+  ipcMain.handle("launchPerf:clear", () => clearLaunchPerf());
+
+  ipcMain.handle("identity:purgeAll", () => {
+    if (profileIdentityUiEnabled()) {
+      return { ok: false, error: "Identity UI is enabled — purge blocked." };
+    }
+    const result = purgeAllProfilesIdentityToolbar(userDataRoot());
+    return { ok: true, ...result };
+  });
 }
 
 function tryLoadJsonFile(candidates) {
@@ -393,7 +423,16 @@ async function loadApplication(win) {
   }
   const indexPath = distIndexPath();
   if (!fs.existsSync(indexPath)) {
-    throw new Error("dist/index.html not found. Run pnpm build or pnpm dev.");
+    const html = [
+      "<!doctype html><html><body style=\"margin:0;background:#0b1020;color:#e6e8ef;font:14px/1.5 system-ui,sans-serif\">",
+      "<div style=\"padding:2rem;max-width:40rem\">",
+      "<h1 style=\"margin:0 0 .75rem;font-size:1.125rem\">Stealth Browser Console</h1>",
+      "<p>Dev server is not running and <code>dist/index.html</code> is missing.</p>",
+      "<p>Run <code>pnpm dev</code> or <code>pnpm dev:reload</code> from the project folder.</p>",
+      "</div></body></html>",
+    ].join("");
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    return;
   }
   await win.loadFile(indexPath);
 }
@@ -454,11 +493,29 @@ async function createWindow() {
     }
   });
 
-  win.once("ready-to-show", () => {
-    win.maximize();
-    win.show();
+  win.webContents.on("did-fail-load", (_event, code, description, url) => {
+    console.error(`[load] failed ${code} ${description} ${url}`);
   });
+
+  win.webContents.on("render-process-gone", (_event, details) => {
+    console.error(`[load] render gone ${details.reason}`);
+  });
+
   await loadApplication(win);
+
+  const showWindow = () => {
+    if (win.isDestroyed()) return;
+    if (!win.isVisible()) {
+      win.maximize();
+      win.show();
+      win.focus();
+    }
+  };
+
+  win.once("ready-to-show", showWindow);
+  // ready-to-show may fire before listener attaches when loading from file:// or fast dev server.
+  setImmediate(showWindow);
+
   attachDesktopUpdaterWindow(win);
   return win;
 }
@@ -469,11 +526,28 @@ app.whenReady().then(async () => {
   await openDatabase(userDataRoot());
   profileService.ensureSeedProfiles();
   sessionManager.setUserDataRoot(userDataRoot());
+  setImmediate(() => {
+    void sessionManager.reconcileOrphansOnStartup().catch(() => undefined);
+    void warmCookieBridgeStoreCache(userDataRoot()).catch((error) => {
+      console.warn("[cookie-bridge] warm cache:", error instanceof Error ? error.message : error);
+    });
+  });
   try {
     const legacyIdentityRoot = path.join(userDataRoot(), "identity-ext");
     if (fs.existsSync(legacyIdentityRoot)) fs.rmSync(legacyIdentityRoot, { recursive: true, force: true });
   } catch {
     // best-effort — remove V4 in-page identity extensions
+  }
+  if (!profileIdentityUiEnabled()) {
+    try {
+      purgeIdentityToolbarRoot(userDataRoot());
+      const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
+      console.log(
+        `[identity-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
+      );
+    } catch {
+      // best-effort — drop cached identity-toolbar bundles
+    }
   }
   bindContentSecurityPolicy();
   bindIpc();

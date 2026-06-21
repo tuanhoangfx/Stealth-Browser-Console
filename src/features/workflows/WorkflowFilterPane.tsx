@@ -54,7 +54,7 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
           showTimeRange={false}
           showRefresh={false}
           displayBand={isPanel ? <StealthDisplayBandToolbar screen="workflow" /> : undefined}
-          showTablePageSize={isPanel ? false : undefined}
+          showTablePageSize={false}
           showResultCount={!isPanel}
           countIcon={Bot}
           shown={filteredCount}

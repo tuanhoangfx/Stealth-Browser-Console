@@ -1,10 +1,16 @@
 const path = require("node:path");
 const { execFile } = require("node:child_process");
 const { isIdentityDebugEnabled } = require("./app-settings.cjs");
+const { profileIdentityUiEnabled } = require("./profile-identity-ui.cjs");
 
 const POLL_MS = 600;
 const MAX_ATTEMPTS = 20;
 const PS1 = path.join(__dirname, "..", "scripts", "set-taskbar-profile-icon.ps1");
+
+function taskbarOverlayEnabled() {
+  const raw = String(process.env.STEALTH_TASKBAR_OVERLAY ?? "0").toLowerCase();
+  return raw === "1" || raw === "true" || raw === "on";
+}
 
 function identityDebugEnabled() {
   return isIdentityDebugEnabled();
@@ -52,7 +58,7 @@ function parseTaskbarOutput(stdout) {
 }
 
 async function applyWindowsTaskbarOverlay(userDataDir, code, label, profileId, chipText = "") {
-  if (process.platform !== "win32") return 0;
+  if (!profileIdentityUiEnabled() || process.platform !== "win32" || !taskbarOverlayEnabled()) return 0;
   const args = [
     "-ProfileId",
     String(profileId || ""),
@@ -85,7 +91,7 @@ async function applyWindowsTaskbarOverlay(userDataDir, code, label, profileId, c
 }
 
 async function clearWindowsTaskbarOverlay(userDataDir, profileId) {
-  if (process.platform !== "win32") return 0;
+  if (!profileIdentityUiEnabled() || process.platform !== "win32") return 0;
   try {
     const out = await runTaskbarIcon([
       "-ProfileId",

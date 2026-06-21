@@ -1,5 +1,150 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-21 — v0.5.15 — Electron dev reload
+
+- Version: `0.5.15`
+- Timestamp: 2026-06-21 23:18 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-21 — v0.5.14 — Electron dev reload
+
+- Version: `0.5.14`
+- Timestamp: 2026-06-21 22:58 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-21 — v0.5.13 — Electron dev reload
+
+- Version: `0.5.13`
+- Timestamp: 2026-06-21 22:42 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.12 — Electron dev reload
+
+- Version: `0.5.12`
+- Timestamp: 2026-06-19 03:03 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.11 — Electron dev reload
+
+- Version: `0.5.11`
+- Timestamp: 2026-06-19 02:31 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.10 — Electron dev reload
+
+- Version: `0.5.10`
+- Timestamp: 2026-06-19 02:01 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.9 — Electron dev reload
+
+- Version: `0.5.9`
+- Timestamp: 2026-06-19 01:18 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.8 — Electron dev reload
+
+- Version: `0.5.8`
+- Timestamp: 2026-06-19 01:03 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.7 — Electron dev reload
+
+- Version: `0.5.7`
+- Timestamp: 2026-06-19 00:47 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.6 — Electron dev reload
+
+- Version: `0.5.6`
+- Timestamp: 2026-06-19 00:34 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.5 — Electron dev reload
+
+- Version: `0.5.5`
+- Timestamp: 2026-06-19 00:09 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.4 — Electron dev reload
+
+- Version: `0.5.4`
+- Timestamp: 2026-06-19 00:02 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-19 — v0.5.3 — Identity extension removed + dev reload gate
+
+- Version: `0.5.3`
+- Timestamp: 2026-06-19 22:50 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Identity label extension OFF** — purge Chrome prefs + `identity-toolbar` bundles; `--disable-extensions` on launch; kill stale Chrome (no attach).
+- **`purgeAllChromeExtensions`** — wipe pinned E0001/identity from profile prefs when identity UI disabled.
+- **`electron-dev-gate.mjs`** — auto patch bump + free :5175 when `electron/` changes (`predev` + `pnpm dev:reload`).
+
 ## 2026-06-18 - Catalog 10k–50k + batch runner + proxy pool
 
 - Version: `0.5.2`

@@ -6,6 +6,15 @@ const { navigateStartupUrl } = require("../automation/navigate-startup.cjs");
 const { getFreePort, waitForCdp } = require("../lib/net-port.cjs");
 const { extractProfileCode, buildPillTooltip, buildPillChipText } = require("../lib/profile-identity.cjs");
 const { applyWindowsTaskbarOverlay, clearWindowsTaskbarOverlay } = require("../lib/profile-taskbar-overlay.cjs");
+const { profileIdentityUiEnabled } = require("../lib/profile-identity-ui.cjs");
+const {
+  focusProfileBrowserWindow,
+  hasProfileBrowserProcess,
+  killOrphanProfileBrowser,
+  readDevToolsActivePort,
+} = require("../lib/profile-browser-orphan.cjs");
+const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-cleanup.cjs");
+const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks } = require("../lib/profile-user-data-repair.cjs");
 
 /** CDP passthrough bật mặc định; tắt bằng STEALTH_CDP_ENABLE=0. */
 function cdpEnabled() {
@@ -15,21 +24,22 @@ function cdpEnabled() {
 const PROFILE_LOCK_FILES = ["SingletonLock", "SingletonCookie", "lockfile"];
 const SESSION_WATCHDOG_MS = 8000;
 
-function isLaunchLockError(error) {
-  const msg = error instanceof Error ? error.message : String(error);
-  return /SingletonLock|lockfile|EBUSY|EACCES|user data directory|already in use|ProcessSingleton/i.test(msg);
+function profileDirHasLock(userDataDir) {
+  return PROFILE_LOCK_FILES.some((name) => fs.existsSync(path.join(userDataDir, name)));
 }
 
-function removeStaleProfileLocks(userDataDir) {
-  for (const name of PROFILE_LOCK_FILES) {
-    const file = path.join(userDataDir, name);
-    if (!fs.existsSync(file)) continue;
-    try {
-      fs.unlinkSync(file);
-    } catch {
-      // live process still holds the lock
-    }
+async function prepareProfileForLaunch(userDataDir, { aggressive = false } = {}) {
+  if (aggressive || profileDirHasLock(userDataDir)) {
+    return repairProfileUserDataDir(userDataDir);
   }
+  return { repaired: false };
+}
+
+function isLaunchLockError(error) {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /SingletonLock|lockfile|EBUSY|EACCES|user data directory|already in use|ProcessSingleton|existing browser session|Opening in existing/i.test(
+    msg,
+  );
 }
 
 function isContextAlive(context) {
@@ -68,6 +78,159 @@ class SessionManager {
     } catch {
       // listener errors should not break session lifecycle
     }
+  }
+
+  /** Boot-time — kill orphan Chrome + reset stale running/opening rows. */
+  async reconcileOrphansOnStartup() {
+    const root = this.#userDataRoot;
+    if (!root) return { cleaned: 0 };
+    let cleaned = 0;
+    const profilesDir = path.join(root, "profiles");
+
+    for (const row of profileService.listActiveProfileIds()) {
+      if (this.isRunning(row.id)) continue;
+      const userDataDir = profileDataDir(root, row.id);
+      await killOrphanProfileBrowser(userDataDir);
+      removeStaleProfileLocks(userDataDir);
+      const next = profileService.setProfileStatus(row.id, "closed");
+      this.#emitSessionChange(row.id, next, "startup-reconciled");
+      cleaned += 1;
+    }
+
+    if (!fs.existsSync(profilesDir)) return { cleaned };
+    const fullScan = String(process.env.STEALTH_STARTUP_FULL_ORPHAN_SCAN ?? "0").toLowerCase();
+    if (fullScan !== "1" && fullScan !== "true" && fullScan !== "on") return { cleaned };
+    for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const id = entry.name;
+      if (this.isRunning(id)) continue;
+      const userDataDir = path.join(profilesDir, id);
+      const hasLock = PROFILE_LOCK_FILES.some((name) => fs.existsSync(path.join(userDataDir, name)));
+      if (!hasLock) continue;
+      if (await hasProfileBrowserProcess(userDataDir)) {
+        await killOrphanProfileBrowser(userDataDir);
+      }
+      removeStaleProfileLocks(userDataDir);
+      const profile = profileService.getProfile(id);
+      if (profile && (profile.status === "running" || profile.status === "opening")) {
+        const next = profileService.setProfileStatus(id, "closed");
+        this.#emitSessionChange(id, next, "startup-reconciled");
+        cleaned += 1;
+      }
+    }
+
+    return { cleaned };
+  }
+
+  #registerPlaywrightSession(id, profile, opened) {
+    const profileCode = extractProfileCode(profile.name, profile.id);
+    this.#sessions.set(id, {
+      context: opened.context,
+      userDataDir: opened.userDataDir,
+      alive: true,
+      debugPort: opened.debugPort || 0,
+      profile,
+      profileCode,
+      focusOnly: false,
+    });
+    this.#bindSessionLifecycle(id, opened.context, profile);
+
+    const launchUrl = profileService.resolveProfileLaunchUrl(profile.startupUrl);
+    void (async () => {
+      try {
+        await navigateStartupUrl(opened.context, launchUrl);
+      } catch {
+        // launch still succeeds — operator can navigate manually
+      }
+      if (profileIdentityUiEnabled()) {
+        const chipText = buildPillChipText(profile);
+        const tooltip = buildPillTooltip(profile);
+        await applyWindowsTaskbarOverlay(opened.userDataDir, profileCode, tooltip, profile.id, chipText);
+      }
+    })();
+
+    profileService.touchLastOpened(id);
+    const running = profileService.setProfileStatus(id, "running");
+    this.#emitSessionChange(id, running, "running");
+    return {
+      ok: true,
+      status: "running",
+      profile: running,
+      userDataDir: opened.userDataDir,
+      debugPort: opened.debugPort || 0,
+    };
+  }
+
+  #bindFocusOnlyLifecycle(id, userDataDir) {
+    const watchdog = setInterval(() => {
+      void (async () => {
+        const session = this.#sessions.get(id);
+        if (!session?.alive || !session.focusOnly) {
+          clearInterval(watchdog);
+          return;
+        }
+        const alive = await hasProfileBrowserProcess(userDataDir);
+        if (alive) return;
+        if (session.watchdog) clearInterval(session.watchdog);
+        session.alive = false;
+        this.#sessions.delete(id);
+        const next = profileService.setProfileStatus(id, "closed");
+        this.#emitSessionChange(id, next, "closed");
+      })();
+    }, SESSION_WATCHDOG_MS);
+    const session = this.#sessions.get(id);
+    if (session) session.watchdog = watchdog;
+  }
+
+  async #tryAttachOrFocusOrphan(profile, userDataDir) {
+    const id = String(profile.id);
+    const profileCode = extractProfileCode(profile.name, profile.id);
+    const port = readDevToolsActivePort(userDataDir);
+
+    if (port > 0) {
+      try {
+        await waitForCdp(port, { attempts: 8, intervalMs: 120 });
+        const { chromium } = await import("playwright-core");
+        const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+        const context = browser.contexts()[0];
+        if (context && isContextAlive(context)) {
+          return this.#registerPlaywrightSession(id, profile, {
+            context,
+            userDataDir,
+            debugPort: port,
+          });
+        }
+      } catch {
+        // fall through to focus-only attach
+      }
+    }
+
+    if (!(await hasProfileBrowserProcess(userDataDir))) return null;
+
+    const focused = await focusProfileBrowserWindow(userDataDir);
+    if (!focused.ok) return null;
+
+    this.#sessions.set(id, {
+      context: null,
+      userDataDir,
+      alive: true,
+      debugPort: 0,
+      profile,
+      profileCode,
+      focusOnly: true,
+    });
+    this.#bindFocusOnlyLifecycle(id, userDataDir);
+    profileService.touchLastOpened(id);
+    const running = profileService.setProfileStatus(id, "running");
+    this.#emitSessionChange(id, running, "focused");
+    return {
+      ok: true,
+      status: "running",
+      profile: running,
+      userDataDir,
+      debugPort: 0,
+      focused: true,
+    };
   }
 
   /**
@@ -169,31 +332,62 @@ class SessionManager {
     void clearWindowsTaskbarOverlay(session.userDataDir, session.profile?.id || id);
     session.alive = false;
     this.#sessions.delete(id);
-    await closeContext(session.context);
+    if (session.focusOnly) {
+      await killOrphanProfileBrowser(session.userDataDir);
+    } else {
+      await closeContext(session.context);
+    }
     removeStaleProfileLocks(session.userDataDir);
   }
 
   async launch(profile) {
     const id = String(profile.id);
+    const identityUi = profileIdentityUiEnabled();
     const existing = this.#sessions.get(id);
     if (existing?.alive) {
-      const next = profileService.setProfileStatus(id, "running");
-      return { ok: true, status: "running", profile: next };
+      if (!identityUi) {
+        await this.#dropSession(id);
+      } else if (existing.context) {
+        await this.focusProfile(id);
+        profileService.touchLastOpened(id);
+        const next = profileService.setProfileStatus(id, "running");
+        return { ok: true, status: "running", profile: next, focused: true };
+      } else if (existing.focusOnly) {
+        await focusProfileBrowserWindow(existing.userDataDir);
+        profileService.touchLastOpened(id);
+        const next = profileService.setProfileStatus(id, "running");
+        return { ok: true, status: "running", profile: next, focused: true };
+      }
     }
     if (existing) {
       await this.#dropSession(id);
     }
 
+    const priorStatus = profile.status;
     profileService.setProfileStatus(id, "opening");
     this.#emitSessionChange(id, profileService.getProfile(id), "opening");
     const userDataDir = profileDataDir(this.#userDataRoot, id);
+    const needsAggressivePrep = priorStatus === "failed" || priorStatus === "opening";
     let lastError = null;
 
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!identityUi) {
+      await prepareProfileForLaunch(userDataDir, { aggressive: needsAggressivePrep });
+    } else {
+      const attached = await this.#tryAttachOrFocusOrphan(profile, userDataDir);
+      if (attached) return attached;
+
+      await prepareProfileForLaunch(userDataDir, { aggressive: needsAggressivePrep || profileDirHasLock(userDataDir) });
+    }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         if (attempt > 0) {
-          removeStaleProfileLocks(userDataDir);
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          if (identityUi) {
+            const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir);
+            if (retried) return retried;
+          }
+          await repairProfileUserDataDir(userDataDir);
+          await new Promise((resolve) => setTimeout(resolve, 280 * attempt));
         }
 
         let debugPort = 0;
@@ -205,48 +399,17 @@ class SessionManager {
           }
         }
         const opened = await openProfile(profile, this.#userDataRoot, { debugPort });
-        const profileCode = extractProfileCode(profile.name, profile.id);
-        this.#sessions.set(id, {
-          context: opened.context,
-          userDataDir: opened.userDataDir,
-          alive: true,
-          debugPort: opened.debugPort || 0,
-          profile,
-          profileCode,
-        });
-        this.#bindSessionLifecycle(id, opened.context, profile);
-
-        const launchUrl = profileService.resolveProfileLaunchUrl(profile.startupUrl);
-        const chipText = buildPillChipText(profile);
-        const tooltip = buildPillTooltip(profile);
-        void (async () => {
-          try {
-            await navigateStartupUrl(opened.context, launchUrl);
-          } catch {
-            // launch still succeeds — operator can navigate manually
-          }
-          await applyWindowsTaskbarOverlay(
-            opened.userDataDir,
-            profileCode,
-            tooltip,
-            profile.id,
-            chipText,
-          );
-        })();
-
-        profileService.touchLastOpened(id);
-        const running = profileService.setProfileStatus(id, "running");
-        this.#emitSessionChange(id, running, "running");
-        return {
-          ok: true,
-          status: "running",
-          profile: running,
-          userDataDir: opened.userDataDir,
-          debugPort: opened.debugPort || 0
-        };
+        return this.#registerPlaywrightSession(id, profile, opened);
       } catch (error) {
         lastError = error;
-        if (attempt === 0 && isLaunchLockError(error)) continue;
+        if (attempt < 2 && isLaunchLockError(error)) {
+          if (identityUi) {
+            const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir);
+            if (retried) return retried;
+          }
+          await repairProfileUserDataDir(userDataDir);
+          continue;
+        }
         const failed = profileService.setProfileStatus(id, "failed");
         this.#emitSessionChange(id, failed, "failed");
         throw error;
@@ -266,7 +429,11 @@ class SessionManager {
       void clearWindowsTaskbarOverlay(session.userDataDir, session.profile?.id || id);
       session.alive = false;
       this.#sessions.delete(id);
-      await closeContext(session.context);
+      if (session.focusOnly) {
+        await killOrphanProfileBrowser(session.userDataDir);
+      } else {
+        await closeContext(session.context);
+      }
       removeStaleProfileLocks(session.userDataDir);
     }
     const next = profileService.setProfileStatus(id, "closed");
@@ -330,6 +497,7 @@ class SessionManager {
   async minimizeProfile(profileId) {
     const session = this.#sessions.get(String(profileId));
     if (!session?.alive) return { ok: false, reason: "not-running" };
+    if (session.focusOnly) return { ok: false, reason: "focus-only" };
     const page = session.context.pages().filter((p) => !p.isClosed())[0];
     if (!page) return { ok: false, reason: "no-page" };
     try {
@@ -347,6 +515,11 @@ class SessionManager {
     const id = String(profileId);
     const session = this.#sessions.get(id);
     if (!session?.alive) return { ok: false, reason: "not-running" };
+
+    if (session.focusOnly) {
+      const focused = await focusProfileBrowserWindow(session.userDataDir);
+      return focused.ok ? { ok: true } : { ok: false, reason: focused.reason || "focus-failed" };
+    }
 
     const pages = session.context.pages().filter((page) => !page.isClosed());
     const page = pages[0];
@@ -375,6 +548,23 @@ class SessionManager {
     for (const id of ids) {
       await this.close(id);
     }
+  }
+
+  /** Force-release Chrome storage for delete/replace — kill orphan, purge userDataDir. */
+  async releaseProfileStorage(profileId) {
+    const id = String(profileId);
+    const userDataDir = profileDataDir(this.#userDataRoot, id);
+    const session = this.#sessions.get(id);
+    if (session) {
+      await this.#dropSession(id);
+    } else {
+      await killOrphanProfileBrowser(userDataDir);
+      removeStaleProfileLocks(userDataDir);
+    }
+    const purgeResult = await purgeProfileUserDataDir(userDataDir);
+    const next = profileService.setProfileStatus(id, "closed");
+    this.#emitSessionChange(id, next, "storage-released");
+    return { ok: true, userDataDir, storagePurged: purgeResult.purged };
   }
 }
 

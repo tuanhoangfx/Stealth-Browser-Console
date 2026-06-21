@@ -2,6 +2,7 @@ import { HubDesignTemplateEmpty } from "@tool-workspace/hub-ui";
 import { Glass } from "../../../theme/p0008";
 import { ACTIVE_DESIGN_COUNT, PROFILE_IDENTITY_DESIGN_LOCK } from "./design-registry";
 import { SystemIdentityPanel } from "../SystemIdentityPanel";
+import { SystemLaunchPerfPanel } from "../SystemLaunchPerfPanel";
 
 /** P0003 System → Design Template — locked Design V2 code tile. */
 export function DesignTemplatePage() {
@@ -22,6 +23,7 @@ export function DesignTemplatePage() {
         </div>
       </Glass>
       <SystemIdentityPanel />
+      <SystemLaunchPerfPanel />
       <HubDesignTemplateEmpty />
     </div>
   );

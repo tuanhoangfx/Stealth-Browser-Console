@@ -1,6 +1,10 @@
+import type { PrefIcon } from "../display-prefs/types";
+
 export type DirectoryTableColumnItem<K extends string = string> = {
   key: K;
   label: string;
+  icon?: PrefIcon;
+  iconClassName?: string;
   /** Cannot be hidden in Settings. */
   required?: boolean;
 };

@@ -4,6 +4,7 @@
 
 :root,
 .theme-hub {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --hub-user-zoom-pct: 100;
   --hub-compact-scale: 0.9;
   --hub-control-h: 31px;
@@ -33,12 +34,12 @@
   --version-table-min-w: 738px;
   --version-title-max-w: 144px;
   --version-note-max-w: 180px;
-  --app-tab-header-py: 0.75rem;
+  --app-tab-header-py: 0.875rem;
   /* P0004 Hub-UI golden header bleed — aligns actions to outer frame without edge clipping. */
   --app-tab-header-px: 1.5rem;
   /* Stealth content frame — tighter than header bleed (Profiles/Workflow split layout). */
   --stealth-frame-px: 0.75rem;
-  --app-tab-header-min-h: 2.75rem;
+  --app-tab-header-min-h: 3rem;
   --app-tab-header-gap-below: 0.75rem;
   /* Hub scrollbar — global + hub-split-scroll panes */
   --hub-split-scroll-size: 10px;
@@ -196,6 +197,11 @@ body,
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
+  font-family: var(--font-sans);
+}
+
+.hub-app {
+  font-family: var(--font-sans);
 }
 
 * {

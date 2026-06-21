@@ -2,7 +2,7 @@ import {
   HubDirectoryTableShell,
   buildDirectoryColgroupForShell,
   buildDirectoryColumns,
-  hubDirectoryFrameTableClass,
+  hubDirectoryTableClass,
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -14,10 +14,10 @@ import {
   profileDirectoryColumnPrefs,
   readProfileDirectoryColumns,
 } from "./profile-directory-prefs";
+import { STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS } from "../tables/stealth-directory-table";
 import type { ProfileRow } from "../../types";
 import { renderStealthProfileDirectoryBodyCell } from "./stealth-profile-directory-cells";
 import { sortableProfileValue } from "./stealth-profile-sort";
-import { useRowOpenOnDoubleClick } from "./useRowOpenOnDoubleClick";
 
 export type StealthProfileSortKey =
   | "profile"
@@ -41,6 +41,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   onToggleSelectAll,
   allVisibleSelected,
   onOpen,
+  onClose,
   emptyMessage,
   resetKey,
   pageSize = 20,
@@ -48,6 +49,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   sortKey: controlledSortKey,
   sortDir: controlledSortDir,
   onSort: controlledOnSort,
+  searchQuery = "",
 }: {
   items: ProfileRow[];
   selectedIds: Set<string>;
@@ -55,6 +57,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   onToggleSelectAll: () => void;
   allVisibleSelected: boolean;
   onOpen: (profile: ProfileRow) => void;
+  onClose: (profile: ProfileRow) => void;
   emptyMessage?: string;
   resetKey?: string;
   pageSize?: number;
@@ -66,8 +69,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   sortKey?: StealthProfileSortKey;
   sortDir?: StealthProfileSortDirection;
   onSort?: (key: StealthProfileSortKey) => void;
+  searchQuery?: string;
 }) {
-  const handleRowClick = useRowOpenOnDoubleClick(profileRowKey, onOpen);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState(readProfileDirectoryColumns);
   const [clockTick, setClockTick] = useState(0);
 
@@ -129,7 +132,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
     <HubDirectoryTableShell
       items={sorted}
       ariaLabel="Browser profiles"
-      tableClassName={hubDirectoryFrameTableClass("6")}
+      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table`}
+      wrapClassName={STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS}
       flushWrap
       colgroup={colgroup}
       columns={columns}
@@ -137,7 +141,6 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       sortDir={sortDir}
       onSort={onSort}
       getRowKey={profileRowKey}
-      onRowClick={handleRowClick}
       selectedIds={selectedIds}
       onToggleSelect={onToggleSelect}
       onToggleSelectAll={onToggleSelectAll}
@@ -157,7 +160,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       }
       getRowClassName={(profile) => (selectedIds.has(profileRowKey(profile)) ? " is-selected" : "")}
       renderRowCells={(profile) => (
-        <>{columns.map((col) => renderStealthProfileDirectoryBodyCell(col, profile))}</>
+        <>{columns.map((col) => renderStealthProfileDirectoryBodyCell(col, profile, searchQuery, { onOpen, onClose }))}</>
       )}
     />
   );

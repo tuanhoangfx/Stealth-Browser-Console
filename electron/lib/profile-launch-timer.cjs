@@ -1,6 +1,7 @@
 const { isIdentityDebugEnabled } = require("./app-settings.cjs");
+const { recordLaunchPerf } = require("./profile-launch-perf.cjs");
 
-function createLaunchTimer(profileId) {
+function createLaunchTimer(profileId, profileName = "") {
   const started = Date.now();
   const marks = [];
 
@@ -12,9 +13,17 @@ function createLaunchTimer(profileId) {
     });
   }
 
-  function flush(label = "done") {
-    if (!isIdentityDebugEnabled()) return;
+  function flush(label = "done", meta = {}) {
     const total = Date.now() - started;
+    const snapshot = marks.map(({ phase, ms }) => ({ phase, ms }));
+    recordLaunchPerf({
+      profileId,
+      profileName: meta.profileName || profileName,
+      label,
+      totalMs: total,
+      marks: snapshot,
+    });
+    if (!isIdentityDebugEnabled()) return;
     console.log(`[launch-timer] profile=${profileId} ${label} total=${total}ms`, marks);
   }
 

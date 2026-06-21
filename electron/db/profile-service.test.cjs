@@ -18,9 +18,9 @@ async function main() {
 
     const withUrl = profileService.updateProfile(created.id, { startupUrl: "google.com" });
     if (withUrl?.startupUrl !== "https://google.com/") throw new Error("startupUrl coerce/save failed");
-    const rejected = profileService.updateProfile(created.id, { startupUrl: "adobe" });
+    const rejected = profileService.updateProfile(created.id, { startupUrl: "not a url!" });
     if (rejected?.startupUrl !== "https://google.com/") {
-      throw new Error("bare keyword should not overwrite startup URL");
+      throw new Error("invalid phrase should not overwrite startup URL");
     }
     const cleared = profileService.updateProfile(created.id, { startupUrl: "" });
     if (cleared?.startupUrl !== "https://www.google.com/") {
@@ -30,6 +30,8 @@ async function main() {
     if (!touched?.lastOpenedAt) throw new Error("touchLastOpened failed");
     const blank = profileService.updateProfile(created.id, { startupUrl: "about:blank" });
     if (blank?.startupUrl !== "about:blank") throw new Error("about:blank save failed");
+    const intranet = profileService.updateProfile(created.id, { startupUrl: "check" });
+    if (intranet?.startupUrl !== "http://check/") throw new Error("single-label host should coerce to http://check/");
     profileService.insertRun({
       id: "run-1",
       profileId: created.id,
@@ -43,6 +45,16 @@ async function main() {
     });
     const runs = profileService.listRuns(10);
     if (runs.length !== 1) throw new Error("insertRun/listRuns failed");
+
+    const fpNoise = profileService.createProfile({ name: "0448", note: "fp-noise" });
+    profileService.updateProfile(fpNoise.id, { fingerprintSeed: 1231477890 });
+    const exact = profileService.createProfile({ name: "1477", note: "exact" });
+    const page = profileService.listProfilesPage({ search: "1477", limit: 50 });
+    const names = page.profiles.map((p) => p.name);
+    if (!names.includes("1477") || names.includes("0448")) {
+      throw new Error(`numeric search expected only 1477, got: ${names.join(", ")}`);
+    }
+
     console.log("profile-service.test: ok");
   } finally {
     closeDatabase();

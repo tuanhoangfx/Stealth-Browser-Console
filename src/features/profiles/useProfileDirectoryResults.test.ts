@@ -57,8 +57,8 @@ describe("server lite directory pagination", () => {
       liteProfile("c", "Profile 2000", { note: "ref 1231-x" }),
     ];
     const page = serverDirectoryView(catalog, { search: "1231", groupIds: [], statuses: [] }, 0, 25);
-    expect(page.filteredTotal).toBe(2);
-    expect(page.filteredProfiles.map((row) => row.id).sort()).toEqual(["b", "c"]);
+    expect(page.filteredTotal).toBe(1);
+    expect(page.filteredProfiles.map((row) => row.id)).toEqual(["b"]);
   });
 
   it("filters group/status on lite rows", () => {

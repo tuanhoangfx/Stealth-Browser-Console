@@ -1,8 +1,9 @@
 /** Golden workflow directory table — WorkflowPickerRail (Profiles) + WorkflowDirectoryPanel (Scripts). */
 import { useMemo, memo } from "react";
 import {
-  HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
   HubDirectoryTableShell,
+  HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS,
   buildDirectoryColgroupForShell,
   buildDirectoryColumns,
   hubDirectoryTableClass,
@@ -15,7 +16,7 @@ import {
   STEALTH_WORKFLOW_RAIL_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
-import { STEALTH_DIRECTORY_TABLE_WRAP_RAIL_MARKER } from "../tables/stealth-directory-table";
+import { STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS } from "../tables/stealth-directory-table";
 import { workflowDisplayId, workflowDisplayPlatform } from "./workflow-display";
 import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import { renderStealthWorkflowDirectoryBodyCell } from "./stealth-workflow-directory-cells";
@@ -103,8 +104,8 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
   const colgroup = useMemo(() => buildDirectoryColgroupForShell(columns, { showSelect: true }), [columns]);
 
   const wrapClassName = isRail
-    ? `${HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS} ${STEALTH_DIRECTORY_TABLE_WRAP_RAIL_MARKER}`
-    : undefined;
+    ? `${HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS} ${HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS}`
+    : STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS;
 
   return (
     <HubDirectoryTableShell
@@ -112,7 +113,7 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
       ariaLabel={isRail ? "Workflow picker rail" : "Workflow directory"}
       tableClassName={
         isRail
-          ? `${hubDirectoryTableClass("4")} hub-users-table--sheet stealth-workflow-rail-table`
+          ? `${hubDirectoryTableClass("4")} hub-directory-frame-table stealth-workflow-rail-table`
           : hubDirectoryTableClass("6")
       }
       wrapClassName={wrapClassName}

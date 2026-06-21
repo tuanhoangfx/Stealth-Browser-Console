@@ -1,5 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { HubAppLogProvider, resolveHubActiveScreenId, useHubActiveScreenSync } from "@tool-workspace/hub-ui";
+import {
+  HubAppLogProvider,
+  hideBootLoader,
+  resolveHubActiveScreenId,
+  useHubActiveScreenSync,
+} from "@tool-workspace/hub-ui";
 import { StealthAppShell } from "./components/StealthAppShell";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
 import type { StealthScreen } from "./lib/stealth-screen";
@@ -17,6 +22,10 @@ function StealthAppRoot() {
   const [view, setView] = useState<StealthScreen>("profiles");
   const [visited, setVisited] = useState<Set<StealthScreen>>(() => new Set(["profiles"]));
   const mainRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    hideBootLoader();
+  }, []);
 
   useLayoutEffect(() => {
     setVisited((prev) => {

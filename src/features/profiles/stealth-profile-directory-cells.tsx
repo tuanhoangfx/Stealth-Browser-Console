@@ -1,84 +1,108 @@
 import {
+  compactIconSize,
   DirectoryTableBodyCell,
+  getDirectorySearchHighlight,
+  HubDirectorySearchHighlightText,
   HubUsersStatusLabel,
-  type HubDirectoryColumnDef
+  type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
-import { resolveProfileLaunchUrl } from "../../lib/startup-url";
+import { Loader2, Play, Square } from "lucide-react";
+import { formatStartupUrlDisplay, resolveProfileLaunchUrl } from "../../lib/startup-url";
 import type { ProfileRow } from "../../types";
+import {
+  formatLastOpenedRelativeAge,
+  formatLastOpenedStaleDate,
+  groupHubTone,
+  lastOpenedAgeTone,
+  lastOpenedHubTone,
+} from "./profile-directory-cell-helpers";
 import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
-
-function pad2(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function formatLastOpened(ms: number) {
-  const date = new Date(ms);
-  const hh = pad2(date.getHours());
-  const mm = pad2(date.getMinutes());
-  const dd = pad2(date.getDate());
-  const MM = pad2(date.getMonth() + 1);
-  const yy = pad2(date.getFullYear() % 100);
-  return `${hh}:${mm} ${dd}/${MM}/${yy}`;
-}
-
-function lastOpenedTone(ms: number): "fresh" | "recent" | "stale" {
-  const age = Date.now() - ms;
-  if (age <= 3 * 60 * 60 * 1000) return "fresh";
-  if (age <= 24 * 60 * 60 * 1000) return "recent";
-  return "stale";
-}
-
-function formatRelativeAge(ms: number): string {
-  const ageMs = Math.max(0, Date.now() - ms);
-  const ageSec = Math.floor(ageMs / 1000);
-  if (ageSec < 60) return "just now";
-  const ageMin = Math.floor(ageSec / 60);
-  if (ageMin < 60) return `${ageMin}m ago`;
-  const ageHr = Math.floor(ageMin / 60);
-  return `${ageHr}h ago`;
-}
-
-function statusTone(status: ProfileRow["status"]): "online" | "offline" | "idle" | "active" {
-  if (status === "running") return "online";
-  if (status === "opening") return "active";
-  if (status === "failed") return "idle";
-  return "offline";
-}
-
-function statusLabel(status: ProfileRow["status"]) {
-  if (status === "running") return "Running";
-  if (status === "opening") return "Opening";
-  if (status === "failed") return "Failed";
-  return "Closed";
-}
 
 export function renderStealthProfileDirectoryBodyCell(
   col: HubDirectoryColumnDef<StealthProfileSortKey>,
-  profile: ProfileRow
+  profile: ProfileRow,
+  searchQuery = "",
+  handlers?: { onOpen?: (profile: ProfileRow) => void; onClose?: (profile: ProfileRow) => void },
 ) {
   const { key, colClass } = col;
+  const searchHighlight = getDirectorySearchHighlight(searchQuery, { mixedRequiresWhitespace: true });
+  const profileNameTerms = [
+    ...(searchHighlight?.idTerms ?? []),
+    ...(searchHighlight?.textTerms ?? []),
+  ];
 
   switch (key) {
     case "profile":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-users-name-title" title={profile.name}>
-            {profile.name}
+          <span title={profile.name}>
+            <HubDirectorySearchHighlightText
+              text={profile.name}
+              terms={profileNameTerms}
+              className="hub-users-name-title"
+            />
           </span>
         </DirectoryTableBodyCell>
       );
-    case "group":
+    case "group": {
+      const label = profile.groupName || "Default";
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text">{profile.groupName || "Default"}</span>
+          <HubUsersStatusLabel
+            label={label}
+            tone={groupHubTone(label, profile.groupId)}
+            capitalize={false}
+            title={label}
+          />
         </DirectoryTableBodyCell>
       );
-    case "status":
+    }
+    case "status": {
+      const running = profile.status === "running" || profile.status === "opening";
+      const opening = profile.status === "opening";
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubUsersStatusLabel label={statusLabel(profile.status)} tone={statusTone(profile.status)} capitalize={false} />
+          {!running ? (
+            <button
+              type="button"
+              className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              title="Run profile"
+              aria-label={`Run ${profile.name}`}
+              disabled={opening}
+              onClick={(event) => {
+                event.stopPropagation();
+                handlers?.onOpen?.(profile);
+              }}
+            >
+              <span className="hub-directory-icon-cell__icon text-emerald-400">
+                {opening ? (
+                  <Loader2 size={compactIconSize(11)} className="animate-spin" aria-hidden />
+                ) : (
+                  <Play size={compactIconSize(11)} fill="currentColor" aria-hidden />
+                )}
+              </span>
+              <span className="hub-directory-icon-cell__label text-emerald-300">Run</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90"
+              title="Stop profile"
+              aria-label={`Stop ${profile.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                handlers?.onClose?.(profile);
+              }}
+            >
+              <span className="hub-directory-icon-cell__icon text-rose-400">
+                <Square size={compactIconSize(11)} fill="currentColor" aria-hidden />
+              </span>
+              <span className="hub-directory-icon-cell__label text-rose-300">Stop</span>
+            </button>
+          )}
         </DirectoryTableBodyCell>
       );
+    }
     case "lastOpened":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
@@ -88,34 +112,26 @@ export function renderStealthProfileDirectoryBodyCell(
               (profile.updatedAt ? Date.parse(profile.updatedAt) : undefined) ??
               (profile.createdAt ? Date.parse(profile.createdAt) : undefined);
             if (!Number.isFinite(ms) || !ms) return <span className="hub-directory-table-body-text">—</span>;
-            const tone = lastOpenedTone(ms);
-            const dotColor = tone === "fresh" ? "#38bdf8" : tone === "recent" ? "#f59e0b" : "#64748b";
+            const tone = lastOpenedAgeTone(ms);
+            const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
             return (
-              <span className="hub-directory-table-body-text" title={new Date(ms).toLocaleString()}>
-                <span
-                  aria-hidden="true"
-                  style={{
-                    display: "inline-block",
-                    width: 7,
-                    height: 7,
-                    borderRadius: 999,
-                    background: dotColor,
-                    marginRight: 8,
-                    transform: "translateY(-0.5px)"
-                  }}
-                />
-                {tone === "stale" ? formatLastOpened(ms) : formatRelativeAge(ms)}
-              </span>
+              <HubUsersStatusLabel
+                label={label}
+                tone={lastOpenedHubTone(tone)}
+                capitalize={false}
+                title={new Date(ms).toLocaleString()}
+              />
             );
           })()}
         </DirectoryTableBodyCell>
       );
     case "startupUrl": {
       const url = resolveProfileLaunchUrl(profile.startupUrl || "");
+      const label = formatStartupUrlDisplay(profile.startupUrl || "");
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <span className="hub-directory-table-body-text line-clamp-1" title={url}>
-            {url}
+            {label}
           </span>
         </DirectoryTableBodyCell>
       );

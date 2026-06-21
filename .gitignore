@@ -12,6 +12,7 @@ out/
 *.log
 *.pid
 .smoke-ui-render.json
+.smoke-workflow-rail.json
 
 # Env & secrets (hub keys, tokens)
 .env.local

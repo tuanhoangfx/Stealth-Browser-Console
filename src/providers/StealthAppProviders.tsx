@@ -24,10 +24,10 @@ function StealthShellBridge({
   setTheme: (theme: StealthTheme) => void;
   children: ReactNode;
 }) {
-  const { refreshProfiles, refreshHistory, syncBusy } = useProfilesRuntime();
+  const { refreshProfiles, syncBusy } = useProfilesRuntime();
   const [engineStatus, setEngineStatus] = useState<"checking" | "ready" | "offline">("checking");
 
-  const refreshAll = useCallback(async () => {
+  const refreshBoot = useCallback(async () => {
     await refreshProfiles();
     try {
       const health = await fetchEngineHealth();
@@ -35,14 +35,11 @@ function StealthShellBridge({
     } catch {
       setEngineStatus("offline");
     }
-    if (view === "workflow") {
-      await refreshHistory();
-    }
-  }, [refreshProfiles, refreshHistory, view]);
+  }, [refreshProfiles]);
 
   useEffect(() => {
-    void refreshAll();
-  }, [refreshAll]);
+    void refreshBoot();
+  }, [refreshBoot]);
 
   const shellValue = useMemo(
     () => ({
@@ -51,10 +48,10 @@ function StealthShellBridge({
       theme,
       setTheme,
       engineStatus,
-      refreshProfiles: refreshAll,
+      refreshProfiles: refreshBoot,
       syncBusy,
     }),
-    [view, setView, theme, setTheme, engineStatus, refreshAll, syncBusy],
+    [view, setView, theme, setTheme, engineStatus, refreshBoot, syncBusy],
   );
 
   return <StealthShellProvider value={shellValue}>{children}</StealthShellProvider>;

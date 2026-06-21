@@ -1,4 +1,5 @@
 import { clampConcurrency, clampTimeout } from "../../app/constants";
+import { normalizeStartupUrl } from "../../lib/startup-url";
 import type { ScriptStep, ScriptStepKind } from "../../types";
 import type { WorkflowConfig, WorkflowId } from "./workflow-types";
 import { ensureWorkflowTimestamps } from "./workflow-meta";
@@ -271,10 +272,7 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
 ];
 
 export function normalizeUrl(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
+  return normalizeStartupUrl(value) || "";
 }
 
 export function sameWorkflowUrl(left?: string, right?: string) {

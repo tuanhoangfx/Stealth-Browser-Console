@@ -15,6 +15,7 @@ import {
 } from "../features/profiles/useProfileDirectoryPageSize";
 import { useProfilesDirectoryChrome } from "../features/profiles/useProfilesDirectoryChrome";
 import type { StealthProfileSortKey, StealthProfileSortDirection } from "../features/profiles/StealthProfileDirectoryTable";
+import { migrateProfilesDisplayPrefsFromUrl } from "../lib/profile-display-prefs-migrate";
 
 export const ProfilesView = memo(function ProfilesView({
   headerActions,
@@ -38,6 +39,10 @@ export const ProfilesView = memo(function ProfilesView({
   const [showGroups, setShowGroups] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    migrateProfilesDisplayPrefsFromUrl();
+  }, []);
+
   const filterKey = `${search}|${selectedGroupIds.join(",")}|${selectedStatuses.join(",")}|${sortKey}|${sortDir}`;
   const prevFilterKey = useRef(filterKey);
   useEffect(() => {
@@ -52,16 +57,23 @@ export const ProfilesView = memo(function ProfilesView({
   useEffect(() => {
     const api = window.stealthApi;
     if (!api?.onProfileSession) return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const off = api.onProfileSession(() => {
-      setDirectoryRefreshKey((key) => key + 1);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = undefined;
+        setDirectoryRefreshKey((key) => key + 1);
+      }, 250);
     });
-    return () => off?.();
+    return () => {
+      if (timer) clearTimeout(timer);
+      off?.();
+    };
   }, []);
 
   const handleOpenOne = useCallback(
     async (profile: ProfileRow) => {
       await openOne(profile);
-      setDirectoryRefreshKey((key) => key + 1);
     },
     [openOne],
   );
@@ -69,7 +81,6 @@ export const ProfilesView = memo(function ProfilesView({
   const handleCloseOne = useCallback(
     async (profile: ProfileRow) => {
       await closeOne(profile);
-      setDirectoryRefreshKey((key) => key + 1);
     },
     [closeOne],
   );
@@ -100,11 +111,7 @@ export const ProfilesView = memo(function ProfilesView({
     setAutomationProfileSelection(selectedProfiles);
   }, [selectedProfiles, setAutomationProfileSelection]);
 
-  const { kpis, centerStats } = useProfilesDirectoryChrome(
-    catalogStats,
-    profiles,
-    filteredTotal,
-  );
+  const { kpis, centerStats } = useProfilesDirectoryChrome(catalogStats, profiles);
 
   const handleSort = useCallback((key: StealthProfileSortKey) => {
     setSortKey((prevKey) => {
@@ -124,10 +131,13 @@ export const ProfilesView = memo(function ProfilesView({
   }, []);
 
   const handleDeleteSelected = useCallback(() => {
-    void deleteSelected([...selectedIds]).then(() => {
-      setSelectedIds(new Set());
-      void refreshProfiles();
-    });
+    void deleteSelected([...selectedIds])
+      .then(() => {
+        setSelectedIds(new Set());
+        setDirectoryRefreshKey((key) => key + 1);
+        void refreshProfiles();
+      })
+      .catch(() => undefined);
   }, [deleteSelected, refreshProfiles, selectedIds, setSelectedIds]);
 
   return (

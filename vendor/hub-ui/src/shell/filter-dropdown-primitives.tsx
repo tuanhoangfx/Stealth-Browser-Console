@@ -130,3 +130,39 @@ export const HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS =
 /** Golden filter panel row — All {label} + options share one weight (P0004 Group filter). */
 export const HUB_FILTER_DROPDOWN_ROW_CLASS =
   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-white/5";
+
+/** Emoji / glyph slot in filter trigger + option rows. */
+export const HUB_FILTER_OPTION_EMOJI_CLASS = "shrink-0 text-base leading-none";
+
+export function filterDropdownPanelSearchPlaceholder(filterLabel: string) {
+  return `Search ${filterLabel.toLowerCase()}…`;
+}
+
+type HubFilterDropdownPanelSearchProps = {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+};
+
+/** Compact search row at top of filter dropdown panels (multi-select + portal). */
+export function HubFilterDropdownPanelSearch({
+  value,
+  onChange,
+  placeholder = "Search…",
+}: HubFilterDropdownPanelSearchProps) {
+  return (
+    <div className="border-b border-white/5 p-2">
+      <div className="relative">
+        <input
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
+          style={{ paddingLeft: 10, paddingRight: 10 }}
+        />
+      </div>
+    </div>
+  );
+}
+

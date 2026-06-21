@@ -12,12 +12,12 @@ import {
   profileDirectoryColumnPrefs,
   resetProfileDirectoryColumns,
 } from "../features/profiles/profile-directory-prefs";
-import { SCREEN_DISPLAY_PREFS } from "./display-prefs-registry";
+import { SCREEN_DISPLAY_PREFS, resolveScreenDisplayPrefs } from "./display-prefs-registry";
 import type { StealthScreen } from "./stealth-screen";
 
 /** Tab display panel — KPI · charts · header · filters · table columns. */
 export function useStealthDisplayPanelConfig(screen: StealthScreen): HubDirectoryDisplayPanelProps | null {
-  const cfg = SCREEN_DISPLAY_PREFS[screen];
+  const cfg = resolveScreenDisplayPrefs(screen);
   const [hiddenProfileCols, setHiddenProfileCols] = useState(() =>
     screen === "profiles" ? countHiddenProfileDirectoryColumns() : 0,
   );

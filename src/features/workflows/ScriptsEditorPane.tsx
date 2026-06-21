@@ -2,8 +2,9 @@
 import { memo, useState } from "react";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
 import { workflowDisplayId } from "./workflow-display";
+import { WorkflowCanvasErrorBoundary } from "../../ui/WorkflowCanvasErrorBoundary";
 import { WorkflowAiStepsPanel } from "./WorkflowAiStepsPanel";
-import { WorkflowScriptFlow } from "./WorkflowScriptFlow";
+import { WorkflowScriptFlowLazy } from "./WorkflowScriptFlowLazy";
 import { WorkflowStepAddPicker } from "./WorkflowStepAddPicker";
 import { WorkflowStepInspectorPanel } from "./WorkflowStepInspectorPanel";
 
@@ -89,13 +90,15 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
           {activeWorkflowConfig.steps.length === 0 ? (
             <p className="muted script-step-board-empty">Add the first step with the New button above.</p>
           ) : (
-            <WorkflowScriptFlow
-              key={activeWorkflow}
-              steps={activeWorkflowConfig.steps}
-              selectedStepId={selectedScriptStep?.id ?? ""}
-              onSelectStep={setSelectedScriptStepId}
-              onReorderBySortedIds={reorderScriptStepsBySortedIds}
-            />
+            <WorkflowCanvasErrorBoundary>
+              <WorkflowScriptFlowLazy
+                key={activeWorkflow}
+                steps={activeWorkflowConfig.steps}
+                selectedStepId={selectedScriptStep?.id ?? ""}
+                onSelectStep={setSelectedScriptStepId}
+                onReorderBySortedIds={reorderScriptStepsBySortedIds}
+              />
+            </WorkflowCanvasErrorBoundary>
           )}
           <div className="script-step-board-hint-bar">
             <button

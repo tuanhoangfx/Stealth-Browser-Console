@@ -23,7 +23,7 @@ export function useProfileDirectoryResults(
   /** Bump after open/close/session so server page reflects lastOpenedAt + status. */
   refreshKey = 0,
 ) {
-  const debouncedSearch = useDebouncedValue(query.search, 120);
+  const debouncedSearch = useDebouncedValue(query.search, 200);
   const [state, setState] = useState<{
     filteredProfiles: ProfileRow[];
     filteredTotal: number;
