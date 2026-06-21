@@ -9,6 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$ToolScripts = (Resolve-Path (Join-Path $PSScriptRoot "../../scripts")).Path
 
 function Invoke-Step {
   param(
@@ -80,7 +81,7 @@ try {
         git push origin $tag
         if ($LASTEXITCODE -ne 0) { throw "git push tag failed" }
       } else {
-        Write-Host "Tag $tag already on origin — skip push"
+        Write-Host "Tag $tag already on origin - skip push"
       }
     }
   }
@@ -94,12 +95,10 @@ try {
     $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
     $tag = "v$version"
     Invoke-Step "Sync release metadata (post-gh-release)" {
-      node (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "../../scripts")).Path "post-gh-release.mjs") `
-        --product-root $RepoRoot --tag $tag
+      node (Join-Path $ToolScripts "post-gh-release.mjs") --product-root $RepoRoot --tag $tag
     }
     Invoke-Step "Verify auto-update feed (latest.yml + assets)" {
-      node (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "../../scripts")).Path "verify-desktop-auto-update.mjs") `
-        --product-root $RepoRoot --tag $tag --release
+      node (Join-Path $ToolScripts "verify-desktop-auto-update.mjs") --product-root $RepoRoot --tag $tag --release
     }
   }
 }
