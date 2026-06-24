@@ -3,6 +3,7 @@ import {
   HUB_SPLIT_DIRECTORY_PANE_CLASS,
   KpiStrip,
   hubDirectoryListResetKey,
+  resolveDirectoryPanelFillRows,
   type KpiTileData,
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
@@ -99,10 +100,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     [selectedGroupIds, selectedStatuses],
   );
   const listResetKey = hubDirectoryListResetKey(search, filterValues);
-  const panelFillStyle = useMemo(
-    () => ({ "--hub-directory-page-rows": String(pageSize) }) as CSSProperties,
-    [pageSize],
-  );
+  const panelFillStyle = useMemo(() => {
+    const fillRows = resolveDirectoryPanelFillRows(pageSize, filteredProfiles.length);
+    return { "--hub-directory-page-rows": String(fillRows) } as CSSProperties;
+  }, [filteredProfiles.length, pageSize]);
   const emptyMessage =
     apiStatus === "offline"
       ? "CloakBrowser engine offline — check Settings or run pnpm dev in Electron."

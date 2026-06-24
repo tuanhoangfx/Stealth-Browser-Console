@@ -32,13 +32,21 @@ export function HubSearchField({
       />
       <input
         ref={inputRef}
-        type="search"
+        type="text"
+        inputMode="search"
+        enterKeyHint="search"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        name="hub-directory-search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
         style={{ paddingLeft: 31, paddingRight: value ? 25 : 36 }}
         aria-label={placeholder}
+        role="searchbox"
       />
       {showShortcutHint && !value ? (
         <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:flex">

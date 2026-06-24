@@ -5,7 +5,6 @@ import { WORKFLOW_RAIL_PAGE_SIZE } from "../../app/constants";
 import type { WorkflowConfig } from "./workflow-types";
 import { StealthWorkflowDirectoryTable } from "./StealthWorkflowDirectoryTable";
 import { WorkflowFilterPane } from "./WorkflowFilterPane";
-import { WorkflowQuickRunButton } from "./WorkflowQuickRunButton";
 import { useWorkflowDirectoryFilters } from "./useWorkflowDirectoryFilters";
 
 export type WorkflowRailPanelProps = {
@@ -82,7 +81,6 @@ export const WorkflowRailPanel = memo(function WorkflowRailPanel({
           setWorkflowSearch={setWorkflowSearch}
           filteredCount={filteredWorkflows.length}
           totalCount={workflowConfigs.length}
-          searchTrailing={<WorkflowQuickRunButton />}
         />
       }
     >

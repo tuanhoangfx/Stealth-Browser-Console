@@ -55,7 +55,7 @@ app.whenReady().then(async () => {
           rowCount > 0 &&
           rowCount === expectedRows &&
           !pageSizeBtn &&
-          Boolean(quickRunBtn) &&
+          !quickRunBtn &&
           !tableOverlapsHistory;
         return {
           ok,
@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
           catalogTotal,
           pagerText,
           pageSizeBtnText: pageSizeBtn?.textContent || null,
-          quickRunPresent: Boolean(quickRunBtn),
+          quickRunAbsent: !quickRunBtn,
           tableOverlapsHistory,
           bootPresent: Boolean(boot),
         };

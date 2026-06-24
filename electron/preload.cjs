@@ -28,11 +28,12 @@ contextBridge.exposeInMainWorld("stealthApi", {
   openUrl: (payload) => invoke("automation:openUrl", payload),
   appInfo: () => invoke("app:info"),
   openDataFolder: () => invoke("app:openDataFolder"),
-  getIdentityDebug: () => invoke("settings:getIdentityDebug"),
-  setIdentityDebug: (payload) => invoke("settings:setIdentityDebug", payload),
   listLaunchPerf: (payload) => invoke("launchPerf:list", payload),
   clearLaunchPerf: () => invoke("launchPerf:clear"),
-  purgeIdentityExtensions: () => invoke("identity:purgeAll"),
+  fetchLaunchBenchBaseline: () => invoke("launchPerf:baseline"),
+  purgeLegacyIdentityToolbar: () => invoke("legacy:purgeIdentityToolbar"),
+  fetchCookieBridgeStatus: () => invoke("extension:cookieBridgeStatus"),
+  purgeBrokenExtensionPrefs: () => invoke("extension:purgeBrokenPrefs"),
   onProfileSession: (handler) => {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on("profile:session", listener);

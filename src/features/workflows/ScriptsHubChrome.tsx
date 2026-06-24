@@ -1,7 +1,10 @@
 import { useMemo, type ReactNode } from "react";
 import { HubSplitWorkspaceScreen } from "@tool-workspace/hub-ui";
+import { stealthScreenChrome } from "../../lib/stealth-nav-structure";
 import { ScriptsListChromeHeader } from "./ScriptsListChromeHeader";
 import { buildWorkflowHeaderCenterStats, type WorkflowKpiNumbers } from "./workflow-kpi-items";
+
+const workflowChrome = stealthScreenChrome("workflow");
 
 export type ScriptsHubChromeProps = {
   counts: WorkflowKpiNumbers;
@@ -17,7 +20,7 @@ export function ScriptsHubChrome({ counts, headerActions, children }: ScriptsHub
     <HubSplitWorkspaceScreen
       bodyClassName="stealth-scripts-workspace__body flex min-h-0 flex-1 overflow-hidden"
       header={<ScriptsListChromeHeader centerStats={centerStats} actions={headerActions} />}
-      sectionRuleLabel="Scripts"
+      sectionRuleLabel={workflowChrome.label}
     >
       {children}
     </HubSplitWorkspaceScreen>

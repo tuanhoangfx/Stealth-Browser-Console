@@ -1,4 +1,4 @@
-/* GPM legacy — scripts / workflow flow (scoped via ScriptsView import) */
+/* Stealth legacy — scripts / workflow flow (scoped via ScriptsView import) */
 .script-main {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;

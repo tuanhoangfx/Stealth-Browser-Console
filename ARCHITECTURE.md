@@ -68,4 +68,4 @@ Contract: `docs/browserhub-api.openapi.yaml`. SDK: `clients/browserhub_client.py
 
 ## Out of scope (MVP)
 
-GPM API, script builder, Supabase auth, Camoufox. (Concurrent queue → đã có job model cơ bản v0.5.)
+External antidetect vendor API, Camoufox. (Concurrent queue → đã có job model cơ bản v0.5.)

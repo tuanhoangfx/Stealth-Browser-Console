@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Copy VITE_HUB_SUPABASE_* from P0020 or P0004 sibling .env.local into P0001 .env.local */
+/** Copy VITE_HUB_SUPABASE_* from P0020 or P0004 sibling .env.local into P0003 .env.local */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,9 +14,9 @@ const sources = [
 const AUTH_COMMENT_BLOCK = [
   "# --- Hub workspace login (off by default) ---",
   "# Uncomment to re-enable sign-in modal + Anonymous mode:",
-  "# VITE_GPM_HUB_AUTH=1",
+  "# VITE_STEALTH_HUB_AUTH=1",
   "# Optional — require login (no auto Anonymous):",
-  "# VITE_GPM_AUTH_OPTIONAL=0"
+  "# VITE_STEALTH_AUTH_OPTIONAL=0"
 ];
 
 function parseHubVars(filePath) {
@@ -27,14 +27,18 @@ function parseHubVars(filePath) {
     .filter((line) => /^VITE_HUB_SUPABASE_/.test(line.trim()));
 }
 
-function readPreservedGpmVars(filePath) {
+function readPreservedStealthVars(filePath) {
   const kept = [];
   if (!fs.existsSync(filePath)) return kept;
   for (const line of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
     const t = line.trim();
     if (!t || t.startsWith("#")) continue;
-    if (/^VITE_GPM_/.test(t) && !/^VITE_HUB_SUPABASE_/.test(t)) {
+    if (/^VITE_STEALTH_/.test(t) && !/^VITE_HUB_SUPABASE_/.test(t)) {
       kept.push(t);
+    }
+    // Legacy alias from older env files
+    if (/^VITE_GPM_/.test(t) && !/^VITE_HUB_SUPABASE_/.test(t)) {
+      kept.push(t.replace(/^VITE_GPM_/, "VITE_STEALTH_"));
     }
   }
   return [...new Set(kept)];
@@ -49,7 +53,7 @@ for (const src of sources) {
   }
 }
 
-const preserved = readPreservedGpmVars(dst);
+const preserved = readPreservedStealthVars(dst);
 
 const sections = [
   "# Synced by scripts/sync-hub-env.mjs — Hub Supabase keys + auth toggles",
@@ -76,5 +80,5 @@ if (lines.length) {
   console.log("sync-hub-env: no VITE_HUB_SUPABASE_* found in P0020/P0004 .env.local");
 }
 if (preserved.length) {
-  console.log(`sync-hub-env: preserved ${preserved.length} VITE_GPM_* var(s)`);
+  console.log(`sync-hub-env: preserved ${preserved.length} VITE_STEALTH_* var(s)`);
 }

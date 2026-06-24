@@ -44,11 +44,11 @@ export const STEALTH_WORKFLOW_RAIL_COLUMN_KEYS = ["platform", "name", "id"] as c
 /** WorkflowDirectoryPanel (Scripts left pane) — 6 cols, hub-users-table--directory-6 */
 export const STEALTH_WORKFLOW_PANEL_COLUMN_META = {
   platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "20%"),
-  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "34%"),
+  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "30%"),
   id: col("ID", "hub-users-col--id", "id", "col.directory.pageId", "16%"),
   steps: col("Steps", "hub-users-col--tools", "tools", "col.directory.posts", "3.75rem"),
-  created: col("Created", "hub-users-col--created", "created", "col.directory.created", "6.25rem"),
-  updated: col("Updated", "hub-users-col--activity", "activity", "col.directory.lastActive", "6.25rem"),
+  created: col("Created", "hub-users-col--created", "created", "col.directory.created", "7.5rem"),
+  updated: col("Updated", "hub-users-col--activity", "activity", "col.directory.lastActive", "7.5rem"),
 };
 
 export const STEALTH_WORKFLOW_PANEL_COLUMN_KEYS = ["platform", "name", "id", "steps", "created", "updated"] as const;

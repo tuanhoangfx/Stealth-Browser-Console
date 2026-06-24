@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-/** Kill P0003 dev stack, purge identity extensions, restart dev, run live smokes. */
+/** Kill P0003 dev stack, purge legacy identity-toolbar, restart dev, run live smokes. */
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -14,7 +12,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const userData = path.join(os.homedir(), "AppData", "Roaming", "stealth-browser-console");
 
 function run(label, cmd, args, opts = {}) {
   const result = spawnSync(cmd, args, { cwd: root, stdio: "inherit", shell: true, ...opts });
@@ -51,14 +48,7 @@ async function main() {
   await new Promise((r) => setTimeout(r, 2000));
 
   run("ensure-electron-binary", "node", ["scripts/ensure-electron-binary.cjs"]);
-  run("purge-identity-extensions", "node", ["scripts/purge-identity-extensions.cjs"]);
-
-  const bundles = path.join(userData, "identity-toolbar");
-  const bundleCount = fs.existsSync(bundles)
-    ? fs.readdirSync(bundles, { withFileTypes: true }).filter((e) => e.isDirectory()).length
-    : 0;
-  console.log(`identity-toolbar bundles after purge: ${bundleCount}`);
-  if (bundleCount > 0) process.exit(2);
+  run("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
 
   console.log("reload-and-verify-p0003: starting dev (single background process, no extra terminal)…");
   const pid = startDevDetached();
@@ -69,10 +59,12 @@ async function main() {
   await new Promise((r) => setTimeout(r, 5000));
   focusStealthWindow();
 
-  run("identity-purge-smoke", "node", ["electron/e2e/identity-purge-smoke.cjs"]);
-  run("identity-absent-launch-smoke", "node", ["electron/e2e/identity-absent-launch-smoke.cjs"]);
   run("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
-  run("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "http://127.0.0.1:5175/"]);
+  run("workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]);
+  run("vite-build-ui-smoke", "pnpm", ["exec", "vite", "build"]);
+  run("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "dist/index.html"]);
+  run("workflow-tab-console-smoke", "node", ["scripts/smoke-workflow-tab-console.mjs", "dist/index.html"]);
+  run("benchmark-profile-launch", "node", ["scripts/benchmark-profile-launch.mjs", "3"]);
 
   console.log("\nreload-and-verify-p0003: all checks passed — Stealth Browser Console is running.");
   console.log("(Close orphan PowerShell windows from earlier failed starts if any remain.)");

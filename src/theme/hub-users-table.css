@@ -1,4 +1,6 @@
-/* P0003 workflow rail — profile pane uses hub-directory-frame-table.css (hub-ui SSOT). */
+/* P0003 workflow directory — pane wrapper must include `hub-directory-frame` for
+   hub-directory-frame-table.css typography (12px body/status/icon — Profiles parity).
+   Layout/align overrides below; font sizes defer to frame SSOT when frame class is present. */
 
 .stealth-workflow-directory-frame table.hub-users-table.stealth-workflow-rail-table {
   font-size: var(--hub-table-body-size, 12px);
@@ -13,7 +15,9 @@
   text-transform: none;
 }
 
-.stealth-workflow-directory-frame table.stealth-workflow-rail-table td {
+/* Workflow directory — rail + panel body cells centered (Profiles parity). */
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table td,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td {
   padding: 7px 10px;
   font-size: var(--hub-table-body-size, 12px);
   line-height: var(--hub-table-body-line-height, 1.45);
@@ -22,16 +26,19 @@
 }
 
 .stealth-workflow-directory-frame table.stealth-workflow-rail-table th.hub-users-col--select,
-.stealth-workflow-directory-frame table.stealth-workflow-rail-table td.hub-users-col--select {
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table td.hub-users-col--select,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table th.hub-users-col--select,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td.hub-users-col--select {
   vertical-align: middle;
 }
 
 .stealth-workflow-directory-frame table.stealth-workflow-rail-table .hub-users-select-all,
-.stealth-workflow-directory-frame table.stealth-workflow-rail-table .hub-users-select-row {
+.stealth-workflow-directory-frame table.stealth-workflow-rail-table .hub-users-select-row,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table .hub-users-select-all,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table .hub-users-select-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--hub-directory-row-h);
 }
 
 .stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-users-th-text {
@@ -41,7 +48,10 @@
 
 .stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-users-name-title,
 .stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-directory-table-body-text,
-.stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-directory-icon-cell__label {
+.stealth-workflow-directory-frame .stealth-workflow-rail-table .hub-directory-icon-cell__label,
+.stealth-workflow-directory-frame .stealth-workflow-panel-table .hub-users-name-title,
+.stealth-workflow-directory-frame .stealth-workflow-panel-table .hub-directory-table-body-text,
+.stealth-workflow-directory-frame .stealth-workflow-panel-table .hub-directory-icon-cell__label {
   display: block;
   font-size: var(--hub-table-body-size, 12px);
   font-weight: 400;

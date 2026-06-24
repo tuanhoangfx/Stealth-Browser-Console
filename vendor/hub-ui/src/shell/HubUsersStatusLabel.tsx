@@ -16,7 +16,7 @@ export function HubUsersStatusLabel({
 }: HubUsersStatusLabelProps) {
   return (
     <span
-      className={`hub-users-status${capitalize ? " capitalize" : ""}`}
+      className={`hub-users-status${capitalize ? "" : " hub-users-status--plain"}`}
       title={title ?? label}
     >
       <span className={`hub-users-status-dot hub-users-status-dot--${tone}`} aria-hidden />

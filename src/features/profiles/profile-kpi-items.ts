@@ -1,4 +1,4 @@
-import { CheckCircle2, Database, Play } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Database, Play } from "lucide-react";
 import type { KpiTileData } from "@tool-workspace/hub-ui";
 import type { ProfileRow, ProfileCatalogStats } from "../../types";
 
@@ -25,6 +25,14 @@ const PROFILE_KPI_TILES: Array<{
     icon: Play,
     pick: (k) => k.running,
     iconClassName: "text-emerald-400",
+  },
+  {
+    key: "failed",
+    label: "Failed",
+    tone: "rose",
+    icon: AlertTriangle,
+    pick: (k) => k.failed,
+    iconClassName: "text-rose-300",
   },
   { key: "ready", label: "Ready", tone: "emerald", icon: CheckCircle2, pick: (k) => k.ready },
 ];

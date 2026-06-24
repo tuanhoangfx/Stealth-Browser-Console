@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   CheckCircle2,
   Clock,
   Database,
@@ -18,11 +19,13 @@ import type { PrefIconMap } from "@tool-workspace/hub-ui";
 export const PROFILE_KPI_PREF_ICONS: PrefIconMap = {
   total: { icon: Database, iconClassName: "text-indigo-300" },
   running: { icon: Play, iconClassName: "text-emerald-400" },
+  failed: { icon: AlertTriangle, iconClassName: "text-rose-300" },
   ready: { icon: CheckCircle2, iconClassName: "text-emerald-300" },
 };
 
 export const PROFILE_HEADER_PREF_ICONS: PrefIconMap = {
   running: { icon: Play, iconClassName: "text-emerald-400" },
+  failed: { icon: AlertTriangle, iconClassName: "text-rose-300" },
   ready: { icon: CheckCircle2, iconClassName: "text-emerald-300" },
   total: { icon: Database, iconClassName: "text-indigo-300" },
 };

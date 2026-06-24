@@ -7,22 +7,27 @@ import {
 } from "./profile-directory-cell-helpers";
 
 describe("profile-directory-cell-helpers", () => {
-  it("formats stale last opened as dd/mm/yy", () => {
-    const ms = Date.parse("2026-06-18T05:00:00");
-    expect(formatLastOpenedStaleDate(ms)).toBe("18/06/26");
+  const now = Date.parse("2026-06-22T12:00:00");
+
+  it("formats stale last opened as hh:mm dd/mm/yy", () => {
+    const d = new Date(2026, 5, 18, 5, 0, 0);
+    expect(formatLastOpenedStaleDate(d.getTime())).toMatch(/^05:00 18\/06\/26$/);
   });
 
   it("uses relative age for fresh rows", () => {
-    const now = Date.now();
-    expect(lastOpenedAgeTone(now - 30_000)).toBe("fresh");
-    expect(formatLastOpenedRelativeAge(now - 30_000)).toBe("just now");
-    expect(formatLastOpenedRelativeAge(now - 6 * 60_000)).toBe("6m ago");
-    expect(formatLastOpenedRelativeAge(now - 3 * 60 * 60_000)).toBe("3h ago");
+    expect(lastOpenedAgeTone(now - 30_000, now)).toBe("fresh");
+    expect(formatLastOpenedRelativeAge(now - 30_000, now)).toBe("just now");
+    expect(formatLastOpenedRelativeAge(now - 6 * 60_000, now)).toBe("6m ago");
+    expect(formatLastOpenedRelativeAge(now - 6 * 60 * 60_000, now)).toBe("6h ago");
+  });
+
+  it("uses 1h fresh bucket", () => {
+    expect(lastOpenedAgeTone(now - 2 * 60 * 60_000, now)).toBe("recent");
   });
 
   it("marks old opens as stale", () => {
-    const ms = Date.now() - 48 * 60 * 60_000;
-    expect(lastOpenedAgeTone(ms)).toBe("stale");
+    const ms = now - 48 * 60 * 60_000;
+    expect(lastOpenedAgeTone(ms, now)).toBe("stale");
   });
 
   it("maps Default group to gray tone", () => {

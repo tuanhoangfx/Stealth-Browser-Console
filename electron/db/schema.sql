@@ -27,9 +27,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   humanize INTEGER DEFAULT 1,
   window_mode TEXT DEFAULT 'host-maximized',
   startup_url TEXT,
-  show_profile_badge INTEGER DEFAULT 1,
-  profile_tab_groups INTEGER DEFAULT 0,
-  tab_group_color TEXT,
   last_opened_at INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

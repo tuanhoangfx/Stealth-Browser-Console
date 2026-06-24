@@ -13,7 +13,7 @@ type PreviewTool = "P0004" | "P0016" | "P0020";
 
 type PreviewConfig = {
   title: string;
-  toolInfo: { code: string; name: string; tagline: string };
+  toolInfo: { code?: string; name: string; tagline: string };
   variant: HubAuthGateVariant;
   anonymousHint?: string;
   deniedTitle: string;
@@ -23,21 +23,21 @@ type PreviewConfig = {
 const PREVIEW: Record<PreviewTool, PreviewConfig> = {
   P0004: {
     title: "Welcome to Tool Hub",
-    toolInfo: { code: "P0004", name: "Tool Hub", tagline: "Users, roles & password reset" },
+    toolInfo: { name: "Tool Hub", tagline: "Users, roles & password reset" },
     variant: "standard",
     deniedTitle: "No access to Tool Hub",
     deniedMessage: "Ask a workspace admin to grant access, then refresh this page.",
   },
   P0016: {
     title: "Welcome to Chat Center",
-    toolInfo: { code: "P0016", name: "Chat Center", tagline: "Multi-channel inbox & fanpages" },
+    toolInfo: { name: "Chat Center", tagline: "Multi-channel inbox & fanpages" },
     variant: "standard",
     deniedTitle: "No access to Chat Center",
     deniedMessage: "Ask a workspace admin to grant Chat Center access, then refresh this page.",
   },
   P0020: {
     title: "Welcome to Data Box",
-    toolInfo: { code: "P0020", name: "Data Box", tagline: "Notes, cookies & 2FA vault" },
+    toolInfo: { name: "Data Box", tagline: "Notes, cookies & 2FA vault" },
     variant: "anonymous-dual",
     anonymousHint: "Browse with limited features. Cloud sync requires sign-in.",
     deniedTitle: "No access to Data Box",
@@ -151,7 +151,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
           </button>
         </div>
         <p className="text-center text-xs text-[var(--muted)]">
-          Modal-only · 30rem · blur 8px · {cfg.toolInfo.code} · {HUB_AUTH_GATE_VARIANTS[cfg.variant].tabCount} tabs
+          Modal-only · 30rem · blur 8px · {activeTool} · {HUB_AUTH_GATE_VARIANTS[cfg.variant].tabCount} tabs
         </p>
       </section>
 
@@ -179,7 +179,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
         title={cfg.title}
         toolInfo={cfg.toolInfo}
         anonymousHint={cfg.anonymousHint}
-        headerLeading={<HubToolAvatar code={cfg.toolInfo.code} size="sm" />}
+        headerLeading={<HubToolAvatar code={activeTool} size="sm" />}
         onClose={() => setModalOpen(false)}
         onAnonymous={flags.showAnonymous ? () => setModalOpen(false) : undefined}
         onAuthed={() => setModalOpen(false)}
@@ -193,7 +193,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
           toolInfo={cfg.toolInfo}
           signedInAs="preview@infix1.io.vn"
           message={cfg.deniedMessage}
-          headerLeading={<HubToolAvatar code={cfg.toolInfo.code} size="sm" />}
+          headerLeading={<HubToolAvatar code={activeTool} size="sm" />}
           onSignOut={() => setDeniedOpen(false)}
         />
       ) : null}

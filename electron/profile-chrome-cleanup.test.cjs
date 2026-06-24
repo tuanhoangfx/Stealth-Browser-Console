@@ -7,8 +7,11 @@ const { pinToolbarExtension } = require("./lib/profile-chrome-preferences.cjs");
 const {
   purgeProfileIdentityToolbar,
   purgeIdentityToolbarRoot,
+  purgeBrokenExtensionPrefs,
   collectIdentityExtensionIds,
+  collectBrokenExtensionIds,
   isIdentityExtensionMeta,
+  isBrokenExtensionPath,
 } = require("./lib/profile-chrome-cleanup.cjs");
 
 describe("profile-chrome-cleanup", () => {
@@ -68,6 +71,38 @@ describe("profile-chrome-cleanup", () => {
 
     assert.equal(purgeIdentityToolbarRoot(root), true);
     assert.equal(fs.existsSync(path.join(root, "identity-toolbar")), false);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("purges stale .cloakbrowser extension prefs without manifest", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-broken-ext-"));
+    const userDataDir = path.join(root, "profiles", "p3");
+    const goodDir = path.join(root, "extensions", "e0001");
+    fs.mkdirSync(goodDir, { recursive: true });
+    fs.writeFileSync(path.join(goodDir, "manifest.json"), JSON.stringify({ name: "E0001 Cookie Bridge" }), "utf8");
+
+    const goodId = pinToolbarExtension(userDataDir, goodDir);
+    const prefsFile = path.join(userDataDir, "Default", "Preferences");
+    const prefs = JSON.parse(fs.readFileSync(prefsFile, "utf8"));
+    const stalePath = path.join(os.homedir(), ".cloakbrowser", "chromium-test", "ofghkhkfcknohmfldabedhpjjabimig");
+    prefs.extensions.settings.stale123 = {
+      path: stalePath,
+      state: 1,
+      manifest: { name: "stale" },
+    };
+    prefs.extensions.pinned_extensions = ["stale123", goodId];
+    fs.writeFileSync(prefsFile, JSON.stringify(prefs), "utf8");
+
+    assert.ok(isBrokenExtensionPath(stalePath));
+    assert.ok(collectBrokenExtensionIds(prefs).includes("stale123"));
+
+    const result = purgeBrokenExtensionPrefs(userDataDir);
+    assert.ok(result.removed >= 1);
+
+    const prefsAfter = JSON.parse(fs.readFileSync(prefsFile, "utf8"));
+    assert.equal(prefsAfter.extensions.settings.stale123, undefined);
+    assert.ok(prefsAfter.extensions.pinned_extensions.includes(goodId));
 
     fs.rmSync(root, { recursive: true, force: true });
   });

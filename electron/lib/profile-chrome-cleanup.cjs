@@ -1,6 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
+const { COOKIE_BRIDGE_STORE_ID } = require("./cookie-bridge-store.cjs");
+
+/** Legacy E0001 ids pinned when loading from workspace or Web Store path. */
+const COOKIE_BRIDGE_LEGACY_PIN_IDS = new Set([
+  "ofghkhkfciknohnfldabedhpljabimig",
+  COOKIE_BRIDGE_STORE_ID,
+]);
 
 const IDENTITY_TOOLBAR_ROOT = "identity-toolbar";
 const PIN_KEYS = ["pinned_extensions", "toolbar_pinned_extension_ids"];
@@ -32,6 +39,33 @@ function isIdentityToolbarPath(value) {
     normalized.includes("/stealth-profile-chrome") ||
     normalized.includes("\\stealth-profile-chrome")
   );
+}
+
+function isCloakbrowserBundlePath(value) {
+  const normalized = String(value || "").replace(/\\/g, "/").toLowerCase();
+  return normalized.includes("/.cloakbrowser/") || normalized.includes("\\.cloakbrowser\\");
+}
+
+/** Chrome prefs entry pointing at a missing manifest or stale CloakBrowser bundle dir. */
+function isBrokenExtensionPath(extensionPath) {
+  const raw = String(extensionPath || "").trim();
+  if (!raw) return true;
+  if (isCloakbrowserBundlePath(raw)) return true;
+  try {
+    return !fs.existsSync(path.join(raw, "manifest.json"));
+  } catch {
+    return true;
+  }
+}
+
+function collectBrokenExtensionIds(prefs) {
+  const settings = prefs?.extensions?.settings;
+  if (!settings || typeof settings !== "object") return [];
+  const ids = [];
+  for (const [extId, meta] of Object.entries(settings)) {
+    if (isBrokenExtensionPath(meta?.path)) ids.push(extId);
+  }
+  return ids;
 }
 
 function readManifestMeta(extensionPath) {
@@ -156,6 +190,127 @@ function purgeProfileIdentityToolbar(userDataDir, userDataRoot, profileId) {
   return { removed };
 }
 
+function isCookieBridgeSourcePath(extensionPath) {
+  const normalized = String(extensionPath || "").replace(/\\/g, "/").toLowerCase();
+  return (
+    normalized.includes("/e0001-cookie-bridge") ||
+    normalized.includes("/extensions-cache/kaaadageakdandpobcofplmfbjfjabdk/")
+  );
+}
+
+/** Drop stale E0001 pins (workspace id, store id, cloakbrowser staging) before relaunch. */
+function purgeStaleCookieBridgePrefs(userDataDir, bridgeDir) {
+  if (!userDataDir) return { removed: 0 };
+  const keepId = bridgeDir ? unpackedExtensionId(bridgeDir) : null;
+  let removed = 0;
+
+  for (const prefsFile of chromePrefsFiles(userDataDir)) {
+    const prefs = readJson(prefsFile);
+    if (!prefs?.extensions) continue;
+    const toRemove = new Set(collectBrokenExtensionIds(prefs));
+
+    for (const key of PIN_KEYS) {
+      const list = prefs.extensions[key];
+      if (!Array.isArray(list)) continue;
+      for (const extId of list) {
+        if (keepId && extId === keepId) continue;
+        if (COOKIE_BRIDGE_LEGACY_PIN_IDS.has(extId)) toRemove.add(extId);
+      }
+    }
+
+    const toolbarPinned = prefs.extensions.toolbar?.pinned_extension_ids;
+    if (Array.isArray(toolbarPinned)) {
+      for (const extId of toolbarPinned) {
+        if (keepId && extId === keepId) continue;
+        if (COOKIE_BRIDGE_LEGACY_PIN_IDS.has(extId)) toRemove.add(extId);
+      }
+    }
+
+    const settings = prefs.extensions.settings;
+    if (settings && typeof settings === "object") {
+      for (const [extId, meta] of Object.entries(settings)) {
+        if (keepId && extId === keepId) continue;
+        const extPath = String(meta?.path || "");
+        if (isCloakbrowserBundlePath(extPath) || isCookieBridgeSourcePath(extPath)) {
+          toRemove.add(extId);
+        }
+      }
+    }
+
+    if (!toRemove.size) continue;
+    let changed = false;
+    for (const extId of toRemove) {
+      if (removeExtensionFromPrefs(prefs, extId)) changed = true;
+      removeExtensionStore(userDataDir, extId);
+      removed += 1;
+    }
+    if (changed) writeJson(prefsFile, prefs);
+  }
+
+  return { removed };
+}
+
+/** Remove stale/broken extension pins (e.g. old `.cloakbrowser/.../extId` paths). */
+function purgeBrokenExtensionPrefs(userDataDir) {
+  let removed = 0;
+  for (const prefsFile of chromePrefsFiles(userDataDir)) {
+    const prefs = readJson(prefsFile);
+    if (!prefs) continue;
+    const extIds = collectBrokenExtensionIds(prefs);
+    if (!extIds.length) continue;
+    let changed = false;
+    for (const extId of extIds) {
+      if (removeExtensionFromPrefs(prefs, extId)) changed = true;
+      removeExtensionStore(userDataDir, extId);
+      removed += 1;
+    }
+    if (changed) writeJson(prefsFile, prefs);
+  }
+  return { removed };
+}
+
+/** Bulk scrub broken extension prefs across every profile Chrome dir. */
+function purgeAllProfilesBrokenExtensionPrefs(userDataRoot) {
+  if (!userDataRoot) return { profiles: 0, removed: 0, prefsCleaned: 0 };
+  const profilesDir = path.join(userDataRoot, "profiles");
+  let profiles = 0;
+  let removed = 0;
+  let prefsCleaned = 0;
+
+  if (!fs.existsSync(profilesDir)) return { profiles, removed, prefsCleaned };
+
+  for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    profiles += 1;
+    const result = purgeBrokenExtensionPrefs(path.join(profilesDir, entry.name));
+    removed += result.removed;
+    if (result.removed > 0) prefsCleaned += 1;
+  }
+
+  return { profiles, removed, prefsCleaned };
+}
+
+/** Bulk scrub stale E0001 pins across every profile Chrome dir. */
+function purgeAllProfilesStaleCookieBridgePrefs(userDataRoot, bridgeDir) {
+  if (!userDataRoot || !bridgeDir) return { profiles: 0, removed: 0, prefsCleaned: 0 };
+  const profilesDir = path.join(userDataRoot, "profiles");
+  let profiles = 0;
+  let removed = 0;
+  let prefsCleaned = 0;
+
+  if (!fs.existsSync(profilesDir)) return { profiles, removed, prefsCleaned };
+
+  for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    profiles += 1;
+    const result = purgeStaleCookieBridgePrefs(path.join(profilesDir, entry.name), bridgeDir);
+    removed += result.removed;
+    if (result.removed > 0) prefsCleaned += 1;
+  }
+
+  return { profiles, removed, prefsCleaned };
+}
+
 /** Strip every extension from Chrome prefs + on-disk store (identity + cookie bridge pins). */
 function purgeAllChromeExtensions(userDataDir) {
   let removed = 0;
@@ -247,11 +402,18 @@ function purgeLegacyProfileIdentityChrome(userDataDir, userDataRoot, profileId) 
 module.exports = {
   purgeLegacyProfileIdentityChrome,
   purgeProfileIdentityToolbar,
+  purgeBrokenExtensionPrefs,
+  purgeStaleCookieBridgePrefs,
+  purgeAllProfilesStaleCookieBridgePrefs,
+  purgeAllProfilesBrokenExtensionPrefs,
   purgeAllChromeExtensions,
   purgeIdentityToolbarRoot,
   purgeAllProfilesIdentityToolbar,
   removeExtensionFromPrefs,
   collectIdentityExtensionIds,
+  collectBrokenExtensionIds,
   isIdentityToolbarPath,
   isIdentityExtensionMeta,
+  isBrokenExtensionPath,
+  isCloakbrowserBundlePath,
 };

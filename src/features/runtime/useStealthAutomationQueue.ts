@@ -49,6 +49,7 @@ export function useStealthAutomationQueue(input: {
   addLog: LogFn;
   appendRunToHistory: RunHistoryAppender;
 }) {
+  const { selectedProfiles, runWorkflowConfigs, addLog, appendRunToHistory } = input;
   const [automationRunning, setAutomationRunning] = useState(false);
 
   const runBatch = useCallback(
@@ -56,32 +57,32 @@ export function useStealthAutomationQueue(input: {
       if (!profiles.length || !workflows.length) return;
       setAutomationRunning(true);
       try {
-        await executeAutomationBatch(profiles, workflows, input.addLog, input.appendRunToHistory);
+        await executeAutomationBatch(profiles, workflows, addLog, appendRunToHistory);
       } finally {
         setAutomationRunning(false);
       }
     },
-    [input],
+    [addLog, appendRunToHistory],
   );
 
   const runAutomationQueue = useCallback(
-    () => void runBatch(input.selectedProfiles, input.runWorkflowConfigs),
-    [input.runWorkflowConfigs, input.selectedProfiles, runBatch],
+    () => void runBatch(selectedProfiles, runWorkflowConfigs),
+    [runBatch, runWorkflowConfigs, selectedProfiles],
   );
 
   const runWorkflowLabel =
-    input.runWorkflowConfigs.length === 1
-      ? input.runWorkflowConfigs[0]!.name
-      : `${input.runWorkflowConfigs.length} workflows`;
+    runWorkflowConfigs.length === 1
+      ? runWorkflowConfigs[0]!.name
+      : `${runWorkflowConfigs.length} workflows`;
 
   return useMemo(
     () => ({
       automationRunning,
-      runAutomationQueue: () => void runAutomationQueue(),
+      runAutomationQueue,
       runBatch,
-      runWorkflowConfigs: input.runWorkflowConfigs,
+      runWorkflowConfigs,
       runWorkflowLabel,
     }),
-    [automationRunning, input.runWorkflowConfigs, runAutomationQueue, runBatch, runWorkflowLabel],
+    [automationRunning, runAutomationQueue, runBatch, runWorkflowConfigs, runWorkflowLabel],
   );
 }

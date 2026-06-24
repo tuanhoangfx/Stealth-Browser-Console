@@ -161,7 +161,11 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
     closeWhenDone: false,
     inspectMode: false,
     concurrency: 2,
-    steps: workflowSteps("https://one.google.com/u/0/ai/activity", true)
+    steps: [
+      createStep("navigate", { value: "https://one.google.com/u/0/ai/activity" }),
+      createStep("wait", { name: "Wait after navigate", timeoutMs: 15000 }),
+      createStep("screenshot", { name: "Capture evidence" })
+    ]
   },
   {
     id: "ag-appeal-form",

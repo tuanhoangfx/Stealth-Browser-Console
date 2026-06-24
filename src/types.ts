@@ -61,12 +61,6 @@ export type StealthProfile = {
   note: string;
   /** Optional URL opened automatically after profile launch (http/https/about:blank). */
   startupUrl: string;
-  /** Profile chrome extension — omnibar badge. */
-  showProfileBadge: boolean;
-  /** Auto group tabs under profile name. */
-  profileTabGroups: boolean;
-  /** Chrome tab group color override (empty = auto from profile id). */
-  tabGroupColor: string;
   status: ProfileStatus;
   /** Unix ms — last successful browser launch. */
   lastOpenedAt?: number;
@@ -174,6 +168,30 @@ export type LaunchPerfEntry = {
   at: string;
 };
 
+export type LaunchBenchBaseline = {
+  label?: string;
+  rounds: number;
+  sidePanel?: boolean;
+  stats: { count: number; minMs: number; maxMs: number; avgMs: number };
+  latestPhases: Array<{ phase: string; ms: number }>;
+  at: string;
+};
+
+export type CookieBridgeStatus = {
+  enabled: boolean;
+  productCode: string;
+  name: string;
+  storeId: string;
+  resolvedPath: string | null;
+  unpackedId: string | null;
+  source: "workspace" | "store-cache" | "custom" | "missing";
+  manifestOk: boolean;
+  manifestName: string;
+  workspacePath: string | null;
+  cachePath: string;
+  env: { STEALTH_COOKIE_BRIDGE: string; STEALTH_COOKIE_BRIDGE_LOCAL: string };
+};
+
 declare global {
   interface Window {
     stealthApi: {
@@ -204,9 +222,6 @@ declare global {
         note?: string;
         fingerprintSeed?: number;
         startupUrl?: string;
-        showProfileBadge?: boolean;
-        profileTabGroups?: boolean;
-        tabGroupColor?: string;
       } & Partial<DeviceConfig>) => Promise<{ ok: boolean; profile: StealthProfile }>;
       updateProfile: (payload: Partial<StealthProfile> & { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       bulkUpdateStartupUrl: (payload: { ids: string[]; startupUrl: string }) => Promise<{ ok: boolean; count: number }>;
@@ -222,8 +237,8 @@ declare global {
         names?: string[];
         storagePurged?: number;
       }>;
-      launchProfile: (payload: { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
-      closeProfile: (payload: { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
+      launchProfile: (payload: { id: string; name?: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
+      closeProfile: (payload: { id: string; name?: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       focusProfile: (payload: { id: string }) => Promise<{ ok: boolean; reason?: string }>;
       createGroup: (payload: { name: string }) => Promise<{ ok: boolean; group: StealthGroup }>;
       updateGroup: (payload: { id: string; name: string }) => Promise<{ ok: boolean; group: StealthGroup }>;
@@ -243,11 +258,12 @@ declare global {
       }) => Promise<OpenUrlResult>;
       appInfo: () => Promise<{ name: string; version: string; isPackaged: boolean; userDataPath: string }>;
       openDataFolder: () => Promise<{ ok: boolean; path: string }>;
-      getIdentityDebug: () => Promise<{ ok: boolean; enabled: boolean }>;
-      setIdentityDebug: (payload: { enabled: boolean }) => Promise<{ ok: boolean; enabled: boolean }>;
       listLaunchPerf: (payload?: { limit?: number }) => Promise<{ ok: boolean; entries: LaunchPerfEntry[] }>;
       clearLaunchPerf: () => Promise<{ ok: boolean }>;
-      purgeIdentityExtensions: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
+      fetchLaunchBenchBaseline: () => Promise<{ ok: boolean; baseline: LaunchBenchBaseline | null }>;
+      purgeLegacyIdentityToolbar: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
+      fetchCookieBridgeStatus: () => Promise<{ ok: boolean; status: CookieBridgeStatus }>;
+      purgeBrokenExtensionPrefs: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
       onProfileSession: (
         handler: (payload: { profile: StealthProfile; event: string }) => void
       ) => () => void;

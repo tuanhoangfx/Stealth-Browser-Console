@@ -329,10 +329,10 @@ export function ProfilesRuntimeProvider({
 
   const handleOpenOne = useCallback(
     async (profile: ProfileRow) => {
-      addLog("info", profile.name, "Launching browser");
+      addLog("info", profile.name, "Run — opening with startup URL");
       try {
-        const next = await launchProfile(profile.id);
-        addLog("success", profile.name, "Browser launched");
+        const next = await launchProfile(profile.id, profile.name);
+        addLog("success", profile.name, "Profile running");
         setProfiles((prev) => prev.map((row) => (row.id === next.id ? next : row)));
       } catch (error) {
         addLog("error", profile.name, error instanceof Error ? error.message : "Launch failed");
@@ -346,7 +346,7 @@ export function ProfilesRuntimeProvider({
     async (profile: ProfileRow) => {
       addLog("info", profile.name, "Closing browser");
       try {
-        const next = await closeProfile(profile.id);
+        const next = await closeProfile(profile.id, profile.name);
         addLog("success", profile.name, "Browser closed");
         setProfiles((prev) => prev.map((row) => (row.id === next.id ? next : row)));
       } catch (error) {

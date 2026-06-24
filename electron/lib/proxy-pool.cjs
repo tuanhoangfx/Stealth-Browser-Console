@@ -4,7 +4,7 @@
  *
  * Rủi ro antidetect lớn nhất ở scale: nhiều profile chung 1 IP, hoặc IP/timezone
  * lệch nhau → bị link & ban. Module này:
- *   - parseProxy: chuẩn hoá nhiều định dạng proxy (kể cả format GPM host:port:user:pass).
+ *   - parseProxy: chuẩn hoá nhiều định dạng proxy (kể cả host:port:user:pass phổ biến antidetect).
  *   - checkProxy: kiểm proxy sống + lấy exit IP/country/timezone (qua HTTP proxy).
  *   - geoConsistency: so timezone/locale của profile với geo thật của exit IP.
  *   - ProxyPool: cấp phát round-robin + cooldown proxy lỗi (1 IP / nhúm profile).
@@ -20,7 +20,7 @@ const net = require("node:net");
  * Hỗ trợ:
  *   scheme://user:pass@host:port | scheme://host:port
  *   user:pass@host:port
- *   host:port:user:pass   (định dạng GPM/antidetect phổ biến)
+ *   host:port:user:pass   (định dạng antidetect phổ biến)
  *   host:port
  */
 function parseProxy(input) {

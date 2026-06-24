@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Glass } from "../../theme/p0008";
-import { clearLaunchPerfEntries, fetchLaunchPerfEntries, purgeAllIdentityExtensions } from "../../api";
-import type { LaunchPerfEntry } from "../../types";
+import { clearLaunchPerfEntries, fetchLaunchBenchBaseline, fetchLaunchPerfEntries, purgeLegacyIdentityToolbar } from "../../api";
+import type { LaunchBenchBaseline, LaunchPerfEntry } from "../../types";
 
 function formatMs(ms: number) {
   return `${Math.round(ms)} ms`;
@@ -15,6 +15,7 @@ function formatMarks(entry: LaunchPerfEntry) {
 /** System → profile launch timing ring buffer (main process). */
 export function SystemLaunchPerfPanel() {
   const [entries, setEntries] = useState<LaunchPerfEntry[]>([]);
+  const [baseline, setBaseline] = useState<LaunchBenchBaseline | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [purgeMsg, setPurgeMsg] = useState("");
@@ -23,8 +24,9 @@ export function SystemLaunchPerfPanel() {
     setBusy(true);
     setError("");
     try {
-      const rows = await fetchLaunchPerfEntries(24);
+      const [rows, bench] = await Promise.all([fetchLaunchPerfEntries(24), fetchLaunchBenchBaseline()]);
       setEntries(rows);
+      setBaseline(bench);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -50,14 +52,14 @@ export function SystemLaunchPerfPanel() {
     }
   }, []);
 
-  const onPurgeIdentity = useCallback(async () => {
+  const onPurgeLegacy = useCallback(async () => {
     setBusy(true);
     setPurgeMsg("");
     setError("");
     try {
-      const result = await purgeAllIdentityExtensions();
+      const result = await purgeLegacyIdentityToolbar();
       setPurgeMsg(
-        `Purged identity extensions — profiles ${result.profiles}, removed ${result.removed}, prefs cleaned ${result.prefsCleaned}.`,
+        `Purged legacy identity-toolbar — profiles ${result.profiles}, removed ${result.removed}, prefs cleaned ${result.prefsCleaned}.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -73,16 +75,8 @@ export function SystemLaunchPerfPanel() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Launch performance</p>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text)]">Profile browser spawn timeline</h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--muted)]">
-            Marks from <code className="text-emerald-200/90">openProfile</code> (prep → spawn). E0001 Cookie Bridge loads from{" "}
-            <a
-              className="text-emerald-200/90 underline"
-              href="https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Chrome Web Store
-            </a>{" "}
-            by default (<code className="text-emerald-200/90">STEALTH_COOKIE_BRIDGE=0</code> to disable).
+            Marks from <code className="text-emerald-200/90">openProfile</code> (prep → spawn). CLI benchmark:{" "}
+            <code className="text-emerald-200/90">node scripts/benchmark-profile-launch.mjs 3</code>.
           </p>
           {purgeMsg ? <p className="mt-2 text-xs text-emerald-200">{purgeMsg}</p> : null}
           {error ? <p className="mt-2 text-xs text-rose-300">{error}</p> : null}
@@ -94,11 +88,30 @@ export function SystemLaunchPerfPanel() {
           <button type="button" className="hub-btn hub-btn--ghost text-xs" disabled={busy} onClick={() => void onClear()}>
             Clear log
           </button>
-          <button type="button" className="hub-btn hub-btn--primary text-xs" disabled={busy} onClick={() => void onPurgeIdentity()}>
-            Purge identity extensions
+          <button type="button" className="hub-btn hub-btn--primary text-xs" disabled={busy} onClick={() => void onPurgeLegacy()}>
+            Purge legacy identity-toolbar
           </button>
         </div>
       </div>
+
+      {baseline ? (
+        <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5 text-xs">
+          <p className="font-semibold text-emerald-200">CLI baseline (`.dev/launch-bench.json`)</p>
+          <p className="mt-1 text-[var(--muted)]">
+            {baseline.rounds} rounds · recorded {new Date(baseline.at).toLocaleString()} · side panel{" "}
+            {baseline.sidePanel ? "ON" : "OFF"}
+          </p>
+          <p className="mt-1 font-mono text-emerald-100/90">
+            min {formatMs(baseline.stats.minMs)} · avg {formatMs(baseline.stats.avgMs)} · max{" "}
+            {formatMs(baseline.stats.maxMs)}
+          </p>
+          {baseline.latestPhases.length ? (
+            <p className="mt-1 truncate text-[var(--muted)]" title={baseline.latestPhases.map((m) => `${m.phase} ${formatMs(m.ms)}`).join(" · ")}>
+              latest: {baseline.latestPhases.map((m) => `${m.phase} ${formatMs(m.ms)}`).join(" · ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-4 overflow-x-auto">
         <table className="hub-table w-full min-w-[36rem] text-xs">

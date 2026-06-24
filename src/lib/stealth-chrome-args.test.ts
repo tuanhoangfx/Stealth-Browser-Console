@@ -31,6 +31,7 @@ describe("buildStealthChromeArgs", () => {
       "--fingerprint-platform=windows"
     );
   });
+
 });
 
 describe("buildLaunchOptions device surface", () => {

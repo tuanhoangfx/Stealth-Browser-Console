@@ -62,7 +62,7 @@ export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
 
   return (
     <HubSplitDirectoryPane
-      className="stealth-workflow-directory-frame"
+      className="stealth-workflow-directory-frame hub-directory-frame"
       variant="panel"
       filterBar={
         <WorkflowFilterPane

@@ -42,6 +42,7 @@ export type HubDirectoryDisplayPanelProps = Pick<
   | "subTabDisplay"
   | "onLog"
   | "tablePanel"
+  | "tableSectionLabel"
   | "tableSectionActions"
   | "tableActiveCount"
 >;
@@ -104,6 +105,7 @@ export function HubDirectoryDisplayPanel({
   subTabDisplay,
   onLog,
   tablePanel,
+  tableSectionLabel = "Table columns",
   tableSectionActions,
   showPageSize = true,
 }: HubDirectoryDisplayPanelProps & { showPageSize?: boolean }) {
@@ -402,7 +404,7 @@ export function HubDirectoryDisplayPanel({
           ) : null}
           {tablePanel ? (
             <PanelSection
-              label="Table columns"
+              label={tableSectionLabel}
               icon={buildSemanticTocIcon("settings.table")}
               headerActions={tableSectionActions}
             >

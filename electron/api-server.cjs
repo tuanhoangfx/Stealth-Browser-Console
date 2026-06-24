@@ -93,7 +93,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
         product: "P0003",
         apiPort: API_PORT,
         authRequired: Boolean(getConfiguredToken()),
-        features: ["cdp", "jobs", "plugins"]
+        features: ["cdp", "jobs", "plugins"],
       });
     }
 

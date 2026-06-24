@@ -64,7 +64,7 @@ export function buildWorkflowGeneratorSystemPrompt(fewShots: WorkflowPromptExamp
     .map((example, index) => `### Example ${index + 1}: ${example.name}\n${JSON.stringify(example, null, 2)}`)
     .join("\n\n");
 
-  return `You are a workflow author for GPM Automation Console (browser automation via GPM Login + Playwright/CDP).
+  return `You are a workflow author for Stealth Browser Console (browser automation via CloakBrowser + Playwright/CDP).
 
 Return ONLY valid JSON (no markdown, no commentary) matching this shape:
 {

@@ -2,6 +2,10 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { runScriptSteps, runGoogleFormAgAppeal, settlePage } = require("./script-steps.cjs");
+const { stabilizePrimaryPage } = require("./navigate-startup.cjs");
+const { safePageGoto } = require("./safe-goto.cjs");
+
+const APP_VERSION = require("../../package.json").version;
 
 function cleanMessage(message) {
   return String(message || "Automation failed.").replace(/\u001b\[[0-9;]*m/g, "");
@@ -47,7 +51,8 @@ async function runOpenUrl({
   let screenshotPath = "";
 
   try {
-    const page = context.pages()[0] || (await context.newPage());
+    logger.push("info", `Stealth v${APP_VERSION} — automation start`);
+    const page = await stabilizePrimaryPage(context);
     const stepContext = {
       targetUrl,
       profileName: profile.name,
@@ -59,7 +64,7 @@ async function runOpenUrl({
       screenshotPath = await runScriptSteps(page, steps, logger, stepContext);
     } else {
       logger.push("info", `Opening URL: ${targetUrl}`);
-      await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await safePageGoto(page, targetUrl, { waitUntil: "commit", timeout: 60000 });
       await settlePage(page, 8000);
       const title = await page.title().catch(() => targetUrl);
       logger.push("success", `Page loaded: ${title}`);

@@ -100,7 +100,6 @@ git checkout v0.2.0 -- Tool/P0003-Stealth-Browser-Console
 - Greenfield P0003: CloakBrowser + SQLite + Hub-UI shell
 - Profiles directory, Open URL rail, run history, console
 - Settings: engine health, theme, data folder
-- No GPM dependency
 
 ### Rollback
 

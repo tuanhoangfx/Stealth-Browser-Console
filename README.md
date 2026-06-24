@@ -1,6 +1,8 @@
 # Stealth Browser Console (P0003)
 
-Standalone desktop console for **CloakBrowser** antidetect profiles and Open URL automation. No GPM Login dependency.
+Standalone desktop console for **CloakBrowser** antidetect profiles and Open URL automation.
+
+Engine pin & bump policy: [`docs/ENGINE-CLOAKBROWSER.md`](docs/ENGINE-CLOAKBROWSER.md) · Fork decision: [`docs/cloakbrowser-fork-evaluation.md`](docs/cloakbrowser-fork-evaluation.md).
 
 ## Stack
 

@@ -1,8 +1,6 @@
 const { Tray, Menu, nativeImage } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
-const { buildTaskbarLabel } = require("./lib/profile-identity.cjs");
-
 const REFRESH_MS = 12000;
 
 function resolveTrayIcon() {
@@ -34,7 +32,7 @@ function createSessionTray(sessionManager) {
     );
 
     const items = running.map((row) => ({
-      label: `${buildTaskbarLabel({ id: row.id, name: row.name })} — focus window`,
+      label: `${row.name || row.id} — focus window`,
       click: () => {
         void sessionManager.focusProfile(row.id);
       }

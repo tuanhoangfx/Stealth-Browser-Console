@@ -1,5 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { safePageGoto } = require("./safe-goto.cjs");
+const { isGoogleWorkflowUrl, assertGoogleSession } = require("./google-session-guard.cjs");
 
 function cleanMessage(message) {
   return String(message || "Automation failed.").replace(/\u001b\[[0-9;]*m/g, "");
@@ -202,8 +204,11 @@ async function runScriptSteps(page, steps, logger, context) {
 
     if (step.kind === "navigate") {
       const url = assertResolvedStepValue(resolveStepValue(step.value || context.targetUrl, context), label);
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeout || 60000 });
+      await safePageGoto(page, url, { waitUntil: "commit", timeout: timeout || 60000 });
       await settlePage(page, Math.min(8000, timeout || 8000));
+      if (isGoogleWorkflowUrl(url)) {
+        await assertGoogleSession(page, logger, { targetUrl: url });
+      }
       logger.push("success", `Navigated: ${url}`);
       continue;
     }

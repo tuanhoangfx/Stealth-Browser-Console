@@ -109,6 +109,8 @@ export type HubDisplayPrefsProps = {
   /** Extra footer actions before “Reset to defaults” (e.g. tab-specific Save). */
   footerActions?: ReactNode;
   tablePanel?: ReactNode;
+  /** Label for the table settings section in Display panel / Settings (default: Table columns). */
+  tableSectionLabel?: string;
   /** Actions in the Table columns section header (e.g. Reset columns). */
   tableSectionActions?: ReactNode;
   tableActiveCount?: number;

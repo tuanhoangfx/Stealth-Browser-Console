@@ -323,7 +323,28 @@ export {
   DirectoryRelativeTimeCell,
   type DirectoryRelativeTimeCellProps,
 } from "./content/DirectoryRelativeTimeCell";
+export {
+  HubActivityTimestampLabel,
+  type HubActivityTimestampLabelProps,
+} from "./content/HubActivityTimestampLabel";
 export { formatHubRelativeTime } from "./lib/format-hub-relative-time";
+export {
+  formatHubActivityRelativeAge,
+  formatHubActivityStaleLabel,
+  formatHubActivityTime,
+  formatLastOpenedRelativeAge,
+  formatLastOpenedStaleDate,
+  hubActivityAgeHubTone,
+  hubActivityAgeTone,
+  lastOpenedAgeTone,
+  lastOpenedHubTone,
+  parseHubActivityMs,
+  type HubActivityAgeTone,
+} from "./lib/format-hub-activity-time";
+export {
+  formatHubTimestampCompact,
+  formatHubTimestampFull,
+} from "./lib/format-hub-timestamp-compact";
 export {
   extractNumericSearchTerm,
   matchesDirectoryIdSearch,
@@ -395,6 +416,7 @@ export {
   type HubDirectoryColumnDef,
   type HubDirectoryColumnMetaInput,
   type HubDirectoryTableVariant,
+  resolveDirectoryPanelFillRows,
 } from "./table/hub-directory-table-meta";
 export {
   HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY,

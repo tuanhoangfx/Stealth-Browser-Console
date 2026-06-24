@@ -66,8 +66,8 @@ export function renderStealthProfileDirectoryBodyCell(
             <button
               type="button"
               className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-              title="Run profile"
-              aria-label={`Run ${profile.name}`}
+              title="Run profile with startup URL"
+              aria-label={`Run ${profile.name} with startup URL`}
               disabled={opening}
               onClick={(event) => {
                 event.stopPropagation();

@@ -12,12 +12,18 @@ const { SessionManager } = require("./engine/session-manager.cjs");
 const { createSessionTray } = require("./session-tray.cjs");
 const { ensureEngineBinary, getBinaryInfo } = require("./engine/cloak-browser-engine.cjs");
 const {
-  getIdentityDebugEnabled,
-  setIdentityDebugEnabled,
-} = require("./lib/app-settings.cjs");
-const { purgeIdentityToolbarRoot, purgeAllProfilesIdentityToolbar } = require("./lib/profile-chrome-cleanup.cjs");
-const { warmCookieBridgeStoreCache } = require("./lib/cookie-bridge-store.cjs");
-const { profileIdentityUiEnabled } = require("./lib/profile-identity-ui.cjs");
+  purgeIdentityToolbarRoot,
+  purgeAllProfilesIdentityToolbar,
+  purgeAllProfilesBrokenExtensionPrefs,
+  purgeAllProfilesStaleCookieBridgePrefs,
+} = require("./lib/profile-chrome-cleanup.cjs");
+const {
+  warmCookieBridgeStoreCache,
+  resolveCookieBridgeExtensionDirSync,
+} = require("./lib/cookie-bridge-store.cjs");
+const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
+const { ensureCloakbrowserExtensionStage } = require("./lib/cloakbrowser-extension-stage.cjs");
+const { getCookieBridgeStatus } = require("./lib/cookie-bridge-status.cjs");
 const { runOpenUrl } = require("./automation/open-url.cjs");
 const {
   validateProfileId,
@@ -131,20 +137,30 @@ function bindIpc() {
   });
 
   ipcMain.handle("profile:launch", async (_event, payload = {}) => {
-    const id = validateProfileId(payload.id);
-    const profile = profileService.getProfile(id);
+    const profile = profileService.resolveProfileForLaunch({
+      id: validateProfileId(payload.id),
+      name: payload.name,
+    });
     if (!profile) throw new Error("Profile not found.");
     return sessionManager.launch(profile);
   });
 
   ipcMain.handle("profile:close", async (_event, payload = {}) => {
-    const id = validateProfileId(payload.id);
-    return sessionManager.close(id);
+    const profile = profileService.resolveProfileForLaunch({
+      id: validateProfileId(payload.id),
+      name: payload.name,
+    });
+    if (!profile) throw new Error("Profile not found.");
+    return sessionManager.close(profile.id);
   });
 
   ipcMain.handle("profile:focus", async (_event, payload = {}) => {
-    const id = validateProfileId(payload.id);
-    return sessionManager.focusProfile(id);
+    const profile = profileService.resolveProfileForLaunch({
+      id: validateProfileId(payload.id),
+      name: payload.name,
+    });
+    if (!profile) throw new Error("Profile not found.");
+    return sessionManager.focusProfile(profile.id);
   });
 
   ipcMain.handle("profile:listRunning", () => ({
@@ -193,15 +209,12 @@ function bindIpc() {
 
   ipcMain.handle("automation:openUrl", async (_event, payload = {}) => {
     const safe = validateOpenUrlPayload(payload);
-    const profile = profileService.getProfile(safe.profileId);
+    const profile =
+      profileService.resolveProfileForLaunch({ id: safe.profileId, name: payload.profileName }) ||
+      profileService.getProfile(safe.profileId);
     if (!profile) throw new Error("Profile not found.");
 
-    if (!sessionManager.isRunning(profile.id)) {
-      await sessionManager.launch(profile);
-    }
-
-    const context = sessionManager.getContext(profile.id);
-    if (!context) throw new Error("Unable to obtain browser context.");
+    const context = await sessionManager.ensureAutomationContext(profile);
 
     const result = await runOpenUrl({
       context,
@@ -250,17 +263,8 @@ function bindIpc() {
     return { ok: true, path: userDataRoot() };
   });
 
-  ipcMain.handle("settings:getIdentityDebug", () => ({
-    ok: true,
-    enabled: getIdentityDebugEnabled(),
-  }));
-
-  ipcMain.handle("settings:setIdentityDebug", (_event, payload = {}) => ({
-    ok: true,
-    enabled: setIdentityDebugEnabled(Boolean(payload.enabled)),
-  }));
-
   const { listLaunchPerf, clearLaunchPerf } = require("./lib/profile-launch-perf.cjs");
+  const { readLaunchBench } = require("./lib/launch-bench-store.cjs");
 
   ipcMain.handle("launchPerf:list", (_event, payload = {}) => ({
     ok: true,
@@ -269,11 +273,23 @@ function bindIpc() {
 
   ipcMain.handle("launchPerf:clear", () => clearLaunchPerf());
 
-  ipcMain.handle("identity:purgeAll", () => {
-    if (profileIdentityUiEnabled()) {
-      return { ok: false, error: "Identity UI is enabled — purge blocked." };
-    }
+  ipcMain.handle("launchPerf:baseline", () => ({
+    ok: true,
+    baseline: readLaunchBench(path.join(__dirname, "..")),
+  }));
+
+  ipcMain.handle("legacy:purgeIdentityToolbar", () => {
     const result = purgeAllProfilesIdentityToolbar(userDataRoot());
+    return { ok: true, ...result };
+  });
+
+  ipcMain.handle("extension:cookieBridgeStatus", () => ({
+    ok: true,
+    status: getCookieBridgeStatus(userDataRoot()),
+  }));
+
+  ipcMain.handle("extension:purgeBrokenPrefs", () => {
+    const result = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
     return { ok: true, ...result };
   });
 }
@@ -317,7 +333,7 @@ function loadP0007ApiKey() {
   if (!hit) return null;
   const parsed = hit.data;
   const keys = parsed?.keys && typeof parsed.keys === "object" ? parsed.keys : {};
-  const apiKey = String(keys["stealth-console"] || keys["gpm-console"] || keys["other-tools"] || "").trim();
+  const apiKey = String(keys["stealth-console"] || keys["other-tools"] || "").trim();
   if (!apiKey) return null;
   const baseUrl = String(parsed.canonicalBaseUrl || parsed.activeBaseUrl || "").trim();
   return { apiKey, baseUrl: baseUrl || "https://9router.infi.io.vn/v1", source: hit.source };
@@ -379,13 +395,33 @@ async function isDevServerReachable(url) {
 /** Reject foreign Vite instances (e.g. workspace default :5173) — must serve this app. */
 async function isStealthDevServer(url) {
   try {
-    const response = await fetch(url, { method: "GET" });
+    const response = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
     if (!response.ok) return false;
     const html = await response.text();
     return html.includes("Stealth Browser Console");
   } catch {
     return false;
   }
+}
+
+/** Wait until Vite serves HTML + main entry (avoids Electron boot timeout on zombie port). */
+async function waitForStealthDevServer(url, { timeoutMs = 60000 } = {}) {
+  const base = normalizeDevServerUrl(url);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await isStealthDevServer(base))) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      continue;
+    }
+    try {
+      const entry = await fetch(new URL("src/main.tsx", base), { signal: AbortSignal.timeout(8000) });
+      if (entry.ok) return true;
+    } catch {
+      // Vite still compiling or zombie — retry
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
 }
 
 async function resolveDevServerUrl() {
@@ -418,6 +454,10 @@ function distIndexPath() {
 async function loadApplication(win) {
   const devServerUrl = await resolveDevServerUrl();
   if (devServerUrl) {
+    const ready = await waitForStealthDevServer(devServerUrl);
+    if (!ready) {
+      console.error(`[load] dev server not ready: ${devServerUrl} — run pnpm dev:recover`);
+    }
     await win.loadURL(devServerUrl);
     return;
   }
@@ -528,9 +568,23 @@ app.whenReady().then(async () => {
   sessionManager.setUserDataRoot(userDataRoot());
   setImmediate(() => {
     void sessionManager.reconcileOrphansOnStartup().catch(() => undefined);
-    void warmCookieBridgeStoreCache(userDataRoot()).catch((error) => {
-      console.warn("[cookie-bridge] warm cache:", error instanceof Error ? error.message : error);
-    });
+    if (typeof warmCookieBridgeStoreCache === "function") {
+      void (async () => {
+        try {
+          const root = userDataRoot();
+          await warmCookieBridgeStoreCache(root);
+          const bridgeDir = resolveCookieBridgeExtensionDirSync(root);
+          if (bridgeDir) {
+            const binary = await getBinaryInfoCached();
+            ensureCloakbrowserExtensionStage(bridgeDir, binary.cacheDir);
+          }
+        } catch (error) {
+          console.warn("[cookie-bridge] warm cache:", error instanceof Error ? error.message : error);
+        }
+      })();
+    } else {
+      console.warn("[cookie-bridge] warm cache unavailable: missing startup hook");
+    }
   });
   try {
     const legacyIdentityRoot = path.join(userDataRoot(), "identity-ext");
@@ -538,16 +592,35 @@ app.whenReady().then(async () => {
   } catch {
     // best-effort — remove V4 in-page identity extensions
   }
-  if (!profileIdentityUiEnabled()) {
-    try {
-      purgeIdentityToolbarRoot(userDataRoot());
-      const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
+  try {
+    const legacyWorkflowQuickRun = path.join(userDataRoot(), "workflow-quick-run");
+    if (fs.existsSync(legacyWorkflowQuickRun)) fs.rmSync(legacyWorkflowQuickRun, { recursive: true, force: true });
+  } catch {
+    // best-effort — remove rolled-back workflow side panel bundles
+  }
+  try {
+    purgeIdentityToolbarRoot(userDataRoot());
+    const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
+    console.log(
+      `[legacy-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
+    );
+    const broken = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
+    if (broken.removed > 0) {
       console.log(
-        `[identity-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
+        `[extension-purge] startup profiles=${broken.profiles} brokenRemoved=${broken.removed} prefsCleaned=${broken.prefsCleaned}`,
       );
-    } catch {
-      // best-effort — drop cached identity-toolbar bundles
     }
+    const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
+    if (bridgeDir) {
+      const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
+      if (stale.removed > 0) {
+        console.log(
+          `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
+        );
+      }
+    }
+  } catch {
+    // best-effort — drop cached identity-toolbar bundles from pre-v0.5.23 installs
   }
   bindContentSecurityPolicy();
   bindIpc();

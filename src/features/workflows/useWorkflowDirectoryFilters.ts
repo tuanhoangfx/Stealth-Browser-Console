@@ -7,6 +7,10 @@ import {
   workflowStateToFilterValues,
 } from "./workflow-filters";
 
+function sameStringList(a: string[], b: string[]) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 export type UseWorkflowDirectoryFiltersArgs = {
   workflowConfigs: WorkflowConfig[];
   workflowSearch: string;
@@ -35,8 +39,12 @@ export function useWorkflowDirectoryFilters({
   const handleFilterValuesChange = useCallback(
     (values: FilterValues) => {
       const next = workflowFilterValuesToState(values);
-      setWorkflowGroupFilters(next.groupIds);
-      setWorkflowPlatformFilters(next.platformIds);
+      setWorkflowGroupFilters((current) =>
+        sameStringList(current, next.groupIds) ? current : next.groupIds,
+      );
+      setWorkflowPlatformFilters((current) =>
+        sameStringList(current, next.platformIds) ? current : next.platformIds,
+      );
     },
     [setWorkflowGroupFilters, setWorkflowPlatformFilters],
   );

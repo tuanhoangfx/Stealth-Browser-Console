@@ -1,4 +1,5 @@
-import { useMemo, type ElementType, type ReactNode } from "react";
+﻿import { useMemo, type ElementType, type ReactNode } from "react";
+import { Tag } from "lucide-react";
 import {
   AppTabHeader,
   type TabHeaderMetaItem,
@@ -15,8 +16,10 @@ export type WorkspaceTabHeaderProps = {
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
-  /** e.g. `v1.1.2 · 03/06/26` */
+  /** e.g. `v4.3.42` — pair with `publishedAt` for activity timestamp label */
   versionLine: string;
+  /** ISO release/deploy time — activity dot + relative/stale label in header meta */
+  publishedAt?: string | null;
   versionLive?: boolean;
   extraMetaItems?: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
@@ -32,15 +35,26 @@ export type WorkspaceTabHeaderProps = {
  */
 export function WorkspaceTabHeader({
   versionLine,
+  publishedAt,
   versionLive,
   extraMetaItems = [],
   centerStats,
   ...header
 }: WorkspaceTabHeaderProps) {
-  const metaItems = useMemo(
-    () => buildVersionMetaItems(versionLine, versionLive, extraMetaItems),
-    [extraMetaItems, versionLine, versionLive],
-  );
+  const metaItems = useMemo(() => {
+    if (publishedAt) {
+      const semver = versionLine.match(/^v[\d.]+/i)?.[0]?.replace(/^v/i, "") ?? versionLine.replace(/^v/i, "");
+      return buildVersionMetaItems(semver, publishedAt, versionLive, extraMetaItems);
+    }
+    return [
+      {
+        icon: Tag,
+        value: versionLine,
+        live: versionLive,
+      } as TabHeaderMetaItem,
+      ...extraMetaItems,
+    ];
+  }, [extraMetaItems, publishedAt, versionLine, versionLive]);
 
   return <AppTabHeader {...header} metaItems={metaItems} centerStats={centerStats} />;
 }

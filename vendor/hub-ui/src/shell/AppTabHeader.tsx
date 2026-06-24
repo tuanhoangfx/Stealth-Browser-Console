@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
 import { ChevronDown, Clock } from "lucide-react";
+import {
+  formatHubActivityRelativeAge,
+  formatHubActivityStaleLabel,
+  hubActivityAgeHubTone,
+  hubActivityAgeTone,
+  parseHubActivityMs,
+} from "../lib/format-hub-activity-time";
+import { formatHubTimestampFull } from "../lib/format-hub-timestamp-compact";
+import { useRelativeNow } from "../lib/use-relative-now";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import "./app-tab-header.css";
@@ -15,6 +24,8 @@ export type TabHeaderMetaItem = {
   title?: string;
   value: string;
   live?: boolean;
+  /** ISO or epoch — activity dot + relative/stale label after version. */
+  activityAt?: string | number | null;
 };
 
 export type TabHeaderStatItem = {
@@ -134,18 +145,55 @@ function Rule({ visibleFrom = "sm" }: { visibleFrom?: "sm" | "md" | "lg" }) {
   return <span className={`h-3.5 w-px shrink-0 self-center bg-white/10 ${vis}`} aria-hidden />;
 }
 
-function MetaLine({ icon: Icon, title, value, live }: TabHeaderMetaItem) {
+function metaActivityDotClass(hubTone: ReturnType<typeof hubActivityAgeHubTone>): string {
+  if (hubTone === "active") return "bg-cyan-400";
+  if (hubTone === "idle") return "bg-amber-400";
+  return "bg-slate-500";
+}
+
+/** Release activity — dot + label uses the same value span as SessionLine. */
+function MetaActivityAt({ at }: { at: string | number }) {
+  const now = useRelativeNow();
+  const ms = parseHubActivityMs(at);
+  if (ms == null) return null;
+
+  const ageTone = hubActivityAgeTone(ms, now);
+  const hubTone = hubActivityAgeHubTone(ageTone);
+  const label =
+    ageTone === "stale" ? formatHubActivityStaleLabel(ms) : formatHubActivityRelativeAge(ms, now);
+  const resolvedTitle =
+    formatHubTimestampFull(typeof at === "string" ? at : new Date(ms).toISOString()) ||
+    new Date(ms).toLocaleString();
+
+  return (
+    <>
+      <span
+        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${metaActivityDotClass(hubTone)}`}
+        aria-hidden
+      />
+      <span className="tabular-nums text-[var(--text)]/90" title={resolvedTitle}>
+        {label}
+      </span>
+    </>
+  );
+}
+
+function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaItem) {
+  const showActivity = activityAt != null && activityAt !== "";
+  const showLiveDot = live !== undefined && !showActivity;
+
   return (
     <div className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[13px] leading-none text-[var(--muted)]">
       <Icon size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
       {title ? <span className="shrink-0">{title}</span> : null}
-      {live !== undefined ? (
+      {showLiveDot ? (
         <span
           className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-emerald-400" : "bg-amber-400"}`}
           aria-hidden
         />
       ) : null}
       <span className="truncate tabular-nums text-[var(--text)]/90">{value}</span>
+      {showActivity ? <MetaActivityAt at={activityAt} /> : null}
     </div>
   );
 }

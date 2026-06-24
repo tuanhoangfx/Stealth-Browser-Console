@@ -12,6 +12,8 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 5175;
 const node = process.execPath;
@@ -59,7 +61,9 @@ try {
   electron = spawn(node, [electronCli, "."], {
     cwd: root,
     stdio: "inherit",
-    env: { ...process.env, VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/` }
+    env: stealthElectronEnv({
+      VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/`,
+    }),
   });
   electron.on("exit", (code) => shutdown(code ?? 0));
 } catch (error) {

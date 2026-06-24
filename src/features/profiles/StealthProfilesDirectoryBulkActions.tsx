@@ -5,7 +5,7 @@ export function StealthProfilesDirectoryBulkActions({
   hasSelection,
   syncBusy,
   launchBusy = false,
-  launchTitle = "Launch selected profiles with the active workflow",
+  launchTitle = "Launch selected profiles with the chosen workflow (skips startup URL)",
   onLaunch,
   onClose,
   onDelete,

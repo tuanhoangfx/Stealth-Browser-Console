@@ -16,8 +16,9 @@ function validateTargetUrl(targetUrl) {
 }
 
 function validateProfileId(id) {
-  const value = typeof id === "number" ? id : String(id || "").trim();
-  if (value === "") throw new Error("Missing profile id");
+  if (id === null || id === undefined) throw new Error("Missing profile id");
+  const value = String(id).trim();
+  if (!value) throw new Error("Missing profile id");
   return value;
 }
 

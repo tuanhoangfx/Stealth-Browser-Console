@@ -1,16 +1,26 @@
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
-const { purgeLegacyProfileIdentityChrome, purgeProfileIdentityToolbar } = require("../lib/profile-chrome-cleanup.cjs");
-const { profileIdentityUiEnabled } = require("../lib/profile-identity-ui.cjs");
+const {
+  purgeLegacyProfileIdentityChrome,
+  purgeProfileIdentityToolbar,
+  purgeBrokenExtensionPrefs,
+  purgeStaleCookieBridgePrefs,
+} = require("../lib/profile-chrome-cleanup.cjs");
+const { markProfileChromeCleanExit, chromeSessionRestoreSuppressionArgs } = require("../lib/profile-chrome-session.cjs");
 const { createLaunchTimer } = require("../lib/profile-launch-timer.cjs");
 const {
-  COOKIE_BRIDGE_STORE_ID,
   cookieBridgeEnabled,
   ensureCookieBridgeStoreExtension,
   resolveCookieBridgeExtensionDirSync,
 } = require("../lib/cookie-bridge-store.cjs");
-const { pinStoreExtension } = require("../lib/profile-chrome-preferences.cjs");
+const { pinToolbarExtension, unpackedExtensionId } = require("../lib/profile-chrome-preferences.cjs");
+const { ensureCloakbrowserExtensionStages } = require("../lib/cloakbrowser-extension-stage.cjs");
+
+/** Per-profile cookie-bridge prefs scrub — once per process after startup bulk purge. */
+const cookieBridgeLaunchPrepped = new Set();
+
+let binaryInfoCache = null;
 
 /** cloakbrowser is ESM-only — lazy dynamic import for Electron CJS main. */
 let cloakModulePromise = null;
@@ -86,6 +96,9 @@ function buildStealthChromeArgs(profile) {
   }
 
   args.push("--disable-infobars");
+  for (const flag of chromeSessionRestoreSuppressionArgs()) {
+    args.push(flag);
+  }
   return args;
 }
 
@@ -96,10 +109,14 @@ function buildIgnoreDefaultArgs() {
 
 function chromeExtensionArgs(extensionDirs) {
   if (!extensionDirs.length) return [];
-  const joined = extensionDirs
-    .map((dir) => path.resolve(String(dir)).replace(/\\/g, "/"))
-    .join(",");
-  return [`--disable-extensions-except=${joined}`, `--load-extension=${joined}`];
+  const entries = extensionDirs.map((dir) => {
+    const abs = path.resolve(String(dir)).replace(/\\/g, "/");
+    return { abs, id: unpackedExtensionId(dir) };
+  });
+  return [
+    `--disable-extensions-except=${entries.map((entry) => entry.id).join(",")}`,
+    `--load-extension=${entries.map((entry) => entry.abs).join(",")}`,
+  ];
 }
 
 function sanitizeChromeArgs(args) {
@@ -189,6 +206,29 @@ async function getBinaryInfo() {
   return binaryInfo();
 }
 
+async function getBinaryInfoCached() {
+  if (!binaryInfoCache) binaryInfoCache = await getBinaryInfo();
+  return binaryInfoCache;
+}
+
+async function prepareCookieBridgeForLaunch(userDataDir, userDataRoot) {
+  if (!cookieBridgeEnabled()) return null;
+  let bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot);
+  if (!bridgeDir) {
+    bridgeDir = await ensureCookieBridgeStoreExtension(userDataRoot);
+  }
+  if (!bridgeDir) return null;
+
+  const prepKey = path.resolve(String(userDataDir));
+  if (!cookieBridgeLaunchPrepped.has(prepKey)) {
+    purgeBrokenExtensionPrefs(userDataDir);
+    purgeStaleCookieBridgePrefs(userDataDir, bridgeDir);
+    cookieBridgeLaunchPrepped.add(prepKey);
+  }
+  pinToolbarExtension(userDataDir, bridgeDir);
+  return bridgeDir;
+}
+
 /**
  * Desktop launch — ignoreDefaultArgs:true blocks Playwright injecting --no-sandbox.
  */
@@ -213,12 +253,6 @@ async function launchStealthPersistentContext(profileOptions) {
   let args = sanitizeChromeArgs(launchOpts.args || []);
   const userDataRoot = options.userDataRoot || path.resolve(options.userDataDir, "..", "..");
   const extraExtensionDirs = [...resolveExtraExtensionDirs(userDataRoot)];
-  if (options.identityExtensionDir) {
-    const identityDir = path.resolve(String(options.identityExtensionDir));
-    if (fs.existsSync(path.join(identityDir, "manifest.json"))) {
-      extraExtensionDirs.push(identityDir);
-    }
-  }
   const seenExt = new Set();
   const uniqueExtDirs = [];
   for (const dir of extraExtensionDirs) {
@@ -229,9 +263,15 @@ async function launchStealthPersistentContext(profileOptions) {
     uniqueExtDirs.push(abs);
   }
   if (uniqueExtDirs.length) {
+    const binary = await getBinaryInfoCached();
+    const staged = ensureCloakbrowserExtensionStages(uniqueExtDirs, binary.cacheDir);
+    if (staged.length !== uniqueExtDirs.length) {
+      console.warn(
+        `[extension-stage] incomplete staging (${staged.length}/${uniqueExtDirs.length}) cacheDir=${binary.cacheDir}`,
+      );
+    }
     args = [...args, ...chromeExtensionArgs(uniqueExtDirs)];
-  } else if (!profileIdentityUiEnabled()) {
-    // Sau sanitize — chặn extension persist trong Chrome profile (identity-toolbar cũ).
+  } else {
     args = [...args, "--disable-extensions"];
   }
 
@@ -288,18 +328,12 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
   const userDataDir = profileDataDir(userDataRoot, profile.id);
   purgeLegacyProfileIdentityChrome(userDataDir, userDataRoot, profile.id);
   fs.mkdirSync(userDataDir, { recursive: true });
-
-  if (!profileIdentityUiEnabled()) {
-    purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
-  }
+  markProfileChromeCleanExit(userDataDir);
+  purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
 
   if (cookieBridgeEnabled()) {
     try {
-      await ensureCookieBridgeStoreExtension(userDataRoot);
-      const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot);
-      if (bridgeDir) {
-        pinStoreExtension(userDataDir, COOKIE_BRIDGE_STORE_ID, bridgeDir);
-      }
+      await prepareCookieBridgeForLaunch(userDataDir, userDataRoot);
     } catch (error) {
       console.warn("[cookie-bridge] store extension unavailable:", error instanceof Error ? error.message : error);
     }
@@ -317,8 +351,6 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
     context,
     userDataDir,
     debugPort: Number(debugPort) || 0,
-    identityExtensionDir: "",
-    identityExtensionId: "",
   };
 }
 
@@ -334,10 +366,13 @@ module.exports = {
   buildStealthChromeArgs,
   buildIgnoreDefaultArgs,
   sanitizeChromeArgs,
+  chromeExtensionArgs,
   resolveWindowMode,
   resolveExtraExtensionDirs,
   ensureEngineBinary,
   getBinaryInfo,
+  getBinaryInfoCached,
+  prepareCookieBridgeForLaunch,
   openProfile,
   closeContext
 };

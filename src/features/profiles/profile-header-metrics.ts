@@ -1,9 +1,9 @@
-import { CheckCircle2, Database, Play } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Database, Play } from "lucide-react";
 import type { TabHeaderStatItem } from "@tool-workspace/hub-ui";
 import { PROFILES_DISPLAY_PREFS } from "../../lib/display-prefs-registry";
 import type { ProfileKpiNumbers } from "./profile-kpi-items";
 
-export type ProfileHeaderStatKey = "total" | "ready" | "running";
+export type ProfileHeaderStatKey = "total" | "ready" | "running" | "failed";
 
 const STAT_DEFS: Record<
   ProfileHeaderStatKey,
@@ -12,6 +12,7 @@ const STAT_DEFS: Record<
   total: { icon: Database, label: "Profiles", toneClass: "text-emerald-300", pick: (k) => k.total },
   ready: { icon: CheckCircle2, label: "Ready", toneClass: "text-emerald-300", pick: (k) => k.ready },
   running: { icon: Play, label: "Running", toneClass: "text-emerald-400", pick: (k) => k.running },
+  failed: { icon: AlertTriangle, label: "Failed", toneClass: "text-rose-300", pick: (k) => k.failed },
 };
 
 /** Header center stats — filtered by Display → Header stats (P0004 Users parity). */

@@ -30,9 +30,6 @@ function seedIfEmpty() {
     note: "Web dev mock — run pnpm dev for Electron + CloakBrowser.",
     status: "closed",
     startupUrl: "",
-    showProfileBadge: false,
-    profileTabGroups: false,
-    tabGroupColor: "",
     ...DEFAULT_DEVICE,
     createdAt: ts,
     updatedAt: ts
@@ -54,6 +51,21 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       info: { version: "web-mock", path: "" }
     }),
     updateBinary: async () => ({ ok: false, error: "Not available in web mock." }),
+    profileIdentityStatus: async () => ({
+      ok: true,
+      status: {
+        windowTitle: { enabled: true, surfaces: ["browser tab title"], note: "Web mock" },
+        omnibarChip: {
+          cliWired: true,
+          binaryReady: false,
+          cloakbrowserVersion: "web-mock",
+          binaryMinVersion: "99.0.0",
+          upstreamIssue: "https://github.com/CloakHQ/CloakBrowser/issues/384",
+          note: "Electron required for live status.",
+        },
+        taskbarIconOverlay: { supported: false, note: "Web mock" },
+      },
+    }),
     listProfiles: async () => {
       seedIfEmpty();
       return { ok: true, profiles: [...profiles], groups: [...groups] };
@@ -131,9 +143,6 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
         note: String(input.note || ""),
         status: "closed",
         startupUrl: normalizeStartupUrl(String(input.startupUrl || "")),
-        showProfileBadge: input.showProfileBadge ?? false,
-        profileTabGroups: input.profileTabGroups ?? false,
-        tabGroupColor: String(input.tabGroupColor || ""),
         ...deviceConfigFromProfile(input),
         createdAt: ts,
         updatedAt: ts
@@ -229,11 +238,28 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       userDataPath: "(browser)"
     }),
     openDataFolder: async () => ({ ok: false, path: "" }),
-    getIdentityDebug: async () => ({ ok: true, enabled: false }),
-    setIdentityDebug: async (payload) => ({ ok: true, enabled: Boolean(payload?.enabled) }),
     listLaunchPerf: async () => ({ ok: true, entries: [] }),
     clearLaunchPerf: async () => ({ ok: true }),
-    purgeIdentityExtensions: async () => ({ ok: true, profiles: 0, removed: 0, prefsCleaned: 0 }),
+    fetchLaunchBenchBaseline: async () => ({ ok: true, baseline: null }),
+    purgeLegacyIdentityToolbar: async () => ({ ok: true, profiles: 0, removed: 0, prefsCleaned: 0 }),
+    fetchCookieBridgeStatus: async () => ({
+      ok: true,
+      status: {
+        enabled: true,
+        productCode: "E0001",
+        name: "E0001 Cookie Bridge",
+        storeId: "kaaadageakdandpobcofplmfbjfjabdk",
+        resolvedPath: null,
+        unpackedId: null,
+        source: "missing" as const,
+        manifestOk: false,
+        manifestName: "E0001 Cookie Bridge",
+        workspacePath: null,
+        cachePath: "",
+        env: { STEALTH_COOKIE_BRIDGE: "1", STEALTH_COOKIE_BRIDGE_LOCAL: "0" },
+      },
+    }),
+    purgeBrokenExtensionPrefs: async () => ({ ok: true, profiles: 0, removed: 0, prefsCleaned: 0 }),
     onProfileSession: () => () => undefined
   };
 }

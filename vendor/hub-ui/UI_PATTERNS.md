@@ -344,7 +344,7 @@ wrapClassName={HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS}
 
 | Column | CSS class | Content | Rules |
 |--------|-----------|---------|-------|
-| Start | `.app-tab-header__start` | Tab title (icon + h1) · **Session** timer · version meta (`Tag` + `vX · hh:mm dd/mm/yy`) | Session **before** version meta; never in end rail |
+| Start | `.app-tab-header__start` | Tab title (icon + h1) · **Session** timer · version meta (`Tag` + `vX.Y.Z` + activity dot + timestamp) | Session **before** version meta; **no** `·` between version and activity dot; activity label uses same `tabular-nums text-[var(--text)]/90` as Session value |
 | Center | `.app-tab-header-center-stats` | `centerStats` from app (`buildHubHeaderStats`, `buildDashboardHeaderStats`, …) | Always `flex` (not `hidden xl:flex`); `justify-self-center` |
 | End | `.app-tab-header__end` | `actions` slot — **Notify** · **Log** + **Settings** | No Session, no KPI stats |
 
@@ -358,7 +358,9 @@ wrapClassName={HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS}
 | P0004 Hub | `HubStickyHeader` / `HubListChromeHeader` | same |
 | P0004 Users | `UserListChromeHeader` | same |
 | P0004 System | `SystemTabHeader` | same |
-| P0020 workspace | `WorkspaceTabHeader` | `buildVersionMetaItems(versionLine)` in hub-ui |
+| P0020 workspace | `WorkspaceTabHeader` | `buildVersionMetaItems(semver, publishedAt, live)` — `MetaActivityAt` in `AppTabHeader` |
+
+**Version meta layout (release activity):** `v4.3.42` `[gap]` `[dot]` `3h ago` — dot colors: fresh cyan · recent amber · stale gray; label buckets match `HubActivityTimestampLabel` (directory/rail). Header label typography matches **Session** value span exactly (not `hub-users-status` 10px).
 
 **Version timestamp sources** (`resolveVersionReleaseMeta`): GitHub release → manifest `latestPublished` → CHANGELOG exact semver → CHANGELOG latest block (dev fallback).
 
@@ -386,6 +388,39 @@ Checks: `session-in-start-rail`, `center-stats-always-visible`, `grid-three-colu
 
 - Package — `AppTabHeader.tsx`, `WorkspaceTabHeader.tsx` (docstring)
 - P0004 — `DashboardChromeHeader.tsx`, `HubStickyHeader.tsx`, `src/lib/app-release.ts`
+
+---
+
+## Sidebar brand (golden — hub-ui)
+
+**Shell:** `HubSidebarShell` — `brandLeading` (tool avatar) + `brandTitle` (human product name).
+
+| Rule | Detail |
+|------|--------|
+| **Title** | Human name only — e.g. `Data Box`, `Stealth Browser Console`, `Tool Hub` |
+| **No code** | Do not show `P00xx` in `brandTitle` or `brandTagline` |
+| **No version** | Release `vX.Y.Z` lives in tab header meta (`buildVersionMetaItems`) — never duplicate in sidebar |
+| **Tagline** | Optional short descriptor (P0004 `Workspace catalog`, P0016 `Multi-channel chat console`) — **not** code, **not** version |
+| **Auth gate subtitle** | `formatHubAuthToolInfo` — omit `code` in preset → `Data Box — …`, `Tool Hub — …`, `Chat Center — …`, `GPM Console — …` |
+
+**Golden refs (icon + name, no version tagline)**
+
+- P0003 — `StealthHubShellSidebar.tsx` — no `brandTagline`
+- P0001 — `GpmHubShellSidebar.tsx` — no `brandTagline`
+- P0020 — `WorkspaceSidebar.tsx` — `DATA_BOX_PRODUCT.name`
+- P0004 / P0016 — descriptive `brandTagline` only (no `APP_VERSION`)
+
+**Legacy aside (not `HubSidebarShell` yet — migration backlog)**
+
+| Tool | File | Brand today | Target |
+|------|------|-------------|--------|
+| **P0008** | `app/src/components/layout/Sidebar.tsx` | `Seller Center` + `CRM · CzP Seller` | Migrate to `HubSidebarShell`; descriptor OK, no code/version |
+| **P0021** | `app/src/components/workspace/WorkspaceShell.tsx` | `Workspace Hub` + `P0021 · vX.Y.Z` | Migrate to `HubSidebarShell`; drop code/version tagline (version in `AppTabHeader` meta) |
+
+- P0008/P0021 reuse `navActive*` / `navIconClass` from hub-ui but inline `<aside>` — excluded from `hub-ui-parity-check.mjs --sidebar-only` until shell migration.
+- New Next.js tools: prefer `HubSidebarShell` from day one (see P0003/P0020).
+
+**Verify:** `node Tool/scripts/hub-ui-parity-check.mjs --code P00xx`
 
 ---
 

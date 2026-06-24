@@ -5,7 +5,7 @@ import { useStealthShell } from "../../context/stealth-shell-context";
 import { WorkflowRailPanel } from "../workflows/WorkflowRailPanel";
 import { AutomationRuntimePanel } from "../runtime/AutomationRuntimePanel";
 
-/** Profiles right rail — P0001 ProfilesWorkflowRail parity. */
+/** Profiles right rail — Hub workflow picker pattern. */
 export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail() {
   const { setView } = useStealthShell();
   const { openProfilesForWorkflow } = useWorkflowRuntime();

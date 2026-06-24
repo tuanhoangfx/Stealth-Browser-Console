@@ -4,6 +4,7 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 
 const execFileAsync = promisify(execFile);
+const { markProfileChromeCleanExit } = require("./profile-chrome-session.cjs");
 
 const CHROME_NAMES = new Set(["chrome.exe", "chromium.exe"]);
 
@@ -52,6 +53,7 @@ async function hasProfileBrowserProcess(userDataDir) {
 async function killOrphanProfileBrowser(userDataDir) {
   const pids = await listProfileBrowserPids(userDataDir);
   if (!pids.length) return { killed: 0 };
+  markProfileChromeCleanExit(userDataDir);
   if (process.platform !== "win32") return { killed: 0 };
 
   let killed = 0;

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Standalone antidetect browser console using **CloakBrowser** — replace external GPM dependency for operators who want self-hosted profile management.
+Standalone antidetect browser console using **CloakBrowser** — self-hosted profile management, workflows, and automation without an external vendor console API.
 
 ## MVP (v0.1.0)
 
@@ -17,13 +17,13 @@ Standalone antidetect browser console using **CloakBrowser** — replace externa
 | Screen | Golden |
 |--------|--------|
 | Profiles | P0020/notes split |
-| Workflow | P0001/scripts-pane |
+| Workflow | P0004/hub-ui workflows |
 | Settings | Modal (`StealthDisplayPrefs`) — P0004/system |
 
 ## Post-MVP
 
-1. v0.2 Scripts — workflow presets + step builder (port from P0001)
-2. v0.3 GPM profile import (proxy/note metadata only)
+1. v0.2 Scripts — workflow presets + step builder
+2. v0.3 Third-party profile import (proxy/note metadata only)
 3. v0.4 Concurrent automation queue
 4. v0.5 Installer post-install binary check
 
@@ -40,6 +40,7 @@ Standalone antidetect browser console using **CloakBrowser** — replace externa
 ```powershell
 cd E:\Dev\Tool\P0003-Stealth-Browser-Console
 corepack pnpm dev
+corepack pnpm dev:reload   # restart Electron main after electron/ changes
 corepack pnpm build
-corepack pnpm test:smoke
+corepack pnpm test:unit
 ```

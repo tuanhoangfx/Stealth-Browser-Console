@@ -141,7 +141,15 @@ export function useStealthWorkflowStack({
       builtinWorkflows: DEFAULT_WORKFLOWS,
       selectScriptWorkflow: workflow.selectScriptWorkflow
     }),
-    [workflow, workflowFilters]
+    [
+      workflow.workflowConfigs,
+      workflow.activeWorkflow,
+      workflow.setActiveWorkflow,
+      workflow.selectedWorkflowIds,
+      workflow.setSelectedWorkflowIds,
+      workflow.selectScriptWorkflow,
+      workflowFilters,
+    ],
   );
 
   const workflowEditor = useMemo<WorkflowEditorContextValue>(
@@ -192,7 +200,48 @@ export function useStealthWorkflowStack({
       DEFAULT_WORKFLOWS,
       clampConcurrency
     }),
-    [workflow]
+    [
+      workflow.workflowConfigs,
+      workflow.activeWorkflow,
+      workflow.setActiveWorkflow,
+      workflow.activeWorkflowConfig,
+      workflow.savePulse,
+      workflow.selectedScriptStepId,
+      workflow.setSelectedScriptStepId,
+      workflow.selectedScriptStep,
+      workflow.pendingWorkflowImportId,
+      workflow.setPendingWorkflowImportId,
+      workflow.workflowUndoStack,
+      workflow.workflowRedoStack,
+      workflow.workflowImportRef,
+      workflow.singleWorkflowImportRef,
+      workflow.scriptStepKinds,
+      workflow.updateActiveWorkflowConfig,
+      workflow.updateActiveScriptStep,
+      workflow.addScriptStep,
+      workflow.removeScriptStep,
+      workflow.moveScriptStep,
+      workflow.reorderScriptStepsBySortedIds,
+      workflow.addWorkflow,
+      workflow.applyAiGeneratedWorkflow,
+      workflow.duplicateWorkflow,
+      workflow.deleteActiveWorkflow,
+      workflow.deleteWorkflows,
+      workflow.resetWorkflowsBulk,
+      workflow.resetWorkflows,
+      workflow.exportWorkflows,
+      workflow.exportWorkflow,
+      workflow.copyWorkflow,
+      workflow.resetWorkflow,
+      workflow.importWorkflows,
+      workflow.importSingleWorkflow,
+      workflow.saveWorkflowChanges,
+      workflow.undoWorkflowChange,
+      workflow.redoWorkflowChange,
+      workflow.copyWorkflowId,
+      workflow.startWorkflowImport,
+      workflow.selectScriptWorkflow,
+    ],
   );
 
   const workflowRuntime = useMemo<WorkflowRuntimeContextValue>(

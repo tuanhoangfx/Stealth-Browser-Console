@@ -37,6 +37,56 @@ function useLocalDevExtension() {
   return raw === "1" || raw === "true" || raw === "on";
 }
 
+/** Live workspace copy under E:\\Dev\\Extension (dev builds). */
+function workspaceExtensionDir() {
+  const local = path.resolve(__dirname, "..", "..", "..", "..", "Extension", "E0001-cookie-bridge");
+  return fs.existsSync(path.join(local, "manifest.json")) ? local : null;
+}
+
+/** Copy extension sources into a stable AppData cache (CloakBrowser stages by unpacked id under `.cloakbrowser`). */
+function shouldCopyExtensionEntry(relativePath) {
+  const rel = String(relativePath || "").replace(/\\/g, "/").toLowerCase();
+  if (!rel || rel === ".") return true;
+  if (rel === ".git" || rel.startsWith(".git/")) return false;
+  if (rel === "node_modules" || rel.startsWith("node_modules/")) return false;
+  return true;
+}
+
+function syncExtensionDirToCache(sourceDir, userDataRoot = defaultUserDataRoot()) {
+  const src = path.resolve(String(sourceDir || ""));
+  const dest = unpackedDir(userDataRoot);
+  const srcManifest = path.join(src, "manifest.json");
+  if (!fs.existsSync(srcManifest)) return null;
+  const destManifest = path.join(dest, "manifest.json");
+  if (fs.existsSync(destManifest)) {
+    try {
+      if (fs.statSync(srcManifest).mtimeMs <= fs.statSync(destManifest).mtimeMs) return dest;
+    } catch {
+      // fall through — refresh cache
+    }
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.cpSync(src, dest, {
+    recursive: true,
+    force: true,
+    filter: (entry) => shouldCopyExtensionEntry(path.relative(src, entry)),
+  });
+  return dest;
+}
+
+/**
+ * Launch path for `--load-extension` — always the AppData cache, never workspace.
+ * Workspace is synced into cache when present so dev edits still apply.
+ */
+function resolveCachedExtensionDir(userDataRoot = defaultUserDataRoot()) {
+  const cache = unpackedDir(userDataRoot);
+  const workspace = workspaceExtensionDir();
+  if (workspace) {
+    syncExtensionDirToCache(workspace, userDataRoot);
+  }
+  return fs.existsSync(path.join(cache, "manifest.json")) ? cache : null;
+}
+
 function downloadBuffer(url, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 8) {
@@ -117,14 +167,11 @@ function extractZipBuffer(zipBuffer, destDir) {
 async function ensureCookieBridgeStoreExtension(userDataRoot = defaultUserDataRoot()) {
   if (!cookieBridgeEnabled()) return null;
 
-  if (useLocalDevExtension()) {
-    const local = path.resolve(__dirname, "..", "..", "..", "..", "Extension", "E0001-cookie-bridge");
-    if (fs.existsSync(path.join(local, "manifest.json"))) return local;
-  }
+  const cached = resolveCachedExtensionDir(userDataRoot);
+  if (cached) return cached;
 
   const dest = unpackedDir(userDataRoot);
   const manifestPath = path.join(dest, "manifest.json");
-  if (fs.existsSync(manifestPath)) return dest;
 
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   const crx = await downloadBuffer(STORE_UPDATE_URL);
@@ -151,7 +198,9 @@ async function ensureCookieBridgeStoreExtension(userDataRoot = defaultUserDataRo
 }
 
 function warmCookieBridgeStoreCache(userDataRoot = defaultUserDataRoot()) {
-  if (!cookieBridgeEnabled() || useLocalDevExtension()) return Promise.resolve(null);
+  if (!cookieBridgeEnabled()) return Promise.resolve(null);
+  const cached = resolveCachedExtensionDir(userDataRoot);
+  if (cached) return Promise.resolve(cached);
   if (!warmPromise) {
     warmPromise = ensureCookieBridgeStoreExtension(userDataRoot).catch((error) => {
       warmPromise = null;
@@ -163,12 +212,7 @@ function warmCookieBridgeStoreCache(userDataRoot = defaultUserDataRoot()) {
 
 function resolveCookieBridgeExtensionDirSync(userDataRoot = defaultUserDataRoot()) {
   if (!cookieBridgeEnabled()) return null;
-  if (useLocalDevExtension()) {
-    const local = path.resolve(__dirname, "..", "..", "..", "..", "Extension", "E0001-cookie-bridge");
-    return fs.existsSync(path.join(local, "manifest.json")) ? local : null;
-  }
-  const dest = unpackedDir(userDataRoot);
-  return fs.existsSync(path.join(dest, "manifest.json")) ? dest : null;
+  return resolveCachedExtensionDir(userDataRoot);
 }
 
 module.exports = {
@@ -178,5 +222,9 @@ module.exports = {
   ensureCookieBridgeStoreExtension,
   warmCookieBridgeStoreCache,
   resolveCookieBridgeExtensionDirSync,
+  resolveCachedExtensionDir,
+  syncExtensionDirToCache,
+  workspaceExtensionDir,
   unpackedDir,
+  useLocalDevExtension,
 };

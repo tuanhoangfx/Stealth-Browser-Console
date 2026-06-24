@@ -19,12 +19,19 @@ const { checkProxy, geoConsistency } = require("./lib/proxy-pool.cjs");
 function buildRoutes(services) {
   const { sessionManager, profileService, jobQueue, userDataRoot, send } = services;
 
-  async function ensureProfileContext(profileId) {
+  async function ensureProfileContext(profileId, { skipStartupUrl = false } = {}) {
     const profile = profileService.getProfile(profileId);
     if (!profile) throw new Error("Profile không tồn tại");
-    if (!sessionManager.isRunning(profileId)) {
-      await sessionManager.launch(profile);
+    if (skipStartupUrl) {
+      const context = await sessionManager.ensureAutomationContext(profile);
+      return { profile, context };
     }
+    if (!sessionManager.isRunning(profileId)) {
+      await sessionManager.launch(profile, { skipStartupUrl: false });
+    } else {
+      await sessionManager.focusProfile(profileId);
+    }
+    await sessionManager.awaitLaunchNavigation(profileId);
     const context = sessionManager.getContext(profileId);
     if (!context) throw new Error("Không lấy được browser context — launch profile trước");
     return { profile, context };
@@ -59,7 +66,7 @@ function buildRoutes(services) {
       inspectMode: Boolean(rawBody.inspect_mode ?? rawBody.inspectMode)
     });
     emit({ event: "progress", msg: `Mở URL: ${safe.targetUrl}` });
-    const { profile, context } = await ensureProfileContext(safe.profileId);
+    const { profile, context } = await ensureProfileContext(safe.profileId, { skipStartupUrl: true });
     const result = await runOpenUrl({
       context,
       profile,

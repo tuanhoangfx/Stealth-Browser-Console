@@ -21,17 +21,14 @@ function wasmPath() {
 
 function loadBetterSqliteCtor() {
   try {
-    const Database = require("better-sqlite3");
-    const probe = new Database(":memory:");
-    probe.close();
-    return Database;
+    return require("better-sqlite3");
   } catch (error) {
     const hint = error instanceof Error ? error.message : String(error);
     const isAbiMismatch =
       /NODE_MODULE_VERSION|was compiled against|not a valid Win32 application/i.test(hint);
     if (isAbiMismatch) {
       console.warn(
-        `[db] better-sqlite3 ABI mismatch — run: pnpm exec electron-rebuild -f -w better-sqlite3 (${hint.slice(0, 80)})`,
+        `[db] better-sqlite3 ABI mismatch — run: node scripts/ensure-better-sqlite3.mjs (${hint.slice(0, 80)})`,
       );
     } else {
       console.warn(`[db] better-sqlite3 unavailable (${hint.slice(0, 120)}) — using sql.js fallback`);
@@ -66,9 +63,6 @@ function migrateProfilesTable(database) {
     ["humanize", "INTEGER DEFAULT 1"],
     ["window_mode", "TEXT DEFAULT 'host-maximized'"],
     ["startup_url", "TEXT"],
-    ["show_profile_badge", "INTEGER DEFAULT 0"],
-    ["profile_tab_groups", "INTEGER DEFAULT 0"],
-    ["tab_group_color", "TEXT"],
     ["last_opened_at", "INTEGER"],
   ];
   let addedWindowMode = false;
@@ -105,14 +99,7 @@ function backfillEmptyStartupUrls(database) {
     .run("startup_url_backfill_v1", "1");
 }
 
-function disableInPageProfileChrome(database) {
-  const flag = database.prepare("SELECT value FROM settings WHERE key = ?").get("profile_chrome_ui_off_v1");
-  if (flag?.value === "1") return;
-  database.exec(`UPDATE profiles SET show_profile_badge = 0, profile_tab_groups = 0`);
-  database
-    .prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`)
-    .run("profile_chrome_ui_off_v1", "1");
-}
+const { dropLegacyProfileChromeColumns } = require("./init-drop-legacy-chrome.cjs");
 
 function backfillLastOpenedAt(database) {
   const flag = database.prepare("SELECT value FROM settings WHERE key = ?").get("last_opened_at_backfill_v1");
@@ -242,23 +229,64 @@ function createSqlJsAdapter(database) {
   };
 }
 
+function removeWalSidecars(filePath) {
+  if (!filePath) return;
+  for (const suffix of ["-wal", "-shm"]) {
+    const sidecar = `${filePath}${suffix}`;
+    try {
+      if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
+    } catch {
+      // best-effort
+    }
+  }
+}
+
 async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   const dbDir = path.join(userDataPath, "data");
   fs.mkdirSync(dbDir, { recursive: true });
   dbFilePath = path.join(dbDir, "stealth-console.db");
+  removeWalSidecars(dbFilePath);
 
   nativeDb = new DatabaseCtor(dbFilePath);
   nativeDb.pragma("journal_mode = WAL");
   nativeDb.pragma("foreign_keys = ON");
   nativeDb.exec(fs.readFileSync(schemaPath(), "utf8"));
   migrateProfilesTable(nativeDb);
-  disableInPageProfileChrome(nativeDb);
+  dropLegacyProfileChromeColumns(nativeDb);
   backfillEmptyStartupUrls(nativeDb);
   backfillLastOpenedAt(nativeDb);
 
   dbBackend = "better-sqlite3";
   console.info("[db] backend=better-sqlite3 (incremental WAL)");
   return createBetterSqliteAdapter(nativeDb);
+}
+
+/** Re-export corrupt file via sql.js — fixes SQLITE_CORRUPT for better-sqlite3 open. */
+async function repairDatabaseFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return { ok: false, reason: "missing" };
+  const initSqlJs = require("sql.js/dist/sql-wasm.js");
+  const SQL = await initSqlJs({ locateFile: () => wasmPath() });
+  const backup = `${filePath}.corrupt.bak`;
+  try {
+    fs.copyFileSync(filePath, backup);
+    const source = new SQL.Database(fs.readFileSync(filePath));
+    const rebuilt = source.export();
+    source.close();
+    fs.writeFileSync(filePath, Buffer.from(rebuilt));
+    removeWalSidecars(filePath);
+    console.info(`[db] repaired corrupt database — backup ${backup}`);
+    return { ok: true, backup };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[db] repair failed (${message}) — keeping backup ${backup}`);
+    return { ok: false, reason: message, backup };
+  }
+}
+
+function isCorruptSqliteError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = error && typeof error === "object" ? error.code : "";
+  return code === "SQLITE_CORRUPT" || /malformed|database disk image is corrupt/i.test(message);
 }
 
 async function openSqlJsDatabase(userDataPath) {
@@ -276,7 +304,7 @@ async function openSqlJsDatabase(userDataPath) {
 
   sqlDb.exec(fs.readFileSync(schemaPath(), "utf8"));
   migrateProfilesTable(sqlDb);
-  disableInPageProfileChrome(sqlDb);
+  dropLegacyProfileChromeColumns(sqlDb);
   backfillEmptyStartupUrls(sqlDb);
   backfillLastOpenedAt(sqlDb);
   flushSqlJsDatabase();
@@ -302,7 +330,21 @@ async function openDatabase(userDataPath) {
           dbInstance = await openBetterSqliteDatabase(BetterSqlite, userDataPath);
           return dbInstance;
         } catch (error) {
-          console.warn("[db] better-sqlite3 open failed — falling back to sql.js", error);
+          if (isCorruptSqliteError(error)) {
+            const dbDir = path.join(userDataPath, "data");
+            const file = path.join(dbDir, "stealth-console.db");
+            const repaired = await repairDatabaseFile(file);
+            if (repaired.ok) {
+              try {
+                dbInstance = await openBetterSqliteDatabase(BetterSqlite, userDataPath);
+                return dbInstance;
+              } catch (retryError) {
+                console.warn("[db] better-sqlite3 retry after repair failed — falling back to sql.js", retryError);
+              }
+            }
+          } else {
+            console.warn("[db] better-sqlite3 open failed — falling back to sql.js", error);
+          }
         }
       }
 

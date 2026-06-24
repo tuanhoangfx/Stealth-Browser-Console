@@ -10,6 +10,8 @@ import {
   WORKFLOW_KPI_PREF_ICONS,
 } from "./profile-display-pref-icons";
 
+const RESOLVED_DISPLAY_PREFS_CACHE = new Map<StealthScreen, ScreenDisplayPrefsConfig>();
+
 export type ScreenDisplayPrefsConfig = {
   kpis: PrefItem[];
   charts: PrefItem[];
@@ -26,6 +28,7 @@ export const PROFILES_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "total", label: "Profiles" },
     { key: "running", label: "Running" },
+    { key: "failed", label: "Failed" },
     { key: "ready", label: "Ready" },
   ],
   charts: [],
@@ -35,13 +38,14 @@ export const PROFILES_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   ],
   headerStats: [
     { key: "running", label: "Running" },
+    { key: "failed", label: "Failed" },
     { key: "ready", label: "Ready" },
     { key: "total", label: "Profiles" },
   ],
-  defaultKpiKeys: new Set(["total", "running", "ready"]),
+  defaultKpiKeys: new Set(["total", "running", "failed", "ready"]),
   defaultChartKeys: new Set(),
   defaultFilterKeys: new Set(["group", "status"]),
-  defaultHeaderStatKeys: new Set(["running", "ready", "total"]),
+  defaultHeaderStatKeys: new Set(["running", "failed", "ready", "total"]),
 };
 
 export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
@@ -72,23 +76,31 @@ export const SCREEN_DISPLAY_PREFS: Partial<Record<StealthScreen, ScreenDisplayPr
 };
 
 export function resolveScreenDisplayPrefs(screen: StealthScreen): ScreenDisplayPrefsConfig | undefined {
+  const cached = RESOLVED_DISPLAY_PREFS_CACHE.get(screen);
+  if (cached) return cached;
+
   const cfg = SCREEN_DISPLAY_PREFS[screen];
   if (!cfg) return undefined;
+
+  let resolved: ScreenDisplayPrefsConfig;
   if (screen === "profiles") {
-    return {
+    resolved = {
       ...cfg,
       kpis: withPrefItemIcons(cfg.kpis, PROFILE_KPI_PREF_ICONS),
       filters: withPrefItemIcons(cfg.filters, PROFILE_FILTER_PREF_ICONS),
       headerStats: withPrefItemIcons(cfg.headerStats, PROFILE_HEADER_PREF_ICONS),
     };
-  }
-  if (screen === "workflow") {
-    return {
+  } else if (screen === "workflow") {
+    resolved = {
       ...cfg,
       kpis: withPrefItemIcons(cfg.kpis, WORKFLOW_KPI_PREF_ICONS),
       filters: withPrefItemIcons(cfg.filters, WORKFLOW_FILTER_PREF_ICONS),
       headerStats: withPrefItemIcons(cfg.headerStats, WORKFLOW_HEADER_PREF_ICONS),
     };
+  } else {
+    resolved = cfg;
   }
-  return cfg;
+
+  RESOLVED_DISPLAY_PREFS_CACHE.set(screen, resolved);
+  return resolved;
 }

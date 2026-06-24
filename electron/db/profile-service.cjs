@@ -4,27 +4,6 @@ const { getDb } = require("./init.cjs");
 const VALID_PLATFORMS = new Set(["windows", "macos", "linux"]);
 const VALID_COLOR_SCHEMES = new Set(["", "light", "dark", "no-preference"]);
 const VALID_WINDOW_MODES = new Set(["host-maximized", "preset-viewport", "engine-default"]);
-const VALID_TAB_GROUP_COLORS = new Set(["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", ""]);
-
-function normalizeTabGroupColor(value) {
-  const raw = String(value || "").trim().toLowerCase();
-  if (!raw) return "";
-  return VALID_TAB_GROUP_COLORS.has(raw) ? raw : "";
-}
-
-function normalizeChromeUiFields(input, base = {}) {
-  const resolveBool = (inputVal, baseVal, defaultOn = true) => {
-    if (inputVal !== undefined) return inputVal === true || inputVal === 1 ? 1 : 0;
-    if (baseVal === true || baseVal === 1) return 1;
-    if (baseVal === false || baseVal === 0) return 0;
-    return defaultOn ? 1 : 0;
-  };
-  return {
-    showProfileBadge: resolveBool(input.showProfileBadge, base.showProfileBadge, false),
-    profileTabGroups: resolveBool(input.profileTabGroups, base.profileTabGroups, false),
-    tabGroupColor: normalizeTabGroupColor(input.tabGroupColor ?? base.tabGroupColor)
-  };
-}
 
 const { normalizeStartupUrl, coerceStartupUrlInput, resolveProfileLaunchUrl, resolveStartupUrlSave } = require("../lib/startup-url.cjs");
 
@@ -90,9 +69,6 @@ function rowToProfile(row) {
     humanize: row.humanize == null ? true : Number(row.humanize) === 1,
     windowMode: row.window_mode || "host-maximized",
     startupUrl: row.startup_url || "",
-    showProfileBadge: row.show_profile_badge == null ? false : Number(row.show_profile_badge) === 1,
-    profileTabGroups: row.profile_tab_groups == null ? false : Number(row.profile_tab_groups) === 1,
-    tabGroupColor: row.tab_group_color || "",
     lastOpenedAt: Number.isFinite(Number(row.last_opened_at)) && Number(row.last_opened_at) > 0 ? Number(row.last_opened_at) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -242,6 +218,55 @@ function getProfile(id) {
   return rowToProfile(row);
 }
 
+function findProfileByName(name) {
+  const token = String(name || "").trim();
+  if (!token) return null;
+  const row = getDb()
+    .prepare(
+      `SELECT p.*, g.name AS group_name
+       FROM profiles p
+       LEFT JOIN profile_groups g ON g.id = p.group_id
+       WHERE p.name = ?
+       LIMIT 1`,
+    )
+    .get(token);
+  return rowToProfile(row);
+}
+
+/** Resolve profile for launch/close/automation — tolerates stale id or numeric code tokens. */
+function resolveProfileForLaunch(payload = {}) {
+  const rawId = payload.id;
+  if (rawId === null || rawId === undefined || String(rawId).trim() === "") return null;
+
+  const id = String(rawId).trim();
+  let profile = getProfile(id);
+  if (profile) return profile;
+
+  const nameHint = String(payload.name || "").trim();
+  if (nameHint) {
+    profile = findProfileByName(nameHint);
+    if (profile) return profile;
+  }
+
+  if (/^\d{1,6}$/.test(id)) {
+    profile = findProfileByName(id);
+    if (profile) return profile;
+    const padded = id.padStart(4, "0");
+    if (padded !== id) {
+      profile = findProfileByName(padded);
+      if (profile) return profile;
+    }
+    const page = listProfilesPage({ search: id, limit: 5 });
+    const exact = page.profiles.find((row) => {
+      const code = String(row.name || "").replace(/\D/g, "");
+      return code === id || code === padded || row.name === id || row.name === padded;
+    });
+    if (exact) return exact;
+  }
+
+  return null;
+}
+
 function createProfile(input) {
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -252,7 +277,6 @@ function createProfile(input) {
     : generateFingerprintSeed();
   const groupId = String(input.groupId || "default").trim() || "default";
   const device = normalizeDeviceFields(input);
-  const chrome = normalizeChromeUiFields(input);
   const startupUrl = resolveStartupUrlSave(input.startupUrl, "");
 
   getDb()
@@ -261,9 +285,8 @@ function createProfile(input) {
          (id, name, group_id, proxy, fingerprint_seed, note, status,
           platform, timezone, locale, user_agent, viewport_w, viewport_h, color_scheme, device_preset,
           headless, humanize, window_mode, startup_url,
-          show_profile_badge, profile_tab_groups, tab_group_color,
           created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'closed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, 'closed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id,
@@ -284,9 +307,6 @@ function createProfile(input) {
       device.humanize,
       device.windowMode,
       startupUrl || null,
-      chrome.showProfileBadge,
-      chrome.profileTabGroups,
-      chrome.tabGroupColor || null,
       now,
       now
     );
@@ -325,11 +345,6 @@ function updateProfile(id, patch) {
     startupUrl: patch.startupUrl !== undefined
       ? resolveStartupUrlSave(patch.startupUrl, existing.startupUrl)
       : existing.startupUrl,
-    showProfileBadge:
-      patch.showProfileBadge !== undefined ? patch.showProfileBadge : existing.showProfileBadge,
-    profileTabGroups:
-      patch.profileTabGroups !== undefined ? patch.profileTabGroups : existing.profileTabGroups,
-    tabGroupColor: patch.tabGroupColor !== undefined ? normalizeTabGroupColor(patch.tabGroupColor) : existing.tabGroupColor,
     status: patch.status !== undefined ? String(patch.status) : existing.status,
     fingerprintSeed:
       patch.fingerprintSeed !== undefined && Number.isFinite(Number(patch.fingerprintSeed))
@@ -340,7 +355,6 @@ function updateProfile(id, patch) {
   if (!next.name) throw new Error("Profile name is required.");
 
   const device = normalizeDeviceFields(patch, existing);
-  const chrome = normalizeChromeUiFields(patch, existing);
   const now = new Date().toISOString();
   getDb()
     .prepare(
@@ -349,7 +363,6 @@ function updateProfile(id, patch) {
            platform = ?, timezone = ?, locale = ?, user_agent = ?,
            viewport_w = ?, viewport_h = ?, color_scheme = ?, device_preset = ?,
            headless = ?, humanize = ?, window_mode = ?, startup_url = ?,
-           show_profile_badge = ?, profile_tab_groups = ?, tab_group_color = ?,
            updated_at = ?
        WHERE id = ?`
     )
@@ -372,9 +385,6 @@ function updateProfile(id, patch) {
       device.humanize,
       device.windowMode,
       next.startupUrl || null,
-      chrome.showProfileBadge,
-      chrome.profileTabGroups,
-      chrome.tabGroupColor || null,
       now,
       String(id)
     );
@@ -632,6 +642,8 @@ module.exports = {
   listActiveProfileIds,
   countProfiles,
   getProfile,
+  resolveProfileForLaunch,
+  findProfileByName,
   createProfile,
   updateProfile,
   setProfileStatus,

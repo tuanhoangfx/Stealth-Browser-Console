@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveNodeExe, winSpawnOpts } from "./lib/win-spawn.mjs";
+import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distIndex = path.join(root, "dist", "index.html");
@@ -33,7 +33,7 @@ const result = spawnSync(
   winSpawnOpts({
     cwd: root,
     stdio: "inherit",
-    env: { ...process.env, VITE_DEV_SERVER_URL: "" }
+    env: stealthElectronEnv({ VITE_DEV_SERVER_URL: "" }),
   })
 );
 process.exit(result.status ?? 1);

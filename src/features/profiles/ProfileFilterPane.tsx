@@ -130,7 +130,7 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
             hasSelection={selectedProfiles.length > 0}
             syncBusy={syncBusy}
             launchBusy={automationRunning}
-            launchTitle={`Launch with workflow: ${runWorkflowLabel}`}
+            launchTitle={`Launch with workflow: ${runWorkflowLabel} (skips startup URL)`}
             onLaunch={() => void runAutomationQueue()}
             onClose={() => {
               for (const profile of selectedProfiles) void closeOne(profile);

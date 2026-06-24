@@ -1,4 +1,4 @@
-/* Stealth directory shell — workflow rail table chrome (P0001 gpm-directory-chrome parity) */
+/* Stealth directory shell — workflow rail table chrome (Hub directory pattern) */
 
 .workflow-platform-cell {
   display: inline-flex;
@@ -6,6 +6,52 @@
   gap: 6px;
   max-width: 100%;
   min-width: 0;
+}
+
+.stealth-workflow-name-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Workflow panel directory — fixed layout + clip (parity with rail; prevents name/ID overlap). */
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table th,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td {
+  overflow: hidden;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td.hub-users-col--created,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td.hub-users-col--activity,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table th.hub-users-col--created,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table th.hub-users-col--activity {
+  overflow: visible;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table .hub-users-col--created .hub-users-status,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table .hub-users-col--activity .hub-users-status {
+  white-space: nowrap;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td.hub-users-col--name,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table td.hub-users-col--email,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table th.hub-users-col--name,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table th.hub-users-col--email {
+  max-width: 0;
+}
+
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table .hub-users-name-title,
+.stealth-workflow-directory-frame table.stealth-workflow-panel-table .hub-directory-icon-cell__label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* fixedRows rail — clip table inside pane; explicit min-height fits 5 rows + pager */

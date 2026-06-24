@@ -1,0 +1,43 @@
+{
+  "label": "benchmark-profile-launch",
+  "rounds": 3,
+  "sidePanel": false,
+  "stats": {
+    "count": 3,
+    "minMs": 614,
+    "maxMs": 3851,
+    "avgMs": 1813
+  },
+  "latestPhases": [
+    {
+      "phase": "prep-start",
+      "ms": 0
+    },
+    {
+      "phase": "spawn-start",
+      "ms": 5
+    },
+    {
+      "phase": "spawn-done",
+      "ms": 973
+    }
+  ],
+  "entries": [
+    {
+      "totalMs": 973,
+      "profileName": "Launch Bench",
+      "at": "2026-06-24T18:43:20.408Z"
+    },
+    {
+      "totalMs": 614,
+      "profileName": "Launch Bench",
+      "at": "2026-06-24T18:43:17.177Z"
+    },
+    {
+      "totalMs": 3851,
+      "profileName": "Launch Bench",
+      "at": "2026-06-24T18:43:14.450Z"
+    }
+  ],
+  "at": "2026-06-24T18:43:21.837Z"
+}

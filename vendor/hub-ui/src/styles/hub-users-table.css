@@ -896,6 +896,10 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   color: var(--muted);
 }
 
+.hub-users-status--plain {
+  text-transform: none;
+}
+
 .hub-users-status-dot {
   width: 7px;
   height: 7px;
@@ -1478,4 +1482,5 @@ table.hub-users-table--folders {
 table.hub-users-table--cookie-routes {
   font-size: var(--hub-table-body-size, 12px);
 }
+
 

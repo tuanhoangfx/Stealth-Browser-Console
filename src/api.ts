@@ -1,4 +1,4 @@
-import type { EngineHealth, LaunchPerfEntry, OpenUrlResult, ProfileRow, ProfileCatalogStats, RunHistoryItem, StealthGroup, StealthProfile } from "./types";
+import type { EngineHealth, LaunchBenchBaseline, LaunchPerfEntry, OpenUrlResult, ProfileRow, ProfileCatalogStats, RunHistoryItem, StealthGroup, StealthProfile, CookieBridgeStatus } from "./types";
 import { installStealthWebMock } from "./lib/stealth-web-mock";
 
 if (import.meta.env.DEV) {
@@ -64,9 +64,6 @@ export async function createProfile(input: {
   note?: string;
   fingerprintSeed?: number;
   startupUrl?: string;
-  showProfileBadge?: boolean;
-  profileTabGroups?: boolean;
-  tabGroupColor?: string;
 } & Partial<import("./types").DeviceConfig>) {
   const data = await api().createProfile(input);
   return data.profile;
@@ -108,13 +105,13 @@ export async function importProfilesBundle(bundle: unknown, merge = true) {
   return api().importProfiles({ bundle, merge });
 }
 
-export async function launchProfile(id: string) {
-  const data = await api().launchProfile({ id });
+export async function launchProfile(id: string, name?: string) {
+  const data = await api().launchProfile({ id, name });
   return data.profile;
 }
 
-export async function closeProfile(id: string) {
-  const data = await api().closeProfile({ id });
+export async function closeProfile(id: string, name?: string) {
+  const data = await api().closeProfile({ id, name });
   return data.profile;
 }
 
@@ -144,16 +141,6 @@ export async function openDataFolder() {
   return api().openDataFolder();
 }
 
-export async function fetchIdentityDebugEnabled(): Promise<boolean> {
-  const data = await api().getIdentityDebug();
-  return Boolean(data.enabled);
-}
-
-export async function setIdentityDebugEnabled(enabled: boolean): Promise<boolean> {
-  const data = await api().setIdentityDebug({ enabled });
-  return Boolean(data.enabled);
-}
-
 export async function fetchLaunchPerfEntries(limit = 24): Promise<LaunchPerfEntry[]> {
   const data = await api().listLaunchPerf({ limit });
   return data.entries;
@@ -163,9 +150,30 @@ export async function clearLaunchPerfEntries(): Promise<void> {
   await api().clearLaunchPerf();
 }
 
-export async function purgeAllIdentityExtensions(): Promise<{ profiles: number; removed: number; prefsCleaned: number }> {
-  const data = await api().purgeIdentityExtensions();
+export async function fetchLaunchBenchBaseline(): Promise<LaunchBenchBaseline | null> {
+  const data = await api().fetchLaunchBenchBaseline();
+  return data.baseline;
+}
+
+export async function purgeLegacyIdentityToolbar(): Promise<{ profiles: number; removed: number; prefsCleaned: number }> {
+  const data = await api().purgeLegacyIdentityToolbar();
   if (!data.ok) throw new Error(data.error || "Purge failed");
+  return {
+    profiles: data.profiles ?? 0,
+    removed: data.removed ?? 0,
+    prefsCleaned: data.prefsCleaned ?? 0,
+  };
+}
+
+export async function fetchCookieBridgeStatus(): Promise<CookieBridgeStatus> {
+  const data = await api().fetchCookieBridgeStatus();
+  if (!data.ok || !data.status) throw new Error("Cookie Bridge status unavailable");
+  return data.status;
+}
+
+export async function purgeBrokenExtensionPrefs(): Promise<{ profiles: number; removed: number; prefsCleaned: number }> {
+  const data = await api().purgeBrokenExtensionPrefs();
+  if (!data.ok) throw new Error(data.error || "Repair failed");
   return {
     profiles: data.profiles ?? 0,
     removed: data.removed ?? 0,

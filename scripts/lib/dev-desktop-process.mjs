@@ -4,6 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { stealthElectronEnv } from "./stealth-electron-env.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const PID_FILE = path.join(root, ".dev-desktop.pid");
 export const LOG_FILE = path.join(root, ".dev-desktop.log");
@@ -77,7 +79,7 @@ export function startDevDetached() {
     cwd: root,
     detached: true,
     stdio: ["ignore", logFd, logFd],
-    env: process.env,
+    env: stealthElectronEnv(),
   });
   child.unref();
   fs.writeFileSync(PID_FILE, String(child.pid));

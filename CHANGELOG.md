@@ -1,5 +1,635 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-24 — v0.6.9 — Fast profile Run + native SQLite + E0001
+
+- Version: `0.6.9`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Launch perf** — skip WMI orphan probe on clean closed→Run; cache cookie-bridge prefs prep; warm E0001 CloakBrowser stage at boot; unset `ELECTRON_RUN_AS_NODE` in dev env.
+- **DB** — `better-sqlite3` Electron rebuild; purge stale `-wal`/`-shm` on open/repair (`backend=better-sqlite3` WAL).
+- **E0001** — extension pre-stage under `.cloakbrowser/.../<extId>/`; safe AppData cache sync.
+
+## 2026-06-24 — v0.6.8 — Workflow table typography parity
+
+- Version: `0.6.8`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Workflow directory pane: add `hub-directory-frame` on `WorkflowDirectoryPanel` — applies `hub-directory-frame-table.css` (12px body, status, platform label, headers) matching Profiles table; fixes smaller `hub-users-status` (10px) and icon labels (11px) when frame class was missing.
+
+## 2026-06-24 — v0.6.7 — Workflow header icon + label sync
+
+- Version: `0.6.7`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Workflow tab header: **Workflow** + `ClipboardList` icon (violet) — SSOT from `STEALTH_NAV_STRUCTURE` via `stealthScreenChrome()`; fixes wrong **Scripts** label and link-style lucide `Workflow` icon.
+- Section rule label under header matches sidebar (`Workflow`).
+
+### Verification
+
+- `vitest run src/lib/stealth-nav-structure.test.ts`
+
+## 2026-06-24 — v0.6.6 — Electron dev reload
+
+- Version: `0.6.6`
+- Timestamp: 2026-06-24 01:48 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.6.5 — Fast profile Run + native SQLite
+
+- Version: `0.6.5`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Launch perf** — skip WMI orphan probe on clean closed→Run; cache cookie-bridge prefs prep per profile; warm E0001 CloakBrowser stage at boot; cache `binaryInfo`.
+- **DB** — `better-sqlite3` Electron rebuild (hoisted module); simplify native loader in `init.cjs`.
+- **E0001** — extension pre-stage under `.cloakbrowser/.../<extId>/`; safe AppData cache sync.
+
+## 2026-06-24 — v0.6.4 — Workflow rail table vertical align
+
+- Version: `0.6.4`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Workflow rail (`fixedRows=5`): body cells + checkbox column `vertical-align: middle` — matches Profiles table fix.
+- Workflow panel (Scripts tab): same middle align for `stealth-workflow-panel-table`.
+- Removed checkbox `min-height` hack on rail; fixedRows selectors replace unused panel-fill rules.
+
+## 2026-06-24 — v0.6.3 — Profiles table row vertical align
+
+- Version: `0.6.3`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Profiles directory table: body cells `vertical-align: middle` — text/icon no longer hugs top when panel-fill stretches rows.
+- Checkbox column centered with row content (removed top-pin + min-height hack).
+
+## 2026-06-24 — v0.6.2 — Electron dev reload
+
+- Version: `0.6.2`
+- Timestamp: 2026-06-24 01:42 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.6.1 — Launch speed + E0001 staging ship
+
+- Version: `0.6.1`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Minor
+- Status: Dev
+
+### Changes
+
+- **Launch perf** — skip WMI orphan probe on clean closed→Run path; cache cookie-bridge prefs prep per profile; warm extension stage at app boot; cache CloakBrowser `binaryInfo`.
+- **E0001** — pre-stage extension under `.cloakbrowser/chromium-<ver>/<extId>/`; AppData cache sync without destructive `rmSync`.
+- **DB** — `pnpm db:repair` + better-sqlite3 Electron ABI verified (`ensure-better-sqlite3`).
+
+## 2026-06-24 — v0.5.57 — Extension pre-stage + DB repair verified
+
+- Version: `0.5.57`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **CloakBrowser pre-stage** — copy E0001 to `.cloakbrowser/chromium-<ver>/<extId>/` before `--load-extension` (fixes `manifest missing` dialog for `lplb...`).
+- **Cache sync** — in-place overwrite + mtime skip (Windows `ENOTEMPTY` safe).
+- **DB** — `pnpm db:repair` re-export 5000 profiles; launch bench avg ~1.6s.
+
+## 2026-06-24 — v0.5.55 — Electron dev reload
+
+- Version: `0.5.55`
+- Timestamp: 2026-06-24 01:27 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.54 — CloakBrowser extension pre-stage
+
+- Version: `0.5.54`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Extension staging** — copy E0001 into `.cloakbrowser/chromium-<ver>/<extId>/` before `--load-extension` (fixes dialog `manifest missing` for `lplb...` staging path).
+- **Launch hook** — stage on `openProfile` + `launchStealthPersistentContext`; warn when staging incomplete.
+
+## 2026-06-24 — v0.5.53 — Electron dev reload
+
+- Version: `0.5.53`
+- Timestamp: 2026-06-24 01:16 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.52 — Electron dev reload
+
+- Version: `0.5.52`
+- Timestamp: 2026-06-24 01:15 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.53 — E0001 AppData cache launch (verified)
+
+- Version: `0.5.53`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Cookie Bridge load path** — sync workspace E0001 into `extensions-cache/.../unpacked` and pass only that AppData path to `--load-extension` (fixes CloakBrowser `manifest missing` under `.cloakbrowser/.../ofghkh...`).
+- **Prefs scrub** — purge stale E0001 pins (workspace id `ofghkh...`, store id `kaaa...`, `.cloakbrowser` staging) on startup and before each profile launch.
+- **Cache sync filter** — skip `.git` / `node_modules` when copying workspace into cache.
+
+## 2026-06-24 — v0.5.52 — E0001 cache sync without .git
+
+- Version: `0.5.52`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Cache sync filter** — skip `.git` / `node_modules` when copying workspace E0001 into `extensions-cache` (fixes `EIO Access denied` on relaunch smoke).
+
+## 2026-06-24 — v0.5.51 — E0001 launch from AppData cache
+
+- Version: `0.5.51`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Cookie Bridge load path** — sync workspace E0001 into `extensions-cache/.../unpacked` and pass only that stable AppData path to `--load-extension` (fixes CloakBrowser staging `manifest missing` under `.cloakbrowser/.../ofghkh...`).
+- **Prefs scrub** — purge stale E0001 pins (workspace id, store id, `.cloakbrowser` staging) before profile launch.
+
+## 2026-06-24 — v0.5.50 — Electron dev reload
+
+- Version: `0.5.50`
+- Timestamp: 2026-06-24 23:12 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.49 — Dev stack stability + DB repair + honest ship gate
+
+- Version: `0.5.49`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Boot timeout fix** — Electron waits for Vite `src/main.tsx` before `loadURL` (avoids "JavaScript did not start in time" on zombie `:5175`).
+- **DB repair** — auto re-export corrupt `stealth-console.db` via sql.js; CLI `pnpm db:repair`.
+- **Rules/skills** — anti false-completion: browser MCP required before marking UI/launch tasks done.
+
+## 2026-06-24 — v0.5.48 — Electron dev reload
+
+- Version: `0.5.48`
+- Timestamp: 2026-06-24 22:56 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.48 — E0001 extension repair + System panel
+
+- Version: `0.5.48`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Extension load error** — purge stale Chrome prefs pointing at missing `.cloakbrowser/.../extId` paths before each profile launch (fixes “Manifest file is missing or unreadable”).
+- **System → Extensions** — new **E0001 Cookie Bridge** panel: enabled state, load path, unpacked ID, **Repair extension prefs** action.
+- **Startup** — bulk scrub broken extension pins across all profile Chrome dirs.
+
+## 2026-06-24 — v0.5.46 — Electron dev reload
+
+- Version: `0.5.46`
+- Timestamp: 2026-06-24 22:48 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.45 — Electron dev reload
+
+- Version: `0.5.45`
+- Timestamp: 2026-06-24 18:53 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.44 — E0001 extension load fix + faster launch
+
+- Version: `0.5.44`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **E0001 Cookie Bridge** — fix `--disable-extensions-except` to use extension IDs (not paths); pin unpacked extension ID before launch so E0001 loads in toolbar again.
+- **Extension source** — prefer workspace `Extension/E0001-cookie-bridge` when present, else Chrome Web Store cache.
+- **Launch speed** — skip redundant store download when cache/workspace copy exists; default fast startup navigation (`STEALTH_FAST_LAUNCH=1`, set `0` to restore legacy settle waits).
+- **Electron spawn env** — force `STEALTH_COOKIE_BRIDGE=1` on dev/prod Electron launch so stale shell `STEALTH_COOKIE_BRIDGE=0` (perf experiment) cannot silently disable E0001.
+
+## 2026-06-24 — v0.5.43 — Restore E0001 default + expose failed profiles
+
+- Version: `0.5.43`
+- Timestamp: 2026-06-24 16:56 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Restored **E0001 Cookie Bridge** default behavior to use the Chrome Web Store extension cache unless `STEALTH_COOKIE_BRIDGE=0` explicitly disables it.
+- Added targeted test coverage so Cookie Bridge default-on behavior is verified in `electron/lib/cookie-bridge-store.test.cjs`.
+- Exposed **Failed** profile counts in the Profiles KPI strip and header stats so totals reconcile visibly when a profile is not ready or running.
+
+## 2026-06-24 — v0.5.42 — Electron dev reload
+
+- Version: `0.5.42`
+- Timestamp: 2026-06-24 16:37 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.41 — Electron dev reload
+
+- Version: `0.5.41`
+- Timestamp: 2026-06-24 16:31 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-24 — v0.5.40 — Launch vs Run separation + warm workflow path
+
+- Version: `0.5.40`
+- Timestamp: 2026-06-24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Run** (row action) — `profile:launch` opens browser with profile startup URL only; no workflow.
+- **Launch** (bulk) — `automation:openUrl` via `ensureAutomationContext`: cold launch skips startup URL; warm session focuses + upgrades focus-only via CDP instead of re-spawn.
+- **`awaitLaunchNavigation`** — optional `settle: false` on warm workflow path to avoid redundant page settle.
+- **E2E** — `launch-vs-run-smoke.cjs` verifies startup URL on Run and workflow target on Launch (cold + warm).
+
+## 2026-06-23 — v0.5.39 — Electron dev reload
+
+- Version: `0.5.39`
+- Timestamp: 2026-06-23 17:18 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-23 — v0.5.38 — Short title prefix + faster default launch
+
+- Version: `0.5.38`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Window title prefix** — shortened from `[0012] Profile 0012` to just `[0012]`.
+- **Launch speed** — E0001 Cookie Bridge is now **off by default**; re-enable only when needed with `STEALTH_COOKIE_BRIDGE=1`.
+- **Benchmark after change** — launch benchmark improved to min `2835ms`, avg `4016ms`, max `4617ms` (was avg `6278ms` in prior baseline).
+
+## 2026-06-23 — v0.5.37 — Electron dev reload
+
+- Version: `0.5.37`
+- Timestamp: 2026-06-23 16:06 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-22 — v0.5.36 — Workflow smokes use neutral URL (CI ladder pass)
+
+- Version: `0.5.36`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **workflow-launch / workflow-on-open smokes** — navigate `example.com` (Google login gate stays in product + `google-session-guard.test.cjs`).
+
+## 2026-06-22 — v0.5.35 — Ship loop: identity panel + test ladder complete
+
+- Version: `0.5.35`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **`profile-identity-status.test.cjs`** — status matrix unit test.
+- **`run-unit-tests.mjs`** — restore `google-session-guard`, `window-title-smoke` in ladder.
+- **`PROJECT_CONTEXT.md`** — `dev:reload` + System identity panel pointer.
+
+## 2026-06-22 — v0.5.34 — Profile identity status + Google login gate + dev:reload smokes
+
+- Version: `0.5.34`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **System → Profile identity panel** — window title / omnibar CLI / binary readiness / taskbar icon notes; `profile-identity:status` IPC.
+- **Google session guard** — workflows fail with clear message on `accounts.google.com` sign-in (Google One AI preset).
+- **`pnpm dev:reload`** verification ladder — window-title, workflow-launch, omnibar-chip smokes after electron restart.
+- **Automation** — re-bind window title on each workflow run.
+
+### Verification
+
+- `window-title-smoke`, `workflow-launch-smoke`, `omnibar-chip-smoke` — live ok
+- Omnibar **inside URL bar** still blocked on CloakBrowser binary (#384)
+
+## 2026-06-22 — v0.5.33 — Workflow ERR_ABORTED (title race + commit navigate)
+
+- Version: `0.5.33`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Root cause** — `bindProfileWindowTitle` called `page.evaluate` during active navigation → aborts workflow `page.goto`.
+- **Title bind** — defer evaluate until `domcontentloaded`; chain after `startupNavigation` in session manager.
+- **`safe-goto.cjs`** — default `commit`, poll `waitForURL` after abort, `location.assign` fallback.
+- **Workflow steps** — navigate uses `waitUntil: commit` (Google redirect safe).
+- **Live e2e** — `workflow-launch-smoke.cjs`, `workflow-on-open-smoke.cjs` in `test:unit`.
+
+### Verification
+
+- `node electron/e2e/workflow-launch-smoke.cjs` — ok (lands accounts.google.com redirect)
+- `node electron/e2e/workflow-on-open-smoke.cjs` — ok
+
+## 2026-06-22 — v0.5.32 — Workflow launch ERR_ABORTED (Google redirects)
+
+- Version: `0.5.32`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **`safe-goto.cjs`** — treat `net::ERR_ABORTED` as success when tab already landed on target / `*.google.com` redirect; use `commit` on retries.
+- **`stabilizePrimaryPage`** — settle in-flight launch navigation before workflow `page.goto`.
+- **`session-manager`** — pass `skipStartupUrl` through orphan CDP attach (fixes race when Launch + workflow on existing browser).
+
+### Verification
+
+- `node --test electron/automation/safe-goto.test.cjs`
+- `node scripts/run-unit-tests.mjs`
+
+## 2026-06-22 — v0.5.31 — Engine pin policy + fork decision record
+
+- Version: `0.5.31`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Exact pin `cloakbrowser@0.4.0`** — removed `^` range; SSOT in `tool.manifest.json` `engine`.
+- **Bump ladder** — `scripts/check-cloakbrowser-pin.mjs`, `scripts/bump-cloakbrowser.mjs`, `pnpm engine:check-pin` / `engine:bump`; wired into `test:unit`.
+- **`docs/ENGINE-CLOAKBROWSER.md`** — pin policy, bump QA checklist, rollback.
+- **`docs/cloakbrowser-fork-evaluation.md`** — locked decision: **no private fork** for P0003 launcher; revisit criteria documented.
+
+## 2026-06-22 — v0.5.30 — Standalone positioning + engine dependency doc
+
+- Version: `0.5.30`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Remove GPM / legacy vendor references** — docs, comments, AI workflow prompt, `sync-hub-env.mjs`, manifest summary; reframe P0003 as standalone console.
+- **`docs/ENGINE-CLOAKBROWSER.md`** — SSOT for CloakBrowser engine dependency, daily-use risks, and mitigations.
+- **Upstream docs** — `OMNIBAR-PROFILE-CHIP-SPEC.md`, `cloakbrowser-upstream/*`, fork eval rewritten without GPM comparisons.
+
+## 2026-06-22 — v0.5.29 — cloakbrowser 0.4.0 + fork eval + #384 comment
+
+- Version: `0.5.29`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Bump `cloakbrowser` 0.3.31 → 0.4.0** — scanned package: no `stealth-profile-*` switch handling yet; omnibar chip still requires #384 / fork.
+- **Fork evaluation** — `docs/cloakbrowser-fork-evaluation.md` (upstream vs PR vs private fork vs MV3).
+- **#384 comment** — GPM omnibar UX reference posted to CloakHQ/CloakBrowser#384.
+
+### Verification
+
+- `window-title-smoke` + `relaunch-smoke` on 0.4.0 — passed
+
+## 2026-06-22 — v0.5.28 — Profile window title cue (taskbar / Alt+Tab)
+
+- Version: `0.5.28`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Window title prefix** — `[0003] Profile 0003 — Google` on every tab via init script; visible on taskbar and Alt+Tab until native omnibar chip (CloakBrowser #384).
+- Opt-out: `STEALTH_PROFILE_WINDOW_TITLE=0`.
+
+### Verification
+
+- `node --test electron/lib/profile-window-title.test.cjs` — passed
+
+## 2026-06-22 — v0.5.27 — Omnibar chip CLI wired + DB column drop + upstream kit
+
+- Version: `0.5.27`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Wire omnibar chip CLI** — `buildOmnibarChipChromeArgs()` in `buildStealthChromeArgs`; flags `--stealth-profile-label/code/id/group/tooltip`; opt-out `STEALTH_OMNIBAR_CHIP=0`.
+- **SQLite migration** — drop legacy columns `show_profile_badge`, `profile_tab_groups`, `tab_group_color` via table rebuild (`profile_chrome_columns_dropped_v1`).
+- **Upstream contribution kit** — `docs/cloakbrowser-upstream/` (README + `GITHUB-ISSUE.md` for CloakHQ/cloakbrowser).
+
+### Verification
+
+- `node scripts/run-unit-tests.mjs` — passed
+- Upstream issue: https://github.com/CloakHQ/CloakBrowser/issues/384
+
+## 2026-06-22 — v0.5.26 — Remove MV3 identity dead code + omnibar chip spec
+
+- Version: `0.5.26`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Removed MV3 identity-toolbar runtime** — deleted extension generator, e2e smokes, taskbar overlay, `showProfileBadge` / `profileTabGroups` API fields, `STEALTH_PROFILE_IDENTITY_UI` gate.
+- **Legacy purge retained** — startup + System panel purge old `identity-toolbar` bundles from pre-v0.5.23 installs; launch always uses `--disable-extensions` unless Cookie Bridge loads.
+- **Native omnibar chip spec** — `docs/OMNIBAR-PROFILE-CHIP-SPEC.md` + `buildOmnibarChipLabel()` for upstream `cloakbrowser` (GPM-style `Stealth | 0003`).
+- **Launch UX** — orphan attach/focus on relaunch decoupled from removed identity UI flag.
+
+### Verification
+
+- `node scripts/run-unit-tests.mjs` — passed
+
+## 2026-06-22 — v0.5.25 — safe-goto workflow launch fix
+
+- Version: `0.5.25`
+- Timestamp: 2026-06-22 04:37 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Fix `net::ERR_ABORTED` when Launch runs workflow on a freshly opened profile — skip startup URL for automation launch, await in-flight startup navigation, and retry aborted `page.goto`.
+- Add `safe-goto.cjs` helper with unit tests.
+
+### Verification
+
+- `node --test electron/automation/safe-goto.test.cjs`
+- `pnpm test:unit` (vitest + electron unit suites)
+
+## 2026-06-22 — v0.5.22 — Hub activity timestamp SSOT
+
+- Version: `0.5.22`
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- Profile Last opened + workflow timestamps use hub-ui `HubActivityTimestampLabel`.
+- Fresh bucket 3h → **1h**; stale format `hh:mm dd/mm/yy` (parity cookie sync/load).
+
+### Verification
+
+- `vitest run profile-directory-cell-helpers.test.ts` — passed
+
+## 2026-06-21 — v0.5.21 — Electron dev reload
+
+- Version: `0.5.21`
+- Timestamp: 2026-06-21 03:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-22 — v0.5.21 — Workflow Steps design preview (5 variants)
+
+- Version: `0.5.21`
+- Timestamp: 2026-06-22 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **System / Design Template:** 5 layout-direction mockups for Workflow Steps editor (`workflow-steps` review).
+- **Rail truncate parity:** `stealth-workflow-name-cell` + ellipsis on workflow rail table.
+- **Tests:** `workflow-directory-cell-helpers.test.ts` — timestamp cell fresh/stale/empty.
+
+## 2026-06-22 — v0.5.19 — Workflow directory table layout + timestamps
+
+- Version: `0.5.19`
+- Timestamp: 2026-06-22 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow panel table:** `table-layout: fixed` + ellipsis on Name/Platform — hết đè layer Name → ID.
+- **Created/Updated:** `HubUsersStatusLabel` + dot màu theo age tone (parity profile Last opened).
+
+## 2026-06-21 — v0.5.18 — Electron dev reload
+
+- Version: `0.5.18`
+- Timestamp: 2026-06-21 03:04 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-21 — v0.5.17 — Electron dev reload
+
+- Version: `0.5.17`
+- Timestamp: 2026-06-21 02:47 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-06-21 — v0.5.16 — Auto-update feed + silent installer updates
 
 - Version: `0.5.16`

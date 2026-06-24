@@ -1,24 +1,37 @@
 import manifest from "../../tool.manifest.json";
+import { APP_VERSION } from "./app-meta";
 
 export type AppVersionReleaseMeta = {
   shortLabel: string;
   live: boolean;
+  publishedAt?: string;
 };
 
-/** Header version chip — release date (P0001/P0004 parity), not a static “MVP” label. */
+function normalizeVersion(value?: string) {
+  return value?.replace(/^v/i, "").trim() ?? "";
+}
+
+/** Header release activity — manifest `latestPublished` or `manifestUpdatedAt` (P0004/P0016 parity). */
 export function resolveAppVersionReleaseMeta(): AppVersionReleaseMeta {
-  const publishedAt = manifest.release?.latestPublished?.publishedAt;
-  if (!publishedAt) {
-    return { shortLabel: "dev", live: false };
+  const currentVersion = normalizeVersion(APP_VERSION);
+  const latest = manifest.release?.latestPublished;
+  const manifestUpdatedAt = manifest.manifestUpdatedAt;
+
+  if (normalizeVersion(latest?.tag) === currentVersion && latest?.publishedAt) {
+    return {
+      shortLabel: latest.publishedAt,
+      live: true,
+      publishedAt: latest.publishedAt,
+    };
   }
-  const date = new Date(publishedAt);
-  if (!Number.isFinite(date.getTime())) {
-    return { shortLabel: "dev", live: false };
+
+  if (manifestUpdatedAt) {
+    return {
+      shortLabel: manifestUpdatedAt,
+      live: false,
+      publishedAt: manifestUpdatedAt,
+    };
   }
-  const shortLabel = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-  }).format(date);
-  return { shortLabel, live: true };
+
+  return { shortLabel: "dev", live: false };
 }

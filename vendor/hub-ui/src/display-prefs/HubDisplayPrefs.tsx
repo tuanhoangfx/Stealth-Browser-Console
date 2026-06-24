@@ -64,6 +64,7 @@ export function HubDisplayPrefs({
   displayExtras,
   footerActions,
   tablePanel,
+  tableSectionLabel = "Table columns",
   tableSectionActions,
   tableActiveCount = 0,
   headerStatLabel = (isSystem) => (isSystem ? "System header" : "Hub header"),
@@ -444,7 +445,7 @@ export function HubDisplayPrefs({
   if (!displayOnToolbar && hasTablePanel) {
     pushSection(
       "table",
-      "Table columns",
+      tableSectionLabel,
       buildSemanticTocIcon("settings.table"),
       tablePanel,
       tableSectionActions,

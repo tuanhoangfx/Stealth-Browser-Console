@@ -1,4 +1,4 @@
-/* Stealth console — profile/workflow rail layout (P0001 stealth-profile-layout parity) */
+/* Stealth console — profile/workflow rail layout (Hub golden pattern) */
 
 .stealth-profile-layout {
   display: grid;
@@ -120,7 +120,7 @@
   width: 100%;
 }
 
-/* Split head/body — KPI divider + thead stay fixed; tbody scrolls only (P0001 parity). */
+/* Split head/body — KPI divider + thead stay fixed; tbody scrolls only. */
 .stealth-profile-directory-frame .hub-split-directory-pane__kpi-band {
   z-index: 1;
   background: var(--panel);
@@ -151,7 +151,7 @@
   min-height: 0;
 }
 
-/* Panel-fill stretches row height — center select checkbox (hub-directory-frame-table uses top align). */
+/* Panel-fill — center select checkbox with row content (Profiles golden). */
 .hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame
   table.hub-directory-frame-table
   th.hub-users-col--select,
@@ -170,10 +170,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--hub-directory-row-h);
 }
 
-/* Right rail — WorkflowPickerRail auto height; History + Console share remainder (P0001 parity). */
+/* Right rail — WorkflowPickerRail auto height; History + Console share remainder. */
 .stealth-workflow-rail {
   display: flex;
   flex-direction: column;
@@ -204,26 +203,25 @@
   z-index: 0;
 }
 
-/* Workflow rail panel-fill — same row geometry + checkbox centering as Profiles pane. */
-.hub-directory-frame.hub-directory-frame--panel-fill.stealth-workflow-directory-frame
+/* Workflow rail fixedRows — center checkbox with row (Profiles parity). */
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
   table.hub-directory-frame-table.stealth-workflow-rail-table
   th.hub-users-col--select,
-.hub-directory-frame.hub-directory-frame--panel-fill.stealth-workflow-directory-frame
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
   table.hub-directory-frame-table.stealth-workflow-rail-table
   td.hub-users-col--select {
   vertical-align: middle;
 }
 
-.hub-directory-frame.hub-directory-frame--panel-fill.stealth-workflow-directory-frame
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
   table.hub-directory-frame-table.stealth-workflow-rail-table
   .hub-users-select-all,
-.hub-directory-frame.hub-directory-frame--panel-fill.stealth-workflow-directory-frame
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
   table.hub-directory-frame-table.stealth-workflow-rail-table
   .hub-users-select-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--hub-directory-row-h);
 }
 
 .stealth-workflow-rail > .stealth-runtime-stack .stealth-runtime-history,

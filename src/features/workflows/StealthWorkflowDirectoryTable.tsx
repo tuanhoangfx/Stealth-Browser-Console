@@ -114,7 +114,7 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
       tableClassName={
         isRail
           ? `${hubDirectoryTableClass("4")} hub-directory-frame-table stealth-workflow-rail-table`
-          : hubDirectoryTableClass("6")
+          : `${hubDirectoryTableClass("6")} hub-directory-frame-table stealth-workflow-panel-table`
       }
       wrapClassName={wrapClassName}
       flushWrap

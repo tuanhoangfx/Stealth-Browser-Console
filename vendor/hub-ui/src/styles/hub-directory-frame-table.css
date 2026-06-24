@@ -25,7 +25,7 @@
   padding: 7px 10px;
   font-size: var(--hub-table-body-size, 12px);
   line-height: var(--hub-table-body-line-height, 1.45);
-  vertical-align: top;
+  vertical-align: middle;
   box-sizing: border-box;
 }
 

@@ -1,4 +1,4 @@
-/* GPM legacy — scripts scope (split from styles.css) */
+/* Stealth legacy — scripts scope (split from styles.css) */
 .script-builder {
   display: grid;
   grid-template-columns: minmax(420px, 0.82fr) minmax(360px, 1.28fr);

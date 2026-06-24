@@ -11,7 +11,7 @@
   "type": "Desktop",
   "owner": "Tool",
   "status": "Beta",
-  "summary": "Standalone desktop console for CloakBrowser antidetect profiles — no GPM dependency.",
+  "summary": "Standalone desktop console for CloakBrowser antidetect profiles and local automation.",
   "stack": [
     "Electron",
     "React",
@@ -42,6 +42,14 @@
     "status": "Beta",
     "note": "Requires CloakBrowser binary (auto-download on first launch). No external antidetect app."
   },
+  "engine": {
+    "package": "cloakbrowser",
+    "version": "0.4.0",
+    "pinned": true,
+    "bumpPolicy": "docs/ENGINE-CLOAKBROWSER.md#bump-policy",
+    "forkDecision": "docs/cloakbrowser-fork-evaluation.md#decision-record",
+    "updatedAt": "2026-06-22"
+  },
   "uiScreens": [
     {
       "screen": "profiles",
@@ -52,8 +60,8 @@
     {
       "screen": "workflow",
       "template": "inbox-split",
-      "golden": "P0001/scripts-pane",
-      "notes": "HubSplitWorkspaceScreen header; WorkflowFilterPane in left pane (Scripts parity)"
+      "golden": "P0004/hub-ui/workflows",
+      "notes": "HubSplitWorkspaceScreen header; WorkflowFilterPane in left pane"
     },
     {
       "screen": "settings",
@@ -71,15 +79,15 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-06-21T19:08:43.124Z",
+  "manifestUpdatedAt": "2026-06-24T18:48:23.441Z",
   "release": {
-    "version": "0.5.16",
+    "version": "0.6.9",
     "updatedAt": "2026-06-19",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {
-      "tag": "v0.5.16",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.5.16",
-      "publishedAt": "2026-06-21T19:08:43.123Z"
+      "tag": "v0.5.24",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.5.24",
+      "publishedAt": "2026-06-21T21:33:00.000Z"
     }
   }
 }
