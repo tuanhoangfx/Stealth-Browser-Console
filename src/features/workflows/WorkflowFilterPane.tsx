@@ -55,13 +55,15 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
           showViewToggle={false}
           showTimeRange={false}
           showRefresh={false}
-          displayBand={isPanel ? <StealthDisplayBandToolbar screen="workflow" /> : undefined}
-          showTablePageSize={false}
-          showResultCount={!isPanel}
+          displayBand={<StealthDisplayBandToolbar screen="workflow" directoryVariant={variant} />}
+          showTablePageSize={isPanel}
+          tablePageSize={tablePageSize}
+          onTablePageSizeChange={onTablePageSizeChange}
+          showResultCount={false}
           countIcon={Bot}
           shown={filteredCount}
           total={totalCount}
-          countLabel={isPanel ? "workflows" : "presets"}
+          countLabel="workflows"
         />
       }
       row2Actions={row2Actions}

@@ -61,3 +61,12 @@ export const WORKFLOW_HEADER_PREF_ICONS: PrefIconMap = {
   selected: { icon: ListChecks, iconClassName: "text-cyan-300" },
   steps: { icon: Activity, iconClassName: "text-amber-300" },
 };
+
+export const WORKFLOW_COLUMN_PREF_ICONS: PrefIconMap = {
+  platform: { icon: Globe, iconClassName: "text-sky-300" },
+  name: { icon: Layers, iconClassName: "text-indigo-300" },
+  id: { icon: ListChecks, iconClassName: "text-cyan-300" },
+  steps: { icon: Activity, iconClassName: "text-amber-300" },
+  created: { icon: Clock, iconClassName: "text-emerald-300" },
+  updated: { icon: Clock, iconClassName: "text-violet-300" },
+};

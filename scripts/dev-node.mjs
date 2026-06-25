@@ -13,6 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
+import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 5175;
@@ -40,10 +41,10 @@ function waitForPort(port, timeoutMs = 30_000) {
   });
 }
 
-const vite = spawn(node, [viteBin, "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], {
+const vite = spawn(node, [viteBin, "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], winSpawnOpts({
   cwd: root,
-  stdio: "inherit"
-});
+  stdio: "inherit",
+}));
 
 let electron;
 function shutdown(code) {
@@ -58,13 +59,13 @@ vite.on("exit", (code) => shutdown(code ?? 0));
 
 try {
   await waitForPort(PORT);
-  electron = spawn(node, [electronCli, "."], {
+  electron = spawn(node, [electronCli, "."], winSpawnOpts({
     cwd: root,
     stdio: "inherit",
     env: stealthElectronEnv({
       VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/`,
     }),
-  });
+  }));
   electron.on("exit", (code) => shutdown(code ?? 0));
 } catch (error) {
   console.error("[dev-node]", error instanceof Error ? error.message : error);

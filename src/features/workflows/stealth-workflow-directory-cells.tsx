@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import {
   DirectoryTableBodyCell,
+  formatHubTimestampFull,
   HubCopyBadge,
   HubDirectoryIconCell,
   HubUsersStatusLabel,
@@ -28,6 +29,7 @@ function renderWorkflowTimestampCell(ms: number | null) {
   if (ms == null || !Number.isFinite(ms) || !ms) {
     return <span className="hub-directory-table-body-text">—</span>;
   }
+  const iso = new Date(ms).toISOString();
   const tone = lastOpenedAgeTone(ms);
   const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
   return (
@@ -35,7 +37,7 @@ function renderWorkflowTimestampCell(ms: number | null) {
       label={label}
       tone={lastOpenedHubTone(tone)}
       capitalize={false}
-      title={new Date(ms).toLocaleString()}
+      title={formatHubTimestampFull(iso)}
     />
   );
 }

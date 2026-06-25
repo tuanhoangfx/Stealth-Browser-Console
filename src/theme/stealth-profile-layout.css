@@ -191,7 +191,7 @@
   z-index: 1;
 }
 
-/* Compact history + console stack — fills rail remainder below workflow table. */
+/* Compact history + console stack — fills rail remainder below workflow table (50/50). */
 .stealth-workflow-rail > .stealth-runtime-stack {
   flex: 1 1 0;
   display: grid;
@@ -201,6 +201,35 @@
   overflow: hidden;
   position: relative;
   z-index: 0;
+}
+
+/* Workflow rail — shrink-wrap fixedRows table; override hub pane flex-1 (Tailwind). */
+.stealth-workflow-rail > .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows {
+  flex: 0 0 auto !important;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+}
+
+.stealth-workflow-rail
+  > .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  .hub-split-directory-pane__body {
+  flex: 0 0 auto !important;
+  min-height: 0;
+  overflow: visible;
+}
+
+.stealth-workflow-rail
+  .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  .hub-paginated-table-shell,
+.stealth-workflow-rail
+  .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap {
+  flex: 0 0 auto !important;
+  min-height: auto;
+  max-height: none;
+  overflow: hidden;
 }
 
 /* Workflow rail fixedRows — center checkbox with row (Profiles parity). */

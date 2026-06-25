@@ -72,10 +72,7 @@
 
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
   flex: 0 0 auto;
-  min-height: calc(
-    var(--hub-directory-head-row-h, 2.125rem) + var(--hub-directory-row-h, 1.875rem) *
-      var(--hub-workflow-rail-rows, 5) + 1.75rem
-  );
+  min-height: auto;
   overflow: hidden;
 }
 
@@ -95,7 +92,7 @@
   overflow: hidden;
 }
 
-.stealth-workflow-rail .hub-split-directory-pane--fixed-rows table.hub-users-table--directory-4,
+.stealth-workflow-rail .hub-split-directory-pane--fixed-rows table.hub-users-table--directory-6,
 .stealth-workflow-rail .hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {
   min-width: 0;
 }

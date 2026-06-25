@@ -106,6 +106,10 @@ export function catalogEntryForKind(kind: ScriptStepKind): ScriptStepCatalogEntr
   return SCRIPT_STEP_CATALOG.find((entry) => entry.kind === kind);
 }
 
+export function catalogCategoryForKind(kind: ScriptStepKind): ScriptStepCategoryKey {
+  return catalogEntryForKind(kind)?.category ?? "page";
+}
+
 export function filterScriptStepCatalog(query: string): ScriptStepCatalogEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return SCRIPT_STEP_CATALOG;

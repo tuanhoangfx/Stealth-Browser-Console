@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ArrowDown, ArrowUp, Check, Redo2, Save, Trash2, Undo2 } from "lucide-react";
 
 export type WorkflowStepBulkActionBarProps = {
@@ -10,6 +11,8 @@ export type WorkflowStepBulkActionBarProps = {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDelete: () => void;
+  addSlot?: ReactNode;
+  stepActionsDisabled?: boolean;
 };
 
 /** P0020 TwofaBulkActionBar skin — filter row 2 for workflow step inspector. */
@@ -23,12 +26,16 @@ export function WorkflowStepBulkActionBar({
   onMoveUp,
   onMoveDown,
   onDelete,
+  addSlot,
+  stepActionsDisabled = false,
 }: WorkflowStepBulkActionBarProps) {
   return (
     <div className="hub-bulk-action-bar workflow-step-bulk-action-bar">
+      {addSlot}
       <button
         type="button"
         onClick={onSave}
+        disabled={stepActionsDisabled}
         title={savePulse ? "Saved" : "Save workflow"}
         className={`hub-bulk-action-btn hub-bulk-action-btn--save${savePulse ? " is-saved" : ""}`}
       >
@@ -37,7 +44,7 @@ export function WorkflowStepBulkActionBar({
       </button>
       <button
         type="button"
-        disabled={!canUndo}
+        disabled={stepActionsDisabled || !canUndo}
         onClick={onUndo}
         title="Undo"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
@@ -47,7 +54,7 @@ export function WorkflowStepBulkActionBar({
       </button>
       <button
         type="button"
-        disabled={!canRedo}
+        disabled={stepActionsDisabled || !canRedo}
         onClick={onRedo}
         title="Redo"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
@@ -57,6 +64,7 @@ export function WorkflowStepBulkActionBar({
       </button>
       <button
         type="button"
+        disabled={stepActionsDisabled}
         onClick={onMoveUp}
         title="Move up"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
@@ -66,6 +74,7 @@ export function WorkflowStepBulkActionBar({
       </button>
       <button
         type="button"
+        disabled={stepActionsDisabled}
         onClick={onMoveDown}
         title="Move down"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
@@ -75,6 +84,7 @@ export function WorkflowStepBulkActionBar({
       </button>
       <button
         type="button"
+        disabled={stepActionsDisabled}
         onClick={onDelete}
         title="Delete step"
         className="hub-bulk-action-btn hub-bulk-action-btn--delete"

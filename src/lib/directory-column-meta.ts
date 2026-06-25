@@ -32,15 +32,6 @@ export const STEALTH_PROFILE_COLUMN_KEYS = [
 
 export type StealthProfileColumnKey = (typeof STEALTH_PROFILE_COLUMN_KEYS)[number];
 
-/** WorkflowPickerRail (Profiles right rail) — 3 cols, hub-users-table--directory-4 */
-export const STEALTH_WORKFLOW_RAIL_COLUMN_META = {
-  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "28%"),
-  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "44%"),
-  id: col("ID", "hub-users-col--id", "id", "col.directory.pageId", "28%"),
-};
-
-export const STEALTH_WORKFLOW_RAIL_COLUMN_KEYS = ["platform", "name", "id"] as const;
-
 /** WorkflowDirectoryPanel (Scripts left pane) — 6 cols, hub-users-table--directory-6 */
 export const STEALTH_WORKFLOW_PANEL_COLUMN_META = {
   platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "20%"),
@@ -52,6 +43,10 @@ export const STEALTH_WORKFLOW_PANEL_COLUMN_META = {
 };
 
 export const STEALTH_WORKFLOW_PANEL_COLUMN_KEYS = ["platform", "name", "id", "steps", "created", "updated"] as const;
+
+/** WorkflowPickerRail — same 6-col SSOT; default visible: Platform · Name · ID · Steps. */
+export const STEALTH_WORKFLOW_RAIL_COLUMN_META = STEALTH_WORKFLOW_PANEL_COLUMN_META;
+export const STEALTH_WORKFLOW_RAIL_COLUMN_KEYS = STEALTH_WORKFLOW_PANEL_COLUMN_KEYS;
 
 export type StealthWorkflowRailColumnKey = (typeof STEALTH_WORKFLOW_RAIL_COLUMN_KEYS)[number];
 export type StealthWorkflowPanelColumnKey = (typeof STEALTH_WORKFLOW_PANEL_COLUMN_KEYS)[number];

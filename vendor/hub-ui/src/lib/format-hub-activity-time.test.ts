@@ -9,9 +9,9 @@ import {
 describe("format-hub-activity-time", () => {
   const now = Date.parse("2026-06-22T12:00:00");
 
-  it("formats stale activity as hh:mm dd/mm/yy", () => {
+  it("formats stale activity as dd/mm/yy", () => {
     const d = new Date(2026, 5, 18, 5, 0, 0);
-    expect(formatHubActivityStaleLabel(d.getTime())).toMatch(/^05:00 18\/06\/26$/);
+    expect(formatHubActivityStaleLabel(d.getTime())).toBe("18/06/26");
   });
 
   it("uses relative age for fresh and recent rows", () => {
@@ -26,7 +26,7 @@ describe("format-hub-activity-time", () => {
     const ms = now - 48 * 60 * 60_000;
     expect(hubActivityAgeTone(ms, now)).toBe("stale");
     const d = new Date(2026, 5, 20, 12, 0, 0);
-    expect(formatHubActivityTime(d.getTime(), now)?.label).toMatch(/^12:00 20\/06\/26$/);
+    expect(formatHubActivityTime(d.getTime(), now)?.label).toBe("20/06/26");
   });
 
   it("maps tone buckets to hub status tones", () => {

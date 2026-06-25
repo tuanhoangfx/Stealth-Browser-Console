@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { stealthElectronEnv } from "./stealth-electron-env.mjs";
+import { winSpawnOpts } from "./win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const PID_FILE = path.join(root, ".dev-desktop.pid");
@@ -41,7 +42,7 @@ export function killStealthDev() {
   if (pid && isPidAlive(pid)) {
     try {
       if (process.platform === "win32") {
-        spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+        spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], winSpawnOpts({ stdio: "ignore" }));
       } else {
         process.kill(pid, "SIGTERM");
       }
@@ -62,7 +63,7 @@ export function killStealthDev() {
           "Get-Process electron -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue",
         ].join("; "),
       ],
-      { stdio: "ignore" },
+      winSpawnOpts({ stdio: "ignore" }),
     );
   }
 }
@@ -75,12 +76,12 @@ export function startDevDetached() {
     `\n--- dev start ${new Date().toISOString()} ---\n`,
     { flag: "a" },
   );
-  const child = spawn(process.execPath, [path.join(root, "scripts", "dev-node.mjs")], {
+  const child = spawn(process.execPath, [path.join(root, "scripts", "dev-node.mjs")], winSpawnOpts({
     cwd: root,
     detached: true,
     stdio: ["ignore", logFd, logFd],
     env: stealthElectronEnv(),
-  });
+  }));
   child.unref();
   fs.writeFileSync(PID_FILE, String(child.pid));
   return child.pid;
@@ -101,6 +102,6 @@ export function focusStealthWindow() {
         "}",
       ].join(" "),
     ],
-    { stdio: "ignore" },
+    winSpawnOpts({ stdio: "ignore" }),
   );
 }

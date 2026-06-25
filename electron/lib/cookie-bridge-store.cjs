@@ -138,7 +138,7 @@ function extractZipBuffer(zipBuffer, destDir) {
         "-Command",
         `Expand-Archive -LiteralPath '${zp}' -DestinationPath '${wd}' -Force`,
       ],
-      { stdio: "pipe" },
+      { stdio: "pipe", windowsHide: true },
     );
     try {
       fs.unlinkSync(tmpZip);

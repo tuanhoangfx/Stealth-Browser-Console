@@ -59,21 +59,10 @@
   color: var(--text);
 }
 
+/* fixedRows rail — layout height owned by stealth-profile-layout.css (do not reset min-height here). */
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-split-directory-pane__body {
   flex: 0 0 auto;
-  overflow: visible;
-}
-
-.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
-  flex: 0 0 auto;
-  min-height: auto;
-  overflow: visible;
-}
-
-.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell > .hub-users-table-wrap {
-  flex: 0 0 auto;
-  min-height: auto;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-pager {

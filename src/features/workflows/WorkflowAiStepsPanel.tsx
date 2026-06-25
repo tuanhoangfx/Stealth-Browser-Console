@@ -1,4 +1,4 @@
-import { Bot, Check, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Bot, Check, Loader2, Wand2 } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { HubAlert, HubBulkActionButton, compactIconSize } from "@tool-workspace/hub-ui";
 import { generateWorkflowFromPrompt } from "./workflow-ai-generator";
@@ -77,40 +77,20 @@ export const WorkflowAiStepsPanel = memo(function WorkflowAiStepsPanel({
   const statusMessage = error || routerStatus;
 
   return (
-    <section className="workflow-ai-composer" aria-label="AI workflow assistant">
-      <header className="workflow-ai-composer__head">
-        <span className="workflow-ai-composer__brand" aria-hidden>
-          <Bot size={compactIconSize(14)} />
+    <section className="workflow-ai-composer workflow-ai-composer--compact" aria-label="AI workflow assistant">
+      <div className="workflow-ai-composer__row">
+        <span className="workflow-ai-composer__label">
+          <Bot size={compactIconSize(14)} aria-hidden />
+          AI Step Assistant
         </span>
-        <div className="workflow-ai-composer__titles">
-          <h3 className="workflow-ai-composer__title">AI Step Assistant</h3>
-          <p className="workflow-ai-composer__subtitle">Describe steps in plain language — Gen previews, Apply commits.</p>
-        </div>
-        <Sparkles size={compactIconSize(14)} className="workflow-ai-composer__sparkle" aria-hidden />
-      </header>
-
-      <div className="workflow-ai-composer__body">
         <textarea
           id="workflow-ai-prompt-input"
           className="workflow-ai-composer__input hub-input"
-          rows={3}
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          placeholder="Mô tả bước (VD: thêm wait 15s sau navigate, đổi URL sang GitHub Education…)"
+          placeholder="Describe a step change (e.g. add 15s wait after navigate, switch URL to GitHub Education…)"
           disabled={busy}
         />
-      </div>
-
-      <footer className="workflow-ai-composer__foot">
-        {preview ? (
-          <div className="workflow-ai-composer__preview" title={preview.description}>
-            <strong>{preview.name}</strong>
-            <span>{preview.steps.length} steps</span>
-            {modelUsed ? <span className="workflow-ai-composer__model">{modelUsed}</span> : null}
-          </div>
-        ) : (
-          <span className="workflow-ai-composer__foot-spacer" />
-        )}
         <div className="workflow-ai-composer__actions">
           <HubBulkActionButton
             icon={busy ? <Loader2 size={14} className="spin" aria-hidden /> : <Wand2 size={14} aria-hidden />}
@@ -130,7 +110,15 @@ export const WorkflowAiStepsPanel = memo(function WorkflowAiStepsPanel({
             onClick={handleApply}
           />
         </div>
-      </footer>
+      </div>
+
+      {preview ? (
+        <div className="workflow-ai-composer__preview" title={preview.description}>
+          <strong>{preview.name}</strong>
+          <span>{preview.steps.length} steps</span>
+          {modelUsed ? <span className="workflow-ai-composer__model">{modelUsed}</span> : null}
+        </div>
+      ) : null}
 
       {statusMessage ? <HubAlert tone="danger">{statusMessage}</HubAlert> : null}
     </section>

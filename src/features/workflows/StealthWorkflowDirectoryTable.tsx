@@ -1,5 +1,5 @@
 /** Golden workflow directory table — WorkflowPickerRail (Profiles) + WorkflowDirectoryPanel (Scripts). */
-import { useMemo, memo } from "react";
+import { useMemo, memo, useEffect, useState } from "react";
 import {
   HubDirectoryTableShell,
   HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
@@ -10,10 +10,7 @@ import {
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import {
-  STEALTH_WORKFLOW_PANEL_COLUMN_KEYS,
   STEALTH_WORKFLOW_PANEL_COLUMN_META,
-  STEALTH_WORKFLOW_RAIL_COLUMN_KEYS,
-  STEALTH_WORKFLOW_RAIL_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
 import { STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS } from "../tables/stealth-directory-table";
@@ -21,6 +18,12 @@ import { workflowDisplayId, workflowDisplayPlatform } from "./workflow-display";
 import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import { renderStealthWorkflowDirectoryBodyCell } from "./stealth-workflow-directory-cells";
 import type { WorkflowConfig } from "./workflow-types";
+import {
+  readWorkflowPanelDirectoryColumns,
+  readWorkflowRailDirectoryColumns,
+  workflowPanelDirectoryColumnPrefs,
+  workflowRailDirectoryColumnPrefs,
+} from "./workflow-directory-prefs";
 
 export type StealthWorkflowSortKey = "id" | "name" | "platform" | "steps" | "created" | "updated";
 
@@ -80,8 +83,18 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
   variant = "panel",
 }: StealthWorkflowDirectoryTableProps) {
   const isRail = variant === "rail";
-  const columnKeys = isRail ? STEALTH_WORKFLOW_RAIL_COLUMN_KEYS : STEALTH_WORKFLOW_PANEL_COLUMN_KEYS;
-  const columnMeta = isRail ? STEALTH_WORKFLOW_RAIL_COLUMN_META : STEALTH_WORKFLOW_PANEL_COLUMN_META;
+
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(() =>
+    isRail ? readWorkflowRailDirectoryColumns() : readWorkflowPanelDirectoryColumns(),
+  );
+
+  useEffect(() => {
+    const prefs = isRail ? workflowRailDirectoryColumnPrefs : workflowPanelDirectoryColumnPrefs;
+    const sync = () =>
+      setVisibleColumnKeys(isRail ? readWorkflowRailDirectoryColumns() : readWorkflowPanelDirectoryColumns());
+    window.addEventListener(prefs.changeEvent, sync);
+    return () => window.removeEventListener(prefs.changeEvent, sync);
+  }, [isRail]);
 
   const sortableValue = useMemo(
     () => (workflow: WorkflowConfig, key: StealthWorkflowSortKey) =>
@@ -97,8 +110,8 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
   );
 
   const columns = useMemo(
-    () => buildDirectoryColumns([...columnKeys], toHubDirectoryColumnMeta(columnMeta)),
-    [columnKeys, columnMeta],
+    () => buildDirectoryColumns([...visibleColumnKeys], toHubDirectoryColumnMeta(STEALTH_WORKFLOW_PANEL_COLUMN_META)),
+    [visibleColumnKeys],
   );
 
   const colgroup = useMemo(() => buildDirectoryColgroupForShell(columns, { showSelect: true }), [columns]);
@@ -113,7 +126,7 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
       ariaLabel={isRail ? "Workflow picker rail" : "Workflow directory"}
       tableClassName={
         isRail
-          ? `${hubDirectoryTableClass("4")} hub-directory-frame-table stealth-workflow-rail-table`
+          ? `${hubDirectoryTableClass("6")} hub-directory-frame-table stealth-workflow-rail-table`
           : `${hubDirectoryTableClass("6")} hub-directory-frame-table stealth-workflow-panel-table`
       }
       wrapClassName={wrapClassName}

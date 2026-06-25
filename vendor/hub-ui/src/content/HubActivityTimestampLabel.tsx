@@ -16,7 +16,7 @@ export type HubActivityTimestampLabelProps = {
   title?: string;
 };
 
-/** Activity timestamp — colored dot + relative age (<24h) or `hh:mm dd/mm/yy` when stale. */
+/** Activity timestamp — colored dot + relative age (<24h) or `dd/mm/yy` when stale. */
 export function HubActivityTimestampLabel({
   at,
   fallback = "—",

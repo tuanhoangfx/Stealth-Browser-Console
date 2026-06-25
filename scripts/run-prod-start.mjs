@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
+import { resolveNodeExe, winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distIndex = path.join(root, "dist", "index.html");

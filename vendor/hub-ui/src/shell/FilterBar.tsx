@@ -32,6 +32,7 @@ import {
   HubFilterDropdownCircle,
   HubFilterDropdownPanelSearch,
   HUB_FILTER_OPTION_EMOJI_CLASS,
+  HUB_FILTER_BRAND_ICON_CLASS,
   filterDropdownPanelSearchPlaceholder,
   hubFilterTriggerClass,
   multiFilterTriggerTitle,
@@ -55,6 +56,8 @@ export type FilterDef = {
   showAllLabel?: boolean;
   totalCount?: number;
   triggerEmoji?: string;
+  /** Skip lucide/semantic fallback on trigger when no option icon (brand filters). */
+  suppressDefaultTriggerIcon?: boolean;
 };
 
 const FILTER_ICONS: Record<string, React.ElementType> = {
@@ -311,7 +314,7 @@ function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: F
       <img
         src={option.iconSrc}
         alt=""
-        className="h-3.5 w-3.5 shrink-0 rounded-sm object-contain"
+        className={HUB_FILTER_BRAND_ICON_CLASS}
         aria-hidden
       />
     );
@@ -352,6 +355,7 @@ function resolveFilterTriggerIcon(filter: FilterDef, selected: string[]): Filter
   }
   const allIcon = resolveFilterAllIcon(filter.key);
   if (allIcon) return allIcon;
+  if (filter.suppressDefaultTriggerIcon) return null;
   const Fallback = FILTER_ICONS[filter.key];
   if (Fallback) return { icon: Fallback, className: "opacity-75" };
   return null;
@@ -461,7 +465,7 @@ export function HubMultiFilterDropdown({
         className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
         {triggerIconSrc ? (
-          <img src={triggerIconSrc} alt="" className="h-3 w-3 shrink-0 rounded-sm object-contain" aria-hidden />
+          <img src={triggerIconSrc} alt="" className={`${HUB_FILTER_BRAND_ICON_CLASS} !h-3 !w-3`} aria-hidden />
         ) : selected.length === 1 && selectedOpt?.color ? (
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
         ) : filter.triggerEmoji ? (

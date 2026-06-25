@@ -4,13 +4,15 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { winSpawnOpts } from "./lib/win-spawn.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function run(script, args = []) {
-  const result = spawnSync(process.execPath, [path.join(root, "scripts", script), ...args], {
+  const result = spawnSync(process.execPath, [path.join(root, "scripts", script), ...args], winSpawnOpts({
     cwd: root,
     stdio: "inherit",
-  });
+  }));
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 

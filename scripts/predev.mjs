@@ -4,13 +4,15 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { winSpawnOpts } from "./lib/win-spawn.mjs";
+
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(scriptsDir, "..");
 const toolScriptsDir = path.join(scriptsDir, "..", "..", "scripts");
 
 function run(name) {
   const script = path.join(scriptsDir, name);
-  const result = spawnSync(process.execPath, [script], { cwd: root, stdio: "inherit" });
+  const result = spawnSync(process.execPath, [script], winSpawnOpts({ cwd: root, stdio: "inherit" }));
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
@@ -18,7 +20,7 @@ function run(name) {
 
 function runToolScript(name) {
   const script = path.join(toolScriptsDir, name);
-  const result = spawnSync(process.execPath, [script], { cwd: root, stdio: "inherit" });
+  const result = spawnSync(process.execPath, [script], winSpawnOpts({ cwd: root, stdio: "inherit" }));
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }

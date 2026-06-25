@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.6.9",
+  "version": "0.6.24",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -12,7 +12,7 @@
   "scripts": {
     "predev": "node scripts/predev.mjs",
     "predev:web": "node scripts/predev.mjs",
-    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5175 && cross-env STEALTH_COOKIE_BRIDGE=1 STEALTH_FAST_LAUNCH=1 VITE_DEV_SERVER_URL=http://127.0.0.1:5175/ electron .\"",
+    "dev": "node scripts/dev-node.mjs",
     "dev:recover": "node scripts/dev-recover.cjs",
     "dev:recover:open": "node scripts/dev-recover.cjs --open",
     "db:repair": "node scripts/repair-stealth-db.mjs",

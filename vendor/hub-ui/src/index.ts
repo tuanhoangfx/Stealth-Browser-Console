@@ -180,6 +180,7 @@ export {
   HubFilterDropdownPanelSearch,
   HubFilterDropdownTrigger,
   HUB_FILTER_OPTION_EMOJI_CLASS,
+  HUB_FILTER_BRAND_ICON_CLASS,
   filterDropdownPanelSearchPlaceholder,
   folderFilterButtonLabel,
   multiFilterTriggerTitle,
@@ -343,6 +344,7 @@ export {
 } from "./lib/format-hub-activity-time";
 export {
   formatHubTimestampCompact,
+  formatHubTimestampDateOnly,
   formatHubTimestampFull,
 } from "./lib/format-hub-timestamp-compact";
 export {

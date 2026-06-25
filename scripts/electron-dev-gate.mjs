@@ -6,6 +6,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { winSpawnOpts } from "./lib/win-spawn.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const stampDir = path.join(root, ".dev");
 const stampFile = path.join(stampDir, "electron.sha");
@@ -78,7 +80,7 @@ function bumpPatchVersion() {
 function killDevPort() {
   const kill = path.join(root, "scripts", "kill-port.cjs");
   if (!fs.existsSync(kill)) return;
-  spawnSync(process.execPath, [kill, "5175"], { cwd: root, stdio: "inherit" });
+  spawnSync(process.execPath, [kill, "5175"], winSpawnOpts({ cwd: root, stdio: "inherit" }));
 }
 
 function main() {
@@ -92,10 +94,10 @@ function main() {
   fs.mkdirSync(stampDir, { recursive: true });
   fs.writeFileSync(stampFile, `${nextHash}\n`, "utf8");
   bumpPatchVersion();
-  spawnSync(process.execPath, [path.join(root, "scripts", "sync-app-version.mjs")], {
+  spawnSync(process.execPath, [path.join(root, "scripts", "sync-app-version.mjs")], winSpawnOpts({
     cwd: root,
     stdio: "inherit",
-  });
+  }));
   killDevPort();
   console.log("electron-dev-gate: electron sources changed — version bumped, port 5175 freed");
 }

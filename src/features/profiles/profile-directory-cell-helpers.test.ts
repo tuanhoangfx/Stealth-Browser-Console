@@ -9,9 +9,9 @@ import {
 describe("profile-directory-cell-helpers", () => {
   const now = Date.parse("2026-06-22T12:00:00");
 
-  it("formats stale last opened as hh:mm dd/mm/yy", () => {
+  it("formats stale last opened as dd/mm/yy", () => {
     const d = new Date(2026, 5, 18, 5, 0, 0);
-    expect(formatLastOpenedStaleDate(d.getTime())).toMatch(/^05:00 18\/06\/26$/);
+    expect(formatLastOpenedStaleDate(d.getTime())).toBe("18/06/26");
   });
 
   it("uses relative age for fresh rows", () => {

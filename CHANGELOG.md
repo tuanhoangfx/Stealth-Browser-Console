@@ -1,5 +1,204 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-25 — v0.6.24 — Step inspector inline fields
+
+- Version: `0.6.24`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- **Step inspector** — remove redundant kind icon/label row; Status uses `HubSingleFilterDropdown` like Type.
+- **Layout** — inline label · value pairs; row 1 Name/Type/Status, row 2 Timeout/Selector/Value.
+
+- **Vendor hub-ui** — sync `filter-dropdown-primitives` export `HUB_FILTER_BRAND_ICON_CLASS` (fix App failed to load SyntaxError).
+
+## 2026-06-25 — v0.6.23 — Workflow rail column SSOT (6 opts, default +Steps)
+
+- Version: `0.6.23`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow rail Display** — cùng 6 cột với Scripts tab (Platform · Name · ID · Steps · Created · Updated).
+- **Rail default** — hiển thị Platform · Name · ID · **Steps**; Created/Updated tắt (bật qua Display).
+- **Table** — rail dùng `STEALTH_WORKFLOW_PANEL_COLUMN_META` + migrate prefs 3 cột cũ → thêm Steps.
+
+## 2026-06-25 — v0.6.22 — Workflow Display columns-only
+
+- Version: `0.6.22`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Display** — dropdown chỉ còn **Table columns** (ẩn KPI · Hub header · Filters · Rows per page); rail vs Scripts tab dùng prefs cột riêng (3 vs 6).
+- **Directory table** — `StealthWorkflowDirectoryTable` đọc `workflow-directory-prefs` và cập nhật cột khi Display đổi.
+
+## 2026-06-25 — v0.6.21 — Workflow rail Display + selection chip
+
+- Version: `0.6.21`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow rail** — `HubDirectoryDisplayPanel` (Display) on filter toolbar, parity with Profiles + Scripts tab.
+- **Selection chip** — replace static `10/10` `HubResultCount` with `HubDirectoryToolbarSelection` (`0/10` + spectrum bar) in `searchTrailing`; counts selected vs filtered workflows.
+
+## 2026-06-25 — v0.6.20 — AI composer fill + canvas default zoom
+
+- Version: `0.6.20`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **AI Step Assistant** — `flex: 1` in top editor pane; textarea stretches to fill gap above step toolbar.
+- **Workflow canvas** — default `fitView` centers bubbles at zoom `minZoom × 1.2` (second step above minimum).
+- **React Flow** — hide attribution watermark (`proOptions.hideAttribution` + CSS fallback).
+
+## 2026-06-25 — v0.6.19 — Workflow Steps 50/50 layout + centered bulk
+
+- Version: `0.6.19`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Split** — workflow directory vs step editor `50/50`; editor vs canvas `50/50` vertical grid.
+- **Canvas** — drop legacy `clamp(54vh)` min-height; canvas fills half pane without empty tail.
+- **Bulk bar** — `New` moved next to Save/Undo/Delete; centered row.
+- **Step chips** — centered pills with category colors matching canvas bubbles (page/interact/capture/logic).
+
+## 2026-06-25 — v0.6.18 — Workflow rail shows all 5 rows
+
+- Version: `0.6.18`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profiles rail** — remove `max-height` calc on workflow `fixedRows` table (was clipping ~3 of 5 rows); pane still shrink-wraps via `flex: 0 0 auto` without stealing History/Console space.
+
+## 2026-06-25 — v0.6.17 — Workflow rail fixedRows shrink-wrap
+
+- Version: `0.6.17`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profiles rail** — workflow table shrink-wraps exactly 5 rows (`fixedRows`); override hub pane `flex-1` so empty gap below table is reclaimed for Run History + Console (50/50 split restored).
+- **CSS** — remove `hub-users-table.css` `min-height: auto` override that broke `fixedRows` height calc.
+
+## 2026-06-25 — v0.6.16 — Workflow canvas fast load + Hub inspector
+
+- Version: `0.6.16`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow canvas** — restore step board; drop IntersectionObserver deferral; eager xyflow chunk prefetch + pulse skeleton instead of stuck “Loading workflow canvas…”.
+- **AI Step Assistant** — taller composer (4.25rem min-height, 3-row prompt, larger label/input).
+- **Step inspector** — Type field uses `HubSingleFilterDropdown` (catalog labels) instead of native `<select>`; remove uppercase label override conflicting with `HubFormFieldLabel`.
+
+## 2026-06-25 — v0.6.15 — Workflow Steps without canvas + taller Console
+
+- Version: `0.6.15`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Steps** — remove lazy workflow canvas block (`Loading workflow canvas…`); compact step chip picker for multi-step edit.
+- **Profiles rail** — Console panel ~68% of History+Console stack (was 50/50).
+
+## 2026-06-25 — v0.6.14 — Workflow Steps UI cleanup
+
+- Version: `0.6.14`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Steps** — remove workflow description blurb and AI assistant subtitle; English-only step prompt placeholder.
+- **Typography** — align section title, meta, inspector, and AI composer with Hub body font scale.
+- **Layout** — compact AI composer toolbar row (label · prompt · Gen/Apply).
+
+## 2026-06-25 — v0.6.13 — Hub-UI stale date `dd/mm/yy` (all directory tables)
+
+- Version: `0.6.13`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Vendor hub-ui `0.2.11`: stale activity labels (`formatHubActivityStaleLabel`, `HubActivityTimestampLabel`) → **`dd/mm/yy`** workspace-wide.
+- Workflow Created/Updated: dùng SSOT profile helpers (bỏ `workflow-directory-time` local).
+
+### Verification
+
+- `vitest run src/features/profiles/profile-directory-cell-helpers.test.ts`
+
+## 2026-06-25 — v0.6.12 — Workflow stale date `dd/mm/yy` only
+
+- Version: `0.6.12`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Workflow table **Created** / **Updated**: keep relative labels (`just now`, `6m ago`, `3h ago`) within 24h; stale (>24h) shows **`dd/mm/yy` only** (no `hh:mm` prefix — Profiles still use `hh:mm dd/mm/yy`).
+
+### Verification
+
+- `vitest run src/features/workflows/workflow-directory-time.test.ts`
+
+## 2026-06-25 — v0.6.11 — Workflow filter size + Created/Updated format
+
+- Version: `0.6.11`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Workflow directory filter/bulk row: remove compact `0.625rem` button override — filters + New/Copy/Delete use hub-ui control height (`text-xs`, Profiles parity).
+- Workflow timestamps (superseded in v0.6.12): brief always-compact experiment — reverted to relative + stale date.
+
+### Verification
+
+- `vitest run src/features/workflows/workflow-directory-time.test.ts`
+
+## 2026-06-25 — v0.6.10 — Hide dev probe terminals on Windows
+
+- Version: `0.6.10`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Dev** — `pnpm dev` uses `dev-node.mjs` (no `concurrently` extra consoles); all predev child spawns use `windowsHide` on Windows.
+- **DB probe** — `ensure-better-sqlite3` probes via `node electron/cli.js` (not `electron.exe` GUI); caches ABI stamp under `.dev/better-sqlite3-electron.stamp`.
+- **Runtime** — cookie-bridge `Expand-Archive` spawn hidden; fix `run-prod-start.mjs` missing `winSpawnOpts` import.
+
 ## 2026-06-24 — v0.6.9 — Fast profile Run + native SQLite + E0001
 
 - Version: `0.6.9`

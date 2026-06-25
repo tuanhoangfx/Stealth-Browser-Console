@@ -1,5 +1,5 @@
 import type { HubUsersStatusTone } from "../shell/HubUsersStatusLabel";
-import { formatHubTimestampCompact } from "./format-hub-timestamp-compact";
+import { formatHubTimestampDateOnly } from "./format-hub-timestamp-compact";
 
 export type HubActivityAgeTone = "fresh" | "recent" | "stale";
 
@@ -31,9 +31,9 @@ export function hubActivityAgeHubTone(tone: HubActivityAgeTone): HubUsersStatusT
   return "offline";
 }
 
-/** Stale (>24h) — compact `hh:mm dd/mm/yy`. */
+/** Stale (>24h) — compact `dd/mm/yy`. */
 export function formatHubActivityStaleLabel(ms: number): string {
-  return formatHubTimestampCompact(new Date(ms).toISOString());
+  return formatHubTimestampDateOnly(new Date(ms).toISOString());
 }
 
 /** Relative label within the last 24 hours. */

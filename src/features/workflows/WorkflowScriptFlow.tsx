@@ -136,11 +136,17 @@ const WORKFLOW_LAYOUT_OPTIONS: {
   { value: "linear_lr", label: "Single horizontal row" },
 ];
 
-/** Fit canvas zoomed out so steps stay small in view (default viewport). */
+/** Default viewport: centered graph at one zoom step above minimum (xyflow ×1.2). */
+const WORKFLOW_CANVAS_MIN_ZOOM = 0.45;
+const WORKFLOW_CANVAS_ZOOM_STEP = 1.2;
+const WORKFLOW_CANVAS_DEFAULT_ZOOM =
+  Math.min(2, WORKFLOW_CANVAS_MIN_ZOOM * WORKFLOW_CANVAS_ZOOM_STEP);
+
 const WORKFLOW_CANVAS_FIT_VIEW = {
-  padding: 0.14,
-  maxZoom: 0.68,
-  duration: 260
+  padding: 0.22,
+  minZoom: WORKFLOW_CANVAS_DEFAULT_ZOOM,
+  maxZoom: WORKFLOW_CANVAS_DEFAULT_ZOOM,
+  duration: 260,
 } as const;
 
 type WorkflowMiniMapNodeProps = {
@@ -523,7 +529,11 @@ function WorkflowScriptFlowInner({
       onEdgesChange={onEdgesChange}
       onNodeClick={(_, node) => onSelectStep(node.id)}
       onNodeDragStop={onNodeDragStop}
-      fitViewOptions={{ padding: WORKFLOW_CANVAS_FIT_VIEW.padding, maxZoom: WORKFLOW_CANVAS_FIT_VIEW.maxZoom }}
+      fitViewOptions={{
+        padding: WORKFLOW_CANVAS_FIT_VIEW.padding,
+        minZoom: WORKFLOW_CANVAS_FIT_VIEW.minZoom,
+        maxZoom: WORKFLOW_CANVAS_FIT_VIEW.maxZoom,
+      }}
       defaultEdgeOptions={
         {
           type: WORKFLOW_SCRIPT_EDGE_TYPE,
@@ -551,8 +561,9 @@ function WorkflowScriptFlowInner({
       panOnDrag={true}
       zoomOnPinch={true}
       zoomOnDoubleClick={false}
-      minZoom={0.45}
+      minZoom={WORKFLOW_CANVAS_MIN_ZOOM}
       maxZoom={2}
+      proOptions={{ hideAttribution: true }}
       elevateNodesOnSelect
     >
       <Background variant={BackgroundVariant.Dots} gap={24} size={2} />

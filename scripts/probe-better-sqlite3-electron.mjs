@@ -1,32 +1,38 @@
 #!/usr/bin/env node
+/** Probe better-sqlite3 inside Electron ABI — node + electron/cli.js (never electron.exe GUI). */
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { winSpawnOpts } from "./lib/win-spawn.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const electronExe = path.join(root, "node_modules", "electron", "dist", "electron.exe");
 const probeMain = path.join(root, "scripts", "probe-better-sqlite3-main.cjs");
 const require = createRequire(path.join(root, "package.json"));
 
-function resolveBetterSqlite3Dir() {
+function resolveElectronCli() {
   try {
-    return path.dirname(require.resolve("better-sqlite3/package.json"));
+    return require.resolve("electron/cli.js");
   } catch {
     return null;
   }
 }
 
 function probeInElectron() {
-  if (!fs.existsSync(electronExe) || !fs.existsSync(probeMain)) return false;
-  const result = spawnSync(electronExe, [probeMain], {
-    cwd: root,
-    encoding: "utf8",
-    stdio: "pipe",
-    windowsHide: true,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
-  });
+  const electronCli = resolveElectronCli();
+  if (!electronCli || !fs.existsSync(probeMain)) return false;
+  const result = spawnSync(
+    process.execPath,
+    [electronCli, probeMain],
+    winSpawnOpts({
+      cwd: root,
+      encoding: "utf8",
+      stdio: "pipe",
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    }),
+  );
   if (result.stdout?.trim()) process.stdout.write(result.stdout);
   if (result.stderr?.trim()) process.stderr.write(result.stderr);
   return result.status === 0;

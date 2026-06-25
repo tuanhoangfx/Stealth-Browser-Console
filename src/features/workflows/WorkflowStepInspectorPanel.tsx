@@ -1,154 +1,145 @@
-import { Clock, Hash, Link2, MousePointerClick, Type } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { CircleDot, Clock, Hash, Link2, MousePointerClick, Type } from "lucide-react";
+import type { ReactNode } from "react";
 import { HubFormFieldLabel, HubSingleFilterDropdown } from "@tool-workspace/hub-ui";
 import type { ScriptStep, ScriptStepKind } from "../../types";
 import { catalogEntryForKind } from "./script-step-catalog";
-import { WorkflowStepBulkActionBar } from "./WorkflowStepBulkActionBar";
 
 const STEP_STATUS_OPTIONS = [
   { value: "active", label: "Active", title: "Step runs during workflow execution" },
   { value: "inactive", label: "Inactive", title: "Step is skipped at runtime" },
 ] as const;
 
+function InspectorInlineField({
+  label,
+  icon,
+  htmlFor,
+  className = "",
+  children,
+}: {
+  label: string;
+  icon?: LucideIcon;
+  htmlFor?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`workflow-inspector-inline-field${className ? ` ${className}` : ""}`}>
+      <HubFormFieldLabel icon={icon} className="workflow-inspector-inline-field__label">
+        {htmlFor ? <span id={`${htmlFor}-label`}>{label}</span> : label}
+      </HubFormFieldLabel>
+      <div className="workflow-inspector-inline-field__control">{children}</div>
+    </div>
+  );
+}
+
 export type WorkflowStepInspectorPanelProps = {
   step: ScriptStep;
   scriptStepKinds: ScriptStepKind[];
-  savePulse: boolean;
-  canUndo: boolean;
-  canRedo: boolean;
   onSetEnabled: (enabled: boolean) => void;
   onUpdate: (patch: Partial<ScriptStep>) => void;
-  onSave: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onDelete: () => void;
 };
 
 export function WorkflowStepInspectorPanel({
   step,
   scriptStepKinds,
-  savePulse,
-  canUndo,
-  canRedo,
   onSetEnabled,
   onUpdate,
-  onSave,
-  onUndo,
-  onRedo,
-  onMoveUp,
-  onMoveDown,
-  onDelete,
 }: WorkflowStepInspectorPanelProps) {
-  const catalogEntry = catalogEntryForKind(step.kind);
-  const StepIcon = catalogEntry?.Icon;
+  const typeOptions = scriptStepKinds.map((kind) => {
+    const entry = catalogEntryForKind(kind);
+    return { value: kind, label: entry?.label ?? kind };
+  });
+
+  const statusOptions = STEP_STATUS_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label,
+    title: option.title,
+  }));
 
   return (
     <div className="workflow-step-inspector">
-      <div className="workflow-step-inspector__meta-row">
-        <div className="workflow-step-inspector__identity">
-          {StepIcon ? (
-            <span className="workflow-step-inspector__kind-icon" aria-hidden>
-              <StepIcon size={14} />
-            </span>
-          ) : null}
-          <span className="workflow-step-inspector__kind-label">{catalogEntry?.label ?? step.kind}</span>
-          <HubSingleFilterDropdown
-            filterKey="step-status"
-            label="Status"
-            options={STEP_STATUS_OPTIONS.map((option) => ({
-              value: option.value,
-              label: option.label,
-              title: option.title,
-            }))}
-            value={step.enabled ? "active" : "inactive"}
-            onChange={(value) => onSetEnabled(value === "active")}
-            className="workflow-step-inspector__status-filter"
-          />
+      <div className="workflow-step-inspector__form script-inspector-form script-inspector-form--inline">
+        <div className="workflow-inspector-row">
+          <InspectorInlineField label="Name" icon={Type} htmlFor={`script-step-name-${step.id}`}>
+            <input
+              id={`script-step-name-${step.id}`}
+              className="hub-input w-full min-w-0"
+              aria-labelledby={`script-step-name-${step.id}-label`}
+              value={step.name}
+              onChange={(event) => onUpdate({ name: event.target.value })}
+            />
+          </InspectorInlineField>
+          <InspectorInlineField label="Type" icon={MousePointerClick}>
+            <HubSingleFilterDropdown
+              filterKey={`step-type-${step.id}`}
+              label="Type"
+              options={typeOptions}
+              value={step.kind}
+              onChange={(value) => onUpdate({ kind: value as ScriptStepKind })}
+              triggerFormat="value"
+              className="workflow-step-inspector__filter w-full min-w-0"
+              triggerClassName="w-full min-w-0"
+            />
+          </InspectorInlineField>
+          <InspectorInlineField label="Status" icon={CircleDot}>
+            <HubSingleFilterDropdown
+              filterKey={`step-status-${step.id}`}
+              label="Status"
+              options={statusOptions}
+              value={step.enabled ? "active" : "inactive"}
+              onChange={(value) => onSetEnabled(value === "active")}
+              triggerFormat="value"
+              className="workflow-step-inspector__filter w-full min-w-0"
+              triggerClassName="w-full min-w-0"
+            />
+          </InspectorInlineField>
         </div>
 
-        <div className="workflow-step-inspector__fields script-inspector-form script-inspector-form--toolbar">
-          <div className="inspector-field inspector-field--name">
-            <label className="block min-w-0" htmlFor={`script-step-name-${step.id}`}>
-              <HubFormFieldLabel icon={Type}>Name</HubFormFieldLabel>
-              <input
-                id={`script-step-name-${step.id}`}
-                className="hub-input w-full min-w-0"
-                value={step.name}
-                onChange={(event) => onUpdate({ name: event.target.value })}
-              />
-            </label>
-          </div>
-          <div className="inspector-field inspector-field--type">
-            <label className="block min-w-0" htmlFor={`script-step-type-${step.id}`}>
-              <HubFormFieldLabel icon={MousePointerClick}>Type</HubFormFieldLabel>
-              <select
-                id={`script-step-type-${step.id}`}
-                className="hub-input w-full min-w-0"
-                value={step.kind}
-                onChange={(event) => onUpdate({ kind: event.target.value as ScriptStepKind })}
-              >
-                {scriptStepKinds.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {kind}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="inspector-field inspector-field--timeout">
-            <label className="block min-w-0" htmlFor={`script-step-timeout-${step.id}`}>
-              <HubFormFieldLabel icon={Clock}>Timeout</HubFormFieldLabel>
-              <input
-                id={`script-step-timeout-${step.id}`}
-                className="hub-input w-full min-w-0"
-                type="number"
-                min={0}
-                max={120000}
-                value={step.timeoutMs ?? 0}
-                onChange={(event) => onUpdate({ timeoutMs: Number(event.target.value) })}
-              />
-            </label>
-          </div>
-          <div className="inspector-field inspector-field--selector">
-            <label className="block min-w-0" htmlFor={`script-step-selector-${step.id}`}>
-              <HubFormFieldLabel icon={Hash}>Selector</HubFormFieldLabel>
-              <input
-                id={`script-step-selector-${step.id}`}
-                className="hub-input w-full min-w-0"
-                value={step.selector || ""}
-                onChange={(event) => onUpdate({ selector: event.target.value })}
-                placeholder="css=button[type=submit]"
-              />
-            </label>
-          </div>
-          <div className="inspector-field inspector-field--value">
-            <label className="block min-w-0" htmlFor={`script-step-value-${step.id}`}>
-              <HubFormFieldLabel icon={Link2}>Value</HubFormFieldLabel>
-              <input
-                id={`script-step-value-${step.id}`}
-                className="hub-input w-full min-w-0"
-                value={step.value || ""}
-                onChange={(event) => onUpdate({ value: event.target.value })}
-                placeholder="URL, text, pixels, or action id"
-              />
-            </label>
-          </div>
+        <div className="workflow-inspector-row">
+          <InspectorInlineField label="Timeout" icon={Clock} htmlFor={`script-step-timeout-${step.id}`}>
+            <input
+              id={`script-step-timeout-${step.id}`}
+              className="hub-input w-full min-w-0"
+              aria-labelledby={`script-step-timeout-${step.id}-label`}
+              type="number"
+              min={0}
+              max={120000}
+              value={step.timeoutMs ?? 0}
+              onChange={(event) => onUpdate({ timeoutMs: Number(event.target.value) })}
+            />
+          </InspectorInlineField>
+          <InspectorInlineField
+            label="Selector"
+            icon={Hash}
+            htmlFor={`script-step-selector-${step.id}`}
+            className="workflow-inspector-inline-field--wide"
+          >
+            <input
+              id={`script-step-selector-${step.id}`}
+              className="hub-input w-full min-w-0"
+              aria-labelledby={`script-step-selector-${step.id}-label`}
+              value={step.selector || ""}
+              onChange={(event) => onUpdate({ selector: event.target.value })}
+              placeholder="css=button[type=submit]"
+            />
+          </InspectorInlineField>
+          <InspectorInlineField
+            label="Value"
+            icon={Link2}
+            htmlFor={`script-step-value-${step.id}`}
+            className="workflow-inspector-inline-field--wide"
+          >
+            <input
+              id={`script-step-value-${step.id}`}
+              className="hub-input w-full min-w-0"
+              aria-labelledby={`script-step-value-${step.id}-label`}
+              value={step.value || ""}
+              onChange={(event) => onUpdate({ value: event.target.value })}
+              placeholder="URL, text, pixels, or action id"
+            />
+          </InspectorInlineField>
         </div>
-      </div>
-
-      <div className="workflow-step-inspector__bulk-row">
-        <WorkflowStepBulkActionBar
-          savePulse={savePulse}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onSave={onSave}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
-          onDelete={onDelete}
-        />
       </div>
     </div>
   );

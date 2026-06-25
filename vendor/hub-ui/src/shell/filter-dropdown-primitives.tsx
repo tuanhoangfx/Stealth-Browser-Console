@@ -134,6 +134,9 @@ export const HUB_FILTER_DROPDOWN_ROW_CLASS =
 /** Emoji / glyph slot in filter trigger + option rows. */
 export const HUB_FILTER_OPTION_EMOJI_CLASS = "shrink-0 text-base leading-none";
 
+/** Brand logo in filter rows/trigger — styled by product CSS (light tile on dark dropdown). */
+export const HUB_FILTER_BRAND_ICON_CLASS = "hub-filter-brand-icon";
+
 export function filterDropdownPanelSearchPlaceholder(filterLabel: string) {
   return `Search ${filterLabel.toLowerCase()}…`;
 }
