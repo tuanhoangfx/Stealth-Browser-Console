@@ -1,5 +1,21 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-25 — v0.7.1 — Omnibox search + profile table + workflow search
+
+- Version: `0.7.1`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Minor
+- Status: Committed
+
+### Changes
+
+- **Omnibox** — route intercept 302 to Google search; prefs + managed policy; guard on all Playwright sessions.
+- **Profile table** — panel-fill row divisor fix; compact layout on search.
+- **Workflow search** — `matchesDirectoryIdSearch` SSOT; immediate filter.
+- **Engine** — `cloakbrowser` `0.4.0` → `0.4.3`.
+- **Packaging** — inline hub-ui directory-id-search in electron/lib (asar hotfix).
+- **Dev** — Electron reload gate (identity extension purge, prefs wipe).
+
 ## 2026-06-25 — v0.6.32 — Electron dev reload
 
 - Version: `0.6.32`
@@ -21,21 +37,6 @@
 ### Changes
 
 - Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
-
-## 2026-06-25 — v0.7.1 — Omnibox search + profile table + workflow search
-
-- Version: `0.7.1`
-- Timestamp: 2026-06-25 (UTC+7)
-- Type: Minor
-- Status: Dev
-- Commit: pending
-
-### Changes
-
-- **Omnibox** — route intercept 302 to Google search; prefs + managed policy; guard on all Playwright sessions.
-- **Profile table** — panel-fill row divisor fix; compact layout on search.
-- **Workflow search** — `matchesDirectoryIdSearch` SSOT; immediate filter.
-- **Engine** — `cloakbrowser` `0.4.0` → `0.4.3`.
 
 ## 2026-06-25 — v0.6.31 — Omnibox route intercept + CDP attach guard
 

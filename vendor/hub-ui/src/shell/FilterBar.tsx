@@ -28,6 +28,7 @@ import { resolveFilterAllIcon, resolveFilterOptionIcon } from "./filter-icons";
 import {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
+  HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
   HubFilterDropdownCircle,
   HubFilterDropdownPanelSearch,
@@ -503,7 +504,7 @@ export function HubMultiFilterDropdown({
           createPortal(
             <div
               data-hub-multi-filter-panel
-              className={HUB_FILTER_DROPDOWN_PANEL_CLASS}
+              className={HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS}
               style={{
                 position: "fixed",
                 top: panelPos.top,
@@ -522,7 +523,7 @@ export function HubMultiFilterDropdown({
                 <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                   <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
                   <FilterAllRowGlyph filter={filter} />
-                  <span>{filterAllRowLabel(filter)}</span>
+                  <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
                   <FilterOptionCount
                     value={
                       filter.totalCount ??
@@ -537,7 +538,7 @@ export function HubMultiFilterDropdown({
                   <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                     <HubFilterDropdownCircle checked={selected.includes(o.value)} />
                     <FilterOptionGlyph filterKey={filter.key} option={o} />
-                    <span className="flex-1 truncate text-left" title={o.label}>
+                    <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                       {o.label}
                     </span>
                     <FilterOptionCount value={o.count} />
@@ -559,7 +560,7 @@ export function HubMultiFilterDropdown({
               <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                 <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
                 <FilterAllRowGlyph filter={filter} />
-                <span>{filterAllRowLabel(filter)}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
                 <FilterOptionCount
                   value={
                     filter.totalCount ??
@@ -574,7 +575,7 @@ export function HubMultiFilterDropdown({
                 <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
                   <HubFilterDropdownCircle checked={selected.includes(o.value)} />
                   <FilterOptionGlyph filterKey={filter.key} option={o} />
-                  <span className="flex-1 truncate text-left" title={o.label}>
+                  <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                     {o.label}
                   </span>
                   <FilterOptionCount value={o.count} />
@@ -681,7 +682,7 @@ export function HubSingleFilterDropdown({
           >
             <HubFilterDropdownCircle checked={o.value === value} />
             <FilterOptionGlyph filterKey={filterKey} option={o} />
-            <span className="flex-1 truncate text-left" title={o.label}>
+            <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
               {o.label}
             </span>
             <FilterOptionCount value={o.count} />
@@ -697,7 +698,7 @@ export function HubSingleFilterDropdown({
   const panelEl = open ? (
     <div
       data-hub-single-filter-panel
-      className={HUB_FILTER_DROPDOWN_PANEL_CLASS}
+      className={usePortal ? HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS : HUB_FILTER_DROPDOWN_PANEL_CLASS}
       style={
         usePortal
           ? {
