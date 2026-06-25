@@ -1,10 +1,11 @@
 import type { HubTableColumn } from "../content/HubDataTable";
 
-/** Modal tool-access table (User Access · ≤5 columns). */
-export const HUB_USER_TOOLS_MODAL_TABLE_CLASS = "hub-users-table";
+/** Modal tool-access table (User Access · ≤5 columns, no horizontal scroll). */
+export const HUB_USER_TOOLS_MODAL_TABLE_CLASS =
+  "hub-users-table hub-users-table--hub-tools hub-users-table--hub-tools-modal";
 
 export const HUB_USER_TOOLS_MODAL_TABLE_WRAP_CLASS =
-  "hub-users-table-wrap overflow-hidden rounded-xl border border-white/5";
+  "hub-users-table-wrap min-w-0 overflow-hidden rounded-xl border border-white/5";
 
 /** Full Hub tools directory table. */
 export const HUB_USER_TOOLS_DIRECTORY_TABLE_CLASS = "hub-users-table hub-users-table--hub-tools";
@@ -57,7 +58,7 @@ export function buildHubUserToolsModalColumns(showSelect: boolean): HubTableColu
 }
 
 export const HUB_USER_TOOLS_SKELETON_WRAP_CLASS =
-  "hub-users-table-wrap min-w-0 overflow-x-auto rounded-2xl border border-white/5";
+  "hub-users-table-wrap min-w-0 overflow-hidden rounded-xl border border-white/5";
 
 export function hubUserToolsModalColumnCount(showSelect: boolean) {
   return showSelect ? 5 : 4;

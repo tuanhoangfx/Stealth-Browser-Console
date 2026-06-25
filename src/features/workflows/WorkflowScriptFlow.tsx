@@ -69,6 +69,9 @@ const SCRIPT_FLOW_NODE_TYPE = "workflowScriptStep" as const;
 const WORKFLOW_SCRIPT_EDGE_TYPE = "workflowScriptStepEdge" as const;
 
 export type WorkflowScriptFlowProps = {
+  /** Stable workflow id — relayout canvas when this changes (no remount). */
+  workflowId: string;
+
   steps: ScriptStep[];
 
   selectedStepId: string;
@@ -146,8 +149,12 @@ const WORKFLOW_CANVAS_FIT_VIEW = {
   padding: 0.22,
   minZoom: WORKFLOW_CANVAS_DEFAULT_ZOOM,
   maxZoom: WORKFLOW_CANVAS_DEFAULT_ZOOM,
-  duration: 260,
+  duration: 0,
 } as const;
+
+function scheduleWorkflowCanvasFit(fitViewFn: ReturnType<typeof useReactFlow>["fitView"]): void {
+  void fitViewFn(WORKFLOW_CANVAS_FIT_VIEW);
+}
 
 type WorkflowMiniMapNodeProps = {
   id: string;
@@ -361,6 +368,7 @@ function buildEdges(steps: ScriptStep[], layoutMode: WorkflowLayoutMode): Edge[]
 }
 
 function WorkflowScriptFlowInner({
+  workflowId,
   steps,
 
   selectedStepId,
@@ -400,12 +408,19 @@ function WorkflowScriptFlowInner({
   const structuralKey = steps.map((s) => s.id).join("|");
 
   const lastRelayoutSig = useRef<string>("");
+  const fitFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (fitFrameRef.current != null) cancelAnimationFrame(fitFrameRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const nextEdges = buildEdges(steps, layoutMode);
     setEdges((prev) => (edgesSignature(prev) === edgesSignature(nextEdges) ? prev : nextEdges));
 
-    const relayoutSig = `${structuralKey}|${layoutMode}`;
+    const relayoutSig = `${workflowId}|${structuralKey}|${layoutMode}`;
     const shouldRelayoutPositions = lastRelayoutSig.current !== relayoutSig;
 
     if (shouldRelayoutPositions) {
@@ -413,8 +428,10 @@ function WorkflowScriptFlowInner({
       const skeleton = buildSkeletonNodes(steps, selectedStepId);
       const layouted = layoutWorkflowScriptNodes(skeleton, nextEdges, layoutMode);
       setNodes(layouted);
-      requestAnimationFrame(() => {
-        void fitViewRef.current(WORKFLOW_CANVAS_FIT_VIEW);
+      if (fitFrameRef.current != null) cancelAnimationFrame(fitFrameRef.current);
+      fitFrameRef.current = requestAnimationFrame(() => {
+        fitFrameRef.current = null;
+        scheduleWorkflowCanvasFit(fitViewRef.current);
       });
       return;
     }
@@ -426,7 +443,7 @@ function WorkflowScriptFlowInner({
       if (nodesVisualSignature(prev) === nodesVisualSignature(merged)) return prev;
       return merged;
     });
-  }, [steps, structuralKey, selectedStepId, layoutMode]);
+  }, [workflowId, steps, structuralKey, selectedStepId, layoutMode]);
 
   useLayoutEffect(() => {
     if (!layoutMenuOpen) {

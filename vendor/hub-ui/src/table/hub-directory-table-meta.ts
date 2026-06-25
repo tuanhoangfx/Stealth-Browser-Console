@@ -225,6 +225,9 @@ export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "defa
   if (variant === "fb-accounts") {
     return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-fb-accounts`;
   }
+  if (variant === "pages") {
+    return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-pages`;
+  }
   if (variant === "users-credentials") {
     return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--users-credentials`;
   }

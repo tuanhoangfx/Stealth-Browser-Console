@@ -8,8 +8,9 @@ import {
   Layers3,
   MessageCircle,
   Play,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
+import { resolveHubBrandIconByMatch } from "@tool-workspace/hub-ui";
 import type { DropdownOption } from "../../ui/dropdown-types";
 import type { WorkflowConfig, WorkflowIconKey, WorkflowId } from "./workflow-types";
 
@@ -22,7 +23,19 @@ export function workflowIconFor(icon: WorkflowIconKey) {
   return Play;
 }
 
+/** Hub-UI brand registry SSOT — match platform label, workflow name, or URL. */
+export function workflowPlatformBrandMatch(workflow: Pick<WorkflowConfig, "name" | "targetUrl" | "platform">) {
+  const platform = inferWorkflowPlatform(workflow.targetUrl, workflow.platform);
+  return (
+    resolveHubBrandIconByMatch(platform) ??
+    resolveHubBrandIconByMatch(workflow.name) ??
+    resolveHubBrandIconByMatch(workflow.targetUrl)
+  );
+}
+
 export function workflowPlatformIconFor(platform: string) {
+  const brand = resolveHubBrandIconByMatch(platform);
+  if (brand) return null;
   const value = platform.toLowerCase();
   if (value.includes("github")) return Github;
   if (value.includes("instagram")) return Instagram;
@@ -52,6 +65,7 @@ export function workflowDisplayPlatform(workflow: WorkflowConfig) {
   return inferWorkflowPlatform(workflow.targetUrl, workflow.platform);
 }
 
+/** @deprecated Prefer workflowPlatformBrandMatch — kept for GPM parity imports. */
 export function workflowPlatformSlug(platform: string) {
   const value = platform.toLowerCase();
   if (value.includes("github")) return "github";
@@ -66,9 +80,7 @@ export function workflowPlatformSlug(platform: string) {
 }
 
 export function workflowPlatformSvgUrl(platform: string) {
-  const slug = workflowPlatformSlug(platform);
-  if (!slug) return "";
-  return `https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/${slug}/default.svg`;
+  return resolveHubBrandIconByMatch(platform)?.src ?? "";
 }
 
 export function workflowPlatformTone(platform: string) {
@@ -90,7 +102,7 @@ export function workflowDisplayId(id: WorkflowId, builtinWorkflows: WorkflowConf
   const fallbackIndex = Math.abs(
     String(id)
       .split("")
-      .reduce((total, char) => total + char.charCodeAt(0), 0)
+      .reduce((total, char) => total + char.charCodeAt(0), 0),
   );
   return `WF${String((index >= 0 ? index + 1 : fallbackIndex) || 1).padStart(5, "0").slice(-5)}`;
 }
@@ -108,7 +120,7 @@ export function toneFromSeed(seed: string): NonNullable<DropdownOption["dotTone"
     "orange",
     "pink",
     "emerald",
-    "sky"
+    "sky",
   ];
   const hash = String(seed)
     .split("")

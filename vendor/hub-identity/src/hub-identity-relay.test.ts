@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   HUB_IDENTITY_RELAY_MESSAGE_TYPE,
   buildHubIdentityRelayMessage,
+  isWorkspaceToolOrigin,
   parseHubIdentityRelayMessage,
 } from "./hub-identity-relay";
 
@@ -25,5 +26,10 @@ describe("hub-identity-relay", () => {
   it("rejects incomplete relay payload", () => {
     expect(parseHubIdentityRelayMessage({ type: HUB_IDENTITY_RELAY_MESSAGE_TYPE })).toBeNull();
     expect(parseHubIdentityRelayMessage(null)).toBeNull();
+  });
+
+  it("accepts workspace tool origins for relay respond", () => {
+    expect(isWorkspaceToolOrigin("http://127.0.0.1:5175")).toBe(true);
+    expect(isWorkspaceToolOrigin("https://evil.example")).toBe(false);
   });
 });

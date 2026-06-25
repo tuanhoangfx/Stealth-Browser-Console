@@ -17,6 +17,8 @@ type HubFilterSelectProps<T extends string> = {
   disabled?: boolean;
   className?: string;
   usePortal?: boolean;
+  /** `value` = selected option only (golden directory filters). */
+  triggerFormat?: "label-value" | "value";
 };
 
 /** @deprecated Prefer `HubSingleFilterDropdown` — same FilterBar chrome. */
@@ -29,6 +31,7 @@ export function HubFilterSelect<T extends string>({
   disabled = false,
   className = "",
   usePortal = true,
+  triggerFormat = "value",
 }: HubFilterSelectProps<T>) {
   const filterOptions: FilterOption[] = options.map((o) => ({
     value: o.value,
@@ -47,6 +50,7 @@ export function HubFilterSelect<T extends string>({
       disabled={disabled}
       className={className}
       usePortal={usePortal}
+      triggerFormat={triggerFormat}
     />
   );
 }

@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("stealthApi", {
   listProfilesPage: (payload) => invoke("profile:listPage", payload),
   catalogStats: () => invoke("profile:catalogStats"),
   createProfile: (payload) => invoke("profile:create", payload),
+  createProfilesBulkByNames: (payload) => invoke("profile:createBulkByNames", payload),
+  createProfilesBulkByRange: (payload) => invoke("profile:createBulkByRange", payload),
   updateProfile: (payload) => invoke("profile:update", payload),
   bulkUpdateStartupUrl: (payload) => invoke("profile:bulkUpdateStartupUrl", payload),
   deleteProfile: (payload) => invoke("profile:delete", payload),

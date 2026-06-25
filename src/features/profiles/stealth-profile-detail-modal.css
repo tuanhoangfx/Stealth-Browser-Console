@@ -1,0 +1,398 @@
+/* Profile New/Edit modal — main form left · Note + Log rail right (P0020 Account Detail parity). */
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal {
+  --hub-modal-max-w: min(96rem, calc(100vw - var(--app-sidebar-width, 0px) - 1.5rem));
+  --hub-modal-max-h: 720px;
+  --hub-modal-max-vh: 86vh;
+  --stealth-profile-detail-rail-w: min(22rem, 32%);
+  --stealth-profile-detail-min-h: 20rem;
+  --stealth-profile-adm-line: rgba(255, 255, 255, 0.1);
+  --stealth-profile-adm-panel: rgba(255, 255, 255, 0.03);
+
+  height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  min-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
+/* New profile — fixed shell when switching Single ↔ Bulk */
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal.stealth-profile-create-modal {
+  --hub-add-modal-body-h: 20rem;
+  --hub-add-modal-toc-bulk-slot-h: 7rem;
+  --stealth-profile-detail-min-h: 20rem;
+}
+
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal .hub-tool-detail-modal__body,
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal .hub-tool-detail-modal__layout,
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal .hub-tool-detail-modal__content {
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal .hub-tool-detail-modal__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal .hub-tool-detail-modal__scroll-inner {
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.stealth-profile-detail__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 0.65rem 0.65rem;
+}
+
+.stealth-profile-detail__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--stealth-profile-detail-rail-w);
+  gap: 0.65rem;
+  flex: 1;
+  min-height: var(--stealth-profile-detail-min-h);
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.stealth-profile-detail__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.stealth-profile-detail__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.stealth-profile-adm-rail,
+.stealth-profile-adm-panel {
+  border: 1px solid var(--stealth-profile-adm-line);
+  border-radius: 0.7rem;
+  background: var(--stealth-profile-adm-panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.stealth-profile-adm-rail--note {
+  flex: 1 1 58%;
+  min-height: 12rem;
+}
+
+.stealth-profile-adm-rail--log {
+  flex: 0 1 42%;
+  min-height: 7rem;
+  max-height: min(14rem, 30vh);
+}
+
+.stealth-profile-adm-rail__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--stealth-profile-adm-line);
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgb(148, 163, 184);
+  flex-shrink: 0;
+}
+
+.stealth-profile-adm-rail__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0.45rem;
+  overflow: auto;
+}
+
+.stealth-profile-adm-rail__body--note {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stealth-profile-adm-note-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 10rem;
+  height: 100%;
+  resize: vertical;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  font-size: var(--hub-table-body-size, 12px);
+  padding: 0.45rem 0.55rem;
+}
+
+.stealth-profile-adm-muted {
+  margin: 0;
+  font-size: var(--hub-table-body-size, 12px);
+  color: rgb(100, 116, 139);
+}
+
+.stealth-profile-adm-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stealth-profile-adm-log-item {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  padding: 0.15rem 0;
+}
+
+.stealth-profile-adm-log-item > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.stealth-profile-adm-log-item__time {
+  display: block;
+  font-size: 11px;
+  color: rgb(100, 116, 139);
+  margin-bottom: 0.15rem;
+}
+
+.stealth-profile-adm-log-item__msg {
+  margin: 0;
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: rgb(226, 232, 240);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.stealth-profile-adm-log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+}
+
+.stealth-profile-adm-log-dot--0 {
+  background: rgb(52, 211, 153);
+}
+
+.stealth-profile-adm-log-dot--1 {
+  background: rgb(251, 191, 36);
+}
+
+.stealth-profile-adm-log-dot--2 {
+  background: rgb(129, 140, 248);
+}
+
+.stealth-profile-adm-log-dot--success {
+  background: rgb(52, 211, 153);
+}
+
+.stealth-profile-adm-log-dot--failed {
+  background: rgb(251, 113, 133);
+}
+
+.stealth-profile-adm-log-dot--running {
+  background: rgb(251, 191, 36);
+}
+
+.stealth-profile-adm-rail__head--split {
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.stealth-profile-adm-rail__head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.stealth-profile-adm-log-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.stealth-profile-adm-log-filter {
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: rgb(148, 163, 184);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
+.stealth-profile-adm-log-filter:hover {
+  color: rgb(226, 232, 240);
+}
+
+.stealth-profile-adm-log-filter.is-active {
+  border-color: rgba(129, 140, 248, 0.35);
+  background: rgba(99, 102, 241, 0.14);
+  color: rgb(199, 210, 254);
+}
+
+.stealth-profile-adm-log-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.15rem;
+}
+
+.stealth-profile-adm-log-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.12rem 0.38rem;
+  text-transform: capitalize;
+}
+
+.stealth-profile-adm-log-badge--success {
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  background: rgba(16, 185, 129, 0.12);
+  color: rgb(167, 243, 208);
+}
+
+.stealth-profile-adm-log-badge--failed {
+  border: 1px solid rgba(251, 113, 133, 0.28);
+  background: rgba(244, 63, 94, 0.12);
+  color: rgb(254, 205, 211);
+}
+
+.stealth-profile-adm-log-badge--running {
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: rgb(253, 230, 138);
+}
+
+/* Bulk create — compact sections inside fixed modal body */
+.stealth-profile-create-modal__bulk-sections {
+  gap: 0.65rem;
+}
+
+.stealth-profile-bulk-names-input {
+  min-height: 7rem;
+  max-height: 9rem;
+}
+
+.stealth-profile-create-toc__children {
+  margin: 0.1rem 0 0.2rem 0.55rem;
+  padding: 0.1rem 0 0.15rem 0.55rem;
+  border-left: 1px solid rgba(129, 140, 248, 0.16);
+}
+
+.stealth-profile-create-toc__children .hub-toc-nav__item {
+  min-height: calc(var(--overview-toc-row-h, 2rem) - 0.35rem);
+}
+
+.stealth-profile-bulk-preview-kpi {
+  --hub-kpi-strip-min-h: 3.35rem;
+}
+
+.stealth-profile-bulk-preview-kpi .hub-kpi-tile__value {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stealth-profile-bulk-preview-kpi .hub-kpi-tile__hint {
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.stealth-profile-bulk-hint {
+  margin-top: 0.45rem;
+  font-size: 11px;
+  color: rgb(100, 116, 139);
+}
+
+.stealth-profile-detail__main .stealth-profile-create-tab-panels {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.stealth-profile-create-tab-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.stealth-profile-create-tab-panel.is-active {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  visibility: visible;
+  pointer-events: auto;
+  overflow: auto;
+}
+
+.stealth-profile-create-toc-panel {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  inset: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.stealth-profile-create-toc-panel.is-active {
+  visibility: visible;
+  pointer-events: auto;
+  position: static;
+  height: auto;
+  overflow: visible;
+}
+
+@media (max-width: 900px) {
+  .stealth-profile-detail__split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(10rem, 28vh);
+  }
+
+  .stealth-profile-adm-rail--log,
+  .stealth-profile-adm-rail--note {
+    min-height: 0;
+  }
+}

@@ -1,0 +1,939 @@
+[
+  {
+    "id": "elevenlabs",
+    "label": "ElevenLabs",
+    "match": "elevenlabs|eleven.?labs",
+    "src": "/assets/brand-icons/elevenlabs.png",
+    "shell": "bare",
+    "faviconDomain": "elevenlabs.com"
+  },
+  {
+    "id": "capcut",
+    "label": "CapCut",
+    "match": "capcut|cap.?cut",
+    "src": "/assets/brand-icons/capcut.png",
+    "shell": "bare",
+    "faviconDomain": "capcut.com"
+  },
+  {
+    "id": "kling",
+    "label": "Kling",
+    "match": "kling",
+    "src": "/assets/brand-icons/kling.png",
+    "shell": "bare",
+    "faviconDomain": "kling.com"
+  },
+  {
+    "id": "heygen",
+    "label": "HeyGen",
+    "match": "heygen|hey.?gen",
+    "src": "/assets/brand-icons/heygen.png",
+    "shell": "bare",
+    "faviconDomain": "heygen.com"
+  },
+  {
+    "id": "grok",
+    "label": "Grok",
+    "match": "grok|xai|\\bx\\.?ai\\b",
+    "src": "/assets/brand-icons/grok.png",
+    "shell": "bare",
+    "faviconDomain": "grok.com"
+  },
+  {
+    "id": "cursor",
+    "label": "Cursor",
+    "match": "cursor",
+    "src": "/assets/brand-icons/cursor.png",
+    "shell": "bare",
+    "faviconDomain": "cursor.com"
+  },
+  {
+    "id": "surfshark",
+    "label": "Surfshark",
+    "match": "surfshark|vpn\\s*surfshark",
+    "src": "/assets/brand-icons/surfshark.png",
+    "shell": "bare",
+    "faviconDomain": "surfshark.com"
+  },
+  {
+    "id": "higgsfield",
+    "label": "Higgsfield",
+    "match": "higgsfield",
+    "src": "/assets/brand-icons/higgsfield.png",
+    "shell": "bare",
+    "faviconDomain": "higgsfield.com"
+  },
+  {
+    "id": "adobe",
+    "label": "Adobe",
+    "match": "adobe",
+    "src": "/assets/brand-icons/adobe.ico",
+    "shell": "bare",
+    "faviconDomain": "adobe.com"
+  },
+  {
+    "id": "kalodata-boost",
+    "label": "Kalodata Boost",
+    "match": "kalodata\\s*boost",
+    "src": "/assets/brand-icons/kalodata.png",
+    "shell": "bare",
+    "faviconDomain": "kalodata.com"
+  },
+  {
+    "id": "kalodata",
+    "label": "Kalodata",
+    "match": "kalodata",
+    "src": "/assets/brand-icons/kalodata.png",
+    "shell": "bare",
+    "faviconDomain": "kalodata.com"
+  },
+  {
+    "id": "nordvpn",
+    "label": "NordVPN",
+    "match": "nord|vpn\\s*nord",
+    "src": "/assets/brand-icons/nordvpn.png",
+    "shell": "bare",
+    "faviconDomain": "nordvpn.com"
+  },
+  {
+    "id": "expressvpn",
+    "label": "ExpressVPN",
+    "match": "express|vpn\\s*express",
+    "src": "/assets/brand-icons/expressvpn.png",
+    "shell": "bare",
+    "faviconDomain": "expressvpn.com"
+  },
+  {
+    "id": "private-internet-access",
+    "label": "PIA",
+    "match": "pia|private.?internet|vpn\\s*pia",
+    "src": "/assets/brand-icons/private-internet-access.png",
+    "shell": "bare",
+    "faviconDomain": "privateinternetaccess.com"
+  },
+  {
+    "id": "proton",
+    "label": "Proton",
+    "match": "proton",
+    "src": "/assets/brand-icons/proton.png",
+    "shell": "bare",
+    "faviconDomain": "proton.com"
+  },
+  {
+    "id": "topview",
+    "label": "Topview",
+    "match": "topview",
+    "src": "/assets/brand-icons/topview.png",
+    "shell": "bare",
+    "faviconDomain": "topview.com"
+  },
+  {
+    "id": "exness",
+    "label": "Exness",
+    "match": "exness",
+    "src": "/assets/brand-icons/exness.png",
+    "shell": "bare",
+    "faviconDomain": "exness.com"
+  },
+  {
+    "id": "deevid",
+    "label": "Deevid",
+    "match": "deevid",
+    "src": "/assets/brand-icons/deevid.png",
+    "shell": "bare",
+    "faviconDomain": "deevid.com"
+  },
+  {
+    "id": "litefinance",
+    "label": "LiteFinance",
+    "match": "litefinance",
+    "src": "/assets/brand-icons/litefinance.png",
+    "shell": "bare",
+    "faviconDomain": "litefinance.com"
+  },
+  {
+    "id": "runway",
+    "label": "Runway",
+    "match": "runway",
+    "src": "/assets/brand-icons/runway.png",
+    "shell": "bare",
+    "faviconDomain": "runway.com"
+  },
+  {
+    "id": "vidiq",
+    "label": "VidiQ",
+    "match": "vidiq",
+    "src": "/assets/brand-icons/vidiq.png",
+    "shell": "bare",
+    "faviconDomain": "vidiq.com"
+  },
+  {
+    "id": "vtmarkets",
+    "label": "VT Markets",
+    "match": "vt\\s*markets",
+    "src": "/assets/brand-icons/vtmarkets.png",
+    "shell": "bare",
+    "faviconDomain": "vtmarkets.com"
+  },
+  {
+    "id": "freepik",
+    "label": "Freepik",
+    "match": "freepik",
+    "src": "/assets/brand-icons/freepik.png",
+    "shell": "bare",
+    "faviconDomain": "freepik.com"
+  },
+  {
+    "id": "glm",
+    "label": "GLM",
+    "match": "glm|z\\.?ai",
+    "src": "/assets/brand-icons/glm.png",
+    "shell": "bare",
+    "faviconDomain": "glm.com"
+  },
+  {
+    "id": "teamviewer",
+    "label": "TeamViewer",
+    "match": "teamviewer",
+    "src": "/assets/brand-icons/teamviewer.png",
+    "shell": "bare",
+    "faviconDomain": "teamviewer.com"
+  },
+  {
+    "id": "bigspy",
+    "label": "BigSpy",
+    "match": "big\\s*spy|bigspy",
+    "src": "/assets/brand-icons/bigspy.png",
+    "shell": "bare",
+    "faviconDomain": "bigspy.com"
+  },
+  {
+    "id": "leonardo",
+    "label": "Leonardo AI",
+    "match": "leonardo",
+    "src": "/assets/brand-icons/leonardo.png",
+    "shell": "bare",
+    "faviconDomain": "leonardo.com"
+  },
+  {
+    "id": "mega",
+    "label": "Mega",
+    "match": "\\bmega\\b",
+    "src": "/assets/brand-icons/mega.png",
+    "shell": "bare",
+    "faviconDomain": "mega.com"
+  },
+  {
+    "id": "meitu",
+    "label": "Meitu",
+    "match": "meitu",
+    "src": "/assets/brand-icons/meitu.png",
+    "shell": "bare",
+    "faviconDomain": "meitu.com"
+  },
+  {
+    "id": "beautyplus",
+    "label": "BeautyPlus",
+    "match": "beautyplus|beauty.?plus",
+    "src": "/assets/brand-icons/beautyplus.png",
+    "shell": "bare",
+    "faviconDomain": "beautyplus.com"
+  },
+  {
+    "id": "paypal",
+    "label": "PayPal",
+    "match": "paypal",
+    "src": "/assets/brand-icons/paypal.png",
+    "shell": "bare",
+    "faviconDomain": "paypal.com"
+  },
+  {
+    "id": "tradingview",
+    "label": "TradingView",
+    "match": "trading.?view",
+    "src": "/assets/brand-icons/tradingview.png",
+    "shell": "bare",
+    "faviconDomain": "tradingview.com"
+  },
+  {
+    "id": "windsurf",
+    "label": "Windsurf",
+    "match": "windsurf",
+    "src": "/assets/brand-icons/windsurf.png",
+    "shell": "bare",
+    "faviconDomain": "windsurf.com"
+  },
+  {
+    "id": "zoom",
+    "label": "Zoom",
+    "match": "zoom",
+    "src": "/assets/brand-icons/zoom.png",
+    "shell": "bare",
+    "faviconDomain": "zoom.com"
+  },
+  {
+    "id": "minea",
+    "label": "Minea",
+    "match": "minea",
+    "src": "/assets/brand-icons/minea.png",
+    "shell": "bare",
+    "faviconDomain": "minea.com"
+  },
+  {
+    "id": "piclumen",
+    "label": "Piclumen",
+    "match": "piclumen",
+    "src": "/assets/brand-icons/piclumen.png",
+    "shell": "bare",
+    "faviconDomain": "piclumen.com"
+  },
+  {
+    "id": "make",
+    "label": "Make",
+    "match": "\\bmake\\b|integromat",
+    "src": "/assets/brand-icons/make.png",
+    "shell": "bare",
+    "faviconDomain": "make.com"
+  },
+  {
+    "id": "garena",
+    "label": "Garena",
+    "match": "garena",
+    "src": "/assets/brand-icons/garena.png",
+    "shell": "bare",
+    "faviconDomain": "garena.com"
+  },
+  {
+    "id": "fshare",
+    "label": "Fshare",
+    "match": "fshare",
+    "src": "/assets/brand-icons/fshare.png",
+    "shell": "bare",
+    "faviconDomain": "fshare.com"
+  },
+  {
+    "id": "supabase",
+    "label": "Supabase",
+    "match": "supabase",
+    "src": "/assets/brand-icons/supabase.png",
+    "shell": "bare",
+    "faviconDomain": "supabase.com"
+  },
+  {
+    "id": "spotify",
+    "label": "Spotify",
+    "match": "spotify",
+    "src": "/assets/brand-icons/spotify.png",
+    "shell": "bare",
+    "faviconDomain": "spotify.com"
+  },
+  {
+    "id": "canva",
+    "label": "Canva",
+    "match": "canva",
+    "src": "/assets/brand-icons/canva.png",
+    "shell": "bare",
+    "faviconDomain": "canva.com"
+  },
+  {
+    "id": "binance",
+    "label": "Binance",
+    "match": "binance",
+    "src": "/assets/brand-icons/binance.png",
+    "shell": "bare",
+    "faviconDomain": "binance.com"
+  },
+  {
+    "id": "grizzlysms",
+    "label": "Grizzlysms",
+    "match": "grizzly\\s*sms|grizzlysms",
+    "src": "/assets/brand-icons/grizzlysms.png",
+    "shell": "bare",
+    "faviconDomain": "grizzlysms.com"
+  },
+  {
+    "id": "blackbox",
+    "label": "Blackbox",
+    "match": "blackbox",
+    "src": "/assets/brand-icons/blackbox.png",
+    "shell": "bare",
+    "faviconDomain": "blackbox.com"
+  },
+  {
+    "id": "coingecko",
+    "label": "CoinGecko",
+    "match": "coingecko",
+    "src": "/assets/brand-icons/coingecko.png",
+    "shell": "bare",
+    "faviconDomain": "coingecko.com"
+  },
+  {
+    "id": "filmora",
+    "label": "Filmora",
+    "match": "filmora",
+    "src": "/assets/brand-icons/filmora.png",
+    "shell": "bare",
+    "faviconDomain": "filmora.com"
+  },
+  {
+    "id": "fliki",
+    "label": "Fliki",
+    "match": "fliki",
+    "src": "/assets/brand-icons/fliki.png",
+    "shell": "bare",
+    "faviconDomain": "fliki.com"
+  },
+  {
+    "id": "genspark",
+    "label": "Genspark",
+    "match": "genspark",
+    "src": "/assets/brand-icons/genspark.png",
+    "shell": "bare",
+    "faviconDomain": "genspark.com"
+  },
+  {
+    "id": "openart",
+    "label": "OpenArt",
+    "match": "openart",
+    "src": "/assets/brand-icons/openart.png",
+    "shell": "bare",
+    "faviconDomain": "openart.com"
+  },
+  {
+    "id": "payoneer",
+    "label": "Payoneer",
+    "match": "payoneer",
+    "src": "/assets/brand-icons/payoneer.png",
+    "shell": "bare",
+    "faviconDomain": "payoneer.com"
+  },
+  {
+    "id": "riot",
+    "label": "Riot Games",
+    "match": "riot",
+    "src": "/assets/brand-icons/riot.png",
+    "shell": "bare",
+    "faviconDomain": "riot.com"
+  },
+  {
+    "id": "skool",
+    "label": "Skool",
+    "match": "skool",
+    "src": "/assets/brand-icons/skool.png",
+    "shell": "bare",
+    "faviconDomain": "skool.com"
+  },
+  {
+    "id": "turboscribe",
+    "label": "TurboScribe",
+    "match": "turboscribe",
+    "src": "/assets/brand-icons/turboscribe.png",
+    "shell": "bare",
+    "faviconDomain": "turboscribe.com"
+  },
+  {
+    "id": "artlist",
+    "label": "Artlist",
+    "match": "artlist",
+    "src": "/assets/brand-icons/artlist.png",
+    "shell": "bare",
+    "faviconDomain": "artlist.com"
+  },
+  {
+    "id": "augment",
+    "label": "Augment Code",
+    "match": "augment",
+    "src": "/assets/brand-icons/augment.png",
+    "shell": "bare",
+    "faviconDomain": "augment.com"
+  },
+  {
+    "id": "camtasia",
+    "label": "Camtasia",
+    "match": "camtasia",
+    "src": "/assets/brand-icons/camtasia.png",
+    "shell": "bare",
+    "faviconDomain": "camtasia.com"
+  },
+  {
+    "id": "claude",
+    "label": "Claude",
+    "match": "claude|anthropic",
+    "src": "/assets/brand-icons/claude.png",
+    "shell": "bare",
+    "faviconDomain": "claude.com"
+  },
+  {
+    "id": "1password",
+    "label": "1Password",
+    "match": "1password|one.?password",
+    "src": "/assets/brand-icons/1password.png",
+    "shell": "bare",
+    "faviconDomain": "1password.com"
+  },
+  {
+    "id": "bitwarden",
+    "label": "Bitwarden",
+    "match": "bitwarden",
+    "src": "/assets/brand-icons/bitwarden.png",
+    "shell": "bare",
+    "faviconDomain": "bitwarden.com"
+  },
+  {
+    "id": "dropbox",
+    "label": "Dropbox",
+    "match": "dropbox",
+    "src": "/assets/brand-icons/dropbox.png",
+    "shell": "bare",
+    "faviconDomain": "dropbox.com"
+  },
+  {
+    "id": "figma",
+    "label": "Figma",
+    "match": "figma",
+    "src": "/assets/brand-icons/figma.png",
+    "shell": "bare",
+    "faviconDomain": "figma.com"
+  },
+  {
+    "id": "notion",
+    "label": "Notion",
+    "match": "notion",
+    "src": "/assets/brand-icons/notion.png",
+    "shell": "bare",
+    "faviconDomain": "notion.com"
+  },
+  {
+    "id": "telegram",
+    "label": "Telegram",
+    "match": "telegram",
+    "src": "/assets/brand-icons/telegram.png",
+    "shell": "bare",
+    "faviconDomain": "telegram.com"
+  },
+  {
+    "id": "midjourney",
+    "label": "Midjourney",
+    "match": "midjourney",
+    "src": "/assets/brand-icons/midjourney.png",
+    "shell": "bare",
+    "faviconDomain": "midjourney.com"
+  },
+  {
+    "id": "perplexity",
+    "label": "Perplexity",
+    "match": "perplexity",
+    "src": "/assets/brand-icons/perplexity.png",
+    "shell": "bare",
+    "faviconDomain": "perplexity.com"
+  },
+  {
+    "id": "replit",
+    "label": "Replit",
+    "match": "replit",
+    "src": "/assets/brand-icons/replit.png",
+    "shell": "bare",
+    "faviconDomain": "replit.com"
+  },
+  {
+    "id": "suno",
+    "label": "Suno",
+    "match": "suno",
+    "src": "/assets/brand-icons/suno.png",
+    "shell": "bare",
+    "faviconDomain": "suno.com"
+  },
+  {
+    "id": "picsart",
+    "label": "Picsart",
+    "match": "picsart",
+    "src": "/assets/brand-icons/picsart.png",
+    "shell": "bare",
+    "faviconDomain": "picsart.com"
+  },
+  {
+    "id": "ideogram",
+    "label": "Ideogram",
+    "match": "ideogram",
+    "src": "/assets/brand-icons/ideogram.png",
+    "shell": "bare",
+    "faviconDomain": "ideogram.com"
+  },
+  {
+    "id": "hailuo",
+    "label": "Hailuo",
+    "match": "hailuo",
+    "src": "/assets/brand-icons/hailuo.png",
+    "shell": "bare",
+    "faviconDomain": "hailuo.com"
+  },
+  {
+    "id": "minimax",
+    "label": "Minimax",
+    "match": "minimax",
+    "src": "/assets/brand-icons/minimax.png",
+    "shell": "bare",
+    "faviconDomain": "minimax.com"
+  },
+  {
+    "id": "lovable",
+    "label": "Lovable",
+    "match": "lovable",
+    "src": "/assets/brand-icons/lovable.png",
+    "shell": "bare",
+    "faviconDomain": "lovable.com"
+  },
+  {
+    "id": "manus",
+    "label": "Manus",
+    "match": "manus",
+    "src": "/assets/brand-icons/manus.png",
+    "shell": "bare",
+    "faviconDomain": "manus.com"
+  },
+  {
+    "id": "monica",
+    "label": "Monica",
+    "match": "monica",
+    "src": "/assets/brand-icons/monica.png",
+    "shell": "bare",
+    "faviconDomain": "monica.com"
+  },
+  {
+    "id": "openrouter",
+    "label": "OpenRouter",
+    "match": "openrouter",
+    "src": "/assets/brand-icons/openrouter.png",
+    "shell": "bare",
+    "faviconDomain": "openrouter.com"
+  },
+  {
+    "id": "deepseek",
+    "label": "DeepSeek",
+    "match": "deepseek",
+    "src": "/assets/brand-icons/deepseek.png",
+    "shell": "bare",
+    "faviconDomain": "deepseek.com"
+  },
+  {
+    "id": "gemini",
+    "label": "Gemini",
+    "match": "gemini",
+    "src": "/assets/brand-icons/gemini.png",
+    "shell": "bare",
+    "faviconDomain": "gemini.com"
+  },
+  {
+    "id": "godaddy",
+    "label": "GoDaddy",
+    "match": "godaddy",
+    "src": "/assets/brand-icons/godaddy.png",
+    "shell": "bare",
+    "faviconDomain": "godaddy.com"
+  },
+  {
+    "id": "hostinger",
+    "label": "Hostinger",
+    "match": "hostinger",
+    "src": "/assets/brand-icons/hostinger.png",
+    "shell": "bare",
+    "faviconDomain": "hostinger.com"
+  },
+  {
+    "id": "wordpress",
+    "label": "WordPress",
+    "match": "wordpress",
+    "src": "/assets/brand-icons/wordpress.png",
+    "shell": "bare",
+    "faviconDomain": "wordpress.com"
+  },
+  {
+    "id": "nvidia",
+    "label": "NVIDIA",
+    "match": "nvidia",
+    "src": "/assets/brand-icons/nvidia.png",
+    "shell": "bare",
+    "faviconDomain": "nvidia.com"
+  },
+  {
+    "id": "obsidian",
+    "label": "Obsidian",
+    "match": "obsidian",
+    "src": "/assets/brand-icons/obsidian.png",
+    "shell": "bare",
+    "faviconDomain": "obsidian.com"
+  },
+  {
+    "id": "duolingo",
+    "label": "Duolingo",
+    "match": "duolingo",
+    "src": "/assets/brand-icons/duolingo.png",
+    "shell": "bare",
+    "faviconDomain": "duolingo.com"
+  },
+  {
+    "id": "pinterest",
+    "label": "Pinterest",
+    "match": "pinterest",
+    "src": "/assets/brand-icons/pinterest.png",
+    "shell": "bare",
+    "faviconDomain": "pinterest.com"
+  },
+  {
+    "id": "signal",
+    "label": "Signal",
+    "match": "signal",
+    "src": "/assets/brand-icons/signal.png",
+    "shell": "bare",
+    "faviconDomain": "signal.com"
+  },
+  {
+    "id": "skype",
+    "label": "Skype",
+    "match": "skype",
+    "src": "/assets/brand-icons/skype.png",
+    "shell": "bare",
+    "faviconDomain": "skype.com"
+  },
+  {
+    "id": "vmware",
+    "label": "VMware",
+    "match": "vmware",
+    "src": "/assets/brand-icons/vmware.png",
+    "shell": "bare",
+    "faviconDomain": "vmware.com"
+  },
+  {
+    "id": "xiaomi",
+    "label": "Xiaomi",
+    "match": "xiaomi",
+    "src": "/assets/brand-icons/xiaomi.png",
+    "shell": "bare",
+    "faviconDomain": "xiaomi.com"
+  },
+  {
+    "id": "veed",
+    "label": "Veed",
+    "match": "veed",
+    "src": "/assets/brand-icons/veed.png",
+    "shell": "bare",
+    "faviconDomain": "veed.com"
+  },
+  {
+    "id": "kaspersky",
+    "label": "Kaspersky",
+    "match": "kaspersky",
+    "src": "/assets/brand-icons/kaspersky.png",
+    "shell": "bare",
+    "faviconDomain": "kaspersky.com"
+  },
+  {
+    "id": "icloud",
+    "label": "iCloud",
+    "match": "icloud",
+    "src": "/assets/brand-icons/icloud.png",
+    "shell": "bare",
+    "faviconDomain": "icloud.com"
+  },
+  {
+    "id": "ebay",
+    "label": "eBay",
+    "match": "ebay",
+    "src": "/assets/brand-icons/ebay.png",
+    "shell": "bare",
+    "faviconDomain": "ebay.com"
+  },
+  {
+    "id": "whatsapp",
+    "label": "WhatsApp",
+    "match": "whatsapp",
+    "src": "/assets/brand-icons/whatsapp.png",
+    "shell": "bare",
+    "faviconDomain": "whatsapp.com"
+  },
+  {
+    "id": "apple-music",
+    "label": "Apple Music",
+    "match": "apple.?music",
+    "src": "/assets/brand-icons/apple-music.png",
+    "shell": "bare",
+    "faviconDomain": "applemusic.com"
+  },
+  {
+    "id": "quillbot",
+    "label": "Quillbot",
+    "match": "quillbot",
+    "src": "/assets/brand-icons/quillbot.png",
+    "shell": "bare",
+    "faviconDomain": "quillbot.com"
+  },
+  {
+    "id": "google",
+    "label": "Google",
+    "match": "gmail|google",
+    "src": "/icons/google.svg",
+    "shell": "bare"
+  },
+  {
+    "id": "chatgpt",
+    "label": "OpenAI",
+    "match": "chatgpt|openai|gpt",
+    "src": "/assets/brand-icons/chatgpt.png",
+    "shell": "bare",
+    "faviconDomain": "chatgpt.com"
+  },
+  {
+    "id": "github-copilot",
+    "label": "GitHub Copilot",
+    "match": "github\\s*copilot|copilot",
+    "src": "/assets/brand-icons/github-copilot.png",
+    "shell": "bare",
+    "faviconDomain": "githubcopilot.com"
+  },
+  {
+    "id": "github",
+    "label": "GitHub",
+    "match": "github",
+    "src": "/icons/github.svg",
+    "shell": "tile"
+  },
+  {
+    "id": "microsoft",
+    "label": "Microsoft",
+    "match": "microsoft|outlook|hotmail|live|azure|xbox",
+    "src": "/icons/microsoft.svg",
+    "shell": "bare"
+  },
+  {
+    "id": "facebook",
+    "label": "Facebook",
+    "match": "facebook|meta",
+    "src": "/assets/brand-icons/facebook.png",
+    "shell": "bare",
+    "faviconDomain": "facebook.com"
+  },
+  {
+    "id": "instagram",
+    "label": "Instagram",
+    "match": "instagram",
+    "src": "/assets/brand-icons/instagram.png",
+    "shell": "bare",
+    "faviconDomain": "instagram.com"
+  },
+  {
+    "id": "x",
+    "label": "X",
+    "match": "twitter|\\bx\\b",
+    "src": "/assets/brand-icons/x.png",
+    "shell": "bare",
+    "faviconDomain": "x.com"
+  },
+  {
+    "id": "linkedin",
+    "label": "LinkedIn",
+    "match": "linkedin",
+    "src": "/assets/brand-icons/linkedin.png",
+    "shell": "bare",
+    "faviconDomain": "linkedin.com"
+  },
+  {
+    "id": "amazon",
+    "label": "Amazon",
+    "match": "amazon|aws",
+    "src": "/assets/brand-icons/amazon.png",
+    "shell": "bare",
+    "faviconDomain": "amazon.com"
+  },
+  {
+    "id": "netflix",
+    "label": "Netflix",
+    "match": "netflix",
+    "src": "/assets/brand-icons/netflix.png",
+    "shell": "bare",
+    "faviconDomain": "netflix.com"
+  },
+  {
+    "id": "discord",
+    "label": "Discord",
+    "match": "discord",
+    "src": "/assets/brand-icons/discord.png",
+    "shell": "bare",
+    "faviconDomain": "discord.com"
+  },
+  {
+    "id": "weibo",
+    "label": "Weibo",
+    "match": "weibo",
+    "src": "/assets/brand-icons/weibo.png",
+    "shell": "bare",
+    "faviconDomain": "weibo.com"
+  },
+  {
+    "id": "douyin",
+    "label": "Douyin",
+    "match": "douyin",
+    "src": "/assets/brand-icons/douyin.png",
+    "shell": "bare",
+    "faviconDomain": "douyin.com"
+  },
+  {
+    "id": "tiktok",
+    "label": "TikTok",
+    "match": "tiktok",
+    "src": "/assets/brand-icons/tiktok.png",
+    "shell": "bare",
+    "faviconDomain": "tiktok.com"
+  },
+  {
+    "id": "youtube",
+    "label": "YouTube",
+    "match": "youtube",
+    "src": "/icons/youtube.svg",
+    "shell": "bare"
+  },
+  {
+    "id": "shopee",
+    "label": "Shopee",
+    "match": "shopee",
+    "src": "/assets/brand-icons/shopee.png",
+    "shell": "bare",
+    "faviconDomain": "shopee.com"
+  },
+  {
+    "id": "zalo",
+    "label": "Zalo",
+    "match": "zalo",
+    "src": "/assets/brand-icons/zalo.png",
+    "shell": "bare",
+    "faviconDomain": "zalo.me"
+  },
+  {
+    "id": "vercel",
+    "label": "Vercel",
+    "match": "vercel",
+    "src": "/icons/vercel.svg",
+    "shell": "darkInk"
+  },
+  {
+    "id": "docker",
+    "label": "Docker",
+    "match": "docker",
+    "src": "/icons/docker.svg",
+    "shell": "bare"
+  },
+  {
+    "id": "npm",
+    "label": "npm",
+    "match": "\\bnpm\\b",
+    "src": "/icons/npm.svg",
+    "shell": "bare"
+  },
+  {
+    "id": "messenger",
+    "label": "Messenger",
+    "match": "messenger",
+    "src": "/assets/brand-icons/facebook.png",
+    "shell": "bare",
+    "faviconDomain": "messenger.com"
+  }
+]

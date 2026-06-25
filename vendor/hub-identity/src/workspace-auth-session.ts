@@ -3,7 +3,8 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { promiseWithTimeout } from "./promise-timeout";
 import { subscribeHubIdentity } from "./hub-identity-cache";
 
-export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 12_000;
+/** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
+export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
 
 export function sessionsEqual(a: Session | null | undefined, b: Session | null | undefined): boolean {
   if (!a && !b) return true;

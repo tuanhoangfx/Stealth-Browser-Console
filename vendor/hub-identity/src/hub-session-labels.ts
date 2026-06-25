@@ -22,6 +22,9 @@ export function hubSessionLabels(session: HubSessionLike) {
     loginId: String(session?.user.user_metadata?.login_id ?? ""),
     authEmail,
   });
-  const email = hubDisplayEmail({ authEmail });
+  const email = hubDisplayEmail({
+    authEmail,
+    contactEmail: String(session?.user.user_metadata?.contact_email ?? ""),
+  });
   return { authEmail, loginId, email, hasSyntheticAuth: isHubSyntheticEmail(authEmail) };
 }

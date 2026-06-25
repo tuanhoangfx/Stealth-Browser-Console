@@ -28,6 +28,8 @@ const { runOpenUrl } = require("./automation/open-url.cjs");
 const {
   validateProfileId,
   validateCreateProfilePayload,
+  validateBulkCreateProfilesByNamesPayload,
+  validateBulkCreateProfilesByRangePayload,
   validateOpenUrlPayload,
   validateGroupName,
   validateRunsLimit,
@@ -97,6 +99,26 @@ function bindIpc() {
     const safe = validateCreateProfilePayload(payload);
     const profile = profileService.createProfile(safe);
     return { ok: true, profile };
+  });
+
+  ipcMain.handle("profile:createBulkByNames", (_event, payload = {}) => {
+    const safe = validateBulkCreateProfilesByNamesPayload(payload);
+    const result = profileService.createProfilesBulkByNames({
+      names: safe.names,
+      defaults: safe,
+    });
+    return { ok: true, ...result };
+  });
+
+  ipcMain.handle("profile:createBulkByRange", (_event, payload = {}) => {
+    const safe = validateBulkCreateProfilesByRangePayload(payload);
+    const result = profileService.createProfilesBulkByRange({
+      start: safe.start,
+      end: safe.end,
+      pad: safe.pad,
+      defaults: safe,
+    });
+    return { ok: true, ...result };
   });
 
   ipcMain.handle("profile:update", async (_event, payload = {}) => {

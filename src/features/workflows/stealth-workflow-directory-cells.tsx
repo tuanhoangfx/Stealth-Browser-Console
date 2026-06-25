@@ -17,8 +17,8 @@ import {
 import {
   workflowDisplayId,
   workflowDisplayPlatform,
-  workflowPlatformIconFor,
-  workflowPlatformSvgUrl,
+  workflowIconFor,
+  workflowPlatformBrandMatch,
   workflowPlatformTone,
 } from "./workflow-display";
 import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
@@ -56,8 +56,9 @@ export function renderStealthWorkflowDirectoryBodyCell(
   const { key, colClass } = col;
   const displayId = workflowDisplayId(workflow.id, opts.defaultWorkflows);
   const displayPlatform = workflowDisplayPlatform(workflow);
-  const WorkflowIcon = workflowPlatformIconFor(displayPlatform);
-  const platformSvgUrl = workflowPlatformSvgUrl(displayPlatform);
+  const brand = workflowPlatformBrandMatch(workflow);
+  const platformSvgUrl = brand?.src ?? "";
+  const WorkflowIcon = platformSvgUrl ? undefined : workflowIconFor(workflow.icon);
 
   switch (key as StealthWorkflowColumnKey) {
     case "platform":

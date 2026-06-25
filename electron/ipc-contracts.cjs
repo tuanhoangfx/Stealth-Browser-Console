@@ -26,12 +26,38 @@ function validateCreateProfilePayload(payload = {}) {
   const next = asObject(payload);
   next.name = String(next.name || "").trim();
   if (!next.name) throw new Error("Profile name is required.");
+  return validateProfileDefaultsPayload(next);
+}
+
+function validateProfileDefaultsPayload(payload = {}) {
+  const next = asObject(payload);
   if (next.proxy !== undefined) next.proxy = String(next.proxy).trim();
   if (next.note !== undefined) next.note = String(next.note).trim();
   if (next.groupId !== undefined) next.groupId = String(next.groupId).trim() || "default";
+  if (next.startupUrl !== undefined) next.startupUrl = String(next.startupUrl).trim();
   if (next.fingerprintSeed !== undefined && Number.isFinite(Number(next.fingerprintSeed))) {
     next.fingerprintSeed = Math.floor(Number(next.fingerprintSeed));
   }
+  return next;
+}
+
+function validateBulkCreateProfilesByNamesPayload(payload = {}) {
+  const next = validateProfileDefaultsPayload(payload);
+  if (!Array.isArray(next.names)) throw new Error("names must be an array.");
+  next.names = next.names.map((value) => String(value || "").trim()).filter(Boolean);
+  if (!next.names.length) throw new Error("Paste at least one profile name.");
+  return next;
+}
+
+function validateBulkCreateProfilesByRangePayload(payload = {}) {
+  const next = validateProfileDefaultsPayload(payload);
+  next.start = Number(next.start);
+  next.end = Number(next.end);
+  next.pad = next.pad === undefined ? 4 : Number(next.pad);
+  if (!Number.isInteger(next.start) || next.start < 0) throw new Error("Range start must be a non-negative integer.");
+  if (!Number.isInteger(next.end) || next.end < 0) throw new Error("Range end must be a non-negative integer.");
+  if (next.start > next.end) throw new Error("Range start must be less than or equal to range end.");
+  if (!Number.isInteger(next.pad) || next.pad < 1 || next.pad > 8) throw new Error("Pad must be between 1 and 8.");
   return next;
 }
 
@@ -149,6 +175,8 @@ module.exports = {
   validateTargetUrl,
   validateProfileId,
   validateCreateProfilePayload,
+  validateBulkCreateProfilesByNamesPayload,
+  validateBulkCreateProfilesByRangePayload,
   validateOpenUrlPayload,
   validateGroupName,
   validateRunsLimit,

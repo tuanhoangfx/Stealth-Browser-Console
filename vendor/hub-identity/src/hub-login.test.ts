@@ -3,6 +3,7 @@ import {
   hubAuthEmailFromLogin,
   hubAuthEmailsForSignIn,
   hubAuthEmailsFromLogin,
+  hubDisplayEmail,
   hubDisplayLoginId,
   isHubSyntheticEmail,
   resolveHubLogin,
@@ -59,5 +60,31 @@ describe("hub-login", () => {
 
   it("sanitizes invisible characters from login input", () => {
     expect(sanitizeHubLoginInput(" CS00761\u200B ")).toBe("CS00761");
+  });
+
+  it("OI0906029 normalizes to oi0906029 without digit corruption", () => {
+    expect(resolveHubLogin("OI0906029")).toMatchObject({
+      authEmail: "oi0906029@infix1.io.vn",
+      loginId: "oi0906029",
+      isEmailLogin: false,
+    });
+    expect(resolveHubLogin("oi0906029").loginId).toBe("oi0906029");
+    expect(resolveHubLogin("OI0906029").loginId).not.toBe("oi09006029");
+  });
+
+  it("shows synthetic @infix1.io.vn in directory email until contact is linked", () => {
+    expect(
+      hubDisplayEmail({
+        authEmail: "oi0906029@infix1.io.vn",
+        contactEmail: null,
+        profileEmail: null,
+      }),
+    ).toBe("oi0906029@infix1.io.vn");
+    expect(
+      hubDisplayEmail({
+        authEmail: "oi0906029@infix1.io.vn",
+        contactEmail: "real@corp.com",
+      }),
+    ).toBe("real@corp.com");
   });
 });

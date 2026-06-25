@@ -173,6 +173,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
         columns={columns}
         tableClassName={hubRouteAccessModalTableClass(columnOptions)}
         wrapClassName={HUB_ROUTE_ACCESS_MODAL_TABLE_WRAP_CLASS}
+        directorySelect={showSelectColumn}
       >
         {pageItems.map((row) => {
           const key = getRowKey(row);

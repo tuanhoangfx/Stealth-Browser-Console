@@ -1,4 +1,17 @@
-import type { EngineHealth, LaunchBenchBaseline, LaunchPerfEntry, OpenUrlResult, ProfileRow, ProfileCatalogStats, RunHistoryItem, StealthGroup, StealthProfile, CookieBridgeStatus } from "./types";
+import type {
+  BulkCreateProfileDefaults,
+  BulkCreateProfilesResult,
+  EngineHealth,
+  LaunchBenchBaseline,
+  LaunchPerfEntry,
+  OpenUrlResult,
+  ProfileRow,
+  ProfileCatalogStats,
+  RunHistoryItem,
+  StealthGroup,
+  StealthProfile,
+  CookieBridgeStatus,
+} from "./types";
 import { installStealthWebMock } from "./lib/stealth-web-mock";
 
 if (import.meta.env.DEV) {
@@ -67,6 +80,22 @@ export async function createProfile(input: {
 } & Partial<import("./types").DeviceConfig>) {
   const data = await api().createProfile(input);
   return data.profile;
+}
+
+export async function createProfilesBulkByNames(input: {
+  names: string[];
+} & BulkCreateProfileDefaults): Promise<BulkCreateProfilesResult> {
+  const data = await api().createProfilesBulkByNames(input);
+  return data;
+}
+
+export async function createProfilesBulkByRange(input: {
+  start: number;
+  end: number;
+  pad?: number;
+} & BulkCreateProfileDefaults): Promise<BulkCreateProfilesResult> {
+  const data = await api().createProfilesBulkByRange(input);
+  return data;
 }
 
 export async function updateProfile(input: Partial<StealthProfile> & { id: string }) {

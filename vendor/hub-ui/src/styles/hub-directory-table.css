@@ -55,6 +55,57 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--selec
 
 table.hub-users-table.hub-users-table--directory {
   min-width: 48rem;
+  --hub-table-body-size: 12px;
+  --hub-table-body-line-height: 1.45;
+}
+
+/* Directory body typography — status / sync / muted match 12px body (frame-table parity). */
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-status,
+table.hub-users-table[data-hub-directory-select] td .hub-users-status {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--text);
+  text-transform: none;
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td.hub-users-cell-muted,
+table.hub-users-table[data-hub-directory-select] td.hub-users-cell-muted,
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-muted,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-muted {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-email,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-email {
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-sub,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-sub {
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-role-badge,
+table.hub-users-table[data-hub-directory-select] td .hub-users-role-badge {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 500;
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-status-dot,
+table.hub-users-table[data-hub-directory-select] td .hub-users-status-dot {
+  width: 7px;
+  height: 7px;
 }
 
 /* Data columns — colgroup inline width is SSOT; neutralize legacy .hub-users-col--* % from hub-users-table.css */

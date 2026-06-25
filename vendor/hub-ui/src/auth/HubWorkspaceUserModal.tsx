@@ -45,6 +45,8 @@ export type HubWorkspaceUserModalProps = {
   workspaceNote?: string;
   signingOut?: boolean;
   sessionActive?: boolean;
+  /** When false, footer Sign Out is hidden (local console / guest). Default true. */
+  showSignOut?: boolean;
   onSignOut: () => void;
   children?: ReactNode;
 };
@@ -60,6 +62,7 @@ export function HubWorkspaceUserModal({
   workspaceNote,
   signingOut = false,
   sessionActive = true,
+  showSignOut = true,
   onSignOut,
   children,
 }: HubWorkspaceUserModalProps) {
@@ -82,14 +85,16 @@ export function HubWorkspaceUserModal({
         </div>
       }
       footer={
-        <HubToolDetailModalPrimaryAction
-          label={signingOut ? "Signing out…" : "Sign Out"}
-          onClick={onSignOut}
-          disabled={!sessionActive || signingOut}
-          busy={signingOut}
-          danger
-          icon={LogOut}
-        />
+        showSignOut ? (
+          <HubToolDetailModalPrimaryAction
+            label={signingOut ? "Signing out…" : "Sign Out"}
+            onClick={onSignOut}
+            disabled={!sessionActive || signingOut}
+            busy={signingOut}
+            danger
+            icon={LogOut}
+          />
+        ) : null
       }
     >
       <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>

@@ -3,6 +3,11 @@ import type { Session } from "@supabase/supabase-js";
 import type { HubIdentitySnapshot } from "./hub-identity-cache";
 
 export const HUB_IDENTITY_RELAY_MESSAGE_TYPE = "P0004_HUB_IDENTITY_SESSION" as const;
+export const HUB_IDENTITY_RELAY_REQUEST_TYPE = "P0004_HUB_IDENTITY_SESSION_REQUEST" as const;
+
+export type HubIdentityRelayRequestMessage = {
+  type: typeof HUB_IDENTITY_RELAY_REQUEST_TYPE;
+};
 
 export type HubIdentityRelayMessage = {
   type: typeof HUB_IDENTITY_RELAY_MESSAGE_TYPE;
@@ -58,6 +63,115 @@ export function readReturnToFromLocation(search = window.location.search): strin
 }
 
 /** Tool Hub (P0004) → opener workspace after `?returnTo=` popup sign-in. */
+/** Local dev + deployed workspace tool origins (child windows opened from Tool Hub). */
+export function isWorkspaceToolOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname === "127.0.0.1" || hostname === "localhost") return true;
+    if (hostname === "infi.io.vn" || hostname.endsWith(".infi.io.vn")) return true;
+    return hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
+export function requestHubIdentityFromOpener(): boolean {
+  if (typeof window === "undefined" || !window.opener || window.opener === window) return false;
+  try {
+    window.opener.postMessage(
+      { type: HUB_IDENTITY_RELAY_REQUEST_TYPE } satisfies HubIdentityRelayRequestMessage,
+      "*",
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function createHubIdentityRelayRespondHandler(
+  getSession: () => Session | null,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  isAllowedRequestOrigin: (origin: string) => boolean = isWorkspaceToolOrigin,
+): (event: MessageEvent) => void {
+  return (event: MessageEvent) => {
+    const data = event.data;
+    if (!data || typeof data !== "object" || (data as HubIdentityRelayRequestMessage).type !== HUB_IDENTITY_RELAY_REQUEST_TYPE) {
+      return;
+    }
+    if (!isAllowedRequestOrigin(event.origin)) return;
+    const source = event.source;
+    if (!source || typeof (source as Window).postMessage !== "function") return;
+
+    const session = getSession();
+    if (!session?.access_token?.trim() || !supabaseUrl.trim() || !supabaseAnonKey.trim()) return;
+
+    const payload = buildHubIdentityRelayMessage(session, supabaseUrl, supabaseAnonKey);
+    try {
+      (source as Window).postMessage(payload, event.origin);
+    } catch {
+      // ignore cross-origin post failures
+    }
+  };
+}
+
+export type UseHubIdentityRelayRequestOptions = {
+  enabled?: boolean;
+  hasSession: boolean;
+};
+
+/** Workspace tool — ask Tool Hub opener for Hub session on cold boot (popup / new tab). */
+export function useHubIdentityRelayRequest({
+  enabled = true,
+  hasSession,
+}: UseHubIdentityRelayRequestOptions): void {
+  const requestedRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled || hasSession || requestedRef.current) return;
+    if (!window.opener || window.opener === window) return;
+
+    requestedRef.current = true;
+    requestHubIdentityFromOpener();
+    const retry = window.setTimeout(() => {
+      requestHubIdentityFromOpener();
+    }, 500);
+    return () => window.clearTimeout(retry);
+  }, [enabled, hasSession]);
+}
+
+export type UseHubIdentityRelayRespondOptions = {
+  session: Session | null;
+  enabled?: boolean;
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  isAllowedRequestOrigin?: (origin: string) => boolean;
+};
+
+/** Tool Hub (P0004) — respond to child tool session requests. */
+export function useHubIdentityRelayRespond({
+  session,
+  enabled = true,
+  supabaseUrl,
+  supabaseAnonKey,
+  isAllowedRequestOrigin = isWorkspaceToolOrigin,
+}: UseHubIdentityRelayRespondOptions): void {
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
+  useEffect(() => {
+    if (!enabled) return;
+    const handler = createHubIdentityRelayRespondHandler(
+      () => sessionRef.current,
+      supabaseUrl,
+      supabaseAnonKey,
+      isAllowedRequestOrigin,
+    );
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [enabled, supabaseUrl, supabaseAnonKey, isAllowedRequestOrigin]);
+}
+
 export function relayHubIdentityToOpener(
   session: Session,
   supabaseUrl: string,

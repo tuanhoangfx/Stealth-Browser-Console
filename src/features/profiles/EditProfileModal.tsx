@@ -3,19 +3,29 @@ import { UserRoundPen } from "lucide-react";
 import {
   HubAlert,
   HubTocSectionNav,
+  HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-  HUB_TOOL_DETAIL_SCROLL_ROOT
+  HUB_TOOL_DETAIL_SCROLL_ROOT,
 } from "@tool-workspace/hub-ui";
-import { StealthHubFormModal } from "../../components/StealthHubFormModal";
 import { deviceConfigFromProfile } from "../../lib/device-presets";
-import { normalizeStartupUrl, resolveProfileLaunchUrl, resolveStartupUrlSave, startupUrlSaveError } from "../../lib/startup-url";
+import { resolveProfileLaunchUrl, resolveStartupUrlSave, startupUrlSaveError } from "../../lib/startup-url";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { DeviceConfig, ProfileRow } from "../../types";
 import { ProfileFormFields } from "./ProfileFormFields";
+import { ProfileFormModalLayout } from "./ProfileFormModalLayout";
 import { profileFormTocItems } from "./profile-form-toc";
+import { PROFILE_FORM_MODAL_SHELL_CLASS } from "./profile-form-modal";
 
-export function EditProfileModal({ profile, onClose }: { profile: ProfileRow; onClose: () => void }) {
+export function EditProfileModal({
+  profile,
+  onClose,
+  onProfilesChanged,
+}: {
+  profile: ProfileRow;
+  onClose: () => void;
+  onProfilesChanged?: () => void;
+}) {
   const { updateProfile, groups } = useProfilesRuntime();
   const [name, setName] = useState(profile.name);
   const [groupId, setGroupId] = useState(profile.groupId || "default");
@@ -46,24 +56,31 @@ export function EditProfileModal({ profile, onClose }: { profile: ProfileRow; on
       note: note.trim(),
       fingerprintSeed,
       startupUrl: resolveStartupUrlSave(startupUrl, profile.startupUrl),
-      ...device
+      ...device,
     })
-      .then(onClose)
+      .then(() => {
+        onProfilesChanged?.();
+        onClose();
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Update failed"))
       .finally(() => setBusy(false));
   };
 
   return (
-    <StealthHubFormModal
-      title="Edit profile"
+    <HubToolDetailModal
+      open
       headerIcon={UserRoundPen}
+      headerIconClassName="text-indigo-200"
+      title="Edit profile"
       onClose={onClose}
+      shellClassName={PROFILE_FORM_MODAL_SHELL_CLASS}
+      sectionIds={sectionIds}
+      scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT}
       toc={
         <div className="hub-toc-nav">
           <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
         </div>
       }
-      sectionIds={sectionIds}
       footer={
         <>
           <HubToolDetailModalSecondaryAction label="Cancel" onClick={onClose} disabled={busy} />
@@ -72,24 +89,24 @@ export function EditProfileModal({ profile, onClose }: { profile: ProfileRow; on
       }
     >
       {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
-      <ProfileFormFields
-        layout="hub-sections"
-        name={name}
-        setName={setName}
-        groupId={groupId}
-        setGroupId={setGroupId}
-        proxy={proxy}
-        setProxy={setProxy}
-        note={note}
-        setNote={setNote}
-        fingerprintSeed={fingerprintSeed}
-        setFingerprintSeed={setFingerprintSeed}
-        device={device}
-        onDeviceChange={(patch) => setDevice((d) => ({ ...d, ...patch }))}
-        startupUrl={startupUrl}
-        setStartupUrl={setStartupUrl}
-        groups={groups}
-      />
-    </StealthHubFormModal>
+      <ProfileFormModalLayout note={note} onNoteChange={setNote} profileId={profile.id}>
+        <ProfileFormFields
+          layout="hub-sections"
+          name={name}
+          setName={setName}
+          groupId={groupId}
+          setGroupId={setGroupId}
+          proxy={proxy}
+          setProxy={setProxy}
+          fingerprintSeed={fingerprintSeed}
+          setFingerprintSeed={setFingerprintSeed}
+          device={device}
+          onDeviceChange={(patch) => setDevice((d) => ({ ...d, ...patch }))}
+          startupUrl={startupUrl}
+          setStartupUrl={setStartupUrl}
+          groups={groups}
+        />
+      </ProfileFormModalLayout>
+    </HubToolDetailModal>
   );
 }

@@ -6,6 +6,7 @@ const VALID_COLOR_SCHEMES = new Set(["", "light", "dark", "no-preference"]);
 const VALID_WINDOW_MODES = new Set(["host-maximized", "preset-viewport", "engine-default"]);
 
 const { normalizeStartupUrl, coerceStartupUrlInput, resolveProfileLaunchUrl, resolveStartupUrlSave } = require("../lib/startup-url.cjs");
+const { extractProfileCode } = require("../lib/profile-identity.cjs");
 
 function normalizeDeviceFields(input, base = {}) {
   const platform = String(input.platform ?? base.platform ?? "windows").toLowerCase();
@@ -312,6 +313,122 @@ function createProfile(input) {
     );
 
   return getProfile(id);
+}
+
+function listProfileNames() {
+  return getDb()
+    .prepare("SELECT name FROM profiles ORDER BY updated_at DESC")
+    .all()
+    .map((row) => String(row.name || "").trim())
+    .filter(Boolean);
+}
+
+function normalizeBulkPad(pad) {
+  const value = Math.floor(Number(pad) || 4);
+  return Math.min(8, Math.max(1, value));
+}
+
+function normalizeBulkRangeValue(value, label) {
+  const num = Number(value);
+  if (!Number.isInteger(num) || num < 0) throw new Error(`${label} must be a non-negative integer.`);
+  return num;
+}
+
+function buildExistingProfileIndex() {
+  const exactNames = new Set();
+  const numericCodes = new Set();
+  for (const name of listProfileNames()) {
+    exactNames.add(name);
+    numericCodes.add(extractProfileCode(name));
+  }
+  return { exactNames, numericCodes };
+}
+
+function normalizeBulkNames(names) {
+  if (!Array.isArray(names)) throw new Error("Bulk names must be an array.");
+  const unique = [];
+  const duplicateNames = [];
+  const seen = new Set();
+  for (const raw of names) {
+    const name = String(raw || "").trim();
+    if (!name) continue;
+    if (seen.has(name)) {
+      duplicateNames.push(name);
+      continue;
+    }
+    seen.add(name);
+    unique.push(name);
+  }
+  return { unique, duplicateNames };
+}
+
+function shouldTreatAsNumericProfileName(name) {
+  return /^\d{1,8}$/.test(String(name || "").trim());
+}
+
+function createProfilesBulkByNames({ names, defaults = {} } = {}) {
+  const { unique, duplicateNames } = normalizeBulkNames(names);
+  const { exactNames, numericCodes } = buildExistingProfileIndex();
+  const createdNames = [];
+  const skippedNames = [];
+
+  for (const name of unique) {
+    const numericCode = shouldTreatAsNumericProfileName(name) ? String(name).padStart(4, "0") : null;
+    if (exactNames.has(name) || (numericCode && numericCodes.has(numericCode))) {
+      skippedNames.push(name);
+      continue;
+    }
+    createProfile({ ...defaults, name });
+    createdNames.push(name);
+    exactNames.add(name);
+    numericCodes.add(extractProfileCode(name));
+  }
+
+  return {
+    requested: unique.length,
+    created: createdNames.length,
+    skippedExisting: skippedNames.length,
+    duplicateInput: duplicateNames.length,
+    createdNames,
+    skippedNames,
+    duplicateNames,
+  };
+}
+
+function createProfilesBulkByRange({ start, end, pad = 4, defaults = {} } = {}) {
+  const resolvedPad = normalizeBulkPad(pad);
+  const resolvedStart = normalizeBulkRangeValue(start, "Range start");
+  const resolvedEnd = normalizeBulkRangeValue(end, "Range end");
+  if (resolvedStart > resolvedEnd) throw new Error("Range start must be less than or equal to range end.");
+  const requested = resolvedEnd - resolvedStart + 1;
+  if (requested > 50_000) throw new Error("Range is too large. Maximum 50,000 profiles per bulk create.");
+
+  const { exactNames, numericCodes } = buildExistingProfileIndex();
+  const createdNames = [];
+  const skippedNames = [];
+
+  for (let value = resolvedStart; value <= resolvedEnd; value += 1) {
+    const name = String(value).padStart(resolvedPad, "0");
+    const code = String(value).padStart(4, "0");
+    if (exactNames.has(name) || numericCodes.has(code)) {
+      skippedNames.push(name);
+      continue;
+    }
+    createProfile({ ...defaults, name });
+    createdNames.push(name);
+    exactNames.add(name);
+    numericCodes.add(extractProfileCode(name));
+  }
+
+  return {
+    requested,
+    created: createdNames.length,
+    skippedExisting: skippedNames.length,
+    duplicateInput: 0,
+    createdNames,
+    skippedNames,
+    duplicateNames: [],
+  };
 }
 
 // Đổi riêng status — tránh chi phí normalize + double-SELECT của updateProfile.
@@ -645,6 +762,8 @@ module.exports = {
   resolveProfileForLaunch,
   findProfileByName,
   createProfile,
+  createProfilesBulkByNames,
+  createProfilesBulkByRange,
   updateProfile,
   setProfileStatus,
   generateFingerprintSeed,

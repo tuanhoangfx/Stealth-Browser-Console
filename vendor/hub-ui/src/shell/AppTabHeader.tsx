@@ -11,6 +11,9 @@ import { formatHubTimestampFull } from "../lib/format-hub-timestamp-compact";
 import { useRelativeNow } from "../lib/use-relative-now";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { HubSemanticGlyph } from "./HubSemanticGlyph";
+import { HubTabTitleIcon } from "./HubTabTitleIcon";
 import "./app-tab-header.css";
 
 export type TabTitleMenuItem = {
@@ -31,6 +34,7 @@ export type TabHeaderMetaItem = {
 export type TabHeaderStatItem = {
   key: string;
   icon?: ElementType<{ size?: number; className?: string }>;
+  brandIcon?: HubBrandIconId;
   dotClass?: string;
   label: string;
   value: number | string;
@@ -44,6 +48,7 @@ type AppTabHeaderProps = {
   ariaLabel: string;
   titleIcon: ElementType<{ size?: number; className?: string }>;
   titleIconClass?: string;
+  titleBrandIcon?: HubBrandIconId;
   title: string;
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;
@@ -58,8 +63,9 @@ type AppTabHeaderProps = {
 
 function TitleWithMenu({
   title,
-  titleIcon: TitleIcon,
+  titleIcon,
   titleIconClass,
+  titleBrandIcon,
   titleMenu,
   activeTitleMenuId,
   onTitleMenuSelect,
@@ -67,6 +73,7 @@ function TitleWithMenu({
   title: string;
   titleIcon: ElementType<{ size?: number; className?: string }>;
   titleIconClass: string;
+  titleBrandIcon?: HubBrandIconId;
   titleMenu: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
@@ -93,7 +100,11 @@ function TitleWithMenu({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex max-w-full items-center gap-1 rounded-lg py-0.5 pr-1 text-left transition-colors hover:bg-white/[.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/50"
       >
-        <TitleIcon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+        <HubTabTitleIcon
+          titleIcon={titleIcon}
+          titleIconClass={titleIconClass}
+          titleBrandIcon={titleBrandIcon}
+        />
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="text-base font-semibold tracking-tight text-[var(--text)]">{title}</span>
           {active ? (
@@ -198,13 +209,13 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
   );
 }
 
-function StatLine({ icon: Icon, dotClass, value, label, toneClass, onClick, active }: TabHeaderStatItem) {
+function StatLine({ icon: Icon, brandIcon, dotClass, value, label, toneClass, onClick, active }: TabHeaderStatItem) {
   const content = (
     <>
       {dotClass ? (
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
-      ) : Icon ? (
-        <Icon size={13} className={`shrink-0 ${toneClass}`} aria-hidden />
+      ) : Icon || brandIcon ? (
+        <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={13} className={`shrink-0 ${toneClass}`} />
       ) : null}
       <span className="font-semibold tabular-nums text-[var(--text)]/90">{value}</span>
       <span className="text-[var(--muted)]/80">{label}</span>
@@ -247,6 +258,7 @@ export function AppTabHeader({
   ariaLabel,
   titleIcon: TitleIcon,
   titleIconClass = "text-indigo-400",
+  titleBrandIcon,
   title,
   titleMenu,
   activeTitleMenuId,
@@ -274,13 +286,18 @@ export function AppTabHeader({
             title={title}
             titleIcon={TitleIcon}
             titleIconClass={titleIconClass}
+            titleBrandIcon={titleBrandIcon}
             titleMenu={titleMenu}
             activeTitleMenuId={activeTitleMenuId}
             onTitleMenuSelect={onTitleMenuSelect}
           />
         ) : (
           <>
-            <TitleIcon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${titleIconClass}`} aria-hidden />
+            <HubTabTitleIcon
+              titleIcon={TitleIcon}
+              titleIconClass={titleIconClass}
+              titleBrandIcon={titleBrandIcon}
+            />
             <h1 className="min-w-0 truncate text-base font-semibold leading-none tracking-tight text-[var(--text)]">
               {title}
             </h1>

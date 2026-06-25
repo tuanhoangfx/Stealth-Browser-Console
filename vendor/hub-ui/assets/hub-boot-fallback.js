@@ -54,13 +54,12 @@
 
   window.setTimeout(function () {
     if (window.__hubBootReady) return;
-    var devPort = location.port || "5175";
     var hungHint =
       "Hung Vite zombie or stale cache. In the tool folder run:\n" +
       "  pnpm dev:recover\n" +
       "If recover fails (Access Denied), in PowerShell:\n" +
-      "  taskkill /PID <pid> /F\n" +
-      "  (find PID: netstat -ano | findstr :" + devPort + ")";
+      "  tskill <PID> /A\n" +
+      "  (find PID: netstat -ano | findstr :5186)";
     showBootError("JavaScript did not start in time.", hungHint);
   }, TIMEOUT_MS);
 })();

@@ -5,6 +5,7 @@ const SORT_SQL: Record<StealthProfileSortKey, string> = {
   group: "group_name",
   status: "status",
   lastOpened: "last_opened_at",
+  createdAt: "created_at",
   startupUrl: "startup_url",
   proxy: "proxy",
   note: "note",

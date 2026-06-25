@@ -1,6 +1,7 @@
 import {
   compactIconSize,
   DirectoryTableBodyCell,
+  formatHubTimestampFull,
   getDirectorySearchHighlight,
   HubDirectorySearchHighlightText,
   HubUsersStatusLabel,
@@ -17,6 +18,23 @@ import {
   lastOpenedHubTone,
 } from "./profile-directory-cell-helpers";
 import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
+
+function renderProfileTimestampCell(ms: number | null | undefined) {
+  if (ms == null || !Number.isFinite(ms) || !ms) {
+    return <span className="hub-directory-table-body-text">—</span>;
+  }
+  const iso = new Date(ms).toISOString();
+  const tone = lastOpenedAgeTone(ms);
+  const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
+  return (
+    <HubUsersStatusLabel
+      label={label}
+      tone={lastOpenedHubTone(tone)}
+      capitalize={false}
+      title={formatHubTimestampFull(iso)}
+    />
+  );
+}
 
 export function renderStealthProfileDirectoryBodyCell(
   col: HubDirectoryColumnDef<StealthProfileSortKey>,
@@ -123,6 +141,12 @@ export function renderStealthProfileDirectoryBodyCell(
               />
             );
           })()}
+        </DirectoryTableBodyCell>
+      );
+    case "createdAt":
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          {renderProfileTimestampCell(profile.createdAt ? Date.parse(profile.createdAt) : null)}
         </DirectoryTableBodyCell>
       );
     case "startupUrl": {

@@ -8,6 +8,8 @@ export type HubDirectorySelectAllChipProps = {
   onToggleSelectAll: () => void;
   /** Plural noun — screens, tools, users */
   noun?: string;
+  /** When true, chip title refers to filtered set (modal tables), not paginated page. */
+  filteredScope?: boolean;
 };
 
 /** Card-view select-all — same row + style as bulk actions (`filterRowActions`, first slot). */
@@ -17,13 +19,16 @@ export function HubDirectorySelectAllChip({
   allVisibleSelected,
   onToggleSelectAll,
   noun = "items",
+  filteredScope = false,
 }: HubDirectorySelectAllChipProps) {
   if (visibleCount === 0) return null;
 
   const label = allVisibleSelected ? "Clear selection" : `Select all (${visibleCount})`;
   const title = allVisibleSelected
     ? `Clear ${selectedCount} selected ${noun}`
-    : `Select all ${visibleCount} visible ${noun} on this page`;
+    : filteredScope
+      ? `Select all ${visibleCount} filtered ${noun}`
+      : `Select all ${visibleCount} visible ${noun} on this page`;
   const active = allVisibleSelected || selectedCount > 0;
 
   return (

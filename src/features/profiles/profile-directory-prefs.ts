@@ -18,6 +18,7 @@ export const PROFILE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ProfileDir
       { key: "group", label: "Group" },
       { key: "status", label: "Running" },
       { key: "lastOpened", label: "Last opened" },
+      { key: "createdAt", label: "Created" },
       { key: "startupUrl", label: "Startup URL" },
       { key: "proxy", label: "Proxy" },
       { key: "note", label: "Note" },

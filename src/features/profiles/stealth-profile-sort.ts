@@ -19,6 +19,8 @@ export function sortableProfileValue(profile: ProfileRow, key: StealthProfileSor
       return STATUS_RANK[profile.status] ?? 0;
     case "lastOpened":
       return profile.lastOpenedAt ?? 0;
+    case "createdAt":
+      return profile.createdAt ? Date.parse(profile.createdAt) : 0;
     case "startupUrl":
       return resolveProfileLaunchUrl(profile.startupUrl || "").toLowerCase();
     case "proxy":

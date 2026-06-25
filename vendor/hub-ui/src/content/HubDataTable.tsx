@@ -20,16 +20,19 @@ export function HubDataTable({
   empty,
   tableClassName = "hub-users-table",
   wrapClassName = "hub-users-table-wrap overflow-hidden rounded-xl border border-white/5",
+  directorySelect = false,
 }: {
   columns: HubTableColumn[];
   children: ReactNode;
   empty?: ReactNode;
   tableClassName?: string;
   wrapClassName?: string;
+  /** Enables 36px select column + hub-checkbox SSOT (hub-directory-table.css). */
+  directorySelect?: boolean;
 }) {
   return (
     <div className={wrapClassName}>
-      <table className={tableClassName}>
+      <table className={tableClassName} data-hub-directory-select={directorySelect ? "" : undefined}>
         <thead>
           <tr>
             {columns.map((col) => (

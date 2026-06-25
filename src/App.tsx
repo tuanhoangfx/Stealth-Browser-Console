@@ -5,16 +5,23 @@ import {
   resolveHubActiveScreenId,
   useHubActiveScreenSync,
 } from "@tool-workspace/hub-ui";
+import { ToastContainer, ToastProvider } from "./components/toast";
 import { StealthAppShell } from "./components/StealthAppShell";
+import { AuthSessionProvider } from "./features/auth/AuthSessionProvider";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
 import type { StealthScreen } from "./lib/stealth-screen";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
 
 export function App() {
   return (
-    <RunLogsProvider>
-      <StealthAppRoot />
-    </RunLogsProvider>
+    <ToastProvider>
+      <RunLogsProvider>
+        <AuthSessionProvider>
+          <StealthAppRoot />
+        </AuthSessionProvider>
+      </RunLogsProvider>
+      <ToastContainer />
+    </ToastProvider>
   );
 }
 

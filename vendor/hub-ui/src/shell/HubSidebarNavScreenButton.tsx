@@ -1,10 +1,10 @@
 import type { LucideIcon } from "lucide-react";
-import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { HubNavIcon } from "./HubNavIcon";
 import {
   navActiveBarClass,
   navActiveBgClass,
   navActiveTextClass,
-  navIconClass,
   type NavIconTone,
 } from "./sidebar-nav-tones";
 
@@ -12,6 +12,7 @@ export type HubSidebarNavScreenButtonProps = {
   label: string;
   icon: LucideIcon;
   iconTone: NavIconTone;
+  brandIcon?: HubBrandIconId;
   active: boolean;
   badge?: number;
   onClick: () => void;
@@ -22,8 +23,9 @@ export type HubSidebarNavScreenButtonProps = {
 /** Single top-level sidebar screen row (Dashboard, Hub, Logs, …). */
 export function HubSidebarNavScreenButton({
   label,
-  icon: Icon,
+  icon,
   iconTone,
+  brandIcon,
   active,
   badge,
   onClick,
@@ -47,7 +49,7 @@ export function HubSidebarNavScreenButton({
           className={`absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r ${navActiveBarClass(iconTone)}`}
         />
       ) : null}
-      <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
+      <HubNavIcon icon={icon} iconTone={iconTone} active={active} brandIcon={brandIcon} />
       <span className="flex-1 text-left">{label}</span>
       {badge != null && badge > 0 ? (
         <span className="min-w-[1.125rem] rounded-full bg-amber-500/25 px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums text-amber-200">

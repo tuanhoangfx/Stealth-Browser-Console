@@ -22,6 +22,21 @@
   background: rgba(0, 0, 0, 0.2);
   padding: 0.5rem 0.65rem;
   color: inherit;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
+}
+
+.hub-input:hover:not(:focus):not(:focus-visible) {
+  border-color: rgba(129, 140, 248, 0.28);
+}
+
+.hub-input:focus,
+.hub-input:focus-visible {
+  outline: none;
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.15);
 }
 
 .hub-btn {

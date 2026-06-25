@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { HubSingleFilterDropdown } from "./FilterBar";
 import type { FilterOption } from "./FilterBar";
 
@@ -11,6 +11,10 @@ export type HubTableCellFilterDropdownProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  triggerContent?: ReactNode;
+  triggerHideChevron?: boolean;
+  triggerClassName?: string;
+  ariaLabel?: string;
 };
 
 /**
@@ -25,6 +29,10 @@ export function HubTableCellFilterDropdown({
   onChange,
   disabled,
   className = "hub-table-cell-filter",
+  triggerContent,
+  triggerHideChevron,
+  triggerClassName,
+  ariaLabel,
 }: HubTableCellFilterDropdownProps) {
   function stopRowNav(e: MouseEvent) {
     e.stopPropagation();
@@ -40,6 +48,10 @@ export function HubTableCellFilterDropdown({
         onChange={onChange}
         disabled={disabled}
         triggerFormat="value"
+        triggerContent={triggerContent}
+        triggerHideChevron={triggerHideChevron}
+        triggerClassName={triggerClassName}
+        ariaLabel={ariaLabel}
         usePortal
         className="w-full min-w-0"
       />

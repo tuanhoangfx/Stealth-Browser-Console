@@ -2,7 +2,7 @@
  * In-memory Stealth API for Vite-only dev (no Electron preload).
  * Seeds one demo profile so Hub directory UI is usable in the browser.
  */
-import type { EngineHealth, OpenUrlResult, RunHistoryItem, StealthGroup, StealthProfile } from "../types";
+import type { BulkCreateProfilesResult, EngineHealth, OpenUrlResult, RunHistoryItem, StealthGroup, StealthProfile } from "../types";
 import { DEFAULT_DEVICE, deviceConfigFromProfile } from "./device-presets";
 import { normalizeStartupUrl, resolveStartupUrlSave } from "./startup-url";
 import { matchesProfileDirectorySearch } from "../features/profiles/profile-directory-search";
@@ -40,6 +40,42 @@ seedIfEmpty();
 
 function findProfile(id: string) {
   return profiles.find((row) => row.id === id) ?? null;
+}
+
+function createMockProfile(input: Partial<StealthProfile> & { name: string }) {
+  const id = crypto.randomUUID();
+  const ts = nowIso();
+  const group = groups.find((g) => g.id === (input.groupId || "default"));
+  const profile: StealthProfile = {
+    id,
+    name: String(input.name || "Profile").trim() || "Profile",
+    groupId: group?.id ?? "default",
+    groupName: group?.name ?? "Default",
+    proxy: String(input.proxy || ""),
+    fingerprintSeed: Number.isFinite(Number(input.fingerprintSeed))
+      ? Math.floor(Number(input.fingerprintSeed))
+      : DEMO_SEED + profiles.length + 1,
+    note: String(input.note || ""),
+    status: "closed",
+    startupUrl: normalizeStartupUrl(String(input.startupUrl || "")),
+    ...deviceConfigFromProfile(input),
+    createdAt: ts,
+    updatedAt: ts
+  };
+  profiles.unshift(profile);
+  return profile;
+}
+
+function summarizeBulkResult(requested: number, createdNames: string[], skippedNames: string[], duplicateNames: string[]): BulkCreateProfilesResult {
+  return {
+    requested,
+    created: createdNames.length,
+    skippedExisting: skippedNames.length,
+    duplicateInput: duplicateNames.length,
+    createdNames,
+    skippedNames,
+    duplicateNames,
+  };
 }
 
 export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi> {
@@ -112,28 +148,50 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       }
       return { ok: true, stats };
     },
-    createProfile: async (input) => {
-      const id = crypto.randomUUID();
-      const ts = nowIso();
-      const group = groups.find((g) => g.id === (input.groupId || "default"));
-      const profile: StealthProfile = {
-        id,
-        name: String(input.name || "Profile").trim() || "Profile",
-        groupId: group?.id ?? "default",
-        groupName: group?.name ?? "Default",
-        proxy: String(input.proxy || ""),
-        fingerprintSeed: Number.isFinite(Number(input.fingerprintSeed))
-          ? Math.floor(Number(input.fingerprintSeed))
-          : DEMO_SEED,
-        note: String(input.note || ""),
-        status: "closed",
-        startupUrl: normalizeStartupUrl(String(input.startupUrl || "")),
-        ...deviceConfigFromProfile(input),
-        createdAt: ts,
-        updatedAt: ts
-      };
-      profiles.unshift(profile);
-      return { ok: true, profile };
+    createProfile: async (input) => ({ ok: true, profile: createMockProfile(input) }),
+    createProfilesBulkByNames: async (payload) => {
+      const lines = Array.isArray(payload.names)
+        ? payload.names.map((value) => String(value || "").trim()).filter(Boolean)
+        : [];
+      const exact = new Set(profiles.map((profile) => String(profile.name || "").trim()));
+      const createdNames: string[] = [];
+      const skippedNames: string[] = [];
+      const duplicateNames: string[] = [];
+      const seen = new Set<string>();
+      for (const name of lines) {
+        if (seen.has(name)) {
+          duplicateNames.push(name);
+          continue;
+        }
+        seen.add(name);
+        if (exact.has(name)) {
+          skippedNames.push(name);
+          continue;
+        }
+        createMockProfile({ ...payload, name });
+        exact.add(name);
+        createdNames.push(name);
+      }
+      return { ok: true, ...summarizeBulkResult(lines.length, createdNames, skippedNames, duplicateNames) };
+    },
+    createProfilesBulkByRange: async (payload) => {
+      const start = Number(payload.start) || 0;
+      const end = Number(payload.end) || 0;
+      const pad = Math.min(8, Math.max(1, Number(payload.pad) || 4));
+      const exact = new Set(profiles.map((profile) => String(profile.name || "").trim()));
+      const createdNames: string[] = [];
+      const skippedNames: string[] = [];
+      for (let value = start; value <= end; value += 1) {
+        const name = String(value).padStart(pad, "0");
+        if (exact.has(name)) {
+          skippedNames.push(name);
+          continue;
+        }
+        createMockProfile({ ...payload, name });
+        exact.add(name);
+        createdNames.push(name);
+      }
+      return { ok: true, ...summarizeBulkResult(Math.max(0, end - start + 1), createdNames, skippedNames, []) };
     },
     updateProfile: async (input) => {
       const existing = findProfile(String(input.id));

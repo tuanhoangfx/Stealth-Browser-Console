@@ -11,6 +11,7 @@ export default defineConfig({
   base: "./",
   plugins: [react()],
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: [
       { find: /^@tool-workspace\/hub-ui\/(.+)$/, replacement: `${hubUiSrc}/$1` },
       { find: "@tool-workspace/hub-ui", replacement: path.join(hubUiSrc, "index.ts") },
@@ -33,14 +34,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/dagre")) {
-            return "dagre";
-          }
-          if (
-            id.includes("node_modules/@xyflow") ||
-            id.includes("ScriptsEditorPane") ||
-            id.includes("WorkflowScriptFlow")
-          ) {
+          if (id.includes("node_modules/dagre") || id.includes("node_modules/@xyflow")) {
             return "workflow-editor";
           }
         },

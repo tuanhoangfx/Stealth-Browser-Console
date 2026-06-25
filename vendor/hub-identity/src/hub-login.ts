@@ -31,9 +31,16 @@ export function sanitizeHubLoginInput(input: string): string {
 
 /** Workspace user ID: 3–32 chars, lowercase letter/digit/._- */
 export function normalizeLoginId(raw: string): string | null {
-  const id = raw.trim().toLowerCase();
+  const id = sanitizeHubLoginInput(raw).toLowerCase();
   if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(id)) return null;
   return id;
+}
+
+/** Canonical @infix1.io.vn inbox for a normalized User ID. */
+export function hubSyntheticEmailFromLoginId(loginId: string): string {
+  const id = normalizeLoginId(loginId);
+  if (!id) throw new Error("Invalid user ID");
+  return `${id}${HUB_ID_EMAIL_DOMAIN}`;
 }
 
 /** Canonical synthetic auth email for a User ID or email input. */
@@ -88,16 +95,20 @@ export function resolveHubLogin(input: string): ResolvedLogin {
   };
 }
 
-/** Email shown in UI (contact / linked), not the internal auth address. */
+/** Email shown in UI — real contact first; synthetic @infix1.io.vn until user links another. */
 export function hubDisplayEmail(opts: {
   authEmail?: string | null;
   contactEmail?: string | null;
   profileEmail?: string | null;
 }): string {
-  const contact = (opts.contactEmail ?? opts.profileEmail ?? "").trim();
+  const contact = (opts.contactEmail ?? "").trim().toLowerCase();
   if (contact && !isHubSyntheticEmail(contact)) return contact;
-  const auth = (opts.authEmail ?? "").trim();
+  const profileMail = (opts.profileEmail ?? "").trim().toLowerCase();
+  if (profileMail && !isHubSyntheticEmail(profileMail)) return profileMail;
+  const auth = (opts.authEmail ?? "").trim().toLowerCase();
   if (auth && !isHubSyntheticEmail(auth)) return auth;
+  if (auth && isHubSyntheticEmail(auth)) return auth;
+  if (profileMail && isHubSyntheticEmail(profileMail)) return profileMail;
   return "";
 }
 
@@ -105,9 +116,38 @@ export function hubDisplayLoginId(opts: {
   loginId?: string | null;
   authEmail?: string | null;
 }): string {
-  const explicit = (opts.loginId ?? "").trim();
+  const explicit = (opts.loginId ?? "").trim().toLowerCase();
   if (explicit) return explicit;
   return loginIdFromSyntheticEmail(opts.authEmail) ?? "";
+}
+
+export function hubAuthEmailFromLoginOrEmail(opts: {
+  loginId?: string | null;
+  email?: string | null;
+}): { authEmail: string; loginId: string | null; contactEmail: string | null } | { error: string } {
+  const id = normalizeLoginId(String(opts.loginId ?? "").trim());
+  const mail = sanitizeHubLoginInput(String(opts.email ?? "")).toLowerCase();
+  if (id) {
+    const contactEmail = mail && !isHubSyntheticEmail(mail) ? mail : null;
+    return {
+      authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`,
+      loginId: id,
+      contactEmail,
+    };
+  }
+  if (mail) {
+    if (isHubSyntheticEmail(mail)) {
+      const fromMail = loginIdFromSyntheticEmail(mail);
+      if (!fromMail) return { error: "Invalid synthetic email" };
+      return {
+        authEmail: `${fromMail}${HUB_ID_EMAIL_DOMAIN}`,
+        loginId: fromMail,
+        contactEmail: null,
+      };
+    }
+    return { authEmail: mail, loginId: null, contactEmail: mail };
+  }
+  return { error: "login_id or email required" };
 }
 
 export function canUseEmailPasswordRecovery(email: string | null | undefined): boolean {

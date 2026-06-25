@@ -13,6 +13,8 @@ const OAUTH_CLICK_SELECTORS = [
   'div[role="button"]:has-text("Continue as")',
   'button:has-text("Continue")',
   'div[role="button"]:has-text("Continue")',
+  'button:has-text("Import")',
+  'div[role="button"]:has-text("Import")',
   'button:has-text("Cho phép")',
   'button:has-text("Allow")',
   'button:has-text("Xong")',
@@ -102,7 +104,7 @@ async function waitForOAuthResult(page, { timeoutMs = 120_000 } = {}) {
       if (page.url().includes("fb_oauth=")) return page.url();
     }
 
-    if (/fanpages\/pages/.test(url) && isChathubHost(url)) {
+    if (/fanpages\/(pages|accounts)/.test(url) && isChathubHost(url)) {
       await page
         .waitForURL(/fb_oauth=/, { timeout: Math.max(8000, deadline - Date.now()) })
         .catch(() => {});
@@ -187,6 +189,30 @@ async function runFacebookOAuth(context, oauthUrl, { maxAttempts = 80, waitMs = 
       throw new Error(parsed.errorMsg || "OAuth error");
     }
     if (!parsed.oauthState && !isOAuthCallbackWithCode(finalUrl)) {
+      const hydrated = await page.evaluate(() => window.location.href).catch(() => finalUrl);
+      const hydratedParsed = parseOAuthResult(hydrated);
+      if (hydratedParsed.oauthState || hydratedParsed.importSessionId) {
+        return { ok: true, finalUrl: hydrated, ...hydratedParsed };
+      }
+      if (/fanpages\/(pages|accounts)/.test(hydrated) && isChathubHost(hydrated)) {
+        for (let n = 0; n < 10; n++) {
+          await clickFirst(page);
+          await page.waitForTimeout(2000);
+          const retryUrl = await page.evaluate(() => window.location.href).catch(() => page.url());
+          const retryParsed = parseOAuthResult(retryUrl);
+          if (retryParsed.oauthState || retryParsed.importSessionId) {
+            return { ok: true, finalUrl: retryUrl, ...retryParsed };
+          }
+          const importBtn = page.getByRole("button", { name: /Import|Nhập|Chọn tất cả|Select all/i }).first();
+          if ((await importBtn.count()) > 0) {
+            try {
+              await importBtn.click({ timeout: 5000 });
+            } catch {
+              /* next */
+            }
+          }
+        }
+      }
       const screenshotDir = require("node:path").join(
         require("node:os").homedir(),
         "AppData/Roaming/stealth-browser-console/screenshots",

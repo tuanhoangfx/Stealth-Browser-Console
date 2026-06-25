@@ -1,14 +1,11 @@
 import { useMemo, useState } from "react";
 import {
-  HubFormFieldLabel,
   HubModalFilterField,
   HubToolDetailSection,
-  HUB_TOOL_DETAIL_FORM_GRID_2_CLASS,
   HUB_TOOL_DETAIL_SECTIONS_CLASS
 } from "@tool-workspace/hub-ui";
-import { Globe, Link2, MonitorSmartphone, User } from "lucide-react";
-import { formatStartupUrlOnBlur } from "../../lib/startup-url";
-import { PROXY_PRESETS, randomFingerprintSeed } from "../../lib/stealth-profile-utils";
+import { MonitorSmartphone, User } from "lucide-react";
+import { randomFingerprintSeed } from "../../lib/stealth-profile-utils";
 import {
   LOCALE_OPTIONS,
   TIMEZONE_OPTIONS,
@@ -22,12 +19,9 @@ import {
   browserWindowModeFilterOptions,
   devicePresetFilterOptions,
   localeFilterOptions,
-  proxyPresetFilterOptions,
-  resolveProxyPresetId,
 } from "../../lib/device-filter-options";
 import type { DeviceConfig, StealthGroup } from "../../types";
-
-const PROFILE_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_2_CLASS} stealth-settings-form min-w-0`;
+import { ProfileBasicsFields } from "./ProfileBasicsFields";
 
 export type ProfileFormFieldsProps = {
   name: string;
@@ -36,8 +30,6 @@ export type ProfileFormFieldsProps = {
   setGroupId: (value: string) => void;
   proxy: string;
   setProxy: (value: string) => void;
-  note: string;
-  setNote: (value: string) => void;
   fingerprintSeed: number;
   setFingerprintSeed: (value: number) => void;
   device: DeviceConfig;
@@ -56,8 +48,6 @@ export function ProfileFormFields({
   setGroupId,
   proxy,
   setProxy,
-  note,
-  setNote,
   fingerprintSeed,
   setFingerprintSeed,
   device,
@@ -77,39 +67,18 @@ export function ProfileFormFields({
   const localeValue = LOCALE_OPTIONS.some((o) => o.value === device.locale) ? device.locale : "";
 
   const basics = (
-    <div className={PROFILE_FORM_CLASS}>
-      <label className="block min-w-0">
-        <HubFormFieldLabel icon={User} iconClassName="text-indigo-300">
-          Name
-        </HubFormFieldLabel>
-        <input className="hub-input w-full" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-      </label>
-      <label className="block min-w-0">
-        <HubFormFieldLabel>Group</HubFormFieldLabel>
-        <select className="hub-input w-full" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="col-span-full block min-w-0">
-        <HubFormFieldLabel icon={Link2} iconClassName="text-violet-300">
-          Startup URL
-        </HubFormFieldLabel>
-        <input
-          className="hub-input w-full"
-          value={startupUrl}
-          onChange={(e) => setStartupUrl(e.target.value)}
-          onBlur={() => {
-            const next = formatStartupUrlOnBlur(startupUrl);
-            if (next !== startupUrl) setStartupUrl(next);
-          }}
-          placeholder="https://myaccount.google.com/"
-        />
-      </label>
-    </div>
+    <ProfileBasicsFields
+      name={name}
+      setName={setName}
+      groupId={groupId}
+      setGroupId={setGroupId}
+      proxy={proxy}
+      setProxy={setProxy}
+      startupUrl={startupUrl}
+      setStartupUrl={setStartupUrl}
+      groups={groups}
+      nameAutoFocus
+    />
   );
 
   const deviceSection = (
@@ -166,7 +135,7 @@ export function ProfileFormFields({
         <span className="mb-1 block font-semibold text-[var(--muted)]">Viewport (preset-viewport mode)</span>
         <div className="flex items-center gap-2">
           <input
-            className="hub-input flex-1"
+            className="field h-[var(--hub-control-h)] flex-1 text-xs"
             type="number"
             min={0}
             max={7680}
@@ -175,7 +144,7 @@ export function ProfileFormFields({
           />
           <span className="text-[var(--muted)]">×</span>
           <input
-            className="hub-input flex-1"
+            className="field h-[var(--hub-control-h)] flex-1 text-xs"
             type="number"
             min={0}
             max={4320}
@@ -190,7 +159,7 @@ export function ProfileFormFields({
           <span className="mb-1 block font-semibold text-[var(--muted)]">Fingerprint seed</span>
           <div className="flex gap-2">
             <input
-              className="hub-input flex-1"
+              className="field h-[var(--hub-control-h)] flex-1 text-xs"
               type="number"
               min={10000}
               max={99999}
@@ -228,41 +197,13 @@ export function ProfileFormFields({
         <label className="col-span-full block min-w-0 text-xs">
           <span className="mb-1 block font-semibold text-[var(--muted)]">User-Agent</span>
           <input
-            className="hub-input w-full"
+            className="field h-[var(--hub-control-h)] w-full text-xs"
             value={device.userAgent}
             onChange={(e) => editDevice({ userAgent: e.target.value })}
             placeholder="Mozilla/5.0 …"
           />
         </label>
       ) : null}
-    </div>
-  );
-
-  const network = (
-    <div className={PROFILE_FORM_CLASS}>
-      <HubModalFilterField
-        filterKey="browser-proxy-preset"
-        label="Proxy preset"
-        options={proxyPresetFilterOptions()}
-        value={resolveProxyPresetId(proxy)}
-        onChange={(presetId) => {
-          const preset = PROXY_PRESETS.find((item) => item.id === presetId);
-          if (preset) setProxy(preset.value);
-        }}
-      />
-      <label className="col-span-full block min-w-0">
-        <HubFormFieldLabel>Proxy (optional)</HubFormFieldLabel>
-        <input
-          className="hub-input w-full"
-          value={proxy}
-          onChange={(e) => setProxy(e.target.value)}
-          placeholder="http://user:pass@host:port"
-        />
-      </label>
-      <label className="block min-w-0">
-        <HubFormFieldLabel>Note</HubFormFieldLabel>
-        <input className="hub-input w-full" value={note} onChange={(e) => setNote(e.target.value)} />
-      </label>
     </div>
   );
 
@@ -279,9 +220,6 @@ export function ProfileFormFields({
         >
           {deviceSection}
         </HubToolDetailSection>
-        <HubToolDetailSection id="profile-network" title="Proxy & note" icon={<Globe size={14} className="text-sky-300" aria-hidden />}>
-          {network}
-        </HubToolDetailSection>
       </div>
     );
   }
@@ -290,7 +228,6 @@ export function ProfileFormFields({
     <div className="hub-panel-fields flex flex-col gap-3">
       {basics}
       {deviceSection}
-      {network}
     </div>
   );
 }

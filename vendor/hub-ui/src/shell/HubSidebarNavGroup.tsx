@@ -1,6 +1,8 @@
-import { Minus, Plus, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { Minus, Plus } from "lucide-react";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
+import { HubNavIcon } from "./HubNavIcon";
 import {
   navActiveBarClass,
   navActiveBgClass,
@@ -10,6 +12,7 @@ import {
   navRailClass,
   type NavIconTone,
 } from "./sidebar-nav-tones";
+import type { LucideIcon } from "lucide-react";
 
 export type NavGroupSubNavItem<TId extends string = string> = {
   id: TId;
@@ -23,6 +26,7 @@ export type HubSidebarNavGroupHeaderProps = {
   label: string;
   icon: LucideIcon;
   iconTone: NavIconTone;
+  brandIcon?: HubBrandIconId;
   active: boolean;
   subnavOpen: boolean;
   showToggleIcon?: boolean;
@@ -34,8 +38,9 @@ export type HubSidebarNavGroupHeaderProps = {
 /** Expandable sidebar group row — golden pattern (P0004 System, P0016 Zalo/Facebook). */
 export function HubSidebarNavGroupHeader({
   label,
-  icon: Icon,
+  icon,
   iconTone,
+  brandIcon,
   active,
   subnavOpen,
   showToggleIcon = true,
@@ -63,7 +68,7 @@ export function HubSidebarNavGroupHeader({
           className={`absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r ${navActiveBarClass(iconTone)}`}
         />
       ) : null}
-      <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, active)}`} />
+      <HubNavIcon icon={icon} iconTone={iconTone} active={active} brandIcon={brandIcon} />
       <span className="flex-1 text-left">{label}</span>
       {showToggleIcon ? (
         <ToggleIcon

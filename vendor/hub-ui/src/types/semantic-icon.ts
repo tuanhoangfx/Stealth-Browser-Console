@@ -1,4 +1,5 @@
-import type { ElementType } from "react";
+import type { ElementType, ReactNode } from "react";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { KpiStripTone } from "../shell/KpiStrip";
 
 /** Portable icon metadata — one semantic key maps to badge, KPI, and TOC surfaces. */
@@ -6,6 +7,8 @@ export type SemanticIconMeta = {
   icon: ElementType<{ size?: number; className?: string }>;
   className: string;
   tone?: KpiStripTone;
+  /** When set, UI renders shared Hub brand mark instead of Lucide `icon`. */
+  brandIcon?: HubBrandIconId;
 };
 
 export type SemanticIconKey =
@@ -134,6 +137,9 @@ export type SemanticIconKey =
   | "filter.drift"
   | "filter.links"
   | "filter.dueDate"
+  | "filter.phone"
+  | "filter.website"
+  | "filter.rating"
   | "col.directory.page"
   | "col.directory.pageId"
   | "col.directory.chatbot"
@@ -159,6 +165,10 @@ export type SemanticIconKey =
   | "col.directory.friends"
   | "col.directory.gender"
   | "col.directory.created"
+  | "col.directory.placeName"
+  | "col.directory.address"
+  | "col.directory.phone"
+  | "col.directory.reviews"
   | "profile.status.ready"
   | "profile.status.opening"
   | "profile.status.running"

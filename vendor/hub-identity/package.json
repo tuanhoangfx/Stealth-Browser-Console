@@ -1,6 +1,6 @@
 {
   "name": "@dev/hub-identity",
-  "version": "0.1.0",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "description": "Shared Tool Hub identity — JWT cache, dual sign-in, workspace auth boot (canonical SSOT).",

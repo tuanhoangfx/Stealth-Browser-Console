@@ -1,4 +1,6 @@
 import { lazy, memo, Suspense, useCallback, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { ClipboardList } from "lucide-react";
+import { HubLoadingView } from "@tool-workspace/hub-ui";
 import "../theme/stealth-scripts-hub-layout.css";
 import "../theme/stealth-workflow-steps.css";
 import { useWorkflowEditor } from "../context/workflow-editor-context";
@@ -13,7 +15,14 @@ const ScriptsEditorPane = lazy(() =>
 );
 
 function EditorLoadingFallback() {
-  return <div className="view-loading-fallback p-4 text-sm text-[var(--muted)]">Loading editor…</div>;
+  return (
+    <HubLoadingView
+      icon={ClipboardList}
+      ariaLabel="Loading workflow editor"
+      variant="overlay"
+      portaled={false}
+    />
+  );
 }
 
 export const WorkflowView = memo(function WorkflowView({ headerActions }: { headerActions?: ReactNode }) {

@@ -55,6 +55,28 @@ async function main() {
       throw new Error(`numeric search expected only 1477, got: ${names.join(", ")}`);
     }
 
+    const bulkByNames = profileService.createProfilesBulkByNames({
+      names: ["0009", "0011", "0009", "Profile 1477", "notes-main"],
+      defaults: { note: "bulk" },
+    });
+    if (bulkByNames.created !== 4 || bulkByNames.skippedExisting !== 0 || bulkByNames.duplicateInput !== 1) {
+      throw new Error(`bulk create by names unexpected summary: ${JSON.stringify(bulkByNames)}`);
+    }
+
+    profileService.createProfile({ name: "Profile 0015", note: "existing-code" });
+    const bulkByRange = profileService.createProfilesBulkByRange({
+      start: 9,
+      end: 16,
+      pad: 4,
+      defaults: { note: "range" },
+    });
+    if (bulkByRange.createdNames.includes("0015") || bulkByRange.createdNames.includes("0011")) {
+      throw new Error(`bulk range should skip existing numeric codes: ${bulkByRange.createdNames.join(", ")}`);
+    }
+    if (!bulkByRange.createdNames.includes("0016")) {
+      throw new Error(`bulk range should create 0016, got: ${bulkByRange.createdNames.join(", ")}`);
+    }
+
     console.log("profile-service.test: ok");
   } finally {
     closeDatabase();

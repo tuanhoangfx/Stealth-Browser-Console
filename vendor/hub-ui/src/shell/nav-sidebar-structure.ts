@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { NavIconTone } from "./sidebar-nav-tones";
 
 /** Shared child row — screen route or URL sub-view. */
@@ -24,6 +25,8 @@ export type NavGroupBase = {
   label: string;
   icon: LucideIcon;
   iconTone: NavIconTone;
+  /** When set, sidebar renders shared Hub brand mark instead of Lucide `icon`. */
+  brandIcon?: HubBrandIconId;
 };
 
 /** Expandable sidebar group — children are top-level screens. */
@@ -58,6 +61,7 @@ export type NavScreenNavItem<TScreen extends string = string> = {
   label: string;
   icon: LucideIcon;
   iconTone: NavIconTone;
+  brandIcon?: HubBrandIconId;
 };
 
 export type NavGroupConfig<
@@ -111,6 +115,7 @@ export function flatMapNavScreenItems<TScreen extends string>(
           label: entry.label,
           icon: entry.icon,
           iconTone: entry.iconTone,
+          brandIcon: entry.brandIcon,
         },
       ];
     }

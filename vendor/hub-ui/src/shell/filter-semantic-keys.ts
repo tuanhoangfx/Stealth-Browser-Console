@@ -28,6 +28,9 @@ export const FILTER_BAR_SEMANTIC_KEY: Record<string, SemanticIconLookupKey> = {
   drift: "filter.drift",
   links: "filter.links",
   dueDate: "filter.dueDate",
+  phone: "filter.phone",
+  website: "filter.website",
+  rating: "filter.rating",
 };
 
 export function semanticFilterAllIcon(filterKey: string): FilterIconMeta | null {

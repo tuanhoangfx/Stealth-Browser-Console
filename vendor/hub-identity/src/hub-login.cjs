@@ -13,14 +13,28 @@ function looksLikeEmail(input) {
   return String(input).includes("@");
 }
 
+function sanitizeHubLoginInput(input) {
+  return String(input ?? "")
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
+}
+
+function loginIdFromSyntheticEmail(email) {
+  if (!email || !isHubSyntheticEmail(email)) return null;
+  const local = email.split("@")[0]?.trim().toLowerCase();
+  return local || null;
+}
+
 function normalizeLoginId(raw) {
-  const id = String(raw ?? "").trim().toLowerCase();
+  const id = sanitizeHubLoginInput(raw).toLowerCase();
   if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(id)) return null;
   return id;
 }
 
 function hubAuthEmailsFromLogin(input) {
-  const trimmed = String(input ?? "").trim().toLowerCase();
+  const trimmed = sanitizeHubLoginInput(input).toLowerCase();
+  if (!trimmed) throw new Error("Invalid user ID");
   if (looksLikeEmail(trimmed)) return [trimmed];
   const loginId = normalizeLoginId(trimmed);
   if (!loginId) throw new Error("Invalid user ID");
@@ -32,7 +46,7 @@ function hubAuthEmailFromLogin(input) {
 }
 
 function resolveHubLogin(input) {
-  const trimmed = String(input ?? "").trim().toLowerCase();
+  const trimmed = sanitizeHubLoginInput(input).toLowerCase();
   if (!trimmed) return { error: "Missing login" };
   if (looksLikeEmail(trimmed)) {
     return { authEmail: trimmed, loginId: null, isEmailLogin: true };
@@ -47,11 +61,21 @@ function resolveHubLogin(input) {
 }
 
 function hubAuthEmailFromLoginOrEmail({ loginId, email }) {
-  const mail = String(email ?? "").trim().toLowerCase();
-  if (mail) return { authEmail: mail, loginId: null };
   const id = normalizeLoginId(String(loginId ?? "").trim());
-  if (!id) return { error: "login_id or email required" };
-  return { authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`, loginId: id };
+  const mail = sanitizeHubLoginInput(String(email ?? "")).toLowerCase();
+  if (id) {
+    const contactEmail = mail && !isHubSyntheticEmail(mail) ? mail : null;
+    return { authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`, loginId: id, contactEmail };
+  }
+  if (mail) {
+    if (isHubSyntheticEmail(mail)) {
+      const fromMail = loginIdFromSyntheticEmail(mail);
+      if (!fromMail) return { error: "Invalid synthetic email" };
+      return { authEmail: `${fromMail}${HUB_ID_EMAIL_DOMAIN}`, loginId: fromMail, contactEmail: null };
+    }
+    return { authEmail: mail, loginId: null, contactEmail: mail };
+  }
+  return { error: "login_id or email required" };
 }
 
 module.exports = {
@@ -59,7 +83,9 @@ module.exports = {
   HUB_ID_EMAIL_LEGACY_DOMAIN,
   HUB_ID_EMAIL_DOMAINS,
   isHubSyntheticEmail,
+  sanitizeHubLoginInput,
   normalizeLoginId,
+  loginIdFromSyntheticEmail,
   hubAuthEmailFromLogin,
   hubAuthEmailsFromLogin,
   resolveHubLogin,

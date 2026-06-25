@@ -9,14 +9,6 @@
   "errors": [
     {
       "level": 2,
-      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-400-normal-B04k-d_M.woff2"
-    },
-    {
-      "level": 2,
-      "message": "OTS parsing error: Failed to convert WOFF 2.0 font to SFNT"
-    },
-    {
-      "level": 2,
       "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-600-normal-CbzDIYP1.woff2"
     },
     {
@@ -25,15 +17,15 @@
     },
     {
       "level": 2,
-      "message": "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."
-    },
-    {
-      "level": 2,
-      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-700-normal-CJwiBV42.woff2"
+      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-400-normal-B04k-d_M.woff2"
     },
     {
       "level": 2,
       "message": "OTS parsing error: Failed to convert WOFF 2.0 font to SFNT"
+    },
+    {
+      "level": 2,
+      "message": "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."
     },
     {
       "level": 2,
@@ -42,6 +34,14 @@
     {
       "level": 2,
       "message": "OTS parsing error: Size of decompressed WOFF 2.0 is less than compressed size"
+    },
+    {
+      "level": 2,
+      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-700-normal-CJwiBV42.woff2"
+    },
+    {
+      "level": 2,
+      "message": "OTS parsing error: Failed to convert WOFF 2.0 font to SFNT"
     }
   ]
 }

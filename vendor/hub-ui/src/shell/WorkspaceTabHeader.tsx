@@ -1,5 +1,6 @@
 ﻿import { useMemo, type ElementType, type ReactNode } from "react";
 import { Tag } from "lucide-react";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import {
   AppTabHeader,
   type TabHeaderMetaItem,
@@ -12,6 +13,7 @@ export type WorkspaceTabHeaderProps = {
   ariaLabel: string;
   titleIcon: ElementType<{ size?: number; className?: string }>;
   titleIconClass?: string;
+  titleBrandIcon?: HubBrandIconId;
   title: string;
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;

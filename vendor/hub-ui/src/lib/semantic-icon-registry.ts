@@ -1,4 +1,5 @@
 import { createElement, type ReactNode } from "react";
+import type { HubBrandIconId } from "./resolve-hub-brand-icon";
 import {
   Activity,
   AlertTriangle,
@@ -16,7 +17,6 @@ import {
   Columns3,
   Database,
   Eye,
-  Facebook,
   FileStack,
   FileText,
   Filter,
@@ -41,7 +41,9 @@ import {
   Loader2,
   Lock,
   Mail,
+  MapPin,
   MessageSquare,
+  Phone,
   Network,
   Package,
   PanelTop,
@@ -156,7 +158,12 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "log.panel": { icon: FileText, className: "text-cyan-300", tone: "cyan" },
   "kpi.fanpages.pages": { icon: LayoutGrid, className: "text-indigo-300", tone: "indigo" },
   "kpi.fanpages.linked": { icon: Users, className: "text-emerald-300", tone: "emerald" },
-  "kpi.fanpages.chatbotLive": { icon: Facebook, className: "text-blue-300", tone: "blue" },
+  "kpi.fanpages.chatbotLive": {
+    icon: MessageSquare,
+    className: "text-blue-300",
+    tone: "blue",
+    brandIcon: "facebook",
+  },
   "kpi.fanpages.posts": { icon: FileText, className: "text-purple-300", tone: "purple" },
   "kpi.fanpages.reactions": { icon: BarChart3, className: "text-amber-300", tone: "amber" },
   "kpi.groups.total": { icon: Users, className: "text-indigo-300", tone: "indigo" },
@@ -175,8 +182,18 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "kpi.inbox.groups": { icon: Users, className: "text-purple-300", tone: "purple" },
   "kpi.inbox.dms": { icon: MessageSquare, className: "text-blue-300", tone: "blue" },
   "kpi.inbox.unread": { icon: MessageSquare, className: "text-amber-300", tone: "amber" },
-  "kpi.inbox.zaloReplies": { icon: MessageSquare, className: "text-purple-300", tone: "purple" },
-  "kpi.inbox.messengerReplies": { icon: Facebook, className: "text-blue-300", tone: "blue" },
+  "kpi.inbox.zaloReplies": {
+    icon: MessageSquare,
+    className: "text-purple-300",
+    tone: "purple",
+    brandIcon: "zalo",
+  },
+  "kpi.inbox.messengerReplies": {
+    icon: MessageSquare,
+    className: "text-blue-300",
+    tone: "blue",
+    brandIcon: "facebook",
+  },
   "kpi.bots.total": { icon: Bot, className: "text-indigo-300", tone: "indigo" },
   "kpi.bots.online": { icon: CheckCircle2, className: "text-emerald-300", tone: "emerald" },
   "kpi.bots.chatbotLive": { icon: Play, className: "text-blue-300", tone: "blue" },
@@ -208,6 +225,9 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "filter.drift": { icon: AlertTriangle, className: "text-rose-400", tone: "rose" },
   "filter.links": { icon: Link2, className: "text-amber-400", tone: "amber" },
   "filter.dueDate": { icon: CalendarClock, className: "opacity-75", tone: "indigo" },
+  "filter.phone": { icon: Phone, className: "text-emerald-300", tone: "emerald" },
+  "filter.website": { icon: Globe2, className: "text-amber-300", tone: "amber" },
+  "filter.rating": { icon: Star, className: "text-amber-300", tone: "amber" },
   "col.directory.page": { icon: LayoutGrid, className: "text-indigo-300", tone: "indigo" },
   "col.directory.pageId": { icon: Fingerprint, className: "text-blue-300", tone: "blue" },
   "col.directory.chatbot": { icon: Bot, className: "text-emerald-300", tone: "emerald" },
@@ -222,7 +242,12 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "col.directory.category": { icon: Layers, className: "text-indigo-400", tone: "indigo" },
   "col.directory.username": { icon: Globe2, className: "text-cyan-300", tone: "cyan" },
   "col.directory.account": { icon: UserRound, className: "text-sky-300", tone: "sky" },
-  "col.directory.fbAccount": { icon: Facebook, className: "text-blue-300", tone: "blue" },
+  "col.directory.fbAccount": {
+    icon: UserRound,
+    className: "text-blue-300",
+    tone: "blue",
+    brandIcon: "facebook",
+  },
   "col.directory.pages": { icon: LayoutGrid, className: "text-indigo-300", tone: "indigo" },
   "col.directory.added": { icon: CalendarClock, className: "text-violet-300", tone: "violet" },
   "col.directory.expires": { icon: CalendarClock, className: "text-amber-300", tone: "amber" },
@@ -233,6 +258,10 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "col.directory.friends": { icon: UserRound, className: "text-sky-300", tone: "sky" },
   "col.directory.gender": { icon: ScrollText, className: "text-violet-300", tone: "violet" },
   "col.directory.created": { icon: CalendarClock, className: "text-violet-300", tone: "violet" },
+  "col.directory.placeName": { icon: MapPin, className: "text-emerald-300", tone: "emerald" },
+  "col.directory.address": { icon: MapPin, className: "text-sky-300", tone: "sky" },
+  "col.directory.phone": { icon: Phone, className: "text-emerald-300", tone: "emerald" },
+  "col.directory.reviews": { icon: Star, className: "text-amber-300", tone: "amber" },
   "profile.status.ready": { icon: CheckCircle2, className: "text-emerald-400", tone: "emerald" },
   "profile.status.opening": { icon: Loader2, className: "text-cyan-400", tone: "cyan" },
   "profile.status.running": { icon: Play, className: "text-emerald-400", tone: "emerald" },
@@ -268,6 +297,10 @@ const DIRECTORY_COLUMN_TH_ICON: Partial<Record<SemanticIconKey, string>> = {
   "col.directory.friends": "hub-users-th-icon--name",
   "col.directory.gender": "hub-users-th-icon--role",
   "col.directory.created": "hub-users-th-icon--created",
+  "col.directory.placeName": "hub-users-th-icon--name",
+  "col.directory.address": "hub-users-th-icon--path",
+  "col.directory.phone": "hub-users-th-icon--activity",
+  "col.directory.reviews": "hub-users-th-icon--actions",
 };
 
 /** Legacy `kpi.analytics.*` → domain keys (P0016 Analytics tab removed). */
@@ -328,18 +361,20 @@ export function semanticFilterMeta(key: SemanticIconLookupKey): FilterIconMeta {
 export function semanticKpiIcon(key: SemanticIconLookupKey): {
   icon: SemanticIconMeta["icon"];
   tone: KpiStripTone;
+  brandIcon?: HubBrandIconId;
 } {
   const spec = resolveSemanticIcon(key);
-  return { icon: spec.icon, tone: spec.tone ?? "indigo" };
+  return { icon: spec.icon, tone: spec.tone ?? "indigo", brandIcon: spec.brandIcon };
 }
 
 /** Tab header stat line — icon + Tailwind tone class. */
 export function semanticHeaderStat(key: SemanticIconLookupKey): {
   icon: SemanticIconMeta["icon"];
   toneClass: string;
+  brandIcon?: HubBrandIconId;
 } {
-  const { icon, className } = resolveSemanticIcon(key);
-  return { icon, toneClass: className };
+  const { icon, className, brandIcon } = resolveSemanticIcon(key);
+  return { icon, toneClass: className, brandIcon };
 }
 
 /** Directory table column header — Lucide icon + golden `hub-users-th-icon--*` class. */

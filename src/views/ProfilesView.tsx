@@ -198,8 +198,19 @@ export const ProfilesView = memo(function ProfilesView({
         centerStats={centerStats}
         rail={<ProfilesWorkflowRail />}
       />
-      {showCreate ? <CreateProfileModal onClose={() => setShowCreate(false)} /> : null}
-      {editProfile ? <EditProfileModal profile={editProfile} onClose={() => setEditProfile(null)} /> : null}
+      {showCreate ? (
+        <CreateProfileModal
+          onClose={() => setShowCreate(false)}
+          onProfilesChanged={() => setDirectoryRefreshKey((key) => key + 1)}
+        />
+      ) : null}
+      {editProfile ? (
+        <EditProfileModal
+          profile={editProfile}
+          onClose={() => setEditProfile(null)}
+          onProfilesChanged={() => setDirectoryRefreshKey((key) => key + 1)}
+        />
+      ) : null}
       {showGroups ? <ManageGroupsModal onClose={() => setShowGroups(false)} /> : null}
     </>
   );

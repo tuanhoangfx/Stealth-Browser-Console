@@ -5,6 +5,8 @@ import {
   closeProfile,
   createGroup,
   createProfile,
+  createProfilesBulkByNames,
+  createProfilesBulkByRange,
   deleteGroup,
   deleteProfiles,
   exportProfilesBundle,
@@ -26,7 +28,7 @@ import {
 import { useRunLogs } from "../features/runtime/RunLogsContext";
 import { downloadJson } from "../lib/stealth-profile-utils";
 import { resolveStartupUrlSave } from "../lib/startup-url";
-import type { ProfileRow, RunHistoryItem, ProfileCatalogStats, StealthGroup, StealthProfile } from "../types";
+import type { BulkCreateProfileDefaults, BulkCreateProfilesResult, ProfileRow, RunHistoryItem, ProfileCatalogStats, StealthGroup, StealthProfile } from "../types";
 
 export type ProfilesRuntimeContextValue = {
   profiles: ProfileRow[];
@@ -46,6 +48,8 @@ export type ProfilesRuntimeContextValue = {
     fingerprintSeed?: number;
     startupUrl?: string;
   }) => Promise<StealthProfile>;
+  createProfilesBulkByNames: (input: { names: string[] } & BulkCreateProfileDefaults) => Promise<BulkCreateProfilesResult>;
+  createProfilesBulkByRange: (input: { start: number; end: number; pad?: number } & BulkCreateProfileDefaults) => Promise<BulkCreateProfilesResult>;
   updateProfile: (input: Partial<StealthProfile> & { id: string }) => Promise<StealthProfile>;
   deleteSelected: (ids: string[]) => Promise<void>;
   bulkSetStartupUrl: (ids: string[], startupUrl: string) => Promise<void>;
@@ -247,6 +251,34 @@ export function ProfilesRuntimeProvider({
     [addLog, refreshProfiles],
   );
 
+  const handleCreateProfilesBulkByNames = useCallback(
+    async (input: { names: string[] } & BulkCreateProfileDefaults) => {
+      const result = await createProfilesBulkByNames(input);
+      addLog(
+        "success",
+        "Profiles",
+        `Bulk create (list): ${result.created} created, ${result.skippedExisting} existing, ${result.duplicateInput} duplicate input`,
+      );
+      await refreshProfiles();
+      return result;
+    },
+    [addLog, refreshProfiles],
+  );
+
+  const handleCreateProfilesBulkByRange = useCallback(
+    async (input: { start: number; end: number; pad?: number } & BulkCreateProfileDefaults) => {
+      const result = await createProfilesBulkByRange(input);
+      addLog(
+        "success",
+        "Profiles",
+        `Bulk create (range): ${result.created} created, ${result.skippedExisting} existing`,
+      );
+      await refreshProfiles();
+      return result;
+    },
+    [addLog, refreshProfiles],
+  );
+
   const handleDeleteSelected = useCallback(
     async (ids: string[]) => {
       if (!ids.length) return;
@@ -402,6 +434,8 @@ export function ProfilesRuntimeProvider({
       refreshProfiles,
       refreshHistory,
       createProfile: handleCreateProfile,
+      createProfilesBulkByNames: handleCreateProfilesBulkByNames,
+      createProfilesBulkByRange: handleCreateProfilesBulkByRange,
       updateProfile: handleUpdateProfile,
       deleteSelected: handleDeleteSelected,
       bulkSetStartupUrl: handleBulkSetStartupUrl,
@@ -427,6 +461,8 @@ export function ProfilesRuntimeProvider({
       refreshProfiles,
       refreshHistory,
       handleCreateProfile,
+      handleCreateProfilesBulkByNames,
+      handleCreateProfilesBulkByRange,
       handleUpdateProfile,
       handleDeleteSelected,
       handleBulkSetStartupUrl,

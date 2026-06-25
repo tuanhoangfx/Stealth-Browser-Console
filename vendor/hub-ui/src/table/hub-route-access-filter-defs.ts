@@ -6,7 +6,7 @@ export type HubRouteAccessFilterScope = "single-route" | "multi-route";
 const HUB_ROUTE_ACCESS_ROLE_FILTER: FilterDef = {
   key: "role",
   label: "Access",
-  showAllLabel: true,
+  showAllLabel: false,
   options: [
     { value: "owner", label: "Owner", color: "#a78bfa" },
     { value: "load", label: "Load", color: "#38bdf8" },
@@ -18,7 +18,7 @@ const HUB_ROUTE_ACCESS_ROLE_FILTER: FilterDef = {
 const HUB_ROUTE_ACCESS_PUBLISH_FILTER: FilterDef = {
   key: "status",
   label: "Publish",
-  showAllLabel: true,
+  showAllLabel: false,
   options: [
     { value: "published", label: "Published", color: "#818cf8" },
     { value: "missing", label: "Missing", color: "#f59e0b" },

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { RefreshCw } from "lucide-react";
 import type { TimeRange } from "../display-prefs/constants";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { useDirectoryTimeRange } from "../lib/directory-time-range";
 import { HubResultCount } from "./HubResultCount";
 import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
@@ -16,7 +17,8 @@ export type DirectorySearchToolbarProps = {
   leading?: ReactNode;
   viewMode?: HubViewMode;
   onViewModeChange?: (mode: HubViewMode) => void;
-  countIcon: LucideIcon;
+  countIcon?: LucideIcon;
+  countBrandIcon?: HubBrandIconId;
   shown: number;
   total: number;
   countLabel?: string;
@@ -48,6 +50,7 @@ export function DirectorySearchToolbar({
   viewMode,
   onViewModeChange,
   countIcon,
+  countBrandIcon,
   shown,
   total,
   countLabel = "tools",
@@ -80,7 +83,13 @@ export function DirectorySearchToolbar({
       ) : null}
       {displayBand}
       {showResultCount ? (
-        <HubResultCount icon={countIcon} shown={shown} total={total} label={countLabel} />
+        <HubResultCount
+          icon={countIcon}
+          brandIcon={countBrandIcon}
+          shown={shown}
+          total={total}
+          label={countLabel}
+        />
       ) : null}
       {trailing}
       {showRefresh && onRefresh ? (

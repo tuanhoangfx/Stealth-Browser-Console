@@ -1,7 +1,9 @@
 import type { ElementType } from "react";
 import { MAX_VISIBLE_KPI } from "../display-prefs/kpi-visible";
 import { clampBandSlotCount } from "../lib/analytics-band-count";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize } from "../ui-scale";
+import { HubSemanticGlyph } from "./HubSemanticGlyph";
 import { HUB_ANALYTICS_CAPTION_TYPO_CLASS } from "./hub-typography";
 
 /** Visible KPI tile count for `data-kpi-count` (0 or 1…MAX_VISIBLE_KPI). */
@@ -41,6 +43,7 @@ export type KpiTileData = {
   value: string | number;
   hint?: string;
   icon?: ElementType<{ size?: number; className?: string }>;
+  brandIcon?: HubBrandIconId;
   /** Extra classes on KPI icon (e.g. animate-spin for in-progress). */
   iconClassName?: string;
   tone?: Tone;
@@ -66,7 +69,7 @@ export function KpiStrip({ items, className = "" }: { items: KpiTileData[]; clas
   );
 }
 
-function KpiTile({ label, value, hint, icon: Icon, iconClassName, tone = "indigo" }: KpiTileData) {
+function KpiTile({ label, value, hint, icon: Icon, brandIcon, iconClassName, tone = "indigo" }: KpiTileData) {
   const t = tones[tone];
   const iconClasses = ["hub-kpi-tile__icon-svg", iconClassName].filter(Boolean).join(" ");
   return (
@@ -76,7 +79,9 @@ function KpiTile({ label, value, hint, icon: Icon, iconClassName, tone = "indigo
       <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br ${t.bg} blur-2xl`} />
       <div className="hub-kpi-tile__inner relative flex min-w-0 items-center">
         <div className={`hub-kpi-tile__icon grid shrink-0 place-items-center rounded-xl ${t.icon}`}>
-          {Icon ? <Icon size={compactIconSize(18)} className={iconClasses} /> : null}
+          {brandIcon || Icon ? (
+            <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={18} className={iconClasses} />
+          ) : null}
         </div>
         <div className="hub-kpi-tile__body">
           <div

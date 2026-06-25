@@ -13,7 +13,8 @@
     "./styles/hub-users-table.css": "./src/styles/hub-users-table.css",
     "./styles/hub-modal.css": "./src/styles/hub-modal.css",
     "./styles/hub-route-detail.css": "./src/styles/hub-route-detail.css",
-    "./styles/hub-thread-preview.css": "./src/styles/hub-thread-preview.css"
+    "./styles/hub-thread-preview.css": "./src/styles/hub-thread-preview.css",
+    "./styles/hub-filter-brand-icon.css": "./src/styles/hub-filter-brand-icon.css"
   },
   "peerDependencies": {
     "lucide-react": ">=0.451.0",

@@ -70,6 +70,23 @@ export type StealthProfile = {
 
 export type ProfileRow = StealthProfile;
 
+export type BulkCreateProfileDefaults = Partial<DeviceConfig> & {
+  groupId?: string;
+  proxy?: string;
+  note?: string;
+  startupUrl?: string;
+};
+
+export type BulkCreateProfilesResult = {
+  requested: number;
+  created: number;
+  skippedExisting: number;
+  duplicateInput: number;
+  createdNames: string[];
+  skippedNames: string[];
+  duplicateNames: string[];
+};
+
 export type RunLogEntry = {
   level: "info" | "success" | "error";
   message: string;
@@ -223,6 +240,14 @@ declare global {
         fingerprintSeed?: number;
         startupUrl?: string;
       } & Partial<DeviceConfig>) => Promise<{ ok: boolean; profile: StealthProfile }>;
+      createProfilesBulkByNames: (payload: {
+        names: string[];
+      } & BulkCreateProfileDefaults) => Promise<{ ok: boolean } & BulkCreateProfilesResult>;
+      createProfilesBulkByRange: (payload: {
+        start: number;
+        end: number;
+        pad?: number;
+      } & BulkCreateProfileDefaults) => Promise<{ ok: boolean } & BulkCreateProfilesResult>;
       updateProfile: (payload: Partial<StealthProfile> & { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       bulkUpdateStartupUrl: (payload: { ids: string[]; startupUrl: string }) => Promise<{ ok: boolean; count: number }>;
       deleteProfile: (payload: { id: string }) => Promise<{

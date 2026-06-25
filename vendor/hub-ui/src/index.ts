@@ -499,6 +499,27 @@ export {
   type HubSidebarFooterButtonProps,
 } from "./shell/HubSidebarFooterButton";
 export {
+  HubSemanticGlyph,
+} from "./shell/HubSemanticGlyph";
+export {
+  HubBrandIcon,
+} from "./shell/HubBrandIcon";
+export {
+  HubTabTitleIcon,
+} from "./shell/HubTabTitleIcon";
+export type { HubBrandIconProps } from "./shell/HubBrandIcon";
+export {
+  HubNavIcon,
+} from "./shell/HubNavIcon";
+export type { HubNavIconProps } from "./shell/HubNavIcon";
+export {
+  listHubBrandIconIds,
+  resolveHubBrandIcon,
+  resolveHubBrandIconByMatch,
+  clearHubBrandIconMatchCache,
+} from "./lib/resolve-hub-brand-icon";
+export type { HubBrandIconId, HubBrandIconMeta } from "./lib/resolve-hub-brand-icon";
+export {
   HubSidebarNavGroup,
   HubSidebarNavGroupHeader,
   NavGroupSubNav,
@@ -864,6 +885,12 @@ export {
   HubDirectoryToolbarSelection,
   type HubDirectoryToolbarSelectionProps,
 } from "./shell/HubDirectoryToolbarSelection";
+export {
+  HubDirectoryToolAccessBadge,
+  type HubDirectoryToolAccessBadgeKind,
+  type HubDirectoryToolAccessBadgeProps,
+} from "./shell/HubDirectoryToolAccessBadge";
+export { hubModalDirectoryFilterSelection } from "./shell/hub-modal-directory-filter-preset";
 export {
   buildHubDirectorySelectionSlots,
   type HubDirectorySelectionSlots,

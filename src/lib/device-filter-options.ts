@@ -8,6 +8,7 @@ import {
   WINDOW_MODE_OPTIONS,
 } from "./device-presets";
 import { PROXY_PRESETS } from "./stealth-profile-utils";
+import type { StealthGroup } from "../types";
 
 export const BROWSER_DEVICE_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_3_CLASS} stealth-settings-form stealth-settings-form--3 min-w-0`;
 
@@ -45,4 +46,8 @@ export function proxyPresetFilterOptions(): FilterOption[] {
 export function resolveProxyPresetId(proxy: string): string {
   const hit = PROXY_PRESETS.find((preset) => preset.value === proxy);
   return hit?.id ?? "custom";
+}
+
+export function profileGroupFilterOptions(groups: StealthGroup[]) {
+  return groups.map((group) => ({ value: group.id, label: group.name }));
 }

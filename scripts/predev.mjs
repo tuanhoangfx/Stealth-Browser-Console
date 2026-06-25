@@ -18,15 +18,17 @@ function run(name) {
   }
 }
 
-function runToolScript(name) {
+function runToolScript(name, extraArgs = []) {
   const script = path.join(toolScriptsDir, name);
-  const result = spawnSync(process.execPath, [script], winSpawnOpts({ cwd: root, stdio: "inherit" }));
+  const result = spawnSync(process.execPath, [script, ...extraArgs], winSpawnOpts({ cwd: root, stdio: "inherit" }));
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
 }
 
 runToolScript("sync-hub-ui-vendor.cjs");
+runToolScript("sync-hub-identity-vendor.cjs");
+runToolScript("verify-hub-vendor-prereqs.mjs", ["--code", "P0003"]);
 run("sync-hub-env.mjs");
 run("sync-hub-boot-public.mjs");
 run("sync-app-version.mjs");

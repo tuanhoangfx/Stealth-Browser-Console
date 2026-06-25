@@ -384,3 +384,17 @@
   min-height: 0;
   overflow: auto;
 }
+
+/* New profile modal — fixed body height (Single/Bulk parity via stealth-profile-detail-modal.css) */
+.modal-shell.hub-tool-detail-modal.stealth-profile-create-modal.hub-add-modal {
+  --hub-add-modal-body-h: 20rem;
+  --hub-add-modal-toc-bulk-slot-h: 7rem;
+}
+
+.stealth-profile-create-modal .hub-tool-detail-modal__sections,
+.stealth-profile-create-modal .stealth-profile-create-modal__bulk-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}

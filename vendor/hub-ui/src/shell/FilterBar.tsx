@@ -602,6 +602,10 @@ export type HubSingleFilterDropdownProps = {
   usePortal?: boolean;
   /** `label-value` (default): `Label: value`. `value`: selected option label only — pair with external `HubFormFieldLabel`. */
   triggerFormat?: "label-value" | "value";
+  /** Custom trigger body (e.g. icon-only access badge in directory cells). */
+  triggerContent?: React.ReactNode;
+  triggerHideChevron?: boolean;
+  ariaLabel?: string;
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -616,6 +620,9 @@ export function HubSingleFilterDropdown({
   triggerClassName = "",
   usePortal = true,
   triggerFormat = "label-value",
+  triggerContent,
+  triggerHideChevron = false,
+  ariaLabel,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -724,21 +731,39 @@ export function HubSingleFilterDropdown({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={ariaLabel ?? label}
         onClick={() => !disabled && setOpen((v) => !v)}
         className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
-        {triggerIconNode}
-        <span className="min-w-0 truncate">
-          {triggerFormat === "value" ? (
-            opt?.label ?? label
-          ) : (
-            <>
-              <span className="hub-filter-trigger-text__prefix">{label}:</span>{" "}
-              <span className="hub-filter-trigger-text__value">{opt?.label ?? label}</span>
-            </>
-          )}
-        </span>
-        <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        {triggerContent ? (
+          <>
+            {triggerContent}
+            {!triggerHideChevron ? (
+              <ChevronDown
+                size={compactIconSize(12)}
+                className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
+            {triggerIconNode}
+            <span className="min-w-0 truncate">
+              {triggerFormat === "value" ? (
+                opt?.label ?? label
+              ) : (
+                <>
+                  <span className="hub-filter-trigger-text__prefix">{label}:</span>{" "}
+                  <span className="hub-filter-trigger-text__value">{opt?.label ?? label}</span>
+                </>
+              )}
+            </span>
+            <ChevronDown
+              size={compactIconSize(12)}
+              className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </>
+        )}
       </button>
       {panelEl &&
         (usePortal ? createPortal(panelEl, document.body) : (

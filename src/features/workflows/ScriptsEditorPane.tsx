@@ -123,7 +123,7 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
           ) : (
             <WorkflowCanvasErrorBoundary>
               <WorkflowScriptFlowLazy
-                key={activeWorkflow}
+                workflowId={activeWorkflow}
                 steps={steps}
                 selectedStepId={selectedScriptStep?.id ?? selectedScriptStepId ?? ""}
                 onSelectStep={setSelectedScriptStepId}

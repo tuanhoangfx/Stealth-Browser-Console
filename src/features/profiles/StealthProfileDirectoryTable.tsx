@@ -24,6 +24,7 @@ export type StealthProfileSortKey =
   | "group"
   | "status"
   | "lastOpened"
+  | "createdAt"
   | "startupUrl"
   | "proxy"
   | "note";

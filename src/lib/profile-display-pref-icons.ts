@@ -40,6 +40,7 @@ export const PROFILE_COLUMN_PREF_ICONS: PrefIconMap = {
   group: { icon: FolderTree, iconClassName: "text-slate-300" },
   status: { icon: Play, iconClassName: "text-emerald-400" },
   lastOpened: { icon: Clock, iconClassName: "text-cyan-300" },
+  createdAt: { icon: Clock, iconClassName: "text-emerald-300" },
   startupUrl: { icon: Globe, iconClassName: "text-sky-300" },
   proxy: { icon: Link2, iconClassName: "text-violet-300" },
   note: { icon: StickyNote, iconClassName: "text-amber-300" },

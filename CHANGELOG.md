@@ -1,5 +1,29 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-25 — v0.7.2 — Hub workspace auth + profile modal polish
+
+- Version: `0.7.2`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Minor
+- Status: Committed
+- Prompt: Hub identity login gate, profile detail note/log rail, hub-ui brand icons vendor sync
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.7.2
+
+### Changes
+
+- **Auth** — `WorkspaceAuthGate` + hub-identity session (`StealthAuthGate`, offline fallback, Supabase profile roles).
+- **Profiles** — modal layout split (`ProfileFormModalLayout`, `ProfileBasicsFields`, `ProfileDetailNoteLogRail`, run-log filter storage).
+- **Hub-ui vendor** — brand icons (`HubBrandIcon`, `HubNavIcon`), semantic glyphs, directory tool-access badge, modal filter preset.
+- **Startup URL** — coerce single-label hosts (`check` → `http://check/`), validate invalid phrases without overwrite.
+- **Toast** — in-app toast stack for profile/workflow actions.
+- **Packaging** — fix Vite `workflow-editor` chunk duplicate React (`dedupe` + narrow `manualChunks`); UI render smoke pass.
+
+### Verification
+
+- `pnpm test:unit` — passed
+- `pnpm build` — passed
+- Desktop package + `latest.yml` auto-update smoke — release pipeline
+
 ## 2026-06-25 — v0.7.1 — Omnibox search + profile table + workflow search
 
 - Version: `0.7.1`
