@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo } from "react";
 import { hubDirectoryListResetKey, type FilterValues } from "@tool-workspace/hub-ui";
 import type { WorkflowConfig } from "./workflow-types";
 import {
@@ -15,9 +15,9 @@ export type UseWorkflowDirectoryFiltersArgs = {
   workflowConfigs: WorkflowConfig[];
   workflowSearch: string;
   workflowGroupFilters: string[];
-  setWorkflowGroupFilters: Dispatch<SetStateAction<string[]>>;
+  setWorkflowGroupFilters: (values: string[]) => void;
   workflowPlatformFilters: string[];
-  setWorkflowPlatformFilters: Dispatch<SetStateAction<string[]>>;
+  setWorkflowPlatformFilters: (values: string[]) => void;
 };
 
 /** SSOT — workflow directory filter state + list reset key (rail + Scripts panel). */
@@ -39,14 +39,19 @@ export function useWorkflowDirectoryFilters({
   const handleFilterValuesChange = useCallback(
     (values: FilterValues) => {
       const next = workflowFilterValuesToState(values);
-      setWorkflowGroupFilters((current) =>
-        sameStringList(current, next.groupIds) ? current : next.groupIds,
-      );
-      setWorkflowPlatformFilters((current) =>
-        sameStringList(current, next.platformIds) ? current : next.platformIds,
-      );
+      if (!sameStringList(workflowGroupFilters, next.groupIds)) {
+        setWorkflowGroupFilters(next.groupIds);
+      }
+      if (!sameStringList(workflowPlatformFilters, next.platformIds)) {
+        setWorkflowPlatformFilters(next.platformIds);
+      }
     },
-    [setWorkflowGroupFilters, setWorkflowPlatformFilters],
+    [
+      workflowGroupFilters,
+      workflowPlatformFilters,
+      setWorkflowGroupFilters,
+      setWorkflowPlatformFilters,
+    ],
   );
 
   return {
