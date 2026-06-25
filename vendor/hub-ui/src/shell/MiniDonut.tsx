@@ -2,6 +2,7 @@ import type { FilterIconMeta } from "../types/filter-badge";
 import { prepareChartItems } from "../chart-items";
 import { chartRankBarColor } from "../lib/chart-palette";
 import { compactIconSize } from "../ui-scale";
+import { hubBrandIconImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
 import { HUB_ANALYTICS_CAPTION_TYPO_CLASS, HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
 
 export type DonutItem = {
@@ -10,6 +11,7 @@ export type DonutItem = {
   color?: string;
   iconMeta?: FilterIconMeta | null;
   iconSrc?: string;
+  iconShell?: HubBrandIconShell;
 };
 
 function fmtInt(n: number): string {
@@ -91,7 +93,7 @@ export function MiniDonut({
               <img
                 src={s.iconSrc}
                 alt=""
-                className="h-3.5 w-3.5 shrink-0 rounded-sm object-contain"
+                className={hubBrandIconImgClass(s.iconShell)}
                 aria-hidden
               />
             ) : s.iconMeta ? (

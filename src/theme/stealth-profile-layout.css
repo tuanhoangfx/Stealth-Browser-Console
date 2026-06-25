@@ -144,6 +144,36 @@
   overflow: hidden;
 }
 
+/* Search/filter shrinks page — pack rows under thead (no panel-fill stretch gap). */
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-directory-table-body-scroll {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-directory-table-body-scroll
+  table {
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-directory-table-body-scroll
+  tbody {
+  height: auto;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-directory-table-body-scroll
+  tbody
+  tr {
+  height: auto;
+  min-height: var(--hub-directory-row-h, 1.875rem);
+}
+
 /* Workflow rail body — do NOT flex-grow (fixedRows pane sizes to N rows + pager). */
 .stealth-workflow-directory-frame .hub-split-directory-pane__body {
   display: flex;

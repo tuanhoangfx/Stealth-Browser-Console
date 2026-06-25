@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.6.25",
+  "version": "0.7.1",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -48,7 +48,7 @@
     "@xyflow/react": "12.10.2",
     "@xyflow/system": "0.0.76",
     "better-sqlite3": "^12.11.1",
-    "cloakbrowser": "0.4.0",
+    "cloakbrowser": "0.4.3",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "dagre": "^0.8.5",

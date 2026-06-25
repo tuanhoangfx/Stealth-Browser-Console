@@ -1,11 +1,108 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-25 — v0.6.32 — Electron dev reload
+
+- Version: `0.6.32`
+- Timestamp: 2026-06-25 13:26 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-25 — v0.6.30 — Electron dev reload
+
+- Version: `0.6.30`
+- Timestamp: 2026-06-25 12:55 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-25 — v0.7.1 — Omnibox search + profile table + workflow search
+
+- Version: `0.7.1`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Minor
+- Status: Dev
+- Commit: pending
+
+### Changes
+
+- **Omnibox** — route intercept 302 to Google search; prefs + managed policy; guard on all Playwright sessions.
+- **Profile table** — panel-fill row divisor fix; compact layout on search.
+- **Workflow search** — `matchesDirectoryIdSearch` SSOT; immediate filter.
+- **Engine** — `cloakbrowser` `0.4.0` → `0.4.3`.
+
+## 2026-06-25 — v0.6.31 — Omnibox route intercept + CDP attach guard
+
+- Version: `0.6.31`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Omnibox** — `context.route` 302 redirect before document load; bind guard on every Playwright session (including CDP attach).
+- **Prefs** — seed Google default search provider + managed `policies/managed/stealth-omnibox-search.json`.
+- **Engine** — bump `cloakbrowser` `0.4.0` → `0.4.3` (verify ladder passed).
+
+## 2026-06-25 — v0.6.29 — Omnibox search guard (no http://2fa)
+
+- Version: `0.6.29`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Omnibox search** — redirect single-label navigations (`http://2fa/`) to Google search; seed Chromium prefs to disable intranet redirect detector.
+- **Automation** — trusted navigation bypass so startup URLs and workflows still open intranet hosts like `http://check/`.
+
+## 2026-06-25 — v0.6.28 — Electron dev reload
+
+- Version: `0.6.28`
+- Timestamp: 2026-06-25 12:39 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-06-25 — v0.6.27 — Profile search compact table layout
+
+- Version: `0.6.27`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profile search** — `resolveDirectoryPanelFillRows` always uses `pageSize` (fix 1-row search stretching to full tbody); compact CSS + scroll reset fallback.
+
+## 2026-06-25 — v0.6.26 — Profile search row align + workflow search SSOT
+
+- Version: `0.6.26`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profile table** — reset split-table body scroll on search/filter (`scrollResetKey`); panel-fill row divisor syncs with `listResetKey`.
+- **Workflow search** — `matchesDirectoryIdSearch` SSOT (`workflow-directory-search.ts`); remove `useDeferredValue` lag so rail + Scripts table filter immediately.
+
 ## 2026-06-25 — v0.6.25 — Hotfix: electron asar packaging crash
 
 - Version: `0.6.25`
 - Timestamp: 2026-06-25 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.6.25
 
 ### Changes
 

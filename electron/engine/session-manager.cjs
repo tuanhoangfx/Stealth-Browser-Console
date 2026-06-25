@@ -14,6 +14,7 @@ const {
 const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-cleanup.cjs");
 const { markProfileChromeCleanExit } = require("../lib/profile-chrome-session.cjs");
 const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks } = require("../lib/profile-user-data-repair.cjs");
+const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 
 /** CDP passthrough bật mặc định; tắt bằng STEALTH_CDP_ENABLE=0. */
 function cdpEnabled() {
@@ -130,6 +131,7 @@ class SessionManager {
   }
 
   #registerPlaywrightSession(id, profile, opened, { skipStartupUrl = false } = {}) {
+    bindOmniboxSearchGuard(opened.context);
     const profileCode = extractProfileCode(profile.name, profile.id);
     const launchUrl = profileService.resolveProfileLaunchUrl(profile.startupUrl);
     const startupNavigation = skipStartupUrl

@@ -29,6 +29,7 @@ run("directory-id-search", "node", ["--test", "electron/lib/directory-id-search.
 run("profile-chrome-preferences", "node", ["--test", "electron/profile-chrome-preferences.test.cjs"]);
 run("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
 run("profile-chrome-session", "node", ["--test", "electron/lib/profile-chrome-session.test.cjs"]);
+run("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guard.test.cjs"]);
 run("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);
 run("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
 run("api-routes", "node", ["electron/api-routes.test.cjs"]);

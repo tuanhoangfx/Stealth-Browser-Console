@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { useDirectorySplitScrollbarSync } from "./useDirectorySplitScrollbarSync";
 
 export type DirectorySplitScrollTableProps = {
@@ -10,6 +11,8 @@ export type DirectorySplitScrollTableProps = {
   bodyRows: ReactNode;
   emptyMessage: string;
   hasRows: boolean;
+  /** Reset tbody scroll when filters/search/page change. */
+  scrollResetKey?: string | number | boolean | null;
 };
 
 export function DirectorySplitScrollTable({
@@ -21,9 +24,16 @@ export function DirectorySplitScrollTable({
   bodyRows,
   emptyMessage,
   hasRows,
+  scrollResetKey,
 }: DirectorySplitScrollTableProps) {
   const syncPad = !wrapClassName.includes("hub-directory-table-scroll--flex-pane");
   const { headRef, bodyRef } = useDirectorySplitScrollbarSync(syncPad);
+
+  useEffect(() => {
+    if (scrollResetKey === undefined) return;
+    const body = bodyRef.current;
+    if (body) body.scrollTop = 0;
+  }, [scrollResetKey, bodyRef]);
 
   return (
     <div className={wrapClassName}>

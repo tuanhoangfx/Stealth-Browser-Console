@@ -9,7 +9,7 @@ import {
   createStep,
   scriptStepCategoryLabel
 } from "../features/workflows/workflow-defaults";
-import { workflowDisplayId, workflowDisplayPlatform } from "../features/workflows/workflow-display";
+import { workflowDisplayPlatform } from "../features/workflows/workflow-display";
 import { useWorkflowConfig } from "../features/workflows/useWorkflowConfig";
 import { useWorkflows } from "../features/workflows/useWorkflows";
 import type { WorkflowEditorContextValue } from "../context/workflow-editor-context";
@@ -40,8 +40,7 @@ export function useStealthWorkflowStack({
   const workflowFilters = useWorkflows(
     workflow.workflowConfigs,
     workflow.selectedWorkflowIds,
-    (id) => workflowDisplayId(id, DEFAULT_WORKFLOWS),
-    workflowDisplayPlatform
+    DEFAULT_WORKFLOWS,
   );
 
   const appendRunToHistory = useCallback(

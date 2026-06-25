@@ -44,11 +44,11 @@
   },
   "engine": {
     "package": "cloakbrowser",
-    "version": "0.4.0",
+    "version": "0.4.3",
     "pinned": true,
     "bumpPolicy": "docs/ENGINE-CLOAKBROWSER.md#bump-policy",
     "forkDecision": "docs/cloakbrowser-fork-evaluation.md#decision-record",
-    "updatedAt": "2026-06-22"
+    "updatedAt": "2026-06-25"
   },
   "uiScreens": [
     {
@@ -79,15 +79,15 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-06-25T04:03:26.398Z",
+  "manifestUpdatedAt": "2026-06-25T06:26:25.730Z",
   "release": {
-    "version": "0.6.25",
+    "version": "0.7.1",
     "updatedAt": "2026-06-19",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {
-      "tag": "v0.6.24",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.6.24",
-      "publishedAt": "2026-06-25T04:03:26.397Z"
+      "tag": "v0.6.25",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.6.25",
+      "publishedAt": "2026-06-25T04:55:35.061Z"
     }
   }
 }

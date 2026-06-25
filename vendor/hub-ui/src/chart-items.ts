@@ -2,6 +2,8 @@ import { Ellipsis, Pencil } from "lucide-react";
 import { chartRankBarColor, CHART_OTHERS_BAR_COLOR } from "./lib/chart-palette";
 import type { FilterIconMeta } from "./types/filter-badge";
 
+import type { HubBrandIconShell } from "./shell/filter-dropdown-primitives";
+
 export type ChartLegendIcon = FilterIconMeta;
 
 export type ChartRow = {
@@ -11,6 +13,7 @@ export type ChartRow = {
   iconMeta?: FilterIconMeta | null;
   /** Brand image — takes precedence over iconMeta when set. */
   iconSrc?: string;
+  iconShell?: HubBrandIconShell;
 };
 
 export const CHART_OTHERS_LABEL = "Others";

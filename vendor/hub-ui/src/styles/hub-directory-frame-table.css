@@ -156,6 +156,7 @@
 
 .hub-directory-frame.hub-directory-frame--panel-fill .hub-directory-table-body-scroll tbody {
   height: 100%;
+  vertical-align: top;
 }
 
 .hub-directory-frame.hub-directory-frame--panel-fill .hub-directory-table-body-scroll tbody tr {

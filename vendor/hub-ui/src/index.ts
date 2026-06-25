@@ -181,6 +181,8 @@ export {
   HubFilterDropdownTrigger,
   HUB_FILTER_OPTION_EMOJI_CLASS,
   HUB_FILTER_BRAND_ICON_CLASS,
+  hubBrandIconImgClass,
+  type HubBrandIconShell,
   filterDropdownPanelSearchPlaceholder,
   folderFilterButtonLabel,
   multiFilterTriggerTitle,

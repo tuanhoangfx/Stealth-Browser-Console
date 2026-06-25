@@ -8,6 +8,8 @@ const {
   purgeStaleCookieBridgePrefs,
 } = require("../lib/profile-chrome-cleanup.cjs");
 const { markProfileChromeCleanExit, chromeSessionRestoreSuppressionArgs } = require("../lib/profile-chrome-session.cjs");
+const { ensureProfileChromeOmniboxSearchPrefs } = require("../lib/profile-chrome-omnibox.cjs");
+const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 const { createLaunchTimer } = require("../lib/profile-launch-timer.cjs");
 const {
   cookieBridgeEnabled,
@@ -329,6 +331,7 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
   purgeLegacyProfileIdentityChrome(userDataDir, userDataRoot, profile.id);
   fs.mkdirSync(userDataDir, { recursive: true });
   markProfileChromeCleanExit(userDataDir);
+  ensureProfileChromeOmniboxSearchPrefs(userDataDir);
   purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
 
   if (cookieBridgeEnabled()) {
@@ -345,6 +348,7 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
   if (Number(debugPort) > 0) launchOptions.debugPort = Number(debugPort);
   timer.mark("spawn-start");
   const context = await launchStealthPersistentContext(launchOptions);
+  bindOmniboxSearchGuard(context);
   timer.mark("spawn-done");
   timer.flush("openProfile");
   return {

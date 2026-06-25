@@ -1,4 +1,4 @@
-import { memo, useMemo, type CSSProperties, type ReactNode } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
 import {
   HUB_SPLIT_DIRECTORY_PANE_CLASS,
   KpiStrip,
@@ -103,7 +103,15 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   const panelFillStyle = useMemo(() => {
     const fillRows = resolveDirectoryPanelFillRows(pageSize, filteredProfiles.length);
     return { "--hub-directory-page-rows": String(fillRows) } as CSSProperties;
-  }, [filteredProfiles.length, pageSize]);
+  }, [filteredProfiles.length, pageSize, listResetKey]);
+  const compactDirectoryTable =
+    filteredProfiles.length > 0 && filteredProfiles.length < pageSize;
+  const directoryBodyRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const body = directoryBodyRef.current?.querySelector(".hub-directory-table-body-scroll");
+    if (body instanceof HTMLElement) body.scrollTop = 0;
+  }, [listResetKey, filteredProfiles.length]);
   const emptyMessage =
     apiStatus === "offline"
       ? "CloakBrowser engine offline — check Settings or run pnpm dev in Electron."
@@ -131,6 +139,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
           <section
             className={`${HUB_SPLIT_DIRECTORY_PANE_CLASS} stealth-profile-directory-frame hub-directory-frame hub-directory-frame--panel-fill`}
             style={panelFillStyle}
+            data-hub-directory-compact={compactDirectoryTable ? "" : undefined}
           >
             <div className="hub-split-directory-pane__filters shrink-0 border-b border-white/5 px-3 py-3">
               <ProfileFilterPane
@@ -166,7 +175,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 <KpiStrip items={kpis} />
               </div>
             ) : null}
-            <div className="hub-split-directory-pane__body flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-3">
+            <div
+              ref={directoryBodyRef}
+              className="hub-split-directory-pane__body flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-3"
+            >
               <StealthProfileDirectoryTable
                 items={filteredProfiles}
                 selectedIds={selectedIds}

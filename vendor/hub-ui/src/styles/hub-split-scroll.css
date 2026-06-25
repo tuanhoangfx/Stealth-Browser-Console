@@ -90,6 +90,33 @@
 
 .hub-filter-dropdown-list {
   overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hub-split-scroll-thumb) var(--hub-split-scroll-track);
+}
+
+.hub-filter-dropdown-list::-webkit-scrollbar {
+  width: var(--hub-split-scroll-size);
+  height: 0;
+}
+
+.hub-filter-dropdown-list::-webkit-scrollbar-track {
+  background: var(--hub-split-scroll-track);
+}
+
+.hub-filter-dropdown-list::-webkit-scrollbar-thumb {
+  background: var(--hub-split-scroll-thumb);
+  border-radius: var(--hub-split-scroll-radius);
+}
+
+.hub-filter-dropdown-list::-webkit-scrollbar-thumb:hover {
+  background: var(--hub-split-scroll-thumb-hover);
+}
+
+.hub-filter-dropdown-list::-webkit-scrollbar-corner {
+  background: var(--panel);
 }
 
 /* Split thead/body shell — head lives outside scroll pane; cancel sticky + outer scroll (must follow rules above) */

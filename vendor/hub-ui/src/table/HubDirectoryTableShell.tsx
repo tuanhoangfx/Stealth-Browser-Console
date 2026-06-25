@@ -232,6 +232,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
               bodyRows={bodyRows}
               emptyMessage={emptyMessage}
               hasRows={pageItems.length > 0}
+              scrollResetKey={resetKey}
             />
           );
         }

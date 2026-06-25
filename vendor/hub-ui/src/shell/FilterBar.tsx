@@ -33,6 +33,8 @@ import {
   HubFilterDropdownPanelSearch,
   HUB_FILTER_OPTION_EMOJI_CLASS,
   HUB_FILTER_BRAND_ICON_CLASS,
+  hubBrandIconImgClass,
+  type HubBrandIconShell,
   filterDropdownPanelSearchPlaceholder,
   hubFilterTriggerClass,
   multiFilterTriggerTitle,
@@ -47,6 +49,8 @@ export type FilterOption = {
   color?: string;
   count?: number;
   iconSrc?: string;
+  /** Brand img shell — bare (colored), tile (dark mark), darkInk (white mono). Default bare. */
+  iconShell?: HubBrandIconShell;
   emoji?: string;
 };
 export type FilterDef = {
@@ -314,7 +318,7 @@ function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: F
       <img
         src={option.iconSrc}
         alt=""
-        className={HUB_FILTER_BRAND_ICON_CLASS}
+        className={hubBrandIconImgClass(option.iconShell)}
         aria-hidden
       />
     );
@@ -465,7 +469,12 @@ export function HubMultiFilterDropdown({
         className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
       >
         {triggerIconSrc ? (
-          <img src={triggerIconSrc} alt="" className={`${HUB_FILTER_BRAND_ICON_CLASS} !h-3 !w-3`} aria-hidden />
+          <img
+            src={triggerIconSrc}
+            alt=""
+            className={`${hubBrandIconImgClass(selectedOpt?.iconShell)} !h-3 !w-3`}
+            aria-hidden
+          />
         ) : selected.length === 1 && selectedOpt?.color ? (
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
         ) : filter.triggerEmoji ? (

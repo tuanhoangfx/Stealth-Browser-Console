@@ -1,22 +1,15 @@
 import { useHubTablePageSize, patchHubListPrefs, patchHubTablePageSizeValue } from "@tool-workspace/hub-ui";
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { workflowDisplayPlatform } from "./workflow-display";
+import { matchesWorkflowDirectorySearch } from "./workflow-directory-search";
+import type { WorkflowConfig } from "./workflow-types";
 
-type WorkflowLike = {
-  id: string;
-  name: string;
-  description: string;
-  group: string;
-  steps: unknown[];
-};
-
-export function useWorkflows<TWorkflow extends WorkflowLike>(
-  workflowConfigs: TWorkflow[],
+export function useWorkflows(
+  workflowConfigs: WorkflowConfig[],
   selectedWorkflowIds: string[],
-  workflowDisplayId: (id: string) => string,
-  workflowDisplayPlatform: (workflow: TWorkflow) => string,
+  builtinWorkflows: WorkflowConfig[],
 ) {
   const [workflowSearch, setWorkflowSearch] = useState("");
-  const deferredWorkflowSearch = useDeferredValue(workflowSearch);
   const [workflowGroupFilters, setWorkflowGroupFilters] = useState<string[]>([]);
   const [workflowPlatformFilters, setWorkflowPlatformFilters] = useState<string[]>([]);
   const workflowTablePageSize = useHubTablePageSize();
@@ -29,36 +22,21 @@ export function useWorkflows<TWorkflow extends WorkflowLike>(
     () =>
       selectedWorkflowIds
         .map((id) => workflowConfigs.find((workflow) => workflow.id === id))
-        .filter(Boolean) as TWorkflow[],
+        .filter(Boolean) as WorkflowConfig[],
     [selectedWorkflowIds, workflowConfigs],
   );
 
   const filteredWorkflows = useMemo(() => {
-    const term = deferredWorkflowSearch.trim().toLowerCase();
+    const term = workflowSearch.trim();
     return workflowConfigs.filter((workflow) => {
-      const displayId = workflowDisplayId(workflow.id).toLowerCase();
-      const displayPlatform = workflowDisplayPlatform(workflow);
-      const matchesTerm =
-        !term ||
-        displayId.includes(term) ||
-        workflow.id.toLowerCase().includes(term) ||
-        workflow.name.toLowerCase().includes(term) ||
-        workflow.description.toLowerCase().includes(term) ||
-        displayPlatform.toLowerCase().includes(term) ||
-        workflow.group.toLowerCase().includes(term);
+      const matchesTerm = !term || matchesWorkflowDirectorySearch(workflow, term, builtinWorkflows);
       const matchesGroup = workflowGroupFilters.length === 0 || workflowGroupFilters.includes(workflow.group);
+      const displayPlatform = workflowDisplayPlatform(workflow);
       const matchesPlatform =
         workflowPlatformFilters.length === 0 || workflowPlatformFilters.includes(displayPlatform);
       return matchesTerm && matchesGroup && matchesPlatform;
     });
-  }, [
-    workflowConfigs,
-    workflowDisplayId,
-    workflowDisplayPlatform,
-    workflowGroupFilters,
-    workflowPlatformFilters,
-    deferredWorkflowSearch,
-  ]);
+  }, [workflowConfigs, builtinWorkflows, workflowGroupFilters, workflowPlatformFilters, workflowSearch]);
 
   const selectedWorkflowCount = selectedWorkflowIds.length;
   const visibleWorkflowSteps = useMemo(

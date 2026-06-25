@@ -1,3 +1,5 @@
+const { markTrustedPageNavigation, clearTrustedPageNavigation } = require("../lib/omnibox-search-guard.cjs");
+
 function cleanMessage(message) {
   return String(message || "Navigation failed.").replace(/\u001b\[[0-9;]*m/g, "");
 }
@@ -72,11 +74,16 @@ async function waitForLanding(page, targetUrl, timeoutMs = 12000) {
 }
 
 async function fallbackAssignNavigate(page, url, timeoutMs = 60000) {
-  await page.evaluate((href) => {
-    window.location.assign(href);
-  }, url);
-  await waitForLanding(page, url, Math.min(timeoutMs, 20000));
-  await settleAfterNavigation(page, Math.min(timeoutMs, 15000));
+  markTrustedPageNavigation(page);
+  try {
+    await page.evaluate((href) => {
+      window.location.assign(href);
+    }, url);
+    await waitForLanding(page, url, Math.min(timeoutMs, 20000));
+    await settleAfterNavigation(page, Math.min(timeoutMs, 15000));
+  } finally {
+    clearTrustedPageNavigation(page);
+  }
 }
 
 /**
@@ -96,7 +103,12 @@ async function safePageGoto(page, url, options = {}, retryOptions = {}) {
       }
       await awaitNavigationIdle(page, 4000);
       const waitUntil = preferCommit || attempt >= 2 ? "commit" : options.waitUntil || "commit";
-      await page.goto(url, { ...options, timeout, waitUntil });
+      markTrustedPageNavigation(page);
+      try {
+        await page.goto(url, { ...options, timeout, waitUntil });
+      } finally {
+        clearTrustedPageNavigation(page);
+      }
       await settleAfterNavigation(page, Math.min(timeout, 15000));
       return;
     } catch (error) {
