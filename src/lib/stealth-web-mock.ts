@@ -51,21 +51,6 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       info: { version: "web-mock", path: "" }
     }),
     updateBinary: async () => ({ ok: false, error: "Not available in web mock." }),
-    profileIdentityStatus: async () => ({
-      ok: true,
-      status: {
-        windowTitle: { enabled: true, surfaces: ["browser tab title"], note: "Web mock" },
-        omnibarChip: {
-          cliWired: true,
-          binaryReady: false,
-          cloakbrowserVersion: "web-mock",
-          binaryMinVersion: "99.0.0",
-          upstreamIssue: "https://github.com/CloakHQ/CloakBrowser/issues/384",
-          note: "Electron required for live status.",
-        },
-        taskbarIconOverlay: { supported: false, note: "Web mock" },
-      },
-    }),
     listProfiles: async () => {
       seedIfEmpty();
       return { ok: true, profiles: [...profiles], groups: [...groups] };

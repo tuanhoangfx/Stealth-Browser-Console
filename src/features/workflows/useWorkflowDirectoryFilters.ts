@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import { hubDirectoryListResetKey, type FilterValues } from "@tool-workspace/hub-ui";
 import type { WorkflowConfig } from "./workflow-types";
 import {
@@ -15,9 +15,9 @@ export type UseWorkflowDirectoryFiltersArgs = {
   workflowConfigs: WorkflowConfig[];
   workflowSearch: string;
   workflowGroupFilters: string[];
-  setWorkflowGroupFilters: (values: string[]) => void;
+  setWorkflowGroupFilters: Dispatch<SetStateAction<string[]>>;
   workflowPlatformFilters: string[];
-  setWorkflowPlatformFilters: (values: string[]) => void;
+  setWorkflowPlatformFilters: Dispatch<SetStateAction<string[]>>;
 };
 
 /** SSOT — workflow directory filter state + list reset key (rail + Scripts panel). */
