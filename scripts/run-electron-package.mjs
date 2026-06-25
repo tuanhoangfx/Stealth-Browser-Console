@@ -49,7 +49,21 @@ function copyDir(src, dest) {
 
 function rmDir(dir) {
   if (!fs.existsSync(dir)) return;
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch (e) {
+    const code = e && typeof e === "object" ? e.code : "";
+    if (code === "EPERM" || code === "EBUSY") {
+      console.warn(`run-electron-package: skip rm ${dir} (${code})`);
+      return;
+    }
+    throw e;
+  }
+}
+
+function copyDirBestEffort(src, dest) {
+  rmDir(dest);
+  copyDir(src, dest);
 }
 
 runNodeScript("scripts/sync-app-icon.cjs");
@@ -81,8 +95,7 @@ if ((result.status ?? 1) !== 0) {
   process.exit(result.status ?? 1);
 }
 
-rmDir(productOutput);
-copyDir(stagingOutput, productOutput);
+copyDirBestEffort(stagingOutput, productOutput);
 rmDir(stagingOutput);
 
 const setup = fs
