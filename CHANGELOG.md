@@ -1,5 +1,17 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-25 — v0.6.25 — Hotfix: electron asar packaging crash
+
+- Version: `0.6.25`
+- Timestamp: 2026-06-25 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- **Packaging** — inline hub-ui `directory-id-search` CJS trong `electron/lib` (vendor/ không có trong asar → sửa crash main process sau cài đặt).
+- **Gate** — `verify-electron-asar-packaging.mjs` trong agent-verify-gate cho desktop `github-release`.
+
 ## 2026-06-25 — v0.6.24 — Step inspector inline fields
 
 - Version: `0.6.24`
