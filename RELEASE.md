@@ -31,6 +31,26 @@ powershell -File scripts/release-desktop.ps1 -Publish -SkipInstall -FastTests
 
 **Latest release:** [v0.7.3](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.7.3)
 
+### Rollback to known-good (v0.7.7+)
+
+When a build breaks (auth CSP, Surfshark, slow launch), restore the last pinned stable state:
+
+```powershell
+# One-time when stable (after commit + tag recommended):
+pnpm desktop:dist
+node scripts/snapshot-known-good.mjs --label 2026-06-26-stable
+
+# After incident — restore backup exe + runtime purge:
+powershell -File scripts/restore-known-good.ps1 -LaunchOnly -PurgeSurfshark
+
+# Full rollback (git + install + verify):
+powershell -File scripts/restore-known-good.ps1 -GitCheckout -Install -PurgeSurfshark -Verify
+```
+
+SSOT: `config/known-good.json` (committed). Backup binaries: `dist-desktop/known-good/` (local, gitignored).
+
+**Rule:** never publish GitHub Release without committing the same source — tag `v0.7.x-stable` on the commit you ship.
+
 ---
 
 ## v0.4.5 — AG Appeal + Steps Hub-UI (2026-06-17)

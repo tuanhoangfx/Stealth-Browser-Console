@@ -30,7 +30,17 @@
     "release": "corepack pnpm desktop:release",
     "desktop:release:patch": "corepack pnpm desktop:release:patch",
     "desktop:release:minor": "corepack pnpm desktop:release:minor",
-    "desktop:release:major": "corepack pnpm desktop:release:major"
+    "desktop:release:major": "corepack pnpm desktop:release:major",
+    "desktop:snapshot-good": "node scripts/snapshot-known-good.mjs",
+    "desktop:restore-good": "powershell -ExecutionPolicy Bypass -File scripts/restore-known-good.ps1 -LaunchOnly -PurgeSurfshark"
+  },
+  "knownGood": {
+    "config": "config/known-good.json",
+    "tagSuffix": "-stable",
+    "snapshot": "node scripts/snapshot-known-good.mjs",
+    "restore": "powershell -ExecutionPolicy Bypass -File scripts/restore-known-good.ps1",
+    "workspaceSnapshot": "node ../scripts/snapshot-known-good.mjs --code P0003",
+    "workspaceRestore": "powershell -ExecutionPolicy Bypass -File ../scripts/restore-known-good.ps1 -Code P0003"
   },
   "docs": {
     "readme": "README.md",

@@ -13,6 +13,8 @@ out/
 *.pid
 .smoke-ui-render.json
 .smoke-workflow-rail.json
+.smoke-packaged-auth.json
+.tmp-asar-check/
 
 # Env & secrets (hub keys, tokens)
 .env.local

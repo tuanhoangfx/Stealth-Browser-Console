@@ -21,6 +21,7 @@ const { ensureCloakbrowserExtensionStages } = require("../lib/cloakbrowser-exten
 
 /** Per-profile cookie-bridge prefs scrub — once per process after startup bulk purge. */
 const cookieBridgeLaunchPrepped = new Set();
+const FAST_LAUNCH = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
 
 let binaryInfoCache = null;
 
@@ -150,6 +151,10 @@ function resolveExtraExtensionDirs(userDataRoot) {
   const seen = new Set();
   for (const dir of dirs) {
     const abs = path.resolve(String(dir));
+    const normalized = abs.replace(/\\/g, "/").toLowerCase();
+    if (normalized.includes("ailoabdmgclmfmhdagmlohpjlbpffblp") || normalized.includes("/surfshark")) {
+      continue;
+    }
     if (seen.has(abs)) continue;
     try {
       if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
@@ -332,7 +337,9 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
   fs.mkdirSync(userDataDir, { recursive: true });
   markProfileChromeCleanExit(userDataDir);
   ensureProfileChromeOmniboxSearchPrefs(userDataDir);
-  purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
+  if (!FAST_LAUNCH) {
+    purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
+  }
 
   if (cookieBridgeEnabled()) {
     try {

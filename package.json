@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.7.4",
+  "version": "0.7.7",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -33,6 +33,8 @@
     "pack": "node scripts/run-electron-package.mjs --target dir",
     "pack:portable": "node scripts/run-portable-pack.mjs",
     "desktop:dist": "node scripts/run-electron-package.mjs --publish never",
+    "desktop:snapshot-good": "node scripts/snapshot-known-good.mjs",
+    "desktop:restore-good": "powershell -ExecutionPolicy Bypass -File scripts/restore-known-good.ps1 -LaunchOnly -PurgeSurfshark",
     "desktop:dist:portable": "node scripts/run-electron-package.mjs --publish never --with-portable",
     "desktop:open": "node scripts/desktop-open.mjs",
     "desktop:shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",

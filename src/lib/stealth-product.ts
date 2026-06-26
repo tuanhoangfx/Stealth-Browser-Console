@@ -4,5 +4,4 @@ export const STEALTH_PRODUCT = {
   tagline: "Antidetect profiles & automation",
 };
 
-/** Public app mark — same asset as favicon / Electron tray. */
-export const STEALTH_BRAND_ICON = "/favicon.svg";
+export const STEALTH_BRAND_ICON = new URL("../../public/favicon.svg", import.meta.url).href;

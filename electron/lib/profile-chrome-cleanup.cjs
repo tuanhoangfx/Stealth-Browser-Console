@@ -9,6 +9,9 @@ const COOKIE_BRIDGE_LEGACY_PIN_IDS = new Set([
   COOKIE_BRIDGE_STORE_ID,
 ]);
 
+/** Surfshark VPN — removed from bundled extensions (perf / auto-tab). */
+const SURFSHARK_STORE_ID = "ailoabdmgclmfmhdagmlohpjlbpffblp";
+
 const IDENTITY_TOOLBAR_ROOT = "identity-toolbar";
 const PIN_KEYS = ["pinned_extensions", "toolbar_pinned_extension_ids"];
 const IDENTITY_DESC_RE = /profile identity/i;
@@ -102,6 +105,136 @@ function collectIdentityExtensionIds(prefs) {
     if (isIdentityExtensionMeta(meta)) ids.push(extId);
   }
   return ids;
+}
+
+function isSurfsharkExtensionMeta(meta) {
+  if (!meta || typeof meta !== "object") return false;
+  const extensionPath = String(meta.path || "").replace(/\\/g, "/").toLowerCase();
+  if (extensionPath.includes(SURFSHARK_STORE_ID) || extensionPath.includes("/surfshark")) return true;
+  const name = String(meta.manifest?.name || "").toLowerCase();
+  if (name.includes("surfshark")) return true;
+  const disk = readManifestMeta(meta.path);
+  if (!disk) return false;
+  const diskText = `${disk.name || ""} ${disk.description || ""}`.toLowerCase();
+  return diskText.includes("surfshark");
+}
+
+function collectSurfsharkExtensionIds(prefs) {
+  const settings = prefs?.extensions?.settings;
+  if (!settings || typeof settings !== "object") return [];
+  const ids = [];
+  for (const [extId, meta] of Object.entries(settings)) {
+    if (extId === SURFSHARK_STORE_ID || isSurfsharkExtensionMeta(meta)) ids.push(extId);
+  }
+  return ids;
+}
+
+function purgeSurfsharkExtensionStore(userDataDir) {
+  const extRoot = path.join(userDataDir, "Default", "Extensions");
+  if (!fs.existsSync(extRoot)) return 0;
+  let removed = 0;
+  for (const extId of fs.readdirSync(extRoot)) {
+    if (extId === SURFSHARK_STORE_ID) {
+      try {
+        fs.rmSync(path.join(extRoot, extId), { recursive: true, force: true });
+        removed += 1;
+      } catch {
+        // best-effort
+      }
+      continue;
+    }
+    const extDir = path.join(extRoot, extId);
+    try {
+      const versions = fs.readdirSync(extDir);
+      for (const ver of versions) {
+        const manifestPath = path.join(extDir, ver, "manifest.json");
+        if (!fs.existsSync(manifestPath)) continue;
+        const raw = fs.readFileSync(manifestPath, "utf8");
+        if (/surfshark/i.test(raw)) {
+          fs.rmSync(extDir, { recursive: true, force: true });
+          removed += 1;
+          break;
+        }
+      }
+    } catch {
+      // best-effort
+    }
+  }
+  return removed;
+}
+
+/** Strip Surfshark pins + on-disk store (prefs may resurrect cache while path exists). */
+function purgeSurfsharkExtensionPrefs(userDataDir) {
+  let removed = 0;
+  for (const prefsFile of chromePrefsFiles(userDataDir)) {
+    const prefs = readJson(prefsFile);
+    if (!prefs) continue;
+    const extIds = collectSurfsharkExtensionIds(prefs);
+    if (!extIds.length) continue;
+    let changed = false;
+    for (const extId of extIds) {
+      if (removeExtensionFromPrefs(prefs, extId)) changed = true;
+      removeExtensionStore(userDataDir, extId);
+      removed += 1;
+    }
+    if (changed) writeJson(prefsFile, prefs);
+  }
+  removed += purgeSurfsharkExtensionStore(userDataDir);
+  return { removed };
+}
+
+function purgeSurfsharkExtensionCache(userDataRoot) {
+  if (!userDataRoot) return false;
+  const cacheDir = path.join(userDataRoot, "extensions-cache", SURFSHARK_STORE_ID);
+  try {
+    if (!fs.existsSync(cacheDir)) return false;
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const SURFSHARK_PURGE_MARKER = "surfshark_extension_purge_v1";
+
+function surfsharkPurgeMarkerPath(userDataRoot) {
+  return path.join(userDataRoot, "settings", SURFSHARK_PURGE_MARKER);
+}
+
+function isSurfsharkPurgeComplete(userDataRoot) {
+  return Boolean(userDataRoot) && fs.existsSync(surfsharkPurgeMarkerPath(userDataRoot));
+}
+
+function markSurfsharkPurgeComplete(userDataRoot) {
+  if (!userDataRoot) return;
+  const marker = surfsharkPurgeMarkerPath(userDataRoot);
+  fs.mkdirSync(path.dirname(marker), { recursive: true });
+  fs.writeFileSync(marker, "1", "utf8");
+}
+
+function purgeAllProfilesSurfshark(userDataRoot) {
+  if (!userDataRoot) return { profiles: 0, removed: 0, prefsCleaned: 0, cacheRemoved: false, skipped: false };
+  const cacheRemoved = purgeSurfsharkExtensionCache(userDataRoot);
+  if (!cacheRemoved && isSurfsharkPurgeComplete(userDataRoot)) {
+    return { profiles: 0, removed: 0, prefsCleaned: 0, cacheRemoved: false, skipped: true };
+  }
+  const profilesDir = path.join(userDataRoot, "profiles");
+  let profiles = 0;
+  let removed = 0;
+  let prefsCleaned = 0;
+  if (!fs.existsSync(profilesDir)) return { profiles, removed, prefsCleaned, cacheRemoved };
+
+  for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    profiles += 1;
+    const result = purgeSurfsharkExtensionPrefs(path.join(profilesDir, entry.name));
+    if (result.removed > 0) {
+      removed += result.removed;
+      prefsCleaned += 1;
+    }
+  }
+  if (!cacheRemoved) markSurfsharkPurgeComplete(userDataRoot);
+  return { profiles, removed, prefsCleaned, cacheRemoved, skipped: false };
 }
 
 function removeExtensionFromPrefs(prefs, extId) {
@@ -416,4 +549,7 @@ module.exports = {
   isIdentityExtensionMeta,
   isBrokenExtensionPath,
   isCloakbrowserBundlePath,
+  purgeSurfsharkExtensionPrefs,
+  purgeSurfsharkExtensionCache,
+  purgeAllProfilesSurfshark,
 };

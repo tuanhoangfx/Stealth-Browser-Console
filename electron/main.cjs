@@ -16,6 +16,8 @@ const {
   purgeAllProfilesIdentityToolbar,
   purgeAllProfilesBrokenExtensionPrefs,
   purgeAllProfilesStaleCookieBridgePrefs,
+  purgeAllProfilesSurfshark,
+  purgeSurfsharkExtensionCache,
 } = require("./lib/profile-chrome-cleanup.cjs");
 const {
   warmCookieBridgeStoreCache,
@@ -23,6 +25,7 @@ const {
 } = require("./lib/cookie-bridge-store.cjs");
 const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
 const { ensureCloakbrowserExtensionStage } = require("./lib/cloakbrowser-extension-stage.cjs");
+const { packagedContentSecurityPolicy } = require("./lib/packaged-csp.cjs");
 const { getCookieBridgeStatus } = require("./lib/cookie-bridge-status.cjs");
 const { runOpenUrl } = require("./automation/open-url.cjs");
 const {
@@ -355,7 +358,9 @@ function loadP0007ApiKey() {
   if (!hit) return null;
   const parsed = hit.data;
   const keys = parsed?.keys && typeof parsed.keys === "object" ? parsed.keys : {};
-  const apiKey = String(keys["stealth-console"] || keys["other-tools"] || "").trim();
+  const apiKey = String(
+    keys["platform-tools"] || keys["other-tools"] || keys["stealth-console"] || keys["cursor-ide"] || "",
+  ).trim();
   if (!apiKey) return null;
   const baseUrl = String(parsed.canonicalBaseUrl || parsed.activeBaseUrl || "").trim();
   return { apiKey, baseUrl: baseUrl || "https://9router.infi.io.vn/v1", source: hit.source };
@@ -506,17 +511,7 @@ async function loadApplication(win) {
  */
 function bindContentSecurityPolicy() {
   if (!app.isPackaged) return;
-  const policy = [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
-    "font-src 'self' data:",
-    "connect-src 'self'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "frame-ancestors 'none'"
-  ].join("; ");
+  const policy = packagedContentSecurityPolicy();
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
@@ -621,28 +616,9 @@ app.whenReady().then(async () => {
     // best-effort — remove rolled-back workflow side panel bundles
   }
   try {
-    purgeIdentityToolbarRoot(userDataRoot());
-    const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
-    console.log(
-      `[legacy-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
-    );
-    const broken = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
-    if (broken.removed > 0) {
-      console.log(
-        `[extension-purge] startup profiles=${broken.profiles} brokenRemoved=${broken.removed} prefsCleaned=${broken.prefsCleaned}`,
-      );
-    }
-    const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
-    if (bridgeDir) {
-      const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
-      if (stale.removed > 0) {
-        console.log(
-          `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
-        );
-      }
-    }
+    purgeSurfsharkExtensionCache(userDataRoot());
   } catch {
-    // best-effort — drop cached identity-toolbar bundles from pre-v0.5.23 installs
+    // fast sync — block Surfshark load-extension path before first profile launch
   }
   bindContentSecurityPolicy();
   bindIpc();
@@ -655,6 +631,41 @@ app.whenReady().then(async () => {
   sessionTray.start();
   bindRouterApi();
   await createWindow();
+
+  setImmediate(() => {
+    try {
+      purgeIdentityToolbarRoot(userDataRoot());
+      const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
+      if (bulk.removed > 0) {
+        console.log(
+          `[legacy-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
+        );
+      }
+      const surfshark = purgeAllProfilesSurfshark(userDataRoot());
+      if (!surfshark.skipped && (surfshark.removed > 0 || surfshark.cacheRemoved)) {
+        console.log(
+          `[surfshark-purge] startup profiles=${surfshark.profiles} removed=${surfshark.removed} prefsCleaned=${surfshark.prefsCleaned} cacheRemoved=${surfshark.cacheRemoved}`,
+        );
+      }
+      const broken = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
+      if (broken.removed > 0) {
+        console.log(
+          `[extension-purge] startup profiles=${broken.profiles} brokenRemoved=${broken.removed} prefsCleaned=${broken.prefsCleaned}`,
+        );
+      }
+      const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
+      if (bridgeDir) {
+        const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
+        if (stale.removed > 0) {
+          console.log(
+            `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
+          );
+        }
+      }
+    } catch {
+      // best-effort — drop cached identity-toolbar bundles from pre-v0.5.23 installs
+    }
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

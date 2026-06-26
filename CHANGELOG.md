@@ -1,5 +1,20 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-26 — v0.7.7 — Packaged auth + known-good rollback
+
+- Version: `0.7.7`
+- Timestamp: 2026-06-26 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Tag: `v0.7.7-stable`
+
+### Changes
+
+- **Packaged auth** — CSP allows `*.supabase.co` (fixes login on Setup.exe).
+- **Login icon** — 56px brand mark via `import.meta.url`.
+- **Surfshark** — purge on startup + block load-extension path; fast-launch skips redundant prefs IO.
+- **Known-good** — `config/known-good.json`, snapshot/restore scripts, workspace skill `p00xx-known-good-rollback`.
+
 ## 2026-06-26 — v0.7.4 — Single GitHub release per tag
 
 - Version: `0.7.4`

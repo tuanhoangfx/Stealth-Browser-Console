@@ -19,6 +19,7 @@ run("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
 run("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
 run("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
 run("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);
+run("packaged-auth-smoke", "node", ["scripts/smoke-packaged-auth.mjs", "dist/index.html"]);
 
 const fast = process.argv.includes("--fast") || process.env.P0003_TEST_FAST === "1";
 const liveE2e = [
@@ -47,6 +48,7 @@ run("profile-identity", "node", ["--test", "electron/profile-identity.test.cjs"]
 run("directory-id-search", "node", ["--test", "electron/lib/directory-id-search.test.cjs"]);
 run("profile-chrome-preferences", "node", ["--test", "electron/profile-chrome-preferences.test.cjs"]);
 run("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
+run("packaged-csp", "node", ["--test", "electron/lib/packaged-csp.test.cjs"]);
 run("profile-chrome-session", "node", ["--test", "electron/lib/profile-chrome-session.test.cjs"]);
 run("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guard.test.cjs"]);
 run("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "label": "2026-06-26-stable",
+  "version": "0.7.7",
+  "gitCommit": null,
+  "gitTag": "v0.7.7-stable",
+  "notes": "Packaged auth CSP, login icon 56px, Surfshark purge, fast launch. Run snapshot-known-good after commit+tag to pin commit hash.",
+  "backup": {
+    "dir": "dist-desktop/known-good",
+    "installer": "Stealth-Browser-Console-Setup-0.7.7.exe",
+    "winUnpacked": "win-unpacked",
+    "sha512": null,
+    "capturedAt": "2026-06-26T14:13:32.197Z"
+  },
+  "restore": {
+    "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
+    "verifyAuth": "node scripts/smoke-packaged-auth.mjs dist/index.html"
+  },
+  "checklist": [
+    "Sign-in works on packaged exe (not only dev)",
+    "No Surfshark in extensions / load-extension",
+    "Profile Run opens in <5s typical",
+    "git status clean or commit recorded in gitCommit"
+  ]
+}
