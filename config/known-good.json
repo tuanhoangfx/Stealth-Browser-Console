@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "label": "2026-06-26-stable",
   "version": "0.7.7",
-  "gitCommit": null,
+  "gitCommit": "53d0dfa",
   "gitTag": "v0.7.7-stable",
   "notes": "Packaged auth CSP, login icon 56px, Surfshark purge, fast launch. Run snapshot-known-good after commit+tag to pin commit hash.",
   "backup": {

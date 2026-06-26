@@ -19,6 +19,7 @@ out/
 # Env & secrets (hub keys, tokens)
 .env.local
 .env*.local
+config/router.local.json
 
 # OS
 Thumbs.db
