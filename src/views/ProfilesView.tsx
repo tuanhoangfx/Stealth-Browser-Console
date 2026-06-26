@@ -16,6 +16,7 @@ import {
 import { useProfilesDirectoryChrome } from "../features/profiles/useProfilesDirectoryChrome";
 import type { StealthProfileSortKey, StealthProfileSortDirection } from "../features/profiles/StealthProfileDirectoryTable";
 import { migrateProfilesDisplayPrefsFromUrl } from "../lib/profile-display-prefs-migrate";
+import { prefetchWorkflowChunks } from "../lib/prefetch-workflow-chunks";
 
 export const ProfilesView = memo(function ProfilesView({
   headerActions,
@@ -25,6 +26,9 @@ export const ProfilesView = memo(function ProfilesView({
   engineStatus?: "checking" | "ready" | "offline";
 }) {
   const { syncBusy } = useStealthShell();
+  useEffect(() => {
+    prefetchWorkflowChunks();
+  }, []);
   const { profiles, groups, catalogStats, openOne, closeOne, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
     useProfilesRuntime();
   const [search, setSearch] = useState("");

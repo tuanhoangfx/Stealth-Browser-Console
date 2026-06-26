@@ -19,6 +19,25 @@ run("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
 run("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
 run("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
 run("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);
+
+const fast = process.argv.includes("--fast") || process.env.P0003_TEST_FAST === "1";
+const liveE2e = [
+  ["electron-e2e-smoke", "node", ["electron/e2e/smoke-harness.cjs"]],
+  ["fingerprint-check-smoke", "node", ["electron/e2e/fingerprint-check-smoke.cjs"]],
+  ["proxy-smoke", "node", ["electron/e2e/proxy-smoke.cjs"]],
+  ["relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]],
+  ["workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]],
+  ["workflow-on-open-smoke", "node", ["electron/e2e/workflow-on-open-smoke.cjs"]],
+  ["launch-vs-run-smoke", "node", ["electron/e2e/launch-vs-run-smoke.cjs"]],
+  ["no-sandbox-flag-smoke", "node", ["electron/e2e/no-sandbox-flag-smoke.cjs"]],
+];
+
+if (fast) {
+  console.log("test:fast — skip live CloakBrowser e2e smokes (use test:unit for full release)");
+} else {
+  for (const [label, cmd, args] of liveE2e) run(label, cmd, args);
+}
+
 run("profile-service", "node", ["electron/db/profile-service.test.cjs"]);
 run("profile-search-regression", "node", ["electron/db/profile-search-regression.test.cjs"]);
 run("profile-chrome-columns-migration", "node", ["--test", "electron/db/profile-chrome-columns-migration.test.cjs"]);
@@ -33,11 +52,3 @@ run("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guar
 run("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);
 run("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
 run("api-routes", "node", ["electron/api-routes.test.cjs"]);
-run("electron-e2e-smoke", "node", ["electron/e2e/smoke-harness.cjs"]);
-run("fingerprint-check-smoke", "node", ["electron/e2e/fingerprint-check-smoke.cjs"]);
-run("proxy-smoke", "node", ["electron/e2e/proxy-smoke.cjs"]);
-run("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
-run("workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]);
-run("workflow-on-open-smoke", "node", ["electron/e2e/workflow-on-open-smoke.cjs"]);
-run("launch-vs-run-smoke", "node", ["electron/e2e/launch-vs-run-smoke.cjs"]);
-run("no-sandbox-flag-smoke", "node", ["electron/e2e/no-sandbox-flag-smoke.cjs"]);

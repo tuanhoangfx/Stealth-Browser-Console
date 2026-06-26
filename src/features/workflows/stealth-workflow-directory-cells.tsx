@@ -17,7 +17,7 @@ import {
 import {
   workflowDisplayId,
   workflowDisplayPlatform,
-  workflowIconFor,
+  workflowDirectoryFallbackIcon,
   workflowPlatformBrandMatch,
   workflowPlatformTone,
 } from "./workflow-display";
@@ -57,8 +57,8 @@ export function renderStealthWorkflowDirectoryBodyCell(
   const displayId = workflowDisplayId(workflow.id, opts.defaultWorkflows);
   const displayPlatform = workflowDisplayPlatform(workflow);
   const brand = workflowPlatformBrandMatch(workflow);
-  const platformSvgUrl = brand?.src ?? "";
-  const WorkflowIcon = platformSvgUrl ? undefined : workflowIconFor(workflow.icon);
+  const platformImageSrc = brand?.src ?? "";
+  const FallbackIcon = platformImageSrc ? undefined : workflowDirectoryFallbackIcon(workflow, displayPlatform);
 
   switch (key as StealthWorkflowColumnKey) {
     case "platform":
@@ -66,8 +66,9 @@ export function renderStealthWorkflowDirectoryBodyCell(
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <span className="workflow-platform-cell">
             <HubDirectoryIconCell
-              icon={platformSvgUrl ? undefined : WorkflowIcon}
-              imageSrc={platformSvgUrl}
+              icon={FallbackIcon}
+              imageSrc={platformImageSrc || undefined}
+              imageShell={brand?.shell}
               iconClassName={workflowPlatformTone(displayPlatform)}
               label={displayPlatform}
               title={displayPlatform}

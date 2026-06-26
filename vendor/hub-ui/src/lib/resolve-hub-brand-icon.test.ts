@@ -21,7 +21,7 @@ describe("resolveHubBrandIconByMatch", () => {
   it("maps Gmail to Google icon", () => {
     const hit = resolveHubBrandIconByMatch("Gmail");
     expect(hit?.label).toBe("Google");
-    expect(hit?.src).toContain("/icons/google.svg");
+    expect(hit?.src).toBe("/icons/google.svg");
   });
 
   it("maps ChatGPT to OpenAI brand icon", () => {
@@ -41,7 +41,7 @@ describe("resolveHubBrandIconByMatch", () => {
 
   it("maps Github Copilot before Github", () => {
     expect(resolveHubBrandIconByMatch("Github Copilot")?.src).toBe("/assets/brand-icons/github-copilot.png");
-    expect(resolveHubBrandIconByMatch("Github")?.src).toBe("/icons/github.svg");
+    expect(resolveHubBrandIconByMatch("Github")?.src).toBe("/assets/brand-icons/github.png");
   });
 
   it("maps VPN Surfshark before generic surf", () => {

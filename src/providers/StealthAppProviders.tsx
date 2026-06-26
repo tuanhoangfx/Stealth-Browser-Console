@@ -60,12 +60,10 @@ function StealthShellBridge({
 function StealthWorkflowProviders({
   view,
   setView,
-  workflowEditorActive,
   children,
 }: {
   view: StealthScreen;
   setView: (view: StealthScreen) => void;
-  workflowEditorActive: boolean;
   children: ReactNode;
 }) {
   const { profiles, selectedProfiles, appendAutomationRun } = useProfilesRuntime();
@@ -81,11 +79,7 @@ function StealthWorkflowProviders({
 
   return (
     <WorkflowPickerProvider value={workflowPicker}>
-      {workflowEditorActive ? (
-        <WorkflowEditorProvider value={workflowEditor}>{runtime}</WorkflowEditorProvider>
-      ) : (
-        runtime
-      )}
+      <WorkflowEditorProvider value={workflowEditor}>{runtime}</WorkflowEditorProvider>
     </WorkflowPickerProvider>
   );
 }
@@ -102,7 +96,6 @@ export function StealthAppProviders({
   children: ReactNode;
 }) {
   const [theme, setThemeState] = useState<StealthTheme>(() => readStoredThemeMode());
-  const workflowEditorActive = visited.has("workflow");
 
   const setTheme = useCallback((next: StealthTheme) => {
     setThemeState(next);
@@ -113,7 +106,7 @@ export function StealthAppProviders({
   return (
     <ProfilesRuntimeProvider view={view}>
       <StealthShellBridge view={view} setView={setView} theme={theme} setTheme={setTheme}>
-        <StealthWorkflowProviders view={view} setView={setView} workflowEditorActive={workflowEditorActive}>
+        <StealthWorkflowProviders view={view} setView={setView}>
           {children}
         </StealthWorkflowProviders>
       </StealthShellBridge>

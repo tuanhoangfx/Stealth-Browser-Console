@@ -794,15 +794,17 @@
     "id": "github",
     "label": "GitHub",
     "match": "github",
-    "src": "/icons/github.svg",
-    "shell": "tile"
+    "src": "/assets/brand-icons/github.png",
+    "shell": "tile",
+    "faviconDomain": "github.com"
   },
   {
     "id": "microsoft",
     "label": "Microsoft",
     "match": "microsoft|outlook|hotmail|live|azure|xbox",
-    "src": "/icons/microsoft.svg",
-    "shell": "bare"
+    "src": "/assets/brand-icons/microsoft.png",
+    "shell": "bare",
+    "faviconDomain": "microsoft.com"
   },
   {
     "id": "facebook",

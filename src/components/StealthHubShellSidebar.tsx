@@ -20,6 +20,7 @@ import { isStealthHubAuthEnabled } from "../lib/stealth-auth-policy";
 import { setOfflineMode } from "../lib/offlineMode";
 import { STEALTH_NAV_STRUCTURE, STEALTH_NAV_SUBNAV_PREFIX } from "../lib/stealth-nav-structure";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "../lib/stealth-product";
+import { prefetchWorkflowChunks } from "../lib/prefetch-workflow-chunks";
 import { isHubSupabaseConfigured } from "../lib/hub-supabase-env";
 import { getIdentitySupabase } from "../lib/supabase-identity";
 import type { StealthScreen } from "../lib/stealth-screen";
@@ -72,10 +73,7 @@ export function StealthHubShellSidebar({
           showToggleIcon={false}
           onNavigateScreen={onNavigate}
           onPrefetchScreen={(nextScreen) => {
-            if (nextScreen === "workflow") {
-              void import("../views/WorkflowView");
-              void import("../features/workflows/ScriptsEditorPane");
-            }
+            if (nextScreen === "workflow") prefetchWorkflowChunks();
           }}
           onSelectView={() => {}}
         />

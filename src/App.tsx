@@ -11,6 +11,9 @@ import { AuthSessionProvider } from "./features/auth/AuthSessionProvider";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
 import type { StealthScreen } from "./lib/stealth-screen";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
+import { prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
+
+prefetchWorkflowChunks();
 
 export function App() {
   return (
@@ -27,7 +30,7 @@ export function App() {
 
 function StealthAppRoot() {
   const [view, setView] = useState<StealthScreen>("profiles");
-  const [visited, setVisited] = useState<Set<StealthScreen>>(() => new Set(["profiles"]));
+  const [visited, setVisited] = useState<Set<StealthScreen>>(() => new Set(["profiles", "workflow"]));
   const mainRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {

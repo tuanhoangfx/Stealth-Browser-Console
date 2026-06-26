@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 /**
- * Icon sync + production build + electron-builder (Windows NSIS x64).
+ * Icon sync + production build + electron-builder (Windows NSIS x64 by default).
  * Stages in %TEMP% first — avoids Windows EPERM when renaming win-unpacked inside the repo.
+ *
+ * Flags:
+ *   --publish never|always
+ *   --target dir
+ *   --with-portable   also build portable exe (slower; ~doubles pack+sign+upload)
+ *   --skip-build      reuse dist/ when index.html exists
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -19,6 +25,8 @@ const publish =
     ? process.argv[process.argv.indexOf("--publish") + 1]
     : "never";
 const targetDir = process.argv.includes("--target") && process.argv[process.argv.indexOf("--target") + 1] === "dir";
+const withPortable = process.argv.includes("--with-portable");
+const skipBuild = process.argv.includes("--skip-build");
 
 function runNodeScript(rel, extraArgs = []) {
   const result = spawnSync(node, [path.join(root, rel), ...extraArgs], winSpawnOpts({ cwd: root, stdio: "inherit" }));
@@ -43,7 +51,31 @@ function copyDir(src, dest) {
     const from = path.join(src, entry.name);
     const to = path.join(dest, entry.name);
     if (entry.isDirectory()) copyDir(from, to);
-    else fs.copyFileSync(from, to);
+    else copyFileWithRetry(from, to);
+  }
+}
+
+function sleepMs(ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    /* spin */
+  }
+}
+
+function copyFileWithRetry(from, to, attempts = 5) {
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  for (let i = 0; i < attempts; i++) {
+    try {
+      fs.copyFileSync(from, to);
+      return;
+    } catch (e) {
+      const code = e && typeof e === "object" ? e.code : "";
+      if ((code === "EBUSY" || code === "EPERM") && i < attempts - 1) {
+        sleepMs(400);
+        continue;
+      }
+      throw e;
+    }
   }
 }
 
@@ -66,8 +98,48 @@ function copyDirBestEffort(src, dest) {
   copyDir(src, dest);
 }
 
+function distFresh() {
+  const index = path.join(root, "dist", "index.html");
+  if (!fs.existsSync(index)) return false;
+  const built = fs.statSync(index).mtimeMs;
+  const viteConfig = path.join(root, "vite.config.ts");
+  const srcApp = path.join(root, "src", "App.tsx");
+  const newestSrc = Math.max(fs.statSync(viteConfig).mtimeMs, fs.statSync(srcApp).mtimeMs);
+  return built >= newestSrc;
+}
+
+function uploadMissingAssets(tag, files) {
+  const existing = spawnSync("gh", ["release", "view", tag, "--json", "assets"], {
+    encoding: "utf8",
+    shell: process.platform === "win32",
+    cwd: root,
+  });
+  let names = [];
+  if (existing.status === 0) {
+    try {
+      names = JSON.parse(existing.stdout).assets?.map((a) => a.name) || [];
+    } catch {
+      names = [];
+    }
+  }
+  const missing = files.filter((f) => fs.existsSync(f) && !names.includes(path.basename(f)));
+  if (missing.length === 0) return;
+  console.log(`\n==> gh release upload ${tag} (${missing.length} missing assets)`);
+  const res = spawnSync("gh", ["release", "upload", tag, ...missing, "--clobber"], {
+    cwd: root,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+  if (res.status !== 0) process.exit(res.status ?? 1);
+}
+
 runNodeScript("scripts/sync-app-icon.cjs");
-runNodeScript("scripts/run-build.mjs");
+
+if (!skipBuild || !distFresh()) {
+  runNodeScript("scripts/run-build.mjs");
+} else {
+  console.log("run-electron-package: skip run-build.mjs (dist/ fresh, --skip-build)");
+}
 
 if (process.platform === "win32") {
   const ensureVs = spawnSync(
@@ -82,12 +154,17 @@ if (process.platform === "win32") {
 const stagingOutput = path.join(os.tmpdir(), `p0003-eb-${Date.now()}`);
 rmDir(stagingOutput);
 
+const winTargets = withPortable ? ["nsis", "portable"] : ["nsis"];
 const builderArgs = [
-  ...(targetDir ? ["--dir"] : ["--win", "nsis", "portable", "--x64"]),
+  ...(targetDir ? ["--dir"] : ["--win", ...winTargets, "--x64"]),
   "--publish",
   publish,
   `--config.directories.output=${stagingOutput}`,
 ];
+
+console.log(
+  `run-electron-package: targets=${targetDir ? "dir" : winTargets.join("+")} publish=${publish}${withPortable ? " (portable adds ~3–5 min)" : ""}`,
+);
 
 const result = spawnSync(node, [findElectronBuilder(), ...builderArgs], winSpawnOpts({ cwd: root, stdio: "inherit" }));
 if ((result.status ?? 1) !== 0) {
@@ -98,12 +175,18 @@ if ((result.status ?? 1) !== 0) {
 copyDirBestEffort(stagingOutput, productOutput);
 rmDir(stagingOutput);
 
+const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const version = pkg.version;
+const tag = `v${version}`;
+
 const setup = fs
   .readdirSync(productOutput)
   .find((name) => name.startsWith("Stealth-Browser-Console-Setup-") && name.endsWith(".exe"));
-const portable = fs
-  .readdirSync(productOutput)
-  .find((name) => name.startsWith("Stealth-Browser-Console-Portable-") && name.endsWith(".exe"));
+const portable = withPortable
+  ? fs.readdirSync(productOutput).find((name) => name.startsWith("Stealth-Browser-Console-Portable-") && name.endsWith(".exe"))
+  : null;
+const latestYml = path.join(productOutput, "latest.yml");
+
 if (setup) {
   const full = path.join(productOutput, setup);
   const mb = (fs.statSync(full).size / (1024 * 1024)).toFixed(1);
@@ -115,6 +198,17 @@ if (portable) {
   console.log(`Portable (no admin):\n  ${full}\n  (${mb} MB)\n`);
 } else if (setup) {
   console.log("");
+}
+
+if (publish === "always") {
+  const uploadFiles = [latestYml, setup && path.join(productOutput, setup), portable && path.join(productOutput, portable)].filter(
+    Boolean,
+  );
+  uploadMissingAssets(tag, uploadFiles);
+
+  const verifyArgs = ["--tag", tag];
+  if (withPortable) verifyArgs.push("--require-portable");
+  runNodeScript("scripts/verify-github-release-assets.mjs", verifyArgs);
 }
 
 process.exit(0);

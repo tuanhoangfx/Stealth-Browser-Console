@@ -27,6 +27,7 @@ function runToolScript(name, extraArgs = []) {
 }
 
 runToolScript("sync-hub-ui-vendor.cjs");
+runToolScript("sync-hub-brand-icons.mjs", ["--code", "P0003"]);
 runToolScript("sync-hub-identity-vendor.cjs");
 runToolScript("verify-hub-vendor-prereqs.mjs", ["--code", "P0003"]);
 run("sync-hub-env.mjs");

@@ -1,6 +1,17 @@
 import type { FilterDef } from "@tool-workspace/hub-ui";
+import { resolveHubBrandIconByMatch } from "@tool-workspace/hub-ui";
 import type { WorkflowConfig } from "./workflow-types";
 import { workflowDisplayPlatform } from "./workflow-display";
+
+function platformFilterOption(value: string, count: number) {
+  const brand = resolveHubBrandIconByMatch(value);
+  return {
+    value,
+    label: value,
+    count,
+    ...(brand ? { iconSrc: brand.src, iconShell: brand.shell } : {}),
+  };
+}
 
 export function buildWorkflowFilters(workflows: WorkflowConfig[]): FilterDef[] {
   const groupCounts = new Map<string, number>();
@@ -29,7 +40,7 @@ export function buildWorkflowFilters(workflows: WorkflowConfig[]): FilterDef[] {
       totalCount: workflows.length,
       options: [...platformCounts.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([value, count]) => ({ value, label: value, count }))
+        .map(([value, count]) => platformFilterOption(value, count))
     }
   ];
 }

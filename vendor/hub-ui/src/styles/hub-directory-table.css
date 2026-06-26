@@ -415,6 +415,19 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   width: 14px;
   height: 14px;
   object-fit: contain;
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* GitHub tile mark — optional white pad inside platform tone ring only */
+.hub-directory-brand-icon--tile {
+  padding: 1px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.94);
+  object-fit: contain;
 }
 
 .hub-directory-icon-cell__label {

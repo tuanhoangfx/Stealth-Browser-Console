@@ -3,7 +3,12 @@ param(
   [ValidateSet("", "patch", "minor", "major")]
   [string]$Bump = "",
   [switch]$Publish,
-  [switch]$SkipInstall
+  [switch]$SkipInstall,
+  [switch]$SkipTests,
+  [switch]$SkipBuild,
+  [switch]$WithPortable,
+  [switch]$SkipPreRelease,
+  [switch]$FastTests
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +40,12 @@ if ($Version.Trim() -and $Bump.Trim()) {
 
 Push-Location $RepoRoot
 try {
+  if (-not $SkipPreRelease) {
+    Invoke-Step "Pre-release (stop Stealth / unlock dist-desktop)" {
+      powershell -ExecutionPolicy Bypass -File scripts/pre-release-desktop.ps1
+    }
+  }
+
   if (-not $SkipInstall) {
     Invoke-Step "Install locked dependencies" {
       pnpm install --frozen-lockfile
@@ -55,16 +66,25 @@ try {
     }
   }
 
-  Invoke-Step "Quality gates (unit tests)" {
-    pnpm test:unit
+  if (-not $SkipTests) {
+    $testLabel = if ($FastTests) { "Quality gates (test:fast)" } else { "Quality gates (test:unit full)" }
+    Invoke-Step $testLabel {
+      if ($FastTests) {
+        node scripts/run-unit-tests.mjs --fast
+      } else {
+        pnpm test:unit
+      }
+    }
   }
 
-  Invoke-Step "Verify Visual Studio Build Tools" {
-    powershell -ExecutionPolicy Bypass -File scripts/ensure-vs-build-tools.ps1
-  }
+  if (-not $SkipBuild) {
+    Invoke-Step "Verify Visual Studio Build Tools" {
+      powershell -ExecutionPolicy Bypass -File scripts/ensure-vs-build-tools.ps1
+    }
 
-  Invoke-Step "Rebuild native modules for Electron" {
-    node scripts/ensure-better-sqlite3.mjs
+    Invoke-Step "Rebuild native modules for Electron" {
+      node scripts/ensure-better-sqlite3.mjs
+    }
   }
 
   if ($Publish) {
@@ -87,8 +107,13 @@ try {
   }
 
   $PublishMode = if ($Publish) { "always" } else { "never" }
-  Invoke-Step "Build Windows installer (publish: $PublishMode)" {
-    node scripts/run-electron-package.mjs --publish $PublishMode
+  $packArgs = @("scripts/run-electron-package.mjs", "--publish", $PublishMode)
+  if ($WithPortable) { $packArgs += "--with-portable" }
+  if ($SkipBuild) { $packArgs += "--skip-build" }
+
+  $targetLabel = if ($WithPortable) { "NSIS + portable" } else { "NSIS installer only" }
+  Invoke-Step "Build Windows $targetLabel (publish: $PublishMode)" {
+    node @packArgs
   }
 
   if ($Publish) {
@@ -97,8 +122,15 @@ try {
     Invoke-Step "Sync release metadata (post-gh-release)" {
       node (Join-Path $ToolScripts "post-gh-release.mjs") --product-root $RepoRoot --tag $tag
     }
-    Invoke-Step "Verify auto-update feed (latest.yml + assets)" {
-      node (Join-Path $ToolScripts "verify-desktop-auto-update.mjs") --product-root $RepoRoot --tag $tag --release
+    Invoke-Step "Verify auto-update feed (latest.yml + installer)" {
+      $verifyArgs = @(
+        (Join-Path $ToolScripts "verify-desktop-auto-update.mjs"),
+        "--product-root", $RepoRoot,
+        "--tag", $tag,
+        "--release"
+      )
+      if ($WithPortable) { $verifyArgs += "--require-portable" }
+      node @verifyArgs
     }
   }
 }

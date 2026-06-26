@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -22,6 +22,7 @@
     "build": "node scripts/run-build.mjs",
     "test": "pnpm test:unit",
     "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:fast": "node scripts/run-unit-tests.mjs --fast",
     "test:smoke": "pnpm build",
     "engine:check-pin": "node scripts/check-cloakbrowser-pin.mjs",
     "engine:bump": "node scripts/bump-cloakbrowser.mjs",
@@ -32,6 +33,7 @@
     "pack": "node scripts/run-electron-package.mjs --target dir",
     "pack:portable": "node scripts/run-portable-pack.mjs",
     "desktop:dist": "node scripts/run-electron-package.mjs --publish never",
+    "desktop:dist:portable": "node scripts/run-electron-package.mjs --publish never --with-portable",
     "desktop:open": "node scripts/desktop-open.mjs",
     "desktop:shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
     "desktop:release": "powershell -ExecutionPolicy Bypass -File scripts/release-desktop.ps1",
@@ -103,12 +105,6 @@
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
           "arch": [
             "x64"
           ]

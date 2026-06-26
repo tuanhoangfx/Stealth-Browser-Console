@@ -1,5 +1,27 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-26 — v0.7.3 — NSIS-only release pipeline (faster build)
+
+- Version: `0.7.3`
+- Timestamp: 2026-06-26 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.7.3
+- Prompt: Faster desktop release — NSIS installer only, asset verify, pre-release checklist
+
+### Changes
+
+- **Release** — default **NSIS Setup only** (portable opt-in via `--with-portable` / `desktop:dist:portable`).
+- **test:fast** — skip live CloakBrowser e2e smokes for day-to-day builds (~3–5 min saved).
+- **pre-release-desktop.ps1** — stop Stealth processes before packaging (fix EBUSY).
+- **verify-github-release-assets.mjs** — assert Setup.exe + latest.yml on GitHub after publish; `gh release upload --clobber` fallback.
+- **run-electron-package** — `--skip-build` when `dist/` fresh; copy retry on EBUSY.
+
+### Verification
+
+- `pnpm test:fast` — passed
+- NSIS publish + `verify-github-release-assets` — release pipeline
+
 ## 2026-06-25 — v0.7.2 — Hub workspace auth + profile modal polish
 
 - Version: `0.7.2`

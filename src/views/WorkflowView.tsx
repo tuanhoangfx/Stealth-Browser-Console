@@ -1,6 +1,4 @@
 import { lazy, memo, Suspense, useCallback, useMemo, useState, type MouseEvent, type ReactNode } from "react";
-import { ClipboardList } from "lucide-react";
-import { HubLoadingView } from "@tool-workspace/hub-ui";
 import "../theme/stealth-scripts-hub-layout.css";
 import "../theme/stealth-workflow-steps.css";
 import { useWorkflowEditor } from "../context/workflow-editor-context";
@@ -14,14 +12,15 @@ const ScriptsEditorPane = lazy(() =>
   import("../features/workflows/ScriptsEditorPane").then((m) => ({ default: m.ScriptsEditorPane })),
 );
 
-function EditorLoadingFallback() {
+function ScriptsEditorPaneSkeleton() {
   return (
-    <HubLoadingView
-      icon={ClipboardList}
-      ariaLabel="Loading workflow editor"
-      variant="overlay"
-      portaled={false}
-    />
+    <div className="script-editor-stack min-h-0 min-w-0 flex-1 overflow-hidden" aria-busy="true" aria-label="Loading workflow editor">
+      <div className="workflow-script-flow-lazy min-h-0 min-w-0 flex-1 h-full p-4">
+        <div className="workflow-script-flow-skeleton" role="status">
+          <span className="workflow-script-flow-skeleton__pulse" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -40,9 +39,9 @@ export const WorkflowView = memo(function WorkflowView({ headerActions }: { head
       total: workflowConfigs.length,
       visible: filteredWorkflows.length,
       checked: selectedWorkflowCount,
-      steps: activeWorkflowConfig.steps.length
+      steps: activeWorkflowConfig.steps.length,
     }),
-    [workflowConfigs.length, filteredWorkflows.length, selectedWorkflowCount, activeWorkflowConfig.steps.length]
+    [workflowConfigs.length, filteredWorkflows.length, selectedWorkflowCount, activeWorkflowConfig.steps.length],
   );
 
   return (
@@ -52,7 +51,7 @@ export const WorkflowView = memo(function WorkflowView({ headerActions }: { head
           <aside className="script-workflows stealth-workflow-directory-pane min-h-0 min-w-0">
             <ScriptsWorkflowDirectory onContextMenu={handleWorkflowContextMenu} />
           </aside>
-          <Suspense fallback={<EditorLoadingFallback />}>
+          <Suspense fallback={<ScriptsEditorPaneSkeleton />}>
             <ScriptsEditorPane />
           </Suspense>
         </section>

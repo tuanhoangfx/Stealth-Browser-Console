@@ -1,5 +1,38 @@
 # Release log — Stealth Browser Console
 
+## Desktop release workflow (v0.7.3+)
+
+**Default:** NSIS installer only (no portable — saves ~3–5 min). Close Stealth Browser before packaging.
+
+| Goal | Command | Time |
+|------|---------|------|
+| Dev UI build | `pnpm build` | ~30s |
+| Fast gates | `pnpm test:fast` | ~2–3 min |
+| Full gates (major release) | `pnpm test:unit` | ~8 min |
+| Local installer (no upload) | `pnpm desktop:dist` | ~5 min |
+| **Publish GitHub Release** | see below | ~6 min |
+
+```powershell
+cd E:\Dev\Tool\P0003-Stealth-Browser-Console
+$env:GH_TOKEN = (gh auth token)
+powershell -File scripts/release-desktop.ps1 -Publish -SkipInstall -FastTests
+```
+
+| Flag | Effect |
+|------|--------|
+| `-FastTests` | Skip live CloakBrowser e2e smokes |
+| `-SkipInstall` | Skip `pnpm install` when lockfile unchanged |
+| `-SkipBuild` | Skip VS/sqlite rebuild in script (package step still builds UI if needed) |
+| `-WithPortable` | Also build portable exe (slower) |
+
+**Pre-release:** `scripts/pre-release-desktop.ps1` stops Stealth processes (avoids `EBUSY` on `dist-desktop`).
+
+**After publish:** `verify-github-release-assets.mjs` checks Setup.exe + `latest.yml` on GitHub; auto `gh release upload --clobber` if missing.
+
+**Latest release:** [v0.7.3](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.7.3)
+
+---
+
 ## v0.4.5 — AG Appeal + Steps Hub-UI (2026-06-17)
 
 - Google Forms AG Appeal workflow runs via script-steps engine

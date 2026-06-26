@@ -23,20 +23,17 @@ export function workflowIconFor(icon: WorkflowIconKey) {
   return Play;
 }
 
-/** Hub-UI brand registry SSOT — match platform label, workflow name, or URL. */
-export function workflowPlatformBrandMatch(workflow: Pick<WorkflowConfig, "name" | "targetUrl" | "platform">) {
+/** Hub-UI brand registry SSOT — match inferred platform label only (directory parity). */
+export function workflowPlatformBrandMatch(workflow: Pick<WorkflowConfig, "targetUrl" | "platform">) {
   const platform = inferWorkflowPlatform(workflow.targetUrl, workflow.platform);
-  return (
-    resolveHubBrandIconByMatch(platform) ??
-    resolveHubBrandIconByMatch(workflow.name) ??
-    resolveHubBrandIconByMatch(workflow.targetUrl)
-  );
+  return resolveHubBrandIconByMatch(platform);
 }
 
 export function workflowPlatformIconFor(platform: string) {
+  const value = platform.toLowerCase();
+  if (value === "generic" || !value.trim()) return Globe2;
   const brand = resolveHubBrandIconByMatch(platform);
   if (brand) return null;
-  const value = platform.toLowerCase();
   if (value.includes("github")) return Github;
   if (value.includes("instagram")) return Instagram;
   if (value.includes("facebook")) return MessageCircle;
@@ -58,7 +55,17 @@ export function inferWorkflowPlatform(targetUrl: string, fallback: string) {
   if (value.includes("instagram.com")) return "Instagram";
   if (value.includes("claude.ai") || value.includes("anthropic.com")) return "Claude";
   if (value.includes("grok.com") || value.includes("x.ai")) return "Grok";
+  if (value.includes("browserleaks.com") || value.includes("example.com")) return "Generic";
   return fallback || "Generic";
+}
+
+/** Directory / rail Lucide fallback — Generic always uses globe (not play/camera per workflow). */
+export function workflowDirectoryFallbackIcon(
+  workflow: Pick<WorkflowConfig, "icon">,
+  displayPlatform: string,
+) {
+  if (displayPlatform === "Generic") return Globe2;
+  return workflowPlatformIconFor(displayPlatform) ?? workflowIconFor(workflow.icon);
 }
 
 export function workflowDisplayPlatform(workflow: WorkflowConfig) {

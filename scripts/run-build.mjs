@@ -29,5 +29,13 @@ function run(bin, args) {
 }
 
 spawnSync(node, [path.join(root, "scripts", "sync-app-version.mjs")], winSpawnOpts({ cwd: root, stdio: "inherit" }));
+const syncBrand = spawnSync(
+  node,
+  [path.join(root, "..", "..", "scripts", "sync-hub-brand-icons.mjs"), "--code", "P0003"],
+  winSpawnOpts({ cwd: root, stdio: "inherit" }),
+);
+if ((syncBrand.status ?? 1) !== 0) process.exit(syncBrand.status ?? 1);
 run(findBin("typescript", ["bin/tsc"]), ["--noEmit"]);
 run(findBin("vite", ["bin/vite.js"]), ["build"]);
+const verifyAssets = spawnSync(node, [path.join(root, "scripts", "verify-brand-assets.mjs"), "--dist"], winSpawnOpts({ cwd: root, stdio: "inherit" }));
+if ((verifyAssets.status ?? 1) !== 0) process.exit(verifyAssets.status ?? 1);
