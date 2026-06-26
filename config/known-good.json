@@ -9,8 +9,8 @@
     "dir": "dist-desktop/known-good",
     "installer": "Stealth-Browser-Console-Setup-0.7.7.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": null,
-    "capturedAt": "2026-06-26T14:13:32.197Z"
+    "sha512": "q0mpn6q8BwEunhSMOsRiqYW1R9QOURnN09e86/C674AoF7k1ZeIeXPhiCNI7ux6q5hn4ivjWMCwD3toXvYVFaA==",
+    "capturedAt": "2026-06-26T14:40:31.582Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
