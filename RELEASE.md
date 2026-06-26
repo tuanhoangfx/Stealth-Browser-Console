@@ -27,7 +27,7 @@ powershell -File scripts/release-desktop.ps1 -Publish -SkipInstall -FastTests
 
 **Pre-release:** `scripts/pre-release-desktop.ps1` stops Stealth processes (avoids `EBUSY` on `dist-desktop`).
 
-**After publish:** `verify-github-release-assets.mjs` checks Setup.exe + `latest.yml` on GitHub; auto `gh release upload --clobber` if missing.
+**After publish:** `verify-github-release-assets.mjs` checks Setup.exe + `latest.yml` on GitHub; single `gh release upload` (electron-builder `--publish never` avoids duplicate releases per tag); `dedupe-github-releases.mjs` cleans legacy duplicates.
 
 **Latest release:** [v0.7.3](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.7.3)
 

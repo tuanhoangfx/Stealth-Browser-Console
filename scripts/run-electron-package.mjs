@@ -133,6 +133,36 @@ function uploadMissingAssets(tag, files) {
   if (res.status !== 0) process.exit(res.status ?? 1);
 }
 
+function ensureGitHubRelease(tag, version) {
+  const view = spawnSync("gh", ["release", "view", tag], {
+    cwd: root,
+    stdio: "ignore",
+    shell: process.platform === "win32",
+  });
+  if (view.status === 0) return;
+  console.log(`\n==> gh release create ${tag}`);
+  const res = spawnSync(
+    "gh",
+    ["release", "create", tag, "--title", version, "--notes", `Desktop release ${tag}. See CHANGELOG.md.`],
+    { cwd: root, stdio: "inherit", shell: process.platform === "win32" },
+  );
+  if (res.status !== 0) process.exit(res.status ?? 1);
+}
+
+function collectPublishArtifacts(outputDir, withPortableFlag) {
+  const files = [];
+  if (!fs.existsSync(outputDir)) return files;
+  for (const name of fs.readdirSync(outputDir)) {
+    const full = path.join(outputDir, name);
+    if (!fs.statSync(full).isFile()) continue;
+    if (name === "latest.yml") files.push(full);
+    if (/^Stealth-Browser-Console-Setup-.*\.exe$/i.test(name)) files.push(full);
+    if (/^Stealth-Browser-Console-Setup-.*\.exe\.blockmap$/i.test(name)) files.push(full);
+    if (withPortableFlag && /^Stealth-Browser-Console-Portable-.*\.exe$/i.test(name)) files.push(full);
+  }
+  return files;
+}
+
 runNodeScript("scripts/sync-app-icon.cjs");
 
 if (!skipBuild || !distFresh()) {
@@ -155,15 +185,18 @@ const stagingOutput = path.join(os.tmpdir(), `p0003-eb-${Date.now()}`);
 rmDir(stagingOutput);
 
 const winTargets = withPortable ? ["nsis", "portable"] : ["nsis"];
+// electron-builder publish per target caused duplicate GitHub releases (nsis + portable).
+// Package locally with --publish never; upload once via gh CLI below.
+const builderPublish = publish === "always" ? "never" : publish;
 const builderArgs = [
   ...(targetDir ? ["--dir"] : ["--win", ...winTargets, "--x64"]),
   "--publish",
-  publish,
+  builderPublish,
   `--config.directories.output=${stagingOutput}`,
 ];
 
 console.log(
-  `run-electron-package: targets=${targetDir ? "dir" : winTargets.join("+")} publish=${publish}${withPortable ? " (portable adds ~3–5 min)" : ""}`,
+  `run-electron-package: targets=${targetDir ? "dir" : winTargets.join("+")} builder-publish=${builderPublish}${publish === "always" ? " (gh upload after pack)" : ""}${withPortable ? " (portable adds ~3–5 min)" : ""}`,
 );
 
 const result = spawnSync(node, [findElectronBuilder(), ...builderArgs], winSpawnOpts({ cwd: root, stdio: "inherit" }));
@@ -201,10 +234,10 @@ if (portable) {
 }
 
 if (publish === "always") {
-  const uploadFiles = [latestYml, setup && path.join(productOutput, setup), portable && path.join(productOutput, portable)].filter(
-    Boolean,
-  );
+  const uploadFiles = collectPublishArtifacts(productOutput, withPortable);
+  ensureGitHubRelease(tag, version);
   uploadMissingAssets(tag, uploadFiles);
+  runNodeScript("scripts/dedupe-github-releases.mjs", ["--tag", tag]);
 
   const verifyArgs = ["--tag", tag];
   if (withPortable) verifyArgs.push("--require-portable");

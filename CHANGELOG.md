@@ -1,5 +1,19 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-06-26 — v0.7.4 — Single GitHub release per tag
+
+- Version: `0.7.4`
+- Timestamp: 2026-06-26 (UTC+7)
+- Type: Patch
+- Status: Committed
+- Prompt: Push v0.7.3 pipeline; fix duplicate GitHub releases; dedupe v0.7.1
+
+### Changes
+
+- **run-electron-package** — electron-builder `--publish never` when publishing; one `gh release create` + upload pass (fixes nsis+portable double-release bug).
+- **dedupe-github-releases.mjs** — drop duplicate releases for the same tag (keeps release with most assets).
+- **GitHub** — removed duplicate `v0.7.1` release (kept 3-asset release).
+
 ## 2026-06-26 — v0.7.3 — NSIS-only release pipeline (faster build)
 
 - Version: `0.7.3`
