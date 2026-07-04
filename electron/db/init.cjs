@@ -361,6 +361,10 @@ function getDb() {
   return dbInstance;
 }
 
+function isDatabaseReady() {
+  return Boolean(dbInstance);
+}
+
 function flushDatabase() {
   if (dbBackend === "better-sqlite3" && nativeDb) {
     nativeDb.pragma("wal_checkpoint(PASSIVE)");
@@ -383,6 +387,7 @@ function closeDatabase() {
 module.exports = {
   openDatabase,
   getDb,
+  isDatabaseReady,
   closeDatabase,
   flushDatabase,
 };

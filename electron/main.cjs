@@ -55,6 +55,7 @@ const {
 
 const sessionManager = new SessionManager();
 const sessionTray = createSessionTray(sessionManager);
+let appShutdownDone = false;
 const DEFAULT_DEV_SERVER_URL = "http://127.0.0.1:5175/";
 
 function userDataRoot() {
@@ -939,10 +940,21 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on("before-quit", () => {
+app.on("before-quit", (event) => {
+  if (appShutdownDone) return;
+  event.preventDefault();
   sessionTray.stop();
-  void sessionManager.closeAll();
-  closeDatabase();
+  void (async () => {
+    try {
+      await sessionManager.closeAll();
+    } catch (error) {
+      console.warn("[shutdown] close sessions:", error instanceof Error ? error.message : error);
+    } finally {
+      closeDatabase();
+      appShutdownDone = true;
+      app.quit();
+    }
+  })();
 });
 
 app.on("window-all-closed", () => {

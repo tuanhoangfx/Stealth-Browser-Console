@@ -1,5 +1,5 @@
 const { randomInt, randomUUID } = require("node:crypto");
-const { getDb } = require("./init.cjs");
+const { getDb, isDatabaseReady } = require("./init.cjs");
 
 const VALID_PLATFORMS = new Set(["windows", "macos", "linux"]);
 const VALID_COLOR_SCHEMES = new Set(["", "light", "dark", "no-preference"]);
@@ -458,6 +458,7 @@ function createProfilesBulkByRange({ start, end, pad = 4, defaults = {} } = {}) 
 // Đổi riêng status — tránh chi phí normalize + double-SELECT của updateProfile.
 // Dùng cho session lifecycle (opening/running/closed/failed) chạy rất thường xuyên.
 function setProfileStatus(id, status) {
+  if (!isDatabaseReady()) return null;
   const now = new Date().toISOString();
   getDb()
     .prepare("UPDATE profiles SET status = ?, updated_at = ? WHERE id = ?")
@@ -466,6 +467,7 @@ function setProfileStatus(id, status) {
 }
 
 function touchLastOpened(id) {
+  if (!isDatabaseReady()) return null;
   const ts = Date.now();
   const now = new Date().toISOString();
   getDb()

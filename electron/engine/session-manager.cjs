@@ -291,8 +291,12 @@ class SessionManager {
       if (session.watchdog) clearInterval(session.watchdog);
       session.alive = false;
       this.#sessions.delete(id);
-      const next = profileService.setProfileStatus(id, "closed");
-      this.#emitSessionChange(id, next, reason);
+      try {
+        const next = profileService.setProfileStatus(id, "closed");
+        if (next) this.#emitSessionChange(id, next, reason);
+      } catch (error) {
+        console.warn("[session] finalize status:", error instanceof Error ? error.message : error);
+      }
     };
 
     const maybeFinalizeWhenEmpty = () => {

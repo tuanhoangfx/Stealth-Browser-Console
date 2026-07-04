@@ -1,5 +1,28 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-05 — v0.10.5 — Fix Database not initialized on packaged shutdown
+
+- Version: `0.10.5`
+- Timestamp: 2026-07-05 04:50 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Shutdown order** — `before-quit` awaits `sessionManager.closeAll()` before `closeDatabase()` (fixes race when browser context `finalize` fires after DB closed).
+- **Safe status writes** — `setProfileStatus` / `touchLastOpened` no-op when DB already closed; session `finalize` wrapped in try/catch.
+
+## 2026-07-04 — v0.10.4 — Electron dev reload
+
+- Version: `0.10.4`
+- Timestamp: 2026-07-04 04:36 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-05 — v0.10.3 — Desktop release: Surfshark icon + Gmail 2FA + session skip
 
 - Version: `0.10.3`
