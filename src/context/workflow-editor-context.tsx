@@ -44,6 +44,10 @@ export type WorkflowEditorContextValue = {
   startWorkflowImport: (workflowId: string) => void;
   importSingleWorkflow: (file?: File) => void;
   importWorkflows: (file?: File) => void;
+  installWorkflowFromStore: (
+    payload: Record<string, unknown>,
+    options?: { replaceExisting?: boolean },
+  ) => WorkflowConfig;
   selectScriptWorkflow: (workflowId: WorkflowId) => void;
   scriptStepHeaderGroups: { cat: ScriptStepCategoryKey; kinds: ScriptStepKind[] }[];
   scriptStepCategoryLabel: (cat: ScriptStepCategoryKey) => string;

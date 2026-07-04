@@ -11,6 +11,7 @@ import { isOfflineWorkspaceSession } from "../lib/offlineMode";
 import { useStealthShell } from "../context/stealth-shell-context";
 import type { StealthScreen } from "../lib/stealth-screen";
 import type { StealthSystemTab } from "../lib/stealth-system-tab";
+import type { StealthWorkflowTab } from "../lib/stealth-workflow-tab";
 import { ViewChunkErrorBoundary } from "../ui/ViewChunkErrorBoundary";
 import { SystemView } from "../views/SystemView";
 
@@ -18,6 +19,7 @@ type StealthEngineStatus = "checking" | "ready" | "offline";
 
 const ProfilesView = lazy(() => import("../views/ProfilesView").then((m) => ({ default: m.ProfilesView })));
 const WorkflowView = lazy(() => import("../views/WorkflowView").then((m) => ({ default: m.WorkflowView })));
+const WorkflowStoreView = lazy(() => import("../views/WorkflowStoreView").then((m) => ({ default: m.WorkflowStoreView })));
 
 function ScreenPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
@@ -35,12 +37,14 @@ function StealthConsoleScreens({
   visited,
   view,
   systemTab,
+  workflowTab,
   headerActions,
   engineStatus,
 }: {
   visited: Set<StealthScreen>;
   view: StealthScreen;
   systemTab: StealthSystemTab;
+  workflowTab: StealthWorkflowTab;
   headerActions: ReactNode;
   engineStatus: StealthEngineStatus;
 }) {
@@ -56,10 +60,19 @@ function StealthConsoleScreens({
         </ScreenPanel>
       ) : null}
       {visited.has("workflow") ? (
-        <ScreenPanel active={view === "workflow"}>
-          <Suspense fallback={<StealthScreenLoadingView screen="workflow" enabled={view === "workflow"} />}>
+        <ScreenPanel active={view === "workflow" && workflowTab === "editor"}>
+          <Suspense fallback={<StealthScreenLoadingView screen="workflow" enabled={view === "workflow" && workflowTab === "editor"} />}>
             <ViewChunkErrorBoundary viewName="Workflow">
               <WorkflowView headerActions={headerActions} />
+            </ViewChunkErrorBoundary>
+          </Suspense>
+        </ScreenPanel>
+      ) : null}
+      {visited.has("workflow") ? (
+        <ScreenPanel active={view === "workflow" && workflowTab === "store"}>
+          <Suspense fallback={<StealthScreenLoadingView screen="workflow" enabled={view === "workflow" && workflowTab === "store"} />}>
+            <ViewChunkErrorBoundary viewName="Workflow Store">
+              <WorkflowStoreView headerActions={headerActions} />
             </ViewChunkErrorBoundary>
           </Suspense>
         </ScreenPanel>
@@ -80,11 +93,15 @@ export const StealthAppShell = memo(function StealthAppShell({
   mainRef,
   systemTab,
   onSystemTabChange,
+  workflowTab,
+  onWorkflowTabChange,
 }: {
   visited: Set<StealthScreen>;
   mainRef: RefObject<HTMLElement | null>;
   systemTab: StealthSystemTab;
   onSystemTabChange: (tab: StealthSystemTab) => void;
+  workflowTab: StealthWorkflowTab;
+  onWorkflowTabChange: (tab: StealthWorkflowTab) => void;
 }) {
   const hubAuthEnabled = isStealthHubAuthEnabled();
   const { session, offline, authRequired, policyReady, loading, toolAccess, hubConfigured, prepareHubSignIn } =
@@ -104,6 +121,7 @@ export const StealthAppShell = memo(function StealthAppShell({
       visited={visited}
       view={view}
       systemTab={systemTab}
+      workflowTab={workflowTab}
       headerActions={headerActions}
       engineStatus={engineStatus}
     />
@@ -139,8 +157,10 @@ export const StealthAppShell = memo(function StealthAppShell({
       <StealthHubShellSidebar
         screen={view}
         systemTab={systemTab}
+        workflowTab={workflowTab}
         onNavigate={setView}
         onSystemTabChange={onSystemTabChange}
+        onWorkflowTabChange={onWorkflowTabChange}
         onRefresh={() => void refreshProfiles()}
         refreshBusy={syncBusy}
         onRequestHubSignIn={

@@ -5,6 +5,7 @@ import type { TimeRange } from "../display-prefs/constants";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { useDirectoryTimeRange } from "../lib/directory-time-range";
 import { HubResultCount } from "./HubResultCount";
+import { shouldShowHubDirectoryResultCount } from "./hubDirectorySelectionSlots";
 import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
 import { HubTimeRangeSelect } from "./HubTimeRangeSelect";
 import { HubWorkspacePeriodSelect, type HubWorkspacePeriodSelectProps } from "./HubWorkspacePeriodSelect";
@@ -39,6 +40,8 @@ export type DirectorySearchToolbarProps = {
   showRefresh?: boolean;
   /** When false, omit shown/total chip (e.g. Todo row-1 period-only). */
   showResultCount?: boolean;
+  /** When FilterBar `searchTrailing` shows x/y selection — omit duplicate shown/total chip. */
+  hasSearchSelectionChip?: boolean;
   displayBand?: ReactNode;
   trailing?: ReactNode;
 };
@@ -65,11 +68,16 @@ export function DirectorySearchToolbar({
   onTablePageSizeChange,
   showRefresh = true,
   showResultCount = true,
+  hasSearchSelectionChip = false,
   displayBand,
   trailing,
 }: DirectorySearchToolbarProps) {
   const period = useDirectoryTimeRange(timeRange);
   const resolvedShowTablePageSize = showTablePageSize ?? !displayBand;
+  const resultCountVisible = shouldShowHubDirectoryResultCount({
+    showResultCount,
+    hasSearchSelectionChip,
+  });
   return (
     <>
       {leading}
@@ -82,7 +90,7 @@ export function DirectorySearchToolbar({
         <HubTablePageSizeSelect value={tablePageSize} onChange={onTablePageSizeChange} />
       ) : null}
       {displayBand}
-      {showResultCount ? (
+      {resultCountVisible ? (
         <HubResultCount
           icon={countIcon}
           brandIcon={countBrandIcon}

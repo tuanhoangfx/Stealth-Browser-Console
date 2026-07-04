@@ -4,7 +4,7 @@
   "version": "0.7.7",
   "gitCommit": "53d0dfa",
   "gitTag": "v0.7.7-stable",
-  "notes": "Packaged auth CSP, login icon 56px, Surfshark purge, fast launch. Run snapshot-known-good after commit+tag to pin commit hash.",
+  "notes": "Packaged auth CSP, login icon 56px + hub-auth-brand-icon glow, Surfshark purge, fast launch. Run snapshot-known-good after commit+tag to pin commit hash.",
   "backup": {
     "dir": "dist-desktop/known-good",
     "installer": "Stealth-Browser-Console-Setup-0.7.7.exe",

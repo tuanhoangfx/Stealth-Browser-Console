@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { WorkspaceAuthGate, createWorkspaceAuthGate } from "@tool-workspace/hub-ui";
-import { ToolAvatar } from "../../components/ToolAvatar";
-import { toolIconName, toolSvgIcon } from "../../lib/visual";
+import { WorkspaceAuthGate, createWorkspaceAuthGate, HubAuthBrandIcon } from "@tool-workspace/hub-ui";
+import { toolSvgIcon } from "../../lib/visual";
 import {
   HUB_SUPABASE_ANON_KEY,
   HUB_SUPABASE_URL,
@@ -22,14 +21,7 @@ export function GoldenAuthGateAdapter({ onAuthed }: Props) {
     <WorkspaceAuthGate
       {...createWorkspaceAuthGate({
         code: "P00XX",
-        headerLeading: (
-          <ToolAvatar
-            code="P00XX"
-            iconName={toolIconName({ code: "P00XX" })}
-            svgSrc={toolSvgIcon({ code: "P00XX" }) ?? undefined}
-            size="sm"
-          />
-        ),
+        headerLeading: <HubAuthBrandIcon src={toolSvgIcon({ code: "P00XX" }) ?? "/icons/tools/P00XX.svg"} />,
         onAuthed,
         onSubmit: async (login, password, mode) => {
           void login;

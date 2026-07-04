@@ -488,6 +488,14 @@
     "faviconDomain": "dropbox.com"
   },
   {
+    "id": "google-drive",
+    "label": "Google Drive",
+    "match": "google\\s*drive|gdrive|drive\\.google",
+    "src": "/assets/brand-icons/google-drive.png",
+    "shell": "bare",
+    "faviconDomain": "drive.google.com"
+  },
+  {
     "id": "figma",
     "label": "Figma",
     "match": "figma",

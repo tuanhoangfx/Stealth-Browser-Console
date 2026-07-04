@@ -58,6 +58,29 @@ export type StealthWorkflowRailColumnKey = (typeof STEALTH_WORKFLOW_RAIL_COLUMN_
 export type StealthWorkflowPanelColumnKey = (typeof STEALTH_WORKFLOW_PANEL_COLUMN_KEYS)[number];
 export type StealthWorkflowColumnKey = StealthWorkflowRailColumnKey | StealthWorkflowPanelColumnKey;
 
+/** Workflow Store directory — hub-users-table--directory-6 (P0004 golden parity). */
+export const STEALTH_WORKFLOW_STORE_COLUMN_META = {
+  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "16%"),
+  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "26%"),
+  version: col("Version", "hub-users-col--id", "id", "col.directory.pageId", "5rem"),
+  group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "7rem"),
+  status: col("Status", "hub-users-col--tools", "tools", "col.directory.status", "5.5rem"),
+  source: col("Source", "hub-users-col--metric-a", "tools", "col.directory.status", "5rem"),
+  updated: col("Updated", "hub-users-col--activity", "activity", "col.directory.lastActive", "7rem"),
+};
+
+export const STEALTH_WORKFLOW_STORE_COLUMN_KEYS = [
+  "platform",
+  "name",
+  "version",
+  "group",
+  "status",
+  "source",
+  "updated",
+] as const;
+
+export type StealthWorkflowStoreColumnKey = (typeof STEALTH_WORKFLOW_STORE_COLUMN_KEYS)[number];
+
 export function profileStatusSemanticKey(status: string): SemanticIconLookupKey {
   switch (status) {
     case "closed":

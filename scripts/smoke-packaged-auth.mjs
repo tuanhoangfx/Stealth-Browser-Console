@@ -43,19 +43,39 @@ try {
 }
 
 let iconOk = false;
+let authBrandOk = false;
 if (fs.existsSync(indexPath)) {
   const html = fs.readFileSync(indexPath, "utf8");
   const assetMatch = html.match(/src="(\.\/assets\/[^"]+\.js)"/);
+  const cssMatch = html.match(/href="(\.\/assets\/[^"]+\.css)"/);
   if (assetMatch) {
     const jsPath = path.join(path.dirname(indexPath), assetMatch[1].replace(/^\.\//, ""));
     if (fs.existsSync(jsPath)) {
       const js = fs.readFileSync(jsPath, "utf8");
       iconOk = js.includes("favicon.svg") && !js.includes('"/favicon.svg"');
+      authBrandOk = js.includes("hub-auth-brand-icon");
+    }
+  }
+  if (!authBrandOk && cssMatch) {
+    const cssPath = path.join(path.dirname(indexPath), cssMatch[1].replace(/^\.\//, ""));
+    if (fs.existsSync(cssPath)) {
+      const css = fs.readFileSync(cssPath, "utf8");
+      authBrandOk = /\.hub-auth-brand-icon/.test(css) && /drop-shadow\(0 0 12px rgb\(56 189 248/.test(css);
     }
   }
 }
 
-const result = { ok: supabaseOk && iconOk, supabaseOk, iconOk, policy, healthUrl, indexPath, url };
+const ok = supabaseOk && iconOk && authBrandOk;
+const result = {
+  ok,
+  supabaseOk,
+  iconOk,
+  authBrandOk,
+  policy,
+  healthUrl,
+  indexPath,
+  url,
+};
 fs.writeFileSync(outFile, `${JSON.stringify(result, null, 2)}\n`);
 console.log(JSON.stringify(result, null, 2));
 if (!result.ok) process.exit(1);

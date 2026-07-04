@@ -4,6 +4,7 @@ import { HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS } from "./directory-table-scroll"
 import { DirectoryInlineTable } from "./DirectoryInlineTable";
 import { DirectorySplitScrollTable } from "./DirectorySplitScrollTable";
 import { hubPageAllSelected, hubTogglePageSelectAll, type HubServerPaginationControl } from "./hub-table-pagination";
+import { useHubTablePageSize } from "./hub-table-page-size";
 import { HubTableColumnHeader, type HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
 import type { HubTableColumnRole } from "./hub-table-column-meta";
 import { HubSortIndicator, type HubSortDir } from "./HubSortIndicator";
@@ -58,6 +59,8 @@ export type HubDirectoryTableShellProps<TItem, TSortKey extends string> = {
   hideWhenSinglePage?: boolean;
   /** Server-side page slice — see HubPaginatedTableShell.serverPagination. */
   serverPagination?: HubServerPaginationControl;
+  /** Pad tbody with empty rows up to page size (stable directory height). */
+  padBodyRowsToPageSize?: boolean;
   /** Extra classes on HubPaginatedTableShell root (sheet grid: flex column). */
   paginatedShellClassName?: string;
   renderRowCells: (item: TItem) => ReactNode;
@@ -71,6 +74,26 @@ export type HubDirectoryTableShellProps<TItem, TSortKey extends string> = {
  */
 function useSplitDirectoryScroll(wrapClassName: string) {
   return wrapClassName.includes("hub-directory-table-scroll--flex-pane");
+}
+
+function buildDirectoryPadBodyRows<TSortKey extends string>(
+  padCount: number,
+  columns: HubDirectoryTableColumn<TSortKey>[],
+  staticColumns: HubDirectoryTableStaticColumn[],
+  showSelect: boolean,
+) {
+  if (padCount <= 0) return [];
+  return Array.from({ length: padCount }, (_, index) => (
+    <tr key={`__hub-pad-row-${index}`} className="hub-users-row hub-users-row--pad" aria-hidden>
+      {showSelect ? <td className="hub-users-col--select" /> : null}
+      {columns.map((col) => (
+        <td key={col.key} className={col.colClass} />
+      ))}
+      {staticColumns.map((col) => (
+        <td key={`${col.colClass}-${col.label}`} className={col.colClass} />
+      ))}
+    </tr>
+  ));
 }
 
 /**
@@ -105,12 +128,14 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
   canSelectRow,
   hideWhenSinglePage,
   serverPagination,
+  padBodyRowsToPageSize = false,
   paginatedShellClassName,
   renderRowCells,
   renderStaticCells,
 }: HubDirectoryTableShellProps<TItem, TSortKey>) {
   const showSelect = Boolean(onToggleSelect);
   const splitScroll = useSplitDirectoryScroll(wrapClassName);
+  const resolvedPageSize = useHubTablePageSize(pageSize);
 
   const columnHeaderProps = (col: (typeof columns)[number]) =>
     col.headerIcon
@@ -221,6 +246,23 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
           );
         });
 
+        const padRows =
+          padBodyRowsToPageSize && pageItems.length > 0
+            ? buildDirectoryPadBodyRows(
+                Math.max(0, resolvedPageSize - pageItems.length),
+                columns,
+                staticColumns,
+                showSelect,
+              )
+            : [];
+
+        const allBodyRows = (
+          <>
+            {bodyRows}
+            {padRows}
+          </>
+        );
+
         if (splitScroll) {
           return (
             <DirectorySplitScrollTable
@@ -229,7 +271,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
               showSelect={showSelect}
               colgroup={colgroup}
               headRow={headRow}
-              bodyRows={bodyRows}
+              bodyRows={allBodyRows}
               emptyMessage={emptyMessage}
               hasRows={pageItems.length > 0}
               scrollResetKey={resetKey}
@@ -244,7 +286,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
             showSelect={showSelect}
             colgroup={colgroup}
             headRow={headRow}
-            bodyRows={bodyRows}
+            bodyRows={allBodyRows}
             emptyMessage={emptyMessage}
             hasRows={pageItems.length > 0}
           />

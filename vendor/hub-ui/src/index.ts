@@ -901,6 +901,7 @@ export {
 export { hubModalDirectoryFilterSelection } from "./shell/hub-modal-directory-filter-preset";
 export {
   buildHubDirectorySelectionSlots,
+  shouldShowHubDirectoryResultCount,
   type HubDirectorySelectionSlots,
 } from "./shell/hubDirectorySelectionSlots";
 export {

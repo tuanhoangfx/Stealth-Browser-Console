@@ -1,33 +1,39 @@
 #!/usr/bin/env pwsh
-# Stop Stealth Browser + dev processes that lock dist-desktop / CloakBrowser profiles.
+# Check-only preflight for desktop packaging — NEVER stops dev (:5175) or running packaged exe.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
-$names = @(
-  "Stealth Browser Console",
-  "electron"
-)
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$distDesktop = Join-Path $repoRoot "dist-desktop"
+$winUnpacked = Join-Path $distDesktop "win-unpacked"
+$winPending = Join-Path $distDesktop "win-unpacked-pending"
 
-foreach ($name in $names) {
+Write-Host "pre-release: check-only — will NOT stop Stealth dev or packaged exe."
+
+$running = @()
+foreach ($name in @("Stealth Browser Console", "electron", "node")) {
   Get-Process -Name $name -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -match 'P0003|Stealth-Browser-Console|stealth-browser' } |
-    ForEach-Object {
-      Write-Host "pre-release: stop $($_.ProcessName) pid=$($_.Id)"
-      Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-    }
+    ForEach-Object { $running += $_ }
 }
 
-Start-Sleep -Seconds 2
+if ($running.Count -gt 0) {
+  Write-Host "pre-release: running P0003-related processes (left untouched):"
+  $running | Sort-Object Id -Unique | ForEach-Object {
+    Write-Host "  - $($_.ProcessName) pid=$($_.Id)"
+  }
+  if (Test-Path -LiteralPath $winUnpacked) {
+    Write-Host "pre-release: if packaging hits EBUSY, output goes to dist-desktop\win-unpacked-pending"
+    Write-Host "pre-release: then run: pnpm desktop:swap-unpacked"
+  }
+} else {
+  Write-Host "pre-release: no P0003 Stealth/electron processes detected."
+}
 
-$locked = @(
-  (Join-Path $PSScriptRoot "..\dist-desktop\win-unpacked"),
-  (Join-Path $PSScriptRoot "..\dist-desktop")
-)
-
-foreach ($dir in $locked) {
+foreach ($dir in @($winUnpacked, $winPending, $distDesktop)) {
   if (Test-Path -LiteralPath $dir) {
-    Write-Host "pre-release: dist-desktop present at $dir"
+    Write-Host "pre-release: present $dir"
   }
 }
 
-Write-Host "pre-release: OK - close any remaining Stealth Browser window if packaging still hits EBUSY."
+Write-Host "pre-release: OK (non-destructive)."

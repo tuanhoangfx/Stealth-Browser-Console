@@ -25,7 +25,7 @@ powershell -File scripts/release-desktop.ps1 -Publish -SkipInstall -FastTests
 | `-SkipBuild` | Skip VS/sqlite rebuild in script (package step still builds UI if needed) |
 | `-WithPortable` | Also build portable exe (slower) |
 
-**Pre-release:** `scripts/pre-release-desktop.ps1` stops Stealth processes (avoids `EBUSY` on `dist-desktop`).
+**Pre-release:** `scripts/pre-release-desktop.ps1` is **check-only** — never stops dev (`:5175`) or a running packaged exe. If `win-unpacked` is locked during build, output goes to `dist-desktop/win-unpacked-pending`; run `pnpm desktop:swap-unpacked` after closing the old packaged app.
 
 **After publish:** `verify-github-release-assets.mjs` checks Setup.exe + `latest.yml` on GitHub; single `gh release upload` (electron-builder `--publish never` avoids duplicate releases per tag); `dedupe-github-releases.mjs` cleans legacy duplicates.
 

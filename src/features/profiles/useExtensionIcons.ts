@@ -20,10 +20,8 @@ export function useExtensionIcons(): ExtensionIconMap {
   useEffect(() => {
     if (fetched) return;
     if (!isStealthDesktop()) {
-      cache.e0001 = "/icons/ext-e0001-16.png";
-      cache.surfshark = "/icons/ext-surfshark-16.png";
       fetched = true;
-      setIcons({ ...cache });
+      setIcons({ e0001: null, surfshark: null });
       return;
     }
     fetched = true;
@@ -31,12 +29,8 @@ export function useExtensionIcons(): ExtensionIconMap {
       fetchExtensionIcon(COOKIE_BRIDGE_STORE_ID, 48),
       fetchExtensionIcon(SURFSHARK_STORE_ID, 48),
     ]).then(([e0001Result, surfsharkResult]) => {
-      cache.e0001 =
-        (e0001Result.status === "fulfilled" && e0001Result.value) ||
-        "/icons/ext-e0001-16.png";
-      cache.surfshark =
-        (surfsharkResult.status === "fulfilled" && surfsharkResult.value) ||
-        "/icons/ext-surfshark-16.png";
+      cache.e0001 = e0001Result.status === "fulfilled" ? e0001Result.value : null;
+      cache.surfshark = surfsharkResult.status === "fulfilled" ? surfsharkResult.value : null;
       setIcons({ ...cache });
     });
   }, []);

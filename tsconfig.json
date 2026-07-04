@@ -19,9 +19,11 @@
     "baseUrl": ".",
     "paths": {
       "@tool-workspace/hub-ui": ["vendor/hub-ui/src/index.ts"],
-      "@tool-workspace/hub-ui/*": ["vendor/hub-ui/src/*"]
+      "@tool-workspace/hub-ui/*": ["vendor/hub-ui/src/*"],
+      "@tool-workspace/hub-identity": ["vendor/hub-identity/src/index.ts"],
+      "@tool-workspace/hub-identity/*": ["vendor/hub-identity/src/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "vitest.config.ts"]
 }

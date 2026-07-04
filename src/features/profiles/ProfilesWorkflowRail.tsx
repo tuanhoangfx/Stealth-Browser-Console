@@ -1,4 +1,6 @@
 import { memo, useCallback } from "react";
+import { Store } from "lucide-react";
+import { HubBulkActionButton } from "@tool-workspace/hub-ui";
 import { useWorkflowPicker } from "../../context/workflow-picker-context";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
 import { useStealthShell } from "../../context/stealth-shell-context";
@@ -11,7 +13,7 @@ export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail({
 }: {
   backupJobLabel?: string | null;
 }) {
-  const { setView } = useStealthShell();
+  const { setView, setWorkflowTab, openWorkflowStore } = useStealthShell();
   const { openProfilesForWorkflow } = useWorkflowRuntime();
   const {
     filteredWorkflows,
@@ -40,13 +42,23 @@ export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail({
     (id: string) => {
       setActiveWorkflow(id);
       setSelectedWorkflowIds([]);
+      setWorkflowTab("editor");
       setView("workflow");
     },
-    [setActiveWorkflow, setSelectedWorkflowIds, setView],
+    [setActiveWorkflow, setSelectedWorkflowIds, setView, setWorkflowTab],
   );
 
   return (
     <aside className="stealth-workflow-rail">
+      <div className="stealth-workflow-rail__store-link">
+        <HubBulkActionButton
+          icon={<Store size={14} aria-hidden />}
+          label="Store"
+          title="Browse and install workflows"
+          tone="sky"
+          onClick={openWorkflowStore}
+        />
+      </div>
       <WorkflowRailPanel
         workflowConfigs={workflowConfigs}
         filteredWorkflows={filteredWorkflows}

@@ -11,6 +11,7 @@ import {
 import { StealthDisplayBandToolbar } from "../../components/StealthDisplayBandToolbar";
 import type { ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
+import { useWorkflowPicker } from "../../context/workflow-picker-context";
 import { StealthProfilesDirectoryBulkActions, type ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 import {
@@ -83,6 +84,8 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
   onExtensionSet,
 }: ProfileFilterPaneProps) {
   const { runAutomationQueue, automationRunning, runWorkflowLabel } = useWorkflowRuntime();
+  const { selectedWorkflowCount } = useWorkflowPicker();
+  const canLaunchWorkflow = selectedWorkflowCount > 0;
   const filters = useMemo(
     () =>
       catalogStats
@@ -143,7 +146,12 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
             syncBusy={syncBusy}
             launchBusy={automationRunning}
             extensionBusy={extensionBusy}
-            launchTitle={`Launch with workflow: ${runWorkflowLabel} (skips startup URL)`}
+            launchTitle={
+              canLaunchWorkflow
+                ? `Launch with workflow: ${runWorkflowLabel} (skips startup URL)`
+                : "Select at least one workflow in the right rail"
+            }
+            launchDisabled={!canLaunchWorkflow}
             onLaunch={() => void runAutomationQueue()}
             onClose={() => {
               for (const profile of selectedProfiles) void closeOne(profile);

@@ -15,6 +15,7 @@ import {
   workflowSteps,
   syncFirstNavigateStep
 } from "./workflow-defaults";
+import { mergeInstalledWorkflow, normalizeImportedWorkflow } from "./workflow-import-utils";
 import { newWorkflowTimestamps, touchWorkflowUpdated, ensureWorkflowTimestamps } from "./workflow-meta";
 import { workflowDisplayId } from "./workflow-display";
 const SCRIPT_STEP_KINDS: ScriptStepKind[] = ["navigate", "wait", "click", "type", "delay", "scroll", "screenshot", "condition", "action"];
@@ -26,7 +27,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
   const [savedWorkflowConfigs, setSavedWorkflowConfigs] = useState<WorkflowConfig[]>(readStoredWorkflows);
   const [draftWorkflowConfigs, setDraftWorkflowConfigs] = useState<WorkflowConfig[]>(savedWorkflowConfigs);
   const [activeWorkflow, setActiveWorkflow] = useState<WorkflowId>(readStoredActiveWorkflow);
-  const [selectedWorkflowIds, setSelectedWorkflowIds] = useState<WorkflowId[]>([readStoredActiveWorkflow()]);
+  const [selectedWorkflowIds, setSelectedWorkflowIds] = useState<WorkflowId[]>([]);
   const [savePulse, setSavePulse] = useState(false);
   const [selectedScriptStepId, setSelectedScriptStepId] = useState<string>("");
   const [pendingWorkflowImportId, setPendingWorkflowImportId] = useState<string>("");
@@ -296,7 +297,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
   const resetWorkflows = useCallback(() => {
     setDraftWorkflowConfigs(DEFAULT_WORKFLOWS);
     setActiveWorkflow("open-url");
-    setSelectedWorkflowIds(["open-url"]);
+    setSelectedWorkflowIds([]);
   }, []);
 
   const exportWorkflows = useCallback(() => {
@@ -375,23 +376,32 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     singleWorkflowImportRef.current?.click();
   }, []);
 
+  const installWorkflowFromStore = useCallback(
+    (payload: Record<string, unknown>, options?: { replaceExisting?: boolean }) => {
+      const normalized = normalizeImportedWorkflow(payload as Partial<WorkflowConfig>);
+      const replaceExisting =
+        options?.replaceExisting ?? Boolean(workflowConfigs.find((item) => item.id === normalized.id));
+      const next = mergeInstalledWorkflow(workflowConfigs, normalized, { replaceExisting });
+      const installed =
+        next.find((item) => item.id === normalized.id) ||
+        next.find((item) => item.name === normalized.name && item.targetUrl === normalized.targetUrl) ||
+        next.at(-1) ||
+        normalized;
+      setDraftWorkflowConfigs(next);
+      setActiveWorkflow(installed.id);
+      setSelectedWorkflowIds([installed.id]);
+      addLog("success", "Workflow Store", `Installed ${installed.name}`);
+      return installed;
+    },
+    [addLog, workflowConfigs],
+  );
+
   const importSingleWorkflow = useCallback(async (file: File | undefined) => {
     if (!file || !pendingWorkflowImportId) return;
     try {
       const data = JSON.parse(await file.text()) as WorkflowConfig;
       if (!data || Array.isArray(data) || typeof data !== "object") throw new Error("Workflow JSON must be a single workflow object.");
-      const url = data.targetUrl || "https://example.com";
-      const preset = workflowSteps(url, true);
-      const imported = {
-        ...data,
-        id: pendingWorkflowImportId,
-        icon: data.icon || "play",
-        group: data.group || "Core",
-        platform: data.platform || "Generic",
-        action: (data.action as string) === "set-screen-resolution-real" ? "open-url" : data.action || "open-url",
-        concurrency: clampConcurrency(Number(data.concurrency || 1)),
-        steps: hydrateWorkflowSteps(Array.isArray(data.steps) && data.steps.length ? (data.steps as ScriptStep[]) : [], preset, url)
-      };
+      const imported = normalizeImportedWorkflow(data, { forceId: pendingWorkflowImportId });
       setDraftWorkflowConfigs((items) => items.map((workflow) => (workflow.id === pendingWorkflowImportId ? imported : workflow)));
       setActiveWorkflow(pendingWorkflowImportId);
       setSelectedWorkflowIds([pendingWorkflowImportId]);
@@ -409,24 +419,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     try {
       const data = JSON.parse(await file.text()) as WorkflowConfig[];
       if (!Array.isArray(data) || data.length === 0) throw new Error("Workflow JSON must be an array.");
-      const imported = data.map((workflow) => {
-        const url = workflow.targetUrl || "https://example.com";
-        const preset = workflowSteps(url, true);
-        return {
-          ...workflow,
-          id: workflow.id || `workflow-${crypto.randomUUID()}`,
-          icon: workflow.icon || "play",
-          group: workflow.group || "Core",
-          platform: workflow.platform || "Generic",
-          action: (workflow.action as string) === "set-screen-resolution-real" ? "open-url" : workflow.action || "open-url",
-          concurrency: clampConcurrency(Number(workflow.concurrency || 1)),
-          steps: hydrateWorkflowSteps(
-            Array.isArray(workflow.steps) && workflow.steps.length ? (workflow.steps as ScriptStep[]) : [],
-            preset,
-            url
-          )
-        };
-      });
+      const imported = data.map((workflow) => normalizeImportedWorkflow(workflow));
       setDraftWorkflowConfigs(imported);
       setActiveWorkflow(imported[0].id);
       setSelectedWorkflowIds([imported[0].id]);
@@ -503,6 +496,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     startWorkflowImport,
     importSingleWorkflow,
     importWorkflows,
+    installWorkflowFromStore,
     selectWorkflow,
     selectScriptWorkflow
   };

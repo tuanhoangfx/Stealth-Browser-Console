@@ -5,7 +5,7 @@ const { runScriptSteps, runGoogleFormAgAppeal, settlePage } = require("./script-
 const { stabilizePrimaryPage } = require("./navigate-startup.cjs");
 const { safePageGoto } = require("./safe-goto.cjs");
 const { extractProfileCode } = require("../lib/profile-identity.cjs");
-const { fetchMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
+const { diagnoseMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
 
 const APP_VERSION = require("../../package.json").version;
 
@@ -54,7 +54,6 @@ async function runOpenUrl({
 
   try {
     logger.push("info", `Stealth v${APP_VERSION} — automation start`);
-    const page = await stabilizePrimaryPage(context);
     const stepContext = {
       targetUrl,
       profileName: profile.name,
@@ -72,15 +71,22 @@ async function runOpenUrl({
     });
     if (hasMailPlaceholder) {
       const profileCode = extractProfileCode(profile.name, profile.id);
-      const creds = await fetchMailCredentials(profileCode, "Gmail").catch(() => null);
-      if (creds) {
-        stepContext.mailCredentials = creds;
-        stepContext.generateTotp = Boolean(creds.secret);
-        logger.push("info", `Mail credentials loaded for profile ${profileCode}: ${creds.email}`);
+      const diagnosis = await diagnoseMailCredentials(profileCode, "Gmail");
+      if (diagnosis.ok && diagnosis.credentials) {
+        stepContext.mailCredentials = diagnosis.credentials;
+        stepContext.generateTotp = Boolean(diagnosis.credentials.secret);
+        logger.push(
+          "info",
+          `Mail credentials loaded for profile ${diagnosis.browserCode}: ${diagnosis.credentials.email}`,
+        );
       } else {
-        logger.push("warning", `No Gmail credentials found for profile ${profileCode}`);
+        const reason = diagnosis.reason || `No Gmail credentials found for profile ${profileCode}.`;
+        logger.push("error", reason);
+        throw new Error(reason);
       }
     }
+
+    const page = await stabilizePrimaryPage(context);
 
     if (Array.isArray(steps) && steps.length) {
       screenshotPath = await runScriptSteps(page, steps, logger, stepContext);

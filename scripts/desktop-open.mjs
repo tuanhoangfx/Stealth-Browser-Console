@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Kill running Stealth Browser Console and launch the latest unpacked desktop build. */
+/** Launch packaged Stealth — never kills dev (:5175) or a running exe unless --replace. */
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,10 +9,12 @@ import { winSpawnOpts } from "./lib/win-spawn.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const exeName = "Stealth Browser Console.exe";
 const processName = "Stealth Browser Console";
+const replaceRunning = process.argv.includes("--replace");
 
 const candidates = [
+  path.join(root, "dist-desktop", "win-unpacked-pending", exeName),
   path.join(root, "dist-desktop", "win-unpacked", exeName),
-  path.join(root, "out", "win-unpacked", exeName)
+  path.join(root, "out", "win-unpacked", exeName),
 ];
 
 function findExe() {
@@ -22,7 +24,7 @@ function findExe() {
   return null;
 }
 
-function killExisting() {
+function killPackagedOnly() {
   if (process.platform !== "win32") return;
   spawnSync("taskkill", ["/F", "/IM", exeName, "/T"], winSpawnOpts({ stdio: "ignore" }));
 }
@@ -33,11 +35,15 @@ if (!exePath) {
   process.exit(1);
 }
 
-killExisting();
+if (replaceRunning) {
+  killPackagedOnly();
+} else {
+  console.log("desktop:open: leaving dev + running Stealth untouched (use --replace to close packaged exe first).");
+}
 
 const child = spawn(exePath, [], {
   ...winSpawnOpts({ cwd: path.dirname(exePath), stdio: "ignore", detached: true }),
-  env: { ...process.env }
+  env: { ...process.env },
 });
 child.unref();
 

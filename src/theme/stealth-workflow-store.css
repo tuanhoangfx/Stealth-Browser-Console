@@ -1,0 +1,32 @@
+.stealth-workflow-store-screen {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stealth-workflow-store-directory {
+  min-height: 0;
+  flex: 1;
+}
+
+.stealth-workflow-store-directory-frame .hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) {
+  min-height: 0;
+  flex: 1;
+}
+
+.stealth-workflow-store-panel__errors {
+  margin: 0 12px 8px;
+  border-radius: 8px;
+  background: rgb(244 63 94 / 12%);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #fda4af;
+}
+
+.stealth-workflow-rail__store-link {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 10px 0;
+}

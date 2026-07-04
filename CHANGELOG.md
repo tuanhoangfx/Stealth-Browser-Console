@@ -1,5 +1,159 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-04 — v0.8.1 — Store brand icons + vendor hub-ui sync fix
+
+- Version: `0.8.1`
+- Timestamp: 2026-07-04 20:40 (UTC+7)
+- Type: Minor
+- Status: Dev
+
+### Changes
+
+- **Fix boot** — sync `hubDirectorySelectionSlots.tsx` to vendor (export `shouldShowHubDirectoryResultCount`); add file to `sync-hub-ui-vendor.cjs` PACKAGES_COPY_PAIRS.
+- **Brand icons** — registry `google-drive`; Drive catalog source uses `HubBrandIcon` (`google-drive`) instead of interim `google`.
+- **SSOT** — `UI_PATTERNS.md` § Platform brand icons: entities with registered brand icons use `HubBrandIcon` chips, not colored status dots.
+
+## 2026-07-04 — v0.7.72 — Store card typography + brand source chips
+
+- Version: `0.7.72`
+- Timestamp: 2026-07-04 20:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Rename** UI label Workflow Store → **Store** (nav, header, rail).
+- **Card view** — `HubDirectoryCardMetaRow` + `hub-chrome-type--micro`; Supabase/Drive chips use `HubBrandIcon` (not green status dots).
+- **Toolbar** — removed `Supabase + Drive` trailing hint; SSOT `workflow-store-source-brand.tsx` + `UI_PATTERNS.md`.
+
+## 2026-07-04 — v0.7.71 — Workflow Store table single-line cells
+
+- Version: `0.7.71`
+- Timestamp: 2026-07-04 20:15 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Store table** — Name column single line only; **Status** column (Local / Installed / Available); description in `title` tooltip.
+- **SSOT** — `hub-directory-table-gate` rules for single-line `*directory-cells.tsx`; skill + `UI_PATTERNS.md` directory cell contract.
+
+## 2026-07-04 — v0.7.70 — Workflow Store table/card + time range
+
+- Version: `0.7.70`
+- Timestamp: 2026-07-04 20:00 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Store** — P0004 Hub parity: **Table / Cards** toggle, **time range** filter (7d / 30d / …), Display band.
+- **Card view** — `HubPaginatedCardGrid` + compact cards; each meta field **one truncated line** (platform, group, version, source, updated).
+
+## 2026-07-04 — v0.7.69 — Workflow Store Hub directory table
+
+- Version: `0.7.69`
+- Timestamp: 2026-07-04 19:45 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Store** — migrated from card list to **Hub-UI directory table** (`HubDirectoryTableShell`, `FilterBar`, checkbox bulk Install/Update) — P0004 golden parity.
+- **Updated column** — Supabase `updated_at` + Drive manifest `updatedAt` per workflow entry.
+- **Admin docs** — README Workflow Store publish/sync section (Supabase + Drive manifest).
+
+## 2026-07-04 — v0.7.68 — Electron dev reload
+
+- Version: `0.7.68`
+- Timestamp: 2026-07-04 18:44 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-04 — v0.7.67 — Non-destructive desktop build
+
+- Version: `0.7.67`
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Never kill dev/exe on build** — `pre-release-desktop.ps1` check-only; `desktop:open` no longer taskkills by default (`--replace` optional).
+- **EBUSY-safe packaging** — locked `win-unpacked` → copy to `win-unpacked-pending`; `pnpm desktop:swap-unpacked` promotes when ready.
+- Installer (`Setup-*.exe`) + `latest.yml` always updated even when unpacked folder is locked.
+
+## 2026-07-04 — v0.7.66 — Workflow Store subnav + ship fixes
+
+- Version: `0.7.66`
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Store** moved from modal to sidebar sub-menu under Workflow (**Scripts** / **Workflow Store**) — same pattern as System.
+- Profiles rail — **Workflow Store** shortcut button.
+- `scripts/publish-workflow-catalog.mjs` — admin CLI upsert workflow JSON to Hub `stealth_workflow_catalog`.
+- Hub migration notify `pgrst` reload schema; `run-electron-package.mjs` gh spawn `shell: false` on Windows.
+
+## 2026-07-04 — v0.7.65 — Workflow Store + default 0/11 selection
+
+- Version: `0.7.65`
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow selection** — default `0/11` (no workflow checked); Launch disabled until user selects workflow(s) in the right rail.
+- **Workflow Store** — browse/install workflows from Hub Supabase catalog (`stealth_workflow_catalog`) and Drive manifest (`public/workflow-store/index.json`); Install merges into local workflows.
+- Workflow tab header — **Workflow Store** button opens catalog modal.
+- Hub migration `20260704120000_stealth_workflow_catalog.sql` — public read catalog + Gmail Login seed.
+
+## 2026-07-04 — v0.7.64 — Extension toolbar parity + Surfshark icon fallback
+
+- Version: `0.7.64`
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Surfshark / E0001 column headers** — Lucide `Shield` / `Cookie` fallback when extension PNG missing or IPC icon fails (fixes broken image in packaged exe).
+- **Extension bulk button** — remove `ChevronDown`; use `HubBulkActionButton` like Launch/Close/Delete.
+- `useExtensionIcons` — stop referencing missing `/icons/ext-*.png` static paths.
+
+## 2026-07-04 — v0.7.63 — Electron dev reload
+
+- Version: `0.7.63`
+- Timestamp: 2026-07-04 15:28 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-04 — v0.7.63 — Gmail login fail-fast + vault diagnose
+
+- Version: `0.7.63`
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- `twofa-vault-bridge.cjs`: `diagnoseMailCredentials` — pad browser code (`98` → `0098`), list sibling services when Gmail missing; resolve `E:\\Dev\\.env.shared` for packaged Electron (not only dev `__dirname`).
+- `open-url.cjs`: fail-fast before browser steps when `{{gmail*}}` placeholders unresolved.
+- `api-routes.cjs`: vault preflight before `ensureProfileContext` — no Chromium launch when Gmail missing.
+- E2E: `electron/e2e/gmail-login-profile-smoke.cjs` (direct `runOpenUrl`, bypasses packaged API).
+- Test: `src/lib/twofa-vault-bridge.test.ts`.
+
+### Verification
+
+- `node electron/e2e/gmail-login-profile-smoke.cjs 0098`
+- `node scripts/test-gmail-login.mjs 1001` → fail-fast vault message (not placeholder error)
+
 ## 2026-07-03 — v0.7.61 — Electron dev reload
 
 - Version: `0.7.61`

@@ -44,6 +44,32 @@ Requires CloakBrowser binary — auto-download on first launch from Settings or 
 
 Data directory: `%APPDATA%/Stealth Browser Console/` (SQLite + profile folders + screenshots).
 
+## Workflow Store (catalog + admin)
+
+Remote catalog is **read-only** from the app. Install/Update copies workflow JSON into **localStorage** (`stealth-console-workflows`).
+
+| Layer | Location | Who writes |
+|-------|----------|------------|
+| **Supabase (Hub)** | `public.stealth_workflow_catalog` on Hub Supabase | `pnpm workflow:publish -- --file path/to/workflow.json` (service role) |
+| **Drive / static** | `public/workflow-store/index.json` + `public/workflow-store/workflows/*.json` | Git commit or set `VITE_WORKFLOW_STORE_DRIVE_MANIFEST_URL` |
+| **Local (after Install)** | `localStorage` keys `stealth-console-workflows`, `stealth-console-workflow-store-installed` | App UI |
+
+**Publish to Supabase** (from repo root):
+
+```powershell
+cd E:\Dev\Tool\P0003-Stealth-Browser-Console
+corepack pnpm workflow:publish -- --file public/workflow-store/workflows/gmail-login.json
+```
+
+Requires `HUB_SUPABASE_SERVICE_ROLE` in `E:\Dev\.env.shared`. Migration: `Tool/P0004-Tool-Hub/supabase/migrations/20260704120000_stealth_workflow_catalog.sql`.
+
+**Sync Drive manifest** — after adding/editing workflows under `public/workflow-store/`:
+
+1. Update `public/workflow-store/index.json` (`updatedAt`, per-entry `updatedAt`, `payloadUrl`).
+2. Commit + deploy static assets (or point `VITE_WORKFLOW_STORE_DRIVE_MANIFEST_URL` at a hosted JSON URL).
+
+Merge rule: same workflow `id` → **Supabase wins** over Drive.
+
 ## Docs
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md)

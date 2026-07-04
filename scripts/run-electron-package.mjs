@@ -98,6 +98,51 @@ function copyDirBestEffort(src, dest) {
   copyDir(src, dest);
 }
 
+function promoteStagingToProductOutput(stagingOutput, productOutput, version) {
+  fs.mkdirSync(productOutput, { recursive: true });
+  const pendingUnpacked = path.join(productOutput, "win-unpacked-pending");
+  const targetUnpacked = path.join(productOutput, "win-unpacked");
+  const marker = path.join(productOutput, "PENDING_UNPACKED.json");
+
+  for (const name of fs.readdirSync(stagingOutput)) {
+    const src = path.join(stagingOutput, name);
+    if (!fs.statSync(src).isFile()) continue;
+    if (/^Stealth-Browser-Console-Setup-.*\.exe$/i.test(name) || name === "latest.yml" || /\.blockmap$/i.test(name)) {
+      copyFileWithRetry(src, path.join(productOutput, name));
+    }
+  }
+
+  const stagedUnpacked = path.join(stagingOutput, "win-unpacked");
+  if (!fs.existsSync(stagedUnpacked)) return;
+
+  try {
+    copyDirBestEffort(stagedUnpacked, targetUnpacked);
+    rmDir(pendingUnpacked);
+    if (fs.existsSync(marker)) fs.unlinkSync(marker);
+  } catch (e) {
+    const code = e && typeof e === "object" ? e.code : "";
+    if (code !== "EBUSY" && code !== "EPERM") throw e;
+    console.warn(
+      "run-electron-package: win-unpacked is locked (packaged exe may be running). " +
+        "Staged copy → dist-desktop/win-unpacked-pending (dev + running exe untouched).",
+    );
+    rmDir(pendingUnpacked);
+    copyDir(stagedUnpacked, pendingUnpacked);
+    fs.writeFileSync(
+      marker,
+      JSON.stringify(
+        {
+          version,
+          stagedAt: new Date().toISOString(),
+          hint: "Close packaged Stealth only if you need win-unpacked replaced, then: pnpm desktop:swap-unpacked",
+        },
+        null,
+        2,
+      ),
+    );
+  }
+}
+
 function distFresh() {
   const index = path.join(root, "dist", "index.html");
   if (!fs.existsSync(index)) return false;
@@ -111,7 +156,7 @@ function distFresh() {
 function uploadMissingAssets(tag, files) {
   const existing = spawnSync("gh", ["release", "view", tag, "--json", "assets"], {
     encoding: "utf8",
-    shell: process.platform === "win32",
+    shell: false,
     cwd: root,
   });
   let names = [];
@@ -128,7 +173,7 @@ function uploadMissingAssets(tag, files) {
   const res = spawnSync("gh", ["release", "upload", tag, ...missing, "--clobber"], {
     cwd: root,
     stdio: "inherit",
-    shell: process.platform === "win32",
+    shell: false,
   });
   if (res.status !== 0) process.exit(res.status ?? 1);
 }
@@ -137,14 +182,14 @@ function ensureGitHubRelease(tag, version) {
   const view = spawnSync("gh", ["release", "view", tag], {
     cwd: root,
     stdio: "ignore",
-    shell: process.platform === "win32",
+    shell: false,
   });
   if (view.status === 0) return;
   console.log(`\n==> gh release create ${tag}`);
   const res = spawnSync(
     "gh",
     ["release", "create", tag, "--title", version, "--notes", `Desktop release ${tag}. See CHANGELOG.md.`],
-    { cwd: root, stdio: "inherit", shell: process.platform === "win32" },
+    { cwd: root, stdio: "inherit", shell: false },
   );
   if (res.status !== 0) process.exit(res.status ?? 1);
 }
@@ -205,11 +250,12 @@ if ((result.status ?? 1) !== 0) {
   process.exit(result.status ?? 1);
 }
 
-copyDirBestEffort(stagingOutput, productOutput);
-rmDir(stagingOutput);
-
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const version = pkg.version;
+
+promoteStagingToProductOutput(stagingOutput, productOutput, version);
+rmDir(stagingOutput);
+
 const tag = `v${version}`;
 
 const setup = fs

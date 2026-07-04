@@ -1,0 +1,31 @@
+{
+  "id": "gmail-login",
+  "name": "Gmail Login",
+  "description": "Auto-login Gmail using credentials from P0020 Data Box. Supports 2FA/TOTP.",
+  "icon": "globe",
+  "group": "Account Check",
+  "platform": "Google",
+  "action": "open-url",
+  "targetUrl": "https://accounts.google.com/signin",
+  "takeScreenshot": true,
+  "closeWhenDone": false,
+  "inspectMode": false,
+  "concurrency": 1,
+  "steps": [
+    { "id": "step-navigate", "kind": "navigate", "name": "Open Gmail sign-in", "value": "https://accounts.google.com/signin", "enabled": true, "timeoutMs": 60000 },
+    { "id": "step-wait-email", "kind": "wait", "name": "Wait for email input", "selector": "#identifierId, input[type=\"email\"]", "enabled": true, "timeoutMs": 15000 },
+    { "id": "step-type-email", "kind": "type", "name": "Type email", "selector": "#identifierId, input[type=\"email\"]", "value": "{{gmailEmail}}", "enabled": true, "timeoutMs": 10000 },
+    { "id": "step-next-email", "kind": "click", "name": "Click Next (email)", "selector": "#identifierNext button, #identifierNext, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 10000 },
+    { "id": "step-wait-transition", "kind": "wait", "name": "Wait for page transition", "enabled": true, "timeoutMs": 8000 },
+    { "id": "step-delay-pwd", "kind": "delay", "name": "Wait for password page", "value": "2000", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-wait-pwd", "kind": "wait", "name": "Wait for password input", "selector": "input[name=\"Passwd\"]", "enabled": true, "timeoutMs": 30000 },
+    { "id": "step-type-pwd", "kind": "type", "name": "Type password", "selector": "input[name=\"Passwd\"]", "value": "{{gmailPassword}}", "enabled": true, "timeoutMs": 10000 },
+    { "id": "step-next-pwd", "kind": "click", "name": "Click Next (password)", "selector": "#passwordNext button, #passwordNext, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 10000 },
+    { "id": "step-delay-2fa", "kind": "delay", "name": "Wait for 2FA or redirect", "value": "5000", "enabled": true, "timeoutMs": 8000 },
+    { "id": "step-wait-2fa", "kind": "wait", "name": "Wait for 2FA input (optional)", "selector": "input[type=\"tel\"][id=\"totpPin\"], input[name=\"totpPin\"], input[type=\"tel\"]", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-type-2fa", "kind": "type", "name": "Type TOTP code", "selector": "input[type=\"tel\"][id=\"totpPin\"], input[name=\"totpPin\"], input[type=\"tel\"]", "value": "{{gmailTotpCode}}", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-next-2fa", "kind": "click", "name": "Click Next (2FA)", "selector": "#totpNext button, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-delay-done", "kind": "delay", "name": "Wait for login complete", "value": "3000", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-screenshot", "kind": "screenshot", "name": "Capture login result", "enabled": true, "timeoutMs": 10000 }
+  ]
+}

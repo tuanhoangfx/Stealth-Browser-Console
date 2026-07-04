@@ -31,21 +31,28 @@ import { isHubSupabaseConfigured } from "../lib/hub-supabase-env";
 import { getIdentitySupabase } from "../lib/supabase-identity";
 import type { StealthScreen } from "../lib/stealth-screen";
 import type { StealthSystemTab } from "../lib/stealth-system-tab";
+import type { StealthWorkflowTab } from "../lib/stealth-workflow-tab";
+import { isStealthSystemTab } from "../lib/stealth-system-tab";
+import { isStealthWorkflowTab } from "../lib/stealth-workflow-tab";
 
 /** P0004/P0016 golden — `HubSidebarNavList` + `STEALTH_NAV_STRUCTURE` + shared `HubSystemTabSubNav`. */
 export function StealthHubShellSidebar({
   screen,
   systemTab,
+  workflowTab,
   onNavigate,
   onSystemTabChange,
+  onWorkflowTabChange,
   onRefresh,
   refreshBusy = false,
   onRequestHubSignIn,
 }: {
   screen: StealthScreen;
   systemTab: StealthSystemTab;
+  workflowTab: StealthWorkflowTab;
   onNavigate: (screen: StealthScreen) => void;
   onSystemTabChange: (tab: StealthSystemTab) => void;
+  onWorkflowTabChange: (tab: StealthWorkflowTab) => void;
   onRefresh: () => void;
   refreshBusy?: boolean;
   onRequestHubSignIn?: () => void;
@@ -93,20 +100,32 @@ export function StealthHubShellSidebar({
         <HubSidebarNavList
           structure={STEALTH_NAV_STRUCTURE}
           activeScreen={screen}
-          activeView={screen === "system" ? systemTab : null}
+          activeView={
+            screen === "system" ? systemTab : screen === "workflow" ? workflowTab : null
+          }
           groupOpen={groupOpen}
           setGroupSubnavOpen={setGroupSubnavOpen}
           showToggleIcon={showSubnavToggleIcon}
           onNavigateScreen={onNavigate}
-          onSelectView={(view) => {
-            onNavigate("system");
-            onSystemTabChange(view);
+          onSelectView={(view, parentScreen) => {
+            if (parentScreen === "system" && isStealthSystemTab(view)) {
+              onNavigate("system");
+              onSystemTabChange(view);
+              return;
+            }
+            if (parentScreen === "workflow" && isStealthWorkflowTab(view)) {
+              onNavigate("workflow");
+              onWorkflowTabChange(view);
+            }
           }}
           onPrefetchScreen={(next) => {
             if (next === "workflow") prefetchWorkflowChunks();
             if (next === "system") prefetchSystemChunks();
           }}
-          onPrefetchView={() => prefetchSystemChunks()}
+          onPrefetchView={(view) => {
+            if (view === "store" || view === "editor") prefetchWorkflowChunks();
+            else prefetchSystemChunks();
+          }}
         />
       }
       footer={

@@ -742,6 +742,51 @@ Do **not** fork select column width per tool — use shell + meta helpers only.
 
 ---
 
+## Directory table body cells — one line per column (golden)
+
+**Table rows are flat.** Each data column = **exactly one truncated line** in the body. Multi-field content belongs in **separate columns** or the cell `title` tooltip — never stacked under Name.
+
+| Column type | Pattern | Golden |
+|-------------|---------|--------|
+| **Name** | `hub-users-name-title` + `DIRECTORY_CELL_TRUNCATE` | P0004 `hub-tools-directory-cells.tsx` |
+| **Status** | `HubUsersStatusLabel` in **Status** column | Hub tools `status`, P0003 store `status` |
+| **Timestamps** | `HubUsersStatusLabel` or `HubActivityTimestampLabel` — one label | Users, Hub tools `updated` |
+| **Icon + label** | `HubDirectoryIconCell` — horizontal single line | Scripts platform, store platform |
+| **Long text** | `title={full text}` on truncate span — not a second line in cell | All directory tables |
+
+**Forbidden in `*directory-cells.tsx`:** `<p>` under name, `line-clamp-2+`, badge flex rows inside one column, description subtitle in Name.
+
+**Card view is different:** `HubDirectoryCardMetaRow` stacks icon + truncated lines — OK in `*Card.tsx` only.
+
+**Gate:** `node Tool/scripts/hub-directory-table-gate.mjs --code P00xx` — rules `directory-cell-single-line`, `directory-cell-no-multiline-clamp`, `directory-cell-name-title-class`.
+
+**Helper:** `DIRECTORY_CELL_TRUNCATE = "block max-w-full truncate"` — P0004 `src/lib/directory-cell-format.ts`; copy per tool.
+
+---
+
+## Platform brand icons vs status dots (SSOT)
+
+Khi entity / catalog source có **icon chuẩn** trong `hub-brand-icons.registry.json`, dùng **`HubBrandIcon` chip** (`WorkflowStoreSourceChip`, filter dropdown, directory cards) — **không** dùng nhãn trạng thái màu (`HubUsersStatusLabel` dot) cho các nền tảng đó.
+
+**Canonical registry:** `packages/hub-ui/src/lib/hub-brand-icons.registry.json` · component `HubBrandIcon` · sync assets: `node Tool/scripts/sync-hub-brand-icons.mjs`.
+
+### Workflow Store catalog sources (P0003)
+
+| `WorkflowStoreSource` | `HubBrandIconId` | Label |
+|---------------------|------------------|-------|
+| `supabase` | `supabase` | Supabase |
+| `drive` | `google-drive` | Drive |
+
+**SSOT implementation:** P0003 `workflow-store-source-brand.tsx` — `WorkflowStoreSourceChip`, `WORKFLOW_STORE_SOURCE_BRAND_ID`.
+
+**Chip chrome:** `hub-chrome-type--micro` + `HubBrandIcon` (`context="filter"`, 11px) — same height as `MetricBadge` (`h-[22px]`).
+
+**Local / Installed:** `MetricBadge` + `resolveLocalOnlyIcon()` — lifecycle status, not catalog source.
+
+**Toolbar:** No aggregate catalog hint in FilterBar — source is per-row/card chip only.
+
+---
+
 ## Directory card shell (golden — hub-ui)
 
 **Canonical source:** `packages/hub-ui/src/content/HubDirectoryCardShell.tsx` → fan-out via `node Tool/scripts/sync-hub-ui-vendor.cjs`.
@@ -817,7 +862,8 @@ HubDirectoryBulkActionBar
 
 DirectorySearchToolbar (row 1)
   ├─ selectionToolbar? → HubDirectoryToolbarSelection (table view — replaces HubResultCount)
-  └─ showResultCount → HubResultCount (when no selectionToolbar)
+  ├─ hasSearchSelectionChip → omit HubResultCount (SSOT: `shouldShowHubDirectoryResultCount`)
+  └─ showResultCount → HubResultCount (when no selection chip in search)
 ```
 
 Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`ml-auto flex gap-2`).

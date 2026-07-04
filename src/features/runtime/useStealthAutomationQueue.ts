@@ -71,9 +71,11 @@ export function useStealthAutomationQueue(input: {
   );
 
   const runWorkflowLabel =
-    runWorkflowConfigs.length === 1
-      ? runWorkflowConfigs[0]!.name
-      : `${runWorkflowConfigs.length} workflows`;
+    runWorkflowConfigs.length === 0
+      ? "No workflow selected"
+      : runWorkflowConfigs.length === 1
+        ? runWorkflowConfigs[0]!.name
+        : `${runWorkflowConfigs.length} workflows`;
 
   return useMemo(
     () => ({

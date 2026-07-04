@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-04",
+  "workflows": [
+    {
+      "id": "gmail-login",
+      "name": "Gmail Login",
+      "description": "Auto-login Gmail using credentials from Data Box vault. Supports 2FA/TOTP.",
+      "version": "1.0.0",
+      "platform": "Google",
+      "group": "Account Check",
+      "source": "drive",
+      "sortOrder": 10,
+      "updatedAt": "2026-07-04T00:00:00.000Z",
+      "payloadUrl": "/workflow-store/workflows/gmail-login.json"
+    },
+    {
+      "id": "google-one-ai",
+      "name": "Google One AI",
+      "description": "Check Google One AI plan and credit activity.",
+      "version": "1.0.0",
+      "platform": "Google",
+      "group": "Account Check",
+      "source": "drive",
+      "sortOrder": 20,
+      "updatedAt": "2026-07-04T00:00:00.000Z",
+      "payloadUrl": "/workflow-store/workflows/google-one-ai.json"
+    }
+  ]
+}

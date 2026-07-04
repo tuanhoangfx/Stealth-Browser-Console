@@ -2,7 +2,6 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   HubAppLogProvider,
   hideBootLoader,
-  resolveHubActiveScreenId,
   useHubActiveScreenSync,
 } from "@tool-workspace/hub-ui";
 import { ToastContainer, ToastProvider } from "./components/toast";
@@ -11,6 +10,8 @@ import { AuthSessionProvider } from "./features/auth/AuthSessionProvider";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
 import type { StealthScreen } from "./lib/stealth-screen";
 import { defaultStealthSystemTab, type StealthSystemTab } from "./lib/stealth-system-tab";
+import { defaultStealthWorkflowTab, type StealthWorkflowTab } from "./lib/stealth-workflow-tab";
+import { resolveStealthActiveScreenId } from "./lib/stealth-active-screen";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
 import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
 
@@ -33,6 +34,7 @@ export function App() {
 function StealthAppRoot() {
   const [view, setView] = useState<StealthScreen>("profiles");
   const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => defaultStealthSystemTab());
+  const [workflowTab, setWorkflowTab] = useState<StealthWorkflowTab>(() => defaultStealthWorkflowTab());
   const [visited, setVisited] = useState<Set<StealthScreen>>(() => new Set(["profiles", "workflow"]));
   const mainRef = useRef<HTMLElement>(null);
 
@@ -55,8 +57,11 @@ function StealthAppRoot() {
     }
   }, [view]);
 
-  useHubActiveScreenSync(view, view === "system" ? systemTab : null);
-  const activeScreenId = resolveHubActiveScreenId(view, view === "system" ? systemTab : null);
+  useHubActiveScreenSync(
+    view,
+    view === "system" ? systemTab : view === "workflow" ? workflowTab : null,
+  );
+  const activeScreenId = resolveStealthActiveScreenId(view, { systemTab, workflowTab });
   const effectiveVisited = useMemo(() => new Set(visited).add(view), [visited, view]);
 
   return (
@@ -64,12 +69,20 @@ function StealthAppRoot() {
       activeScreen={activeScreenId}
       bootLog={{ scope: "Stealth", message: "Stealth Browser Console started", screen: "profiles" }}
     >
-      <StealthAppProviders view={view} setView={setView} visited={effectiveVisited}>
+      <StealthAppProviders
+        view={view}
+        setView={setView}
+        workflowTab={workflowTab}
+        setWorkflowTab={setWorkflowTab}
+        visited={effectiveVisited}
+      >
         <StealthAppShell
           visited={effectiveVisited}
           mainRef={mainRef}
           systemTab={systemTab}
           onSystemTabChange={setSystemTab}
+          workflowTab={workflowTab}
+          onWorkflowTabChange={setWorkflowTab}
         />
       </StealthAppProviders>
     </HubAppLogProvider>

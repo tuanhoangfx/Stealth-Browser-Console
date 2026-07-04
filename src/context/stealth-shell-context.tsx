@@ -1,10 +1,14 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { StealthScreen } from "../lib/stealth-screen";
 import type { StealthTheme } from "../theme";
+import type { StealthWorkflowTab } from "../lib/stealth-workflow-tab";
 
 export type StealthShellContextValue = {
   view: StealthScreen;
   setView: (view: StealthScreen) => void;
+  workflowTab: StealthWorkflowTab;
+  setWorkflowTab: (tab: StealthWorkflowTab) => void;
+  openWorkflowStore: () => void;
   theme: StealthTheme;
   setTheme: (theme: StealthTheme) => void;
   engineStatus: "checking" | "ready" | "offline";

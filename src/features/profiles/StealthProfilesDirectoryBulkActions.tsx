@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  HUB_BULK_ACTION_BTN_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HubBulkActionButton,
 } from "@tool-workspace/hub-ui";
-import { Blocks, ChevronDown, EllipsisVertical, FolderTree, Layers, Pencil, Play, Plus, Square, Trash2, Download, Upload } from "lucide-react";
+import { Blocks, EllipsisVertical, FolderTree, Layers, Pencil, Play, Plus, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
 export type ExtensionSelectionState = "all-on" | "all-off" | "mixed";
@@ -26,8 +25,28 @@ function ToggleSwitch({ on }: { on: boolean }) {
   );
 }
 
+function ExtensionIcon({ kind, src, size = 14 }: { kind: "e0001" | "surfshark"; src?: string | null; size?: number }) {
+  const Fallback = kind === "e0001" ? Cookie : Shield;
+  const fallbackClass = kind === "e0001" ? "text-orange-300" : "text-cyan-300";
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) {
+    return <Fallback size={size} className={`shrink-0 ${fallbackClass}`} aria-hidden />;
+  }
+  return (
+    <img
+      src={src}
+      width={size}
+      height={size}
+      className="shrink-0"
+      alt=""
+      draggable={false}
+      onError={() => setBroken(true)}
+    />
+  );
+}
 function ExtensionToggleRow({
   icon,
+  iconKind,
   label,
   state,
   disabled,
@@ -35,6 +54,7 @@ function ExtensionToggleRow({
   onToggle,
 }: {
   icon?: string;
+  iconKind?: "e0001" | "surfshark";
   label: string;
   state: ExtensionSelectionState;
   disabled?: boolean;
@@ -58,6 +78,8 @@ function ExtensionToggleRow({
     >
       {icon === "layers" ? (
         <Layers size={14} className="shrink-0 text-sky-400" aria-hidden />
+      ) : iconKind ? (
+        <ExtensionIcon kind={iconKind} src={icon} size={16} />
       ) : icon ? (
         <img src={icon} width={16} height={16} className="shrink-0" alt="" draggable={false} />
       ) : (
@@ -76,6 +98,7 @@ export function StealthProfilesDirectoryBulkActions({
   extensionIcons,
   syncBusy,
   launchBusy = false,
+  launchDisabled = false,
   extensionBusy = false,
   launchTitle = "Launch selected profiles with the chosen workflow (skips startup URL)",
   onLaunch,
@@ -94,6 +117,7 @@ export function StealthProfilesDirectoryBulkActions({
   extensionIcons?: ExtensionIconMap;
   syncBusy: boolean;
   launchBusy?: boolean;
+  launchDisabled?: boolean;
   extensionBusy?: boolean;
   launchTitle?: string;
   onLaunch: () => void;
@@ -133,8 +157,8 @@ export function StealthProfilesDirectoryBulkActions({
     setExtensionOpen(false);
   };
 
-  const e0001Icon = extensionIcons?.e0001 || "/icons/ext-e0001-16.png";
-  const surfsharkIcon = extensionIcons?.surfshark || "/icons/ext-surfshark-16.png";
+  const e0001Icon = extensionIcons?.e0001 ?? null;
+  const surfsharkIcon = extensionIcons?.surfshark ?? null;
 
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -170,7 +194,7 @@ export function StealthProfilesDirectoryBulkActions({
         label="Launch"
         title={launchTitle}
         tone="emerald"
-        disabled={!hasSelection || syncBusy || launchBusy}
+        disabled={!hasSelection || syncBusy || launchBusy || launchDisabled}
         onClick={onLaunch}
       />
       <HubBulkActionButton
@@ -182,19 +206,14 @@ export function StealthProfilesDirectoryBulkActions({
         onClick={onClose}
       />
       <div ref={extensionRef} className="relative">
-        <button
-          type="button"
-          disabled={extDisabled}
-          aria-haspopup="menu"
-          aria-expanded={extensionOpen}
+        <HubBulkActionButton
+          icon={<Blocks size={14} aria-hidden />}
+          label="Extension"
           title={hasSelection ? "Set extensions for selected profiles" : "Select profiles first"}
+          tone="sky"
+          disabled={extDisabled}
           onClick={() => setExtensionOpen((v) => !v)}
-          className={`${HUB_BULK_ACTION_BTN_CLASS} border border-sky-500/30 bg-sky-500/12 text-sky-100 hover:bg-sky-500/20`}
-        >
-          <Blocks size={14} aria-hidden />
-          Extension
-          <ChevronDown size={12} aria-hidden className={`transition-transform ${extensionOpen ? "rotate-180" : ""}`} />
-        </button>
+        />
         {extensionOpen ? (
           <div role="menu" className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} right-0 w-56`}>
             <div className="space-y-0.5 p-1.5">
@@ -208,7 +227,8 @@ export function StealthProfilesDirectoryBulkActions({
               />
               <div className="mx-2 border-t border-white/8" />
               <ExtensionToggleRow
-                icon={e0001Icon}
+                icon={e0001Icon ?? undefined}
+                iconKind="e0001"
                 label="Cookie Bridge"
                 state={extensionState.e0001}
                 disabled={extDisabled}
@@ -219,7 +239,8 @@ export function StealthProfilesDirectoryBulkActions({
                 }}
               />
               <ExtensionToggleRow
-                icon={surfsharkIcon}
+                icon={surfsharkIcon ?? undefined}
+                iconKind="surfshark"
                 label="Surfshark VPN"
                 state={extensionState.surfshark}
                 disabled={extDisabled}

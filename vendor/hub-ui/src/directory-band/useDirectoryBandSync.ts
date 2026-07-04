@@ -29,15 +29,24 @@ export function useDirectoryBandSync(
   const { kpis, charts, sectionRuleLabel, kpiKey = "", chartsKey = "" } = snapshot;
 
   useLayoutEffect(() => {
-    if (!enabled) return;
-    handlers.setDirectoryKpis(kpis?.length ? kpis : undefined);
-    handlers.setDirectoryCharts(charts ?? null);
-    handlers.setSectionRuleLabel(sectionRuleLabel);
-    return () => {
+    if (!enabled) {
       handlers.setDirectoryKpis(undefined);
       handlers.setDirectoryCharts(null);
       handlers.setSectionRuleLabel(undefined);
-    };
+      return;
+    }
+    handlers.setDirectoryKpis(kpis?.length ? kpis : undefined);
+    handlers.setDirectoryCharts(charts ?? null);
+    handlers.setSectionRuleLabel(sectionRuleLabel);
     // kpiKey/chartsKey are stable fingerprints; kpis/charts omitted from deps to avoid ReactNode identity loops.
   }, [enabled, kpiKey, chartsKey, sectionRuleLabel, handlers.setDirectoryCharts, handlers.setDirectoryKpis, handlers.setSectionRuleLabel]);
+
+  useLayoutEffect(
+    () => () => {
+      handlers.setDirectoryKpis(undefined);
+      handlers.setDirectoryCharts(null);
+      handlers.setSectionRuleLabel(undefined);
+    },
+    [handlers.setDirectoryCharts, handlers.setDirectoryKpis, handlers.setSectionRuleLabel],
+  );
 }

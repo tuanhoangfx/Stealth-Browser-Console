@@ -1,0 +1,19 @@
+/**
+ * Hub-UI component styles — bundled for embed gateway hosts.
+ */
+@import "./hub-fonts.css";
+@import "./hub-check-indicator.css";
+@import "./hub-fields.css";
+@import "./hub-shell-layout.css";
+@import "./hub-directory-bulk-rail.css";
+@import "./hub-directory-toolbar-selection.css";
+@import "./hub-split-scroll.css";
+@import "./hub-app-tab-header.css";
+@import "./hub-users-table.css";
+@import "./hub-directory-table.css";
+@import "./hub-table-controls.css";
+@import "./hub-table-cell.css";
+@import "./hub-split-directory-pane.css";
+@import "./hub-directory-frame-table.css";
+@import "./hub-modal.css";
+@import "./hub-auth-gate.css";

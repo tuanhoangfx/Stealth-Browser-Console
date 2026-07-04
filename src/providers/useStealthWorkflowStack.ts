@@ -73,11 +73,8 @@ export function useStealthWorkflowStack({
   );
 
   const runWorkflowConfigs = useMemo(
-    () =>
-      workflowFilters.selectedWorkflowConfigs.length > 0
-        ? workflowFilters.selectedWorkflowConfigs
-        : [workflow.activeWorkflowConfig],
-    [workflow.activeWorkflowConfig, workflowFilters.selectedWorkflowConfigs]
+    () => workflowFilters.selectedWorkflowConfigs,
+    [workflowFilters.selectedWorkflowConfigs],
   );
 
   const automation = useStealthAutomationQueue({
@@ -186,6 +183,7 @@ export function useStealthWorkflowStack({
       copyWorkflow: workflow.copyWorkflow,
       resetWorkflow: workflow.resetWorkflow,
       importWorkflows: workflow.importWorkflows,
+      installWorkflowFromStore: workflow.installWorkflowFromStore,
       importSingleWorkflow: workflow.importSingleWorkflow,
       saveWorkflowChanges: workflow.saveWorkflowChanges,
       undoWorkflowChange: workflow.undoWorkflowChange,
@@ -233,6 +231,7 @@ export function useStealthWorkflowStack({
       workflow.copyWorkflow,
       workflow.resetWorkflow,
       workflow.importWorkflows,
+      workflow.installWorkflowFromStore,
       workflow.importSingleWorkflow,
       workflow.saveWorkflowChanges,
       workflow.undoWorkflowChange,

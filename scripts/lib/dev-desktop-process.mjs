@@ -52,19 +52,12 @@ export function killStealthDev() {
   }
   clearPidFile();
 
+  // Free :5175 only when restarting this tool's dev stack (vite). Does not touch packaged exe.
   if (process.platform === "win32") {
-    spawnSync(
-      "powershell",
-      [
-        "-NoProfile",
-        "-Command",
-        [
-          "Get-NetTCPConnection -LocalPort 5175 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }",
-          "Get-Process electron -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue",
-        ].join("; "),
-      ],
-      winSpawnOpts({ stdio: "ignore" }),
-    );
+    const killPort = path.join(root, "scripts", "kill-port.cjs");
+    if (fs.existsSync(killPort)) {
+      spawnSync(process.execPath, [killPort, String(5175)], winSpawnOpts({ cwd: root, stdio: "ignore" }));
+    }
   }
 }
 

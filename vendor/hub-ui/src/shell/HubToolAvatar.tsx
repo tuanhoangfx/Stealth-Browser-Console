@@ -46,7 +46,7 @@ export function HubToolAvatar({
         className={`tool-avatar tool-avatar-${size} tool-avatar-svg`}
         style={{ width: px, height: px }}
       >
-        <img src={svgSrc} alt={code} width={glyphPx} height={glyphPx} />
+        <img src={svgSrc} alt={code} width={px} height={px} />
       </div>
     );
   }

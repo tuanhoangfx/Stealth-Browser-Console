@@ -12,6 +12,21 @@ const os = require("node:os");
 const { domainPlugins } = require("./automation/plugins.cjs");
 const { validateOpenUrlPayload } = require("./ipc-contracts.cjs");
 const { checkProxy, geoConsistency } = require("./lib/proxy-pool.cjs");
+const { extractProfileCode } = require("./lib/profile-identity.cjs");
+const { diagnoseMailCredentials } = require("./lib/twofa-vault-bridge.cjs");
+
+function stepsNeedMailCredentials(steps) {
+  return Array.isArray(steps) && steps.some((s) => String(s?.value || "").includes("{{gmail"));
+}
+
+async function preflightMailCredentials(profile, steps) {
+  if (!stepsNeedMailCredentials(steps)) return;
+  const profileCode = extractProfileCode(profile.name, profile.id);
+  const diagnosis = await diagnoseMailCredentials(profileCode, "Gmail");
+  if (!diagnosis.ok || !diagnosis.credentials) {
+    throw new Error(diagnosis.reason || `No Gmail credentials found for profile ${profileCode}.`);
+  }
+}
 
 /**
  * @param {{ sessionManager, profileService, jobQueue, userDataRoot, send }} services
@@ -66,10 +81,13 @@ function buildRoutes(services) {
       inspectMode: Boolean(rawBody.inspect_mode ?? rawBody.inspectMode)
     });
     emit({ event: "progress", msg: `Mở URL: ${safe.targetUrl}` });
-    const { profile, context } = await ensureProfileContext(safe.profileId, { skipStartupUrl: true });
+    const profile = profileService.getProfile(safe.profileId);
+    if (!profile) throw new Error("Profile không tồn tại");
+    await preflightMailCredentials(profile, safe.steps);
+    const { profile: launchedProfile, context } = await ensureProfileContext(safe.profileId, { skipStartupUrl: true });
     const result = await runOpenUrl({
       context,
-      profile,
+      profile: launchedProfile,
       targetUrl: safe.targetUrl,
       screenshot: safe.screenshot,
       closeWhenDone: safe.closeWhenDone,

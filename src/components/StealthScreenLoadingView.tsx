@@ -1,12 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { HubScreenChunkFallback } from "@tool-workspace/hub-ui";
+import { flatMapNavScreenItems, HubScreenChunkFallback } from "@tool-workspace/hub-ui";
 import { STEALTH_NAV_STRUCTURE } from "../lib/stealth-nav-structure";
 import type { StealthScreen } from "../lib/stealth-screen";
 
 const STEALTH_LOADING_PRESETS = Object.fromEntries(
-  STEALTH_NAV_STRUCTURE.filter((item): item is Extract<(typeof STEALTH_NAV_STRUCTURE)[number], { kind: "screen" }> => item.kind === "screen").map(
-    (item) => [item.screen, { icon: item.icon, ariaLabel: `Loading ${item.label.toLowerCase()}` }],
-  ),
+  flatMapNavScreenItems(STEALTH_NAV_STRUCTURE).map((item) => [
+    item.screen,
+    { icon: item.icon, ariaLabel: `Loading ${item.label.toLowerCase()}` },
+  ]),
 ) as Record<StealthScreen, { icon: LucideIcon; ariaLabel: string }>;
 
 /** P0004/P0016 Suspense fallback — portaled orb in main pane via HubLoaderRoot. */

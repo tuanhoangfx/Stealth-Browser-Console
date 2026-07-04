@@ -1,0 +1,19 @@
+{
+  "id": "google-one-ai",
+  "name": "Google One AI",
+  "description": "Check Google One AI plan and credit activity.",
+  "icon": "layers",
+  "group": "Account Check",
+  "platform": "Google",
+  "action": "open-url",
+  "targetUrl": "https://one.google.com/u/0/ai/activity",
+  "takeScreenshot": true,
+  "closeWhenDone": false,
+  "inspectMode": false,
+  "concurrency": 2,
+  "steps": [
+    { "id": "step-navigate", "kind": "navigate", "value": "https://one.google.com/u/0/ai/activity", "enabled": true, "timeoutMs": 60000 },
+    { "id": "step-wait", "kind": "wait", "name": "Wait after navigate", "enabled": true, "timeoutMs": 15000 },
+    { "id": "step-screenshot", "kind": "screenshot", "name": "Capture evidence", "enabled": true, "timeoutMs": 10000 }
+  ]
+}

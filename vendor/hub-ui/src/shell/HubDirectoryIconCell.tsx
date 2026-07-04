@@ -1,12 +1,12 @@
-import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { resolveHubBrandIcon } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize } from "../ui-scale";
 import type { HubBrandIconShell } from "./filter-dropdown-primitives";
+import type { HubGlyphComponent } from "../types/filter-badge";
 
 export type HubDirectoryIconCellProps = {
-  icon?: LucideIcon;
+  icon?: HubGlyphComponent;
   brandId?: HubBrandIconId;
   imageSrc?: string;
   imageShell?: HubBrandIconShell;
@@ -31,7 +31,7 @@ function DirectoryBrandImg({
   src: string;
   shell: HubBrandIconShell;
   alt: string;
-  fallbackIcon?: LucideIcon;
+  fallbackIcon?: HubGlyphComponent;
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {

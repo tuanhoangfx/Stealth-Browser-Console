@@ -14,23 +14,23 @@ describe("hub-default-tool-access", () => {
   });
 
   it("merges default tool codes", () => {
-    expect(mergeDefaultUserToolCodes(["P0008"])).toEqual(["P0008", "P0016", "P0020"]);
+    expect(mergeDefaultUserToolCodes(["P0005"])).toEqual(["P0005", "P0016", "P0020"]);
   });
 
   it("grants default tools to regular users", () => {
     expect(hasEffectiveHubToolAccess("user", "P0016", [])).toBe(true);
-    expect(hasEffectiveHubToolAccess("user", "P0008", [])).toBe(false);
-    expect(hasEffectiveHubToolAccess("user", "P0008", ["P0008"])).toBe(true);
-    expect(hasEffectiveHubToolAccess("admin", "P0008", [])).toBe(true);
+    expect(hasEffectiveHubToolAccess("user", "P0005", [])).toBe(false);
+    expect(hasEffectiveHubToolAccess("user", "P0005", ["P0005"])).toBe(true);
+    expect(hasEffectiveHubToolAccess("admin", "P0005", [])).toBe(true);
   });
 
   it("applies defaults to user rows", () => {
     const row = applyDefaultToolsToUserRow({
       role: "user",
-      toolCodes: ["P0008"],
+      toolCodes: ["P0005"],
       toolCount: 1,
     });
-    expect(row.toolCodes).toEqual(["P0008", "P0016", "P0020"]);
+    expect(row.toolCodes).toEqual(["P0005", "P0016", "P0020"]);
     expect(row.toolCount).toBe(3);
   });
 });

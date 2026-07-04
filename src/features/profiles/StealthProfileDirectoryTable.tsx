@@ -8,6 +8,7 @@ import {
 } from "@tool-workspace/hub-ui";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
+import { Cookie, Shield } from "lucide-react";
 import {
   STEALTH_PROFILE_COLUMN_META as STEALTH_PROFILE_COLUMN_META,
   toHubDirectoryColumnMeta,
@@ -21,11 +22,31 @@ import { renderStealthProfileDirectoryBodyCell } from "./stealth-profile-directo
 import { sortableProfileValue } from "./stealth-profile-sort";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
-function makeExtIcon(src: string | null, alt: string) {
-  const fallback = alt === "E0001" ? "/icons/ext-e0001-16.png" : "/icons/ext-surfshark-16.png";
-  const url = src || fallback;
+function makeExtIcon(src: string | null, kind: "e0001" | "surfshark") {
+  const Fallback = kind === "e0001" ? Cookie : Shield;
+  const fallbackClass = kind === "e0001" ? "text-orange-300" : "text-cyan-300";
+  const label = kind === "e0001" ? "E0001" : "Surfshark";
+  if (!src) {
+    return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+      return <Fallback size={size} className={`shrink-0 ${fallbackClass} ${className}`} aria-hidden />;
+    };
+  }
   return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
-    return <img src={url} width={size} height={size} className={`inline-block ${className}`} alt={alt} draggable={false} />;
+    const [broken, setBroken] = useState(false);
+    if (broken) {
+      return <Fallback size={size} className={`shrink-0 ${fallbackClass} ${className}`} aria-hidden />;
+    }
+    return (
+      <img
+        src={src}
+        width={size}
+        height={size}
+        className={`inline-block shrink-0 ${className}`}
+        alt={label}
+        draggable={false}
+        onError={() => setBroken(true)}
+      />
+    );
   };
 }
 
@@ -132,8 +153,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
     return () => window.removeEventListener(profileDirectoryColumnPrefs.changeEvent, sync);
   }, []);
 
-  const ExtIconE0001 = useMemo(() => makeExtIcon(extensionIcons?.e0001 ?? null, "E0001"), [extensionIcons?.e0001]);
-  const ExtIconSurfshark = useMemo(() => makeExtIcon(extensionIcons?.surfshark ?? null, "Surfshark"), [extensionIcons?.surfshark]);
+  const ExtIconE0001 = useMemo(() => makeExtIcon(extensionIcons?.e0001 ?? null, "e0001"), [extensionIcons?.e0001]);
+  const ExtIconSurfshark = useMemo(() => makeExtIcon(extensionIcons?.surfshark ?? null, "surfshark"), [extensionIcons?.surfshark]);
 
   const columns = useMemo(() => {
     const built = buildDirectoryColumns(
