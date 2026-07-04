@@ -277,7 +277,7 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
     id: "gmail-login",
     name: "Gmail Login",
     description: "Auto-login Gmail using credentials from P0020 Data Box. Supports 2FA/TOTP.",
-    icon: "mail",
+    icon: "globe",
     group: "Account Check",
     platform: "Google",
     action: "open-url",

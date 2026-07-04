@@ -354,6 +354,11 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       ok: false,
       error: "Unpacked install requires Electron (dev:web mock).",
     }),
+    fetchExtensionIcon: async (payload) => ({
+      ok: false,
+      storeId: String(payload?.storeId ?? ""),
+      iconDataUri: null,
+    }),
     onProfileSession: () => () => undefined
   };
 }
