@@ -1,11 +1,12 @@
-import type { ElementType, ReactNode } from "react";
+import type { ReactNode } from "react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem } from "./AppTabHeader";
 import { useHubChromePrefs } from "./HubTabChrome";
 
 export type HubListChromeHeaderProps = {
   ariaLabel: string;
   title: string;
-  titleIcon: ElementType<{ size?: number; className?: string }>;
+  titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   metaItems?: TabHeaderMetaItem[];
   centerStats?: TabHeaderStatItem[];

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Clock } from "lucide-react";
 import {
   formatHubActivityRelativeAge,
@@ -12,6 +12,7 @@ import { useRelativeNow } from "../lib/use-relative-now";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import { HubSemanticGlyph } from "./HubSemanticGlyph";
 import { HubTabTitleIcon } from "./HubTabTitleIcon";
 import "./app-tab-header.css";
@@ -19,11 +20,11 @@ import "./app-tab-header.css";
 export type TabTitleMenuItem = {
   id: string;
   label: string;
-  icon?: ElementType<{ size?: number; className?: string }>;
+  icon?: HubGlyphComponent;
 };
 
 export type TabHeaderMetaItem = {
-  icon: ElementType<{ size?: number; className?: string }>;
+  icon: HubGlyphComponent;
   /** Native tooltip on the meta chip — not rendered as visible label text. */
   title?: string;
   value: string;
@@ -34,7 +35,7 @@ export type TabHeaderMetaItem = {
 
 export type TabHeaderStatItem = {
   key: string;
-  icon?: ElementType<{ size?: number; className?: string }>;
+  icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   dotClass?: string;
   label: string;
@@ -47,7 +48,7 @@ export type TabHeaderStatItem = {
 
 type AppTabHeaderProps = {
   ariaLabel: string;
-  titleIcon: ElementType<{ size?: number; className?: string }>;
+  titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
   title: string;
@@ -72,7 +73,7 @@ function TitleWithMenu({
   onTitleMenuSelect,
 }: {
   title: string;
-  titleIcon: ElementType<{ size?: number; className?: string }>;
+  titleIcon: HubGlyphComponent;
   titleIconClass: string;
   titleBrandIcon?: HubBrandIconId;
   titleMenu: TabTitleMenuItem[];

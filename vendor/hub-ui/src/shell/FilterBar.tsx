@@ -23,7 +23,7 @@ import {
   Star,
   LayoutTemplate,
 } from "lucide-react";
-import type { FilterIconMeta } from "./filter-icons";
+import type { FilterIconMeta, HubGlyphComponent } from "./filter-icons";
 import { resolveFilterAllIcon, resolveFilterOptionIcon } from "./filter-icons";
 import {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
@@ -66,7 +66,7 @@ export type FilterDef = {
   suppressDefaultTriggerIcon?: boolean;
 };
 
-const FILTER_ICONS: Record<string, React.ElementType> = {
+const FILTER_ICONS: Record<string, HubGlyphComponent> = {
   health: Activity,
   category: Layers,
   deploy: Rocket,

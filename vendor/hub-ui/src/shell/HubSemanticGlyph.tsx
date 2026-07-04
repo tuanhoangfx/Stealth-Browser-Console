@@ -1,10 +1,10 @@
-import type { ElementType } from "react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize } from "../ui-scale";
 import { HubBrandIcon } from "./HubBrandIcon";
 
 type Props = {
-  icon?: ElementType<{ size?: number; className?: string }>;
+  icon?: HubGlyphComponent;
   className?: string;
   size?: number;
   brandIcon?: HubBrandIconId;

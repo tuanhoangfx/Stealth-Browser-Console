@@ -1,4 +1,4 @@
-import type { ElementType } from "react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import { MAX_VISIBLE_KPI } from "../display-prefs/kpi-visible";
 import { clampBandSlotCount } from "../lib/analytics-band-count";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
@@ -42,7 +42,7 @@ export type KpiTileData = {
   label: string;
   value: string | number;
   hint?: string;
-  icon?: ElementType<{ size?: number; className?: string }>;
+  icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   /** Extra classes on KPI icon (e.g. animate-spin for in-progress). */
   iconClassName?: string;

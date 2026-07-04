@@ -1,13 +1,9 @@
-import type { ElementType } from "react";
 import { defaultFilterAllIcon } from "./filter-default-icons";
+import type { FilterIconMeta } from "../types/filter-badge";
 
+export type { FilterIconMeta, HubGlyphComponent } from "../types/filter-badge";
 export { defaultFilterAllIcon, DEFAULT_FILTER_ALL_ICONS } from "./filter-default-icons";
 export { FILTER_BAR_SEMANTIC_KEY, semanticFilterAllIcon } from "./filter-semantic-keys";
-
-export type FilterIconMeta = {
-  icon: ElementType<{ size?: number; className?: string }>;
-  className: string;
-};
 
 export type FilterIconResolver = {
   resolveOption: (filterKey: string, value: string) => FilterIconMeta | null;

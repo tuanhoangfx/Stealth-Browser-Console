@@ -1,6 +1,7 @@
-﻿import { useMemo, type ElementType, type ReactNode } from "react";
+﻿import { useMemo, type ReactNode } from "react";
 import { Tag } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import {
   AppTabHeader,
   type TabHeaderMetaItem,
@@ -11,7 +12,7 @@ import { buildVersionMetaItems } from "./workspace-tab-header-meta";
 
 export type WorkspaceTabHeaderProps = {
   ariaLabel: string;
-  titleIcon: ElementType<{ size?: number; className?: string }>;
+  titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
   title: string;

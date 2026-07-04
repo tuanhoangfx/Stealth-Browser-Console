@@ -1,12 +1,6 @@
-import type { ElementType } from "react";
 import { CheckCircle2, CircleOff, Clock, FolderOpen, Globe, Layers, Laptop, Monitor, MonitorSmartphone, Palette, Play, Shield, Tag, Terminal } from "lucide-react";
-import { resolveSemanticIcon, type SemanticIconLookupKey } from "@tool-workspace/hub-ui";
+import { resolveSemanticIcon, type FilterIconMeta, type SemanticIconLookupKey } from "@tool-workspace/hub-ui";
 import { DEVICE_PRESETS } from "./device-presets";
-
-export type FilterIconMeta = {
-  icon: ElementType<{ size?: number; className?: string }>;
-  className: string;
-};
 
 const PLATFORM_ICONS: Record<string, FilterIconMeta> = {
   windows: { icon: Monitor, className: "text-sky-300" },

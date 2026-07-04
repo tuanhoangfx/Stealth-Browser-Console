@@ -1,10 +1,10 @@
-import type { ElementType, ReactNode } from "react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { KpiStripTone } from "../shell/KpiStrip";
 
 /** Portable icon metadata — one semantic key maps to badge, KPI, and TOC surfaces. */
 export type SemanticIconMeta = {
-  icon: ElementType<{ size?: number; className?: string }>;
+  icon: HubGlyphComponent;
   className: string;
   tone?: KpiStripTone;
   /** When set, UI renders shared Hub brand mark instead of Lucide `icon`. */

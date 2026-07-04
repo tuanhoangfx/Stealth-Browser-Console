@@ -682,6 +682,7 @@ export {
   DEFAULT_FILTER_ALL_ICONS,
   resolveFilterOptionIcon,
   type FilterIconMeta,
+  type HubGlyphComponent,
   type FilterIconResolver,
 } from "./shell/filter-icons";
 export { countryCodeForLocale, flagCdnUrl, localeFlagIconSrc } from "./lib/locale-flag";

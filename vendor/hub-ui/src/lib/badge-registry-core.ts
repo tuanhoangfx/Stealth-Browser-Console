@@ -2,7 +2,6 @@
  * Shared badge/filter icon maps — SSOT for Hub deploy, health, category, schema chips.
  * Tool-specific keys extend via local badge-registry (P0016 bot, P0020 cookie/todo).
  */
-import type { ElementType } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -36,20 +35,11 @@ import {
   Zap,
 } from "lucide-react";
 import { deployLabel } from "./deploy-label";
+import type { BadgeSpec, FilterIconMeta } from "../types/filter-badge";
+
+export type { FilterIconMeta, BadgeSpec } from "../types/filter-badge";
 
 export type SchemaMode = "input" | "auto" | "derive" | "compute" | "ro";
-
-export type FilterIconMeta = {
-  icon: ElementType<{ size?: number; className?: string }>;
-  className: string;
-};
-
-export type BadgeSpec = {
-  label: string;
-  iconMeta: FilterIconMeta;
-  tone?: "ok" | "warn" | "bad" | "neutral";
-  variantClass?: string;
-};
 
 export function pickBadgeIcon(map: Record<string, FilterIconMeta>, key: string): FilterIconMeta | null {
   return map[key] ?? null;
