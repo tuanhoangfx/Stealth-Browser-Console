@@ -272,6 +272,37 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
       createStep("click", { name: "Change password", selector: 'button:has-text("Change password")', timeoutMs: 15000 }),
       createStep("click", { name: "Skip browser save password", selector: 'text="Never"', timeoutMs: 5000, enabled: false })
     ]
+  },
+  {
+    id: "gmail-login",
+    name: "Gmail Login",
+    description: "Auto-login Gmail using credentials from P0020 Data Box. Supports 2FA/TOTP.",
+    icon: "mail",
+    group: "Account Check",
+    platform: "Google",
+    action: "open-url",
+    targetUrl: "https://accounts.google.com/signin",
+    takeScreenshot: true,
+    closeWhenDone: false,
+    inspectMode: false,
+    concurrency: 1,
+    steps: [
+      createStep("navigate", { name: "Open Gmail sign-in", value: "https://accounts.google.com/signin" }),
+      createStep("wait", { name: "Wait for email input", selector: '#identifierId, input[type="email"]', timeoutMs: 15000 }),
+      createStep("type", { name: "Type email", selector: '#identifierId, input[type="email"]', value: "{{gmailEmail}}", timeoutMs: 10000 }),
+      createStep("click", { name: "Click Next (email)", selector: '#identifierNext button, #identifierNext, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 10000 }),
+      createStep("wait", { name: "Wait for page transition", timeoutMs: 8000 }),
+      createStep("delay", { name: "Wait for password page", value: "2000", timeoutMs: 5000 }),
+      createStep("wait", { name: "Wait for password input", selector: 'input[name="Passwd"]', timeoutMs: 30000 }),
+      createStep("type", { name: "Type password", selector: 'input[name="Passwd"]', value: "{{gmailPassword}}", timeoutMs: 10000 }),
+      createStep("click", { name: "Click Next (password)", selector: '#passwordNext button, #passwordNext, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 10000 }),
+      createStep("delay", { name: "Wait for 2FA or redirect", value: "5000", timeoutMs: 8000 }),
+      createStep("wait", { name: "Wait for 2FA input (optional)", selector: 'input[type="tel"][id="totpPin"], input[name="totpPin"], input[type="tel"]', timeoutMs: 5000, enabled: true }),
+      createStep("type", { name: "Type TOTP code", selector: 'input[type="tel"][id="totpPin"], input[name="totpPin"], input[type="tel"]', value: "{{gmailTotpCode}}", timeoutMs: 5000, enabled: true }),
+      createStep("click", { name: "Click Next (2FA)", selector: '#totpNext button, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 5000, enabled: true }),
+      createStep("delay", { name: "Wait for login complete", value: "3000", timeoutMs: 5000 }),
+      createStep("screenshot", { name: "Capture login result" }),
+    ]
   }
 ];
 

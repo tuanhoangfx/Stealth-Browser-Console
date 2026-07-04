@@ -25,3 +25,6 @@ export * from "./hub-token-refresh-scheduler";
 export * from "./workspace-hub-auth-boot";
 export * from "./workspace-data-auth-boot";
 export * from "./workspace-auth-policy";
+export * from "./dev-auto-login";
+export * from "./dev-hub-auto-sign-in";
+export * from "./dev-hub-auto-sign-in-boot";

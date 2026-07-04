@@ -11,6 +11,12 @@ import type {
   StealthGroup,
   StealthProfile,
   CookieBridgeStatus,
+  ExtensionToggles,
+  ExtensionsStatus,
+  InstallStoreExtensionResult,
+  InstallUnpackedExtensionResult,
+  ProfileStorageStat,
+  ProfileBackupMeta,
 } from "./types";
 import { installStealthWebMock } from "./lib/stealth-web-mock";
 
@@ -45,6 +51,11 @@ export async function fetchProfileBootstrap(): Promise<{ groups: StealthGroup[];
 export async function fetchProfilesAndGroups(): Promise<{ profiles: StealthProfile[]; groups: StealthGroup[] }> {
   const data = await api().listProfiles();
   return { profiles: data.profiles, groups: data.groups };
+}
+
+export async function listProfiles(): Promise<StealthProfile[]> {
+  const { profiles } = await fetchProfilesAndGroups();
+  return profiles;
 }
 
 export async function fetchProfileCatalogStats(): Promise<ProfileCatalogStats> {
@@ -130,8 +141,32 @@ export async function exportProfilesBundle() {
   return data.bundle;
 }
 
-export async function importProfilesBundle(bundle: unknown, merge = true) {
-  return api().importProfiles({ bundle, merge });
+export async function importProfilesBundle(bundle: unknown, merge = true, matchBy: "name" | "id" = "name") {
+  return api().importProfiles({ bundle, merge, matchBy });
+}
+
+export async function backupProfilesState(profileIds?: string[]) {
+  return api().backupProfilesState(profileIds?.length ? { profileIds } : undefined);
+}
+
+export async function restoreProfilesState(options?: { restoreIntoProfileId?: string }) {
+  return api().restoreProfilesState(options);
+}
+
+export async function fetchProfileStorageStats(
+  profileIds: string[],
+  options?: { includeBytes?: boolean },
+): Promise<ProfileStorageStat[]> {
+  const data = await api().profileStorageStats({
+    profileIds,
+    includeBytes: options?.includeBytes,
+  });
+  return data.stats;
+}
+
+export async function fetchProfileBackupMeta(profileIds: string[]): Promise<ProfileBackupMeta[]> {
+  const data = await api().profileBackupMeta({ profileIds });
+  return data.meta;
 }
 
 export async function launchProfile(id: string, name?: string) {
@@ -168,6 +203,42 @@ export async function fetchAppInfo() {
 
 export async function openDataFolder() {
   return api().openDataFolder();
+}
+
+export async function fetchProfileExtensionsEnabled(): Promise<boolean> {
+  const data = await api().getProfileExtensionsEnabled();
+  if (!data.ok) throw new Error("Extension settings unavailable");
+  return Boolean(data.enabled);
+}
+
+export async function setProfileExtensionsEnabled(enabled: boolean): Promise<boolean> {
+  const data = await api().setProfileExtensionsEnabled({ enabled });
+  if (!data.ok) throw new Error("Extension settings unavailable");
+  return Boolean(data.enabled);
+}
+
+export async function fetchExtensionToggles(): Promise<ExtensionToggles> {
+  const bridge = api();
+  if (typeof bridge.getExtensionToggles === "function") {
+    const data = await bridge.getExtensionToggles();
+    if (!data.ok || !data.toggles) throw new Error("Extension settings unavailable");
+    return data.toggles;
+  }
+  if (typeof bridge.getProfileExtensionsEnabled === "function") {
+    const enabled = await fetchProfileExtensionsEnabled();
+    return { e0001: enabled, surfshark: enabled, webStore: enabled };
+  }
+  throw new Error("Restart Stealth Browser Console (Electron) to load extension settings API.");
+}
+
+export async function setExtensionToggles(patch: Partial<ExtensionToggles>): Promise<ExtensionToggles> {
+  const bridge = api();
+  if (typeof bridge.setExtensionToggles !== "function") {
+    throw new Error("Restart Stealth Browser Console (Electron) to load extension settings API.");
+  }
+  const data = await bridge.setExtensionToggles({ toggles: patch });
+  if (!data.ok || !data.toggles) throw new Error("Extension settings unavailable");
+  return data.toggles;
 }
 
 export async function fetchLaunchPerfEntries(limit = 24): Promise<LaunchPerfEntry[]> {
@@ -208,4 +279,44 @@ export async function purgeBrokenExtensionPrefs(): Promise<{ profiles: number; r
     removed: data.removed ?? 0,
     prefsCleaned: data.prefsCleaned ?? 0,
   };
+}
+
+export async function fetchExtensionsStatus(): Promise<ExtensionsStatus> {
+  const data = await api().fetchExtensionsStatus();
+  if (!data.ok || !data.status) throw new Error("Extensions status unavailable");
+  return data.status;
+}
+
+export async function fetchExtensionIcon(storeId: string, size = 48): Promise<string | null> {
+  const data = await api().fetchExtensionIcon({ storeId, size });
+  return data.iconDataUri ?? null;
+}
+
+export async function installStoreExtension(payload: {
+  storeId?: string;
+  url?: string;
+  profileIds?: string[];
+}): Promise<InstallStoreExtensionResult> {
+  const data = await api().installStoreExtension({
+    storeIdOrUrl: payload.storeId ?? payload.url,
+    profileIds: payload.profileIds,
+  });
+  if (!data.ok || !data.result) throw new Error(data.error || "Install failed");
+  return data.result;
+}
+
+export async function pickUnpackedExtensionFolder(): Promise<string | null> {
+  const data = await api().pickUnpackedExtensionFolder();
+  if (!data.ok || data.canceled) return null;
+  if (!data.path) throw new Error(data.error || "Folder picker failed");
+  return data.path;
+}
+
+export async function installUnpackedExtension(payload: {
+  path: string;
+  profileIds?: string[];
+}): Promise<InstallUnpackedExtensionResult> {
+  const data = await api().installUnpackedExtension(payload);
+  if (!data.ok || !data.result) throw new Error(data.error || "Install failed");
+  return data.result;
 }

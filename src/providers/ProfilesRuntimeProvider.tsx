@@ -26,7 +26,7 @@ import {
   reconcileCatalogStats,
 } from "../features/profiles/profile-catalog-stats-patch";
 import { useRunLogs } from "../features/runtime/RunLogsContext";
-import { downloadJson } from "../lib/stealth-profile-utils";
+import { buildProfileExportFilename, downloadJson } from "../lib/stealth-profile-utils";
 import { resolveStartupUrlSave } from "../lib/startup-url";
 import type { BulkCreateProfileDefaults, BulkCreateProfilesResult, ProfileRow, RunHistoryItem, ProfileCatalogStats, StealthGroup, StealthProfile } from "../types";
 
@@ -56,7 +56,7 @@ export type ProfilesRuntimeContextValue = {
   createGroup: (name: string) => Promise<StealthGroup>;
   updateGroup: (id: string, name: string) => Promise<StealthGroup>;
   deleteGroup: (id: string) => Promise<void>;
-  exportProfiles: () => Promise<void>;
+  exportProfiles: (selected?: ProfileRow[]) => Promise<void>;
   importProfiles: (bundle: unknown) => Promise<void>;
   openOne: (profile: ProfileRow) => Promise<void>;
   closeOne: (profile: ProfileRow) => Promise<void>;
@@ -344,16 +344,36 @@ export function ProfilesRuntimeProvider({
     [addLog, refreshProfiles],
   );
 
-  const handleExportProfiles = useCallback(async () => {
-    const bundle = (await exportProfilesBundle()) as { profiles: unknown[] };
-    downloadJson(`stealth-profiles-${new Date().toISOString().slice(0, 10)}.json`, bundle);
-    addLog("success", "Profiles", `Exported ${bundle.profiles.length} profile(s)`);
+  const handleExportProfiles = useCallback(async (selected?: ProfileRow[]) => {
+    if (!selected?.length) return;
+    const full = (await exportProfilesBundle()) as {
+      profiles: Array<{ id?: string; name?: string }>;
+      groups?: unknown[];
+      version?: number;
+      matchBy?: string;
+      exportedAt?: string;
+    };
+    const picked = Array.isArray(full.profiles)
+      ? full.profiles.filter((row) => selected.some((s) => s.id === row.id))
+      : full.profiles;
+    const bundle = { ...full, profiles: picked, exportedAt: new Date().toISOString() };
+    const exportNames = selected.map((row) => row.name);
+    downloadJson(buildProfileExportFilename(exportNames, "json"), bundle);
+    addLog("success", "Profiles", `Exported ${picked?.length ?? 0} profile(s)`);
   }, [addLog]);
 
   const handleImportProfiles = useCallback(
     async (bundle: unknown) => {
-      const result = await importProfilesBundle(bundle, true);
-      addLog("success", "Profiles", `Imported ${result.imported} profile(s)`);
+      const result = await importProfilesBundle(bundle, true, "name");
+      const skipped =
+        result.skipped && result.skipped > 0
+          ? ` (${result.skipped} skipped${result.skippedNames?.length ? `: ${result.skippedNames.slice(0, 5).join(", ")}` : ""})`
+          : "";
+      addLog(
+        "success",
+        "Profiles",
+        `Imported ${result.imported} profile(s) by name — ${result.updated ?? 0} updated, ${result.created ?? 0} new${skipped}`,
+      );
       await refreshProfiles();
     },
     [addLog, refreshProfiles],

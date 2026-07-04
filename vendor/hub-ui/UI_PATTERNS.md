@@ -59,6 +59,7 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 | `HubAuthLogoutChip` | Extension header (E0001) — email + LogOut icon |
 | `HubAuthSessionBadge` | Anonymous / Signed in pill on User row |
 | `HubAccessDeniedPanel` | Access denied card (replaces inline `auth-inline` in tool src) |
+| `HubAuthBrandIcon` | **Auth gate header brand** — 56×56 PNG/SVG + soft cyan glow (`hub-auth-brand-icon`) |
 | `HubAuthGateGoldenPreview` | Design Template · onboarding examples |
 
 **Rules**
@@ -69,6 +70,7 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 - Panel **30rem**; backdrop `rgba(8,12,28,0.52)` + `blur(8px)`.
 - Settings toggle label: **Anonymous mode** (not Offline).
 - **Do not** import `theme/hub-auth.css` in tools — overrides golden `hub-auth-gate.css` (blur 14px / 26rem).
+- **Auth header brand** — `headerLeading={<HubAuthBrandIcon src={…} />}` on sign-in / boot / access-denied panels. Do **not** use `HubToolAvatar size="sm"` (22px) or inline Tailwind `drop-shadow-[…]` on auth gates.
 
 **Golden refs (single source)**
 
@@ -261,45 +263,67 @@ HubSplitDirectoryPane scroll? fixedRows?
 
 ---
 
-## Directory table scroll (golden — split head/body)
+## Directory table wrap modes (golden — hub-ui)
 
-**Canonical source:** `packages/hub-ui/src/table/HubDirectoryTableShell.tsx`, `DirectorySplitScrollTable.tsx`, `directory-table-scroll.ts`, `styles/hub-directory-table.css`.
+**Canonical source:** `packages/hub-ui/src/table/HubDirectoryTableShell.tsx`, `DirectoryInlineTable.tsx`, `directory-table-scroll.ts`, `styles/hub-directory-table.css`, `styles/hub-split-directory-pane.css`.
 
-### When to split
+### Directory table wrap modes
 
-| Wrap class | Component | Scrollbar |
-|------------|-----------|-----------|
-| `HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS` | `DirectoryInlineTable` | **None** — page scroll on `.hub-main` (P0004 Hub/Users, P0020 2FA/Cookie) |
-| `HUB_DIRECTORY_TABLE_SCROLL_CLASS` | `DirectoryInlineTable` | Wrap scroll + sticky `<thead>` (legacy / explicit opt-in) |
-| `HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS` | `DirectorySplitScrollTable` + `--flex-pane` | Body only (`.hub-directory-table-body-scroll`) |
-| Modal / rail (no `hub-directory-table-scroll`) | `DirectoryInlineTable` | None or outer pane |
+| Mode | Constant | Component | Scroll | When |
+|------|----------|-----------|--------|------|
+| **Full-page inline** | `HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS` | `DirectoryInlineTable` | `.hub-main` page scroll | P0004 Hub/Users/Dashboard — default shell wrap |
+| **Pane inline** | `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS` | `DirectoryInlineTable` | None on wrap (`overflow-hidden`) | `HubSplitDirectoryPane` + `flushWrap` — P0003 Profiles/Backup, P0020 panes |
+| **Standalone scroll** | `HUB_DIRECTORY_TABLE_SCROLL_CLASS` | `DirectoryInlineTable` | Wrap + sticky `<thead>` | Legacy / explicit opt-in only |
+| **Legacy split** *(deprecated)* | `HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS` | `DirectorySplitScrollTable` | `.hub-directory-table-body-scroll` | P0001 until migrated — **do not use in new tools** |
 
 **Import SSOT (never hand-concat wrap strings in tools):**
 
 ```tsx
 import {
-  HUB_DIRECTORY_TABLE_SCROLL_CLASS,
-  HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS,
+  HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
 } from "@tool-workspace/hub-ui";
 
-// Flex-pane (Profiles table, Scripts workflow list)
-wrapClassName={HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS}
+// P0004 Hub/Users — default (omit wrapClassName)
+<HubDirectoryTableShell … />
+
+// HubSplitDirectoryPane body — same paint as P0004, flex fill in pane
+<HubDirectoryTableShell wrapClassName={HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS} flushWrap … />
 ```
 
 ### Rules
 
-- **Split only in flex-pane** (`--flex-pane`) — standalone directory screens use sticky `<thead>` on one table; never add `hub-directory-table-split` outside `HubSplitDirectoryPane`.
-- **One paint layer** — header track + body track live in `hub-directory-table.css` only; no tool-local `::after` gutter hacks or duplicate split paint in `hub-split-directory-pane.css`.
-- **Flex-pane pad:** `--hub-directory-split-scrollbar-pad: var(--hub-split-scroll-size, 10px)` + `scrollbar-gutter: stable` on body scroll; JS sync skips inline style when `--flex-pane` is present.
-- **Vendor parity:** after hub-ui edits run `node Tool/scripts/sync-hub-ui-vendor.cjs --tool P00xx` and `hub-ui-vendor-export-gate.mjs --code P00xx`.
+- **Pane = P0004 paint** — `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS` is `overflow-hidden min-w-0` only; **never** add `hub-directory-table-scroll` on the wrap (scrollbar track causes thead color seam).
+- **One table** — pane mode uses `DirectoryInlineTable` (single `<table>`); split head/body only for legacy P0001 flex-pane migration backlog.
+- **Thead paint SSOT** — `hub-directory-table.css` golden header; `hub-split-directory-pane.css` owns wrap chrome (border/radius) only — no duplicate `thead th` background.
+- **Panel-fill** — `hub-directory-frame--panel-fill` + `hub-directory-frame-table.css` stretch N rows; no inner scrollbar on wrap.
 
 **Do not**
 
-- Concat `"hub-directory-table-scroll hub-directory-table-scroll--flex-pane"` locally — use `HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS`.
-- Add `head::after` or triple borders on split tables.
+- Concat `"hub-directory-table-scroll hub-directory-table-scroll--flex-pane"` locally — use constants from `directory-table-scroll.ts`.
+- Add tool-local `stealth-directory-table.ts` / `gpm-directory-table.ts` shims that re-export wrap strings — import hub-ui directly.
 - Nest `hub-split-scroll` overflow + `hub-directory-table-scroll` on the same subtree.
 
-**Golden refs:** P0001 `gpm-directory-table.ts`, `GpmProfileDirectoryTable.tsx`, `GpmWorkflowDirectoryTable.tsx`.
+**Golden refs**
+
+- P0004 — `UserDirectoryTable.tsx`, `HubToolsDirectoryTable.tsx` (default inline)
+- P0003 — `SystemBackupDirectoryTable.tsx`, `StealthProfileDirectoryTable.tsx` (`HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS`)
+- P0020 — `WorkspaceSidebar.tsx` pane tables
+- Legacy — P0001 `gpm-directory-table.ts` (`HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS` — migrate to `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS`)
+
+**Verify:** `node Tool/scripts/hub-ui-parity-check.mjs --code P00xx` · `node Tool/scripts/hub-directory-split-head-gate.mjs` (legacy split only)
+
+---
+
+## Directory table scroll (legacy split — deprecated)
+
+**Canonical source:** `DirectorySplitScrollTable.tsx`, `directory-split-scrollbar-sync.ts` — **migration backlog for P0001 only.**
+
+| Wrap class | Component | Scrollbar |
+|------------|-----------|-----------|
+| `HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS` | `DirectorySplitScrollTable` + `--flex-pane` | Body only (`.hub-directory-table-body-scroll`) |
+
+New tools and pane directories **must** use `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS` (inline paint) instead of split flex-pane.
 
 ---
 
@@ -393,34 +417,27 @@ Checks: `session-in-start-rail`, `center-stats-always-visible`, `grid-three-colu
 
 ## Sidebar brand (golden — hub-ui)
 
-**Shell:** `HubSidebarShell` — `brandLeading` (tool avatar) + `brandTitle` (human product name).
+**Shell:** `HubSidebarShell` — `brandLeading` (tool avatar) + `brandTitle` (human product name) only.
 
 | Rule | Detail |
 |------|--------|
-| **Title** | Human name only — e.g. `Data Box`, `Stealth Browser Console`, `Tool Hub` |
-| **No code** | Do not show `P00xx` in `brandTitle` or `brandTagline` |
+| **Title** | Human name only — e.g. `Data Box`, `Stealth Browser Console`, `Tool Hub`, `Map Places` |
+| **No code** | Do not show `P00xx` in `brandTitle` |
+| **No tagline** | Do **not** pass `brandTagline` — prop is `@deprecated` and not rendered; descriptor/version live in tab header (`AppTabHeader` meta) or auth gate only |
 | **No version** | Release `vX.Y.Z` lives in tab header meta (`buildVersionMetaItems`) — never duplicate in sidebar |
-| **Tagline** | Optional short descriptor (P0004 `Workspace catalog`, P0016 `Multi-channel chat console`) — **not** code, **not** version |
-| **Auth gate subtitle** | `formatHubAuthToolInfo` — omit `code` in preset → `Data Box — …`, `Tool Hub — …`, `Chat Center — …`, `GPM Console — …` |
+| **Auth gate subtitle** | `formatHubAuthToolInfo` — optional tagline in login modal only; omit `code` in preset when possible |
 
-**Golden refs (icon + name, no version tagline)**
+**Golden refs (logo + name, no `brandTagline`)**
 
-- P0003 — `StealthHubShellSidebar.tsx` — no `brandTagline`
-- P0001 — `GpmHubShellSidebar.tsx` — no `brandTagline`
-- P0020 — `WorkspaceSidebar.tsx` — `DATA_BOX_PRODUCT.name`
-- P0004 / P0016 — descriptive `brandTagline` only (no `APP_VERSION`)
+- P0001 — `GpmHubShellSidebar.tsx`
+- P0003 — `StealthHubShellSidebar.tsx`
+- P0004 — `SalesSidebar.tsx`
+- P0005 — `OrderDeskSidebar.tsx`
+- P0016 — `HubShellSidebar.tsx`
+- P0020 — `WorkspaceSidebar.tsx`
+- P0024 — `MapPlacesSidebar.tsx`
 
-**Legacy aside (not `HubSidebarShell` yet — migration backlog)**
-
-| Tool | File | Brand today | Target |
-|------|------|-------------|--------|
-| **P0008** | `app/src/components/layout/Sidebar.tsx` | `Seller Center` + `CRM · CzP Seller` | Migrate to `HubSidebarShell`; descriptor OK, no code/version |
-| **P0021** | `app/src/components/workspace/WorkspaceShell.tsx` | `Workspace Hub` + `P0021 · vX.Y.Z` | Migrate to `HubSidebarShell`; drop code/version tagline (version in `AppTabHeader` meta) |
-
-- P0008/P0021 reuse `navActive*` / `navIconClass` from hub-ui but inline `<aside>` — excluded from `hub-ui-parity-check.mjs --sidebar-only` until shell migration.
-- New Next.js tools: prefer `HubSidebarShell` from day one (see P0003/P0020).
-
-**Verify:** `node Tool/scripts/hub-ui-parity-check.mjs --code P00xx`
+**Verify:** `node Tool/scripts/hub-ui-parity-check.mjs` (sidebar golden phase — `hubSidebarBrandGoldenChecks` forbids `brandTagline=` on every `HubSidebarShell`).
 
 ---
 

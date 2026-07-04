@@ -3,7 +3,7 @@ import { HubAuthGateModal } from "./HubAuthGateModal";
 import { HubAuthLogoutChip } from "./HubAuthLogoutChip";
 import { HubAuthGateVariantBadge } from "./HubAuthGateVariantBadge";
 import { HubAccessDeniedPanel } from "./HubAccessDeniedPanel";
-import { HubToolAvatar } from "../shell/HubToolAvatar";
+import { HubAuthBrandIcon } from "./HubAuthBrandIcon";
 import {
   HUB_AUTH_GATE_VARIANTS,
   type HubAuthGateVariant,
@@ -46,6 +46,12 @@ const PREVIEW: Record<PreviewTool, PreviewConfig> = {
 };
 
 const PREVIEW_TOOLS: PreviewTool[] = ["P0004", "P0016", "P0020"];
+
+const PREVIEW_BRAND_SRC: Record<PreviewTool, string> = {
+  P0004: "/icons/tools/P0004.svg",
+  P0016: "/icons/tools/P0016.svg",
+  P0020: "/icons/tools/P0020.svg",
+};
 
 function previewModalFlags(variant: HubAuthGateVariant) {
   const meta = HUB_AUTH_GATE_VARIANTS[variant];
@@ -179,7 +185,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
         title={cfg.title}
         toolInfo={cfg.toolInfo}
         anonymousHint={cfg.anonymousHint}
-        headerLeading={<HubToolAvatar code={activeTool} size="sm" />}
+        headerLeading={<HubAuthBrandIcon src={PREVIEW_BRAND_SRC[activeTool]} />}
         onClose={() => setModalOpen(false)}
         onAnonymous={flags.showAnonymous ? () => setModalOpen(false) : undefined}
         onAuthed={() => setModalOpen(false)}
@@ -193,7 +199,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
           toolInfo={cfg.toolInfo}
           signedInAs="preview@infix1.io.vn"
           message={cfg.deniedMessage}
-          headerLeading={<HubToolAvatar code={activeTool} size="sm" />}
+          headerLeading={<HubAuthBrandIcon src={PREVIEW_BRAND_SRC[activeTool]} />}
           onSignOut={() => setDeniedOpen(false)}
         />
       ) : null}

@@ -6,6 +6,14 @@
   --hub-directory-page-rows: 20;
 }
 
+/* Directory pane surface tokens — SSOT for thead, wrap chrome, scrollbar track */
+.hub-directory-frame,
+.hub-split-directory-pane {
+  --hub-directory-pane-surface: rgba(255, 255, 255, 0.02);
+  --hub-directory-thead-surface: var(--hub-directory-pane-surface);
+  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
+}
+
 .hub-directory-frame table.hub-users-table.hub-directory-frame-table {
   font-size: var(--hub-table-body-size, 12px);
   line-height: var(--hub-table-body-line-height, 1.45);
@@ -61,7 +69,7 @@
 .hub-directory-frame:not(.hub-directory-frame--panel-fill):not(.hub-split-directory-pane--fixed-rows)
   .hub-split-directory-pane__body
   .hub-paginated-table-shell
-  > .hub-users-table-wrap:not(.hub-directory-table-scroll--flex-pane) {
+  > .hub-users-table-wrap:not(.hub-directory-table-split):not(.hub-directory-table-scroll--flex-pane) {
   flex: 0 0 auto;
   min-height: auto;
 }
@@ -125,7 +133,7 @@
   z-index: 2;
 }
 
-/* Panel fill — N equal rows stretch tbody; pager flush at pane bottom (Profiles golden) */
+/* Panel fill — P0004 inline wrap (no inner scrollbar); N equal rows stretch tbody */
 .hub-directory-frame.hub-directory-frame--panel-fill .hub-split-directory-pane__body .hub-paginated-table-shell {
   display: flex;
   flex-direction: column;
@@ -140,6 +148,44 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split)
+  table.hub-users-table,
+.hub-directory-frame.hub-directory-frame--panel-fill
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split)
+  table.hub-directory-frame-table {
+  height: 100%;
+  table-layout: fixed;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split)
+  tbody {
+  height: 100%;
+  vertical-align: top;
+}
+
+.hub-directory-frame.hub-directory-frame--panel-fill
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split)
+  tbody
+  tr {
+  height: calc(100% / var(--hub-directory-page-rows, 20));
+  min-height: var(--hub-directory-row-h);
+  box-sizing: border-box;
 }
 
 .hub-directory-frame.hub-directory-frame--panel-fill .hub-directory-table-body-scroll {

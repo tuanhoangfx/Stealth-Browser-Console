@@ -1,5 +1,6 @@
 import type { FilterDef } from "@tool-workspace/hub-ui";
 import { resolveHubBrandIconByMatch } from "@tool-workspace/hub-ui";
+import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import type { WorkflowConfig } from "./workflow-types";
 import { workflowDisplayPlatform } from "./workflow-display";
 
@@ -9,7 +10,7 @@ function platformFilterOption(value: string, count: number) {
     value,
     label: value,
     count,
-    ...(brand ? { iconSrc: brand.src, iconShell: brand.shell } : {}),
+    ...(brand ? { iconSrc: resolveHubBrandAssetSrc(brand.src), iconShell: brand.shell } : {}),
   };
 }
 

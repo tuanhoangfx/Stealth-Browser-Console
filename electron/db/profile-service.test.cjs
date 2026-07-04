@@ -32,6 +32,36 @@ async function main() {
     if (blank?.startupUrl !== "about:blank") throw new Error("about:blank save failed");
     const intranet = profileService.updateProfile(created.id, { startupUrl: "check" });
     if (intranet?.startupUrl !== "http://check/") throw new Error("single-label host should coerce to http://check/");
+
+    const local = profileService.createProfile({ name: "0012", proxy: "http://local:1", note: "local" });
+    const foreignBundle = profileService.exportProfilesBundle();
+    foreignBundle.profiles = [
+      {
+        ...foreignBundle.profiles[0],
+        id: "foreign-uuid-not-local",
+        name: "0012",
+        proxy: "http://remote:9",
+        note: "remote",
+      },
+    ];
+    const byName = profileService.importProfilesBundle(foreignBundle, { merge: true, matchBy: "name" });
+    if (byName.updated !== 1 || byName.imported !== 1) throw new Error("import by name should update existing");
+    const merged = profileService.getProfile(local.id);
+    if (merged?.id !== local.id) throw new Error("import by name must keep local UUID");
+    if (merged?.proxy !== "http://remote:9" || merged?.note !== "remote") {
+      throw new Error("import by name should merge metadata onto local profile");
+    }
+
+    foreignBundle.profiles[0].startupUrl = "https://example.com/login";
+    foreignBundle.profiles[0].platform = "macos";
+    foreignBundle.profiles[0].timezone = "America/Los_Angeles";
+    const byName2 = profileService.importProfilesBundle(foreignBundle, { merge: true, matchBy: "name" });
+    if (byName2.updated !== 1) throw new Error("import should update extended fields");
+    const merged2 = profileService.getProfile(local.id);
+    if (merged2?.startupUrl !== "https://example.com/login" || merged2?.platform !== "macos") {
+      throw new Error("import should merge startupUrl and platform");
+    }
+
     profileService.insertRun({
       id: "run-1",
       profileId: created.id,

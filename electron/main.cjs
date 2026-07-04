@@ -1,6 +1,16 @@
-const { app, BrowserWindow, ipcMain, session, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, session, shell, dialog } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+const { configureElectronUserData, resolveStealthApiPort, isDevIsolated } = require("./lib/user-data-root.cjs");
+
+configureElectronUserData(app);
+
+/** One desktop process per userData root — prevents agent/dev double-launch DB lock + login churn. */
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
 const {
   configureAutoUpdater,
   bindDesktopUpdaterIpc,
@@ -15,6 +25,7 @@ const {
   purgeIdentityToolbarRoot,
   purgeAllProfilesIdentityToolbar,
   purgeAllProfilesBrokenExtensionPrefs,
+  purgeAllProfilesDuplicateUnpackedStoreExtensions,
   purgeAllProfilesStaleCookieBridgePrefs,
   purgeAllProfilesSurfshark,
   purgeSurfsharkExtensionCache,
@@ -26,7 +37,10 @@ const {
 const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
 const { ensureCloakbrowserExtensionStage } = require("./lib/cloakbrowser-extension-stage.cjs");
 const { packagedContentSecurityPolicy } = require("./lib/packaged-csp.cjs");
+const { getProfileExtensionsEnabled, setProfileExtensionsEnabled, getExtensionToggles, setExtensionToggles } = require("./lib/app-settings.cjs");
 const { getCookieBridgeStatus } = require("./lib/cookie-bridge-status.cjs");
+const { getExtensionsStatus, installStoreExtension, installUnpackedExtension } = require("./lib/extensions-status.cjs");
+const { nativeExtensionsEnabled } = require("./lib/extension-launch-mode.cjs");
 const { runOpenUrl } = require("./automation/open-url.cjs");
 const {
   validateProfileId,
@@ -127,7 +141,14 @@ function bindIpc() {
   ipcMain.handle("profile:update", async (_event, payload = {}) => {
     const id = validateProfileId(payload.id);
     const profile = profileService.updateProfile(id, payload);
-    return { ok: true, profile };
+    try {
+      const binary = await getBinaryInfoCached();
+      const { ensureProfileExtensionPins } = require("./lib/profile-extension-pins.cjs");
+      await ensureProfileExtensionPins(profile, userDataRoot(), binary.cacheDir);
+    } catch (error) {
+      console.warn("[extension-profile] update:", error instanceof Error ? error.message : error);
+    }
+    return { ok: true, profile: profileService.getProfile(id) };
   });
 
   ipcMain.handle("profile:bulkUpdateStartupUrl", (_event, payload = {}) => {
@@ -220,10 +241,108 @@ function bindIpc() {
       throw new Error("Import bundle is required.");
     }
     try {
-      return profileService.importProfilesBundle(payload.bundle, { merge: payload.merge !== false });
+      return profileService.importProfilesBundle(payload.bundle, {
+        merge: payload.merge !== false,
+        matchBy: payload.matchBy === "id" ? "id" : "name",
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: `Invalid import bundle: ${message}` };
+    }
+  });
+
+  const { backupProfilesState, restoreProfilesState, buildProfileExportFilename } = require("./lib/profile-backup.cjs");
+  const { listProfileStorageStats, listProfileStorageStatsAsync } = require("./lib/profile-storage.cjs");
+  const { listBackupMeta, updateBackupMeta } = require("./lib/profile-backup-meta.cjs");
+
+  function sendBackupProgress(payload) {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send("profiles:backupProgress", payload);
+      }
+    }
+  }
+
+  ipcMain.handle("profiles:storageStats", async (_event, payload = {}) => {
+    const profileIds = Array.isArray(payload.profileIds) ? payload.profileIds.map(String) : [];
+    const includeBytes = payload.includeBytes !== false;
+    const stats = includeBytes
+      ? await listProfileStorageStatsAsync(userDataRoot(), profileIds, { includeBytes: true })
+      : listProfileStorageStats(userDataRoot(), profileIds, { includeBytes: false });
+    return { ok: true, stats };
+  });
+
+  ipcMain.handle("profiles:backupMeta", (_event, payload = {}) => {
+    const profileIds = Array.isArray(payload.profileIds) ? payload.profileIds.map(String) : [];
+    return { ok: true, meta: listBackupMeta(userDataRoot(), profileIds) };
+  });
+
+  ipcMain.handle("profiles:backupState", async (_event, payload = {}) => {
+    const profileIds = Array.isArray(payload.profileIds) ? payload.profileIds.map(String) : undefined;
+    const allProfiles = profileService.listProfiles();
+    const selected = profileIds?.length
+      ? allProfiles.filter((row) => profileIds.includes(String(row.id)))
+      : allProfiles;
+    const suggested = buildProfileExportFilename(
+      selected.map((row) => row.name),
+      "zip",
+    );
+    const pick = await dialog.showSaveDialog({
+      title: "Backup profile state",
+      defaultPath: suggested,
+      filters: [{ name: "Stealth backup", extensions: ["zip"] }],
+    });
+    if (pick.canceled || !pick.filePath) return { ok: false, canceled: true };
+    try {
+      const result = backupProfilesState(userDataRoot(), {
+        exportBundle: () => profileService.exportProfilesBundle(),
+        listProfiles: () => profileService.listProfiles(),
+        profileIds,
+        onProgress: (progress) => sendBackupProgress(progress),
+      });
+      fs.copyFileSync(result.zipPath, pick.filePath);
+      try {
+        fs.unlinkSync(result.zipPath);
+      } catch {
+        /* ignore temp zip */
+      }
+      try {
+        updateBackupMeta(userDataRoot(), (result.profileIds || []).map((id) => ({
+          id,
+          lastBackupAt: result.exportedAt,
+          lastBackupBytes: result.bytes,
+          lastBackupPath: pick.filePath,
+        })));
+      } catch {
+        // best-effort — backup itself succeeded
+      }
+      return { ok: true, path: pick.filePath, profiles: result.profiles, bytes: result.bytes };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("profiles:restoreState", async (_event, payload = {}) => {
+    const restoreIntoProfileId =
+      typeof payload.restoreIntoProfileId === "string" ? payload.restoreIntoProfileId.trim() : "";
+    const pick = await dialog.showOpenDialog({
+      title: restoreIntoProfileId ? "Restore profile state into selected profile" : "Restore profile state",
+      properties: ["openFile"],
+      filters: [{ name: "Stealth backup", extensions: ["zip"] }],
+    });
+    if (pick.canceled || !pick.filePaths?.[0]) return { ok: false, canceled: true };
+    try {
+      await sessionManager.closeAll();
+      const result = restoreProfilesState(userDataRoot(), pick.filePaths[0], {
+        importBundle: (bundle, opts) => profileService.importProfilesBundle(bundle, opts),
+        findProfilesByName: (name) => profileService.findProfilesByName(name),
+        getProfileById: (id) => profileService.getProfile(id),
+        restoreIntoProfileId: restoreIntoProfileId || undefined,
+        onProgress: (progress) => sendBackupProgress(progress),
+      });
+      return { ok: true, ...result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
   });
 
@@ -280,8 +399,30 @@ function bindIpc() {
     name: app.getName(),
     version: app.getVersion(),
     isPackaged: app.isPackaged,
-    userDataPath: userDataRoot()
+    userDataPath: userDataRoot(),
+    profileExtensionsEnabled: getProfileExtensionsEnabled(),
+    extensionToggles: getExtensionToggles(),
   }));
+
+  ipcMain.handle("app:getExtensionToggles", () => ({
+    ok: true,
+    toggles: getExtensionToggles(),
+  }));
+
+  ipcMain.handle("app:setExtensionToggles", (_event, payload = {}) => {
+    const patch = payload.toggles && typeof payload.toggles === "object" ? payload.toggles : payload;
+    return { ok: true, toggles: setExtensionToggles(patch) };
+  });
+
+  ipcMain.handle("app:getProfileExtensionsEnabled", () => ({
+    ok: true,
+    enabled: getProfileExtensionsEnabled(),
+  }));
+
+  ipcMain.handle("app:setProfileExtensionsEnabled", (_event, payload = {}) => {
+    const enabled = Boolean(payload.enabled);
+    return { ok: true, enabled: setProfileExtensionsEnabled(enabled) };
+  });
 
   ipcMain.handle("app:openDataFolder", () => {
     shell.openPath(userDataRoot());
@@ -316,6 +457,82 @@ function bindIpc() {
   ipcMain.handle("extension:purgeBrokenPrefs", () => {
     const result = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
     return { ok: true, ...result };
+  });
+
+  ipcMain.handle("extension:status", () => ({
+    ok: true,
+    status: getExtensionsStatus(userDataRoot()),
+  }));
+
+  ipcMain.handle("extension:icon", (_event, payload = {}) => {
+    const storeId = String(payload.storeId ?? "").trim();
+    if (!storeId) return { ok: false, error: "storeId is required" };
+    const { unpackedDirForStoreId, resolveExtensionIconDataUri } = require("./lib/webstore-extension.cjs");
+    const unpackedPath = unpackedDirForStoreId(userDataRoot(), storeId);
+    const iconDataUri = resolveExtensionIconDataUri(unpackedPath, Number(payload.size) || 48);
+    return { ok: true, storeId, iconDataUri };
+  });
+
+  ipcMain.handle("extension:installStore", async (_event, payload = {}) => {
+    const storeIdOrUrl = String(payload.storeId ?? payload.storeIdOrUrl ?? payload.url ?? "").trim();
+    if (!storeIdOrUrl) return { ok: false, error: "storeId or Chrome Web Store URL is required" };
+    const profileIds = Array.isArray(payload.profileIds)
+      ? payload.profileIds.map((id) => String(id).trim()).filter(Boolean)
+      : undefined;
+    try {
+      const result = await installStoreExtension(userDataRoot(), storeIdOrUrl, { profileIds });
+      const binary = await getBinaryInfoCached();
+      const { prepareProfileExtensions } = require("./lib/native-extension-load.cjs");
+      const profilesDir = path.join(userDataRoot(), "profiles");
+      const wanted = Array.isArray(profileIds) && profileIds.length ? new Set(profileIds) : null;
+      if (fs.existsSync(profilesDir)) {
+        for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+          if (!entry.isDirectory()) continue;
+          if (wanted && !wanted.has(entry.name)) continue;
+          try {
+            prepareProfileExtensions(path.join(profilesDir, entry.name), userDataRoot(), binary.cacheDir);
+          } catch {
+            // best-effort per profile
+          }
+        }
+      }
+      return { ok: true, result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("extension:pickUnpackedFolder", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Select unpacked extension folder",
+      properties: ["openDirectory"],
+    });
+    if (result.canceled || !result.filePaths?.[0]) return { ok: false, canceled: true };
+    return { ok: true, path: result.filePaths[0] };
+  });
+
+  ipcMain.handle("extension:repairProfiles", async () => {
+    const { repairAllProfileExtensionPaths } = require("./lib/native-extension-load.cjs");
+    const binary = await getBinaryInfoCached();
+    const result = repairAllProfileExtensionPaths(userDataRoot(), binary.cacheDir);
+    return { ok: true, ...result, repaired: result.rewritten };
+  });
+
+  ipcMain.handle("extension:installUnpacked", async (_event, payload = {}) => {
+    const sourceDir = String(payload.path ?? payload.sourceDir ?? "").trim();
+    if (!sourceDir) return { ok: false, error: "Extension folder path is required" };
+    const profileIds = Array.isArray(payload.profileIds)
+      ? payload.profileIds.map((id) => String(id).trim()).filter(Boolean)
+      : undefined;
+    try {
+      const result = await installUnpackedExtension(userDataRoot(), sourceDir, { profileIds });
+      const binary = await getBinaryInfoCached();
+      const { ensureCloakbrowserExtensionStages } = require("./lib/cloakbrowser-extension-stage.cjs");
+      ensureCloakbrowserExtensionStages([result.unpackedPath], binary.cacheDir);
+      return { ok: true, result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
   });
 }
 
@@ -465,11 +682,13 @@ async function resolveDevServerUrl() {
     if (await isStealthDevServer(url)) return url;
   }
 
-  // Prefer bundled dist when present (portable/prod builds).
-  if (fs.existsSync(distIndexPath())) return null;
-
   for (const url of candidates) {
     if (await isDevServerReachable(url)) return url;
+  }
+
+  // Unpackaged dev must not silently load stale dist/ — breaks /assets brand icons (file://).
+  if (!app.isPackaged && fs.existsSync(distIndexPath())) {
+    console.warn("[load] Vite :5175 not running — start pnpm dev:node (dist fallback disabled in dev)");
   }
   return null;
 }
@@ -577,7 +796,21 @@ async function createWindow() {
   return win;
 }
 
+if (gotSingleInstanceLock) {
+  app.on("second-instance", () => {
+    const existing = BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
+    if (existing) {
+      if (existing.isMinimized()) existing.restore();
+      existing.show();
+      existing.focus();
+      return;
+    }
+    void createWindow();
+  });
+}
+
 app.whenReady().then(async () => {
+  if (!gotSingleInstanceLock) return;
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
   await openDatabase(userDataRoot());
@@ -593,6 +826,7 @@ app.whenReady().then(async () => {
           const bridgeDir = resolveCookieBridgeExtensionDirSync(root);
           if (bridgeDir) {
             const binary = await getBinaryInfoCached();
+            const { ensureCloakbrowserExtensionStage } = require("./lib/cloakbrowser-extension-stage.cjs");
             ensureCloakbrowserExtensionStage(bridgeDir, binary.cacheDir);
           }
         } catch (error) {
@@ -615,15 +849,22 @@ app.whenReady().then(async () => {
   } catch {
     // best-effort — remove rolled-back workflow side panel bundles
   }
-  try {
-    purgeSurfsharkExtensionCache(userDataRoot());
-  } catch {
-    // fast sync — block Surfshark load-extension path before first profile launch
+  if (!nativeExtensionsEnabled()) {
+    try {
+      purgeSurfsharkExtensionCache(userDataRoot());
+    } catch {
+      // fast sync — block Surfshark load-extension path before first profile launch
+    }
   }
   bindContentSecurityPolicy();
   bindIpc();
+  const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
   const { startApiServer } = require("./api-server.cjs");
-  startApiServer({ sessionManager, profileService, userDataRoot: userDataRoot() });
+  const apiPort = resolveStealthApiPort({ packaged: app.isPackaged });
+  if (!app.isPackaged) {
+    console.log(`[user-data] path=${userDataRoot()} isolated=${isDevIsolated() ? "1" : "0"} apiPort=${apiPort}`);
+  }
+  startApiServer({ sessionManager, profileService, userDataRoot: userDataRoot(), port: apiPort });
   sessionManager.setOnSessionChange((_id, profile, event) => {
     broadcastProfileSession(profile, event);
     sessionTray.refresh();
@@ -641,25 +882,51 @@ app.whenReady().then(async () => {
           `[legacy-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
         );
       }
-      const surfshark = purgeAllProfilesSurfshark(userDataRoot());
-      if (!surfshark.skipped && (surfshark.removed > 0 || surfshark.cacheRemoved)) {
-        console.log(
-          `[surfshark-purge] startup profiles=${surfshark.profiles} removed=${surfshark.removed} prefsCleaned=${surfshark.prefsCleaned} cacheRemoved=${surfshark.cacheRemoved}`,
-        );
+      if (!nativeExtensionsEnabled()) {
+        const surfshark = purgeAllProfilesSurfshark(userDataRoot());
+        if (!surfshark.skipped && (surfshark.removed > 0 || surfshark.cacheRemoved)) {
+          console.log(
+            `[surfshark-purge] startup profiles=${surfshark.profiles} removed=${surfshark.removed} prefsCleaned=${surfshark.prefsCleaned} cacheRemoved=${surfshark.cacheRemoved}`,
+          );
+        }
       }
-      const broken = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
+      const broken = FAST_PREP ? { removed: 0 } : purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
       if (broken.removed > 0) {
         console.log(
           `[extension-purge] startup profiles=${broken.profiles} brokenRemoved=${broken.removed} prefsCleaned=${broken.prefsCleaned}`,
         );
       }
-      const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
-      if (bridgeDir) {
-        const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
-        if (stale.removed > 0) {
+      if (nativeExtensionsEnabled() && getProfileExtensionsEnabled() && !FAST_PREP) {
+        const deduped = purgeAllProfilesDuplicateUnpackedStoreExtensions(userDataRoot());
+        if (deduped.removed > 0) {
           console.log(
-            `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
+            `[extension-dedupe] startup profiles=${deduped.profiles} shadowRemoved=${deduped.removed}`,
           );
+        }
+        void (async () => {
+          try {
+            const binary = await getBinaryInfoCached();
+            const { repairAllProfileExtensionPaths } = require("./lib/native-extension-load.cjs");
+            const repaired = repairAllProfileExtensionPaths(userDataRoot(), binary.cacheDir);
+            if (repaired.rewritten > 0) {
+              console.log(
+                `[extension-repair] startup profiles=${repaired.profiles} rewritten=${repaired.rewritten}`,
+              );
+            }
+          } catch (error) {
+            console.warn("[extension-repair] startup:", error instanceof Error ? error.message : error);
+          }
+        })();
+      }
+      if (getProfileExtensionsEnabled() && !FAST_PREP) {
+        const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
+        if (bridgeDir) {
+          const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
+          if (stale.removed > 0) {
+            console.log(
+              `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
+            );
+          }
         }
       }
     } catch {

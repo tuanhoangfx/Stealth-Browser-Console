@@ -7,9 +7,11 @@ import {
   type KpiTileData,
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
-import type { ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
+import type { ExtensionToggles, ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
 import { ProfileFilterPane } from "./ProfileFilterPane";
 import { ProfilesHubChrome } from "./ProfilesHubChrome";
+import type { ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
+import { useExtensionIcons } from "./useExtensionIcons";
 import {
   hasActiveProfileDirectoryFilters,
   resolveCatalogTotal,
@@ -45,6 +47,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected,
   openOne,
   closeOne,
+  globalExtensionToggles,
+  extensionState,
+  extensionBusy,
+  onExtensionSet,
   deleteSelected,
   setShowCreate,
   onEdit,
@@ -83,6 +89,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected: boolean;
   openOne: (profile: ProfileRow) => void;
   closeOne: (profile: ProfileRow) => void;
+  globalExtensionToggles: ExtensionToggles;
+  extensionState: Record<"e0001" | "surfshark", ExtensionSelectionState>;
+  extensionBusy?: boolean;
+  onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
   deleteSelected: () => void;
   setShowCreate: (value: boolean) => void;
   onEdit: () => void;
@@ -95,6 +105,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   centerStats: TabHeaderStatItem[];
   rail: ReactNode;
 }) {
+  const extensionIcons = useExtensionIcons();
   const filterValues = useMemo(
     () => profileStateToFilterValues(selectedGroupIds, selectedStatuses),
     [selectedGroupIds, selectedStatuses],
@@ -109,8 +120,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   const directoryBodyRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    const body = directoryBodyRef.current?.querySelector(".hub-directory-table-body-scroll");
-    if (body instanceof HTMLElement) body.scrollTop = 0;
+    directoryBodyRef.current?.scrollTo?.(0, 0);
   }, [listResetKey, filteredProfiles.length]);
   const emptyMessage =
     apiStatus === "offline"
@@ -168,6 +178,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 onGroups={onGroups}
                 onExport={onExport}
                 onImport={onImport}
+                extensionState={extensionState}
+                extensionIcons={extensionIcons}
+                extensionBusy={extensionBusy}
+                onExtensionSet={onExtensionSet}
               />
             </div>
             {kpis?.length ? (
@@ -201,6 +215,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 allVisibleSelected={allVisibleSelected}
                 onOpen={openOne}
                 onClose={closeOne}
+                globalExtensionToggles={globalExtensionToggles}
+                extensionIcons={extensionIcons}
                 searchQuery={search}
                 emptyMessage={emptyMessage}
               />

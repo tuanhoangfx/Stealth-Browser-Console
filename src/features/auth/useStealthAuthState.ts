@@ -4,6 +4,7 @@ import {
   isRealHubWorkspaceSession,
   resolveWithBootTimeout,
   sessionsEqual,
+  useDevHubAutoSignInBoot,
   useHubIdentityRelayRequest,
   useWorkspaceHubAuthBoot,
   verifyHubIntegratedToolAccess,
@@ -171,6 +172,21 @@ export function useStealthAuthState(): StealthAuthState {
   useHubIdentityRelayRequest({
     enabled: hubAuthEnabled && isHubSupabaseConfigured,
     hasSession: hasHubSession || Boolean(readCachedHubSession()),
+  });
+
+  useDevHubAutoSignInBoot({
+    enabled: hubAuthEnabled && isHubSupabaseConfigured && !authOptional,
+    getClient: getIdentitySupabase,
+    readCachedSession: readCachedHubSession,
+    onSession: (next) => {
+      setOfflineMode(false);
+      setOffline(false);
+      persistHubSession(next);
+      setSession(next);
+      setLoading(false);
+      void checkToolAccess(next.access_token);
+    },
+    onBootLoading: setLoading,
   });
 
   const { authRequired, policyReady } = useWorkspaceHubAuthBoot({

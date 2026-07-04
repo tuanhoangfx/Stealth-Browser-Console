@@ -19,3 +19,14 @@ test("assertGoogleSession throws on sign-in page", async () => {
     /Google sign-in required/,
   );
 });
+
+test("assertGoogleSession allows sign-in page for login workflow target", async () => {
+  const page = { url: () => "https://accounts.google.com/v3/signin/identifier" };
+  const logs = [];
+  const logger = { push: (_level, message) => logs.push(message) };
+  await assertGoogleSession(page, logger, {
+    targetUrl: "https://accounts.google.com/signin",
+    workflowId: "gmail-login",
+  });
+  assert.ok(logs.some((line) => /expected for login workflow/i.test(line)));
+});

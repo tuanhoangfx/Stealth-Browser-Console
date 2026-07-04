@@ -4,6 +4,7 @@ import {
   HubDirectoryTableShell,
   HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
   HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
   buildDirectoryColgroupForShell,
   buildDirectoryColumns,
   hubDirectoryTableClass,
@@ -13,7 +14,6 @@ import {
   STEALTH_WORKFLOW_PANEL_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
-import { STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS } from "../tables/stealth-directory-table";
 import { workflowDisplayId, workflowDisplayPlatform } from "./workflow-display";
 import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import { renderStealthWorkflowDirectoryBodyCell } from "./stealth-workflow-directory-cells";
@@ -118,7 +118,7 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
 
   const wrapClassName = isRail
     ? `${HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS} ${HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS}`
-    : STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS;
+    : HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS;
 
   return (
     <HubDirectoryTableShell

@@ -39,6 +39,7 @@ if (fast) {
   for (const [label, cmd, args] of liveE2e) run(label, cmd, args);
 }
 
+run("profile-backup", "node", ["--test", "electron/lib/profile-backup.test.cjs"]);
 run("profile-service", "node", ["electron/db/profile-service.test.cjs"]);
 run("profile-search-regression", "node", ["electron/db/profile-search-regression.test.cjs"]);
 run("profile-chrome-columns-migration", "node", ["--test", "electron/db/profile-chrome-columns-migration.test.cjs"]);

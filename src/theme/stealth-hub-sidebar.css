@@ -45,7 +45,19 @@
   width: 100%;
 }
 
-.hub-app.stealth-hub-app > aside nav button {
+/* Tree subnav rows use grid (rail + dot) — must not inherit top-level flex button rules */
+.hub-sidebar-subnav-button {
+  display: grid !important;
+  width: 100%;
+  height: 2rem;
+  min-height: 2rem;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+.hub-app.stealth-hub-app > aside nav button:not(.hub-sidebar-subnav-button) {
   display: flex;
   width: 100%;
   height: auto;
@@ -57,12 +69,20 @@
   box-shadow: none;
 }
 
-/* Remove default white focus ring (Electron/Win); keep a11y ring on keyboard only */
-.hub-app.stealth-hub-app > aside nav button:focus {
+.hub-app.stealth-hub-app > aside nav button:not(.hub-sidebar-subnav-button):focus {
   outline: none;
 }
 
-.hub-app.stealth-hub-app > aside nav button:focus-visible {
+.hub-app.stealth-hub-app > aside nav button:not(.hub-sidebar-subnav-button):focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.45);
+  outline-offset: 2px;
+}
+
+.hub-app.stealth-hub-app > aside nav .hub-sidebar-subnav-button:focus {
+  outline: none;
+}
+
+.hub-app.stealth-hub-app > aside nav .hub-sidebar-subnav-button:focus-visible {
   outline: 2px solid rgba(129, 140, 248, 0.45);
   outline-offset: 2px;
 }

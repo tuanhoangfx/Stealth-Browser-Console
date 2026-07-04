@@ -19,8 +19,11 @@ function resolveExtensionSource(resolvedPath, userDataRoot) {
 }
 
 function getCookieBridgeStatus(userDataRoot) {
-  const enabled = cookieBridgeEnabled();
-  const resolvedPath = enabled ? resolveCachedExtensionDir(userDataRoot) : null;
+  const cookieBridgeEnvOn = cookieBridgeEnabled();
+  const { getExtensionToggles } = require("./app-settings.cjs");
+  const toggles = getExtensionToggles();
+  const e0001On = cookieBridgeEnvOn && toggles.e0001;
+  const resolvedPath = e0001On ? resolveCachedExtensionDir(userDataRoot) : null;
   const manifestOk = Boolean(
     resolvedPath && fs.existsSync(path.join(resolvedPath, "manifest.json")),
   );
@@ -36,8 +39,12 @@ function getCookieBridgeStatus(userDataRoot) {
     }
   }
 
+  const enabled = e0001On;
+
   return {
     enabled,
+    profilesExtensionsEnabled: toggles.e0001 || toggles.surfshark || toggles.webStore,
+    extensionToggles: toggles,
     productCode: "E0001",
     name: "E0001 Cookie Bridge",
     storeId: COOKIE_BRIDGE_STORE_ID,

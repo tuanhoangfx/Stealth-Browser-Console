@@ -43,7 +43,8 @@
 
 /* Split-pane tabs: bottom inset handled by panes, not main padding */
 .hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--profiles,
-.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--workflow {
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--workflow,
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--system {
   padding-bottom: 0;
   scroll-padding-top: 0;
 }

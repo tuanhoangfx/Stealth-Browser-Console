@@ -5,7 +5,7 @@ import { resolveWorkflowRunUrl } from "../workflows/resolve-workflow-run-url";
 import type { WorkflowConfig } from "../workflows/workflow-types";
 import type { ProfileRow, RunHistoryItem } from "../../types";
 
-type LogFn = (level: "info" | "success" | "error", source: string, message: string) => void;
+type LogFn = (level: "info" | "success" | "error" | "warn", source: string, message: string) => void;
 
 type RunHistoryAppender = (
   result: Awaited<ReturnType<typeof executeWorkflowAction>>,

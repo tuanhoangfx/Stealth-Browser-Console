@@ -19,7 +19,7 @@ export function folderFilterButtonLabel(
   label: string,
   selectedCount: number,
   soleName?: string,
-  showAllLabel = true,
+  showAllLabel = false,
 ): string {
   if (selectedCount === 0) return showAllLabel ? `All ${label}` : label;
   if (selectedCount === 1) return soleName ?? label;

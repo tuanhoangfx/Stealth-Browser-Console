@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   window_mode TEXT DEFAULT 'host-maximized',
   startup_url TEXT,
   last_opened_at INTEGER,
+  extension_overrides TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

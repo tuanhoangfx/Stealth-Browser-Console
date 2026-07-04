@@ -4,12 +4,14 @@ import {
   formatHubTimestampFull,
   getDirectorySearchHighlight,
   HubDirectorySearchHighlightText,
+  HubUsersOnOffLabel,
   HubUsersStatusLabel,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import { Loader2, Play, Square } from "lucide-react";
 import { formatStartupUrlDisplay, resolveProfileLaunchUrl } from "../../lib/startup-url";
-import type { ProfileRow } from "../../types";
+import type { ExtensionToggles, ProfileRow } from "../../types";
+import { resolveProfileExtensionEffective } from "../../lib/profile-extension-effective";
 import {
   formatLastOpenedRelativeAge,
   formatLastOpenedStaleDate,
@@ -40,7 +42,11 @@ export function renderStealthProfileDirectoryBodyCell(
   col: HubDirectoryColumnDef<StealthProfileSortKey>,
   profile: ProfileRow,
   searchQuery = "",
-  handlers?: { onOpen?: (profile: ProfileRow) => void; onClose?: (profile: ProfileRow) => void },
+  handlers?: {
+    onOpen?: (profile: ProfileRow) => void;
+    onClose?: (profile: ProfileRow) => void;
+    globalExtensionToggles?: ExtensionToggles;
+  },
 ) {
   const { key, colClass } = col;
   const searchHighlight = getDirectorySearchHighlight(searchQuery, { mixedRequiresWhitespace: true });
@@ -72,6 +78,18 @@ export function renderStealthProfileDirectoryBodyCell(
             capitalize={false}
             title={label}
           />
+        </DirectoryTableBodyCell>
+      );
+    }
+    case "e0001":
+    case "surfshark": {
+      const extKey = key;
+      const global = handlers?.globalExtensionToggles ?? { e0001: true, surfshark: false, webStore: false };
+      const enabled = resolveProfileExtensionEffective(global, profile.extensionOverrides, extKey);
+      const label = extKey === "e0001" ? "E0001 Cookie Bridge" : "Surfshark VPN";
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          <HubUsersOnOffLabel on={enabled} title={`${label}: ${enabled ? "On" : "Off"}`} />
         </DirectoryTableBodyCell>
       );
     }

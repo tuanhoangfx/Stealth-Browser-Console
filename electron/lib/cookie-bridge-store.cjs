@@ -3,28 +3,25 @@
  * https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk
  */
 const fs = require("node:fs");
-const https = require("node:https");
-const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const {
+  defaultUserDataRoot,
+  ensureStoreExtension,
+  unpackedDirForStoreId,
+  storeUpdateUrl,
+} = require("./webstore-extension.cjs");
 
 const COOKIE_BRIDGE_STORE_ID = "kaaadageakdandpobcofplmfbjfjabdk";
-const STORE_UPDATE_URL =
-  "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=131.0.6778.85&acceptformat=crx2,crx3&x=id%3Dkaaadageakdandpobcofplmfbjfjabdk%26uc";
+const STORE_UPDATE_URL = storeUpdateUrl(COOKIE_BRIDGE_STORE_ID);
 
 let warmPromise = null;
-
-function defaultUserDataRoot() {
-  if (process.env.STEALTH_USER_DATA) return process.env.STEALTH_USER_DATA;
-  return path.join(os.homedir(), "AppData", "Roaming", "stealth-browser-console");
-}
 
 function cacheRoot(userDataRoot = defaultUserDataRoot()) {
   return path.join(userDataRoot, "extensions-cache", COOKIE_BRIDGE_STORE_ID);
 }
 
 function unpackedDir(userDataRoot = defaultUserDataRoot()) {
-  return path.join(cacheRoot(userDataRoot), "unpacked");
+  return unpackedDirForStoreId(userDataRoot, COOKIE_BRIDGE_STORE_ID);
 }
 
 function cookieBridgeEnabled() {
@@ -35,6 +32,11 @@ function cookieBridgeEnabled() {
 function useLocalDevExtension() {
   const raw = String(process.env.STEALTH_COOKIE_BRIDGE_LOCAL ?? "0").toLowerCase();
   return raw === "1" || raw === "true" || raw === "on";
+}
+
+function isVerifiedStoreExtension(extensionDir) {
+  const base = path.resolve(String(extensionDir || ""));
+  return fs.existsSync(path.join(base, "_metadata", "verified_contents.json"));
 }
 
 /** Live workspace copy under E:\\Dev\\Extension (dev builds). */
@@ -75,126 +77,40 @@ function syncExtensionDirToCache(sourceDir, userDataRoot = defaultUserDataRoot()
 }
 
 /**
- * Launch path for `--load-extension` — always the AppData cache, never workspace.
+ * Launch path for profile prefs — always the AppData cache, never workspace.
  * Workspace is synced into cache when present so dev edits still apply.
  */
 function resolveCachedExtensionDir(userDataRoot = defaultUserDataRoot()) {
   const cache = unpackedDir(userDataRoot);
-  const workspace = workspaceExtensionDir();
-  if (workspace) {
-    syncExtensionDirToCache(workspace, userDataRoot);
+  if (useLocalDevExtension()) {
+    const workspace = workspaceExtensionDir();
+    if (workspace) syncExtensionDirToCache(workspace, userDataRoot);
+    return fs.existsSync(path.join(cache, "manifest.json")) ? cache : null;
   }
-  return fs.existsSync(path.join(cache, "manifest.json")) ? cache : null;
-}
-
-function downloadBuffer(url, redirects = 0) {
-  return new Promise((resolve, reject) => {
-    if (redirects > 8) {
-      reject(new Error("too many redirects"));
-      return;
-    }
-    https
-      .get(url, { headers: { "User-Agent": "Chromium" } }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          res.resume();
-          downloadBuffer(res.headers.location, redirects + 1).then(resolve, reject);
-          return;
-        }
-        if (res.statusCode !== 200) {
-          res.resume();
-          reject(new Error(`download failed HTTP ${res.statusCode}`));
-          return;
-        }
-        const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => resolve(Buffer.concat(chunks)));
-        res.on("error", reject);
-      })
-      .on("error", reject);
-  });
-}
-
-function crxZipBuffer(crx) {
-  if (crx.length < 16 || crx.toString("utf8", 0, 4) !== "Cr24") {
-    throw new Error("invalid CRX header");
-  }
-  const headerSize = crx.readUInt32LE(8);
-  const zipStart = 12 + headerSize;
-  if (zipStart >= crx.length) throw new Error("invalid CRX zip offset");
-  return crx.subarray(zipStart);
-}
-
-function extractZipBuffer(zipBuffer, destDir) {
-  fs.mkdirSync(destDir, { recursive: true });
-  const tmpZip = path.join(cacheRoot(), "package.zip");
-  fs.writeFileSync(tmpZip, zipBuffer);
-  if (process.platform === "win32") {
-    const wd = destDir.replace(/'/g, "''");
-    const zp = tmpZip.replace(/'/g, "''");
-    const result = spawnSync(
-      "powershell",
-      [
-        "-NoProfile",
-        "-Command",
-        `Expand-Archive -LiteralPath '${zp}' -DestinationPath '${wd}' -Force`,
-      ],
-      { stdio: "pipe", windowsHide: true },
-    );
-    try {
-      fs.unlinkSync(tmpZip);
-    } catch {
-      /* ignore */
-    }
-    if (result.status !== 0) {
-      throw new Error(result.stderr?.toString() || "Expand-Archive failed");
-    }
-    return;
-  }
-  try {
-    const extractZip = require("extract-zip");
-    return extractZip(tmpZip, { dir: destDir }).finally(() => {
-      try {
-        fs.unlinkSync(tmpZip);
-      } catch {
-        /* ignore */
-      }
-    });
-  } catch {
-    throw new Error("extract-zip unavailable — set platform win32 or install extract-zip");
-  }
+  if (isVerifiedStoreExtension(cache)) return cache;
+  if (fs.existsSync(path.join(cache, "manifest.json"))) return cache;
+  return null;
 }
 
 async function ensureCookieBridgeStoreExtension(userDataRoot = defaultUserDataRoot()) {
   if (!cookieBridgeEnabled()) return null;
 
+  if (!useLocalDevExtension()) {
+    const cache = unpackedDir(userDataRoot);
+    if (fs.existsSync(path.join(cache, "manifest.json")) && !isVerifiedStoreExtension(cache)) {
+      try {
+        fs.rmSync(cacheRoot(userDataRoot), { recursive: true, force: true });
+      } catch {
+        // best-effort — workspace copy cannot load as Web Store id
+      }
+    }
+  }
+
   const cached = resolveCachedExtensionDir(userDataRoot);
   if (cached) return cached;
 
-  const dest = unpackedDir(userDataRoot);
-  const manifestPath = path.join(dest, "manifest.json");
-
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  const crx = await downloadBuffer(STORE_UPDATE_URL);
-  const zip = crxZipBuffer(crx);
-  const staging = `${dest}.staging`;
-  try {
-    if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
-    await extractZipBuffer(zip, staging);
-    if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-    fs.renameSync(staging, dest);
-  } catch (error) {
-    try {
-      if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
-    } catch {
-      /* ignore */
-    }
-    throw error;
-  }
-
-  if (!fs.existsSync(manifestPath)) {
-    throw new Error("store extension unpack missing manifest.json");
-  }
-  return dest;
+  const { unpackedPath } = await ensureStoreExtension(userDataRoot, COOKIE_BRIDGE_STORE_ID);
+  return unpackedPath;
 }
 
 function warmCookieBridgeStoreCache(userDataRoot = defaultUserDataRoot()) {
@@ -224,6 +140,7 @@ module.exports = {
   resolveCookieBridgeExtensionDirSync,
   resolveCachedExtensionDir,
   syncExtensionDirToCache,
+  isVerifiedStoreExtension,
   workspaceExtensionDir,
   unpackedDir,
   useLocalDevExtension,

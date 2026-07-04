@@ -1,5 +1,5 @@
 import { runOpenUrl } from "../../api";
-import type { ProfileRow, ScriptStep } from "../../types";
+import type { ProfileRow, RunLogEntry, ScriptStep } from "../../types";
 
 export type WorkflowExecutorAction = "open-url" | "google-form-ag-appeal";
 
@@ -17,7 +17,7 @@ export type ExecuteWorkflowActionInput = {
 
 export type ExecuteWorkflowActionResult = {
   ok: boolean;
-  logs: Array<{ level: "info" | "success" | "error"; message: string; time: string }>;
+  logs: RunLogEntry[];
   status: "closed" | "running";
   message: string;
   runId?: string;

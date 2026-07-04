@@ -16,7 +16,8 @@
 }
 
 .hub-main.hub-main--profiles,
-.hub-main.hub-main--workflow {
+.hub-main.hub-main--workflow,
+.hub-main.hub-main--system {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -36,7 +37,13 @@
 .hub-main--workflow .stealth-scripts-workspace__body,
 .hub-main--workflow .script-builder,
 .hub-main--workflow .script-workflows,
-.hub-main--workflow .script-editor-stack {
+.hub-main--workflow .script-editor-stack,
+.hub-main--system > div,
+.hub-main--system .hub-tab-chrome-stack,
+.hub-main--system .hub-tab-content-zone,
+.hub-main--system .hub-tab-body-zone--split,
+.hub-main--system .stealth-profile-layout,
+.hub-main--system .stealth-system-backup-workspace__body {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
@@ -45,19 +52,22 @@
 }
 
 .hub-main--profiles .hub-tab-body-zone--split,
-.hub-main--workflow .hub-tab-body-zone--split {
+.hub-main--workflow .hub-tab-body-zone--split,
+.hub-main--system .hub-tab-body-zone--split {
   padding-bottom: 0.625rem;
 }
 
 /* Tab header — avoid clipping sticky bleed + keep Inter metrics aligned with action buttons. */
 .hub-main--profiles .app-tab-header,
-.hub-main--workflow .app-tab-header {
+.hub-main--workflow .app-tab-header,
+.hub-main--system .app-tab-header {
   overflow: visible;
   align-items: center;
 }
 
 .hub-main--profiles .app-tab-header h1,
-.hub-main--workflow .app-tab-header h1 {
+.hub-main--workflow .app-tab-header h1,
+.hub-main--system .app-tab-header h1 {
   font-family: var(--font-sans);
   font-size: 1rem;
   font-weight: 600;
@@ -65,13 +75,15 @@
 }
 
 .hub-main--profiles .app-tab-header-center-stats,
-.hub-main--workflow .app-tab-header-center-stats {
+.hub-main--workflow .app-tab-header-center-stats,
+.hub-main--system .app-tab-header-center-stats {
   align-items: center;
   padding-block: 1px;
 }
 
 .hub-main--profiles .stealth-profile-layout,
-.hub-main--workflow .stealth-profile-layout {
+.hub-main--workflow .stealth-profile-layout,
+.hub-main--system .stealth-profile-layout {
   display: grid;
 }
 
@@ -126,6 +138,7 @@
   background: var(--panel);
 }
 
+.stealth-profile-directory-frame .hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split),
 .stealth-profile-directory-frame .hub-split-directory-pane__body .hub-directory-table-split.hub-directory-table-scroll--flex-pane {
   min-height: 0;
   flex: 1 1 0;
@@ -146,6 +159,8 @@
 
 /* Search/filter shrinks page — pack rows under thead (no panel-fill stretch gap). */
 .hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-users-table-wrap:not(.hub-directory-table-split),
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
   .hub-directory-table-body-scroll {
   display: flex;
   flex-direction: column;
@@ -154,6 +169,9 @@
 }
 
 .hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-users-table-wrap:not(.hub-directory-table-split)
+  table,
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
   .hub-directory-table-body-scroll
   table {
   height: auto;
@@ -161,11 +179,18 @@
 }
 
 .hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-users-table-wrap:not(.hub-directory-table-split)
+  tbody,
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
   .hub-directory-table-body-scroll
   tbody {
   height: auto;
 }
 
+.hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
+  .hub-users-table-wrap:not(.hub-directory-table-split)
+  tbody
+  tr,
 .hub-directory-frame.hub-directory-frame--panel-fill.stealth-profile-directory-frame[data-hub-directory-compact]
   .hub-directory-table-body-scroll
   tbody

@@ -58,8 +58,8 @@ export function SystemCookieBridgePanel() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Extensions</p>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text)]">E0001 Cookie Bridge</h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--muted)]">
-            Loaded on profile launch via <code className="text-cyan-200/90">--load-extension</code>. Disable with{" "}
-            <code className="text-cyan-200/90">STEALTH_COOKIE_BRIDGE=0</code>.
+            In native mode, loaded from Chrome profile prefs (not <code className="text-cyan-200/90">--load-extension</code>
+            ). Disable with <code className="text-cyan-200/90">STEALTH_COOKIE_BRIDGE=0</code>.
           </p>
           {repairMsg ? <p className="mt-2 text-xs text-cyan-200">{repairMsg}</p> : null}
           {error ? <p className="mt-2 text-xs text-rose-300">{error}</p> : null}
@@ -81,7 +81,13 @@ export function SystemCookieBridgePanel() {
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
               <dt className="text-[var(--muted)]">Enabled</dt>
-              <dd className="font-medium text-[var(--text)]">{status.enabled ? "Yes" : "No"}</dd>
+              <dd className="font-medium text-[var(--text)]">
+                {status.extensionToggles?.e0001 === false
+                  ? "Off (Settings → Extensions)"
+                  : status.enabled
+                    ? "Yes"
+                    : "No"}
+              </dd>
             </div>
             <div>
               <dt className="text-[var(--muted)]">Manifest</dt>

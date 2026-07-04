@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { patchHubListPrefs, patchHubTablePageSizeValue, useHubDirectorySelection } from "@tool-workspace/hub-ui";
 import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import { useStealthShell } from "../context/stealth-shell-context";
@@ -15,8 +15,12 @@ import {
 } from "../features/profiles/useProfileDirectoryPageSize";
 import { useProfilesDirectoryChrome } from "../features/profiles/useProfilesDirectoryChrome";
 import type { StealthProfileSortKey, StealthProfileSortDirection } from "../features/profiles/StealthProfileDirectoryTable";
+import { useProfileExtensionToggle } from "../features/profiles/useProfileExtensionToggle";
+import type { ExtensionSelectionState } from "../features/profiles/StealthProfilesDirectoryBulkActions";
 import { migrateProfilesDisplayPrefsFromUrl } from "../lib/profile-display-prefs-migrate";
 import { prefetchWorkflowChunks } from "../lib/prefetch-workflow-chunks";
+import { resolveProfileExtensionEffective } from "../lib/profile-extension-effective";
+import { useAppToast } from "../components/toast";
 
 export const ProfilesView = memo(function ProfilesView({
   headerActions,
@@ -26,6 +30,7 @@ export const ProfilesView = memo(function ProfilesView({
   engineStatus?: "checking" | "ready" | "offline";
 }) {
   const { syncBusy } = useStealthShell();
+  const { pushToast } = useAppToast();
   useEffect(() => {
     prefetchWorkflowChunks();
   }, []);
@@ -109,7 +114,7 @@ export const ProfilesView = memo(function ProfilesView({
     toggleSelect,
     toggleSelectAll,
     allVisibleSelected,
-  } = useHubDirectorySelection(filteredProfiles, (profile) => profile.id);
+  } = useHubDirectorySelection(filteredProfiles, useCallback((profile: ProfileRow) => profile.id, []));
 
   useEffect(() => {
     setAutomationProfileSelection(selectedProfiles);
@@ -143,6 +148,51 @@ export const ProfilesView = memo(function ProfilesView({
       })
       .catch(() => undefined);
   }, [deleteSelected, refreshProfiles, selectedIds, setSelectedIds]);
+
+  const bumpDirectoryRefresh = useCallback(() => {
+    setDirectoryRefreshKey((key) => key + 1);
+    void refreshProfiles();
+  }, [refreshProfiles]);
+
+  const { globalToggles, setExtensionOnProfiles, extensionBusy } = useProfileExtensionToggle(bumpDirectoryRefresh);
+
+  const extensionSelectionState = useMemo<Record<"e0001" | "surfshark", ExtensionSelectionState>>(() => {
+    const resolveState = (key: "e0001" | "surfshark"): ExtensionSelectionState => {
+      if (!selectedProfiles.length) return "mixed";
+      const enabledCount = selectedProfiles.reduce(
+        (count, profile) =>
+          count + (resolveProfileExtensionEffective(globalToggles, profile.extensionOverrides, key) ? 1 : 0),
+        0,
+      );
+      if (enabledCount === 0) return "all-off";
+      if (enabledCount === selectedProfiles.length) return "all-on";
+      return "mixed";
+    };
+    return {
+      e0001: resolveState("e0001"),
+      surfshark: resolveState("surfshark"),
+    };
+  }, [globalToggles, selectedProfiles]);
+
+  const handleExtensionSet = useCallback(
+    (key: "e0001" | "surfshark", enabled: boolean) => {
+      const label = key === "e0001" ? "Cookie Bridge" : "Surfshark";
+      void setExtensionOnProfiles(selectedProfiles, key, enabled)
+        .then((updatedCount) => {
+          if (!updatedCount) return;
+          const noun = updatedCount === 1 ? "profile" : "profiles";
+          pushToast(
+            `${label} ${enabled ? "enabled" : "disabled"} on ${updatedCount} ${noun}. Close Chrome and Run again.`,
+            "success",
+          );
+        })
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          pushToast(`Unable to update ${label}: ${message}`, "error", 6500);
+        });
+    },
+    [pushToast, selectedProfiles, setExtensionOnProfiles],
+  );
 
   return (
     <>
@@ -182,19 +232,23 @@ export const ProfilesView = memo(function ProfilesView({
         onTablePageSizeChange={handleTablePageSizeChange}
         syncBusy={syncBusy || directoryBusy}
         selectedProfiles={selectedProfiles}
+        extensionState={extensionSelectionState}
         selectedIds={selectedIds}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
         allVisibleSelected={allVisibleSelected}
         openOne={handleOpenOne}
         closeOne={handleCloseOne}
+        globalExtensionToggles={globalToggles}
+        extensionBusy={extensionBusy}
+        onExtensionSet={handleExtensionSet}
         deleteSelected={handleDeleteSelected}
         setShowCreate={setShowCreate}
         onEdit={() => {
           if (selectedProfiles.length === 1) setEditProfile(selectedProfiles[0]!);
         }}
         onGroups={() => setShowGroups(true)}
-        onExport={() => void exportProfiles()}
+        onExport={() => void exportProfiles(selectedProfiles)}
         onImport={() => importInputRef.current?.click()}
         apiStatus={engineStatus}
         headerActions={headerActions}

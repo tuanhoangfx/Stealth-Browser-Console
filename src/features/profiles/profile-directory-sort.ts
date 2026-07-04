@@ -3,6 +3,8 @@ import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
 const SORT_SQL: Record<StealthProfileSortKey, string> = {
   profile: "name",
   group: "group_name",
+  e0001: "updated_at",
+  surfshark: "updated_at",
   status: "status",
   lastOpened: "last_opened_at",
   createdAt: "created_at",

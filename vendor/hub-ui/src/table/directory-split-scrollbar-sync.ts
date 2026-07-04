@@ -27,35 +27,35 @@ function isFlexPaneSplitBody(body: HTMLElement): boolean {
 
 /** Read vertical scrollbar gutter width for split directory tbody pane. */
 export function readDirectorySplitScrollbarPad(body: HTMLElement, doc: Document = document): number {
-  if (isFlexPaneSplitBody(body)) {
-    return readScrollSizeToken(body, doc);
-  }
-
   const measured = body.offsetWidth - body.clientWidth;
   if (measured > 0) return measured;
+
+  if (isFlexPaneSplitBody(body)) {
+    return measureDirectorySplitScrollbarWidth(doc);
+  }
+
   if (body.scrollHeight > body.clientHeight + 1) {
     return readScrollSizeToken(body, doc);
   }
   return 0;
 }
 
-/** Apply split thead scrollbar gutter — shared by hook + gates. Flex-pane pad is CSS-only. */
+/** Apply split thead scrollbar gutter — shared by hook + gates. */
 export function applyDirectorySplitScrollbarSync(head: HTMLElement, body: HTMLElement): number {
   const wrap = head.closest(".hub-directory-table-split");
-  const isFlexPane =
-    wrap instanceof HTMLElement && wrap.classList.contains("hub-directory-table-scroll--flex-pane");
-
   const pad = readDirectorySplitScrollbarPad(body, head.ownerDocument);
-
-  if (isFlexPane) {
-    return pad;
-  }
-
   const padValue = `${pad}px`;
+
   head.style.setProperty("--hub-directory-split-scrollbar-pad", padValue);
-  body.style.setProperty("--hub-directory-split-scrollbar-pad", padValue);
   if (wrap instanceof HTMLElement) {
     wrap.style.setProperty("--hub-directory-split-scrollbar-pad", padValue);
   }
+
+  const isFlexPane =
+    wrap instanceof HTMLElement && wrap.classList.contains("hub-directory-table-scroll--flex-pane");
+  if (!isFlexPane) {
+    body.style.setProperty("--hub-directory-split-scrollbar-pad", padValue);
+  }
+
   return pad;
 }

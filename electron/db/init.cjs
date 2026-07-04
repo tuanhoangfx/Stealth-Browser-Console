@@ -64,6 +64,7 @@ function migrateProfilesTable(database) {
     ["window_mode", "TEXT DEFAULT 'host-maximized'"],
     ["startup_url", "TEXT"],
     ["last_opened_at", "INTEGER"],
+    ["extension_overrides", "TEXT"],
   ];
   let addedWindowMode = false;
   for (const [name, decl] of additions) {

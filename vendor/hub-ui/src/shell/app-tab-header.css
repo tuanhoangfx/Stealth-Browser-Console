@@ -1,5 +1,7 @@
 /* Shared top rail — Hub, System, future tabs */
 .app-tab-header {
+  --hub-header-chrome-font-size: 12px;
+  --hub-header-chrome-font-weight: 500;
   font-family: var(--font-sans);
   isolation: isolate;
   padding: var(--app-tab-header-py) var(--app-tab-header-px);
@@ -21,6 +23,13 @@
 .app-tab-header h1 {
   margin: 0;
   padding: 0;
+}
+
+/* Title · Session · meta — same scale as Log / Notify / Settings (.hub-header-panel-btn). */
+.app-tab-header__chrome-text {
+  font-size: var(--hub-header-chrome-font-size);
+  font-weight: var(--hub-header-chrome-font-weight);
+  line-height: 1;
 }
 
 .app-tab-header svg {

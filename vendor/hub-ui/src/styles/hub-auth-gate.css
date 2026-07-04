@@ -108,6 +108,15 @@
   margin-bottom: 1rem;
 }
 
+/** Auth gate header brand mark — 56×56 + soft cyan glow (all P00xx sign-in gates). */
+.hub-auth-brand-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 12px rgb(56 189 248 / 0.35));
+}
+
 .auth-gate-title {
   margin: 0 0 0.35rem;
   text-align: center;

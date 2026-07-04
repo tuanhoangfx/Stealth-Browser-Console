@@ -62,7 +62,7 @@ async function main() {
   run("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
   run("workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]);
   run("vite-build-ui-smoke", "pnpm", ["exec", "vite", "build"]);
-  run("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "dist/index.html"]);
+  run("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "http://127.0.0.1:5175/"]);
   run("workflow-tab-console-smoke", "node", ["scripts/smoke-workflow-tab-console.mjs", "dist/index.html"]);
   run("benchmark-profile-launch", "node", ["scripts/benchmark-profile-launch.mjs", "3"]);
 

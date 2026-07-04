@@ -32,6 +32,36 @@ export function randomFingerprintSeed() {
   return Math.floor(10000 + Math.random() * 89999);
 }
 
+/** Filesystem-safe profile label for export/download basenames. */
+export function sanitizeProfileExportBasename(name: string) {
+  const token = String(name || "profile")
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+  return token || "profile";
+}
+
+/** Local timestamp token for export filenames — `YYYY-MM-DD_HH-mm-ss`. */
+export function profileExportTimestampToken(date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+}
+
+/**
+ * Export basename — one profile: `{Name}_{timestamp}.ext`; many: `{First}_+{n-1}_{timestamp}.ext`.
+ * Empty names → `all-profiles_{timestamp}.ext`.
+ */
+export function buildProfileExportFilename(profileNames: string[], ext: "json" | "zip") {
+  const ts = profileExportTimestampToken();
+  const names = profileNames.map(sanitizeProfileExportBasename).filter(Boolean);
+  let base: string;
+  if (names.length === 0) base = "all-profiles";
+  else if (names.length === 1) base = names[0]!;
+  else base = `${names[0]!}_+${names.length - 1}`;
+  return `${base}_${ts}.${ext}`;
+}
+
 export function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);

@@ -26,16 +26,34 @@ contextBridge.exposeInMainWorld("stealthApi", {
   deleteGroup: (payload) => invoke("group:delete", payload),
   exportProfiles: () => invoke("profiles:export"),
   importProfiles: (payload) => invoke("profiles:import", payload),
+  backupProfilesState: (payload) => invoke("profiles:backupState", payload),
+  restoreProfilesState: (payload) => invoke("profiles:restoreState", payload ?? {}),
+  profileStorageStats: (payload) => invoke("profiles:storageStats", payload),
+  profileBackupMeta: (payload) => invoke("profiles:backupMeta", payload),
+  onProfilesBackupProgress: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on("profiles:backupProgress", listener);
+    return () => ipcRenderer.removeListener("profiles:backupProgress", listener);
+  },
   listRuns: (payload) => invoke("runs:list", payload),
   openUrl: (payload) => invoke("automation:openUrl", payload),
   appInfo: () => invoke("app:info"),
   openDataFolder: () => invoke("app:openDataFolder"),
+  getProfileExtensionsEnabled: () => invoke("app:getProfileExtensionsEnabled"),
+  setProfileExtensionsEnabled: (payload) => invoke("app:setProfileExtensionsEnabled", payload),
+  getExtensionToggles: () => invoke("app:getExtensionToggles"),
+  setExtensionToggles: (payload) => invoke("app:setExtensionToggles", payload),
   listLaunchPerf: (payload) => invoke("launchPerf:list", payload),
   clearLaunchPerf: () => invoke("launchPerf:clear"),
   fetchLaunchBenchBaseline: () => invoke("launchPerf:baseline"),
   purgeLegacyIdentityToolbar: () => invoke("legacy:purgeIdentityToolbar"),
   fetchCookieBridgeStatus: () => invoke("extension:cookieBridgeStatus"),
   purgeBrokenExtensionPrefs: () => invoke("extension:purgeBrokenPrefs"),
+  fetchExtensionsStatus: () => invoke("extension:status"),
+  fetchExtensionIcon: (payload) => invoke("extension:icon", payload),
+  installStoreExtension: (payload) => invoke("extension:installStore", payload),
+  pickUnpackedExtensionFolder: () => invoke("extension:pickUnpackedFolder"),
+  installUnpackedExtension: (payload) => invoke("extension:installUnpacked", payload),
   onProfileSession: (handler) => {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on("profile:session", listener);

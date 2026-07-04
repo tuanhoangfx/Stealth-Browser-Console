@@ -19,7 +19,7 @@ import { newWorkflowTimestamps, touchWorkflowUpdated, ensureWorkflowTimestamps }
 import { workflowDisplayId } from "./workflow-display";
 const SCRIPT_STEP_KINDS: ScriptStepKind[] = ["navigate", "wait", "click", "type", "delay", "scroll", "screenshot", "condition", "action"];
 
-type LogFn = (level: "info" | "success" | "error", source: string, message: string) => void;
+type LogFn = (level: "info" | "success" | "error" | "warn", source: string, message: string) => void;
 
 export function useWorkflowConfig(options: { setError: (message: string) => void; addLog: LogFn }) {
   const { setError, addLog } = options;

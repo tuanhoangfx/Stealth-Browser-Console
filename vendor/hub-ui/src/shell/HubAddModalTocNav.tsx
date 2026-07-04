@@ -2,10 +2,13 @@ import { useMemo } from "react";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 
+import type { ReactNode } from "react";
+
 export type HubAddModalTabItem = {
   id: string;
   label: string;
   emoji?: string;
+  icon?: ReactNode;
 };
 
 export type HubAddModalTocNavProps<TTab extends string = string> = {
@@ -52,7 +55,11 @@ export function HubAddModalTocNav<TTab extends string = string>({
                 onClick={() => onTabChange(item.id as TTab)}
               >
                 <span className="hub-toc-nav__label flex min-w-0 items-center gap-1.5 truncate rounded-lg px-2 py-1 font-medium text-[var(--muted)] transition-all duration-200 group-hover:text-[var(--text)]">
-                  {item.emoji ? (
+                  {item.icon ? (
+                    <span className="shrink-0 inline-flex items-center" aria-hidden>
+                      {item.icon}
+                    </span>
+                  ) : item.emoji ? (
                     <span className="shrink-0 text-[12px] leading-none opacity-90" aria-hidden>
                       {item.emoji}
                     </span>

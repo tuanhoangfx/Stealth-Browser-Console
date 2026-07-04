@@ -26,6 +26,7 @@ async function main() {
   assert(!args.includes("--no-sandbox") || process.platform === "linux", "Windows/macOS must omit --no-sandbox");
 
   let sessions;
+  let secondSessions;
   try {
     await openDatabase(tmpRoot);
     profileService.ensureSeedProfiles();
@@ -55,6 +56,12 @@ async function main() {
       assert(url && url !== "about:blank" && !url.startsWith("chrome://newtab"), "startup opens on first tab");
     }
 
+    secondSessions = new SessionManager();
+    secondSessions.setUserDataRoot(tmpRoot);
+    const attached = await secondSessions.launch(profile);
+    assert(attached.ok && attached.status === "running", "second manager reuses existing profile browser");
+    assert(attached.focused || secondSessions.isRunning(profile.id), "second manager focused or attached existing profile");
+
     const closed = await sessions.close(profile.id);
     assert(closed.ok && closed.status === "closed", "close profile");
     assert(!sessions.isRunning(profile.id), "session cleared after close");
@@ -72,6 +79,7 @@ async function main() {
     }
     throw error;
   } finally {
+    if (secondSessions) await secondSessions.closeAll().catch(() => undefined);
     if (sessions) await sessions.closeAll().catch(() => undefined);
     closeDatabase();
     fs.rmSync(tmpRoot, { recursive: true, force: true });

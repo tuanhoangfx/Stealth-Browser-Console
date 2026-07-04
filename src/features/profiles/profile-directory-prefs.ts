@@ -16,6 +16,8 @@ export const PROFILE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ProfileDir
     [
       { key: "profile", label: "Profile", required: true },
       { key: "group", label: "Group" },
+      { key: "e0001", label: "Cookie Bridge" },
+      { key: "surfshark", label: "Surfshark" },
       { key: "status", label: "Running" },
       { key: "lastOpened", label: "Last opened" },
       { key: "createdAt", label: "Created" },
@@ -30,6 +32,8 @@ export const PROFILE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ProfileDir
 export const DEFAULT_PROFILE_DIRECTORY_COLUMNS = new Set<ProfileDirectoryColumnKey>([
   "profile",
   "group",
+  "e0001",
+  "surfshark",
   "status",
   "lastOpened",
   "startupUrl",

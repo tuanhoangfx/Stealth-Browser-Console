@@ -31,7 +31,8 @@ function abiStamp() {
 function stampOk() {
   const stamp = abiStamp();
   if (!stamp || !fs.existsSync(stampFile)) return false;
-  return fs.readFileSync(stampFile, "utf8").trim() === stamp;
+  if (fs.readFileSync(stampFile, "utf8").trim() !== stamp) return false;
+  return probeOk({ skipWriteStamp: true });
 }
 
 function writeStamp() {
@@ -41,14 +42,14 @@ function writeStamp() {
   fs.writeFileSync(stampFile, `${stamp}\n`, "utf8");
 }
 
-function probeOk() {
-  if (stampOk()) return true;
+function probeOk(options = {}) {
+  if (!options.skipWriteStamp && stampOk()) return true;
   if (!fs.existsSync(probeScript)) return false;
   const result = spawnSync(process.execPath, [probeScript], winSpawnOpts({
     cwd: root,
     stdio: "pipe",
   }));
-  if (result.status === 0) writeStamp();
+  if (result.status === 0 && !options.skipWriteStamp) writeStamp();
   return result.status === 0;
 }
 

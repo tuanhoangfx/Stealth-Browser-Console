@@ -4,6 +4,8 @@ const { randomUUID } = require("node:crypto");
 const { runScriptSteps, runGoogleFormAgAppeal, settlePage } = require("./script-steps.cjs");
 const { stabilizePrimaryPage } = require("./navigate-startup.cjs");
 const { safePageGoto } = require("./safe-goto.cjs");
+const { extractProfileCode } = require("../lib/profile-identity.cjs");
+const { fetchMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
 
 const APP_VERSION = require("../../package.json").version;
 
@@ -56,9 +58,29 @@ async function runOpenUrl({
     const stepContext = {
       targetUrl,
       profileName: profile.name,
+      profileId: profile.id,
+      workflowId: workflowKey,
       inspectMode: Boolean(inspectMode),
-      screenshotsRoot
+      screenshotsRoot,
+      mailCredentials: null,
+      generateTotp: false,
     };
+
+    const hasMailPlaceholder = Array.isArray(steps) && steps.some((s) => {
+      const v = String(s?.value || "");
+      return v.includes("{{gmail");
+    });
+    if (hasMailPlaceholder) {
+      const profileCode = extractProfileCode(profile.name, profile.id);
+      const creds = await fetchMailCredentials(profileCode, "Gmail").catch(() => null);
+      if (creds) {
+        stepContext.mailCredentials = creds;
+        stepContext.generateTotp = Boolean(creds.secret);
+        logger.push("info", `Mail credentials loaded for profile ${profileCode}: ${creds.email}`);
+      } else {
+        logger.push("warning", `No Gmail credentials found for profile ${profileCode}`);
+      }
+    }
 
     if (Array.isArray(steps) && steps.length) {
       screenshotPath = await runScriptSteps(page, steps, logger, stepContext);

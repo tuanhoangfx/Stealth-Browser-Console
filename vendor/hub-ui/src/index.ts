@@ -312,6 +312,7 @@ export {
 } from "./shell/HubTabChrome";
 export { HubTabSectionRule } from "./shell/HubTabSectionRule";
 export { HubAlert } from "./content/HubAlert";
+export { HubDriftBanner, type HubDriftBannerAction, type HubDriftBannerProps } from "./content/HubDriftBanner";
 export { HubDataTable, HubTableEmptyRow, type HubTableColumn } from "./content/HubDataTable";
 export { HubPaginatedDataTable, type HubPaginatedDataTableProps } from "./content/HubPaginatedDataTable";
 export { HubReadOnlyDataTable, type HubReadOnlyDataTableProps } from "./content/HubReadOnlyDataTable";
@@ -377,6 +378,8 @@ export {
   HUB_DIRECTORY_TABLE_SCROLL_CLASS,
   HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS,
   HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
+  HUB_DIRECTORY_TABLE_PANE_INLINE_SCROLL_CLASS,
   HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS,
 } from "./table/directory-table-scroll";
 export {
@@ -524,6 +527,10 @@ export {
   HubSidebarNavGroupHeader,
   NavGroupSubNav,
 } from "./shell/HubSidebarNavGroup";
+export {
+  HubSystemTabSubNav,
+  HUB_SYSTEM_TAB_SUBNAV_CLASS,
+} from "./shell/HubSystemTabSubNav";
 export type {
   HubSidebarNavGroupHeaderProps,
   HubSidebarNavGroupProps,
@@ -1012,6 +1019,7 @@ export {
   type HubWorkspaceUserShellProps,
 } from "./auth/HubWorkspaceUserShell";
 export { HubAccessDeniedPanel, type HubAccessDeniedPanelProps } from "./auth/HubAccessDeniedPanel";
+export { HubAuthBrandIcon, type HubAuthBrandIconProps } from "./auth/HubAuthBrandIcon";
 export { HubAuthBootPanel, type HubAuthBootPanelProps } from "./auth/HubAuthBootPanel";
 export { HubSidebarUserFooter, type HubSidebarUserFooterProps } from "./auth/HubSidebarUserFooter";
 export { HubWorkspaceUserAvatar, type HubWorkspaceUserAvatarProps } from "./auth/HubWorkspaceUserAvatar";

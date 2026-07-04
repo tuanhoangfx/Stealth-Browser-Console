@@ -266,7 +266,22 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       return { ok: true };
     },
     exportProfiles: async () => ({ ok: true, bundle: { profiles: [...profiles], groups: [...groups] } }),
-    importProfiles: async () => ({ ok: true, imported: 0 }),
+    importProfiles: async () => ({ ok: true, imported: 0, updated: 0, created: 0 }),
+    backupProfilesState: async () => ({ ok: true, canceled: true }),
+    restoreProfilesState: async () => ({ ok: true, canceled: true }),
+    profileStorageStats: async (payload) => ({
+      ok: true,
+      stats: (payload.profileIds || []).map((id) => ({
+        id: String(id),
+        folderExists: false,
+        folderBytes: null,
+      })),
+    }),
+    profileBackupMeta: async (payload) => ({
+      ok: true,
+      meta: (payload.profileIds || []).map((id) => ({ id: String(id) })),
+    }),
+    onProfilesBackupProgress: () => () => undefined,
     listRuns: async (payload) => ({
       ok: true,
       runs: runs.slice(0, Number(payload?.limit) || 100)
@@ -278,9 +293,25 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       name: "Stealth Browser Console (web mock)",
       version: "0.4.1",
       isPackaged: false,
-      userDataPath: "(browser)"
+      userDataPath: "(browser)",
+      profileExtensionsEnabled: true,
+      extensionToggles: { e0001: true, surfshark: false, webStore: false },
     }),
     openDataFolder: async () => ({ ok: false, path: "" }),
+    getProfileExtensionsEnabled: async () => ({ ok: true, enabled: true }),
+    setProfileExtensionsEnabled: async (payload) => ({ ok: true, enabled: Boolean(payload?.enabled) }),
+    getExtensionToggles: async () => ({
+      ok: true,
+      toggles: { e0001: true, surfshark: false, webStore: false },
+    }),
+    setExtensionToggles: async (payload) => ({
+      ok: true,
+      toggles: {
+        e0001: payload?.toggles?.e0001 !== false,
+        surfshark: payload?.toggles?.surfshark === true,
+        webStore: payload?.toggles?.webStore === true,
+      },
+    }),
     listLaunchPerf: async () => ({ ok: true, entries: [] }),
     clearLaunchPerf: async () => ({ ok: true }),
     fetchLaunchBenchBaseline: async () => ({ ok: true, baseline: null }),
@@ -289,6 +320,8 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       ok: true,
       status: {
         enabled: true,
+        profilesExtensionsEnabled: true,
+        extensionToggles: { e0001: true, surfshark: false, webStore: false },
         productCode: "E0001",
         name: "E0001 Cookie Bridge",
         storeId: "kaaadageakdandpobcofplmfbjfjabdk",
@@ -303,12 +336,40 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       },
     }),
     purgeBrokenExtensionPrefs: async () => ({ ok: true, profiles: 0, removed: 0, prefsCleaned: 0 }),
+    fetchExtensionsStatus: async () => ({
+      ok: true,
+      status: {
+        launchMode: "native",
+        nativeMode: true,
+        cached: [],
+        webStoreInstallHint: "Web mock — install unavailable in dev:web.",
+      },
+    }),
+    installStoreExtension: async () => ({
+      ok: false,
+      error: "Store install requires Electron (dev:web mock).",
+    }),
+    pickUnpackedExtensionFolder: async () => ({ ok: false, canceled: true }),
+    installUnpackedExtension: async () => ({
+      ok: false,
+      error: "Unpacked install requires Electron (dev:web mock).",
+    }),
     onProfileSession: () => () => undefined
   };
 }
 
 export function installStealthWebMock() {
   if (typeof window === "undefined") return;
-  if ("stealthApi" in window && window.stealthApi) return;
-  window.stealthApi = createStealthWebMockApi();
+  const mock = createStealthWebMockApi();
+  if (!("stealthApi" in window) || !window.stealthApi) {
+    window.stealthApi = mock;
+    return;
+  }
+  // Dev HMR: patch stale Electron preload when new IPC methods were added without full restart.
+  const live = window.stealthApi as Record<string, unknown>;
+  for (const [key, value] of Object.entries(mock as Record<string, unknown>)) {
+    if (typeof value === "function" && typeof live[key] !== "function") {
+      live[key] = value;
+    }
+  }
 }

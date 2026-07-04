@@ -21,6 +21,7 @@ import {
   workflowPlatformBrandMatch,
   workflowPlatformTone,
 } from "./workflow-display";
+import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import type { WorkflowConfig } from "./workflow-types";
 import type { StealthWorkflowSortKey } from "./StealthWorkflowDirectoryTable";
@@ -57,7 +58,7 @@ export function renderStealthWorkflowDirectoryBodyCell(
   const displayId = workflowDisplayId(workflow.id, opts.defaultWorkflows);
   const displayPlatform = workflowDisplayPlatform(workflow);
   const brand = workflowPlatformBrandMatch(workflow);
-  const platformImageSrc = brand?.src ?? "";
+  const platformImageSrc = brand?.src ? resolveHubBrandAssetSrc(brand.src) : "";
   const FallbackIcon = platformImageSrc ? undefined : workflowDirectoryFallbackIcon(workflow, displayPlatform);
 
   switch (key as StealthWorkflowColumnKey) {

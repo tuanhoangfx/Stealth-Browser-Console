@@ -1,6 +1,14 @@
 import type { CreateHubForgotPasswordHandlerOptions } from "./hub-forgot-password";
 
-export type WorkspaceAuthToolCode = "P0001" | "P0003" | "P0004" | "P0008" | "P0016" | "P0020" | "P0021";
+export type WorkspaceAuthToolCode =
+  | "P0001"
+  | "P0003"
+  | "P0004"
+  | "P0005"
+  | "P0008"
+  | "P0016"
+  | "P0020"
+  | "P0021";
 
 export type WorkspaceAuthGateToolInfo = {
   code?: string;
@@ -56,6 +64,11 @@ const BASE: Record<
       successMessage: "Check your inbox for a reset link.",
     },
   },
+  P0005: {
+    title: "Welcome to Order Desk",
+    toolInfo: { name: "Order Desk" },
+    forgotPassword: {},
+  },
   P0008: {
     title: "Welcome to Seller Center",
     toolInfo: { name: "Seller Center" },
@@ -103,7 +116,9 @@ export function createWorkspaceAuthGatePreset(
       : options.code === "P0001"
         ? "GPM Login automation"
       : options.code === "P0003"
-        ? "Antidetect profiles & automation"
+        ? ""
+      : options.code === "P0005"
+        ? "Customers & orders"
       : options.code === "P0008"
         ? "CRM · orders & buyer insights"
       : options.code === "P0021"

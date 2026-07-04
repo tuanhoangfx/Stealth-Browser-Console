@@ -11,8 +11,9 @@ import {
 import { deviceConfigFromProfile } from "../../lib/device-presets";
 import { resolveProfileLaunchUrl, resolveStartupUrlSave, startupUrlSaveError } from "../../lib/startup-url";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
-import type { DeviceConfig, ProfileRow } from "../../types";
+import type { DeviceConfig, ProfileExtensionOverrides, ProfileRow } from "../../types";
 import { ProfileFormFields } from "./ProfileFormFields";
+import { ProfileExtensionFields } from "./ProfileExtensionFields";
 import { ProfileFormModalLayout } from "./ProfileFormModalLayout";
 import { profileFormTocItems } from "./profile-form-toc";
 import { PROFILE_FORM_MODAL_SHELL_CLASS } from "./profile-form-modal";
@@ -34,6 +35,9 @@ export function EditProfileModal({
   const [fingerprintSeed, setFingerprintSeed] = useState(profile.fingerprintSeed);
   const [device, setDevice] = useState<DeviceConfig>(() => deviceConfigFromProfile(profile));
   const [startupUrl, setStartupUrl] = useState(() => resolveProfileLaunchUrl(profile.startupUrl || ""));
+  const [extensionOverrides, setExtensionOverrides] = useState<ProfileExtensionOverrides>(
+    () => profile.extensionOverrides || {},
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,6 +60,7 @@ export function EditProfileModal({
       note: note.trim(),
       fingerprintSeed,
       startupUrl: resolveStartupUrlSave(startupUrl, profile.startupUrl),
+      extensionOverrides,
       ...device,
     })
       .then(() => {
@@ -105,6 +110,11 @@ export function EditProfileModal({
           startupUrl={startupUrl}
           setStartupUrl={setStartupUrl}
           groups={groups}
+        />
+        <ProfileExtensionFields
+          overrides={extensionOverrides}
+          onChange={setExtensionOverrides}
+          disabled={busy}
         />
       </ProfileFormModalLayout>
     </HubToolDetailModal>

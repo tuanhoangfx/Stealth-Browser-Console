@@ -301,6 +301,73 @@ function buildRoutes(services) {
       }
     },
     {
+      id: "extensions.status",
+      method: "GET",
+      pattern: /^\/api\/extensions$/,
+      handler(ctx) {
+        const { getExtensionsStatus } = require("./lib/extensions-status.cjs");
+        return send.json(ctx.res, 200, { ok: true, status: getExtensionsStatus(userDataRoot) });
+      },
+    },
+    {
+      id: "extensions.install",
+      method: "POST",
+      pattern: /^\/api\/extensions\/install$/,
+      async handler(ctx) {
+        const { installStoreExtension } = require("./lib/extensions-status.cjs");
+        const storeIdOrUrl = String(
+          ctx.body.store_id ?? ctx.body.storeId ?? ctx.body.url ?? ctx.body.storeIdOrUrl ?? "",
+        ).trim();
+        if (!storeIdOrUrl) {
+          return send.json(ctx.res, 400, { ok: false, error: "store_id or Chrome Web Store URL is required" });
+        }
+        const profileIds = Array.isArray(ctx.body.profile_ids ?? ctx.body.profileIds)
+          ? (ctx.body.profile_ids ?? ctx.body.profileIds).map((id) => String(id).trim()).filter(Boolean)
+          : undefined;
+        try {
+          const result = await installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds });
+          const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
+          const { ensureCloakbrowserExtensionStages } = require("./lib/cloakbrowser-extension-stage.cjs");
+          const binary = await getBinaryInfoCached();
+          ensureCloakbrowserExtensionStages([result.unpackedPath], binary.cacheDir);
+          return send.json(ctx.res, 200, { ok: true, result });
+        } catch (error) {
+          return send.json(ctx.res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
+    {
+      id: "extensions.installUnpacked",
+      method: "POST",
+      pattern: /^\/api\/extensions\/install-unpacked$/,
+      async handler(ctx) {
+        const { installUnpackedExtension } = require("./lib/extensions-status.cjs");
+        const sourceDir = String(ctx.body.path ?? ctx.body.source_dir ?? ctx.body.sourceDir ?? "").trim();
+        if (!sourceDir) {
+          return send.json(ctx.res, 400, { ok: false, error: "path to unpacked extension folder is required" });
+        }
+        const profileIds = Array.isArray(ctx.body.profile_ids ?? ctx.body.profileIds)
+          ? (ctx.body.profile_ids ?? ctx.body.profileIds).map((id) => String(id).trim()).filter(Boolean)
+          : undefined;
+        try {
+          const result = await installUnpackedExtension(userDataRoot, sourceDir, { profileIds });
+          const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
+          const { ensureCloakbrowserExtensionStages } = require("./lib/cloakbrowser-extension-stage.cjs");
+          const binary = await getBinaryInfoCached();
+          ensureCloakbrowserExtensionStages([result.unpackedPath], binary.cacheDir);
+          return send.json(ctx.res, 200, { ok: true, result });
+        } catch (error) {
+          return send.json(ctx.res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
+    {
       id: "jobs.events",
       method: "GET",
       pattern: /^\/api\/jobs\/([^/]+)\/events$/,

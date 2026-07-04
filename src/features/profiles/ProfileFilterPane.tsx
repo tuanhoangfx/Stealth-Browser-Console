@@ -11,7 +11,8 @@ import {
 import { StealthDisplayBandToolbar } from "../../components/StealthDisplayBandToolbar";
 import type { ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
-import { StealthProfilesDirectoryBulkActions } from "./StealthProfilesDirectoryBulkActions";
+import { StealthProfilesDirectoryBulkActions, type ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
+import type { ExtensionIconMap } from "./useExtensionIcons";
 import {
   buildProfileFiltersFromStats,
   profileFilterValuesToState,
@@ -44,6 +45,10 @@ export type ProfileFilterPaneProps = {
   onGroups: () => void;
   onExport: () => void;
   onImport: () => void;
+  extensionState: Record<"e0001" | "surfshark", ExtensionSelectionState>;
+  extensionIcons?: ExtensionIconMap;
+  extensionBusy?: boolean;
+  onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
 };
 
 export const ProfileFilterPane = memo(function ProfileFilterPane({
@@ -71,7 +76,11 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
   onEdit,
   onGroups,
   onExport,
-  onImport
+  onImport,
+  extensionState,
+  extensionIcons,
+  extensionBusy = false,
+  onExtensionSet,
 }: ProfileFilterPaneProps) {
   const { runAutomationQueue, automationRunning, runWorkflowLabel } = useWorkflowRuntime();
   const filters = useMemo(
@@ -128,8 +137,12 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
         <HubDirectoryBulkActionBar>
           <StealthProfilesDirectoryBulkActions
             hasSelection={selectedProfiles.length > 0}
+            selectedCount={selectedProfiles.length}
+            extensionState={extensionState}
+            extensionIcons={extensionIcons}
             syncBusy={syncBusy}
             launchBusy={automationRunning}
+            extensionBusy={extensionBusy}
             launchTitle={`Launch with workflow: ${runWorkflowLabel} (skips startup URL)`}
             onLaunch={() => void runAutomationQueue()}
             onClose={() => {
@@ -141,6 +154,7 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
             onGroups={onGroups}
             onExport={onExport}
             onImport={onImport}
+            onExtensionSet={onExtensionSet}
           />
         </HubDirectoryBulkActionBar>
       }

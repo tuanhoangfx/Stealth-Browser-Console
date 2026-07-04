@@ -12,6 +12,7 @@ const {
   collectBrokenExtensionIds,
   isIdentityExtensionMeta,
   isBrokenExtensionPath,
+  purgeStaleCookieBridgePrefs,
 } = require("./lib/profile-chrome-cleanup.cjs");
 
 describe("profile-chrome-cleanup", () => {
@@ -103,6 +104,28 @@ describe("profile-chrome-cleanup", () => {
     const prefsAfter = JSON.parse(fs.readFileSync(prefsFile, "utf8"));
     assert.equal(prefsAfter.extensions.settings.stale123, undefined);
     assert.ok(prefsAfter.extensions.pinned_extensions.includes(goodId));
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("keeps canonical store extension pinned to .cloakbrowser with manifest", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-keep-store-"));
+    const userDataDir = path.join(root, "profiles", "p4");
+    const storeId = "ailoabdmgclmfmhdagmlohpjlbpffblp";
+    const stageDir = path.join(root, "stage", storeId);
+    fs.mkdirSync(stageDir, { recursive: true });
+    fs.writeFileSync(path.join(stageDir, "manifest.json"), JSON.stringify({ name: "Surfshark VPN" }), "utf8");
+    const { pinStoreExtension } = require("./lib/profile-chrome-preferences.cjs");
+    pinStoreExtension(userDataDir, storeId, stageDir);
+
+    const bridgeDir = path.join(root, "extensions-cache", "kaaadageakdandpobcofplmfbjfjabdk", "unpacked");
+    fs.mkdirSync(bridgeDir, { recursive: true });
+    fs.writeFileSync(path.join(bridgeDir, "manifest.json"), JSON.stringify({ name: "E0001" }), "utf8");
+
+    const stale = purgeStaleCookieBridgePrefs(userDataDir, bridgeDir);
+    assert.equal(stale.removed, 0);
+    const prefs = JSON.parse(fs.readFileSync(path.join(userDataDir, "Default", "Preferences"), "utf8"));
+    assert.ok(prefs.extensions.settings[storeId]);
 
     fs.rmSync(root, { recursive: true, force: true });
   });

@@ -15,6 +15,9 @@ export function sortableProfileValue(profile: ProfileRow, key: StealthProfileSor
       return profile.name.toLowerCase();
     case "group":
       return (profile.groupName || "Default").toLowerCase();
+    case "e0001":
+    case "surfshark":
+      return 0;
     case "status":
       return STATUS_RANK[profile.status] ?? 0;
     case "lastOpened":

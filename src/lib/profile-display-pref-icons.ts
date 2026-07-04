@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Cookie,
   Database,
   FolderTree,
   Globe,
@@ -10,6 +11,7 @@ import {
   Link2,
   ListChecks,
   Play,
+  Shield,
   StickyNote,
   User,
 } from "lucide-react";
@@ -44,6 +46,8 @@ export const PROFILE_COLUMN_PREF_ICONS: PrefIconMap = {
   startupUrl: { icon: Globe, iconClassName: "text-sky-300" },
   proxy: { icon: Link2, iconClassName: "text-violet-300" },
   note: { icon: StickyNote, iconClassName: "text-amber-300" },
+  e0001: { icon: Cookie, iconClassName: "text-orange-300" },
+  surfshark: { icon: Shield, iconClassName: "text-cyan-300" },
 };
 
 export const WORKFLOW_KPI_PREF_ICONS: PrefIconMap = {

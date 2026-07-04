@@ -7,6 +7,22 @@ const VALID_WINDOW_MODES = new Set(["host-maximized", "preset-viewport", "engine
 
 const { normalizeStartupUrl, coerceStartupUrlInput, resolveProfileLaunchUrl, resolveStartupUrlSave } = require("../lib/startup-url.cjs");
 const { extractProfileCode } = require("../lib/profile-identity.cjs");
+const { normalizeProfileExtensionOverrides } = require("../lib/extension-toggles.cjs");
+
+function parseExtensionOverridesJson(raw) {
+  if (!raw) return {};
+  try {
+    return normalizeProfileExtensionOverrides(JSON.parse(String(raw)));
+  } catch {
+    return {};
+  }
+}
+
+function serializeExtensionOverrides(overrides) {
+  const normalized = normalizeProfileExtensionOverrides(overrides);
+  if (!Object.keys(normalized).length) return null;
+  return JSON.stringify(normalized);
+}
 
 function normalizeDeviceFields(input, base = {}) {
   const platform = String(input.platform ?? base.platform ?? "windows").toLowerCase();
@@ -70,6 +86,7 @@ function rowToProfile(row) {
     humanize: row.humanize == null ? true : Number(row.humanize) === 1,
     windowMode: row.window_mode || "host-maximized",
     startupUrl: row.startup_url || "",
+    extensionOverrides: parseExtensionOverridesJson(row.extension_overrides),
     lastOpenedAt: Number.isFinite(Number(row.last_opened_at)) && Number(row.last_opened_at) > 0 ? Number(row.last_opened_at) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -220,18 +237,23 @@ function getProfile(id) {
 }
 
 function findProfileByName(name) {
+  const matches = findProfilesByName(name);
+  return matches[0] || null;
+}
+
+function findProfilesByName(name) {
   const token = String(name || "").trim();
-  if (!token) return null;
-  const row = getDb()
+  if (!token) return [];
+  const rows = getDb()
     .prepare(
       `SELECT p.*, g.name AS group_name
        FROM profiles p
        LEFT JOIN profile_groups g ON g.id = p.group_id
        WHERE p.name = ?
-       LIMIT 1`,
+       ORDER BY p.updated_at DESC`,
     )
-    .get(token);
-  return rowToProfile(row);
+    .all(token);
+  return rows.map(rowToProfile).filter(Boolean);
 }
 
 /** Resolve profile for launch/close/automation — tolerates stale id or numeric code tokens. */
@@ -279,15 +301,16 @@ function createProfile(input) {
   const groupId = String(input.groupId || "default").trim() || "default";
   const device = normalizeDeviceFields(input);
   const startupUrl = resolveStartupUrlSave(input.startupUrl, "");
+  const extensionOverrides = serializeExtensionOverrides(input.extensionOverrides);
 
   getDb()
     .prepare(
       `INSERT INTO profiles
          (id, name, group_id, proxy, fingerprint_seed, note, status,
           platform, timezone, locale, user_agent, viewport_w, viewport_h, color_scheme, device_preset,
-          headless, humanize, window_mode, startup_url,
+          headless, humanize, window_mode, startup_url, extension_overrides,
           created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'closed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, 'closed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id,
@@ -308,6 +331,7 @@ function createProfile(input) {
       device.humanize,
       device.windowMode,
       startupUrl || null,
+      extensionOverrides,
       now,
       now
     );
@@ -466,7 +490,11 @@ function updateProfile(id, patch) {
     fingerprintSeed:
       patch.fingerprintSeed !== undefined && Number.isFinite(Number(patch.fingerprintSeed))
         ? Math.floor(Number(patch.fingerprintSeed))
-        : existing.fingerprintSeed
+        : existing.fingerprintSeed,
+    extensionOverrides:
+      patch.extensionOverrides !== undefined
+        ? serializeExtensionOverrides(patch.extensionOverrides)
+        : serializeExtensionOverrides(existing.extensionOverrides),
   };
 
   if (!next.name) throw new Error("Profile name is required.");
@@ -480,6 +508,7 @@ function updateProfile(id, patch) {
            platform = ?, timezone = ?, locale = ?, user_agent = ?,
            viewport_w = ?, viewport_h = ?, color_scheme = ?, device_preset = ?,
            headless = ?, humanize = ?, window_mode = ?, startup_url = ?,
+           extension_overrides = ?,
            updated_at = ?
        WHERE id = ?`
     )
@@ -502,6 +531,7 @@ function updateProfile(id, patch) {
       device.humanize,
       device.windowMode,
       next.startupUrl || null,
+      next.extensionOverrides,
       now,
       String(id)
     );
@@ -561,17 +591,46 @@ function deleteGroup(id) {
 
 function exportProfilesBundle() {
   return {
-    version: 1,
+    version: 2,
+    matchBy: "name",
     exportedAt: new Date().toISOString(),
     groups: listGroups(),
     profiles: listProfiles().map(({ status: _status, ...profile }) => profile)
   };
 }
 
+function profileRowToImportInput(row) {
+  const name = String(row.name || "").trim();
+  if (!name) return null;
+  const input = {
+    name,
+    groupId: String(row.groupId || "default"),
+    proxy: String(row.proxy || ""),
+    note: String(row.note || ""),
+    platform: row.platform,
+    timezone: row.timezone,
+    locale: row.locale,
+    userAgent: row.userAgent,
+    viewportW: row.viewportW,
+    viewportH: row.viewportH,
+    colorScheme: row.colorScheme,
+    devicePreset: row.devicePreset,
+    headless: row.headless,
+    humanize: row.humanize,
+    windowMode: row.windowMode,
+    startupUrl: row.startupUrl,
+  };
+  if (Number.isFinite(Number(row.fingerprintSeed))) {
+    input.fingerprintSeed = Math.floor(Number(row.fingerprintSeed));
+  }
+  return input;
+}
+
 function importProfilesBundle(bundle, options = {}) {
   const payload = typeof bundle === "string" ? JSON.parse(bundle) : bundle;
   if (!payload || typeof payload !== "object") throw new Error("Invalid import payload.");
   const merge = options.merge !== false;
+  const matchBy = options.matchBy === "id" ? "id" : "name";
   const groups = Array.isArray(payload.groups) ? payload.groups : [];
   const profiles = Array.isArray(payload.profiles) ? payload.profiles : [];
 
@@ -592,45 +651,58 @@ function importProfilesBundle(bundle, options = {}) {
   }
 
   let imported = 0;
+  let updated = 0;
+  let created = 0;
+  let skipped = 0;
+  const skippedNames = [];
+
   for (const row of profiles) {
     const name = String(row.name || "").trim();
     if (!name) continue;
-    const id = String(row.id || randomUUID());
-    const existing = getProfile(id);
-    if (existing && !merge) continue;
-    const fingerprintSeed = Number.isFinite(Number(row.fingerprintSeed))
-      ? Math.floor(Number(row.fingerprintSeed))
-      : generateFingerprintSeed();
-    const now = new Date().toISOString();
-    if (existing) {
-      updateProfile(id, {
-        name,
-        groupId: String(row.groupId || "default"),
-        proxy: String(row.proxy || ""),
-        note: String(row.note || ""),
-        fingerprintSeed
-      });
+
+    let existing = null;
+    if (matchBy === "name") {
+      const matches = findProfilesByName(name);
+      if (matches.length > 1) {
+        skipped += 1;
+        skippedNames.push(name);
+        continue;
+      }
+      existing = matches[0] || null;
     } else {
-      getDb()
-        .prepare(
-          `INSERT INTO profiles (id, name, group_id, proxy, fingerprint_seed, note, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'closed', ?, ?)`
-        )
-        .run(
-          id,
-          name,
-          String(row.groupId || "default"),
-          String(row.proxy || "").trim() || null,
-          fingerprintSeed,
-          String(row.note || "").trim() || null,
-          now,
-          now
-        );
+      const id = String(row.id || "").trim();
+      if (id) existing = getProfile(id);
+    }
+
+    if (existing && !merge) {
+      skipped += 1;
+      continue;
+    }
+
+    const input = profileRowToImportInput(row);
+    if (!input) continue;
+
+    if (existing) {
+      updateProfile(existing.id, input);
+      updated += 1;
+    } else {
+      createProfile(input);
+      created += 1;
     }
     imported += 1;
   }
 
-  return { ok: true, imported, groups: listGroups().length, profiles: listProfiles().length };
+  return {
+    ok: true,
+    imported,
+    updated,
+    created,
+    skipped,
+    skippedNames,
+    matchBy,
+    groups: listGroups().length,
+    profiles: listProfiles().length,
+  };
 }
 
 function insertRun(run) {
@@ -761,6 +833,7 @@ module.exports = {
   getProfile,
   resolveProfileForLaunch,
   findProfileByName,
+  findProfilesByName,
   createProfile,
   createProfilesBulkByNames,
   createProfilesBulkByRange,

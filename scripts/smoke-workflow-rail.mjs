@@ -21,35 +21,54 @@ function findElectronCli() {
 }
 
 const probeScript = `
-(() => {
+(async () => {
+  const profilesNav = [...document.querySelectorAll("button,a,[role='tab']")].find((el) =>
+    /^profiles$/i.test((el.textContent || "").trim()),
+  );
+  if (profilesNav) profilesNav.click();
+  await new Promise((r) => setTimeout(r, 2000));
   const pageSize = ${WORKFLOW_RAIL_PAGE_SIZE};
   const rail = document.querySelector(".stealth-workflow-rail");
   const boot = document.getElementById("hub-boot-loader");
-  if (!rail) {
-    return { ok: false, reason: "missing-rail", bootPresent: Boolean(boot) };
-  }
-  const rows = rail.querySelectorAll(".stealth-workflow-rail-table tbody tr");
+  const scope = rail || document;
+  const workflowSearch = [...scope.querySelectorAll("input,textarea,[role='searchbox']")].find((el) =>
+    /search workflows/i.test(el.getAttribute("placeholder") || el.getAttribute("aria-label") || ""),
+  );
+  const workflowTable =
+    scope.querySelector(".stealth-workflow-rail-table") ||
+    [...scope.querySelectorAll("table")].find((el) => /wf\d+/i.test(el.textContent || ""));
+  const historyHeading = [...scope.querySelectorAll("h1,h2,h3,[role='heading']")].find((el) =>
+    /run history/i.test(el.textContent || ""),
+  );
+  const consoleHeading = [...scope.querySelectorAll("h1,h2,h3,[role='heading']")].find((el) =>
+    /^console$/i.test((el.textContent || "").trim()),
+  );
+  const rows = workflowTable?.querySelectorAll("tbody tr") || [];
   const rowCount = rows.length;
-  const pageSizeBtn = [...rail.querySelectorAll("button")].find((b) =>
+  const pageSizeBtn = [...scope.querySelectorAll("button")].find((b) =>
     /\\d+\\s*rows/i.test(b.textContent || ""),
   );
-  const quickRunBtn = [...rail.querySelectorAll("button")].find((b) =>
+  const quickRunBtn = [...scope.querySelectorAll("button")].find((b) =>
     /quick run/i.test(b.textContent || ""),
   );
-  const table = rail.querySelector(".stealth-workflow-rail-table");
-  const history = rail.querySelector(".stealth-runtime-history");
+  const table = workflowTable;
+  const history = scope.querySelector(".stealth-runtime-history");
   let tableOverlapsHistory = false;
   if (table && history) {
     const tr = table.getBoundingClientRect();
     const hr = history.getBoundingClientRect();
     tableOverlapsHistory = tr.bottom > hr.top + 2;
   }
-  const pagerText = rail.querySelector(".hub-table-pager")?.textContent?.trim() || "";
+  const pagerText = rail?.querySelector(".hub-table-pager")?.textContent?.trim() || "";
   const totalMatch = pagerText.match(/Showing\\s+\\d+-\\d+\\s+of\\s+(\\d+)/i);
   const catalogTotal = totalMatch ? Number(totalMatch[1]) : rowCount;
   const expectedRows = Math.min(pageSize, Math.max(catalogTotal, rowCount));
   const ok =
     !boot &&
+    Boolean(workflowSearch) &&
+    Boolean(historyHeading) &&
+    Boolean(consoleHeading) &&
+    Boolean(workflowTable) &&
     rowCount > 0 &&
     rowCount === expectedRows &&
     !pageSizeBtn &&
@@ -57,6 +76,12 @@ const probeScript = `
     !tableOverlapsHistory;
   return {
     ok,
+    clickedProfiles: Boolean(profilesNav),
+    railPresent: Boolean(rail),
+    workflowSearchPresent: Boolean(workflowSearch),
+    workflowTablePresent: Boolean(workflowTable),
+    historyHeadingPresent: Boolean(historyHeading),
+    consoleHeadingPresent: Boolean(consoleHeading),
     rowCount,
     expectedRows,
     catalogTotal,

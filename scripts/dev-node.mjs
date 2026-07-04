@@ -13,9 +13,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
+import { syncDevCatalogFromProd } from "./lib/sync-dev-catalog-from-prod.mjs";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const args = process.argv.slice(2);
+const useProdData = args.includes("--prod-data");
 const PORT = 5175;
 const node = process.execPath;
 const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
@@ -57,14 +60,25 @@ process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 vite.on("exit", (code) => shutdown(code ?? 0));
 
+if (!useProdData) {
+  await syncDevCatalogFromProd().catch((err) => {
+    console.warn("[dev-node] sync-prod-catalog:", err instanceof Error ? err.message : err);
+  });
+}
+
 try {
   await waitForPort(PORT);
+  const electronEnv = stealthElectronEnv({
+    VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/`,
+    ...(useProdData ? { STEALTH_DEV_ISOLATED: "0" } : {}),
+  });
+  if (useProdData) {
+    console.warn("[dev-node] --prod-data: using production userData (close Setup.exe to avoid DB lock).");
+  }
   electron = spawn(node, [electronCli, "."], winSpawnOpts({
     cwd: root,
     stdio: "inherit",
-    env: stealthElectronEnv({
-      VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/`,
-    }),
+    env: electronEnv,
   }));
   electron.on("exit", (code) => shutdown(code ?? 0));
 } catch (error) {

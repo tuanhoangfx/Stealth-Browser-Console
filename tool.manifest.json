@@ -89,10 +89,10 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-06-26T14:40:05.198Z",
+  "manifestUpdatedAt": "2026-07-03T22:33:19.538Z",
   "release": {
-    "version": "0.7.4",
-    "updatedAt": "2026-06-26",
+    "version": "0.7.61",
+    "updatedAt": "2026-07-04",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {
       "tag": "v0.7.7",

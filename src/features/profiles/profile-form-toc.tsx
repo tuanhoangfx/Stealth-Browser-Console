@@ -1,4 +1,4 @@
-import { ScrollText, User, MonitorSmartphone } from "lucide-react";
+import { ScrollText, User, MonitorSmartphone, Puzzle } from "lucide-react";
 import { compactIconSize } from "@tool-workspace/hub-ui";
 
 export const PROFILE_DETAIL_SECTION_LOG = "profile-detail-log";
@@ -6,6 +6,7 @@ export const PROFILE_DETAIL_SECTION_LOG = "profile-detail-log";
 export const PROFILE_FORM_TOC = [
   { id: "profile-basics", label: "Profile", icon: User },
   { id: "profile-device", label: "Device", icon: MonitorSmartphone },
+  { id: "profile-extensions", label: "Extensions", icon: Puzzle },
 ] as const;
 
 export const PROFILE_DETAIL_TOC = [

@@ -6,6 +6,7 @@ export const HUB_SIDEBAR_SHELL_ASIDE_CLASS =
 export const HUB_SIDEBAR_SHELL_BRAND_TITLE_CLASS =
   "truncate text-sm font-semibold leading-tight";
 
+/** @deprecated Sidebar brand is logo + title only — do not use for new UI. */
 export const HUB_SIDEBAR_SHELL_BRAND_TAGLINE_CLASS = "text-[10px] text-[var(--muted)]";
 
 export const HUB_SIDEBAR_SHELL_NAV_CLASS = "min-h-0 flex-1 space-y-0.5 overflow-y-auto";
@@ -17,6 +18,7 @@ export type HubSidebarShellProps = {
   /** Tool avatar or product mark — left of title block. */
   brandLeading: ReactNode;
   brandTitle: string;
+  /** @deprecated Do not pass — descriptor/version live in `AppTabHeader` meta. Parity gate forbids `brandTagline=`. */
   brandTagline?: string;
   /** Optional pill/chip beside brand (e.g. Local mode when Hub auth off). */
   brandTrailing?: ReactNode;
@@ -29,7 +31,6 @@ export type HubSidebarShellProps = {
 export function HubSidebarShell({
   brandLeading,
   brandTitle,
-  brandTagline,
   brandTrailing,
   nav,
   footer,
@@ -44,9 +45,6 @@ export function HubSidebarShell({
             <div className={`min-w-0 flex-1 ${HUB_SIDEBAR_SHELL_BRAND_TITLE_CLASS}`}>{brandTitle}</div>
             {brandTrailing}
           </div>
-          {brandTagline ? (
-            <div className={HUB_SIDEBAR_SHELL_BRAND_TAGLINE_CLASS}>{brandTagline}</div>
-          ) : null}
         </div>
       </div>
 

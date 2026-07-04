@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LogIn, RefreshCcw } from "lucide-react";
 import { hubSessionLabels } from "@tool-workspace/hub-identity";
 import {
@@ -11,6 +11,8 @@ import {
   HubWorkspaceUserAvatar,
   HubWorkspaceUserModal,
   HubWorkspaceUserShell,
+  readHubListPrefsCore,
+  subscribeHubListPrefs,
   useNavGroupOpenState,
   useWorkspaceRoleKey,
 } from "@tool-workspace/hub-ui";
@@ -18,24 +20,32 @@ import { StealthDisplayPrefs } from "./StealthDisplayPrefs";
 import { useStealthAuth } from "../features/auth/AuthSessionProvider";
 import { isStealthHubAuthEnabled } from "../lib/stealth-auth-policy";
 import { setOfflineMode } from "../lib/offlineMode";
-import { STEALTH_NAV_STRUCTURE, STEALTH_NAV_SUBNAV_PREFIX } from "../lib/stealth-nav-structure";
+import {
+  STEALTH_NAV_GROUP_IDS,
+  STEALTH_NAV_STRUCTURE,
+  STEALTH_NAV_SUBNAV_PREFIX,
+} from "../lib/stealth-nav-structure";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "../lib/stealth-product";
-import { prefetchWorkflowChunks } from "../lib/prefetch-workflow-chunks";
+import { prefetchSystemChunks, prefetchWorkflowChunks } from "../lib/prefetch-workflow-chunks";
 import { isHubSupabaseConfigured } from "../lib/hub-supabase-env";
 import { getIdentitySupabase } from "../lib/supabase-identity";
 import type { StealthScreen } from "../lib/stealth-screen";
+import type { StealthSystemTab } from "../lib/stealth-system-tab";
 
-const EMPTY_GROUP_IDS: readonly string[] = [];
-
+/** P0004/P0016 golden — `HubSidebarNavList` + `STEALTH_NAV_STRUCTURE` + shared `HubSystemTabSubNav`. */
 export function StealthHubShellSidebar({
   screen,
+  systemTab,
   onNavigate,
+  onSystemTabChange,
   onRefresh,
   refreshBusy = false,
   onRequestHubSignIn,
 }: {
   screen: StealthScreen;
+  systemTab: StealthSystemTab;
   onNavigate: (screen: StealthScreen) => void;
+  onSystemTabChange: (tab: StealthSystemTab) => void;
   onRefresh: () => void;
   refreshBusy?: boolean;
   onRequestHubSignIn?: () => void;
@@ -43,7 +53,11 @@ export function StealthHubShellSidebar({
   const hubAuthEnabled = isStealthHubAuthEnabled();
   const { session, offline, signOut } = useStealthAuth();
   const showAnonymous = hubAuthEnabled && offline;
-  const { groupOpen, setGroupSubnavOpen } = useNavGroupOpenState(STEALTH_NAV_SUBNAV_PREFIX, EMPTY_GROUP_IDS);
+  const { groupOpen, setGroupSubnavOpen } = useNavGroupOpenState(STEALTH_NAV_SUBNAV_PREFIX, STEALTH_NAV_GROUP_IDS);
+  const [showSubnavToggleIcon, setShowSubnavToggleIcon] = useState(() => {
+    const prefs = readHubListPrefsCore() as { navToggleIcon?: boolean };
+    return Boolean(prefs.navToggleIcon);
+  });
   const [refreshing, setRefreshing] = useState(false);
   const labels = hubSessionLabels(session);
   const { roleKey } = useWorkspaceRoleKey(session, {
@@ -52,11 +66,22 @@ export function StealthHubShellSidebar({
     profileRoleEmail: session?.user?.email,
   });
 
+  useEffect(
+    () =>
+      subscribeHubListPrefs(() => {
+        const prefs = readHubListPrefsCore() as { navToggleIcon?: boolean };
+        setShowSubnavToggleIcon(Boolean(prefs.navToggleIcon));
+      }),
+    [],
+  );
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     onRefresh();
     window.setTimeout(() => setRefreshing(false), 600);
   }, [onRefresh]);
+
+  const listRefreshing = refreshing || refreshBusy;
 
   return (
     <HubSidebarShell
@@ -68,14 +93,20 @@ export function StealthHubShellSidebar({
         <HubSidebarNavList
           structure={STEALTH_NAV_STRUCTURE}
           activeScreen={screen}
+          activeView={screen === "system" ? systemTab : null}
           groupOpen={groupOpen}
           setGroupSubnavOpen={setGroupSubnavOpen}
-          showToggleIcon={false}
+          showToggleIcon={showSubnavToggleIcon}
           onNavigateScreen={onNavigate}
-          onPrefetchScreen={(nextScreen) => {
-            if (nextScreen === "workflow") prefetchWorkflowChunks();
+          onSelectView={(view) => {
+            onNavigate("system");
+            onSystemTabChange(view);
           }}
-          onSelectView={() => {}}
+          onPrefetchScreen={(next) => {
+            if (next === "workflow") prefetchWorkflowChunks();
+            if (next === "system") prefetchSystemChunks();
+          }}
+          onPrefetchView={() => prefetchSystemChunks()}
         />
       }
       footer={
@@ -153,13 +184,14 @@ export function StealthHubShellSidebar({
           />
           <HubSidebarFooterButton
             icon={RefreshCcw}
-            iconClass={`text-emerald-300 ${refreshing || refreshBusy ? "animate-spin" : ""}`}
-            label={refreshing || refreshBusy ? "Updating…" : "Refresh"}
+            iconClass="text-emerald-300"
+            label={listRefreshing ? "Updating…" : "Refresh"}
             onClick={handleRefresh}
             disabled={refreshBusy}
+            loading={listRefreshing}
             title="Refresh active tab data"
           />
-          <HubLogButton variant="global" emptyMessage="No actions logged in this session yet." />
+          <HubLogButton variant="global" />
           <StealthDisplayPrefs screen={screen} sidebarRow scope="global" settingsMode="general" />
           <HubUiZoomControl />
         </>

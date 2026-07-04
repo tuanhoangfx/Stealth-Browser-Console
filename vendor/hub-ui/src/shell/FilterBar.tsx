@@ -58,6 +58,7 @@ export type FilterDef = {
   key: string;
   label: string;
   options: FilterOption[];
+  /** When true, empty trigger + panel “select all” row prefix with `All `. Default: false (golden — `Role`, not `All Role`). */
   showAllLabel?: boolean;
   totalCount?: number;
   triggerEmoji?: string;
@@ -347,7 +348,7 @@ function FilterAllRowGlyph({ filter }: { filter: FilterDef }) {
 }
 
 function filterAllRowLabel(filter: FilterDef): string {
-  return filter.showAllLabel ? `All ${filter.label}` : filter.label;
+  return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
 }
 
 function resolveFilterTriggerIcon(filter: FilterDef, selected: string[]): FilterIconMeta | null {
@@ -433,14 +434,14 @@ export function HubMultiFilterDropdown({
 
   const buttonLabel = (() => {
     if (triggerFormat === "value") {
-      if (selected.length === 0) return filter.showAllLabel ? `All ${filter.label}` : filter.label;
+      if (selected.length === 0) return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
       if (selected.length === 1) {
         const opt = filter.options.find((o) => o.value === selected[0]);
         return opt?.label ?? selected[0];
       }
       return `${selected.length} selected`;
     }
-    if (selected.length === 0) return filter.showAllLabel ? `All ${filter.label}` : filter.label;
+    if (selected.length === 0) return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
     if (selected.length === 1) {
       const opt = filter.options.find((o) => o.value === selected[0]);
       return opt?.label ?? selected[0];

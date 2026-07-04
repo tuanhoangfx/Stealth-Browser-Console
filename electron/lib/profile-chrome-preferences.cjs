@@ -71,6 +71,13 @@ function pinToolbarExtension(userDataDir, extensionDir) {
 
   prefs.extensions.settings = prefs.extensions.settings || {};
   const existing = prefs.extensions.settings[extId] || {};
+  let manifest = existing.manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(absPath, "manifest.json"), "utf8"));
+  } catch {
+    manifest = manifest || { name: path.basename(absPath) };
+  }
+
   prefs.extensions.settings[extId] = {
     ...existing,
     creation_flags: 9,
@@ -82,7 +89,7 @@ function pinToolbarExtension(userDataDir, extensionDir) {
     was_installed_by_default: false,
     was_installed_by_oem: false,
     install_time: existing.install_time || String(Date.now() * 1000),
-    manifest: existing.manifest || { name: path.basename(absPath) },
+    manifest,
   };
 
   writeJson(prefsFile, prefs);

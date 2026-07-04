@@ -108,7 +108,7 @@ export function NavGroupSubNav<TId extends string>({
             onClick={() => onSelect(id)}
             onMouseEnter={() => onPrefetch?.(id)}
             onFocus={() => onPrefetch?.(id)}
-            className="group grid h-8 w-full grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-2 text-left text-[13px]"
+            className="hub-sidebar-subnav-button group grid h-8 w-full grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-2 text-left text-[13px]"
           >
             <span className="relative flex h-full items-center justify-center" aria-hidden>
               <span className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 ${navRailClass(iconTone)}`} />

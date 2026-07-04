@@ -10,13 +10,14 @@ import { isStealthHubAuthEnabled } from "../lib/stealth-auth-policy";
 import { isOfflineWorkspaceSession } from "../lib/offlineMode";
 import { useStealthShell } from "../context/stealth-shell-context";
 import type { StealthScreen } from "../lib/stealth-screen";
+import type { StealthSystemTab } from "../lib/stealth-system-tab";
 import { ViewChunkErrorBoundary } from "../ui/ViewChunkErrorBoundary";
+import { SystemView } from "../views/SystemView";
 
 type StealthEngineStatus = "checking" | "ready" | "offline";
 
 const ProfilesView = lazy(() => import("../views/ProfilesView").then((m) => ({ default: m.ProfilesView })));
 const WorkflowView = lazy(() => import("../views/WorkflowView").then((m) => ({ default: m.WorkflowView })));
-const SystemView = lazy(() => import("../views/SystemView").then((m) => ({ default: m.SystemView })));
 
 function ScreenPanel({ active, children }: { active: boolean; children: ReactNode }) {
   return (
@@ -33,11 +34,13 @@ function ScreenPanel({ active, children }: { active: boolean; children: ReactNod
 function StealthConsoleScreens({
   visited,
   view,
+  systemTab,
   headerActions,
   engineStatus,
 }: {
   visited: Set<StealthScreen>;
   view: StealthScreen;
+  systemTab: StealthSystemTab;
   headerActions: ReactNode;
   engineStatus: StealthEngineStatus;
 }) {
@@ -63,11 +66,9 @@ function StealthConsoleScreens({
       ) : null}
       {visited.has("system") ? (
         <ScreenPanel active={view === "system"}>
-          <Suspense fallback={<StealthScreenLoadingView screen="system" enabled={view === "system"} />}>
-            <ViewChunkErrorBoundary viewName="System">
-              <SystemView />
-            </ViewChunkErrorBoundary>
-          </Suspense>
+          <ViewChunkErrorBoundary viewName="System">
+            <SystemView tab={systemTab} headerActions={headerActions} />
+          </ViewChunkErrorBoundary>
         </ScreenPanel>
       ) : null}
     </div>
@@ -77,9 +78,13 @@ function StealthConsoleScreens({
 export const StealthAppShell = memo(function StealthAppShell({
   visited,
   mainRef,
+  systemTab,
+  onSystemTabChange,
 }: {
   visited: Set<StealthScreen>;
   mainRef: RefObject<HTMLElement | null>;
+  systemTab: StealthSystemTab;
+  onSystemTabChange: (tab: StealthSystemTab) => void;
 }) {
   const hubAuthEnabled = isStealthHubAuthEnabled();
   const { session, offline, authRequired, policyReady, loading, toolAccess, hubConfigured, prepareHubSignIn } =
@@ -98,6 +103,7 @@ export const StealthAppShell = memo(function StealthAppShell({
     <StealthConsoleScreens
       visited={visited}
       view={view}
+      systemTab={systemTab}
       headerActions={headerActions}
       engineStatus={engineStatus}
     />
@@ -132,7 +138,9 @@ export const StealthAppShell = memo(function StealthAppShell({
     <div className="hub-app theme-hub stealth-hub-app flex h-full min-h-0 min-h-dvh w-full overflow-hidden">
       <StealthHubShellSidebar
         screen={view}
+        systemTab={systemTab}
         onNavigate={setView}
+        onSystemTabChange={onSystemTabChange}
         onRefresh={() => void refreshProfiles()}
         refreshBusy={syncBusy}
         onRequestHubSignIn={

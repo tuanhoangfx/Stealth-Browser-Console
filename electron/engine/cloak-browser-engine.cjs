@@ -16,8 +16,18 @@ const {
   ensureCookieBridgeStoreExtension,
   resolveCookieBridgeExtensionDirSync,
 } = require("../lib/cookie-bridge-store.cjs");
-const { pinToolbarExtension, unpackedExtensionId } = require("../lib/profile-chrome-preferences.cjs");
+const {
+  pinToolbarExtension,
+  pinStoreExtension,
+  unpackedExtensionId,
+} = require("../lib/profile-chrome-preferences.cjs");
 const { ensureCloakbrowserExtensionStages } = require("../lib/cloakbrowser-extension-stage.cjs");
+const { nativeExtensionsEnabled, profileExtensionsEnabled } = require("../lib/extension-launch-mode.cjs");
+const { COOKIE_BRIDGE_STORE_ID } = require("../lib/cookie-bridge-store.cjs");
+const {
+  prepareProfileExtensions,
+} = require("../lib/native-extension-load.cjs");
+const { purgeDuplicateUnpackedStoreExtensions } = require("../lib/profile-chrome-cleanup.cjs");
 
 /** Per-profile cookie-bridge prefs scrub — once per process after startup bulk purge. */
 const cookieBridgeLaunchPrepped = new Set();
@@ -79,9 +89,18 @@ function resolveWindowMode(profile) {
   return VALID_WINDOW_MODES.has(mode) ? mode : "host-maximized";
 }
 
-function buildStealthChromeArgs(profile) {
+function buildProfileMarkerArgs(profile, userDataRoot = "") {
+  const profileId = String(profile?.id || "").trim();
+  const rootTag = path.basename(path.resolve(String(userDataRoot || ""))).trim().toLowerCase();
+  const args = [];
+  if (profileId) args.push(`--stealth-profile-id=${profileId}`);
+  if (rootTag) args.push(`--stealth-user-data-tag=${rootTag}`);
+  return args;
+}
+
+function buildStealthChromeArgs(profile, userDataRoot = "") {
   const seed = profile.fingerprintSeed;
-  const args = [`--fingerprint=${seed}`];
+  const args = [`--fingerprint=${seed}`, ...buildProfileMarkerArgs(profile, userDataRoot)];
 
   // Host-level sandbox flag (not the spoofed platform).
   if (process.platform === "linux") {
@@ -122,6 +141,37 @@ function chromeExtensionArgs(extensionDirs) {
   ];
 }
 
+/** Native mode: restrict loaded extensions when per-kind toggles are off. */
+function buildExtensionAllowlistArg(allowedStoreIds) {
+  const ids = [...new Set((allowedStoreIds || []).map((id) => String(id || "").toLowerCase()))].filter(Boolean);
+  if (!ids.length) return [];
+  return [`--disable-extensions-except=${ids.join(",")}`];
+}
+
+/** Native mode: CLI load for Web Store ids staged under `.cloakbrowser/<storeId>/`. */
+function buildNativeExtensionCliArgs(cliStoreLoads, allowedStoreIds) {
+  const loads = (cliStoreLoads || [])
+    .map((row) => path.resolve(String(row.dir || "")).replace(/\\/g, "/"))
+    .filter((dir) => dir && fs.existsSync(path.join(dir, "manifest.json")));
+  if (!loads.length) return [];
+
+  const ids = [
+    ...new Set([
+      ...(allowedStoreIds || []).map((id) => String(id || "").toLowerCase()),
+      ...(cliStoreLoads || []).map((row) => String(row.storeId || "").toLowerCase()),
+    ]),
+  ].filter(Boolean);
+  if (!ids.length) return [`--load-extension=${loads.join(",")}`];
+  return [`--disable-extensions-except=${ids.join(",")}`, `--load-extension=${loads.join(",")}`];
+}
+
+/** Native mode: only local unpacked dirs use --load-extension (store ids load via prefs + staging). */
+function chromeLocalExtensionArgs(extensionDirs) {
+  if (!extensionDirs.length) return [];
+  const paths = extensionDirs.map((dir) => path.resolve(String(dir)).replace(/\\/g, "/"));
+  return [`--load-extension=${paths.join(",")}`];
+}
+
 function sanitizeChromeArgs(args) {
   if (!shouldStripSandboxFlags()) return args;
   return args.filter((arg) => {
@@ -152,9 +202,6 @@ function resolveExtraExtensionDirs(userDataRoot) {
   for (const dir of dirs) {
     const abs = path.resolve(String(dir));
     const normalized = abs.replace(/\\/g, "/").toLowerCase();
-    if (normalized.includes("ailoabdmgclmfmhdagmlohpjlbpffblp") || normalized.includes("/surfshark")) {
-      continue;
-    }
     if (seen.has(abs)) continue;
     try {
       if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
@@ -168,7 +215,7 @@ function resolveExtraExtensionDirs(userDataRoot) {
   return unique;
 }
 
-function buildLaunchOptions(profile, userDataDir) {
+function buildLaunchOptions(profile, userDataDir, userDataRoot = "") {
   const proxy = String(profile.proxy || "").trim();
   const options = {
     userDataDir,
@@ -176,7 +223,7 @@ function buildLaunchOptions(profile, userDataDir) {
     humanize: profile.humanize !== false,
     stealthArgs: false,
     ...proxyLaunchExtras(proxy),
-    args: [...buildStealthChromeArgs(profile)],
+    args: [...buildStealthChromeArgs(profile, userDataRoot)],
     profile
   };
 
@@ -219,7 +266,8 @@ async function getBinaryInfoCached() {
 }
 
 async function prepareCookieBridgeForLaunch(userDataDir, userDataRoot) {
-  if (!cookieBridgeEnabled()) return null;
+  const { getExtensionToggles } = require("../lib/app-settings.cjs");
+  if (!cookieBridgeEnabled() || !profileExtensionsEnabled() || !getExtensionToggles().e0001) return null;
   let bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot);
   if (!bridgeDir) {
     bridgeDir = await ensureCookieBridgeStoreExtension(userDataRoot);
@@ -228,12 +276,50 @@ async function prepareCookieBridgeForLaunch(userDataDir, userDataRoot) {
 
   const prepKey = path.resolve(String(userDataDir));
   if (!cookieBridgeLaunchPrepped.has(prepKey)) {
-    purgeBrokenExtensionPrefs(userDataDir);
-    purgeStaleCookieBridgePrefs(userDataDir, bridgeDir);
+    if (!FAST_LAUNCH) {
+      purgeBrokenExtensionPrefs(userDataDir);
+      purgeStaleCookieBridgePrefs(userDataDir, bridgeDir);
+    }
     cookieBridgeLaunchPrepped.add(prepKey);
+  }
+  if (nativeExtensionsEnabled()) {
+    return bridgeDir;
   }
   pinToolbarExtension(userDataDir, bridgeDir);
   return bridgeDir;
+}
+
+async function prepareNativeExtensionsForLaunch(userDataDir, userDataRoot, profile) {
+  const emptyPlan = {
+    stageDirs: [],
+    loadDirs: [],
+    cliStoreLoads: [],
+    prefStoreIds: [],
+    allowedStoreIds: [],
+    useAllowlist: false,
+  };
+  const { getExtensionToggles } = require("../lib/app-settings.cjs");
+  const { resolveEffectiveExtensionToggles, anyExtensionToggleEnabled } = require("../lib/extension-toggles.cjs");
+  const { ensureProfileExtensionPins } = require("../lib/profile-extension-pins.cjs");
+  const effectiveToggles = resolveEffectiveExtensionToggles(
+    getExtensionToggles(),
+    profile?.extensionOverrides,
+  );
+  if (!nativeExtensionsEnabled() || !anyExtensionToggleEnabled(effectiveToggles)) return emptyPlan;
+
+  if (cookieBridgeEnabled() && effectiveToggles.e0001) {
+    try {
+      await prepareCookieBridgeForLaunch(userDataDir, userDataRoot);
+    } catch (error) {
+      console.warn("[cookie-bridge] store extension unavailable:", error instanceof Error ? error.message : error);
+    }
+  }
+
+  const binary = await getBinaryInfoCached();
+  if (profile?.id) {
+    await ensureProfileExtensionPins(profile, userDataRoot, binary.cacheDir);
+  }
+  return prepareProfileExtensions(userDataDir, userDataRoot, binary.cacheDir, { effectiveToggles });
 }
 
 /**
@@ -259,27 +345,55 @@ async function launchStealthPersistentContext(profileOptions) {
 
   let args = sanitizeChromeArgs(launchOpts.args || []);
   const userDataRoot = options.userDataRoot || path.resolve(options.userDataDir, "..", "..");
-  const extraExtensionDirs = [...resolveExtraExtensionDirs(userDataRoot)];
-  const seenExt = new Set();
-  const uniqueExtDirs = [];
-  for (const dir of extraExtensionDirs) {
-    const abs = path.resolve(String(dir));
-    if (seenExt.has(abs)) continue;
-    if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
-    seenExt.add(abs);
-    uniqueExtDirs.push(abs);
-  }
-  if (uniqueExtDirs.length) {
-    const binary = await getBinaryInfoCached();
-    const staged = ensureCloakbrowserExtensionStages(uniqueExtDirs, binary.cacheDir);
-    if (staged.length !== uniqueExtDirs.length) {
-      console.warn(
-        `[extension-stage] incomplete staging (${staged.length}/${uniqueExtDirs.length}) cacheDir=${binary.cacheDir}`,
-      );
-    }
-    args = [...args, ...chromeExtensionArgs(uniqueExtDirs)];
-  } else {
+  const { getExtensionToggles } = require("../lib/app-settings.cjs");
+  const { resolveEffectiveExtensionToggles, anyExtensionToggleEnabled } = require("../lib/extension-toggles.cjs");
+  const effectiveToggles = resolveEffectiveExtensionToggles(
+    getExtensionToggles(),
+    options.profile?.extensionOverrides,
+  );
+  if (!anyExtensionToggleEnabled(effectiveToggles)) {
     args = [...args, "--disable-extensions"];
+  } else if (nativeExtensionsEnabled()) {
+    const plan = options.nativeExtensionPlan || {
+      stageDirs: [],
+      loadDirs: [],
+      cliStoreLoads: [],
+      prefStoreIds: [],
+      allowedStoreIds: [],
+      useAllowlist: false,
+    };
+    if (plan.cliStoreLoads?.length) {
+      const allowIds = plan.useAllowlist ? plan.allowedStoreIds : plan.prefStoreIds;
+      args = [...args, ...buildNativeExtensionCliArgs(plan.cliStoreLoads, allowIds)];
+    } else if (plan.useAllowlist && plan.allowedStoreIds?.length) {
+      args = [...args, ...buildExtensionAllowlistArg(plan.allowedStoreIds)];
+    }
+    if (plan.loadDirs.length) {
+      args = [...args, ...chromeLocalExtensionArgs(plan.loadDirs)];
+    }
+  } else {
+    const extraExtensionDirs = [...resolveExtraExtensionDirs(userDataRoot)];
+    const seenExt = new Set();
+    const uniqueExtDirs = [];
+    for (const dir of extraExtensionDirs) {
+      const abs = path.resolve(String(dir));
+      if (seenExt.has(abs)) continue;
+      if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
+      seenExt.add(abs);
+      uniqueExtDirs.push(abs);
+    }
+    if (uniqueExtDirs.length) {
+      const binary = await getBinaryInfoCached();
+      const staged = ensureCloakbrowserExtensionStages(uniqueExtDirs, binary.cacheDir);
+      if (staged.length !== uniqueExtDirs.length) {
+        console.warn(
+          `[extension-stage] incomplete staging (${staged.length}/${uniqueExtDirs.length}) cacheDir=${binary.cacheDir}`,
+        );
+      }
+      args = [...args, ...chromeExtensionArgs(uniqueExtDirs)];
+    } else {
+      args = [...args, "--disable-extensions"];
+    }
   }
 
   // CDP passthrough: mở remote-debugging-port (localhost-only) để tool workspace
@@ -341,7 +455,17 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
     purgeProfileIdentityToolbar(userDataDir, userDataRoot, profile.id);
   }
 
-  if (cookieBridgeEnabled()) {
+  let nativeExtensionPlan = {
+    stageDirs: [],
+    loadDirs: [],
+    cliStoreLoads: [],
+    prefStoreIds: [],
+    allowedStoreIds: [],
+    useAllowlist: false,
+  };
+  if (nativeExtensionsEnabled()) {
+    nativeExtensionPlan = await prepareNativeExtensionsForLaunch(userDataDir, userDataRoot, profile);
+  } else if (cookieBridgeEnabled()) {
     try {
       await prepareCookieBridgeForLaunch(userDataDir, userDataRoot);
     } catch (error) {
@@ -349,9 +473,10 @@ async function openProfile(profile, userDataRoot, { debugPort = 0 } = {}) {
     }
   }
 
-  const launchOptions = buildLaunchOptions(profile, userDataDir);
+  const launchOptions = buildLaunchOptions(profile, userDataDir, userDataRoot);
   launchOptions.profile = profile;
   launchOptions.userDataRoot = userDataRoot;
+  launchOptions.nativeExtensionPlan = nativeExtensionPlan;
   if (Number(debugPort) > 0) launchOptions.debugPort = Number(debugPort);
   timer.mark("spawn-start");
   const context = await launchStealthPersistentContext(launchOptions);
@@ -375,15 +500,19 @@ module.exports = {
   profileDataDir,
   buildLaunchOptions,
   buildStealthChromeArgs,
+  buildProfileMarkerArgs,
   buildIgnoreDefaultArgs,
   sanitizeChromeArgs,
   chromeExtensionArgs,
+  chromeLocalExtensionArgs,
+  buildNativeExtensionCliArgs,
   resolveWindowMode,
   resolveExtraExtensionDirs,
   ensureEngineBinary,
   getBinaryInfo,
   getBinaryInfoCached,
   prepareCookieBridgeForLaunch,
+  prepareNativeExtensionsForLaunch,
   openProfile,
   closeContext
 };

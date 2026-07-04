@@ -66,9 +66,33 @@ export type StealthProfile = {
   lastOpenedAt?: number;
   createdAt: string;
   updatedAt: string;
+  extensionOverrides?: ProfileExtensionOverrides;
 } & DeviceConfig;
 
 export type ProfileRow = StealthProfile;
+
+export type ProfileStorageStat = {
+  id: string;
+  folderExists: boolean;
+  /** null = exists check only (size loading deferred). */
+  folderBytes: number | null;
+};
+
+export type ProfileBackupMeta = {
+  id: string;
+  lastBackupAt?: string;
+  lastBackupBytes?: number;
+  lastBackupPath?: string;
+};
+
+export type ProfilesBackupProgressPayload = {
+  phase: string;
+  current: number;
+  total: number;
+  profileId?: string;
+  status?: "copying" | "done" | "skipped" | "error";
+  message?: string;
+};
 
 export type BulkCreateProfileDefaults = Partial<DeviceConfig> & {
   groupId?: string;
@@ -88,7 +112,7 @@ export type BulkCreateProfilesResult = {
 };
 
 export type RunLogEntry = {
-  level: "info" | "success" | "error";
+  level: "info" | "success" | "error" | "warn";
   message: string;
   time: string;
 };
@@ -112,6 +136,8 @@ export type ScriptStep = {
   value?: string;
   timeoutMs?: number;
   enabled: boolean;
+  /** When true on type steps, press Enter after fill */
+  pressEnter?: boolean;
 };
 
 export type RunHistoryItem = {
@@ -194,8 +220,19 @@ export type LaunchBenchBaseline = {
   at: string;
 };
 
+export type ExtensionToggles = {
+  e0001: boolean;
+  surfshark: boolean;
+  webStore: boolean;
+};
+
+/** Per-profile override; omit key = follow app Settings → Extensions. */
+export type ProfileExtensionOverrides = Partial<Record<keyof ExtensionToggles, boolean>>;
+
 export type CookieBridgeStatus = {
   enabled: boolean;
+  profilesExtensionsEnabled?: boolean;
+  extensionToggles?: ExtensionToggles;
   productCode: string;
   name: string;
   storeId: string;
@@ -207,6 +244,42 @@ export type CookieBridgeStatus = {
   workspacePath: string | null;
   cachePath: string;
   env: { STEALTH_COOKIE_BRIDGE: string; STEALTH_COOKIE_BRIDGE_LOCAL: string };
+};
+
+export type CachedStoreExtension = {
+  kind: "store" | "local";
+  storeId: string | null;
+  localKey?: string;
+  unpackedPath: string;
+  name: string;
+  iconDataUri?: string;
+};
+
+export type ExtensionsStatus = {
+  launchMode: "native" | "managed";
+  nativeMode: boolean;
+  cached: CachedStoreExtension[];
+  webStoreInstallHint: string;
+};
+
+export type InstallStoreExtensionResult = {
+  storeId: string;
+  name: string;
+  unpackedPath: string;
+  cached: boolean;
+  profiles: number;
+  installed: number;
+  details: Array<{ profileDir: string; extId?: string; error?: string }>;
+};
+
+export type InstallUnpackedExtensionResult = {
+  kind: "local";
+  localKey: string;
+  name: string;
+  unpackedPath: string;
+  profiles: number;
+  installed: number;
+  details: Array<{ profileDir: string; extId?: string; error?: string }>;
 };
 
 declare global {
@@ -269,7 +342,46 @@ declare global {
       updateGroup: (payload: { id: string; name: string }) => Promise<{ ok: boolean; group: StealthGroup }>;
       deleteGroup: (payload: { id: string }) => Promise<{ ok: boolean }>;
       exportProfiles: () => Promise<{ ok: boolean; bundle: unknown }>;
-      importProfiles: (payload: { bundle: unknown; merge?: boolean }) => Promise<{ ok: boolean; imported: number }>;
+      importProfiles: (payload: {
+        bundle: unknown;
+        merge?: boolean;
+        matchBy?: "name" | "id";
+      }) => Promise<{
+        ok: boolean;
+        imported: number;
+        updated?: number;
+        created?: number;
+        skipped?: number;
+        skippedNames?: string[];
+        matchBy?: string;
+        error?: string;
+      }>;
+      backupProfilesState: (payload?: { profileIds?: string[] }) => Promise<{
+        ok: boolean;
+        canceled?: boolean;
+        path?: string;
+        profiles?: number;
+        bytes?: number;
+        error?: string;
+      }>;
+      restoreProfilesState: (payload?: { restoreIntoProfileId?: string }) => Promise<{
+        ok: boolean;
+        canceled?: boolean;
+        restored?: number;
+        skipped?: number;
+        profiles?: number;
+        skipReasons?: Array<{ name: string; reason: string }>;
+        restoreIntoProfileId?: string;
+        restoreIntoProfileName?: string;
+        imported?: { imported?: number; updated?: number; created?: number };
+        error?: string;
+      }>;
+      profileStorageStats: (payload: {
+        profileIds: string[];
+        includeBytes?: boolean;
+      }) => Promise<{ ok: boolean; stats: ProfileStorageStat[] }>;
+      profileBackupMeta: (payload: { profileIds: string[] }) => Promise<{ ok: boolean; meta: ProfileBackupMeta[] }>;
+      onProfilesBackupProgress?: (handler: (payload: ProfilesBackupProgressPayload) => void) => () => void;
       listRuns: (payload?: { limit?: number }) => Promise<{ ok: boolean; runs: RunHistoryItem[] }>;
       openUrl: (payload: {
         profileId: string;
@@ -281,14 +393,32 @@ declare global {
         steps?: ScriptStep[];
         workflowId?: string;
       }) => Promise<OpenUrlResult>;
-      appInfo: () => Promise<{ name: string; version: string; isPackaged: boolean; userDataPath: string }>;
+      appInfo: () => Promise<{ name: string; version: string; isPackaged: boolean; userDataPath: string; profileExtensionsEnabled?: boolean; extensionToggles?: ExtensionToggles }>;
       openDataFolder: () => Promise<{ ok: boolean; path: string }>;
+      getProfileExtensionsEnabled: () => Promise<{ ok: boolean; enabled: boolean }>;
+      setProfileExtensionsEnabled: (payload: { enabled: boolean }) => Promise<{ ok: boolean; enabled: boolean }>;
+      getExtensionToggles: () => Promise<{ ok: boolean; toggles: ExtensionToggles }>;
+      setExtensionToggles: (payload: { toggles: Partial<ExtensionToggles> }) => Promise<{ ok: boolean; toggles: ExtensionToggles }>;
       listLaunchPerf: (payload?: { limit?: number }) => Promise<{ ok: boolean; entries: LaunchPerfEntry[] }>;
       clearLaunchPerf: () => Promise<{ ok: boolean }>;
       fetchLaunchBenchBaseline: () => Promise<{ ok: boolean; baseline: LaunchBenchBaseline | null }>;
       purgeLegacyIdentityToolbar: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
       fetchCookieBridgeStatus: () => Promise<{ ok: boolean; status: CookieBridgeStatus }>;
       purgeBrokenExtensionPrefs: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
+      fetchExtensionsStatus: () => Promise<{ ok: boolean; status: ExtensionsStatus }>;
+      fetchExtensionIcon: (payload: { storeId: string; size?: number }) => Promise<{ ok: boolean; storeId: string; iconDataUri?: string | null }>;
+      installStoreExtension: (payload: {
+        storeId?: string;
+        storeIdOrUrl?: string;
+        url?: string;
+        profileIds?: string[];
+      }) => Promise<{ ok: boolean; result?: InstallStoreExtensionResult; error?: string }>;
+      pickUnpackedExtensionFolder: () => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
+      installUnpackedExtension: (payload: {
+        path?: string;
+        sourceDir?: string;
+        profileIds?: string[];
+      }) => Promise<{ ok: boolean; result?: InstallUnpackedExtensionResult; error?: string }>;
       onProfileSession: (
         handler: (payload: { profile: StealthProfile; event: string }) => void
       ) => () => void;

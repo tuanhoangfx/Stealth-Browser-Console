@@ -311,8 +311,6 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 
 /* Split scroll — thead fixed outside scroll; scrollbar only on tbody pane */
 .hub-directory-table-split {
-  --hub-directory-thead-surface: rgba(255, 255, 255, 0.02);
-  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -325,8 +323,11 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
-  /* Constant gutter — empty + loaded same geometry (Notes-style stable gutter) */
-  --hub-directory-split-scrollbar-pad: var(--hub-split-scroll-size, 10px);
+}
+
+/* Flex-pane — head reserves gutter via pad + ::after (same single surface as head; no th stack) */
+.hub-directory-table-split.hub-directory-table-scroll--flex-pane .hub-directory-table-head {
+  padding-right: var(--hub-directory-split-scrollbar-pad, 0px);
 }
 
 .hub-directory-table-split.hub-directory-table-scroll--flex-pane .hub-directory-table-body-scroll {
@@ -342,6 +343,7 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   height: 100%;
   background: var(--hub-directory-thead-surface);
   pointer-events: none;
+  border-top-right-radius: calc(1rem - 1px);
 }
 
 .hub-directory-table-split table.hub-users-table.hub-users-table--directory,
@@ -367,16 +369,17 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   table-layout: fixed;
 }
 
+.hub-directory-table-split .hub-directory-table-head table.hub-users-table thead,
 .hub-directory-table-split .hub-directory-table-head table.hub-users-table thead th {
-  background: var(--hub-directory-thead-surface);
+  background: transparent;
   border-bottom: none;
 }
 
-/* Pane-chrome split wrap — clip head track to inner golden radius */
+/* Pane-chrome split wrap — radius on head track (parent wrap clips) */
 .hub-directory-table-wrap--pane-chrome > .hub-directory-table-head {
   border-top-left-radius: calc(1rem - 1px);
   border-top-right-radius: calc(1rem - 1px);
-  clip-path: inset(0 round 1rem 1rem 0 0);
+  overflow: hidden;
 }
 
 .hub-directory-table-wrap--pane-chrome > .hub-directory-table-head table.hub-users-table {
@@ -389,7 +392,7 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 }
 
 .hub-directory-table-wrap--pane-chrome > .hub-directory-table-head thead th:last-child {
-  border-top-right-radius: calc(1rem - 1px);
+  border-top-right-radius: 0;
 }
 
 /* Directory icon + label cell — platform / proxy / status body parity */

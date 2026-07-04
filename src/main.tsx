@@ -18,6 +18,7 @@ import "./theme/hub-bulk-actions.css";
 import "./theme/stealth-layout.css";
 import "./theme/stealth-directory-typography.css";
 import "./theme/stealth-directory-chrome.css";
+import "./theme/stealth-system-backup.css";
 import "./features/profiles/stealth-profile-detail-modal.css";
 
 clearOfflineModeStorage();

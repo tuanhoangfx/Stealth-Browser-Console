@@ -9,11 +9,12 @@ const {
   focusProfileBrowserWindow,
   hasProfileBrowserProcess,
   killOrphanProfileBrowser,
+  PROFILE_LOCK_FILES,
   readDevToolsActivePort,
 } = require("../lib/profile-browser-orphan.cjs");
 const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-cleanup.cjs");
 const { markProfileChromeCleanExit } = require("../lib/profile-chrome-session.cjs");
-const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks } = require("../lib/profile-user-data-repair.cjs");
+const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks, writeSidecarPid, readSidecarPid, removeSidecarPid } = require("../lib/profile-user-data-repair.cjs");
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 
 /** CDP passthrough bật mặc định; tắt bằng STEALTH_CDP_ENABLE=0. */
@@ -21,7 +22,6 @@ function cdpEnabled() {
   return String(process.env.STEALTH_CDP_ENABLE || "1") !== "0";
 }
 
-const PROFILE_LOCK_FILES = ["SingletonLock", "SingletonCookie", "lockfile"];
 const SESSION_WATCHDOG_MS = 8000;
 
 /** Skip expensive WMI orphan probe when profile dir is clean (typical Run path). */
@@ -139,6 +139,16 @@ class SessionManager {
       : navigateStartupUrl(opened.context, launchUrl)
     .catch(() => undefined);
 
+    let browserPid = 0;
+    try {
+      browserPid = opened.context.browser()?.process()?.pid || 0;
+    } catch { /* persistent context may not expose process */ }
+
+    writeSidecarPid(opened.userDataDir, {
+      pid: browserPid,
+      debugPort: opened.debugPort || 0,
+    });
+
     this.#sessions.set(id, {
       context: opened.context,
       userDataDir: opened.userDataDir,
@@ -187,7 +197,8 @@ class SessionManager {
   async #tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl = false } = {}) {
     const id = String(profile.id);
     const profileCode = extractProfileCode(profile.name, profile.id);
-    const port = readDevToolsActivePort(userDataDir);
+    const sidecar = readSidecarPid(userDataDir);
+    const port = sidecar?.debugPort || readDevToolsActivePort(userDataDir);
 
     if (port > 0) {
       try {
@@ -212,11 +223,14 @@ class SessionManager {
     const focused = await focusProfileBrowserWindow(userDataDir);
     if (!focused.ok) return null;
 
+    const focusDebugPort = sidecar?.debugPort || port || 0;
+    writeSidecarPid(userDataDir, { pid: sidecar?.pid || 0, debugPort: focusDebugPort });
+
     this.#sessions.set(id, {
       context: null,
       userDataDir,
       alive: true,
-      debugPort: 0,
+      debugPort: focusDebugPort,
       profile,
       profileCode,
       focusOnly: true,
@@ -230,7 +244,7 @@ class SessionManager {
       status: "running",
       profile: running,
       userDataDir,
-      debugPort: 0,
+      debugPort: focusDebugPort,
       focused: true,
     };
   }
@@ -339,6 +353,7 @@ class SessionManager {
       await closeContext(session.context);
     }
     removeStaleProfileLocks(session.userDataDir);
+    removeSidecarPid(session.userDataDir);
   }
 
   async awaitLaunchNavigation(profileId, { settle = true } = {}) {

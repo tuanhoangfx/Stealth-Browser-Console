@@ -51,9 +51,7 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 1rem;
   clip-path: inset(0 round 1rem);
-  --hub-directory-thead-surface: rgba(255, 255, 255, 0.02);
-  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-directory-pane-surface, rgba(255, 255, 255, 0.02));
   isolation: isolate;
 }
 
@@ -64,17 +62,7 @@
   width: 100%;
 }
 
-.hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) thead th {
-  background: var(--hub-directory-thead-surface, rgba(255, 255, 255, 0.02));
-}
-
-.hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) thead th:first-child {
-  border-top-left-radius: calc(1rem - 1px);
-}
-
-.hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) thead th:last-child {
-  border-top-right-radius: calc(1rem - 1px);
-}
+/* thead paint — SSOT hub-directory-table.css golden header (P0004 Hub/Users parity) */
 
 .hub-split-directory-pane__body .hub-users-table-wrap.hub-directory-table-split {
   min-width: 0;
@@ -90,9 +78,7 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 1rem;
   clip-path: inset(0 round 1rem);
-  --hub-directory-thead-surface: rgba(255, 255, 255, 0.02);
-  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-directory-pane-surface, rgba(255, 255, 255, 0.02));
 }
 
 .hub-split-directory-pane__body
@@ -114,7 +100,7 @@
   .hub-users-table-wrap.hub-directory-table-split.hub-directory-table-wrap--pane-chrome
   thead
   th:last-child {
-  border-top-right-radius: calc(1rem - 1px);
+  border-top-right-radius: 0;
 }
 
 .hub-split-directory-pane__body .hub-table-pager {

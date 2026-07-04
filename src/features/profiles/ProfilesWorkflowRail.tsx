@@ -6,7 +6,11 @@ import { WorkflowRailPanel } from "../workflows/WorkflowRailPanel";
 import { AutomationRuntimePanel } from "../runtime/AutomationRuntimePanel";
 
 /** Profiles right rail — Hub workflow picker pattern. */
-export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail() {
+export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail({
+  backupJobLabel = null,
+}: {
+  backupJobLabel?: string | null;
+}) {
   const { setView } = useStealthShell();
   const { openProfilesForWorkflow } = useWorkflowRuntime();
   const {
@@ -59,7 +63,7 @@ export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail() {
         onOpenWorkflowEditor={handleOpenWorkflowEditor}
         defaultWorkflows={builtinWorkflows}
       />
-      <AutomationRuntimePanel />
+      <AutomationRuntimePanel backupJobLabel={backupJobLabel} />
     </aside>
   );
 });

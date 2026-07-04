@@ -10,10 +10,12 @@ import { StealthAppShell } from "./components/StealthAppShell";
 import { AuthSessionProvider } from "./features/auth/AuthSessionProvider";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
 import type { StealthScreen } from "./lib/stealth-screen";
+import { defaultStealthSystemTab, type StealthSystemTab } from "./lib/stealth-system-tab";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
-import { prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
+import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
 
 prefetchWorkflowChunks();
+prefetchSystemChunks();
 
 export function App() {
   return (
@@ -30,6 +32,7 @@ export function App() {
 
 function StealthAppRoot() {
   const [view, setView] = useState<StealthScreen>("profiles");
+  const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => defaultStealthSystemTab());
   const [visited, setVisited] = useState<Set<StealthScreen>>(() => new Set(["profiles", "workflow"]));
   const mainRef = useRef<HTMLElement>(null);
 
@@ -52,8 +55,8 @@ function StealthAppRoot() {
     }
   }, [view]);
 
-  useHubActiveScreenSync(view);
-  const activeScreenId = resolveHubActiveScreenId(view);
+  useHubActiveScreenSync(view, view === "system" ? systemTab : null);
+  const activeScreenId = resolveHubActiveScreenId(view, view === "system" ? systemTab : null);
   const effectiveVisited = useMemo(() => new Set(visited).add(view), [visited, view]);
 
   return (
@@ -62,7 +65,12 @@ function StealthAppRoot() {
       bootLog={{ scope: "Stealth", message: "Stealth Browser Console started", screen: "profiles" }}
     >
       <StealthAppProviders view={view} setView={setView} visited={effectiveVisited}>
-        <StealthAppShell visited={effectiveVisited} mainRef={mainRef} />
+        <StealthAppShell
+          visited={effectiveVisited}
+          mainRef={mainRef}
+          systemTab={systemTab}
+          onSystemTabChange={setSystemTab}
+        />
       </StealthAppProviders>
     </HubAppLogProvider>
   );

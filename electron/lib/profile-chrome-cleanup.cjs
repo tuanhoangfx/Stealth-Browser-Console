@@ -49,11 +49,10 @@ function isCloakbrowserBundlePath(value) {
   return normalized.includes("/.cloakbrowser/") || normalized.includes("\\.cloakbrowser\\");
 }
 
-/** Chrome prefs entry pointing at a missing manifest or stale CloakBrowser bundle dir. */
+/** Chrome prefs entry pointing at a missing manifest (including stale CloakBrowser stage dirs). */
 function isBrokenExtensionPath(extensionPath) {
   const raw = String(extensionPath || "").trim();
   if (!raw) return true;
-  if (isCloakbrowserBundlePath(raw)) return true;
   try {
     return !fs.existsSync(path.join(raw, "manifest.json"));
   } catch {
@@ -262,12 +261,74 @@ function removeExtensionFromPrefs(prefs, extId) {
   return changed;
 }
 
+const STORE_EXTENSION_ID_RE = /^[a-p]{32}$/;
+
 function chromePrefsFiles(userDataDir) {
   const base = path.join(userDataDir, "Default");
   const files = [path.join(base, "Preferences")];
   const secure = path.join(base, "Secure Preferences");
   if (fs.existsSync(secure)) files.push(secure);
   return files;
+}
+
+function normalizeExtensionPath(value) {
+  return path.resolve(String(value || "")).replace(/\\/g, "/").toLowerCase();
+}
+
+function isCanonicalStoreExtensionEntry(extId, meta) {
+  if (!STORE_EXTENSION_ID_RE.test(extId)) return false;
+  const normalized = normalizeExtensionPath(meta?.path);
+  const storeId = String(extId).toLowerCase();
+  if (normalized.includes(`/extensions-cache/${storeId}/unpacked`)) return true;
+  return normalized.includes("/.cloakbrowser/") && (normalized.endsWith(`/${storeId}`) || normalized.endsWith(`/${storeId}/`));
+}
+
+/** Drop unpacked-id shadow copies when the same path is already pinned by Web Store id. */
+function purgeDuplicateUnpackedStoreExtensions(userDataDir) {
+  let removed = 0;
+  for (const prefsFile of chromePrefsFiles(userDataDir)) {
+    const prefs = readJson(prefsFile);
+    if (!prefs?.extensions?.settings) continue;
+    const settings = prefs.extensions.settings;
+    const storePaths = new Set();
+    for (const [extId, meta] of Object.entries(settings)) {
+      if (!isCanonicalStoreExtensionEntry(extId, meta)) continue;
+      const normalized = normalizeExtensionPath(meta?.path);
+      if (normalized) storePaths.add(normalized);
+    }
+    const toRemove = [];
+    for (const [extId, meta] of Object.entries(settings)) {
+      if (isCanonicalStoreExtensionEntry(extId, meta)) continue;
+      const normalized = normalizeExtensionPath(meta?.path);
+      if (normalized && storePaths.has(normalized)) toRemove.push(extId);
+    }
+    if (!toRemove.length) continue;
+    let changed = false;
+    for (const extId of toRemove) {
+      if (removeExtensionFromPrefs(prefs, extId)) {
+        removeExtensionStore(userDataDir, extId);
+        changed = true;
+        removed += 1;
+      }
+    }
+    if (changed) writeJson(prefsFile, prefs);
+  }
+  return { removed };
+}
+
+function purgeAllProfilesDuplicateUnpackedStoreExtensions(userDataRoot) {
+  if (!userDataRoot) return { profiles: 0, removed: 0 };
+  const profilesDir = path.join(userDataRoot, "profiles");
+  let profiles = 0;
+  let removed = 0;
+  if (!fs.existsSync(profilesDir)) return { profiles, removed };
+  for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    profiles += 1;
+    const result = purgeDuplicateUnpackedStoreExtensions(path.join(profilesDir, entry.name));
+    removed += result.removed;
+  }
+  return { profiles, removed };
 }
 
 function removeExtensionStore(userDataDir, extId) {
@@ -334,7 +395,8 @@ function isCookieBridgeSourcePath(extensionPath) {
 /** Drop stale E0001 pins (workspace id, store id, cloakbrowser staging) before relaunch. */
 function purgeStaleCookieBridgePrefs(userDataDir, bridgeDir) {
   if (!userDataDir) return { removed: 0 };
-  const keepId = bridgeDir ? unpackedExtensionId(bridgeDir) : null;
+  const keepIds = new Set([COOKIE_BRIDGE_STORE_ID]);
+  if (bridgeDir) keepIds.add(unpackedExtensionId(bridgeDir));
   let removed = 0;
 
   for (const prefsFile of chromePrefsFiles(userDataDir)) {
@@ -346,7 +408,7 @@ function purgeStaleCookieBridgePrefs(userDataDir, bridgeDir) {
       const list = prefs.extensions[key];
       if (!Array.isArray(list)) continue;
       for (const extId of list) {
-        if (keepId && extId === keepId) continue;
+        if (keepIds.has(extId)) continue;
         if (COOKIE_BRIDGE_LEGACY_PIN_IDS.has(extId)) toRemove.add(extId);
       }
     }
@@ -354,7 +416,7 @@ function purgeStaleCookieBridgePrefs(userDataDir, bridgeDir) {
     const toolbarPinned = prefs.extensions.toolbar?.pinned_extension_ids;
     if (Array.isArray(toolbarPinned)) {
       for (const extId of toolbarPinned) {
-        if (keepId && extId === keepId) continue;
+        if (keepIds.has(extId)) continue;
         if (COOKIE_BRIDGE_LEGACY_PIN_IDS.has(extId)) toRemove.add(extId);
       }
     }
@@ -362,9 +424,14 @@ function purgeStaleCookieBridgePrefs(userDataDir, bridgeDir) {
     const settings = prefs.extensions.settings;
     if (settings && typeof settings === "object") {
       for (const [extId, meta] of Object.entries(settings)) {
-        if (keepId && extId === keepId) continue;
+        if (keepIds.has(extId)) continue;
+        if (isCanonicalStoreExtensionEntry(extId, meta)) continue;
         const extPath = String(meta?.path || "");
-        if (isCloakbrowserBundlePath(extPath) || isCookieBridgeSourcePath(extPath)) {
+        if (isCookieBridgeSourcePath(extPath)) {
+          toRemove.add(extId);
+          continue;
+        }
+        if (isCloakbrowserBundlePath(extPath)) {
           toRemove.add(extId);
         }
       }
@@ -549,7 +616,10 @@ module.exports = {
   isIdentityExtensionMeta,
   isBrokenExtensionPath,
   isCloakbrowserBundlePath,
+  isCanonicalStoreExtensionEntry,
   purgeSurfsharkExtensionPrefs,
   purgeSurfsharkExtensionCache,
   purgeAllProfilesSurfshark,
+  purgeDuplicateUnpackedStoreExtensions,
+  purgeAllProfilesDuplicateUnpackedStoreExtensions,
 };

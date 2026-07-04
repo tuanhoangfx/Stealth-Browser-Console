@@ -3,9 +3,11 @@ import {
   buildDirectoryColgroupForShell,
   buildDirectoryColumns,
   hubDirectoryTableClass,
+  HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   STEALTH_PROFILE_COLUMN_META as STEALTH_PROFILE_COLUMN_META,
   toHubDirectoryColumnMeta,
@@ -14,14 +16,24 @@ import {
   profileDirectoryColumnPrefs,
   readProfileDirectoryColumns,
 } from "./profile-directory-prefs";
-import { STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS } from "../tables/stealth-directory-table";
-import type { ProfileRow } from "../../types";
+import type { ExtensionToggles, ProfileRow } from "../../types";
 import { renderStealthProfileDirectoryBodyCell } from "./stealth-profile-directory-cells";
 import { sortableProfileValue } from "./stealth-profile-sort";
+import type { ExtensionIconMap } from "./useExtensionIcons";
+
+function makeExtIcon(src: string | null, alt: string) {
+  const fallback = alt === "E0001" ? "/icons/ext-e0001-16.png" : "/icons/ext-surfshark-16.png";
+  const url = src || fallback;
+  return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+    return <img src={url} width={size} height={size} className={`inline-block ${className}`} alt={alt} draggable={false} />;
+  };
+}
 
 export type StealthProfileSortKey =
   | "profile"
   | "group"
+  | "e0001"
+  | "surfshark"
   | "status"
   | "lastOpened"
   | "createdAt"
@@ -43,6 +55,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   allVisibleSelected,
   onOpen,
   onClose,
+  globalExtensionToggles,
+  extensionIcons,
   emptyMessage,
   resetKey,
   pageSize = 20,
@@ -59,6 +73,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   allVisibleSelected: boolean;
   onOpen: (profile: ProfileRow) => void;
   onClose: (profile: ProfileRow) => void;
+  globalExtensionToggles: ExtensionToggles;
+  extensionIcons?: ExtensionIconMap;
   emptyMessage?: string;
   resetKey?: string;
   pageSize?: number;
@@ -116,14 +132,24 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
     return () => window.removeEventListener(profileDirectoryColumnPrefs.changeEvent, sync);
   }, []);
 
-  const columns = useMemo(
-    () =>
-      buildDirectoryColumns(
-        visibleColumnKeys as StealthProfileSortKey[],
-        toHubDirectoryColumnMeta(STEALTH_PROFILE_COLUMN_META),
-      ),
-    [visibleColumnKeys],
-  );
+  const ExtIconE0001 = useMemo(() => makeExtIcon(extensionIcons?.e0001 ?? null, "E0001"), [extensionIcons?.e0001]);
+  const ExtIconSurfshark = useMemo(() => makeExtIcon(extensionIcons?.surfshark ?? null, "Surfshark"), [extensionIcons?.surfshark]);
+
+  const columns = useMemo(() => {
+    const built = buildDirectoryColumns(
+      visibleColumnKeys as StealthProfileSortKey[],
+      toHubDirectoryColumnMeta(STEALTH_PROFILE_COLUMN_META),
+    );
+    return built.map((col) => {
+      if (col.key === "e0001") {
+        return { ...col, sortable: false, headerIcon: ExtIconE0001 as unknown as LucideIcon, headerIconClassName: "" };
+      }
+      if (col.key === "surfshark") {
+        return { ...col, sortable: false, headerIcon: ExtIconSurfshark as unknown as LucideIcon, headerIconClassName: "" };
+      }
+      return col;
+    });
+  }, [ExtIconE0001, ExtIconSurfshark, visibleColumnKeys]);
   const colgroup = useMemo(
     () => buildDirectoryColgroupForShell(columns, { showSelect: true }),
     [columns],
@@ -134,7 +160,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       items={sorted}
       ariaLabel="Browser profiles"
       tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table`}
-      wrapClassName={STEALTH_DIRECTORY_TABLE_WRAP_PANE_SCROLL_CLASS}
+      wrapClassName={HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS}
       flushWrap
       colgroup={colgroup}
       columns={columns}
@@ -161,7 +187,15 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       }
       getRowClassName={(profile) => (selectedIds.has(profileRowKey(profile)) ? " is-selected" : "")}
       renderRowCells={(profile) => (
-        <>{columns.map((col) => renderStealthProfileDirectoryBodyCell(col, profile, searchQuery, { onOpen, onClose }))}</>
+        <>
+          {columns.map((col) =>
+            renderStealthProfileDirectoryBodyCell(col, profile, searchQuery, {
+              onOpen,
+              onClose,
+              globalExtensionToggles,
+            }),
+          )}
+        </>
       )}
     />
   );

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { HubSidebarNavGroup } from "./HubSidebarNavGroup";
 import { HubSidebarNavScreenButton } from "./HubSidebarNavScreenButton";
 import { NavGroupSubNav } from "./HubSidebarNavGroup";
+import { HubSystemTabSubNav } from "./HubSystemTabSubNav";
 import {
   isNavGroupActive,
   isNavScreenGroup,
@@ -90,7 +91,7 @@ export function HubSidebarNavList<TScreen extends string, TView extends string =
         };
 
         const defaultSubnav = isNavViewGroup(entry) ? (
-          <NavGroupSubNav
+          <HubSystemTabSubNav
             activeId={groupActive ? activeView : null}
             items={navViewGroupSubNavItems(entry.children)}
             onSelect={(view) => {

@@ -37,6 +37,8 @@ test("resolveCachedExtensionDir returns AppData cache not workspace", () => {
   const fs = require("node:fs");
   const path = require("node:path");
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-cb-"));
+  const prevLocal = process.env.STEALTH_COOKIE_BRIDGE_LOCAL;
+  process.env.STEALTH_COOKIE_BRIDGE_LOCAL = "0";
   const mod = loadFresh();
   const workspace = mod.workspaceExtensionDir();
   if (!workspace) {
@@ -44,13 +46,16 @@ test("resolveCachedExtensionDir returns AppData cache not workspace", () => {
     return;
   }
   const cache = mod.unpackedDir(tmpRoot);
+  fs.mkdirSync(cache, { recursive: true });
+  fs.writeFileSync(path.join(cache, "manifest.json"), JSON.stringify({ name: "E0001 Cookie Bridge" }), "utf8");
   const resolved = mod.resolveCachedExtensionDir(tmpRoot);
   assert.equal(resolved, cache);
   assert.notEqual(resolved, workspace);
   assert.equal(fs.existsSync(path.join(cache, "manifest.json")), true);
   try {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
-  } catch {
-    /* ignore */
+  } finally {
+    if (prevLocal === undefined) delete process.env.STEALTH_COOKIE_BRIDGE_LOCAL;
+    else process.env.STEALTH_COOKIE_BRIDGE_LOCAL = prevLocal;
   }
 });

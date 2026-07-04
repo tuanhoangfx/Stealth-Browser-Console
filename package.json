@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.7.7",
+  "version": "0.7.61",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -12,7 +12,7 @@
   "scripts": {
     "predev": "node scripts/predev.mjs",
     "predev:web": "node scripts/predev.mjs",
-    "dev": "node scripts/dev-node.mjs",
+    "dev": "node scripts/predev.mjs && node scripts/dev-node.mjs",
     "dev:recover": "node scripts/dev-recover.cjs",
     "dev:recover:open": "node scripts/dev-recover.cjs --open",
     "db:repair": "node scripts/repair-stealth-db.mjs",
@@ -46,6 +46,7 @@
     "release": "node scripts/run-electron-package.mjs --publish always"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "@tool-workspace/hub-ui": "file:vendor\\hub-ui",
     "@types/dagre": "^0.7.54",
     "@vitejs/plugin-react": "^5.1.1",

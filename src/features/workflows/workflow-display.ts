@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { resolveHubBrandIconByMatch } from "@tool-workspace/hub-ui";
+import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import type { DropdownOption } from "../../ui/dropdown-types";
 import type { WorkflowConfig, WorkflowIconKey, WorkflowId } from "./workflow-types";
 
@@ -87,7 +88,8 @@ export function workflowPlatformSlug(platform: string) {
 }
 
 export function workflowPlatformSvgUrl(platform: string) {
-  return resolveHubBrandIconByMatch(platform)?.src ?? "";
+  const src = resolveHubBrandIconByMatch(platform)?.src ?? "";
+  return src ? resolveHubBrandAssetSrc(src) : "";
 }
 
 export function workflowPlatformTone(platform: string) {

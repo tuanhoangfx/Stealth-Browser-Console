@@ -3,6 +3,7 @@ import { Glass } from "../../../theme/p0008";
 import { ACTIVE_DESIGN_COUNT } from "./design-registry";
 import { SystemLaunchPerfPanel } from "../SystemLaunchPerfPanel";
 import { SystemCookieBridgePanel } from "../SystemCookieBridgePanel";
+import { SystemProfileBackupPanel } from "../SystemProfileBackupPanel";
 
 export function DesignTemplatePage() {
   return (
@@ -18,6 +19,7 @@ export function DesignTemplatePage() {
       </Glass>
       <SystemLaunchPerfPanel />
       <SystemCookieBridgePanel />
+      <SystemProfileBackupPanel />
       <HubDesignTemplateEmpty />
     </div>
   );

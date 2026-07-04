@@ -1,0 +1,146 @@
+/* System tab — backup directory + P0004 system subnav parity */
+
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--system {
+  padding-bottom: 0;
+  scroll-padding-top: 0;
+}
+
+.stealth-hub-main > .stealth-system-backup-workspace__body,
+.stealth-hub-main > .system-overview-page {
+  flex: 1;
+  min-height: 0;
+}
+
+.system-overview-page {
+  overflow-y: auto;
+}
+
+.stealth-system-backup-layout,
+.stealth-system-backup-directory-frame {
+  min-height: 0;
+}
+
+.stealth-system-backup-directory-frame .hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) {
+  min-height: 0;
+}
+
+.stealth-backup-row--active {
+  background: rgba(251, 191, 36, 0.06);
+}
+
+/* Paint only visible backup rows — smoother scroll with large catalogs (server-paginated). */
+.stealth-system-backup-directory-frame .hub-directory-frame-table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2.25rem;
+}
+
+.stealth-backup-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 5.5rem;
+}
+
+.stealth-backup-progress__track {
+  position: relative;
+  flex: 1;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.stealth-backup-progress__track--active {
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.stealth-backup-progress__track--done {
+  background: rgba(52, 211, 153, 0.15);
+}
+
+.stealth-backup-progress__track--failed {
+  background: rgba(251, 113, 133, 0.15);
+}
+
+.stealth-backup-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.85), rgba(16, 185, 129, 0.95));
+  transition: width 180ms ease;
+}
+
+.stealth-backup-progress__fill--active {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.85), rgba(245, 158, 11, 0.95));
+  animation: stealth-backup-progress-pulse 1.2s ease-in-out infinite;
+}
+
+.stealth-backup-progress__pct {
+  width: 2.25rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.stealth-backup-job-banner {
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.stealth-backup-job-banner__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.stealth-backup-job-banner__label {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.stealth-backup-job-banner__pct {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stealth-backup-job-banner__bar {
+  margin-top: 8px;
+  position: relative;
+  height: 0.4rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.stealth-backup-job-banner__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.85), rgba(245, 158, 11, 0.95));
+  transition: width 180ms ease;
+}
+
+@keyframes stealth-backup-progress-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.stealth-system-backup-directory-frame table.hub-directory-frame-table .hub-users-th-label,
+.stealth-system-backup-directory-frame table.hub-directory-frame-table .hub-users-th-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+}

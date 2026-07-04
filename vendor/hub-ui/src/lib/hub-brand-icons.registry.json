@@ -768,6 +768,13 @@
     "faviconDomain": "quillbot.com"
   },
   {
+    "id": "generic",
+    "label": "Generic",
+    "match": "^generic$|browserleaks|example\\.com",
+    "src": "/icons/generic.svg",
+    "shell": "bare"
+  },
+  {
     "id": "google",
     "label": "Google",
     "match": "gmail|google",
@@ -779,7 +786,7 @@
     "label": "OpenAI",
     "match": "chatgpt|openai|gpt",
     "src": "/assets/brand-icons/chatgpt.png",
-    "shell": "bare",
+    "shell": "tile",
     "faviconDomain": "chatgpt.com"
   },
   {

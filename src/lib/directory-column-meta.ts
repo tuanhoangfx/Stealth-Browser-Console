@@ -11,14 +11,16 @@ export type { DirectoryColumnHeaderMeta } from "@tool-workspace/hub-ui";
 
 /** Stealth profile directory — hub-users-table--directory-6 */
 export const STEALTH_PROFILE_COLUMN_META = {
-  profile: col("Profile", "hub-users-col--name", "name", "col.directory.account", "22%"),
+  profile: col("Profile", "hub-users-col--name", "name", "col.directory.account", "20%"),
   group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "4.5rem"),
   status: col("Run", "hub-users-col--tools", "tools", "col.directory.status", "4.5rem"),
   lastOpened: col("Last opened", "hub-users-col--created", "created", "col.directory.lastActive", "5.5rem"),
   createdAt: col("Created", "hub-users-col--activity", "activity", "col.directory.created", "5.5rem"),
   startupUrl: col("Startup URL", "hub-users-col--email", "email", "col.directory.username", "18%"),
-  proxy: col("Proxy", "hub-users-col--metric-a", "name", "col.directory.username", "12%"),
+  proxy: col("Proxy", "hub-users-col--metric-c", "name", "col.directory.username", "12%"),
   note: col("Note", "hub-users-col--id", "id", "col.directory.posts", "3.5rem"),
+  e0001: col("E0001", "hub-users-col--metric-a", "tools", "col.directory.status", "3.25rem"),
+  surfshark: col("Surfshark", "hub-users-col--metric-b", "tools", "col.directory.status", "3.75rem"),
 };
 
 export const STEALTH_PROFILE_COLUMN_KEYS = [
@@ -30,6 +32,8 @@ export const STEALTH_PROFILE_COLUMN_KEYS = [
   "startupUrl",
   "proxy",
   "note",
+  "e0001",
+  "surfshark",
 ] as const;
 
 export type StealthProfileColumnKey = (typeof STEALTH_PROFILE_COLUMN_KEYS)[number];
@@ -77,3 +81,22 @@ export function resolveProfileCellIcon(key: SemanticIconLookupKey) {
   const { icon, className } = resolveSemanticIcon(key);
   return { icon, className };
 }
+
+/** System → Backup directory — hub-users-table--directory-6 (status/progress → rail console). */
+export const STEALTH_BACKUP_COLUMN_META = {
+  profile: col("Profile", "hub-users-col--name", "name", "col.directory.account", "24%"),
+  group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "5.5rem"),
+  lastBackup: col("Last backup", "hub-users-col--created", "created", "col.directory.lastActive", "8rem"),
+  dataSize: col("Data size", "hub-users-col--metric-a", "name", "col.directory.posts", "6rem"),
+  folder: col("Folder", "hub-users-col--tools", "tools", "col.directory.status", "4.5rem"),
+};
+
+export const STEALTH_BACKUP_COLUMN_KEYS = [
+  "profile",
+  "group",
+  "lastBackup",
+  "dataSize",
+  "folder",
+] as const;
+
+export type StealthBackupColumnKey = (typeof STEALTH_BACKUP_COLUMN_KEYS)[number];

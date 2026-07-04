@@ -26,8 +26,7 @@ export function DirectorySplitScrollTable({
   hasRows,
   scrollResetKey,
 }: DirectorySplitScrollTableProps) {
-  const syncPad = !wrapClassName.includes("hub-directory-table-scroll--flex-pane");
-  const { headRef, bodyRef } = useDirectorySplitScrollbarSync(syncPad);
+  const { headRef, bodyRef } = useDirectorySplitScrollbarSync(true);
 
   useEffect(() => {
     if (scrollResetKey === undefined) return;

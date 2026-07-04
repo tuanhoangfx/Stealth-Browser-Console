@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FolderOpen, Globe, Info, Link2, MonitorSmartphone, Palette, Shield } from "lucide-react";
+import { FolderOpen, Globe, Info, Link2, MonitorSmartphone, Palette, Puzzle, Shield } from "lucide-react";
 import {
   HubAlert,
   HubFormFieldLabel,
@@ -10,7 +10,7 @@ import {
 } from "@tool-workspace/hub-ui";
 import { HubModalFilterField } from "@tool-workspace/hub-ui";
 import { useRegisterSettingsSave } from "./stealth-settings-save-context";
-import { fetchAppInfo, fetchEngineHealth, openDataFolder, updateEngineBinary } from "../../api";
+import { fetchAppInfo, fetchEngineHealth, fetchExtensionToggles, openDataFolder, setExtensionToggles, updateEngineBinary } from "../../api";
 import { useStealthShell } from "../../context/stealth-shell-context";
 import {
   LOCALE_OPTIONS,
@@ -33,7 +33,7 @@ import {
   type BrowserDefaults
 } from "../../lib/stealth-app-prefs";
 import { formatStartupUrlOnBlur, normalizeStartupUrl } from "../../lib/startup-url";
-import type { EngineHealth } from "../../types";
+import type { EngineHealth, ExtensionToggles } from "../../types";
 
 const SETTINGS_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_2_CLASS} stealth-settings-form min-w-0`;
 
@@ -184,6 +184,76 @@ function BrowserDefaultsSectionBody() {
   );
 }
 
+const DEFAULT_EXTENSION_TOGGLES: ExtensionToggles = {
+  e0001: true,
+  surfshark: false,
+  webStore: false,
+};
+
+function ExtensionsSectionBody() {
+  const [toggles, setToggles] = useState<ExtensionToggles>(DEFAULT_EXTENSION_TOGGLES);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    void fetchExtensionToggles()
+      .then(setToggles)
+      .catch(() => setToggles(DEFAULT_EXTENSION_TOGGLES));
+  }, []);
+
+  const apply = (patch: Partial<ExtensionToggles>) => {
+    setBusy(true);
+    setMessage("");
+    void setExtensionToggles(patch)
+      .then((next) => {
+        setToggles(next);
+        setMessage("Saved. Close Chrome completely and Run again for changes to apply.");
+      })
+      .catch((err: unknown) => setMessage(err instanceof Error ? err.message : "Save failed"))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className={SETTINGS_FORM_CLASS}>
+      <p className="col-span-full text-xs text-[var(--muted)]">
+        Per-extension control for every profile. Default: E0001 Cookie Bridge only.
+      </p>
+      <label className="stealth-settings-form__check col-span-full">
+        <input
+          type="checkbox"
+          checked={toggles.e0001}
+          disabled={busy}
+          onChange={(e) => apply({ e0001: e.target.checked })}
+        />
+        E0001 Cookie Bridge
+      </label>
+      <label className="stealth-settings-form__check col-span-full">
+        <input
+          type="checkbox"
+          checked={toggles.surfshark}
+          disabled={busy}
+          onChange={(e) => apply({ surfshark: e.target.checked })}
+        />
+        Surfshark VPN Extension
+      </label>
+      <label className="stealth-settings-form__check col-span-full">
+        <input
+          type="checkbox"
+          checked={toggles.webStore}
+          disabled={busy}
+          onChange={(e) => apply({ webStore: e.target.checked })}
+        />
+        Other Web Store extensions
+      </label>
+      {message ? (
+        <div className="col-span-full">
+          <HubAlert tone="info">{message}</HubAlert>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AppearanceSectionBody() {
   const { theme, setTheme } = useStealthShell();
   return (
@@ -294,6 +364,12 @@ export function useStealthGeneralSettingsToolSections(): HubDisplayPrefsToolSect
         label: "Appearance",
         icon: <Palette size={compactIconSize(12)} className="text-cyan-300" aria-hidden />,
         body: <AppearanceSectionBody />
+      },
+      {
+        id: "extensions",
+        label: "Extensions",
+        icon: <Puzzle size={compactIconSize(12)} className="text-orange-300" aria-hidden />,
+        body: <ExtensionsSectionBody />,
       },
       {
         id: "engine",
