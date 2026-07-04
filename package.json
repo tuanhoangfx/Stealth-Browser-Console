@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.10.7",
+  "version": "0.10.8",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -127,6 +127,8 @@
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
+      "differentialPackage": false,
+      "include": "build/installer.nsh",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },

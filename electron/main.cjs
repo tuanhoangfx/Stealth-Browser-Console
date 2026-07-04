@@ -37,6 +37,11 @@ const {
 const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
 const { ensureCloakbrowserExtensionStage } = require("./lib/cloakbrowser-extension-stage.cjs");
 const { packagedContentSecurityPolicy } = require("./lib/packaged-csp.cjs");
+const {
+  verifyPackagedRuntime,
+  formatPackagedRuntimeRepairMessage,
+  RELEASE_URL,
+} = require("./lib/packaged-runtime-check.cjs");
 const { getProfileExtensionsEnabled, setProfileExtensionsEnabled, getExtensionToggles, setExtensionToggles } = require("./lib/app-settings.cjs");
 const { getCookieBridgeStatus } = require("./lib/cookie-bridge-status.cjs");
 const { getExtensionsStatus, installStoreExtension, installUnpackedExtension } = require("./lib/extensions-status.cjs");
@@ -184,6 +189,10 @@ function bindIpc() {
   });
 
   ipcMain.handle("profile:launch", async (_event, payload = {}) => {
+    const runtime = verifyPackagedRuntime();
+    if (!runtime.ok) {
+      throw new Error(formatPackagedRuntimeRepairMessage(runtime));
+    }
     const profile = profileService.resolveProfileForLaunch({
       id: validateProfileId(payload.id),
       name: payload.name,
@@ -812,6 +821,25 @@ if (gotSingleInstanceLock) {
 
 app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
+  if (app.isPackaged) {
+    const runtime = verifyPackagedRuntime();
+    if (!runtime.ok) {
+      const detail = formatPackagedRuntimeRepairMessage(runtime);
+      console.error("[runtime-check]", detail);
+      const { response } = await dialog.showMessageBox({
+        type: "error",
+        title: "Installation repair required",
+        message: "Required modules are missing after update.",
+        detail,
+        buttons: ["Download installer", "Continue anyway"],
+        defaultId: 0,
+        noLink: true,
+      });
+      if (response === 0) {
+        await shell.openExternal(RELEASE_URL);
+      }
+    }
+  }
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
   await openDatabase(userDataRoot());

@@ -1,5 +1,19 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-05 — v0.10.8 — Stable auto-update (unpacked repair + build gate)
+
+- Version: `0.10.8`
+- Timestamp: 2026-07-05 06:00 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **NSIS customInit** — remove stale `app.asar.unpacked` before install/update so patch updates rebuild unpacked modules (playwright-core, cloakbrowser).
+- **Runtime check** — packaged startup dialog + block `profile:launch` when critical unpacked files missing; link to latest Setup.
+- **Build gate** — `verify-packaged-unpacked.mjs` fails desktop build if win-unpacked lacks required unpacked paths.
+- **differentialPackage: false** — full NSIS payload on every update (avoids partial patch corruption on large jumps).
+
 ## 2026-07-05 — v0.10.7 — Silent NSIS update + release upload fix
 
 - Version: `0.10.7`

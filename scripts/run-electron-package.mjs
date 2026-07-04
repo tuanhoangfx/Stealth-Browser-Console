@@ -306,6 +306,8 @@ const version = pkg.version;
 promoteStagingToProductOutput(stagingOutput, productOutput, version);
 rmDir(stagingOutput);
 
+runNodeScript("scripts/verify-packaged-unpacked.mjs");
+
 const tag = `v${version}`;
 
 const setup = path.join(productOutput, `Stealth-Browser-Console-Setup-${version}.exe`);

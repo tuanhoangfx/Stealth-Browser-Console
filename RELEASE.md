@@ -29,7 +29,31 @@ powershell -File scripts/release-desktop.ps1 -Publish -SkipInstall -FastTests
 
 **After publish:** `verify-github-release-assets.mjs` checks Setup.exe + `latest.yml` on GitHub; single `gh release upload` (electron-builder `--publish never` avoids duplicate releases per tag); `dedupe-github-releases.mjs` cleans legacy duplicates.
 
-**Latest release:** [v0.7.3](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.7.3)
+**Latest release:** [v0.10.8](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.8)
+
+### Stable auto-update checklist (v0.10.8+)
+
+Use this every desktop ship so patch updates stay reliable (playwright-core / cloakbrowser under `app.asar.unpacked`).
+
+| Step | What | Pass criteria |
+|------|------|---------------|
+| 1 | **Build gate** | `verify-packaged-unpacked.mjs` OK after `win-unpacked` promote |
+| 2 | **NSIS hook** | `build/installer.nsh` present — `customInit` removes stale `app.asar.unpacked` before install/update |
+| 3 | **Full NSIS payload** | `nsis.differentialPackage: false` in `package.json` |
+| 4 | **GitHub assets** | Only current version: `Setup-{version}.exe`, `.blockmap`, `latest.yml` (no stale Setup) |
+| 5 | **Commit = ship** | Same commit tagged `v{version}` before `-Publish` |
+| 6 | **One-time repair** | Machines that auto-updated from **0.7.x** must run latest **Setup** once (not portable) |
+| 7 | **Smoke update** | Test machine: install N → quit → auto-update to N+1 → Launch profile (no ENOENT playwright) |
+
+**Silent install (replace existing Setup on a user PC):**
+
+```powershell
+# Close Stealth Browser Console first
+$setup = "E:\Dev\Tool\P0003-Stealth-Browser-Console\dist-desktop\Stealth-Browser-Console-Setup-0.10.8.exe"
+Start-Process $setup -ArgumentList "/CURRENTUSER","/S" -Wait
+```
+
+**Runtime guard (packaged):** startup dialog + block profile launch if unpacked modules missing; link opens latest GitHub Release.
 
 ### Rollback to known-good (v0.7.7+)
 
