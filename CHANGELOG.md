@@ -1,5 +1,18 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-05 — v0.10.2 — Surfshark brand icon + Gmail 2FA Authenticator path
+
+- Version: `0.10.2`
+- Timestamp: 2026-07-05 03:15 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Surfshark column header** — `HubBrandIcon` registry fallback (`/assets/brand-icons/surfshark.png`) when extension IPC icon missing/broken.
+- **WF00011 gmail-login** — push-notification 2FA: auto **Try another way** → **Google Authenticator** → TOTP input (`script-steps.cjs`).
+- **Hub-ui sync** — `P0027` added to default `sync-hub-ui-vendor` targets; `HubDirectoryBrandNameCell` fan-out.
+
 ## 2026-07-05 — v0.10.1 — Run History registry labels + 2-line layout
 
 - Version: `0.10.1`

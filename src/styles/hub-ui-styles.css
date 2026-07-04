@@ -6,6 +6,9 @@
 @import "../../vendor/hub-ui/src/styles/hub-directory-toolbar-selection.css";
 @import "../../vendor/hub-ui/src/styles/hub-app-tab-header.css";
 @import "../../vendor/hub-ui/src/styles/hub-users-table.css";
+@import "../../vendor/hub-ui/src/styles/hub-filter-brand-icon.css";
+@import "../../vendor/hub-ui/src/styles/hub-chrome-brand-icon.css";
+@import "../../vendor/hub-ui/src/styles/hub-table-controls.css";
 @import "../../vendor/hub-ui/src/styles/hub-runtime-rail.css";
 @import "./hub-directory-table.css";
 @import "../theme/hub-users-table.css";

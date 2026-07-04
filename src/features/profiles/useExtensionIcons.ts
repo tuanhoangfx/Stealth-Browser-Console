@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { fetchExtensionIcon } from "../../api";
 import { isStealthDesktop } from "../../api";
+import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
+import { resolveHubBrandIcon } from "@tool-workspace/hub-ui";
 
 const COOKIE_BRIDGE_STORE_ID = "kaaadageakdandpobcofplmfbjfjabdk";
 const SURFSHARK_STORE_ID = "ailoabdmgclmfmhdagmlohpjlbpffblp";
+const SURFSHARK_BRAND_SRC = resolveHubBrandAssetSrc(resolveHubBrandIcon("surfshark")?.src ?? "");
 
 export type ExtensionIconMap = Record<"e0001" | "surfshark", string | null>;
 
@@ -21,7 +24,7 @@ export function useExtensionIcons(): ExtensionIconMap {
     if (fetched) return;
     if (!isStealthDesktop()) {
       fetched = true;
-      setIcons({ e0001: null, surfshark: null });
+      setIcons({ e0001: null, surfshark: SURFSHARK_BRAND_SRC || null });
       return;
     }
     fetched = true;
@@ -30,7 +33,8 @@ export function useExtensionIcons(): ExtensionIconMap {
       fetchExtensionIcon(SURFSHARK_STORE_ID, 48),
     ]).then(([e0001Result, surfsharkResult]) => {
       cache.e0001 = e0001Result.status === "fulfilled" ? e0001Result.value : null;
-      cache.surfshark = surfsharkResult.status === "fulfilled" ? surfsharkResult.value : null;
+      const surfsharkIpc = surfsharkResult.status === "fulfilled" ? surfsharkResult.value : null;
+      cache.surfshark = surfsharkIpc || SURFSHARK_BRAND_SRC || null;
       setIcons({ ...cache });
     });
   }, []);

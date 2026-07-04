@@ -4,6 +4,7 @@ import {
   buildDirectoryColumns,
   hubDirectoryTableClass,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
+  resolveHubBrandIcon,
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -13,6 +14,7 @@ import {
   STEALTH_PROFILE_COLUMN_META as STEALTH_PROFILE_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
+import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import {
   profileDirectoryColumnPrefs,
   readProfileDirectoryColumns,
@@ -22,26 +24,31 @@ import { renderStealthProfileDirectoryBodyCell } from "./stealth-profile-directo
 import { sortableProfileValue } from "./stealth-profile-sort";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
+const SURFSHARK_BRAND_SRC = resolveHubBrandAssetSrc(resolveHubBrandIcon("surfshark")?.src ?? "");
+
 function makeExtIcon(src: string | null, kind: "e0001" | "surfshark") {
   const Fallback = kind === "e0001" ? Cookie : Shield;
   const fallbackClass = kind === "e0001" ? "text-orange-300" : "text-cyan-300";
   const label = kind === "e0001" ? "E0001" : "Surfshark";
-  if (!src) {
+  const brandSrc = kind === "surfshark" ? SURFSHARK_BRAND_SRC : null;
+  const effectiveSrc = src || brandSrc;
+  if (!effectiveSrc) {
     return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
       return <Fallback size={size} className={`shrink-0 ${fallbackClass} ${className}`} aria-hidden />;
     };
   }
   return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
     const [broken, setBroken] = useState(false);
-    if (broken) {
+    if (broken && !brandSrc) {
       return <Fallback size={size} className={`shrink-0 ${fallbackClass} ${className}`} aria-hidden />;
     }
+    const imgSrc = broken && brandSrc ? brandSrc : effectiveSrc;
     return (
       <img
-        src={src}
+        src={imgSrc}
         width={size}
         height={size}
-        className={`inline-block shrink-0 ${className}`}
+        className={`inline-block shrink-0 object-contain ${className}`}
         alt={label}
         draggable={false}
         onError={() => setBroken(true)}

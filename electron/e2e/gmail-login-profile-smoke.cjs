@@ -13,17 +13,8 @@ const { diagnoseMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
 
 const profileCode = process.argv[2] || process.env.STEALTH_PROFILE_CODE || "0098";
 
-const steps = [
-  { kind: "navigate", name: "Open Gmail sign-in", value: "https://accounts.google.com/signin", timeoutMs: 60000, enabled: true },
-  { kind: "wait", name: "Wait for email input", selector: '#identifierId, input[type="email"]', timeoutMs: 15000, enabled: true },
-  { kind: "type", name: "Type email", selector: '#identifierId, input[type="email"]', value: "{{gmailEmail}}", timeoutMs: 10000, enabled: true },
-  { kind: "click", name: "Click Next (email)", selector: '#identifierNext button, #identifierNext, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 10000, enabled: true },
-  { kind: "wait", name: "Wait for page transition", timeoutMs: 8000, enabled: true },
-  { kind: "delay", name: "Wait for password page", value: "2000", timeoutMs: 5000, enabled: true },
-  { kind: "wait", name: "Wait for password input", selector: 'input[name="Passwd"]', timeoutMs: 30000, enabled: true },
-  { kind: "type", name: "Type password", selector: 'input[name="Passwd"]', value: "{{gmailPassword}}", timeoutMs: 10000, enabled: true },
-  { kind: "click", name: "Click Next (password)", selector: '#passwordNext button, #passwordNext, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 10000, enabled: true },
-];
+const workflowJson = path.join(__dirname, "../../public/workflow-store/workflows/gmail-login.json");
+const steps = JSON.parse(fs.readFileSync(workflowJson, "utf8")).steps;
 
 async function main() {
   if (process.env.STEALTH_SKIP_LIVE === "1") {
@@ -80,6 +71,11 @@ async function main() {
 
     const typedEmail = (result.logs || []).some((l) => /Typed into.*identifierId|Typed into.*email/i.test(l.message));
     const typedPassword = (result.logs || []).some((l) => /Typed into.*Passwd/i.test(l.message));
+    const totpNavigated = (result.logs || []).some((l) =>
+      /Try another way.*clicked|Google Authenticator.*selected|TOTP input already visible/i.test(l.message),
+    );
+    const typedTotp = (result.logs || []).some((l) => /Typed into.*totpPin|Typed into.*tel/i.test(l.message));
+    const hasSecret = Boolean(diagnosis.credentials?.secret);
 
     if (!result.ok) {
       console.error("FAIL:", result.error || "automation failed");
@@ -89,8 +85,12 @@ async function main() {
       console.error("FAIL: email=", typedEmail, "password=", typedPassword);
       process.exit(1);
     }
+    if (hasSecret && !typedTotp) {
+      console.error("FAIL: TOTP secret present but code was not entered");
+      process.exit(1);
+    }
 
-    console.log(`PASS: ${profileCode} email+password`);
+    console.log(`PASS: ${profileCode} email+password${hasSecret ? "+2fa" : ""}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("gmail-login-profile-smoke:", message);

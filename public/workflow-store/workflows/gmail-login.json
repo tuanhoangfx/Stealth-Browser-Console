@@ -22,7 +22,7 @@
     { "id": "step-type-pwd", "kind": "type", "name": "Type password", "selector": "input[name=\"Passwd\"]", "value": "{{gmailPassword}}", "enabled": true, "timeoutMs": 10000 },
     { "id": "step-next-pwd", "kind": "click", "name": "Click Next (password)", "selector": "#passwordNext button, #passwordNext, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 10000 },
     { "id": "step-delay-2fa", "kind": "delay", "name": "Wait for 2FA or redirect", "value": "5000", "enabled": true, "timeoutMs": 8000 },
-    { "id": "step-wait-2fa", "kind": "wait", "name": "Wait for 2FA input (optional)", "selector": "input[type=\"tel\"][id=\"totpPin\"], input[name=\"totpPin\"], input[type=\"tel\"]", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-wait-2fa", "kind": "wait", "name": "Wait for 2FA input (optional)", "selector": "input[type=\"tel\"][id=\"totpPin\"], input[name=\"totpPin\"], input[type=\"tel\"]", "enabled": true, "timeoutMs": 20000 },
     { "id": "step-type-2fa", "kind": "type", "name": "Type TOTP code", "selector": "input[type=\"tel\"][id=\"totpPin\"], input[name=\"totpPin\"], input[type=\"tel\"]", "value": "{{gmailTotpCode}}", "enabled": true, "timeoutMs": 5000 },
     { "id": "step-next-2fa", "kind": "click", "name": "Click Next (2FA)", "selector": "#totpNext button, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 5000 },
     { "id": "step-delay-done", "kind": "delay", "name": "Wait for login complete", "value": "3000", "enabled": true, "timeoutMs": 5000 },

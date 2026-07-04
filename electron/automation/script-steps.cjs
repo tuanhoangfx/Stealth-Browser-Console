@@ -207,11 +207,113 @@ function stepSelector(step) {
   return String(step.selector || "").trim();
 }
 
+function isGoogleEmailStep(step) {
+  const sel = stepSelector(step).toLowerCase();
+  const val = String(step.value || "");
+  return sel.includes("identifierid") || sel.includes('type="email"') || val.includes("{{gmailEmail}}");
+}
+
+async function isGooglePasswordStepReady(page) {
+  return page
+    .locator('input[name="Passwd"]')
+    .first()
+    .isVisible({ timeout: 800 })
+    .catch(() => false);
+}
+
+async function isGoogleVisibleEmailInput(page) {
+  return page
+    .locator('input[type="email"]:visible, #identifierId:not([type="hidden"])')
+    .first()
+    .isVisible({ timeout: 800 })
+    .catch(() => false);
+}
+
 function isTotpRelated(step) {
   const val = String(step.value || "");
   const sel = String(step.selector || "");
   const name = String(step.name || "").toLowerCase();
   return val.includes("{{gmailTotpCode}}") || sel.includes("totpPin") || sel.includes("totp") || name.includes("2fa");
+}
+
+function isGoogleAuthenticatorTotpVisible(page) {
+  return page
+    .locator('input#totpPin, input[name="totpPin"], input[type="tel"][autocomplete="one-time-code"]')
+    .first()
+    .isVisible({ timeout: 500 })
+    .catch(() => false);
+}
+
+function googleChallengeKind(url) {
+  const href = String(url || "");
+  if (/signin\/rejected/i.test(href)) return "rejected";
+  if (/challenge\/selection/i.test(href)) return "selection";
+  if (/challenge\/dp/i.test(href)) return "push";
+  if (/challenge\/totp/i.test(href)) return "totp";
+  return "other";
+}
+
+/** Push-notification 2FA → Try another way → Google Authenticator TOTP input. */
+async function ensureGoogleAuthenticatorTotpScreen(page, logger) {
+  if (await isGoogleAuthenticatorTotpVisible(page)) {
+    logger.push("info", "Google Authenticator TOTP input already visible");
+    return true;
+  }
+
+  const deadline = Date.now() + 45_000;
+  let triedAnotherWay = false;
+  while (Date.now() < deadline) {
+    const kind = googleChallengeKind(page.url?.() || "");
+    if (kind === "rejected") {
+      throw new Error("Google sign-in rejected — complete verification manually, then re-run.");
+    }
+    if (await isGoogleAuthenticatorTotpVisible(page)) return true;
+
+    if (kind === "push" && !triedAnotherWay) {
+      const clicked = await clickFirst(
+        page,
+        "Try another way",
+        [
+          page.getByRole("button", { name: /try another way/i }),
+          page.getByRole("link", { name: /try another way/i }),
+          page.locator('text=/Try another way/i'),
+          page.locator('text=/Thử cách khác/i'),
+        ],
+        logger,
+        { optional: true, verb: "clicked" },
+      );
+      triedAnotherWay = clicked;
+      if (clicked) {
+        await settlePage(page, 5000);
+        continue;
+      }
+    }
+
+    if (kind === "selection" || kind === "other") {
+      const clickedAuthApp = await clickFirst(
+        page,
+        "Google Authenticator",
+        [
+          page.getByText(/Get a verification code from the Google Authenticator app/i),
+          page.getByText(/Get a verification code from your Google Authenticator app/i),
+          page.getByText(/Google Authenticator app/i),
+          page.locator('[data-challengetype="6"]'),
+          page.locator('div[role="link"]:has-text("Google Authenticator")'),
+          page.locator('li:has-text("Google Authenticator")'),
+        ],
+        logger,
+        { optional: true, verb: "selected" },
+      );
+      if (clickedAuthApp) {
+        await settlePage(page, 5000);
+        continue;
+      }
+    }
+
+    await settlePage(page, 1200);
+  }
+
+  return isGoogleAuthenticatorTotpVisible(page);
 }
 
 async function detectGoogleCaptcha(page) {
@@ -288,7 +390,7 @@ async function runScriptSteps(page, steps, logger, context) {
     logger.push("info", `Step ${index + 1}/${enabledSteps.length}: ${label}`);
 
     if (skip2fa && isTotpRelated(step)) {
-      logger.push("info", `Skipped (no TOTP secret): ${label}`);
+      logger.push("info", `Skipped (2FA unavailable): ${label}`);
       continue;
     }
 
@@ -309,13 +411,71 @@ async function runScriptSteps(page, steps, logger, context) {
     if (step.kind === "wait") {
       const selector = stepSelector(step);
       if (selector) {
+        if (isGoogleEmailStep(step)) {
+          const signinUrl = activePage.url?.() || "";
+          if (/challenge\/pwd/i.test(signinUrl) && !(await isGoogleVisibleEmailInput(activePage))) {
+            logger.push("info", "On password challenge — skip email wait");
+            continue;
+          }
+          if (!(await isGoogleVisibleEmailInput(activePage))) {
+            if (await isGooglePasswordStepReady(activePage)) {
+              logger.push("info", "Google email prefilled — continuing to password");
+              continue;
+            }
+            const advanced = await clickFirst(
+              activePage,
+              "Confirm identifier",
+              [
+                activePage.getByRole("button", { name: /^next$/i }),
+                activePage.getByRole("button", { name: /tiếp theo/i }),
+                activePage.locator("#identifierNext button"),
+              ],
+              logger,
+              { optional: true, verb: "clicked" },
+            );
+            if (advanced) {
+              await settlePage(activePage, 4000);
+              const urlAfter = activePage.url?.() || "";
+              if (/challenge\/pwd/i.test(urlAfter)) {
+                logger.push("info", "On password challenge after confirm — skip email wait");
+                continue;
+              }
+              if (await isGooglePasswordStepReady(activePage)) {
+                logger.push("info", "Advanced from confirmidentifier to password");
+                continue;
+              }
+            }
+          }
+        }
+        if (isGoogleEmailStep(step)) {
+          const lateUrl = activePage.url?.() || "";
+          if (/challenge\/pwd/i.test(lateUrl) && !(await isGoogleVisibleEmailInput(activePage))) {
+            logger.push("info", "On password challenge — skip email wait");
+            continue;
+          }
+        }
+        if (isTotpRelated(step) && !skip2fa) {
+          await ensureGoogleAuthenticatorTotpScreen(activePage, logger);
+        }
         try {
           await waitForVisibleSelector(activePage, selector, timeout || 15000, logger, context);
         } catch (waitError) {
           if (isTotpRelated(step)) {
-            logger.push("info", `2FA selector not found — skipping remaining TOTP steps: ${selector}`);
-            skip2fa = true;
-            continue;
+            const navigated = await ensureGoogleAuthenticatorTotpScreen(activePage, logger);
+            if (navigated) {
+              try {
+                await waitForVisibleSelector(activePage, selector, timeout || 15000, logger, context);
+                continue;
+              } catch {
+                // fall through
+              }
+            }
+            if (!context.mailCredentials?.secret) {
+              logger.push("info", `2FA selector not found — skipping remaining TOTP steps: ${selector}`);
+              skip2fa = true;
+              continue;
+            }
+            throw waitError;
           }
           throw waitError;
         }
@@ -329,6 +489,15 @@ async function runScriptSteps(page, steps, logger, context) {
     if (step.kind === "click") {
       const selector = stepSelector(step);
       if (!selector) throw new Error(`${label} is missing a selector.`);
+      if (
+        isGoogleEmailStep(step) &&
+        /identifierNext|next.*email/i.test(`${selector} ${label}`) &&
+        !(await isGoogleVisibleEmailInput(activePage)) &&
+        (await isGooglePasswordStepReady(activePage))
+      ) {
+        logger.push("info", "Skipped email Next — already on password step");
+        continue;
+      }
       try {
         const target = activePage.locator(selector).first();
         await target.waitFor({ state: "visible", timeout: timeout || 10000 });
@@ -357,6 +526,12 @@ async function runScriptSteps(page, steps, logger, context) {
     if (step.kind === "type") {
       const selector = stepSelector(step);
       if (!selector) throw new Error(`${label} is missing a selector.`);
+      if (isGoogleEmailStep(step) && !(await isGoogleVisibleEmailInput(activePage))) {
+        if (await isGooglePasswordStepReady(activePage)) {
+          logger.push("info", "Skipped type email — identifier already confirmed");
+          continue;
+        }
+      }
       const value = assertResolvedStepValue(resolveStepValue(step.value, context), label);
       try {
         const target = activePage.locator(selector).first();

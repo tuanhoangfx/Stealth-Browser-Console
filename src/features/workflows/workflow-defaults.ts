@@ -297,7 +297,7 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
       createStep("type", { name: "Type password", selector: 'input[name="Passwd"]', value: "{{gmailPassword}}", timeoutMs: 10000 }),
       createStep("click", { name: "Click Next (password)", selector: '#passwordNext button, #passwordNext, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 10000 }),
       createStep("delay", { name: "Wait for 2FA or redirect", value: "5000", timeoutMs: 8000 }),
-      createStep("wait", { name: "Wait for 2FA input (optional)", selector: 'input[type="tel"][id="totpPin"], input[name="totpPin"], input[type="tel"]', timeoutMs: 5000, enabled: true }),
+      createStep("wait", { name: "Wait for 2FA input (optional)", selector: 'input[type="tel"][id="totpPin"], input[name="totpPin"], input[type="tel"]', timeoutMs: 20000, enabled: true }),
       createStep("type", { name: "Type TOTP code", selector: 'input[type="tel"][id="totpPin"], input[name="totpPin"], input[type="tel"]', value: "{{gmailTotpCode}}", timeoutMs: 5000, enabled: true }),
       createStep("click", { name: "Click Next (2FA)", selector: '#totpNext button, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 5000, enabled: true }),
       createStep("delay", { name: "Wait for login complete", value: "3000", timeoutMs: 5000 }),
