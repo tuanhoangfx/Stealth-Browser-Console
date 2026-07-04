@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "label": "2026-06-26-stable",
-  "version": "0.7.7",
-  "gitCommit": "53d0dfa",
-  "gitTag": "v0.7.7-stable",
-  "notes": "Packaged auth CSP, login icon 56px + hub-auth-brand-icon glow, Surfshark purge, fast launch. Run snapshot-known-good after commit+tag to pin commit hash.",
+  "label": "2026-07-05-v0.10.8-stable",
+  "version": "0.10.8",
+  "gitCommit": null,
+  "gitTag": "v0.10.8-stable",
+  "notes": "Stable auto-update v0.10.8: NSIS customInit clears app.asar.unpacked, runtime check, full NSIS payload, verify-packaged-unpacked gate.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-0.7.7.exe",
+    "installer": "Stealth-Browser-Console-Setup-0.10.8.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "q0mpn6q8BwEunhSMOsRiqYW1R9QOURnN09e86/C674AoF7k1ZeIeXPhiCNI7ux6q5hn4ivjWMCwD3toXvYVFaA==",
-    "capturedAt": "2026-06-26T14:40:31.582Z"
+    "sha512": "SJ53m9hbH6cXXVQO77IgoQQNlqKGNqHnzEgR+E3hnVP5nt12Ki6NBkhME8GXuJIuLAsOrEqeOECvAFghlnnePA==",
+    "capturedAt": "2026-07-04T23:28:43.884Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
