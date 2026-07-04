@@ -41,7 +41,7 @@ if ($Version.Trim() -and $Bump.Trim()) {
 Push-Location $RepoRoot
 try {
   if (-not $SkipPreRelease) {
-    Invoke-Step "Pre-release (check-only — does not stop dev/exe)" {
+    Invoke-Step "Pre-release (check-only - does not stop dev/exe)" {
       powershell -ExecutionPolicy Bypass -File scripts/pre-release-desktop.ps1
     }
   }

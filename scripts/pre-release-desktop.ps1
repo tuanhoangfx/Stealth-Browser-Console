@@ -8,7 +8,7 @@ $distDesktop = Join-Path $repoRoot "dist-desktop"
 $winUnpacked = Join-Path $distDesktop "win-unpacked"
 $winPending = Join-Path $distDesktop "win-unpacked-pending"
 
-Write-Host "pre-release: check-only — will NOT stop Stealth dev or packaged exe."
+Write-Host "pre-release: check-only - will NOT stop Stealth dev or packaged exe."
 
 $running = @()
 foreach ($name in @("Stealth Browser Console", "electron", "node")) {
