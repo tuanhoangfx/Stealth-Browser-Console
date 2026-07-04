@@ -24,9 +24,3 @@
   font-size: 12px;
   color: #fda4af;
 }
-
-.stealth-workflow-rail__store-link {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 10px 0;
-}

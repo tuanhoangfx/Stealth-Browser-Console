@@ -1,5 +1,30 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-04 — v0.9.1 — Console channel badges (Todo pill parity)
+
+- Version: `0.9.1`
+- Timestamp: 2026-07-04 21:15 (UTC+7)
+- Type: Minor
+- Status: Dev
+
+### Changes
+
+- **Console badges** — `StealthConsoleChannelBadge` (icon + Title Case label e.g. **Profile**); CSS parity P0020 `TodoHubBadge` priority pills; replaces uppercase micro-tags.
+
+## 2026-07-04 — v0.8.2 — Store toolbar + runtime rail parity
+
+- Version: `0.8.2`
+- Timestamp: 2026-07-04 21:00 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Store toolbar** — `HubDirectoryToolbarSelection` in `searchTrailing` (0/N beside search); row-2 right = bulk actions only.
+- **Source column** — `HubDirectoryIconCell` + brand icon (parity Platform column).
+- **Workflow rail** — removed redundant Store label button; Store via sidebar nav only.
+- **Run History + Console** — P0027 parity (`StealthRuntimeRailPanels`: channel tags, history list, replay on click).
+
 ## 2026-07-04 — v0.8.1 — Store brand icons + vendor hub-ui sync fix
 
 - Version: `0.8.1`

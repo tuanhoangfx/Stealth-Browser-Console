@@ -110,6 +110,13 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
             onViewModeChange={onViewModeChange}
             timeRange={timeRange}
             loading={loading}
+            searchTrailing={
+              <HubDirectoryToolbarSelection
+                visibleCount={filteredEntries.length}
+                selectedCount={bulkSelectedIds.size}
+                noun="workflows"
+              />
+            }
             row2Actions={
               <HubDirectoryBulkActionBar
                 selectAll={
@@ -125,13 +132,6 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
                 }
               >
                 {bulkActions}
-                {viewMode === "table" ? (
-                  <HubDirectoryToolbarSelection
-                    visibleCount={filteredEntries.length}
-                    selectedCount={bulkSelectedIds.size}
-                    noun="workflows"
-                  />
-                ) : null}
               </HubDirectoryBulkActionBar>
             }
           />

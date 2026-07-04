@@ -20,7 +20,7 @@ import { workflowPlatformIconFor } from "./workflow-display";
 import { workflowStoreUpdatedMs } from "./workflow-store-meta";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 import type { WorkflowStoreSortKey } from "./WorkflowStoreDirectoryTable";
-import { WorkflowStoreSourceChip } from "./workflow-store-source-brand";
+import { WorkflowStoreSourceDirectoryCell } from "./workflow-store-source-brand";
 
 function renderStoreUpdatedCell(entry: WorkflowStoreEntry) {
   const ms = workflowStoreUpdatedMs(entry);
@@ -113,7 +113,7 @@ export function renderWorkflowStoreDirectoryBodyCell(
     case "source":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <WorkflowStoreSourceChip source={entry.source} />
+          <WorkflowStoreSourceDirectoryCell source={entry.source} />
         </DirectoryTableBodyCell>
       );
     case "updated":

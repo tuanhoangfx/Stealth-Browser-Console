@@ -21,7 +21,7 @@ export type WorkflowStoreFilterPaneProps = {
   tablePageSize: number;
   onTablePageSizeChange?: (size: number) => void;
   row2Actions?: ReactNode;
-  row2Trailing?: ReactNode;
+  searchTrailing?: ReactNode;
   viewMode: HubViewMode;
   onViewModeChange: (mode: HubViewMode) => void;
   timeRange: TimeRange;
@@ -39,7 +39,7 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
   tablePageSize,
   onTablePageSizeChange,
   row2Actions,
-  row2Trailing,
+  searchTrailing,
   viewMode,
   onViewModeChange,
   timeRange,
@@ -56,6 +56,7 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
       onQueryChange={setSearch}
       values={filterValues}
       onValuesChange={onFilterValuesChange}
+      searchTrailing={searchTrailing}
       toolbar={
         <DirectorySearchToolbar
           viewMode={viewMode}
@@ -67,7 +68,7 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
           showTablePageSize={isTable}
           tablePageSize={tablePageSize}
           onTablePageSizeChange={onTablePageSizeChange}
-          showResultCount={viewMode === "card"}
+          showResultCount={false}
           countIcon={Store}
           shown={filteredCount}
           total={totalCount}
@@ -77,7 +78,6 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
         />
       }
       row2Actions={row2Actions}
-      row2Trailing={row2Trailing}
     />
   );
 });

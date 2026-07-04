@@ -1,5 +1,12 @@
 import type { HubBrandIconId } from "@tool-workspace/hub-ui";
-import { HubBrandIcon, MetricBadge, resolveLocalOnlyIcon } from "@tool-workspace/hub-ui";
+import {
+  HubBrandIcon,
+  HubDirectoryIconCell,
+  MetricBadge,
+  resolveHubBrandIcon,
+  resolveLocalOnlyIcon,
+} from "@tool-workspace/hub-ui";
+import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import type { WorkflowStoreSource } from "./workflow-store-types";
 
 /**
@@ -26,6 +33,22 @@ export function WorkflowStoreSourceChip({ source }: { source: WorkflowStoreSourc
       <HubBrandIcon brandId={brandId} size={11} context="filter" title={label} />
       {label}
     </span>
+  );
+}
+
+/** Directory table Source column — HubDirectoryIconCell parity with Platform column. */
+export function WorkflowStoreSourceDirectoryCell({ source }: { source: WorkflowStoreSource }) {
+  const brandId = WORKFLOW_STORE_SOURCE_BRAND_ID[source];
+  const brand = resolveHubBrandIcon(brandId);
+  const label = workflowStoreSourceLabel(source);
+  const imageSrc = brand?.src ? resolveHubBrandAssetSrc(brand.src) : "";
+  return (
+    <HubDirectoryIconCell
+      imageSrc={imageSrc || undefined}
+      imageShell={brand?.shell}
+      label={label}
+      title={source === "drive" ? "Drive manifest (static JSON)" : "Hub Supabase catalog"}
+    />
   );
 }
 
