@@ -91,7 +91,7 @@
   },
   "manifestUpdatedAt": "2026-07-04T11:44:06.900Z",
   "release": {
-    "version": "0.9.1",
+    "version": "0.10.1",
     "updatedAt": "2026-07-04",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {

@@ -277,6 +277,12 @@ export {
   type HubUsersStatusTone,
 } from "./shell/HubUsersStatusLabel";
 export { HubDirectoryIconCell, type HubDirectoryIconCellProps } from "./shell/HubDirectoryIconCell";
+export {
+  HubDirectoryBrandNameCell,
+  HUB_DIRECTORY_TABLE_BRAND_ICON_PX,
+  type HubDirectoryBrandNameCellProps,
+} from "./shell/HubDirectoryBrandNameCell";
+export { buildHubBrandFilterOption, type HubBrandFilterIcon } from "./lib/build-hub-brand-filter-option";
 export { HubDirectoryToolBadge, type HubDirectoryToolBadgeProps } from "./shell/HubDirectoryToolBadge";
 export {
   HubDirectoryMetricBadge,
@@ -621,6 +627,20 @@ export {
   type HubTableColumnRole,
 } from "./table/hub-table-column-meta";
 export { HubPanel } from "./content/HubPanel";
+export { HubRuntimeChannelBadge, type HubRuntimeChannelBadgeProps } from "./shell/HubRuntimeChannelBadge";
+export {
+  HubRuntimeConsoleTerm,
+  HubRuntimeConsoleLine,
+  HubRuntimeConsoleDuration,
+} from "./content/HubRuntimeConsoleTerm";
+export {
+  HubRuntimeHistoryList,
+  type HubRuntimeHistoryRow,
+} from "./content/HubRuntimeHistoryList";
+export {
+  formatHubRuntimeLogTime,
+  hubRuntimeConsoleLineClass,
+} from "./lib/hub-runtime-format";
 export { HubDirectoryCard } from "./content/HubDirectoryCard";
 export {
   HubDirectoryCardShell,

@@ -1,5 +1,41 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-05 — v0.10.1 — Run History registry labels + 2-line layout
+
+- Version: `0.10.1`
+- Timestamp: 2026-07-05 02:55 (UTC+7)
+- Type: Minor
+- Status: Dev
+
+### Changes
+
+- **Run History 2-line layout** — line 1: profile ID + browser + task label + status trailing; line 2: timestamp + duration (`HubRuntimeHistoryList` SSOT).
+- **Workflow registry labels** — `resolveWorkflowRunLabel` maps workflow id → `WorkflowConfig.name` (e.g. `gmail-login` → `Gmail Login`).
+
+## 2026-07-05 — v0.9.3 — Run History 2-line layout
+
+- Version: `0.9.3`
+- Timestamp: 2026-07-05 01:35 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Run History** — 2-line rows: line 1 = profile ID + browser name + task label, status trailing right; line 2 = timestamp + duration.
+- **Hub SSOT** — `HubRuntimeHistoryList` API `primaryRow` / `primaryTrailing` / `metaRow`; `formatRunHistoryPrimaryLabel` helper.
+
+## 2026-07-04 — v0.9.2 — Hub runtime rail SSOT (Console + Run History)
+
+- Version: `0.9.2`
+- Timestamp: 2026-07-04 21:30 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Hub runtime rail SSOT** — `HubRuntimeChannelBadge`, `HubRuntimeConsoleTerm`, `HubRuntimeHistoryList` from `packages/hub-ui`; removed local `stealth-runtime-rail.css`.
+- **P0027 parity** — shared pill badges + history list contract; fan-out via `sync-hub-ui-vendor.cjs`.
+
 ## 2026-07-04 — v0.9.1 — Console channel badges (Todo pill parity)
 
 - Version: `0.9.1`

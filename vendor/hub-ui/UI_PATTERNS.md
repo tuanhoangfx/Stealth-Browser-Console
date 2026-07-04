@@ -764,6 +764,31 @@ Do **not** fork select column width per tool — use shell + meta helpers only.
 
 ---
 
+## Workflow runtime rail — Console + Run History (SSOT)
+
+**Canonical:** `packages/hub-ui` — `HubRuntimeChannelBadge`, `HubRuntimeConsoleTerm`, `HubRuntimeConsoleLine`, `HubRuntimeHistoryList`, `hub-runtime-rail.css`.
+
+| Piece | Role |
+|-------|------|
+| `HubRuntimeChannelBadge` | Pill icon + **Title Case** label — parity P0020 `TodoHubBadge` priority pills |
+| `HubRuntimeConsoleTerm` | Legend row + scrollable mono body |
+| `HubRuntimeConsoleLine` | Single log line — time, channel badge, source, message, optional duration |
+| `HubRuntimeHistoryList` | Clickable completed-run rows — **2 lines**: primary (ID · name · task + status trailing) + meta (time · duration) |
+| `formatHubRuntimeLogTime` / `hubRuntimeConsoleLineClass` | Shared log formatting |
+
+**Product channel registries (local):**
+
+| Tool | Channels (`variant` CSS modifier) |
+|------|-----------------------------------|
+| P0003 | `workflow`, `profile`, `backup`, `system` |
+| P0027 | `worker`, `api`, `n8n`, `job`, `ui`, `system` |
+
+**Import CSS:** `@import ".../hub-runtime-rail.css"` in `hub-ui-styles.css` (vendor path).
+
+**Do not** duplicate `.stealth-term*` / `.reup-term__tag` — use hub-runtime classes only.
+
+---
+
 ## Platform brand icons vs status dots (SSOT)
 
 Khi entity / catalog source có **icon chuẩn** trong `hub-brand-icons.registry.json`, dùng **`HubBrandIcon` chip** (`WorkflowStoreSourceChip`, filter dropdown, directory cards) — **không** dùng nhãn trạng thái màu (`HubUsersStatusLabel` dot) cho các nền tảng đó.

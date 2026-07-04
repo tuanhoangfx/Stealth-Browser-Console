@@ -10,7 +10,6 @@ import "./theme/p0008-globals.css";
 import "./theme/hub-appearance.css";
 import "./styles.css";
 import "./theme/stealth-profile-layout.css";
-import "./theme/stealth-runtime-rail.css";
 import "./theme/stealth-hub-shell.css";
 import "./theme/stealth-tool-visual.css";
 import "./theme/stealth-hub-sidebar.css";
