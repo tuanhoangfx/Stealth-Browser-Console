@@ -1,5 +1,28 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-04 — v0.10.7 — Electron dev reload
+
+- Version: `0.10.7`
+- Timestamp: 2026-07-04 05:31 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-05 — v0.10.6 — Silent NSIS auto-update installer
+
+- Version: `0.10.6`
+- Timestamp: 2026-07-05 05:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **NSIS oneClick** — silent install on quit for electron-updater (no installer wizard on patch updates).
+- **Upload script** — `run-electron-package.mjs` uploads only current-version Setup/blockmap/latest.yml; prunes stale local + GitHub release assets.
+
 ## 2026-07-05 — v0.10.5 — Fix Database not initialized on packaged shutdown
 
 - Version: `0.10.5`

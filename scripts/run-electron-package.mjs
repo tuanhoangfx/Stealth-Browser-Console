@@ -98,19 +98,40 @@ function copyDirBestEffort(src, dest) {
   copyDir(src, dest);
 }
 
+function pruneStaleDesktopArtifacts(outputDir, version) {
+  if (!fs.existsSync(outputDir)) return;
+  for (const name of fs.readdirSync(outputDir)) {
+    const full = path.join(outputDir, name);
+    if (!fs.statSync(full).isFile()) continue;
+    if (name === "latest.yml") continue;
+    const staleSetup =
+      /^Stealth-Browser-Console-Setup-/.test(name) && !name.includes(`-${version}.`);
+    const stalePortable =
+      /^Stealth-Browser-Console-Portable-/.test(name) && !name.includes(`-${version}.`);
+    if (staleSetup || stalePortable) {
+      fs.unlinkSync(full);
+      console.log(`run-electron-package: removed stale artifact ${name}`);
+    }
+  }
+}
+
 function promoteStagingToProductOutput(stagingOutput, productOutput, version) {
   fs.mkdirSync(productOutput, { recursive: true });
   const pendingUnpacked = path.join(productOutput, "win-unpacked-pending");
   const targetUnpacked = path.join(productOutput, "win-unpacked");
   const marker = path.join(productOutput, "PENDING_UNPACKED.json");
 
-  for (const name of fs.readdirSync(stagingOutput)) {
+  const setupExe = `Stealth-Browser-Console-Setup-${version}.exe`;
+  const setupBlockmap = `${setupExe}.blockmap`;
+
+  for (const name of [setupExe, setupBlockmap, "latest.yml"]) {
     const src = path.join(stagingOutput, name);
-    if (!fs.statSync(src).isFile()) continue;
-    if (/^Stealth-Browser-Console-Setup-.*\.exe$/i.test(name) || name === "latest.yml" || /\.blockmap$/i.test(name)) {
+    if (fs.existsSync(src) && fs.statSync(src).isFile()) {
       copyFileWithRetry(src, path.join(productOutput, name));
     }
   }
+
+  pruneStaleDesktopArtifacts(productOutput, version);
 
   const stagedUnpacked = path.join(stagingOutput, "win-unpacked");
   if (!fs.existsSync(stagedUnpacked)) return;
@@ -153,29 +174,57 @@ function distFresh() {
   return built >= newestSrc;
 }
 
-function uploadMissingAssets(tag, files) {
+function removeStaleReleaseAssets(tag, version) {
   const existing = spawnSync("gh", ["release", "view", tag, "--json", "assets"], {
     encoding: "utf8",
     shell: false,
     cwd: root,
   });
-  let names = [];
-  if (existing.status === 0) {
-    try {
-      names = JSON.parse(existing.stdout).assets?.map((a) => a.name) || [];
-    } catch {
-      names = [];
-    }
+  if (existing.status !== 0) return;
+  let assets = [];
+  try {
+    assets = JSON.parse(existing.stdout).assets || [];
+  } catch {
+    return;
   }
-  const missing = files.filter((f) => fs.existsSync(f) && !names.includes(path.basename(f)));
-  if (missing.length === 0) return;
-  console.log(`\n==> gh release upload ${tag} (${missing.length} missing assets)`);
-  const res = spawnSync("gh", ["release", "upload", tag, ...missing, "--clobber"], {
+  const keep = new Set([
+    `Stealth-Browser-Console-Setup-${version}.exe`,
+    `Stealth-Browser-Console-Setup-${version}.exe.blockmap`,
+    `Stealth-Browser-Console-Portable-${version}.exe`,
+    "latest.yml",
+  ]);
+  for (const asset of assets) {
+    if (keep.has(asset.name)) continue;
+    const stale =
+      /^Stealth-Browser-Console-Setup-.*\.(exe|blockmap)$/i.test(asset.name) ||
+      /^Stealth-Browser-Console-Portable-.*\.exe$/i.test(asset.name);
+    if (!stale) continue;
+    const id = asset.id || asset.apiUrl?.split("/").pop();
+    if (!id) continue;
+    console.log(`run-electron-package: remove stale release asset ${asset.name}`);
+    spawnSync("gh", ["api", "-X", "DELETE", `repos/tuanhoangfx/Stealth-Browser-Console/releases/assets/${id}`], {
+      cwd: root,
+      stdio: "inherit",
+      shell: false,
+    });
+  }
+}
+
+function uploadReleaseAssets(tag, version, files) {
+  const present = files.filter((f) => fs.existsSync(f));
+  if (present.length === 0) return;
+  removeStaleReleaseAssets(tag, version);
+  console.log(`\n==> gh release upload ${tag} (${present.length} assets)`);
+  const res = spawnSync("gh", ["release", "upload", tag, ...present, "--clobber"], {
     cwd: root,
     stdio: "inherit",
     shell: false,
   });
   if (res.status !== 0) process.exit(res.status ?? 1);
+}
+
+function uploadMissingAssets(tag, files, version) {
+  uploadReleaseAssets(tag, version, files);
 }
 
 function ensureGitHubRelease(tag, version) {
@@ -194,16 +243,17 @@ function ensureGitHubRelease(tag, version) {
   if (res.status !== 0) process.exit(res.status ?? 1);
 }
 
-function collectPublishArtifacts(outputDir, withPortableFlag) {
+function collectPublishArtifacts(outputDir, version, withPortableFlag) {
   const files = [];
-  if (!fs.existsSync(outputDir)) return files;
-  for (const name of fs.readdirSync(outputDir)) {
-    const full = path.join(outputDir, name);
-    if (!fs.statSync(full).isFile()) continue;
-    if (name === "latest.yml") files.push(full);
-    if (/^Stealth-Browser-Console-Setup-.*\.exe$/i.test(name)) files.push(full);
-    if (/^Stealth-Browser-Console-Setup-.*\.exe\.blockmap$/i.test(name)) files.push(full);
-    if (withPortableFlag && /^Stealth-Browser-Console-Portable-.*\.exe$/i.test(name)) files.push(full);
+  const setup = path.join(outputDir, `Stealth-Browser-Console-Setup-${version}.exe`);
+  const blockmap = `${setup}.blockmap`;
+  const latest = path.join(outputDir, "latest.yml");
+  if (fs.existsSync(setup)) files.push(setup);
+  if (fs.existsSync(blockmap)) files.push(blockmap);
+  if (fs.existsSync(latest)) files.push(latest);
+  if (withPortableFlag) {
+    const portable = path.join(outputDir, `Stealth-Browser-Console-Portable-${version}.exe`);
+    if (fs.existsSync(portable)) files.push(portable);
   }
   return files;
 }
@@ -258,31 +308,27 @@ rmDir(stagingOutput);
 
 const tag = `v${version}`;
 
-const setup = fs
-  .readdirSync(productOutput)
-  .find((name) => name.startsWith("Stealth-Browser-Console-Setup-") && name.endsWith(".exe"));
+const setup = path.join(productOutput, `Stealth-Browser-Console-Setup-${version}.exe`);
 const portable = withPortable
-  ? fs.readdirSync(productOutput).find((name) => name.startsWith("Stealth-Browser-Console-Portable-") && name.endsWith(".exe"))
+  ? path.join(productOutput, `Stealth-Browser-Console-Portable-${version}.exe`)
   : null;
 const latestYml = path.join(productOutput, "latest.yml");
 
-if (setup) {
-  const full = path.join(productOutput, setup);
-  const mb = (fs.statSync(full).size / (1024 * 1024)).toFixed(1);
-  console.log(`\nDesktop installer:\n  ${full}\n  (${mb} MB)`);
+if (fs.existsSync(setup)) {
+  const mb = (fs.statSync(setup).size / (1024 * 1024)).toFixed(1);
+  console.log(`\nDesktop installer:\n  ${setup}\n  (${mb} MB)`);
 }
-if (portable) {
-  const full = path.join(productOutput, portable);
-  const mb = (fs.statSync(full).size / (1024 * 1024)).toFixed(1);
-  console.log(`Portable (no admin):\n  ${full}\n  (${mb} MB)\n`);
-} else if (setup) {
+if (portable && fs.existsSync(portable)) {
+  const mb = (fs.statSync(portable).size / (1024 * 1024)).toFixed(1);
+  console.log(`Portable (no admin):\n  ${portable}\n  (${mb} MB)\n`);
+} else if (fs.existsSync(setup)) {
   console.log("");
 }
 
 if (publish === "always") {
-  const uploadFiles = collectPublishArtifacts(productOutput, withPortable);
+  const uploadFiles = collectPublishArtifacts(productOutput, version, withPortable);
   ensureGitHubRelease(tag, version);
-  uploadMissingAssets(tag, uploadFiles);
+  uploadMissingAssets(tag, uploadFiles, version);
   runNodeScript("scripts/dedupe-github-releases.mjs", ["--tag", tag]);
 
   const verifyArgs = ["--tag", tag];

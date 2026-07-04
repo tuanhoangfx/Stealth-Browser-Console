@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.10.5",
+  "version": "0.10.7",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -124,9 +124,9 @@
     "nsis": {
       "installerIcon": "build/icons/app.ico",
       "uninstallerIcon": "build/icons/app.ico",
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },

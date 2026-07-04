@@ -89,9 +89,9 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-07-04T22:02:25.439Z",
+  "manifestUpdatedAt": "2026-07-04T22:31:46.686Z",
   "release": {
-    "version": "0.10.5",
+    "version": "0.10.7",
     "updatedAt": "2026-07-04",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {
@@ -115,6 +115,6 @@
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
       "build": "corepack pnpm run build"
     },
-    "syncedAt": "2026-07-04T11:04:01.673Z"
+    "syncedAt": "2026-07-04T22:18:16.542Z"
   }
 }
