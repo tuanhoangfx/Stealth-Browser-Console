@@ -5,7 +5,7 @@
 - Version: `0.10.8`
 - Timestamp: 2026-07-05 06:00 (UTC+7)
 - Type: Patch
-- Status: Dev
+- Status: Verified
 
 ### Changes
 

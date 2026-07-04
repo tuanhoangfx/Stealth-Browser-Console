@@ -56,6 +56,7 @@ async function main() {
   const version = String(pkg?.version || "").trim();
   const repo = String(manifest.github?.repo || "").trim();
   const tag = opts.tag || (version ? `v${version}` : "");
+  const differentialPackage = pkg?.build?.nsis?.differentialPackage !== false;
 
   if (!version || !repo || !tag) {
     console.error("verify-github-release-assets: need version, github.repo, tag");
@@ -80,7 +81,11 @@ async function main() {
   console.log(`verify-github-release-assets: ${repo} ${tag} (${assets.length} assets)`);
 
   assertAsset(assets, /^Stealth-Browser-Console-Setup-.*\.exe$/i, "NSIS installer", 50_000_000);
-  assertAsset(assets, /^Stealth-Browser-Console-Setup-.*\.exe\.blockmap$/i, "blockmap", 10_000);
+  if (differentialPackage) {
+    assertAsset(assets, /^Stealth-Browser-Console-Setup-.*\.exe\.blockmap$/i, "blockmap", 10_000);
+  } else {
+    console.log("OK blockmap: skipped (nsis.differentialPackage=false — full NSIS only)");
+  }
   assertAsset(assets, /^latest\.yml$/i, "latest.yml", 100);
 
   if (opts.requirePortable) {
