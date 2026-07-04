@@ -1,5 +1,19 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-05 — v0.10.3 — Desktop release: Surfshark icon + Gmail 2FA + session skip
+
+- Version: `0.10.3`
+- Timestamp: 2026-07-05 03:50 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Gmail login session-active** — skip login/TOTP steps when Google session already on `myaccount.google.com` / `mail.google.com` (`script-steps.cjs`).
+- **confirmidentifier / challenge/pwd** — advance without email wait when password step is ready.
+- **E2E smoke** — `gmail-login-profile-smoke.cjs` accepts `session-already-active` as PASS.
+- **Desktop release** — GitHub Release + `latest.yml` for electron-updater (NSIS auto-download on quit).
+
 ## 2026-07-05 — v0.10.2 — Surfshark brand icon + Gmail 2FA Authenticator path
 
 - Version: `0.10.2`

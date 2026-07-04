@@ -75,11 +75,16 @@ async function main() {
       /Try another way.*clicked|Google Authenticator.*selected|TOTP input already visible/i.test(l.message),
     );
     const typedTotp = (result.logs || []).some((l) => /Typed into.*totpPin|Typed into.*tel/i.test(l.message));
+    const sessionActive = (result.logs || []).some((l) => /session already active/i.test(l.message));
     const hasSecret = Boolean(diagnosis.credentials?.secret);
 
     if (!result.ok) {
       console.error("FAIL:", result.error || "automation failed");
       process.exit(1);
+    }
+    if (sessionActive) {
+      console.log(`PASS: ${profileCode} session-already-active`);
+      return;
     }
     if (!typedEmail || !typedPassword) {
       console.error("FAIL: email=", typedEmail, "password=", typedPassword);

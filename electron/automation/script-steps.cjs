@@ -376,6 +376,7 @@ async function runScriptSteps(page, steps, logger, context) {
   let screenshotPath = "";
   let activePage = page;
   let skip2fa = false;
+  let skipLogin = false;
   const enabledSteps = steps.filter((step) => step && step.enabled !== false);
 
   if (context.mailCredentials && !context.mailCredentials.secret) {
@@ -388,6 +389,11 @@ async function runScriptSteps(page, steps, logger, context) {
     const label = step.name || `${step.kind} ${index + 1}`;
     const timeout = Number.isFinite(Number(step.timeoutMs)) ? Math.max(0, Number(step.timeoutMs)) : 10000;
     logger.push("info", `Step ${index + 1}/${enabledSteps.length}: ${label}`);
+
+    if (skipLogin && step.kind !== "screenshot") {
+      logger.push("info", `Skipped (session active): ${label}`);
+      continue;
+    }
 
     if (skip2fa && isTotpRelated(step)) {
       logger.push("info", `Skipped (2FA unavailable): ${label}`);
@@ -413,6 +419,11 @@ async function runScriptSteps(page, steps, logger, context) {
       if (selector) {
         if (isGoogleEmailStep(step)) {
           const signinUrl = activePage.url?.() || "";
+          if (/myaccount\.google\.com|mail\.google\.com/i.test(signinUrl) && !/signin/i.test(signinUrl)) {
+            skipLogin = true;
+            logger.push("info", "Google session already active — skip login steps");
+            continue;
+          }
           if (/challenge\/pwd/i.test(signinUrl) && !(await isGoogleVisibleEmailInput(activePage))) {
             logger.push("info", "On password challenge — skip email wait");
             continue;
@@ -460,6 +471,11 @@ async function runScriptSteps(page, steps, logger, context) {
         try {
           await waitForVisibleSelector(activePage, selector, timeout || 15000, logger, context);
         } catch (waitError) {
+          if (isGoogleEmailStep(step) && /myaccount\.google\.com|mail\.google\.com/i.test(activePage.url?.() || "")) {
+            skipLogin = true;
+            logger.push("info", "Google session already active — skip login steps");
+            continue;
+          }
           if (isTotpRelated(step)) {
             const navigated = await ensureGoogleAuthenticatorTotpScreen(activePage, logger);
             if (navigated) {
