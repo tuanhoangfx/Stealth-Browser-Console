@@ -20,7 +20,7 @@ function ToastItem({ toast }: { toast: AppToast }) {
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex max-w-full items-start gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] leading-snug shadow-md backdrop-blur-sm ${styles[toast.type]}`}
+      className={`pointer-events-auto flex max-w-full items-start gap-1.5 rounded-lg border px-2.5 py-2 text-xs leading-snug shadow-md backdrop-blur-sm ${styles[toast.type]}`}
     >
       <p className="min-w-0 flex-1">{toast.message}</p>
       <button

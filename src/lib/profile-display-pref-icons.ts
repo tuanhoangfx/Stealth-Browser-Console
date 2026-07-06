@@ -74,4 +74,5 @@ export const WORKFLOW_COLUMN_PREF_ICONS: PrefIconMap = {
   steps: { icon: Activity, iconClassName: "text-amber-300" },
   created: { icon: Clock, iconClassName: "text-emerald-300" },
   updated: { icon: Clock, iconClassName: "text-violet-300" },
+  lastRun: { icon: Clock, iconClassName: "text-rose-300" },
 };

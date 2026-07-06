@@ -515,9 +515,8 @@
     "id": "telegram",
     "label": "Telegram",
     "match": "telegram",
-    "src": "/assets/brand-icons/telegram.png",
-    "shell": "bare",
-    "faviconDomain": "telegram.com"
+    "src": "/icons/telegram.svg",
+    "shell": "bare"
   },
   {
     "id": "midjourney",

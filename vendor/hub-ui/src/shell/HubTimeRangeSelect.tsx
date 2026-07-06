@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, ChevronDown } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { TIME_RANGES, type TimeRange } from "../display-prefs/constants";
-import { compactIconSize } from "../ui-scale";
+import { HubFilterDropdownTrigger } from "./filter-dropdown-primitives";
+import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "./hub-typography";
 import { getHubUrlPrefsDefaults, patchHubListPrefs } from "../lib/hub-url-prefs";
+
+/** Hub catalog time-range trigger — amber accent when not default. */
+const HUB_TIME_RANGE_TRIGGER_ICON_COLOR = "#fbbf24";
 
 export function HubTimeRangeSelect({ value }: { value: TimeRange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { defaultRange } = getHubUrlPrefsDefaults();
   const label = TIME_RANGES.find((r) => r.value === value)?.label ?? "30 days";
+  const isActive = value !== defaultRange;
 
   useEffect(() => {
     if (!open) return;
@@ -26,23 +31,20 @@ export function HubTimeRangeSelect({ value }: { value: TimeRange }) {
 
   return (
     <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
+      <HubFilterDropdownTrigger
+        active={isActive}
+        open={open}
+        label={label}
+        Icon={CalendarDays}
+        iconColor={isActive ? HUB_TIME_RANGE_TRIGGER_ICON_COLOR : "#94a3b8"}
+        typoClass={HUB_DIRECTORY_TOOLBAR_TYPO_CLASS}
+        className={
+          isActive
+            ? "!border-amber-500/35 !bg-amber-500/10 !text-amber-200"
+            : ""
+        }
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-[var(--hub-control-h)] items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${
-          value !== defaultRange
-            ? "border-amber-500/35 bg-amber-500/10 text-amber-200"
-            : "border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5"
-        }`}
-      >
-        <CalendarDays size={compactIconSize(13)} className="shrink-0 opacity-80" aria-hidden />
-        <span>{label}</span>
-        <ChevronDown
-          size={compactIconSize(12)}
-          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-      </button>
+      />
       {open ? (
         <div className="anim-pop absolute right-0 top-full z-30 mt-1 min-w-[9rem] rounded-xl border border-white/10 bg-[var(--panel)] p-1 shadow-xl shadow-black/40">
           {TIME_RANGES.map((r) => (

@@ -8,6 +8,7 @@ import {
   useHubTablePageSize,
 } from "../table/hub-table-page-size";
 import { patchHubListPrefs } from "../lib/hub-url-prefs";
+import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "./hub-typography";
 
 /** Directory table/card pager — URL `tpage` (25 / 50 / 100). */
 export function HubTablePageSizeSelect({
@@ -42,7 +43,7 @@ export function HubTablePageSizeSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-[var(--hub-control-h)] items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${
+        className={`inline-flex h-[var(--hub-control-h)] items-center gap-1.5 rounded-lg border px-3 ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} transition-colors ${
           pageSize !== HUB_TABLE_PAGE_SIZE_DEFAULT
             ? "border-violet-500/35 bg-violet-500/10 text-violet-200"
             : "border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5"

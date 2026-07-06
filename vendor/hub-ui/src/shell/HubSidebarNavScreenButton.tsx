@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { HubNavIcon } from "./HubNavIcon";
+import { HUB_SIDEBAR_NAV_LABEL_CLASS } from "./hub-typography";
 import {
   navActiveBarClass,
   navActiveBgClass,
@@ -38,7 +39,7 @@ export function HubSidebarNavScreenButton({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onFocus={onFocus}
-      className={`group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all ${
+      className={`group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 ${HUB_SIDEBAR_NAV_LABEL_CLASS} transition-all ${
         active
           ? `${navActiveBgClass(iconTone)} ${navActiveTextClass(iconTone)}`
           : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"

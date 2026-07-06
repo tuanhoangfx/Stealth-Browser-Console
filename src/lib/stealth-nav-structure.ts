@@ -1,6 +1,6 @@
 import type { NavStructureEntry } from "@tool-workspace/hub-ui";
 import { isNavViewGroup, navBadgeIconClass } from "@tool-workspace/hub-ui";
-import { Archive, ClipboardList, Database, LayoutGrid, Settings2, Store } from "lucide-react";
+import { Archive, ClipboardList, Database, LayoutGrid, Palette, Settings2, Store } from "lucide-react";
 import type { StealthScreen } from "./stealth-screen";
 import type { StealthSystemTab } from "./stealth-system-tab";
 import type { StealthWorkflowTab } from "./stealth-workflow-tab";
@@ -13,6 +13,7 @@ export const STEALTH_WORKFLOW_GROUP_ID = "workflow";
 /** System subnav items — P0004 SystemTabSubNav parity. */
 export const STEALTH_SYSTEM_TAB_ITEMS = [
   { id: "overview" as const, label: "Overview", icon: LayoutGrid, iconTone: "indigo" as const },
+  { id: "design" as const, label: "Design", icon: Palette, iconTone: "fuchsia" as const },
   { id: "backup" as const, label: "Backup", icon: Archive, iconTone: "amber" as const },
 ];
 
@@ -50,6 +51,7 @@ export const STEALTH_NAV_STRUCTURE: NavStructureEntry<StealthScreen, (typeof STE
     defaultView: "overview",
     children: [
       { view: "overview", label: "Overview", icon: LayoutGrid, iconTone: "indigo" },
+      { view: "design", label: "Design", icon: Palette, iconTone: "fuchsia" },
       { view: "backup", label: "Backup", icon: Archive, iconTone: "amber" },
     ],
   },

@@ -33,6 +33,7 @@ runToolScript("sync-hub-identity-vendor.cjs");
 runToolScript("verify-hub-vendor-prereqs.mjs", ["--code", "P0003"]);
 run("sync-hub-env.mjs");
 run("sync-hub-boot-public.mjs");
+runToolScript("sync-app-icon.cjs", ["--code", "P0003"]);
 run("sync-app-version.mjs");
 run("ensure-better-sqlite3.mjs");
 run("ensure-electron-binary.cjs");

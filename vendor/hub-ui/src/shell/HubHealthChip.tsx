@@ -26,7 +26,7 @@ export function HubHealthChip({ health, name, title, titles }: HubHealthChipProp
 
   return (
     <span
-      className={`inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border bg-[var(--panel-2)] px-2.5 text-[11px] font-medium ${tone.ring}`}
+      className={`inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border bg-[var(--panel-2)] px-2.5 text-xs font-medium ${tone.ring}`}
       title={title ?? defaultTitle}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} aria-hidden />

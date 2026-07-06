@@ -43,7 +43,7 @@ export function HubUiZoomControl() {
           setPct(next);
         }}
       />
-      <span className="hub-ui-zoom-row__pct shrink-0 font-mono text-[11px] tabular-nums text-indigo-200/90">
+      <span className="hub-ui-zoom-row__pct shrink-0 font-mono text-xs tabular-nums text-indigo-200/90">
         {pct}%
       </span>
     </div>

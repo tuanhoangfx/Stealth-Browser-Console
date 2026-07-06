@@ -89,7 +89,7 @@ export function SystemWebStoreExtensionsPanel() {
     <Glass tone="cyan">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Extensions</p>
+          <p className="hub-analytics-caption uppercase tracking-wider text-cyan-300">Extensions</p>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text)]">Install extensions</h2>
           <div className="mt-2 max-w-2xl space-y-2 text-xs text-[var(--muted)]">
             <p>
@@ -178,12 +178,12 @@ export function SystemWebStoreExtensionsPanel() {
           <ul className="mt-2 space-y-1.5">
             {status.cached.map((ext) => (
               <li key={ext.storeId ?? ext.localKey ?? ext.unpackedPath} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-cyan-200">
+                <span className="r text-cyan-200">
                   {ext.kind}
                 </span>
                 <span className="font-medium text-[var(--text)]">{ext.name}</span>
                 {ext.storeId ? (
-                  <span className="font-mono text-[11px] text-cyan-100/80">{ext.storeId}</span>
+                  <span className="font-mono text-xs text-cyan-100/80">{ext.storeId}</span>
                 ) : null}
               </li>
             ))}

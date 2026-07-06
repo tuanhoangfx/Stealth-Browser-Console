@@ -6,13 +6,18 @@ import {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
-  hubFilterTriggerClass,
+  HubFilterDropdownCircle,
+  HubFilterDropdownTrigger,
 } from "./filter-dropdown-primitives";
+import { workspacePeriodDotColor, workspacePeriodTriggerIconColor } from "../lib/workspace-period-dot-color";
+import type { WorkspacePeriodKey } from "../lib/hub-workspace-period";
 import { compactIconSize } from "../ui-scale";
 
 export type HubPeriodOption<T extends string = string> = {
   value: T;
   label: string;
+  /** Row dot color — defaults from `workspacePeriodDotColor` when value is a workspace period key. */
+  dotColor?: string;
 };
 
 export type HubPeriodSelectProps<T extends string = string> = {
@@ -36,6 +41,8 @@ export type HubPeriodSelectProps<T extends string = string> = {
   startLabel?: string;
   endLabel?: string;
   className?: string;
+  /** Directory toolbar row — `text-xs` to match page size / Display (default `text-sm` for FilterBar). */
+  triggerTypoClass?: string;
 };
 
 type PanelView = "list" | "month" | "range";
@@ -166,6 +173,7 @@ export function HubPeriodSelect<T extends string>({
   startLabel = "Start",
   endLabel = "End",
   className = "",
+  triggerTypoClass,
 }: HubPeriodSelectProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -236,6 +244,8 @@ export function HubPeriodSelect<T extends string>({
 
   const isActive = !inactiveKeys.includes(value);
 
+  const triggerIconColor = workspacePeriodTriggerIconColor(value as WorkspacePeriodKey);
+
   const handleSelectPeriod = (range: T) => {
     onChange(range);
     if (monthRangeKey && range === monthRangeKey) {
@@ -273,18 +283,27 @@ export function HubPeriodSelect<T extends string>({
       >
         {view === "list" ? (
           <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-            {options.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => handleSelectPeriod(o.value)}
-                className={`${HUB_FILTER_DROPDOWN_ROW_CLASS} ${
-                  o.value === value ? "bg-indigo-500/10 text-indigo-200" : "text-[var(--text)]"
-                }`}
-              >
-                <span className="flex-1 truncate text-left">{o.label}</span>
-              </button>
-            ))}
+            {options.map((o) => {
+              const dotColor = o.dotColor ?? workspacePeriodDotColor(o.value as WorkspacePeriodKey);
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => handleSelectPeriod(o.value)}
+                  className={`${HUB_FILTER_DROPDOWN_ROW_CLASS} ${
+                    o.value === value ? "bg-indigo-500/10 text-indigo-200" : "text-[var(--text)]"
+                  }`}
+                >
+                  <HubFilterDropdownCircle checked={o.value === value} />
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full ring-1 ring-white/10"
+                    style={{ background: dotColor }}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1 truncate text-left">{o.label}</span>
+                </button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -355,10 +374,14 @@ export function HubPeriodSelect<T extends string>({
 
   return (
     <div ref={containerRef} className={`relative shrink-0 ${className}`.trim()}>
-      <button
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
+      <HubFilterDropdownTrigger
+        active={isActive}
+        open={open}
+        label={triggerValueLabel}
+        Icon={Calendar}
+        iconColor={triggerIconColor}
+        typoClass={triggerTypoClass}
+        className="shrink-0"
         onClick={() => {
           setOpen((v) => {
             const next = !v;
@@ -366,16 +389,7 @@ export function HubPeriodSelect<T extends string>({
             return next;
           });
         }}
-        className={hubFilterTriggerClass(isActive, "shrink-0")}
-      >
-        <Calendar size={compactIconSize(12)} className="shrink-0 opacity-75" aria-hidden />
-        <span className="min-w-0 max-w-[12rem] truncate">{triggerValueLabel}</span>
-        <ChevronDown
-          size={compactIconSize(12)}
-          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-      </button>
+      />
       {panel ? createPortal(panel, document.body) : null}
     </div>
   );

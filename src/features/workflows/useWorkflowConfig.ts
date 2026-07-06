@@ -3,7 +3,6 @@ import { clampConcurrency, clampTimeout } from "../../app/constants";
 import type { ScriptStep, ScriptStepKind } from "../../types";
 import type { WorkflowConfig, WorkflowId } from "./workflow-types";
 import {
-  ACTIVE_WORKFLOW_KEY,
   createStep,
   DEFAULT_WORKFLOWS,
   hydrateWorkflowSteps,
@@ -13,10 +12,13 @@ import {
   WORKFLOWS_KEY,
   workflowExportPayload,
   workflowSteps,
-  syncFirstNavigateStep
+  syncFirstNavigateStep,
+  persistActiveWorkflow,
+  persistWorkflowLastRun,
+  WORKFLOW_LAST_RUN_CHANGE,
 } from "./workflow-defaults";
 import { mergeInstalledWorkflow, normalizeImportedWorkflow } from "./workflow-import-utils";
-import { newWorkflowTimestamps, touchWorkflowUpdated, ensureWorkflowTimestamps } from "./workflow-meta";
+import { newWorkflowTimestamps, touchWorkflowUpdated, resolveDefaultActiveWorkflow } from "./workflow-meta";
 import { workflowDisplayId } from "./workflow-display";
 const SCRIPT_STEP_KINDS: ScriptStepKind[] = ["navigate", "wait", "click", "type", "delay", "scroll", "screenshot", "condition", "action"];
 
@@ -41,7 +43,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     workflowConfigs.find((workflow) => workflow.id === activeWorkflow) || workflowConfigs[0] || DEFAULT_WORKFLOWS[0];
 
   useEffect(() => {
-    localStorage.setItem(ACTIVE_WORKFLOW_KEY, activeWorkflow);
+    persistActiveWorkflow(activeWorkflow);
   }, [activeWorkflow]);
 
   useEffect(() => {
@@ -56,20 +58,6 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
       setSelectedScriptStepId(firstId);
     }
   }, [activeWorkflow, selectedScriptStepId, workflowConfigs]);
-
-  useEffect(() => {
-    setDraftWorkflowConfigs((items) => {
-      let changed = false;
-      const next = items.map((w, index) => {
-        const stamped = ensureWorkflowTimestamps(w, Date.now() - index * 86_400_000);
-        if (stamped.createdAt !== w.createdAt || stamped.updatedAt !== w.updatedAt) changed = true;
-        return stamped;
-      });
-      if (!changed) return items;
-      localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   useEffect(() => {
     setDraftWorkflowConfigs((items) => {
@@ -103,8 +91,13 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     setDraftWorkflowConfigs((items) => {
       setWorkflowUndoStack((stack) => [...stack.slice(-19), items]);
       setWorkflowRedoStack([]);
-      return updater(items).map((workflow, index) =>
-        workflow === items[index] ? workflow : touchWorkflowUpdated(workflow),
+      const next = updater(items);
+      const changedIds = new Set<WorkflowId>();
+      for (let i = 0; i < next.length; i += 1) {
+        if (next[i] !== items[i]) changedIds.add(next[i]!.id);
+      }
+      return next.map((workflow) =>
+        changedIds.has(workflow.id) ? touchWorkflowUpdated(workflow) : workflow,
       );
     });
   }, []);
@@ -274,9 +267,11 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     const nextItems = workflowConfigs.filter((workflow) => !idSet.has(workflow.id));
     if (nextItems.length < 1 || nextItems.length === workflowConfigs.length) return;
     updateWorkflowConfigsWithHistory(() => nextItems);
-    const nextActive = nextItems.find((workflow) => workflow.id === activeWorkflow)?.id ?? nextItems[0]?.id ?? "open-url";
+    const nextActive =
+      nextItems.find((workflow) => workflow.id === activeWorkflow)?.id ??
+      resolveDefaultActiveWorkflow(nextItems);
     setActiveWorkflow(nextActive);
-    setSelectedWorkflowIds([nextActive]);
+    setSelectedWorkflowIds(nextActive ? [nextActive] : []);
   }, [activeWorkflow, updateWorkflowConfigsWithHistory, workflowConfigs]);
 
   const deleteActiveWorkflow = useCallback(() => {
@@ -296,7 +291,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
 
   const resetWorkflows = useCallback(() => {
     setDraftWorkflowConfigs(DEFAULT_WORKFLOWS);
-    setActiveWorkflow("open-url");
+    setActiveWorkflow(resolveDefaultActiveWorkflow(DEFAULT_WORKFLOWS));
     setSelectedWorkflowIds([]);
   }, []);
 
@@ -447,7 +442,30 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
 
   const selectScriptWorkflow = useCallback((workflowId: WorkflowId) => {
     setActiveWorkflow(workflowId);
-    setSelectedWorkflowIds([workflowId]);
+  }, []);
+
+  useEffect(() => {
+    const onLastRun = (event: Event) => {
+      const detail = (event as CustomEvent<{ workflowId: WorkflowId; lastRunAt: string }>).detail;
+      if (!detail?.workflowId || !detail.lastRunAt) return;
+      const patch = (items: WorkflowConfig[]) =>
+        items.map((workflow) =>
+          workflow.id === detail.workflowId ? { ...workflow, lastRunAt: detail.lastRunAt } : workflow,
+        );
+      setDraftWorkflowConfigs(patch);
+      setSavedWorkflowConfigs(patch);
+    };
+    window.addEventListener(WORKFLOW_LAST_RUN_CHANGE, onLastRun);
+    return () => window.removeEventListener(WORKFLOW_LAST_RUN_CHANGE, onLastRun);
+  }, []);
+
+  const recordWorkflowRun = useCallback((workflowId: WorkflowId) => {
+    const lastRunAt = persistWorkflowLastRun(workflowId);
+    if (!lastRunAt) return;
+    const patch = (items: WorkflowConfig[]) =>
+      items.map((workflow) => (workflow.id === workflowId ? { ...workflow, lastRunAt } : workflow));
+    setDraftWorkflowConfigs(patch);
+    setSavedWorkflowConfigs(patch);
   }, []);
 
   const selectedScriptStep =
@@ -498,6 +516,7 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     importWorkflows,
     installWorkflowFromStore,
     selectWorkflow,
-    selectScriptWorkflow
+    selectScriptWorkflow,
+    recordWorkflowRun,
   };
 }

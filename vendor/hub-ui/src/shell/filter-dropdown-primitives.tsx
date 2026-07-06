@@ -1,5 +1,5 @@
 import { Check, ChevronDown, FolderOpen, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { compactIconSize } from "../ui-scale";
 import { HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
 
@@ -7,8 +7,12 @@ import { HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
 export const HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS = HUB_SHELL_LABEL_TYPO_CLASS;
 
 /** Shared Hub filter dropdown trigger — FilterBar + folder pickers. */
-export function hubFilterTriggerClass(active: boolean, extra = "") {
-  return `inline-flex h-[var(--hub-control-h)] max-w-full items-center gap-1.5 rounded-lg border px-3 ${HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS} transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+export function hubFilterTriggerClass(
+  active: boolean,
+  extra = "",
+  typoClass: string = HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
+) {
+  return `inline-flex h-[var(--hub-control-h)] max-w-full items-center gap-1.5 rounded-lg border px-3 ${typoClass} transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
     active
       ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
       : "border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5"
@@ -52,47 +56,58 @@ type HubFilterDropdownTriggerProps = {
   onClick: () => void;
   title?: string;
   className?: string;
+  /** Override trigger typography — directory toolbar row uses `HUB_DIRECTORY_TOOLBAR_TYPO_CLASS`. */
+  typoClass?: string;
 };
 
-export function HubFilterDropdownTrigger({
-  active,
-  open = false,
-  label,
-  count,
-  iconColor,
-  Icon = FolderOpen,
-  icon,
-  disabled,
-  onClick,
-  title,
-  className = "",
-}: HubFilterDropdownTriggerProps) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      title={title}
-      className={hubFilterTriggerClass(active, className)}
-    >
-      {icon ?? (
-        <Icon
+export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterDropdownTriggerProps>(
+  function HubFilterDropdownTrigger(
+    {
+      active,
+      open = false,
+      label,
+      count,
+      iconColor,
+      Icon = FolderOpen,
+      icon,
+      disabled,
+      onClick,
+      title,
+      className = "",
+      typoClass,
+    },
+    ref,
+  ) {
+    return (
+      <button
+        ref={ref}
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        title={title}
+        className={hubFilterTriggerClass(active, className, typoClass)}
+      >
+        {icon ?? (
+          <span className="inline-flex size-[13px] shrink-0 items-center justify-center leading-none">
+            <Icon
+              size={compactIconSize(13)}
+              className={iconColor ? "" : "opacity-75"}
+              style={iconColor ? { color: iconColor } : undefined}
+              aria-hidden
+            />
+          </span>
+        )}
+        <span className="min-w-0 max-w-[12rem] truncate leading-none">{label}</span>
+
+        <ChevronDown
           size={compactIconSize(12)}
-          className={`shrink-0 ${iconColor ? "" : "opacity-75"}`}
-          style={iconColor ? { color: iconColor } : undefined}
+          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
-      )}
-      <span className="min-w-0 max-w-[12rem] truncate">{label}</span>
-
-      <ChevronDown
-        size={compactIconSize(12)}
-        className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-        aria-hidden
-      />
-    </button>
-  );
-}
+      </button>
+    );
+  },
+);
 
 export function HubFilterDropdownCircle({ checked, indeterminate }: { checked: boolean; indeterminate?: boolean }) {
   return (
@@ -181,4 +196,3 @@ export function HubFilterDropdownPanelSearch({
     </div>
   );
 }
-

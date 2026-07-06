@@ -13,11 +13,13 @@ import {
   toggleHubPrefSet,
 } from "./hub-display-visibility";
 import { HubHeaderPanelButton } from "../shell/HubHeaderPanelButton";
+import { HUB_SETTINGS_ICON_CLASS } from "../shell/hub-typography";
 import { HubKeyboardShortcutsPanel } from "../keyboard/HubKeyboardShortcutsPanel";
 import { HubToolDetailModal, HubToolDetailModalSecondaryAction, HUB_TOOL_DETAIL_SCROLL_ROOT } from "../shell/HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "../shell/HubTocSectionNav";
 import { registerHubSettingsOpen } from "../keyboard/hub-keyboard-shortcuts";
+import { HubDirectoryTableColumnPresetMenu } from "../prefs/HubDirectoryTableColumnPresetMenu";
 
 function parseSet(raw: string | null): Set<string> | null {
   if (raw === null) return null;
@@ -64,6 +66,7 @@ export function HubDisplayPrefs({
   displayExtras,
   footerActions,
   tablePanel,
+  tableColumnPresets,
   tableSectionLabel = "Table columns",
   tableSectionActions,
   tableActiveCount = 0,
@@ -330,7 +333,7 @@ export function HubDisplayPrefs({
               key={r.value}
               type="button"
               onClick={() => update({ range: r.value === "30d" ? null : r.value })}
-              className={`rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors ${
+              className={`rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
                 prefs.range === r.value
                   ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
                   : "bg-white/[.03] text-[var(--muted)]"
@@ -353,7 +356,7 @@ export function HubDisplayPrefs({
               key={n}
               type="button"
               onClick={() => update({ limit: n === 100 ? null : String(n) })}
-              className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
+              className={`rounded-md px-1.5 py-1.5 text-xs font-semibold transition-colors ${
                 prefs.limit === n
                   ? "bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40"
                   : "bg-white/[.03] text-[var(--muted)]"
@@ -442,13 +445,27 @@ export function HubDisplayPrefs({
     pushSection(sec.id, sec.label, sec.icon, sec.body, sec.headerActions);
   }
 
-  if (!displayOnToolbar && hasTablePanel) {
+  if (hasTablePanel) {
+    const tableHeaderActions =
+      tableColumnPresets || tableSectionActions ? (
+        <div className="flex items-center gap-1.5">
+          {tableColumnPresets ? (
+            <HubDirectoryTableColumnPresetMenu
+              key={tableColumnPresets.scopeId}
+              manager={tableColumnPresets}
+              onLog={emitLog}
+              compact
+            />
+          ) : null}
+          {tableSectionActions}
+        </div>
+      ) : undefined;
     pushSection(
       "table",
       tableSectionLabel,
       buildSemanticTocIcon("settings.table"),
       tablePanel,
-      tableSectionActions,
+      tableHeaderActions,
     );
   }
 
@@ -466,7 +483,7 @@ export function HubDisplayPrefs({
     <div ref={ref} className={sidebarRow ? "relative w-full" : "relative"}>
       <HubHeaderPanelButton
         icon={Settings}
-        iconClassName="text-amber-300"
+        iconClassName={HUB_SETTINGS_ICON_CLASS}
         label={title}
         title={title}
         compact={compact}
@@ -480,7 +497,7 @@ export function HubDisplayPrefs({
         title={title}
         titleId="hub-settings-modal-title"
         headerIcon={Settings}
-        headerIconClassName="text-amber-300"
+        headerIconClassName={HUB_SETTINGS_ICON_CLASS}
         shellClassName="hub-header-panel-modal"
         sectionIds={showSettingsToc ? sectionIds : undefined}
         toc={

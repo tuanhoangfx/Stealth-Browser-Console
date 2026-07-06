@@ -1,9 +1,6 @@
 import { HubDesignTemplateEmpty } from "@tool-workspace/hub-ui";
 import { Glass } from "../../../theme/p0008";
-import { ACTIVE_DESIGN_COUNT } from "./design-registry";
-import { SystemLaunchPerfPanel } from "../SystemLaunchPerfPanel";
-import { SystemCookieBridgePanel } from "../SystemCookieBridgePanel";
-import { SystemProfileBackupPanel } from "../SystemProfileBackupPanel";
+import { ACTIVE_DESIGN_COUNT, WORKFLOW_CANVAS_LAYOUT_DESIGN_LOCK } from "./design-registry";
 
 export function DesignTemplatePage() {
   return (
@@ -15,11 +12,12 @@ export function DesignTemplatePage() {
           <p className="mt-1 text-xs text-[var(--muted)]">
             Active reviews: <strong className="text-cyan-200">{ACTIVE_DESIGN_COUNT}</strong>
           </p>
+          <p className="mt-2 text-[11px] text-emerald-200/90">
+            Workflow canvas locked <strong>Design {WORKFLOW_CANVAS_LAYOUT_DESIGN_LOCK}</strong> — Spaced bezier flow
+            (2026-07-06).
+          </p>
         </div>
       </Glass>
-      <SystemLaunchPerfPanel />
-      <SystemCookieBridgePanel />
-      <SystemProfileBackupPanel />
       <HubDesignTemplateEmpty />
     </div>
   );

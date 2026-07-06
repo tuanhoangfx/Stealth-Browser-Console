@@ -13,6 +13,7 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
+  Clapperboard,
   Clock,
   Columns3,
   Database,
@@ -197,6 +198,10 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "kpi.bots.total": { icon: Bot, className: "text-indigo-300", tone: "indigo" },
   "kpi.bots.online": { icon: CheckCircle2, className: "text-emerald-300", tone: "emerald" },
   "kpi.bots.chatbotLive": { icon: Play, className: "text-blue-300", tone: "blue" },
+  "kpi.jobs.total": { icon: Clapperboard, className: "text-slate-300", tone: "indigo" },
+  "kpi.jobs.completed": { icon: CheckCircle2, className: "text-emerald-300", tone: "emerald" },
+  "kpi.jobs.processing": { icon: Loader2, className: "text-blue-300", tone: "blue" },
+  "kpi.jobs.failed": { icon: AlertCircle, className: "text-rose-300", tone: "rose" },
   "kpi.fanpages.worker": { icon: Activity, className: "text-emerald-300", tone: "emerald" },
   "kpi.fanpages.webhook": { icon: Webhook, className: "text-emerald-300", tone: "emerald" },
   "kpi.fanpages.tokenHealth": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
@@ -266,6 +271,18 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "col.directory.placeName": { icon: MapPin, className: "text-emerald-300", tone: "emerald" },
   "col.directory.address": { icon: MapPin, className: "text-sky-300", tone: "sky" },
   "col.directory.phone": { icon: Phone, className: "text-emerald-300", tone: "emerald" },
+  "col.directory.zalo": {
+    icon: Phone,
+    className: "text-sky-300",
+    tone: "sky",
+    brandIcon: "zalo",
+  },
+  "col.directory.telegram": {
+    icon: MessageSquare,
+    className: "text-cyan-300",
+    tone: "cyan",
+    brandIcon: "telegram",
+  },
   "col.directory.reviews": { icon: Star, className: "text-amber-300", tone: "amber" },
   "profile.status.ready": { icon: CheckCircle2, className: "text-emerald-400", tone: "emerald" },
   "profile.status.opening": { icon: Loader2, className: "text-cyan-400", tone: "cyan" },
@@ -305,6 +322,8 @@ const DIRECTORY_COLUMN_TH_ICON: Partial<Record<SemanticIconKey, string>> = {
   "col.directory.placeName": "hub-users-th-icon--name",
   "col.directory.address": "hub-users-th-icon--path",
   "col.directory.phone": "hub-users-th-icon--activity",
+  "col.directory.zalo": "hub-users-th-icon--activity",
+  "col.directory.telegram": "hub-users-th-icon--activity",
   "col.directory.reviews": "hub-users-th-icon--actions",
 };
 
@@ -386,12 +405,14 @@ export function semanticHeaderStat(key: SemanticIconLookupKey): {
 export function semanticDirectoryColumnIcon(key: SemanticIconLookupKey): {
   headerIcon: SemanticIconMeta["icon"];
   headerIconClassName: string;
+  headerBrandIcon?: HubBrandIconId;
 } {
   const resolved = normalizeSemanticIconKey(key);
   const spec = resolveSemanticIcon(key);
   return {
     headerIcon: spec.icon,
     headerIconClassName: DIRECTORY_COLUMN_TH_ICON[resolved] ?? "hub-users-th-icon--tools",
+    headerBrandIcon: spec.brandIcon,
   };
 }
 

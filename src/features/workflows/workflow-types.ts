@@ -25,4 +25,6 @@ export type WorkflowConfig = {
   createdAt?: string;
   /** ISO timestamp — bumped on script edits. */
   updatedAt?: string;
+  /** ISO timestamp — last automation run (Launch / Open URL). */
+  lastRunAt?: string;
 };

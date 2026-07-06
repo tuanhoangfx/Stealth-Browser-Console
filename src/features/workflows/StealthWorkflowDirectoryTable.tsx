@@ -15,7 +15,7 @@ import {
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
 import { workflowDisplayId, workflowDisplayPlatform } from "./workflow-display";
-import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
+import { workflowCreatedMs, workflowLastRunMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import { renderStealthWorkflowDirectoryBodyCell } from "./stealth-workflow-directory-cells";
 import type { WorkflowConfig } from "./workflow-types";
 import {
@@ -25,7 +25,7 @@ import {
   workflowRailDirectoryColumnPrefs,
 } from "./workflow-directory-prefs";
 
-export type StealthWorkflowSortKey = "id" | "name" | "platform" | "steps" | "created" | "updated";
+export type StealthWorkflowSortKey = "id" | "name" | "platform" | "steps" | "created" | "updated" | "lastRun";
 
 function sortableWorkflowValue(workflow: WorkflowConfig, key: StealthWorkflowSortKey, defaultWorkflows: WorkflowConfig[]) {
   switch (key) {
@@ -41,6 +41,8 @@ function sortableWorkflowValue(workflow: WorkflowConfig, key: StealthWorkflowSor
       return String(workflowCreatedMs(workflow) ?? 0).padStart(14, "0");
     case "updated":
       return String(workflowUpdatedMs(workflow) ?? 0).padStart(14, "0");
+    case "lastRun":
+      return String(workflowLastRunMs(workflow) ?? 0).padStart(14, "0");
     default:
       return "";
   }
@@ -148,7 +150,7 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
       pageSize={pageSize}
       resetKey={`${resetKey}|${sortKey}|${sortDir}`}
       getRowClassName={(workflow) =>
-        !isRail && workflow.id === activeWorkflowId ? " is-detail" : ""
+        !isRail && activeWorkflowId && workflow.id === activeWorkflowId ? " is-detail" : ""
       }
       renderRowCells={(workflow) => (
         <>

@@ -12,6 +12,7 @@ import {
   navRailClass,
   type NavIconTone,
 } from "./sidebar-nav-tones";
+import { HUB_SIDEBAR_NAV_LABEL_CLASS } from "./hub-typography";
 import type { LucideIcon } from "lucide-react";
 
 export type NavGroupSubNavItem<TId extends string = string> = {
@@ -57,7 +58,7 @@ export function HubSidebarNavGroupHeader({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onFocus={onFocus}
-      className={`group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all ${
+      className={`group relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 ${HUB_SIDEBAR_NAV_LABEL_CLASS} transition-all ${
         active
           ? `${navActiveBgClass(iconTone)} ${navActiveTextClass(iconTone)}`
           : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
@@ -69,7 +70,7 @@ export function HubSidebarNavGroupHeader({
         />
       ) : null}
       <HubNavIcon icon={icon} iconTone={iconTone} active={active} brandIcon={brandIcon} />
-      <span className="flex-1 text-left">{label}</span>
+      <span className={`flex-1 text-left ${active ? "font-semibold" : "font-medium"}`}>{label}</span>
       {showToggleIcon ? (
         <ToggleIcon
           size={compactIconSize(13)}
@@ -108,16 +109,16 @@ export function NavGroupSubNav<TId extends string>({
             onClick={() => onSelect(id)}
             onMouseEnter={() => onPrefetch?.(id)}
             onFocus={() => onPrefetch?.(id)}
-            className="hub-sidebar-subnav-button group grid h-8 w-full grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-2 text-left text-[13px]"
+            className={`hub-sidebar-subnav-button group grid h-8 w-full grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-2 text-left ${HUB_SIDEBAR_NAV_LABEL_CLASS}`}
           >
             <span className="relative flex h-full items-center justify-center" aria-hidden>
               <span className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 ${navRailClass(iconTone)}`} />
               <span className={`relative h-1.5 w-1.5 rounded-full transition-all ${navDotClass(iconTone, isActive)}`} />
             </span>
             <span
-              className={`flex h-8 min-w-0 items-center gap-2 rounded-xl px-2 transition-colors ${
+              className={`flex h-8 min-w-0 items-center gap-2 rounded-xl px-2 ${HUB_SIDEBAR_NAV_LABEL_CLASS} transition-colors ${
                 isActive
-                  ? `${navActiveBgClass(iconTone)} font-medium ${navActiveTextClass(iconTone)}`
+                  ? `${navActiveBgClass(iconTone)} ${navActiveTextClass(iconTone)}`
                   : "text-[var(--muted)] group-hover:bg-white/[.04] group-hover:text-[var(--text)]"
               }`}
             >

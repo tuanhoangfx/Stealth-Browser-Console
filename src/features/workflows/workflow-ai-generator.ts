@@ -1,20 +1,32 @@
 import { routerHttp } from "./router-client";
+import { formatRouterError, isRouterRetryableModelError } from "./router-errors";
 import type { RouterSettings } from "./router-settings";
 import type { WorkflowConfig } from "./workflow-types";
 import {
   buildFewShotExamples,
+  buildStepSetGeneratorSystemPrompt,
+  buildStepSetUserMessage,
   buildWorkflowGeneratorSystemPrompt,
-  buildWorkflowUserMessage
+  buildWorkflowUserMessage,
 } from "./workflow-ai-prompt";
-import { extractJsonFromModelText, sanitizeGeneratedWorkflow } from "./sanitize-generated-workflow";
+import {
+  extractJsonFromModelText,
+  parseRouterChatCompletionBody,
+  sanitizeGeneratedSteps,
+  sanitizeGeneratedWorkflow,
+} from "./sanitize-generated-workflow";
 
 const ROUTER_TIMEOUT_MS = 120_000;
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
+export type AiGenerateScope = "workflow" | "step-set";
+
 export type GenerateWorkflowOptions = {
+  scope?: AiGenerateScope;
   currentWorkflow?: WorkflowConfig | null;
   fewShotWorkflows?: WorkflowConfig[];
+  selectedStepId?: string | null;
 };
 
 async function callRouterChat(settings: RouterSettings, messages: ChatMessage[], model: string) {
@@ -31,16 +43,27 @@ async function callRouterChat(settings: RouterSettings, messages: ChatMessage[],
 
   const body = response.body;
   if (!response.ok) {
-    const detail = body.trim() || (response.status ? `HTTP ${response.status}` : "Failed to fetch");
-    throw new Error(`9Router ${response.status || "network"}: ${detail.slice(0, 400)}`);
+    throw new Error(formatRouterError(response.status, body, model));
   }
 
-  const json = JSON.parse(body) as { choices?: Array<{ message?: { content?: string } }> };
-  const content = json.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || !content.trim()) {
-    throw new Error(`9Router returned empty content (${model})`);
+  return parseRouterChatCompletionBody(body);
+}
+
+function mergeStepSetIntoWorkflow(
+  current: WorkflowConfig,
+  generatedSteps: WorkflowConfig["steps"],
+  selectedStepId: string | null | undefined,
+  raw: unknown,
+): WorkflowConfig["steps"] {
+  const data = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  if (Array.isArray(data.steps) && data.steps.length > 0) {
+    return generatedSteps;
   }
-  return content;
+  if (data.step && selectedStepId && generatedSteps.length === 1) {
+    const next = generatedSteps[0];
+    return current.steps.map((step) => (step.id === selectedStepId ? { ...next, id: step.id } : step));
+  }
+  return generatedSteps.length ? generatedSteps : current.steps;
 }
 
 export async function generateWorkflowFromPrompt(
@@ -54,13 +77,23 @@ export async function generateWorkflowFromPrompt(
     throw new Error("9Router API key is missing. Add config/router.local.json or Settings → 9Router AI.");
   }
 
+  const scope = options.scope ?? "workflow";
+  const current = options.currentWorkflow ?? null;
   const fewShots = buildFewShotExamples(options.fewShotWorkflows);
-  const userMessage = buildWorkflowUserMessage(prompt, options.currentWorkflow ?? null);
 
-  const messages: ChatMessage[] = [
-    { role: "system", content: buildWorkflowGeneratorSystemPrompt(fewShots) },
-    { role: "user", content: userMessage }
-  ];
+  const messages: ChatMessage[] =
+    scope === "step-set"
+      ? [
+          { role: "system", content: buildStepSetGeneratorSystemPrompt() },
+          {
+            role: "user",
+            content: buildStepSetUserMessage(prompt, current, options.selectedStepId ?? null),
+          },
+        ]
+      : [
+          { role: "system", content: buildWorkflowGeneratorSystemPrompt(fewShots) },
+          { role: "user", content: buildWorkflowUserMessage(prompt, current) },
+        ];
 
   const models = [settings.model, ...settings.fallbacks].filter(Boolean);
   let lastError: Error | null = null;
@@ -69,10 +102,22 @@ export async function generateWorkflowFromPrompt(
     try {
       const rawText = await callRouterChat(settings, messages, model);
       const parsed = extractJsonFromModelText(rawText);
+      if (scope === "step-set" && current) {
+        const targetUrl = current.targetUrl;
+        const generatedSteps = sanitizeGeneratedSteps(parsed, targetUrl);
+        const steps = mergeStepSetIntoWorkflow(current, generatedSteps, options.selectedStepId, parsed);
+        const workflow: WorkflowConfig = { ...current, steps };
+        return { workflow, modelUsed: model, rawText };
+      }
       const workflow = sanitizeGeneratedWorkflow(parsed, prompt);
       return { workflow, modelUsed: model, rawText };
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+      const err = error instanceof Error ? error : new Error(String(error));
+      lastError = err;
+      const retryable =
+        isRouterRetryableModelError(0, err.message) ||
+        /json|valid json|non-whitespace character/i.test(err.message);
+      if (!retryable) break;
     }
   }
 

@@ -4,6 +4,7 @@ import { TABLE_PAGE_SIZE_OPTIONS } from "./constants";
 import { buildSemanticTocIcon, resolveSemanticIcon } from "../lib/semantic-icon-registry";
 import { patchHubListPrefs } from "../lib/hub-url-prefs";
 import { compactIconSize } from "../ui-scale";
+import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "../shell/hub-typography";
 import {
   HUB_TABLE_PAGE_SIZE_DEFAULT,
   patchHubTablePageSizeValue,
@@ -18,6 +19,7 @@ import {
   isHubPrefVisible,
   toggleHubPrefSet,
 } from "./hub-display-visibility";
+import { HubDirectoryTableColumnPresetMenu } from "../prefs/HubDirectoryTableColumnPresetMenu";
 import type { HubDisplayPrefsProps, PrefItem } from "./types";
 
 export type HubDirectoryDisplayPanelProps = Pick<
@@ -42,6 +44,7 @@ export type HubDirectoryDisplayPanelProps = Pick<
   | "subTabDisplay"
   | "onLog"
   | "tablePanel"
+  | "tableColumnPresets"
   | "tableSectionLabel"
   | "tableSectionActions"
   | "tableActiveCount"
@@ -105,6 +108,7 @@ export function HubDirectoryDisplayPanel({
   subTabDisplay,
   onLog,
   tablePanel,
+  tableColumnPresets,
   tableSectionLabel = "Table columns",
   tableSectionActions,
   showPageSize = true,
@@ -293,16 +297,17 @@ export function HubDirectoryDisplayPanel({
     charts.length > 0 ||
     headerStatsProp.length > 0 ||
     tabFilters.length > 0 ||
-    Boolean(tablePanel);
+    Boolean(tablePanel) ||
+    Boolean(tableColumnPresets);
 
   if (!hasBody) return null;
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div ref={ref} className="relative flex shrink-0 items-center gap-1.5">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-[var(--hub-control-h)] items-center gap-1.5 rounded-lg border border-white/10 bg-[var(--panel-2)] px-3 text-xs font-medium text-[var(--text)] transition-colors hover:bg-white/5"
+        className={`inline-flex h-[var(--hub-control-h)] items-center gap-1.5 rounded-lg border border-white/10 bg-[var(--panel-2)] px-3 ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} text-[var(--text)] transition-colors hover:bg-white/5`}
         title="Display options"
         aria-expanded={open}
       >
@@ -310,6 +315,13 @@ export function HubDirectoryDisplayPanel({
         <span>Display</span>
         <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
+      {tableColumnPresets ? (
+        <HubDirectoryTableColumnPresetMenu
+          key={tableColumnPresets.scopeId}
+          manager={tableColumnPresets}
+          onLog={emitLog}
+        />
+      ) : null}
       {open ? (
         <div className="hub-directory-display-panel anim-pop absolute right-0 top-full z-30 mt-1">
           {kpis.length > 0 ? (

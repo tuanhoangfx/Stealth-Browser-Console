@@ -19,6 +19,7 @@ export const WORKFLOW_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<StealthWo
       { key: "steps", label: "Steps" },
       { key: "created", label: "Created" },
       { key: "updated", label: "Updated" },
+      { key: "lastRun", label: "Last Run" },
     ],
     WORKFLOW_COLUMN_PREF_ICONS,
   );
@@ -39,6 +40,7 @@ export const DEFAULT_WORKFLOW_PANEL_DIRECTORY_COLUMNS = new Set<StealthWorkflowP
   "steps",
   "created",
   "updated",
+  "lastRun",
 ]);
 
 export const WORKFLOW_RAIL_DIRECTORY_COLUMNS_CHANGE = "stealth-workflow-rail-directory-columns-change";

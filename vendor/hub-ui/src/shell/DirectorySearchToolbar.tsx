@@ -81,7 +81,6 @@ export function DirectorySearchToolbar({
   return (
     <>
       {leading}
-      {workspacePeriod ? <HubWorkspacePeriodSelect {...workspacePeriod} /> : null}
       {showViewToggle && viewMode != null && onViewModeChange ? (
         <ViewToggle value={viewMode} onChange={onViewModeChange} />
       ) : null}
@@ -89,6 +88,7 @@ export function DirectorySearchToolbar({
       {resolvedShowTablePageSize ? (
         <HubTablePageSizeSelect value={tablePageSize} onChange={onTablePageSizeChange} />
       ) : null}
+      {workspacePeriod ? <HubWorkspacePeriodSelect {...workspacePeriod} /> : null}
       {displayBand}
       {resultCountVisible ? (
         <HubResultCount

@@ -16,7 +16,7 @@ export type HubDriftBannerProps = {
 /** Compact inline banner for cloud/local drift or stale bundle warnings. */
 export function HubDriftBanner({ children, action }: HubDriftBannerProps) {
   return (
-    <div className="mb-1 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-1.5 text-[11px] text-amber-200/90">
+    <div className="mb-1 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-1.5 text-xs text-amber-200/90">
       <AlertTriangle size={13} className="shrink-0 text-amber-400/80" aria-hidden />
       <span className="min-w-0 flex-1">{children}</span>
       {action ? (

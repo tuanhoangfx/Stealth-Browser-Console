@@ -9,17 +9,42 @@ export function enrichFilterDefs<T>(
   matches: (item: T, query: string, filters: FilterValues) => boolean,
   matchesOption: (item: T, filterKey: string, optionValue: string) => boolean,
 ): FilterDef[] {
-  return defs.map((def) => {
+  type FacetState = {
+    def: FilterDef;
+    other: FilterValues;
+    counts: Map<string, number>;
+    total: number;
+  };
+
+  const states: FacetState[] = defs.map((def) => {
     const other: FilterValues = { ...values };
     delete other[def.key];
-    const base = items.filter((item) => matches(item, query, other));
     return {
-      ...def,
-      totalCount: base.length,
-      options: def.options.map((opt) => ({
-        ...opt,
-        count: base.filter((item) => matchesOption(item, def.key, opt.value)).length,
-      })),
+      def,
+      other,
+      counts: new Map(def.options.map((opt) => [opt.value, 0])),
+      total: 0,
     };
   });
+
+  for (const item of items) {
+    for (const state of states) {
+      if (!matches(item, query, state.other)) continue;
+      state.total += 1;
+      for (const opt of state.def.options) {
+        if (matchesOption(item, state.def.key, opt.value)) {
+          state.counts.set(opt.value, (state.counts.get(opt.value) ?? 0) + 1);
+        }
+      }
+    }
+  }
+
+  return states.map(({ def, counts, total }) => ({
+    ...def,
+    totalCount: total,
+    options: def.options.map((opt) => ({
+      ...opt,
+      count: counts.get(opt.value) ?? 0,
+    })),
+  }));
 }

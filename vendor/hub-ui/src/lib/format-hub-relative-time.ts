@@ -5,7 +5,7 @@ export function formatHubRelativeTime(ts?: number | null, now = Date.now()): str
   if (!Number.isFinite(d.getTime())) return "—";
 
   const diff = now - ts;
-  if (diff < 45_000) return "just now";
+  if (diff < 45_000) return "Just now";
 
   const min = Math.floor(diff / 60_000);
   if (min < 60) return `${min}m ago`;

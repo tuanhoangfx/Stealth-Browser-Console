@@ -4,12 +4,15 @@
  * Usage: node scripts/bump-cloakbrowser.mjs <version>
  * Example: node scripts/bump-cloakbrowser.mjs 0.4.1
  */
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { runStep } from "./lib/run-step.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const pkgPath = path.join(root, "package.json");
+
 const next = String(process.argv[2] ?? "").trim();
 
 if (!/^\d+\.\d+\.\d+$/.test(next)) {
@@ -19,15 +22,8 @@ if (!/^\d+\.\d+\.\d+$/.test(next)) {
 
 function run(label, cmd, args) {
   console.log(`\n→ ${label}`);
-  const result = spawnSync(cmd, args, { cwd: root, stdio: "inherit", shell: true });
-  if (result.status !== 0) {
-    console.error(`\n✗ ${label} failed (exit ${result.status})`);
-    process.exit(result.status ?? 1);
-  }
-  console.log(`✓ ${label}`);
+  runStep(label, cmd, args);
 }
-
-const pkgPath = path.join(root, "package.json");
 const manifestPath = path.join(root, "tool.manifest.json");
 
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));

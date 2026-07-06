@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { createElement } from "react";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import type { HubDirectoryColumnHintContent } from "./HubDirectoryColumnHint";
 import { HUB_DIRECTORY_TABLE_SCROLL_CLASS } from "./directory-table-scroll";
 import type { HubTableColumnRole } from "./hub-table-column-meta";
 import { validateDirectoryColumnWidthMeta } from "./hub-directory-column-width-registry";
@@ -49,6 +51,10 @@ export type HubDirectoryColumnMetaInput = {
   width: string;
   headerIcon?: LucideIcon;
   headerIconClassName?: string;
+  headerBrandIcon?: HubBrandIconId;
+  headerEmoji?: string;
+  headerTooltip?: string;
+  headerHint?: HubDirectoryColumnHintContent;
 };
 
 export type HubDirectoryColumnDef<TKey extends string = string> = {
@@ -61,6 +67,10 @@ export type HubDirectoryColumnDef<TKey extends string = string> = {
   headerAlign?: "start" | "center";
   headerIcon?: LucideIcon;
   headerIconClassName?: string;
+  headerBrandIcon?: HubBrandIconId;
+  headerEmoji?: string;
+  headerTooltip?: string;
+  headerHint?: HubDirectoryColumnHintContent;
 };
 
 export type DirectoryColgroupOptions = {
@@ -146,6 +156,10 @@ export function buildDirectoryColumns<TKey extends string>(
       sortable: options?.sortable ?? true,
       headerIcon: def.headerIcon,
       headerIconClassName: def.headerIconClassName,
+      headerBrandIcon: def.headerBrandIcon,
+      headerEmoji: def.headerEmoji,
+      headerTooltip: def.headerTooltip,
+      headerHint: def.headerHint,
     };
   });
   validateDirectoryColumnWidthMeta(columns);

@@ -6,6 +6,8 @@ export type HubFilterSelectOption<T extends string = string> = {
   label: string;
   title?: string;
   count?: number;
+  iconSrc?: string;
+  iconShell?: FilterOption["iconShell"];
 };
 
 type HubFilterSelectProps<T extends string> = {
@@ -38,6 +40,8 @@ export function HubFilterSelect<T extends string>({
     label: o.label,
     title: o.title,
     count: o.count,
+    iconSrc: o.iconSrc,
+    iconShell: o.iconShell,
   }));
 
   return (

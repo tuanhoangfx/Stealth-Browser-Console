@@ -1,8 +1,9 @@
-import { lazy, memo, Suspense, useCallback, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import "../theme/stealth-scripts-hub-layout.css";
 import "../theme/stealth-workflow-steps.css";
 import { useWorkflowEditor } from "../context/workflow-editor-context";
 import { useWorkflowPicker } from "../context/workflow-picker-context";
+import { consumePendingEditorWorkflow } from "../features/workflows/workflow-defaults";
 import type { WorkflowConfig } from "../features/workflows/workflow-types";
 import { ScriptsHubChrome } from "../features/workflows/ScriptsHubChrome";
 import { ScriptsWorkflowDirectory } from "../features/workflows/ScriptsWorkflowDirectory";
@@ -26,7 +27,12 @@ function ScriptsEditorPaneSkeleton() {
 
 export const WorkflowView = memo(function WorkflowView({ headerActions }: { headerActions?: ReactNode }) {
   const { workflowConfigs, filteredWorkflows, selectedWorkflowCount } = useWorkflowPicker();
-  const { activeWorkflowConfig, copyWorkflow, deleteWorkflows } = useWorkflowEditor();
+  const { activeWorkflowConfig, copyWorkflow, deleteWorkflows, setActiveWorkflow } = useWorkflowEditor();
+
+  useEffect(() => {
+    const pending = consumePendingEditorWorkflow();
+    if (pending) setActiveWorkflow(pending);
+  }, [setActiveWorkflow]);
 
   const [contextMenu, setContextMenu] = useState<{ workflow: WorkflowConfig; x: number; y: number } | null>(null);
 

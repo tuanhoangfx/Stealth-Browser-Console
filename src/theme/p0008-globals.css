@@ -71,31 +71,6 @@ html {
   font-size: calc(16px * var(--hub-user-zoom-pct, 90) / 100);
 }
 
-/* Chart legend — wide enough for “Needs review”, bar flexes */
-.hub-chart-row {
-  display: grid;
-  grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr) 2.25rem;
-  align-items: center;
-  column-gap: 0.5rem;
-  row-gap: 0.125rem;
-}
-
-.hub-chart-legend-label {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.25rem;
-  overflow: hidden;
-  color: var(--muted);
-}
-
-.hub-chart-legend-label__text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Personality accent dots — table, card, bulk menu, filters, badges */
 .personality-color-dot {
   display: inline-block;

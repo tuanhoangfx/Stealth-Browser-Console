@@ -1,0 +1,103 @@
+.hub-dir-col-hint-anchor {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+/* Preserve golden directory th-label flex when hint wraps the full label row. */
+.hub-dir-col-hint-anchor > .hub-users-th-label {
+  display: inline-flex;
+}
+
+.hub-dir-col-hint-popover {
+  position: fixed;
+  z-index: 120;
+  width: max-content;
+  min-width: 11rem;
+  max-width: min(92vw, 28rem);
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgb(129 140 248 / 0.35);
+  background: rgb(15 23 42 / 0.96);
+  box-shadow:
+    0 10px 28px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(255 255 255 / 0.04) inset;
+  pointer-events: auto;
+}
+
+.hub-dir-col-hint-popover__title {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgb(196 181 253 / 0.95);
+}
+
+.hub-dir-col-hint-popover__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+}
+
+.hub-dir-col-hint-popover__heading--title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgb(196 181 253 / 0.95);
+}
+
+.hub-dir-col-hint-popover__heading--section {
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgb(129 140 248 / 0.9);
+}
+
+.hub-dir-col-hint-popover__heading-text {
+  min-width: 0;
+}
+
+.hub-dir-col-hint-popover__desc {
+  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: rgb(203 213 225 / 0.95);
+}
+
+.hub-dir-col-hint-popover__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.hub-dir-col-hint-popover__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.hub-dir-col-hint-popover__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 0.875rem;
+  min-height: 0.875rem;
+}
+
+/* Match directory table body emoji scale (12px) — not filter dropdown text-base. */
+.hub-dir-col-hint-popover__emoji {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.hub-dir-col-hint-popover__line {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: rgb(226 232 240 / 0.98);
+  white-space: nowrap;
+}

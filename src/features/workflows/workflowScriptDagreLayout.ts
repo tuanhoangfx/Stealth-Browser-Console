@@ -1,74 +1,49 @@
 import type { Edge, Node } from "@xyflow/react";
+import { Position } from "@xyflow/react";
 import type { ScriptStep } from "../../types";
+import { WORKFLOW_CANVAS_VISUAL_SCALE, workflowLayoutNodePx } from "./workflowCanvasFit";
 
-/** Hit-box & spacing for layout (~ card width + orb + badge + labels). */
-export const WORKFLOW_FLOW_NODE_MEASURED = {
-  width: 178,
-  height: 168,
-};
+/** Hit-box & spacing — scaled so default fitView @ 100% matches prior 85% overview. */
+export const WORKFLOW_FLOW_NODE_MEASURED = workflowLayoutNodePx();
 
-export const WORKFLOW_LAYOUT_STORAGE_KEY = "stealth-console-workflow-layout-mode";
+/** Step chips: ≤ threshold grows freely; above enables Hub scroll pane. */
+export const WORKFLOW_PICKER_SCROLL_STEP_THRESHOLD = 6;
 
-export type WorkflowLayoutMode = "serpentine" | "zigzag_lr" | "linear_lr";
 
-const MODES = new Set<WorkflowLayoutMode>(["serpentine", "zigzag_lr", "linear_lr"]);
+/** Locked to Design V5 — LTR grid + wide spacing + bezier edges. */
+export type WorkflowLayoutMode = "curve_spaced";
 
-const GAP_X_GRID = 40;
-const GAP_Y_GRID = 32;
+const LOCKED_LAYOUT: WorkflowLayoutMode = "curve_spaced";
 
-const ROW_GAP_LR = 36;
-/** Y offset alternating on one horizontal baseline */
-const ZIGZAG_HALF_AMPLITUDE = 52;
+const V5_COLS_MAX = 5;
+const GAP_X_GRID = Math.round(30 * WORKFLOW_CANVAS_VISUAL_SCALE);
+const GAP_Y_GRID = Math.round(26 * WORKFLOW_CANVAS_VISUAL_SCALE);
 
-/** Cap columns for serpentine grid */
-const MAX_COLS_CAP = 6;
+const WORKFLOW_LAYOUT_ORIGIN_PADDING = 48;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-export function readStoredWorkflowLayoutMode(): WorkflowLayoutMode {
-  try {
-    const raw = localStorage.getItem(WORKFLOW_LAYOUT_STORAGE_KEY);
-    if (raw && MODES.has(raw as WorkflowLayoutMode)) return raw as WorkflowLayoutMode;
-  } catch {
-    /* ignore */
-  }
-  return "linear_lr";
-}
-
-export function persistWorkflowLayoutMode(mode: WorkflowLayoutMode): void {
-  try {
-    localStorage.setItem(WORKFLOW_LAYOUT_STORAGE_KEY, mode);
-  } catch {
-    /* ignore */
-  }
-}
-
-function compactColumnCount(stepCount: number): number {
+function columnCount(stepCount: number): number {
   if (stepCount <= 1) return 1;
-
-  let cols = Math.ceil(Math.sqrt(stepCount * 1.25));
-  cols = clamp(cols, 2, MAX_COLS_CAP);
-  cols = Math.min(cols, stepCount);
-  return cols;
+  if (stepCount <= V5_COLS_MAX) return stepCount;
+  return V5_COLS_MAX;
 }
 
-function layoutSerpentine<D extends { step: ScriptStep }>(
-  nodes: Node<D>[],
-): Node<D>[] {
+/** Design V5 — always LTR rows, 5 columns max, generous spacing. */
+function layoutCurveSpacedLtr<D extends { step: ScriptStep }>(nodes: Node<D>[]): Node<D>[] {
   const n = nodes.length;
   if (n === 0) return nodes;
 
-  const cols = compactColumnCount(n);
+  const cols = columnCount(n);
   const { width: w, height: h } = WORKFLOW_FLOW_NODE_MEASURED;
   const strideX = w + GAP_X_GRID;
   const strideY = h + GAP_Y_GRID;
 
   return nodes.map((node, i) => {
     const row = Math.floor(i / cols);
-    const slotInRow = i % cols;
-    const col = row % 2 === 0 ? slotInRow : cols - 1 - slotInRow;
+    const col = i % cols;
     return {
       ...node,
       position: {
@@ -79,52 +54,101 @@ function layoutSerpentine<D extends { step: ScriptStep }>(
   });
 }
 
-/** Single horizontal spine; alternating Y above/below baseline — keeps one row without stacking cells. */
-function layoutZigzagRow<D extends { step: ScriptStep }>(nodes: Node<D>[]): Node<D>[] {
-  const { width: w } = WORKFLOW_FLOW_NODE_MEASURED;
-  const strideX = w + ROW_GAP_LR;
-  const baseY = 120;
-
-  return nodes.map((node, i) => ({
+function centerLayoutNodes<D extends { step: ScriptStep }>(nodes: Node<D>[]): Node<D>[] {
+  if (nodes.length === 0) return nodes;
+  const { width: w, height: h } = WORKFLOW_FLOW_NODE_MEASURED;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const node of nodes) {
+    minX = Math.min(minX, node.position.x);
+    minY = Math.min(minY, node.position.y);
+    maxX = Math.max(maxX, node.position.x + w);
+    maxY = Math.max(maxY, node.position.y + h);
+  }
+  const graphW = maxX - minX;
+  const graphH = maxY - minY;
+  const offsetX = WORKFLOW_LAYOUT_ORIGIN_PADDING + graphW / 2 - (minX + maxX) / 2;
+  const offsetY = WORKFLOW_LAYOUT_ORIGIN_PADDING + graphH / 2 - (minY + maxY) / 2;
+  return nodes.map((node) => ({
     ...node,
     position: {
-      x: i * strideX,
-      y: baseY + (i % 2 === 0 ? -ZIGZAG_HALF_AMPLITUDE : ZIGZAG_HALF_AMPLITUDE),
+      x: node.position.x + offsetX,
+      y: node.position.y + offsetY,
     },
   }));
 }
 
-/** One straight baseline — shallow vertical footprint, widest horizontal stretch. */
-function layoutLinearRow<D extends { step: ScriptStep }>(nodes: Node<D>[]): Node<D>[] {
-  const { width: w } = WORKFLOW_FLOW_NODE_MEASURED;
-  const strideX = w + ROW_GAP_LR;
+const COL_ALIGN_EPS = 14;
 
-  return nodes.map((node, i) => ({
-    ...node,
-    position: {
-      x: i * strideX,
-      y: 120,
-    },
-  }));
+function assignChainHandlePositions<D extends { step: ScriptStep }>(nodes: Node<D>[]): Node<D>[] {
+  if (nodes.length <= 1) return nodes;
+
+  const rowThreshold = (WORKFLOW_FLOW_NODE_MEASURED.height + GAP_Y_GRID) * 0.35;
+
+  return nodes.map((node, index) => {
+    const prev = nodes[index - 1];
+    const next = nodes[index + 1];
+    let sourcePosition = Position.Right;
+    let targetPosition = Position.Left;
+
+    if (next) {
+      const dy = next.position.y - node.position.y;
+      const dx = next.position.x - node.position.x;
+      if (Math.abs(dy) > rowThreshold || Math.abs(dx) <= COL_ALIGN_EPS) {
+        sourcePosition = dy >= 0 ? Position.Bottom : Position.Top;
+      } else {
+        sourcePosition = dx >= 0 ? Position.Right : Position.Left;
+      }
+    }
+
+    if (prev) {
+      const dy = node.position.y - prev.position.y;
+      const dx = node.position.x - prev.position.x;
+      if (Math.abs(dy) > rowThreshold || Math.abs(dx) <= COL_ALIGN_EPS) {
+        targetPosition = dy >= 0 ? Position.Top : Position.Bottom;
+      } else {
+        targetPosition = dx >= 0 ? Position.Left : Position.Right;
+      }
+    }
+
+    return { ...node, sourcePosition, targetPosition };
+  });
 }
 
-/**
- * Applies one of several linear-chain placements (workflow steps are sequential only).
- */
+export function readStoredWorkflowLayoutMode(): WorkflowLayoutMode {
+  try {
+    const raw = localStorage.getItem(WORKFLOW_LAYOUT_STORAGE_KEY);
+    if (raw && raw !== LOCKED_LAYOUT) {
+      localStorage.setItem(WORKFLOW_LAYOUT_STORAGE_KEY, LOCKED_LAYOUT);
+    }
+  } catch {
+    /* ignore */
+  }
+  return LOCKED_LAYOUT;
+}
+
+export function resolveWorkflowLayoutMode(
+  _stepCount: number,
+  _stored?: WorkflowLayoutMode,
+): WorkflowLayoutMode {
+  return LOCKED_LAYOUT;
+}
+
+export function persistWorkflowLayoutMode(_mode: WorkflowLayoutMode): void {
+  try {
+    localStorage.setItem(WORKFLOW_LAYOUT_STORAGE_KEY, LOCKED_LAYOUT);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function layoutWorkflowScriptNodes<D extends { step: ScriptStep }>(
   nodes: Node<D>[],
   edges: Edge[],
-  mode: WorkflowLayoutMode,
+  _mode: WorkflowLayoutMode,
 ): Node<D>[] {
   void edges;
-
-  switch (mode) {
-    case "zigzag_lr":
-      return layoutZigzagRow(nodes);
-    case "linear_lr":
-      return layoutLinearRow(nodes);
-    case "serpentine":
-    default:
-      return layoutSerpentine(nodes);
-  }
+  return assignChainHandlePositions(centerLayoutNodes(layoutCurveSpacedLtr(nodes)));
 }

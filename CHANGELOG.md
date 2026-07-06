@@ -1,5 +1,361 @@
 # Changelog — P0003 Stealth Browser Console
 
+## 2026-07-06 - Workflow footer chrome (minimap + zoom)
+
+- Version: `0.10.39`
+- Timestamp: 2026-07-06 17:35 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- **Layout footer** — Minimap + zoom bar moved into document-flow footer row with canvas tips (`?` + hint); no canvas overlay panels.
+- **Canvas fit** — Default zoom label 100% with baked 0.85 visual scale; smart edge paths + editor/canvas flex rebalance.
+- **Dev icon** — SSOT `sync-app-icon` + profile window taskbar icon parity.
+
+## 2026-07-06 — v0.10.38 — Hidden spawn (no PowerShell flash)
+
+- Version: `0.10.38`
+- Timestamp: 2026-07-06 16:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **run-step.mjs** — shared hidden spawn for predev/reload/test scripts (`windowsHide`, `run-pnpm-exec`); removes `shell: true` PowerShell flashes on Windows.
+
+## 2026-07-06 — v0.10.37 — Electron dev reload
+
+- Version: `0.10.37`
+- Timestamp: 2026-07-06 15:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.36 — Responsive 3-frame stack; canvas chrome inset
+
+- Version: `0.10.36`
+- Timestamp: 2026-07-06 07:45 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Steps layout** — drop fixed 3:3:4 grid; flex stack with content-sized AI/editor frames and Layout filling remainder; minimap/zoom inset from canvas edge.
+
+## 2026-07-06 — v0.10.35 — Frame border clip fix; HubSegmentToggle Steps/Workflow
+
+- Version: `0.10.35`
+- Timestamp: 2026-07-06 07:35 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Steps UI** — fix frame border clipping (chip row inset, layout canvas/minimap inset); AI scope uses `HubSegmentToggle` with icons (Steps / Workflow, Table/Card parity).
+
+## 2026-07-06 — v0.10.34 — Step chip scroll; inspector always visible
+
+- Version: `0.10.34`
+- Timestamp: 2026-07-06 07:14 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Step editor** — chip row capped at ~2 rows with vertical scroll; inspector + bulk bar stay visible when workflows have many steps.
+
+## 2026-07-06 — v0.10.33 — Scripts 3-frame height ratio 3:3:4; restore Layout canvas
+
+- Version: `0.10.33`
+- Timestamp: 2026-07-06 07:10 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Steps layout** — grid rows `3fr 3fr 4fr` for AI / step editor / Layout frames; restore Layout canvas shell border and gradient inside its frame.
+
+## 2026-07-06 — v0.10.32 — Step editor + Layout separate frames
+
+- Version: `0.10.32`
+- Timestamp: 2026-07-06 07:06 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow Steps UI** — step chips + inspector + bulk actions in dedicated frame; Layout canvas in its own frame below.
+
+## 2026-07-06 — v0.10.31 — Step inspector alignment; AI 5-line; flush frames
+
+- Version: `0.10.31`
+- Timestamp: 2026-07-06 07:05 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Step inspector** — labels Title Case (Name not NAME); 3-column grid, label above control, aligned rows.
+- **AI Steps Assistant** — 5-line prompt; Steps + Layout frames flush (no gap between panels).
+
+## 2026-07-06 — v0.10.30 — AI Gen auto-apply; Hub-UI typography + label icons
+
+- Version: `0.10.30`
+- Timestamp: 2026-07-06 06:08 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **AI assistant** — **Gen** applies steps to workflow immediately (no separate Apply); success toast after apply.
+- **Workflow Steps / Layout** — Hub-UI font tokens (`--hub-table-*`); icons on step chips, inspector labels, section headers.
+
+## 2026-07-06 — v0.10.29 — AI Gen JSON robust + Steps/Workflow scope + compact chat
+
+- Version: `0.10.29`
+- Timestamp: 2026-07-06 06:02 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **AI assistant** — stack-based JSON extract (fixes trailing Grok text); scope toggle **Steps** (step list only) vs **Workflow** (full); smaller prompt box.
+
+## 2026-07-06 — v0.10.28 — AI Gen JSON parse (trailing model text)
+
+- Version: `0.10.28`
+- Timestamp: 2026-07-06 05:58 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **AI Step Assistant** — extract first balanced JSON object from model output (fixes `Unexpected non-whitespace character after JSON` when Grok appends commentary).
+
+## 2026-07-05 — v0.10.27 — Electron dev reload
+
+- Version: `0.10.27`
+- Timestamp: 2026-07-05 05:47 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.26 — 9Router AI Gen: fix deactivated Codex workspace
+
+- Version: `0.10.26`
+- Timestamp: 2026-07-06 05:48 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **9Router AI Gen** — default model `xai/grok-3` (Codex workspace 402 deactivated); bootstrap always syncs `config/router.local.json` over stale localStorage; model fallback chain + clearer errors.
+- **Script** — `pnpm sync:9router` probes P0007 keys and writes working router config.
+
+## 2026-07-06 — v0.10.25 — Fix empty workflow canvas on first open; Hub minimap skin
+
+- Version: `0.10.25`
+- Timestamp: 2026-07-06 05:42 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow canvas** — fix StrictMode race leaving Layout empty on default WF00001; refit when viewport size is ready.
+- **Mini-map** — Hub-UI surface/border styling (no white panel background).
+
+## 2026-07-06 — v0.10.24 — Lock Design V5 canvas; clear Design previews
+
+- Version: `0.10.24`
+- Timestamp: 2026-07-06 05:32 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Workflow canvas** — locked **Design V5** (LTR spaced grid, centered, V5 bezier edges, purple stroke); layout picker read-only.
+- **System → Design** — removed V1–V5 preview mocks; empty `HubDesignTemplateEmpty` kept for future reviews.
+
+## 2026-07-06 — v0.10.23 — Zoom % + canvas compact + Design layout V1–V5
+
+- Version: `0.10.23`
+- Timestamp: 2026-07-06 05:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Canvas zoom** — custom controls show live zoom **percentage** (+ / − / fit).
+- **Step canvas** — compact nodes (title only); bezier edges when not axis-aligned; wider row gap.
+- **System → Design** — 5 layout previews (horizontal, vertical, snake LTR, icon rail, bezier spaced) for review.
+
+## 2026-07-06 — v0.10.22 — Smart orthogonal step edges
+
+- Version: `0.10.22`
+- Timestamp: 2026-07-06 05:12 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Step edges** — replace smooth-step loops with straight / single-corner orthogonal paths; row wraps use vertical handles only.
+- **Short chains (≤5 steps)** — serpentine stays on one row so 3-step workflows get simple horizontal connectors.
+
+## 2026-07-06 — v0.10.21 — Cleaner step edges + catalog timestamp migration
+
+- Version: `0.10.21`
+- Timestamp: 2026-07-06 05:05 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Step canvas edges** — per-node handle direction (follow chain); tighter smooth-step offset; thinner stroke (no glow/sheen animation).
+- **Created / Updated** — migrate legacy Dec 2023 fake seeds to Apr 2026 catalog dates; `updatedAt` stays equal to `createdAt` until user saves.
+
+## 2026-07-06 — v0.10.20 — Canvas center fit + Profile Rail workflow run fix
+
+- Version: `0.10.20`
+- Timestamp: 2026-07-06 04:00 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Step canvas** — layout nodes in positive viewport space; stronger `fitView` (double rAF + delayed refit) so steps stay centered, not stuck in the top-left corner.
+- **Profile Rail run** — clicking a workflow selects it for Launch; queue falls back to active workflow; no longer clears selection or attributes runs to `open-url`.
+- **WF00001 timestamps** — stable builtin seed epoch (no `Date.now()` for index 0); session active workflow restored before last-run default.
+
+## 2026-07-06 — v0.10.19 — Fix workflow timestamps + Last Run + canvas center
+
+- Version: `0.10.19`
+- Timestamp: 2026-07-06 03:35 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Timestamp bug** — removed mount-time stamp that overwrote WF00001; seed `createdAt`/`updatedAt` by builtin workflow index, not array position.
+- **Last Run** — `persistWorkflowLastRun` writes localStorage + syncs UI; Profiles Open URL and automation queue both update `lastRunAt`.
+- **Step canvas** — center nodes after layout; tighter fitView (`padding 0.16`, `maxZoom 0.58`) so long chains stay compact.
+
+## 2026-07-06 — v0.10.18 — Revert design preview; last-run default selection
+
+- Version: `0.10.18`
+- Timestamp: 2026-07-06 03:10 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Design preview removed** — deleted workflow-canvas V1–V5 mocks; System nav back to Overview / Backup only.
+- **Default workflow** — Scripts tab selects workflow with latest `lastRunAt` on load (fallback: first in list).
+- **Step canvas** — tighter nodes (80×72) and fitView (`maxZoom 0.72`) so long chains stay in view.
+
+## 2026-07-06 — v0.10.17 — Fix blank screen (Design nav tone)
+
+- Version: `0.10.17`
+- Timestamp: 2026-07-06 03:05 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **System → Design** — fix invalid `iconTone: "purple"` (hub-ui only allows violet/fuchsia/etc.) that crashed React on boot.
+
+## 2026-07-06 — v0.10.16 — System Design sub-tab
+
+- Version: `0.10.16`
+- Timestamp: 2026-07-06 03:00 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **System → Design** — new sidebar sub-tab mounts `DesignTemplatePage` with workflow canvas layout review (V1–V5).
+- **Design Template page** — removed duplicate Overview panels; previews only when `ACTIVE_DESIGN_COUNT > 0`.
+
+## 2026-07-06 — v0.10.15 — Workflow canvas compact + layout design review
+
+- Version: `0.10.15`
+- Timestamp: 2026-07-06 02:45 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Step canvas** — smaller nodes (96×88), 5-column serpentine, tighter fitView; status chip hidden on canvas for density.
+- **Scripts tab** — no workflow selected by default; empty editor until row click.
+- **Last Run** — column label title case.
+- **Design Template** — 5 workflow canvas layout variants (V1–V5) under System for layout review.
+
+## 2026-07-06 — v0.10.14 — Workflow directory + canvas layout
+
+- Version: `0.10.14`
+- Timestamp: 2026-07-06 02:30 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Active workflow** — session-only (`sessionStorage`); default `open-url`; row click no longer bulk-selects checkbox.
+- **Last run column** — `lastRunAt` on workflows; updated after each automation run.
+- **Step canvas** — default serpentine layout for long chains; `fitView` zoom-out instead of locked zoom.
+- **Scripts toolbar** — `0/N` selection chip moved to `searchTrailing` (Hub-UI parity with Store/Rail).
+
+## 2026-07-05 — v0.10.13 — Hub UI “Just now” label parity
+
+- Version: `0.10.13`
+- Timestamp: 2026-07-05 22:38 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Last opened / activity timestamps** — hub-ui SSOT returns `Just now` (sentence case) instead of `just now`; synced vendor hub-ui.
+- **Profiles + Workflow directory** — `capitalize={false}` no longer blocks the label; matches P0020 2FA / Hub activity copy.
+
+## 2026-07-05 — v0.10.12 — Electron dev reload
+
+- Version: `0.10.12`
+- Timestamp: 2026-07-05 22:24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-05 — v0.10.11 — Fix startup closing user new tabs
+
+- Version: `0.10.11`
+- Timestamp: 2026-07-05 20:30 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Startup nav** — only close placeholder tabs that existed at launch; tabs opened during the first seconds of Run (Ctrl+T) are no longer killed when startup URL settles.
+- **Unit test** — `navigate-startup.test.cjs` guards launch-time vs operator tab selection.
+
+## 2026-07-05 — v0.10.10 — Electron dev reload
+
+- Version: `0.10.10`
+- Timestamp: 2026-07-05 19:29 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-05 — v0.10.8 — Stable auto-update (unpacked repair + build gate)
 
 - Version: `0.10.8`

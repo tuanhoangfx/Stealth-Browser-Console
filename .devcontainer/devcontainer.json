@@ -1,0 +1,33 @@
+﻿{
+  "name": "P0003 Stealth Browser Console",
+  "dockerComposeFile": [
+    "../../../docker/compose/docker-compose.infra.yml",
+    "../../../docker/compose/docker-compose.dev.yml"
+  ],
+  "service": "dev",
+  "workspaceFolder": "/workspace/Tool/P0003-Stealth-Browser-Console",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "corepack enable && corepack prepare pnpm@9.15.9 --activate",
+  "forwardPorts": [
+    5175
+  ],
+  "portsAttributes": {
+    "5175": {
+      "label": "P0003:5175",
+      "onAutoForward": "notify"
+    }
+  }
+}
+

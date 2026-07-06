@@ -19,6 +19,10 @@
   --hub-table-body-size-dense: 13px;
   --hub-table-muted-size: 11px;
   --hub-table-body-line-height: 1.45;
+  /* Runtime rail — Console + Run History (directory table parity) */
+  --hub-runtime-body-size: var(--hub-table-body-size);
+  --hub-runtime-muted-size: var(--hub-table-muted-size);
+  --hub-runtime-body-line-height: var(--hub-table-body-line-height);
   --overview-toc-w: 135px;
   --overview-toc-h: 263px;
   --overview-toc-row-h: 30px;

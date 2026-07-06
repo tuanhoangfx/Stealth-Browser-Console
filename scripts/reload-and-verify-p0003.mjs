@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 /** Kill P0003 dev stack, purge legacy identity-toolbar, restart dev, run live smokes. */
-import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,18 +8,10 @@ import {
   LOG_FILE,
   startDevDetached,
 } from "./lib/dev-desktop-process.mjs";
+import { runStep } from "./lib/run-step.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-
-function run(label, cmd, args, opts = {}) {
-  const result = spawnSync(cmd, args, { cwd: root, stdio: "inherit", shell: true, ...opts });
-  if (result.status !== 0) {
-    console.error(`\n✗ ${label} failed (exit ${result.status})`);
-    process.exit(result.status ?? 1);
-  }
-  console.log(`✓ ${label}`);
-}
 
 function waitForUrl(url, timeoutMs = 120_000) {
   const start = Date.now();
@@ -47,8 +38,8 @@ async function main() {
   killStealthDev();
   await new Promise((r) => setTimeout(r, 2000));
 
-  run("ensure-electron-binary", "node", ["scripts/ensure-electron-binary.cjs"]);
-  run("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
+  runStep("ensure-electron-binary", "node", ["scripts/ensure-electron-binary.cjs"]);
+  runStep("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
 
   console.log("reload-and-verify-p0003: starting dev (single background process, no extra terminal)…");
   const pid = startDevDetached();
@@ -59,12 +50,12 @@ async function main() {
   await new Promise((r) => setTimeout(r, 5000));
   focusStealthWindow();
 
-  run("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
-  run("workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]);
-  run("vite-build-ui-smoke", "pnpm", ["exec", "vite", "build"]);
-  run("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "http://127.0.0.1:5175/"]);
-  run("workflow-tab-console-smoke", "node", ["scripts/smoke-workflow-tab-console.mjs", "dist/index.html"]);
-  run("benchmark-profile-launch", "node", ["scripts/benchmark-profile-launch.mjs", "3"]);
+  runStep("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
+  runStep("workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]);
+  runStep("vite-build-ui-smoke", "pnpm", ["exec", "vite", "build"]);
+  runStep("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "http://127.0.0.1:5175/"]);
+  runStep("workflow-tab-console-smoke", "node", ["scripts/smoke-workflow-tab-console.mjs", "dist/index.html"]);
+  runStep("benchmark-profile-launch", "node", ["scripts/benchmark-profile-launch.mjs", "3"]);
 
   console.log("\nreload-and-verify-p0003: all checks passed — Stealth Browser Console is running.");
   console.log("(Close orphan PowerShell windows from earlier failed starts if any remain.)");

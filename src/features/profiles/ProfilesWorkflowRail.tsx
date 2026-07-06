@@ -2,6 +2,7 @@ import { memo, useCallback } from "react";
 import { useWorkflowPicker } from "../../context/workflow-picker-context";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
 import { useStealthShell } from "../../context/stealth-shell-context";
+import { stampPendingEditorWorkflow } from "../workflows/workflow-defaults";
 import { WorkflowRailPanel } from "../workflows/WorkflowRailPanel";
 import { AutomationRuntimePanel } from "../runtime/AutomationRuntimePanel";
 
@@ -38,6 +39,7 @@ export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail({
 
   const handleOpenWorkflowEditor = useCallback(
     (id: string) => {
+      stampPendingEditorWorkflow(id);
       setActiveWorkflow(id);
       setSelectedWorkflowIds([]);
       setWorkflowTab("editor");

@@ -1,14 +1,16 @@
 /** Scripts tab — workflow step editor (editor context only). */
-import { memo, useEffect, useState } from "react";
+import { GitBranch, ListTree } from "lucide-react";
+import { memo, useEffect } from "react";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
 import { workflowDisplayId } from "./workflow-display";
+import { WORKFLOW_PICKER_SCROLL_STEP_THRESHOLD } from "./workflowScriptDagreLayout";
 import { WorkflowCanvasErrorBoundary } from "../../ui/WorkflowCanvasErrorBoundary";
 import { WorkflowAiStepsPanel } from "./WorkflowAiStepsPanel";
 import { WorkflowScriptFlowLazy, prefetchWorkflowScriptFlow } from "./WorkflowScriptFlowLazy";
 import { WorkflowStepAddPicker } from "./WorkflowStepAddPicker";
 import { WorkflowStepBulkActionBar } from "./WorkflowStepBulkActionBar";
 import { WorkflowStepInspectorPanel } from "./WorkflowStepInspectorPanel";
-import { catalogCategoryForKind } from "./script-step-catalog";
+import { catalogCategoryForKind, catalogEntryForKind } from "./script-step-catalog";
 
 export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
   const {
@@ -33,7 +35,6 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
     DEFAULT_WORKFLOWS,
   } = useWorkflowEditor();
 
-  const [canvasHintOpen, setCanvasHintOpen] = useState(false);
   const displayWorkflowId = (id: string) => workflowDisplayId(id, DEFAULT_WORKFLOWS);
   const steps = activeWorkflowConfig.steps;
 
@@ -47,7 +48,10 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
         <div className="script-steps-intro script-steps-intro--compact">
           <header className="script-steps-head">
             <div className="script-steps-head-line">
-              <h2 className="script-steps-title">Workflow Steps</h2>
+              <h2 className="script-steps-title">
+                <ListTree size={14} className="script-steps-title__icon" aria-hidden />
+                Workflow Steps
+              </h2>
               <span className="script-steps-workflow-meta">
                 {displayWorkflowId(activeWorkflowConfig.id)} · {activeWorkflowConfig.name}
               </span>
@@ -55,17 +59,31 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
           </header>
           <WorkflowAiStepsPanel
             activeWorkflowConfig={activeWorkflowConfig}
+            selectedScriptStep={selectedScriptStep}
             defaultWorkflows={DEFAULT_WORKFLOWS}
             onApply={applyAiGeneratedWorkflow}
             onSave={saveWorkflowChanges}
           />
+        </div>
+
+        <div className="script-steps-editor-frame">
           <div className="script-steps-toolbar">
             <div className="script-steps-toolbar-frame">
               {steps.length > 1 ? (
-                <div className="script-steps-picker-row" role="tablist" aria-label="Workflow steps">
+                <div
+                  className={`script-steps-picker-row hub-split-scroll${
+                    steps.length > WORKFLOW_PICKER_SCROLL_STEP_THRESHOLD
+                      ? " script-steps-picker-row--scroll"
+                      : " script-steps-picker-row--auto"
+                  }`}
+                  role="tablist"
+                  aria-label="Workflow steps"
+                >
                   {steps.map((step, index) => {
                     const selected = step.id === (selectedScriptStepId || steps[0]?.id);
                     const category = catalogCategoryForKind(step.kind);
+                    const entry = catalogEntryForKind(step.kind);
+                    const StepIcon = entry?.Icon;
                     return (
                       <button
                         key={step.id}
@@ -76,6 +94,9 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
                         onClick={() => setSelectedScriptStepId(step.id)}
                       >
                         <span className="script-steps-picker-chip__index">{index + 1}</span>
+                        {StepIcon ? (
+                          <StepIcon size={12} className="script-steps-picker-chip__icon" aria-hidden />
+                        ) : null}
                         <span className="script-steps-picker-chip__label">{step.name || step.kind}</span>
                       </button>
                     );
@@ -118,6 +139,10 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
         </div>
 
         <div className="script-step-board-wrap workflow-script-steps-area">
+          <header className="script-step-board-head">
+            <GitBranch size={13} className="script-step-board-head__icon" aria-hidden />
+            <span className="script-step-board-head__label">Layout</span>
+          </header>
           {steps.length === 0 ? (
             <p className="muted script-step-board-empty">Add the first step with the New button below.</p>
           ) : (
@@ -131,25 +156,6 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
               />
             </WorkflowCanvasErrorBoundary>
           )}
-          <div className="script-step-board-hint-bar">
-            <button
-              type="button"
-              className={`script-step-board-hint-toggle${canvasHintOpen ? " is-open" : ""}`}
-              onClick={() => setCanvasHintOpen((value) => !value)}
-              title={canvasHintOpen ? "Hide canvas tips" : "Show canvas tips"}
-              aria-expanded={canvasHintOpen}
-              aria-label="Canvas tips"
-            >
-              ?
-            </button>
-            {canvasHintOpen ? (
-              <p className="muted script-step-board-hint">
-                Use the Layout control (top-right) to switch between serpentine, zigzag, or straight-line placement — your
-                choice is saved in browser storage. Drag the canvas background to pan; scroll wheel to zoom; drag nodes to
-                reorder.
-              </p>
-            ) : null}
-          </div>
         </div>
       </section>
     </div>

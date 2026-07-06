@@ -1,0 +1,9 @@
+{
+  "baseUrl": "https://9router.infi.io.vn/v1",
+  "apiKeySlot": "platform-tools",
+  "apiKey": "sk-REPLACE-from-P0007-data-api-keys-local-json",
+  "model": "xai/grok-3",
+  "fallbacks": ["xai/grok-3-mini"],
+  "maxTokens": 4096,
+  "temperature": 0.3
+}

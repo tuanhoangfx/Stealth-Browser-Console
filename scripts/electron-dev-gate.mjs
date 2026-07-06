@@ -84,6 +84,12 @@ function killDevPort() {
 }
 
 function main() {
+  const iconPath = path.join(root, "build", "icons", "app.ico");
+  if (!fs.existsSync(iconPath)) {
+    const syncIcon = path.join(root, "..", "scripts", "sync-app-icon.cjs");
+    spawnSync(process.execPath, [syncIcon, "--code", "P0003"], winSpawnOpts({ cwd: root, stdio: "inherit" }));
+  }
+
   const force = process.env.STEALTH_DEV_FORCE_RELOAD === "1";
   const nextHash = hashElectron();
   const prev = fs.existsSync(stampFile) ? fs.readFileSync(stampFile, "utf8").trim() : "";

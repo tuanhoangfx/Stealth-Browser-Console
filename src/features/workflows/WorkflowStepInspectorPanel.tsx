@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { CircleDot, Clock, Hash, Link2, MousePointerClick, Type } from "lucide-react";
+import { Clock, Hash, Link2, MousePointerClick, ToggleLeft, Type } from "lucide-react";
 import type { ReactNode } from "react";
 import { HubFormFieldLabel, HubSingleFilterDropdown } from "@tool-workspace/hub-ui";
 import type { ScriptStep, ScriptStepKind } from "../../types";
@@ -82,7 +82,7 @@ export function WorkflowStepInspectorPanel({
               triggerClassName="w-full min-w-0"
             />
           </InspectorInlineField>
-          <InspectorInlineField label="Status" icon={CircleDot}>
+          <InspectorInlineField label="Status" icon={ToggleLeft}>
             <HubSingleFilterDropdown
               filterKey={`step-status-${step.id}`}
               label="Status"

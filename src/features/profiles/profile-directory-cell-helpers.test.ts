@@ -16,7 +16,7 @@ describe("profile-directory-cell-helpers", () => {
 
   it("uses relative age for fresh rows", () => {
     expect(lastOpenedAgeTone(now - 30_000, now)).toBe("fresh");
-    expect(formatLastOpenedRelativeAge(now - 30_000, now)).toBe("just now");
+    expect(formatLastOpenedRelativeAge(now - 30_000, now)).toBe("Just now");
     expect(formatLastOpenedRelativeAge(now - 6 * 60_000, now)).toBe("6m ago");
     expect(formatLastOpenedRelativeAge(now - 6 * 60 * 60_000, now)).toBe("6h ago");
   });

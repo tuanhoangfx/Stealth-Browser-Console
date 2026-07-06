@@ -84,8 +84,10 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
   onExtensionSet,
 }: ProfileFilterPaneProps) {
   const { runAutomationQueue, automationRunning, runWorkflowLabel } = useWorkflowRuntime();
-  const { selectedWorkflowCount } = useWorkflowPicker();
-  const canLaunchWorkflow = selectedWorkflowCount > 0;
+  const { selectedWorkflowCount, activeWorkflow, workflowConfigs } = useWorkflowPicker();
+  const activeWorkflowName =
+    workflowConfigs.find((workflow) => workflow.id === activeWorkflow)?.name ?? "workflow";
+  const canLaunchWorkflow = selectedWorkflowCount > 0 || Boolean(activeWorkflow);
   const filters = useMemo(
     () =>
       catalogStats
@@ -148,8 +150,8 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
             extensionBusy={extensionBusy}
             launchTitle={
               canLaunchWorkflow
-                ? `Launch with workflow: ${runWorkflowLabel} (skips startup URL)`
-                : "Select at least one workflow in the right rail"
+                ? `Launch with workflow: ${selectedWorkflowCount > 0 ? runWorkflowLabel : activeWorkflowName} (skips startup URL)`
+                : "Select a workflow in the right rail"
             }
             launchDisabled={!canLaunchWorkflow}
             onLaunch={() => void runAutomationQueue()}

@@ -48,14 +48,13 @@ export function HubHeaderPanelButton({
       {badge > 0 ? (
         <span
           className={
-            compact && !sidebarRow
-              ? "absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-indigo-500 px-0.5 text-[9px] font-bold text-white"
-              : sidebarRow
-                ? "ml-auto shrink-0 rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-200"
-                : "rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-200"
+            sidebarRow
+              ? "ml-auto shrink-0 rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-200"
+              : "absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white"
           }
+          aria-hidden
         >
-          {badge}
+          {badge > 9 ? "9+" : badge}
         </span>
       ) : null}
     </button>

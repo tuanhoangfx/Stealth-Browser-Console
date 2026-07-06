@@ -110,7 +110,7 @@ export function WorkflowStepAddPicker({ onAdd }: WorkflowStepAddPickerProps) {
         <div className={`${HUB_FILTER_DROPDOWN_LIST_CLASS} workflow-step-add-picker__list`}>
           {groups.map(({ cat, items }) => (
             <div key={cat} className="workflow-step-add-picker__group">
-              <div className="px-2 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+              <div className="px-2 pb-1 pt-1.5 text-[var(--muted)] hub-analytics-caption uppercase tracking-wider font-bold">
                 {catalogCategoryLabel(cat)}
               </div>
               {items.map((entry) => (
@@ -125,7 +125,7 @@ export function WorkflowStepAddPicker({ onAdd }: WorkflowStepAddPickerProps) {
                   </span>
                   <span className="min-w-0 flex-1 text-left">
                     <span className="block truncate text-sm font-semibold text-[var(--text)]">{entry.label}</span>
-                    <span className="block text-[11px] font-normal leading-snug text-[var(--muted)]">
+                    <span className="block text-xs font-normal leading-snug text-[var(--muted)]">
                       {entry.description}
                     </span>
                   </span>

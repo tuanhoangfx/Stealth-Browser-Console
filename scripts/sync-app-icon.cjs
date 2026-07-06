@@ -1,20 +1,10 @@
-const fs = require("node:fs");
+const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 const rootDir = path.resolve(__dirname, "..");
-const outDir = path.join(rootDir, "build", "icons");
-const committedIco = path.join(outDir, "app.ico");
-const committedPng = path.join(outDir, "app.png");
-
-function main() {
-  fs.mkdirSync(outDir, { recursive: true });
-  if (fs.existsSync(committedIco) && fs.existsSync(committedPng)) {
-    console.log(`[sync-app-icon] ok — using committed ${path.relative(rootDir, committedIco)}`);
-    return;
-  }
-  throw new Error(
-    `Missing build/icons/app.ico or app.png — add icons under ${path.relative(rootDir, outDir)} before packaging.`
-  );
-}
-
-main();
+const ssot = path.resolve(rootDir, "..", "scripts", "sync-app-icon.cjs");
+const result = spawnSync(process.execPath, [ssot, "--code", "P0003", ...process.argv.slice(2)], {
+  cwd: rootDir,
+  stdio: "inherit",
+});
+process.exit(result.status ?? 1);

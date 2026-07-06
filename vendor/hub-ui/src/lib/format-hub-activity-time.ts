@@ -6,6 +6,13 @@ export type HubActivityAgeTone = "fresh" | "recent" | "stale";
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+/** Activity-age SSOT thresholds — 3 buckets (dot colors in hub-users-table.css). */
+export const HUB_ACTIVITY_FRESH_MS = HOUR_MS;
+export const HUB_ACTIVITY_RECENT_MS = DAY_MS;
+
+/** @deprecated Use {@link HUB_ACTIVITY_RECENT_MS} — stale boundary is 24h (3-bucket SSOT). */
+export const HUB_ACTIVITY_AGING_MS = HUB_ACTIVITY_RECENT_MS;
+
 /** Parse ISO string or epoch ms to activity timestamp. */
 export function parseHubActivityMs(at: string | number | null | undefined): number | null {
   if (at == null) return null;
@@ -17,18 +24,18 @@ export function parseHubActivityMs(at: string | number | null | undefined): numb
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Fresh ≤1h · Recent ≤24h · Stale >24h — sync/load/profile activity SSOT. */
+/** Fresh ≤1h (blue) · Recent ≤24h (orange) · Stale >24h (gray) — sync/load/profile activity SSOT. */
 export function hubActivityAgeTone(ms: number, now = Date.now()): HubActivityAgeTone {
   const age = Math.max(0, now - ms);
-  if (age <= HOUR_MS) return "fresh";
-  if (age <= DAY_MS) return "recent";
+  if (age <= HUB_ACTIVITY_FRESH_MS) return "fresh";
+  if (age <= HUB_ACTIVITY_RECENT_MS) return "recent";
   return "stale";
 }
 
 export function hubActivityAgeHubTone(tone: HubActivityAgeTone): HubUsersStatusTone {
-  if (tone === "fresh") return "active";
-  if (tone === "recent") return "idle";
-  return "offline";
+  if (tone === "fresh") return "age-recent";
+  if (tone === "recent") return "age-aging";
+  return "age-stale";
 }
 
 /** Stale (>24h) — compact `dd/mm/yy`. */
@@ -40,11 +47,13 @@ export function formatHubActivityStaleLabel(ms: number): string {
 export function formatHubActivityRelativeAge(ms: number, now = Date.now()): string {
   const ageMs = Math.max(0, now - ms);
   const ageSec = Math.floor(ageMs / 1000);
-  if (ageSec < 60) return "just now";
+  if (ageSec < 60) return "Just now";
   const ageMin = Math.floor(ageSec / 60);
   if (ageMin < 60) return `${ageMin}m ago`;
   const ageHr = Math.floor(ageMin / 60);
-  return `${ageHr}h ago`;
+  if (ageHr < 24) return `${ageHr}h ago`;
+  const ageDay = Math.floor(ageHr / 24);
+  return `${ageDay}d ago`;
 }
 
 export function formatHubActivityTime(

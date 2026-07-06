@@ -1,10 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
+import { copyToastLabelFromTitle } from "../toast/copy-toast";
+import { useHubToast } from "../toast/HubToastContext";
+import type { HubCopyFeedback } from "./HubCopyBadge";
 import "./hub-inline-copy-control.css";
 
 const COPY_FLASH_MS = 1400;
 
-/** Brief check flash after clipboard copy — shared by inline copy controls (2FA, Sheet). */
+/** Brief check flash — legacy inline mode only. */
 export function useHubCopyFlash(durationMs = COPY_FLASH_MS) {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -22,11 +25,13 @@ export type HubInlineCopyControlProps = {
   className?: string;
   valueClassName?: string;
   onCopied?: () => void;
+  copyFeedback?: HubCopyFeedback;
+  copyToastLabel?: string;
 };
 
 /**
- * Inline copy control — click text to copy; Check 10px appears after last character on success.
- * Golden: P0020 2FA TwofaCopyControl, Sheet grid cells.
+ * Inline copy control — click text to copy.
+ * Default: toast when HubToastProvider mounted (P0020 Sheet grid — no inline ✓).
  */
 export function HubInlineCopyControl({
   value,
@@ -35,9 +40,16 @@ export function HubInlineCopyControl({
   className = "",
   valueClassName = "",
   onCopied,
+  copyFeedback = "auto",
+  copyToastLabel,
 }: HubInlineCopyControlProps) {
+  const toast = useHubToast();
   const { copied, flash } = useHubCopyFlash();
   const text = String(value ?? "").trim();
+
+  const useToast =
+    copyFeedback === "toast" || (copyFeedback === "auto" && toast != null);
+  const useInlineTick = copyFeedback === "inline" || (copyFeedback === "auto" && toast == null);
 
   return (
     <button
@@ -47,14 +59,18 @@ export function HubInlineCopyControl({
       onClick={(e) => {
         e.stopPropagation();
         void navigator.clipboard?.writeText(text).then(() => {
-          flash();
+          if (useToast) {
+            toast?.pushCopyToast(text, copyToastLabel ?? copyToastLabelFromTitle(title));
+          } else if (useInlineTick) {
+            flash();
+          }
           onCopied?.();
         });
       }}
     >
       <span className={`hub-inline-copy-control__value ${valueClassName}`.trim()}>
         {children}
-        {copied ? <Check size={10} className="hub-inline-copy-control__tick" aria-hidden /> : null}
+        {useInlineTick && copied ? <Check size={10} className="hub-inline-copy-control__tick" aria-hidden /> : null}
       </span>
     </button>
   );

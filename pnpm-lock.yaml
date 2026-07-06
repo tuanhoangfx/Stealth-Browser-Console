@@ -110,9 +110,15 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
+      png-to-ico:
+        specifier: ^3.0.1
+        version: 3.0.1
       postcss:
         specifier: ^8.5.15
         version: 8.5.15
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       tailwindcss:
         specifier: 3.4.13
         version: 3.4.13

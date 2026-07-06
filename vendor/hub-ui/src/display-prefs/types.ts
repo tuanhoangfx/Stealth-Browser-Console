@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { DirectoryTableColumnPresetManagerProp } from "../prefs/directory-table-column-presets";
 import type { TimeRange } from "./constants";
 
 export type PrefIcon = React.ComponentType<{
@@ -109,6 +110,8 @@ export type HubDisplayPrefsProps = {
   /** Extra footer actions before “Reset to defaults” (e.g. tab-specific Save). */
   footerActions?: ReactNode;
   tablePanel?: ReactNode;
+  /** Column preset menu (Default / Current / saved presets) — shown beside Display when set. */
+  tableColumnPresets?: DirectoryTableColumnPresetManagerProp;
   /** Label for the table settings section in Display panel / Settings (default: Table columns). */
   tableSectionLabel?: string;
   /** Actions in the Table columns section header (e.g. Reset columns). */

@@ -1,0 +1,91 @@
+/* Golden account detail modal — TOC · main scroll · log rail (P0020 2FA · P0016 Zalo Account). */
+@import "./hub-tool-detail-split.css";
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
+  --hub-modal-max-w: min(96rem, calc(100vw - var(--app-sidebar-width, 0px) - 1.5rem));
+  --hub-modal-max-h: 960px;
+  --hub-modal-max-vh: 92vh;
+  --hub-tool-detail-rail-w: min(22rem, 34%);
+  --hub-tool-detail-split-min-h: 28rem;
+
+  height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  min-height: min(640px, var(--hub-modal-max-vh));
+  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
+/* Never content-fit — overrides accidental hub-header-panel-modal combo. */
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal.hub-header-panel-modal {
+  height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  min-height: min(640px, var(--hub-modal-max-vh));
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-modal__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-modal__scroll-inner {
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-modal__toc {
+  padding-right: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-split__body {
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-split {
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-split__main {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hub-account-detail-modal__main-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-split__rail {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-panel {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1023px) {
+  .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
+    --hub-tool-detail-rail-w: min(18rem, 36%);
+  }
+}
+
+@media (max-width: 640px) {
+  .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
+    --hub-tool-detail-split-min-h: 22rem;
+  }
+}

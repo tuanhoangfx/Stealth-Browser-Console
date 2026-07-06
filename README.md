@@ -19,6 +19,19 @@ corepack pnpm install
 corepack pnpm dev
 ```
 
+**Agent contract (mandatory):** sau khi sửa code/UI trong repo này, agent **tự** reload dev — user không cần nhắc:
+
+```powershell
+# từ E:\Dev\Tool\P0003-Stealth-Browser-Console
+corepack pnpm dev:reload
+# hoặc từ workspace root:
+node Tool/P0003-Stealth-Browser-Console/scripts/dev-desktop-reload.mjs
+```
+
+- Chỉ restart dev (`:5175`, userData `-dev`, API `:6004`) — **không** kill packaged `Stealth Browser Console.exe` đang chạy.
+- Test bản cài: `corepack pnpm desktop:open` (không `--replace` khi chạy song song dev).
+- Chi tiết: `.cursor/rules/p0003-stealth-browser-ssot.mdc` · skill `ship-until-done` (Local dev → P0003).
+
 Web-only UI (no IPC):
 
 ```powershell

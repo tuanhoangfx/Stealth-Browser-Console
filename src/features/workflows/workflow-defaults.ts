@@ -2,11 +2,14 @@ import { clampConcurrency, clampTimeout } from "../../app/constants";
 import { normalizeStartupUrl } from "../../lib/startup-url";
 import type { ScriptStep, ScriptStepKind } from "../../types";
 import type { WorkflowConfig, WorkflowId } from "./workflow-types";
-import { ensureWorkflowTimestamps } from "./workflow-meta";
+import { ensureWorkflowTimestamps, isLegacyCatalogTimestamp, resolveDefaultActiveWorkflow, workflowBuiltinSeedMs, workflowCustomSeedMs } from "./workflow-meta";
 import { workflowDisplayId } from "./workflow-display";
 
 export const WORKFLOWS_KEY = "stealth-console-workflows";
 export const ACTIVE_WORKFLOW_KEY = "stealth-console-active-workflow";
+export const PENDING_EDITOR_WORKFLOW_KEY = "stealth-pending-editor-workflow";
+export const WORKFLOW_LAST_RUN_CHANGE = "stealth-workflow-last-run-change";
+export const WORKFLOW_TIMESTAMP_MIGRATION_KEY = "stealth-workflow-timestamp-catalog-v3";
 export const PURGED_BUILTIN_WORKFLOW_IDS = new Set<string>(["screen-resolution-real"]);
 
 export type ScriptStepCategoryKey = "page" | "interact" | "capture" | "logic";
@@ -346,10 +349,78 @@ export function workflowStepsForRun(workflow: WorkflowConfig, targetUrl: string)
   });
 }
 
+/** Scripts editor — session active workflow, else latest lastRun, else first in list. */
 export function readStoredActiveWorkflow(): WorkflowId {
-  const stored = localStorage.getItem(ACTIVE_WORKFLOW_KEY) || "open-url";
-  if (PURGED_BUILTIN_WORKFLOW_IDS.has(stored)) return "open-url";
-  return stored;
+  const workflows = readStoredWorkflows();
+  try {
+    const stored = sessionStorage.getItem(ACTIVE_WORKFLOW_KEY);
+    if (stored && workflows.some((workflow) => workflow.id === stored)) return stored;
+  } catch {
+    /* ignore */
+  }
+  return resolveDefaultActiveWorkflow(workflows);
+}
+
+export function persistActiveWorkflow(id: WorkflowId): void {
+  try {
+    if (!id) return;
+    sessionStorage.setItem(ACTIVE_WORKFLOW_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function stampPendingEditorWorkflow(id: WorkflowId): void {
+  try {
+    sessionStorage.setItem(PENDING_EDITOR_WORKFLOW_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function consumePendingEditorWorkflow(): WorkflowId {
+  try {
+    const id = sessionStorage.getItem(PENDING_EDITOR_WORKFLOW_KEY) || "";
+    sessionStorage.removeItem(PENDING_EDITOR_WORKFLOW_KEY);
+    return id;
+  } catch {
+    return "";
+  }
+}
+
+function migrateLegacyCatalogTimestamps(items: WorkflowConfig[]): WorkflowConfig[] {
+  return items.map((workflow, index) => {
+    const builtinIndex = DEFAULT_WORKFLOWS.findIndex((item) => item.id === workflow.id);
+    const seedMs =
+      builtinIndex >= 0
+        ? workflowBuiltinSeedMs(builtinIndex)
+        : workflowCustomSeedMs(workflow.id || `idx-${index}`);
+    const createdLegacy = isLegacyCatalogTimestamp(workflow.createdAt);
+    const updatedLegacy = isLegacyCatalogTimestamp(workflow.updatedAt);
+    if (!createdLegacy && !updatedLegacy) return workflow;
+    const createdAt = createdLegacy ? new Date(seedMs).toISOString() : workflow.createdAt!;
+    const updatedAt = updatedLegacy ? createdAt : workflow.updatedAt!;
+    return { ...workflow, createdAt, updatedAt };
+  });
+}
+
+/** Persist lastRunAt to localStorage — works outside React (Profiles Launch, automation). */
+export function persistWorkflowLastRun(workflowId: WorkflowId): string | null {
+  if (!workflowId) return null;
+  try {
+    const items = JSON.parse(localStorage.getItem(WORKFLOWS_KEY) || "[]") as WorkflowConfig[];
+    const now = new Date().toISOString();
+    const next = items.map((workflow) =>
+      workflow.id === workflowId ? { ...workflow, lastRunAt: now } : workflow,
+    );
+    localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(next));
+    window.dispatchEvent(
+      new CustomEvent(WORKFLOW_LAST_RUN_CHANGE, { detail: { workflowId, lastRunAt: now } }),
+    );
+    return now;
+  } catch {
+    return null;
+  }
 }
 
 export function readStoredWorkflows(): WorkflowConfig[] {
@@ -392,10 +463,13 @@ export function readStoredWorkflows(): WorkflowConfig[] {
         (workflow.action as string) !== "set-screen-resolution-real"
     );
 
-    return sanitized.map((workflow, index) => {
+    const stamped = sanitized.map((workflow, index) => {
       const fallback = DEFAULT_WORKFLOWS.find((item) => item.id === workflow.id);
+      const builtinIndex = DEFAULT_WORKFLOWS.findIndex((item) => item.id === workflow.id);
       const preset = fallback?.steps || workflowSteps(workflow.targetUrl || "", false);
       const raw = Array.isArray(workflow.steps) && workflow.steps.length ? workflow.steps : preset;
+      const seedMs =
+        builtinIndex >= 0 ? workflowBuiltinSeedMs(builtinIndex) : workflowCustomSeedMs(workflow.id || `idx-${index}`);
       return ensureWorkflowTimestamps(
         {
           ...(fallback || DEFAULT_WORKFLOWS[0]),
@@ -409,9 +483,21 @@ export function readStoredWorkflows(): WorkflowConfig[] {
           concurrency: clampConcurrency(Number(workflow.concurrency ?? fallback?.concurrency ?? 1)),
           steps: hydrateWorkflowSteps(raw, preset, workflow.targetUrl || ""),
         },
-        Date.now() - index * 86_400_000,
+        seedMs,
       );
     });
+
+    try {
+      if (!localStorage.getItem(WORKFLOW_TIMESTAMP_MIGRATION_KEY)) {
+        const migrated = migrateLegacyCatalogTimestamps(stamped);
+        localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(migrated));
+        localStorage.setItem(WORKFLOW_TIMESTAMP_MIGRATION_KEY, "v3");
+        return migrated;
+      }
+    } catch {
+      /* ignore */
+    }
+    return stamped;
   } catch {
     return DEFAULT_WORKFLOWS;
   }

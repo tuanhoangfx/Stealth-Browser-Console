@@ -31,7 +31,7 @@ describe("topChartItems", () => {
     expect(prepareChartItems([{ label: "Only", value: 1 }])).toHaveLength(2);
   });
 
-  it("assigns golden rank colors (green, purple, blue, neutral Others)", () => {
+  it("does not pre-assign bar colors (MiniBarChart rank mode owns fills)", () => {
     const items = [
       { label: "A", value: 10 },
       { label: "B", value: 8 },
@@ -39,7 +39,7 @@ describe("topChartItems", () => {
       { label: "D", value: 3 },
     ];
     const rows = prepareChartItems(items);
-    expect(rows.map((r) => r.color)).toEqual(["#22c55e", "#a855f7", "#60a5fa", "#64748b"]);
+    expect(rows.every((r) => r.color === undefined)).toBe(true);
     expect(rows[3]).toMatchObject({ label: CHART_OTHERS_LABEL, value: 3 });
   });
 });

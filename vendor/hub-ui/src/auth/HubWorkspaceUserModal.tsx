@@ -127,7 +127,7 @@ export function HubWorkspaceUserModal({
           <HubUserModalFieldTable>
             <HubUserModalFieldRow icon={KeyRound} iconClassName="text-violet-300" label="User ID">
               {userId ? (
-                <span className="font-mono text-[11px] break-all">{userId}</span>
+                <span className="font-mono text-xs break-all">{userId}</span>
               ) : (
                 <span className="text-[var(--muted)]">No active session</span>
               )}

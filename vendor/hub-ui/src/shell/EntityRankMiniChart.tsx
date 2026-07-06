@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { chartRankBarColor, isChartOthersLabel } from "../lib/chart-palette";
 import { MetricBadge, type MetricBadgeTone } from "./MetricBadge";
-import { HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
 
 export type EntityRankRow = {
   id: string;
@@ -36,7 +35,7 @@ export function EntityRankMiniChart({ title, rows, footer, emptyLabel = "—" }:
       <div className="mb-2 flex shrink-0 items-center justify-between gap-2">{title}</div>
       <ul className="hub-chart-card__body hub-chart-card__body--rank space-y-2.5">
         {rows.length === 0 ? (
-          <li className={`py-3 text-center text-[var(--muted)] ${HUB_SHELL_LABEL_TYPO_CLASS}`}>{emptyLabel}</li>
+          <li className="hub-chart-card__empty py-3 text-center">{emptyLabel}</li>
         ) : (
           rows.map((row, i) => {
             const pct = Math.max(2, ((row.value || 0) / max) * 100);
@@ -49,8 +48,8 @@ export function EntityRankMiniChart({ title, rows, footer, emptyLabel = "—" }:
                   type={row.onClick ? "button" : undefined}
                   className={
                     row.onClick
-                      ? `hub-chart-legend-label text-left hover:text-indigo-200 ${HUB_SHELL_LABEL_TYPO_CLASS}`
-                      : `hub-chart-legend-label ${HUB_SHELL_LABEL_TYPO_CLASS}`
+                      ? "hub-chart-legend-label text-left hover:text-indigo-200"
+                      : "hub-chart-legend-label"
                   }
                   title={row.label}
                   onClick={row.onClick}
@@ -68,7 +67,7 @@ export function EntityRankMiniChart({ title, rows, footer, emptyLabel = "—" }:
                   />
                 </div>
                 <div className="hub-chart-row__value flex flex-col items-end gap-0.5">
-                  <span className={`tabular-nums text-[var(--text)] ${HUB_SHELL_LABEL_TYPO_CLASS}`}>
+                  <span className="tabular-nums">
                     {fmtInt(row.value)}
                     {row.total != null ? (
                       <span className="text-[var(--muted)]"> / {fmtInt(row.total)}</span>

@@ -32,14 +32,14 @@ export type HubDirectoryCrudBulkActionsProps = {
   embedded?: boolean;
 };
 
-/** Golden Add / Edit / Delete bulk rail — Notes folders, 2FA, Cookie access modals. */
+/** Golden New / Edit / Delete bulk rail — Notes folders, 2FA, Cookie access modals. */
 export function HubDirectoryCrudBulkActions({
   hasSelection,
   selectedCount,
   onPrimary,
   onEdit,
   onDelete,
-  primaryLabel = "Add",
+  primaryLabel = "New",
   primaryTitle,
   primaryDisabled = false,
   editDisabled = false,

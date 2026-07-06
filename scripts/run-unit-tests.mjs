@@ -1,25 +1,17 @@
 #!/usr/bin/env node
-/** Unit + DB + electron e2e smoke — PowerShell-safe sequential runner. */
-import { spawnSync } from "node:child_process";
+/** Unit + DB + electron e2e smoke — hidden spawn (no shell:true flash). */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { runStep } from "./lib/run-step.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-function run(label, cmd, args) {
-  const result = spawnSync(cmd, args, { cwd: root, stdio: "inherit", shell: true });
-  if (result.status !== 0) {
-    console.error(`\n✗ ${label} failed (exit ${result.status})`);
-    process.exit(result.status ?? 1);
-  }
-  console.log(`✓ ${label}`);
-}
-
-run("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
-run("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
-run("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
-run("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);
-run("packaged-auth-smoke", "node", ["scripts/smoke-packaged-auth.mjs", "dist/index.html"]);
+runStep("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
+runStep("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
+runStep("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
+runStep("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);
+runStep("packaged-auth-smoke", "node", ["scripts/smoke-packaged-auth.mjs", "dist/index.html"]);
 
 const fast = process.argv.includes("--fast") || process.env.P0003_TEST_FAST === "1";
 const liveE2e = [
@@ -36,22 +28,23 @@ const liveE2e = [
 if (fast) {
   console.log("test:fast — skip live CloakBrowser e2e smokes (use test:unit for full release)");
 } else {
-  for (const [label, cmd, args] of liveE2e) run(label, cmd, args);
+  for (const [label, cmd, args] of liveE2e) runStep(label, cmd, args);
 }
 
-run("profile-backup", "node", ["--test", "electron/lib/profile-backup.test.cjs"]);
-run("profile-service", "node", ["electron/db/profile-service.test.cjs"]);
-run("profile-search-regression", "node", ["electron/db/profile-search-regression.test.cjs"]);
-run("profile-chrome-columns-migration", "node", ["--test", "electron/db/profile-chrome-columns-migration.test.cjs"]);
-run("safe-goto", "node", ["--test", "electron/automation/safe-goto.test.cjs"]);
-run("google-session-guard", "node", ["--test", "electron/automation/google-session-guard.test.cjs"]);
-run("profile-identity", "node", ["--test", "electron/profile-identity.test.cjs"]);
-run("directory-id-search", "node", ["--test", "electron/lib/directory-id-search.test.cjs"]);
-run("profile-chrome-preferences", "node", ["--test", "electron/profile-chrome-preferences.test.cjs"]);
-run("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
-run("packaged-csp", "node", ["--test", "electron/lib/packaged-csp.test.cjs"]);
-run("profile-chrome-session", "node", ["--test", "electron/lib/profile-chrome-session.test.cjs"]);
-run("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guard.test.cjs"]);
-run("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);
-run("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
-run("api-routes", "node", ["electron/api-routes.test.cjs"]);
+runStep("profile-backup", "node", ["--test", "electron/lib/profile-backup.test.cjs"]);
+runStep("profile-service", "node", ["electron/db/profile-service.test.cjs"]);
+runStep("profile-search-regression", "node", ["electron/db/profile-search-regression.test.cjs"]);
+runStep("profile-chrome-columns-migration", "node", ["--test", "electron/db/profile-chrome-columns-migration.test.cjs"]);
+runStep("safe-goto", "node", ["--test", "electron/automation/safe-goto.test.cjs"]);
+runStep("google-session-guard", "node", ["--test", "electron/automation/google-session-guard.test.cjs"]);
+runStep("profile-identity", "node", ["--test", "electron/profile-identity.test.cjs"]);
+runStep("desktop-app-icon", "node", ["--test", "electron/lib/desktop-app-icon.test.cjs"]);
+runStep("directory-id-search", "node", ["--test", "electron/lib/directory-id-search.test.cjs"]);
+runStep("profile-chrome-preferences", "node", ["--test", "electron/profile-chrome-preferences.test.cjs"]);
+runStep("profile-chrome-cleanup", "node", ["--test", "electron/profile-chrome-cleanup.test.cjs"]);
+runStep("packaged-csp", "node", ["--test", "electron/lib/packaged-csp.test.cjs"]);
+runStep("profile-chrome-session", "node", ["--test", "electron/lib/profile-chrome-session.test.cjs"]);
+runStep("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guard.test.cjs"]);
+runStep("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);
+runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
+runStep("api-routes", "node", ["electron/api-routes.test.cjs"]);

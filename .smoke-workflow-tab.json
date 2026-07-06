@@ -9,6 +9,14 @@
   "errors": [
     {
       "level": 2,
+      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-500-normal-CilQvTGz.woff2"
+    },
+    {
+      "level": 2,
+      "message": "OTS parsing error: Size of decompressed WOFF 2.0 is less than compressed size"
+    },
+    {
+      "level": 2,
       "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-400-normal-B04k-d_M.woff2"
     },
     {
@@ -30,14 +38,6 @@
     {
       "level": 2,
       "message": "OTS parsing error: Failed to convert WOFF 2.0 font to SFNT"
-    },
-    {
-      "level": 2,
-      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-500-normal-CilQvTGz.woff2"
-    },
-    {
-      "level": 2,
-      "message": "OTS parsing error: Size of decompressed WOFF 2.0 is less than compressed size"
     },
     {
       "level": 2,

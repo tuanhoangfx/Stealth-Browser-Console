@@ -26,7 +26,7 @@ export function HubRuntimeHistoryList({
   return (
     <ul className={`hub-runtime-history-list max-h-full space-y-0 overflow-auto ${className}`.trim()}>
       {rows.length === 0 ? (
-        <li className="px-1 py-2 text-xs text-hub-muted">{emptyMessage}</li>
+        <li className="hub-runtime-history-list__empty">{emptyMessage}</li>
       ) : (
         rows.map((row) => (
           <li key={row.id}>

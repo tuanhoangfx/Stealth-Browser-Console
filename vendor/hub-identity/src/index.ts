@@ -6,6 +6,7 @@ export * from "./hub-auth-rate-limit";
 export * from "./hub-admin-recover-client";
 export * from "./hub-recover-api-base";
 export * from "./hub-auth-submit";
+export * from "./hub-mirror-sign-in-error";
 export * from "./hub-session-labels";
 export * from "./hub-forgot-password";
 export * from "./workspace-auth-gate-preset";

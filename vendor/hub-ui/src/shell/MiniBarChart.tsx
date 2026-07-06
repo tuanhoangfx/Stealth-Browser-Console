@@ -1,6 +1,7 @@
 import type { FilterIconMeta } from "../types/filter-badge";
 import { prepareChartItems } from "../chart-items";
-import { chartRankBarColor, isChartOthersLabel } from "../lib/chart-palette";
+import { chartRankBarColor, isChartOthersLabel, CHART_OTHERS_BAR_COLOR } from "../lib/chart-palette";
+import { hubValueBandColor } from "../lib/hub-value-band";
 import { compactIconSize } from "../ui-scale";
 import { hubBrandIconImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
 import { HUB_ANALYTICS_CAPTION_TYPO_CLASS, HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
@@ -14,8 +15,22 @@ export type BarItem = {
   iconShell?: HubBrandIconShell;
 };
 
+export type MiniBarChartColorMode = "value-band" | "rank";
+
 function fmtInt(n: number): string {
   return new Intl.NumberFormat("vi-VN").format(n);
+}
+
+function resolveBarColor(
+  item: BarItem,
+  index: number,
+  max: number,
+  colorMode: MiniBarChartColorMode,
+): string {
+  if (item.color) return item.color;
+  if (isChartOthersLabel(item.label)) return CHART_OTHERS_BAR_COLOR;
+  if (colorMode === "rank") return chartRankBarColor(index, item.label);
+  return hubValueBandColor(item.value, max);
 }
 
 export function MiniBarChart({
@@ -23,11 +38,14 @@ export function MiniBarChart({
   items,
   max,
   formatter,
+  colorMode = "rank",
 }: {
   title: string;
   items: BarItem[];
   max?: number;
   formatter?: (n: number) => string;
+  /** `rank` — golden top-3 palette + grey Others. `value-band` — optional ratio gradient. */
+  colorMode?: MiniBarChartColorMode;
 }) {
   const rows = prepareChartItems(items);
   const m = max ?? Math.max(1, ...rows.map((i) => i.value));
@@ -39,7 +57,7 @@ export function MiniBarChart({
       <ul className="hub-chart-card__body space-y-1.5">
         {rows.map((it, i) => {
           const pct = Math.max(2, (it.value / m) * 100);
-          const color = it.color ?? chartRankBarColor(i, it.label);
+          const color = resolveBarColor(it, i, m, colorMode);
           const othersRow = isChartOthersLabel(it.label);
           return (
             <li key={`${it.label}-${i}`} className="hub-chart-row anim-slide">
@@ -66,7 +84,12 @@ export function MiniBarChart({
                   }}
                 />
               </div>
-              <span className="hub-chart-row__value tabular-nums">{fmt(it.value)}</span>
+              <span
+                className="hub-chart-row__value tabular-nums"
+                style={colorMode === "value-band" ? { color } : undefined}
+              >
+                {fmt(it.value)}
+              </span>
             </li>
           );
         })}

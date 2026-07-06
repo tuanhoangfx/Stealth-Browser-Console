@@ -3,7 +3,7 @@ export type HubShortcutId = "search" | "clear" | "new" | "edit" | "settings" | "
 export const HUB_SHORTCUT_LEGEND: { id: HubShortcutId; keys: string; label: string }[] = [
   { id: "search", keys: "F", label: "Search" },
   { id: "clear", keys: "Ctrl+Q", label: "Clear search" },
-  { id: "new", keys: "N", label: "Add / create" },
+  { id: "new", keys: "N", label: "New / create" },
   { id: "edit", keys: "E", label: "Edit selection" },
   { id: "settings", keys: "S", label: "Settings" },
   { id: "dismiss", keys: "Esc", label: "Blur search · close modal" },

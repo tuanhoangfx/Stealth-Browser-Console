@@ -30,7 +30,7 @@ export function HubKeyboardShortcutsPanel({ className = "" }: { className?: stri
 
   return (
     <div className={className} aria-label="Keyboard shortcuts">
-      <p className="mb-3 text-[11px] leading-snug text-[var(--muted)]">
+      <p className="mb-3 text-xs leading-snug text-[var(--muted)]">
         Hub standard keys for the active tab. N applies when the screen supports add/create.
       </p>
       <div className="space-y-1">

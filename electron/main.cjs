@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, shell, dialog } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolveAppIconPathIfExists } = require("./lib/desktop-app-icon.cjs");
 const { configureElectronUserData, resolveStealthApiPort, isDevIsolated } = require("./lib/user-data-root.cjs");
 
 configureElectronUserData(app);
@@ -558,6 +559,12 @@ function tryLoadJsonFile(candidates) {
   return null;
 }
 
+function resolveRouterApiKey(parsed) {
+  const keys = parsed?.apiKeys && typeof parsed.apiKeys === "object" ? parsed.apiKeys : {};
+  const slot = String(parsed.apiKeySlot || "platform-tools").trim();
+  return String(parsed.apiKey || keys[slot] || keys["platform-tools"] || keys["other-tools"] || "").trim();
+}
+
 function loadRouterLocalConfig() {
   const hit = tryLoadJsonFile([
     path.join(process.cwd(), "config", "router.local.json"),
@@ -568,8 +575,8 @@ function loadRouterLocalConfig() {
   const parsed = hit.data;
   return {
     baseUrl: String(parsed.baseUrl || "").trim(),
-    apiKey: String(parsed.apiKey || "").trim(),
-    model: String(parsed.model || "cx/gpt-5.3-codex").trim(),
+    apiKey: resolveRouterApiKey(parsed),
+    model: String(parsed.model || "xai/grok-3").trim(),
     fallbacks: Array.isArray(parsed.fallbacks) ? parsed.fallbacks.map((item) => String(item).trim()).filter(Boolean) : [],
     maxTokens: Number(parsed.maxTokens) || 4096,
     temperature: Number.isFinite(Number(parsed.temperature)) ? Number(parsed.temperature) : 0.3,
@@ -761,7 +768,7 @@ function broadcastProfileSession(profile, event) {
 }
 
 async function createWindow() {
-  const iconPath = path.join(__dirname, "..", "build", "icons", "app.ico");
+  const iconPath = resolveAppIconPathIfExists(path.join(__dirname, ".."));
   const win = new BrowserWindow({
     width: 1380,
     height: 880,
@@ -770,7 +777,7 @@ async function createWindow() {
     backgroundColor: "#0b1020",
     title: "Stealth Browser Console",
     show: false,
-    ...(fs.existsSync(iconPath) ? { icon: iconPath } : {}),
+    ...(iconPath ? { icon: iconPath } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,

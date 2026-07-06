@@ -13,7 +13,7 @@ export function HubRuntimeConsoleTerm({
   return (
     <div className={`hub-runtime-term ${className}`.trim()}>
       <div className="hub-runtime-term__legend">{legend}</div>
-      <div className="hub-runtime-term__body font-mono text-xs leading-5">{children}</div>
+      <div className="hub-runtime-term__body">{children}</div>
     </div>
   );
 }

@@ -17,16 +17,20 @@ type Props = {
   sectionIdPrefix?: string;
   scrollRootSelector?: string;
   className?: string;
+  /** Plain Lucide glyphs — no bordered icon tile (tool-detail modals). */
+  plainIcons?: boolean;
 };
 
 function HubTocSectionNavItem({
   item,
   sectionId,
   scrollRootSelector,
+  plainIcons = false,
 }: {
   item: HubTocNavItem;
   sectionId: string;
   scrollRootSelector?: string;
+  plainIcons?: boolean;
 }) {
   const isHighlighted = useHubTocNavHighlight(sectionId);
   const isActive = useHubTocNavActive(sectionId);
@@ -49,7 +53,11 @@ function HubTocSectionNavItem({
           </span>
         ) : item.icon ? (
           <span
-            className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[.03] text-[var(--muted)] group-hover:text-indigo-200 [&>svg]:size-[11px]"
+            className={
+              plainIcons
+                ? "hub-toc-nav__icon hub-toc-nav__icon--plain shrink-0 text-[var(--muted)] group-hover:text-indigo-200"
+                : "grid h-5 w-5 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[.03] text-[var(--muted)] group-hover:text-indigo-200 [&>svg]:size-[11px]"
+            }
             aria-hidden
           >
             {item.icon}
@@ -67,6 +75,7 @@ export function HubTocSectionNav({
   sectionIdPrefix = "",
   scrollRootSelector = HUB_TOOL_DETAIL_SCROLL_ROOT,
   className = "",
+  plainIcons = false,
 }: Props) {
   if (!items.length) return null;
 
@@ -80,6 +89,7 @@ export function HubTocSectionNav({
             item={item}
             sectionId={sectionId}
             scrollRootSelector={scrollRootSelector}
+            plainIcons={plainIcons}
           />
         );
       })}

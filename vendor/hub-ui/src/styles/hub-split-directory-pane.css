@@ -51,7 +51,7 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 1rem;
   clip-path: inset(0 round 1rem);
-  background: var(--hub-directory-pane-surface, rgba(255, 255, 255, 0.02));
+  background: var(--hub-directory-pane-surface, var(--panel));
   isolation: isolate;
 }
 
@@ -78,7 +78,7 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 1rem;
   clip-path: inset(0 round 1rem);
-  background: var(--hub-directory-pane-surface, rgba(255, 255, 255, 0.02));
+  background: var(--hub-directory-pane-surface, var(--panel));
 }
 
 .hub-split-directory-pane__body

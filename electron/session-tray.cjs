@@ -1,15 +1,16 @@
 const { Tray, Menu, nativeImage } = require("electron");
 const path = require("node:path");
-const fs = require("node:fs");
+const { resolveAppIconPathIfExists } = require("./lib/desktop-app-icon.cjs");
 const REFRESH_MS = 12000;
 
 function resolveTrayIcon() {
+  const rootDir = path.join(__dirname, "..");
   const candidates = [
-    path.join(__dirname, "..", "build", "icons", "tray.ico"),
-    path.join(__dirname, "..", "build", "icons", "app.ico")
-  ];
+    path.join(rootDir, "build", "icons", "tray.ico"),
+    resolveAppIconPathIfExists(rootDir),
+  ].filter(Boolean);
   for (const file of candidates) {
-    if (fs.existsSync(file)) {
+    if (file) {
       const image = nativeImage.createFromPath(file);
       if (!image.isEmpty()) return image;
     }

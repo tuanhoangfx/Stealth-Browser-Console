@@ -48,7 +48,7 @@ function ExtensionOverrideRow({
   return (
     <fieldset className="col-span-full space-y-1.5 rounded-lg border border-[var(--border)] px-3 py-2.5">
       <legend className="px-1 text-xs font-medium text-[var(--text)]">{label}</legend>
-      <p className="text-[11px] text-[var(--muted)]">App default: {globalLabel(globalEnabled)}</p>
+      <p className="text-xs text-[var(--muted)]">App default: {globalLabel(globalEnabled)}</p>
       <label className="stealth-settings-form__check block">
         <input
           type="radio"

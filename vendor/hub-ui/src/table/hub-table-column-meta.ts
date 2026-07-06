@@ -149,6 +149,8 @@ export const HUB_TABLE_COLUMN_META: Record<HubTableColumnRole, HubTableColumnMet
   totp: { icon: KeyRound, iconClassName: "hub-users-th-icon--role" },
 };
 
+const HUB_TABLE_COLUMN_META_FALLBACK: HubTableColumnMeta = HUB_TABLE_COLUMN_META.name;
+
 export function resolveHubTableColumnMeta(role: HubTableColumnRole): HubTableColumnMeta {
-  return HUB_TABLE_COLUMN_META[role];
+  return HUB_TABLE_COLUMN_META[role] ?? HUB_TABLE_COLUMN_META_FALLBACK;
 }

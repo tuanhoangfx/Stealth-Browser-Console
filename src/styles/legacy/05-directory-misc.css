@@ -494,6 +494,25 @@ html[data-theme="dark"] .workflow-script-flow-shell {
   color: color-mix(in srgb, var(--muted) 94%, rgb(226 232 240 / 0.12));
 }
 
+.workflow-script-layout-picker--locked {
+  cursor: default;
+  padding-right: 10px;
+  color: color-mix(in srgb, rgb(196 181 253) 88%, var(--text));
+  box-shadow:
+    0 2px 8px rgb(0 0 0 / 0.16),
+    0 0 0 1px color-mix(in srgb, rgb(167 139 250) 42%, var(--border));
+}
+
+.workflow-script-layout-picker--locked:hover {
+  background: color-mix(in srgb, var(--surface) 96%, rgb(248 250 252 / 0.04));
+}
+
+.workflow-script-layout-picker--locked .workflow-script-layout-trigger-value {
+  font-size: 11px;
+  font-weight: 720;
+  color: color-mix(in srgb, rgb(196 181 253) 92%, var(--text));
+}
+
 .workflow-script-layout-trigger {
   appearance: none;
   display: inline-flex;
@@ -577,6 +596,64 @@ html[data-theme="light"] .workflow-script-layout-menu__opt.is-active {
 }
 
 .workflow-script-flow.rf-theme .react-flow__panel.react-flow__minimap.workflow-script-minimap {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 10px !important;
+  border: 1px solid color-mix(in srgb, rgb(148 163 184) 45%, var(--panel, #121830));
+  background: color-mix(in srgb, var(--panel, #121830) 94%, rgb(15 23 42 / 0.22));
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.28),
+    0 0 0 1px rgb(148 163 184 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.workflow-script-flow.rf-theme .workflow-script-minimap .react-flow__minimap-node {
+  fill: rgb(56 217 255);
+}
+
+.workflow-script-zoom-panel {
+  margin: 0 !important;
+}
+
+.workflow-script-zoom-panel__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border-radius: 8px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(15 23 42 / 0.88);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.28);
+}
+
+.workflow-script-zoom-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgb(226 232 240);
+  cursor: pointer;
+}
+
+.workflow-script-zoom-btn:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+
+.workflow-script-zoom-label {
+  min-width: 2.75rem;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: rgb(186 230 253);
+  user-select: none;
+}
+
+.workflow-script-flow.rf-theme .react-flow__panel.react-flow__controls.workflow-script-controls-panel {
   bottom: 26px !important;
   right: 76px !important;
   margin: 0 !important;
@@ -599,6 +676,7 @@ html[data-theme="light"] .workflow-script-layout-menu__opt.is-active {
 .workflow-script-flow.rf-theme .workflow-script-minimap .react-flow__minimap-svg {
   display: block;
   border-radius: 10px !important;
+  background: color-mix(in srgb, var(--panel, #121830) 96%, rgb(15 23 42 / 0.12));
 }
 
 .workflow-script-flow.rf-theme .workflow-script-minimap .react-flow__minimap-mask {
@@ -725,21 +803,21 @@ html[data-theme="light"] .workflow-script-node__status-chip--off .workflow-scrip
 .workflow-script-edge__ambient {
   fill: none;
   pointer-events: none;
-  stroke: rgb(56 189 248 / 0.48);
-  stroke-width: 6;
+  stroke: rgb(56 189 248 / 0.22);
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: blur(3px);
-  opacity: 0.62;
+  filter: blur(1.5px);
+  opacity: 0.35;
 }
 
 .workflow-script-edge__base {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.45;
-  stroke: rgba(148, 210, 255, 0.96);
-  filter: drop-shadow(0 0 2px rgb(56 189 248 / 0.48));
+  stroke-width: 1.65;
+  stroke: rgba(167, 139, 250, 0.78);
+  filter: none;
 }
 
 .workflow-script-edge__sheen {
@@ -747,11 +825,11 @@ html[data-theme="light"] .workflow-script-node__status-chip--off .workflow-scrip
   pointer-events: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 3.4;
+  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
-  opacity: 0.9;
+  opacity: 0;
   stroke-dasharray: 0.12 0.88;
-  animation: workflow-edge-sheen-travel 2.6s linear infinite;
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -771,6 +849,11 @@ html[data-theme="light"] .workflow-script-edge__ambient {
   opacity: 0.45;
 }
 
+.workflow-script-flow .workflow-script-node__sub,
+.workflow-script-flow .workflow-script-node__status-row {
+  display: none;
+}
+
 .workflow-script-node {
   position: relative;
   box-sizing: border-box;
@@ -778,13 +861,14 @@ html[data-theme="light"] .workflow-script-edge__ambient {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  width: 178px;
-  min-height: 168px;
+  gap: 3px;
+  width: 72px;
+  height: 72px;
+  min-height: 72px;
   max-width: 100%;
-  padding: 11px 9px;
+  padding: 4px 3px 3px;
   outline: none;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid transparent;
   transition:
     border-color 0.22s ease,
@@ -823,8 +907,8 @@ html[data-theme="light"] .workflow-script-node.is-selected {
   position: relative;
   display: grid;
   place-items: center;
-  width: 66px;
-  height: 66px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   color: rgb(15 23 42);
   border: 1px solid color-mix(in srgb, var(--surface) 20%, rgb(226 232 240 / 0.45));
@@ -889,36 +973,36 @@ html[data-theme="dark"] .workflow-script-node__orb {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   width: 100%;
   flex: 1 1 auto;
   margin-top: auto;
-  min-height: 40px;
+  min-height: 24px;
   justify-content: flex-end;
 }
 
 .workflow-script-node__title {
   max-width: 100%;
   text-align: center;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 820;
-  line-height: 1.35;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workflow-script-node__sub {
   max-width: 100%;
   text-align: center;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 640;
-  line-height: 1.38;
+  line-height: 1.28;
   color: color-mix(in srgb, var(--muted) 96%, rgb(226 232 240 / 0.12));
 }
 
-.workflow-script-node__status-row {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  flex-shrink: 0;
+.workflow-script-flow .workflow-script-node__status-row {
+  display: none;
 }
 
 .workflow-script-node__status-chip {

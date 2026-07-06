@@ -1,3 +1,5 @@
+import { formatRouterError } from "./router-errors";
+
 export type RouterSettings = {
   baseUrl: string;
   apiKey: string;
@@ -14,8 +16,8 @@ export const ROUTER_SETTINGS_KEY = "stealth-console-router";
 const DEFAULT_ROUTER: RouterSettings = {
   baseUrl: "https://9router.infi.io.vn/v1",
   apiKey: "",
-  model: "cx/gpt-5.3-codex",
-  fallbacks: ["cc/claude-sonnet-4-6"],
+  model: "xai/grok-3",
+  fallbacks: ["xai/grok-3-mini"],
   maxTokens: 4096,
   temperature: 0.3
 };
@@ -78,15 +80,14 @@ async function loadRouterLocalConfigFromSources(): Promise<RouterLocalConfigPayl
   return null;
 }
 
-/** Load config/router.local.json via Electron or dev server and persist if localStorage has no key. */
+/** Load config/router.local.json (SSOT) and persist — overwrites stale localStorage models/keys. */
 export async function bootstrapRouterSettings(): Promise<RouterSettings> {
-  const current = readRouterSettings();
-  if (current.apiKey.trim()) return current;
-
   const fileConfig = await loadRouterLocalConfigFromSources();
-  if (!fileConfig?.apiKey?.trim()) return current;
+  if (!fileConfig?.apiKey?.trim()) {
+    return readRouterSettings();
+  }
 
-  const merged = mergeRouterSettings(current, fileConfig);
+  const merged = mergeRouterSettings({ ...DEFAULT_ROUTER }, fileConfig);
   writeRouterSettings(merged);
   return merged;
 }
@@ -100,7 +101,7 @@ export async function pingRouter(settings: RouterSettings): Promise<{ ok: boolea
     const response = await routerHttp(settings, "models", { method: "GET", timeoutMs: 12_000 });
     if (!response.ok) {
       const text = response.body;
-      return { ok: false, message: `HTTP ${response.status}: ${text.slice(0, 200)}` };
+      return { ok: false, message: formatRouterError(response.status, text) };
     }
     return { ok: true, message: "9Router reachable" };
   } catch (error) {

@@ -20,7 +20,7 @@ export function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
+      className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
         scrollable ? "shrink-0" : "flex-1"
       } ${
         active
@@ -47,7 +47,7 @@ export function SectionIcon({
 export function Section({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode }) {
   return (
     <div className="hub-settings-subsection mb-3 last:mb-0">
-      <div className="hub-settings-subsection__label mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted)]">
+      <div className="hub-settings-subsection__label mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
         {icon}
         <span>{label}</span>
       </div>
@@ -73,7 +73,7 @@ export function SettingsSubsection({
   return (
     <div className={`hub-settings-subsection mb-3 last:mb-0${className ? ` ${className}` : ""}`}>
       <div className="hub-settings-subsection__header mb-1.5 flex items-center justify-between gap-2">
-        <div className="hub-settings-subsection__label flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-[var(--muted)]">
+        <div className="hub-settings-subsection__label flex min-w-0 items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
           {icon}
           <span className="truncate">{label}</span>
         </div>
@@ -88,6 +88,7 @@ export function ToggleRow({
   label,
   icon: Icon,
   iconClassName = "text-indigo-300/90",
+  emoji,
   on,
   onChange,
   disabled = false,
@@ -96,6 +97,7 @@ export function ToggleRow({
   label: string;
   icon?: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>;
   iconClassName?: string;
+  emoji?: string;
   on: boolean;
   onChange: () => void;
   /** Gray out when cap reached (e.g. KPI max visible). */
@@ -115,7 +117,7 @@ export function ToggleRow({
       }}
       disabled={disabled && !onDisabledClick}
       aria-disabled={disabled || undefined}
-      className={`hub-settings-toggle flex w-full items-center gap-2 rounded-md px-2 py-0.5 text-left text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/45 focus-visible:outline-offset-1${
+      className={`hub-settings-toggle flex w-full items-center gap-2 rounded-md px-2 py-0.5 text-left text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400/45 focus-visible:outline-offset-1${
         disabled ? " hub-settings-toggle--disabled cursor-not-allowed opacity-40" : ""
       }`}
     >
@@ -124,6 +126,10 @@ export function ToggleRow({
       </span>
       {Icon ? (
         <Icon size={compactIconSize(11)} className={`shrink-0 ${iconClassName}`} aria-hidden />
+      ) : emoji ? (
+        <span className="hub-users-th-emoji shrink-0 leading-none" aria-hidden>
+          {emoji}
+        </span>
       ) : null}
       <span className={on ? "text-[var(--text)]" : "text-[var(--muted)]"}>{label}</span>
     </button>

@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { spawnStep } from "./lib/run-step.mjs";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -65,11 +66,7 @@ function rebuildBetterSqlite3() {
   const args = ["exec", "electron-rebuild", "-f", "-w", "better-sqlite3"];
   if (moduleDir) args.push("--module-dir", moduleDir);
 
-  return spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args, winSpawnOpts({
-    cwd: root,
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  }));
+  return spawnStep("pnpm", args, root);
 }
 
 if (process.versions.electron) {

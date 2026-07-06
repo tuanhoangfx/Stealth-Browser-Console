@@ -76,16 +76,14 @@ export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
           totalCount={workflowConfigs.length}
           tablePageSize={workflowTablePageSize}
           onTablePageSizeChange={onWorkflowTablePageSizeChange}
-          row2Actions={
-            <HubDirectoryBulkActionBar>
-              {bulkActions}
-              <HubDirectoryToolbarSelection
-                visibleCount={filteredWorkflows.length}
-                selectedCount={bulkSelectedIds.size}
-                noun="workflows"
-              />
-            </HubDirectoryBulkActionBar>
+          searchTrailing={
+            <HubDirectoryToolbarSelection
+              visibleCount={filteredWorkflows.length}
+              selectedCount={bulkSelectedIds.size}
+              noun="workflows"
+            />
           }
+          row2Actions={<HubDirectoryBulkActionBar>{bulkActions}</HubDirectoryBulkActionBar>}
         />
       }
     >

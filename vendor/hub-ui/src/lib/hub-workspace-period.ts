@@ -1,4 +1,5 @@
 import { patchHubListPrefs, subscribeHubListPrefs } from "./hub-url-prefs";
+import { workspacePeriodDotColor } from "./workspace-period-dot-color";
 
 /** Golden workspace period keys — same as HubPeriodSelect. */
 export type WorkspacePeriodKey =
@@ -11,7 +12,7 @@ export type WorkspacePeriodKey =
   | "customRange"
   | "last30Days";
 
-export type WorkspacePeriodScope = "notes" | "todo" | "twofa" | "cookie";
+export type WorkspacePeriodScope = "notes" | "todo" | "twofa" | "cookie" | "orders" | "customers";
 
 export type WorkspacePeriodPrefs = {
   range: WorkspacePeriodKey;
@@ -42,6 +43,8 @@ const SCOPE_URL_KEYS: Record<
   todo: { range: "trange", month: "tperiodMonth", from: "tperiodFrom", to: "tperiodTo" },
   twofa: { range: "frange", month: "fperiodMonth", from: "fperiodFrom", to: "fperiodTo" },
   cookie: { range: "crange", month: "cperiodMonth", from: "cperiodFrom", to: "cperiodTo" },
+  orders: { range: "osrange", month: "osperiodMonth", from: "osperiodFrom", to: "osperiodTo" },
+  customers: { range: "csrange", month: "csperiodMonth", from: "csperiodFrom", to: "csperiodTo" },
 };
 
 /** Legacy global URL keys (pre per-tab migration). */
@@ -135,12 +138,16 @@ export function patchWorkspacePeriod(
   patchHubListPrefs(urlPatch);
 }
 
-type HubPeriodOption = { value: WorkspacePeriodKey; label: string };
+type HubPeriodOption = { value: WorkspacePeriodKey; label: string; dotColor: string };
 
 export function workspacePeriodOptions(): HubPeriodOption[] {
   return (Object.keys(WORKSPACE_PERIOD_LABELS) as WorkspacePeriodKey[])
     .filter((k) => k !== "lastWeek")
-    .map((value) => ({ value, label: WORKSPACE_PERIOD_LABELS[value] }));
+    .map((value) => ({
+      value,
+      label: WORKSPACE_PERIOD_LABELS[value],
+      dotColor: workspacePeriodDotColor(value),
+    }));
 }
 
 /** Filter rows by created/updated ISO timestamp. */

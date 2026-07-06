@@ -32,14 +32,16 @@
   --hub-chrome-micro-size: 0.625rem;
   --hub-kpi-label-size: var(--hub-chrome-micro-size);
   --hub-kpi-hint-size: 0.75rem;
-  --hub-chart-caption-size: var(--hub-chrome-micro-size);
-  --hub-chart-label-size: 0.875rem;
+  --hub-table-body-size: 12px;
+  --hub-table-body-line-height: 1.45;
+  --hub-analytics-caption-size: var(--hub-kpi-label-size);
+  --hub-chart-label-size: var(--hub-table-body-size);
+  --hub-chart-caption-block: 0.8125rem;
   --hub-kpi-body-gap: 0.3125rem;
   --hub-chart-bar-rows: 4;
   --hub-chart-row-gap: 0.375rem;
   --hub-chart-row-est-h: 1.5rem;
   --hub-chart-card-pad-y: 1rem;
-  --hub-chart-caption-block: 1.125rem;
   --hub-chart-card-min-h: calc(
     var(--hub-chart-card-pad-y) * 2 + var(--hub-chart-caption-block) +
       var(--hub-chart-bar-rows) * var(--hub-chart-row-est-h) +
@@ -56,7 +58,7 @@
 }
 
 .hub-analytics-caption {
-  font-size: var(--hub-chart-caption-size);
+  font-size: var(--hub-analytics-caption-size);
   font-weight: 600;
   line-height: 1.25;
 }
@@ -278,7 +280,7 @@
 }
 
 .hub-kpi-strip .hub-kpi-tile__label {
-  font-size: var(--hub-kpi-label-size);
+  font-size: var(--hub-analytics-caption-size);
   font-weight: 600;
   line-height: 1.25;
 }
@@ -421,16 +423,32 @@
   overflow: hidden;
   color: var(--muted);
   font-size: var(--hub-chart-label-size);
-  font-weight: 500;
-  line-height: 1.25;
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
 }
 
 .hub-chart-row__value {
   text-align: right;
   color: var(--text);
   font-size: var(--hub-chart-label-size);
-  font-weight: 500;
-  line-height: 1.25;
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-chart-donut-value {
+  font-size: var(--hub-chart-label-size);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-chart-card__empty {
+  font-size: var(--hub-chart-label-size);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--muted);
 }
 
 .hub-chart-legend-label__text {
@@ -552,4 +570,7 @@
   box-shadow: none;
   background: transparent;
   padding: 0;
+  font-size: inherit;
+  font-weight: 400;
+  line-height: 1.25;
 }

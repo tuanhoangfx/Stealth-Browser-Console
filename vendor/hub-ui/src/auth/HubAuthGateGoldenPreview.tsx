@@ -91,7 +91,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
                   className="rounded-xl border border-white/8 bg-white/[.02] px-4 py-4 text-center"
                 >
                   <HubAuthGateVariantBadge variant={variant} />
-                  <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{meta.adapterNote}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">{meta.adapterNote}</p>
                   <p className="mt-1 text-[10px] text-[var(--muted)]">
                     Anonymous tab: {meta.anonymousTab ? "yes" : "no"} · Close ×:{" "}
                     {meta.dismissible ? "yes" : "no"}
@@ -131,7 +131,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
               <button
                 key={code}
                 type="button"
-                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
                   activeTool === code
                     ? "border-indigo-400/35 bg-indigo-500/12 text-indigo-100"
                     : "border-white/10 bg-white/[.03] text-[var(--muted)] hover:bg-white/[.06]"

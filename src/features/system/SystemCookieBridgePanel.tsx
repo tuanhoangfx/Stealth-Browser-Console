@@ -55,7 +55,7 @@ export function SystemCookieBridgePanel() {
     <Glass tone="cyan">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Extensions</p>
+          <p className="hub-analytics-caption uppercase tracking-wider text-cyan-300">Extensions</p>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text)]">E0001 Cookie Bridge</h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--muted)]">
             In native mode, loaded from Chrome profile prefs (not <code className="text-cyan-200/90">--load-extension</code>
@@ -107,7 +107,7 @@ export function SystemCookieBridgePanel() {
             </div>
             <div className="sm:col-span-2">
               <dt className="text-[var(--muted)]">Load path</dt>
-              <dd className="break-all font-mono text-[11px] text-cyan-100/90">{status.resolvedPath || "—"}</dd>
+              <dd className="break-all font-mono text-xs text-cyan-100/90">{status.resolvedPath || "—"}</dd>
             </div>
             <div className="sm:col-span-2">
               <dt className="text-[var(--muted)]">Chrome Web Store ID</dt>

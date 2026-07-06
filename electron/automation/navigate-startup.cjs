@@ -49,8 +49,33 @@ async function stabilizePrimaryPage(context, { timeoutMs = 15000 } = {}) {
   return page;
 }
 
+function isPlaceholderTabUrl(url) {
+  const value = String(url || "");
+  return (
+    !value ||
+    value === "about:blank" ||
+    value.startsWith("chrome://newtab") ||
+    value.startsWith("chrome://new-tab")
+  );
+}
+
+/** Only launch-time placeholder tabs — never tabs the operator opened during startup nav. */
+function selectLaunchPlaceholderPages(pages, primaryPage, launchPages) {
+  return pages.filter((candidate) => {
+    if (candidate === primaryPage || candidate.isClosed?.()) return false;
+    if (!launchPages.has(candidate)) return false;
+    try {
+      return isPlaceholderTabUrl(candidate.url());
+    } catch {
+      return false;
+    }
+  });
+}
+
 async function navigateStartupUrl(context, targetUrl) {
+  const launchPages = new Set(context.pages());
   const page = await resolvePrimaryPage(context);
+  launchPages.add(page);
   if (!FAST_LAUNCH) {
     await page.waitForTimeout(250).catch(() => undefined);
   }
@@ -89,21 +114,18 @@ async function navigateStartupUrl(context, targetUrl) {
     // ignore url checks
   }
 
-  // Close obvious placeholders so the operator lands on the startup tab.
-  const pages = context.pages().filter((p) => p !== page && !p.isClosed());
-  for (const other of pages) {
-    try {
-      const url = String(other.url() || "");
-      const isPlaceholder =
-        !url ||
-        url === "about:blank" ||
-        url.startsWith("chrome://newtab") ||
-        url.startsWith("chrome://new-tab");
-      if (isPlaceholder) await other.close().catch(() => undefined);
-    } catch {
-      // ignore close failures
-    }
+  // Close launch-time placeholders only — tabs opened during startup nav are left alone.
+  for (const other of selectLaunchPlaceholderPages(context.pages(), page, launchPages)) {
+    await other.close().catch(() => undefined);
   }
 }
 
-module.exports = { navigateStartupUrl, awaitBrowserReady, stabilizePrimaryPage, resolvePrimaryPage, settlePage };
+module.exports = {
+  navigateStartupUrl,
+  awaitBrowserReady,
+  stabilizePrimaryPage,
+  resolvePrimaryPage,
+  settlePage,
+  isPlaceholderTabUrl,
+  selectLaunchPlaceholderPages,
+};

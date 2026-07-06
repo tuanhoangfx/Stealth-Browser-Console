@@ -45,6 +45,15 @@ export {
   type DirectoryBandHandlers,
   type DirectoryBandSyncSnapshot,
 } from "./directory-band/useDirectoryBandSync";
+export {
+  useWorkspaceDirectoryChrome,
+  DirectoryBootGate,
+  HUB_LARGE_DIRECTORY_BOOT_THRESHOLD,
+  needsLargeDirectoryBoot,
+  type DirectoryBootGateProps,
+  type WorkspaceDirectoryChromeHandlers,
+  type WorkspaceDirectoryChromeSnapshot,
+} from "./directory-band/useWorkspaceDirectoryChrome";
 export type {
   DisplayPrefsPrefs,
   HubDisplayPrefsProps,
@@ -59,15 +68,36 @@ export { SUBTAB_DISPLAY_CHANGE } from "./display-prefs/types";
 export {
   withPrefItemIcons,
   withDirectoryColumnIcons,
+  prefIconMapFromDirectoryColumnHeaderMeta,
+  prefIconMapFromHubDirectoryColumnMeta,
+  buildDirectoryColumnItemsFromRoles,
+  buildDirectoryColumnItemsFromHeaderMeta,
   type PrefIconMap,
   type PrefIconMeta,
+  type DirectoryColumnRoleDef,
 } from "./display-prefs/pref-item-icons";
+export { createDynamicDirectoryTableColumnPrefs } from "./prefs/create-dynamic-directory-table-column-prefs";
 export {
   countHiddenDirectoryTableColumns,
   createDirectoryTableColumnPrefs,
+  mergeDirectoryTableColumnOrder,
+  parseDirectoryTableColumnPrefsStorage,
+  serializeDirectoryTableColumnPrefsStorage,
   type DirectoryTableColumnItem,
   type DirectoryTableColumnPrefs,
 } from "./prefs/directory-table-column-prefs";
+export {
+  createDirectoryTableColumnPresetManager,
+  directoryTableColumnStatesEqual,
+  asDirectoryTableColumnPresetManagerProp,
+  type DirectoryTableColumnPreset,
+  type DirectoryTableColumnPresetManager,
+  type DirectoryTableColumnPresetManagerProp,
+} from "./prefs/directory-table-column-presets";
+export {
+  HubDirectoryTableColumnPresetMenu,
+  type HubDirectoryTableColumnPresetMenuProps,
+} from "./prefs/HubDirectoryTableColumnPresetMenu";
 export {
   DirectoryTableColumnsSettings,
   type DirectoryTableColumnsSettingsProps,
@@ -245,6 +275,11 @@ export {
   type WorkspacePeriodPrefs,
   type WorkspacePeriodScope,
 } from "./lib/hub-workspace-period";
+export {
+  WORKSPACE_PERIOD_DOT_COLORS,
+  workspacePeriodDotColor,
+  workspacePeriodTriggerIconColor,
+} from "./lib/workspace-period-dot-color";
 export { useWorkspacePeriod } from "./hooks/useWorkspacePeriod";
 export { useDebouncedValue } from "./hooks/useDebouncedValue";
 export { useHubDirectorySelection } from "./hooks/useHubDirectorySelection";
@@ -290,13 +325,25 @@ export {
   type HubDirectoryMetricItem,
   type HubDirectoryMetricTone,
 } from "./shell/HubDirectoryMetricStrip";
-export { HubCopyBadge, type HubCopyBadgeProps } from "./shell/HubCopyBadge";
+export { HubCopyBadge, type HubCopyBadgeProps, type HubCopyBadgeDisplay, type HubCopyFeedback, hubCopyBadgeDisplayLabel } from "./shell/HubCopyBadge";
 export { HubCopyTickWrap, type HubCopyTickWrapProps } from "./shell/HubCopyTickWrap";
 export {
   HubInlineCopyControl,
   useHubCopyFlash,
   type HubInlineCopyControlProps,
 } from "./shell/HubInlineCopyControl";
+export {
+  HubToastProvider,
+  HubToastContainer,
+  HubToastShell,
+  useHubToast,
+  useHubToastRequired,
+  formatCopyToastPreview,
+  copyToastLabelFromTitle,
+  type HubToast,
+  type HubToastIcon,
+  type HubToastType,
+} from "./toast";
 export { CopyMetaChip, MetaChip, HUB_EMAIL_COPY_CHIP_CLASS, type MetaTone } from "./shell/CopyMetaChip";
 export { HubResultCount } from "./shell/HubResultCount";
 export { HubSearchField, type HubSearchFieldProps } from "./shell/HubSearchField";
@@ -344,6 +391,9 @@ export {
   formatHubActivityTime,
   formatLastOpenedRelativeAge,
   formatLastOpenedStaleDate,
+  HUB_ACTIVITY_AGING_MS,
+  HUB_ACTIVITY_FRESH_MS,
+  HUB_ACTIVITY_RECENT_MS,
   hubActivityAgeHubTone,
   hubActivityAgeTone,
   lastOpenedAgeTone,
@@ -375,6 +425,12 @@ export {
   directoryPagerHideWhenSinglePage,
 } from "./table/directory-pager-config";
 export { HubTableColumnHeader, type HubTableColumnHeaderProps } from "./content/HubTableColumnHeader";
+export {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+  type HubDirectoryColumnHintGlyph,
+  type HubDirectoryColumnHintLine,
+} from "./table/HubDirectoryColumnHint";
 export { HubSortIndicator, type HubSortDir } from "./table/HubSortIndicator";
 export {
   directoryTableSortReducer,
@@ -641,6 +697,12 @@ export {
   formatHubRuntimeLogTime,
   hubRuntimeConsoleLineClass,
 } from "./lib/hub-runtime-format";
+export {
+  groupHubRuntimeConsoleLogs,
+  formatHubRuntimeConsoleGroupMessage,
+  type HubRuntimeConsoleLogLike,
+  type HubRuntimeConsoleDisplayRow,
+} from "./lib/hub-runtime-group";
 export { HubDirectoryCard } from "./content/HubDirectoryCard";
 export {
   HubDirectoryCardShell,
@@ -723,6 +785,18 @@ export {
   createDirectoryColumnMetaHelpers,
   type DirectoryColumnHeaderMeta,
 } from "./lib/directory-column-meta-helpers";
+export {
+  applyStandardDirectoryColumnHints,
+  applyStandardDirectoryColumnHintsToDefs,
+  attachDirectoryColumnHints,
+  buildDirectoryColumnHintsFromMeta,
+  colHint,
+  HUB_ACTIVITY_AGE_HINT_LINES,
+  inferDirectoryColumnDescription,
+  inferDirectoryColumnHintLines,
+  isActivityAgeDirectoryColumn,
+  withDirectoryColumnHints,
+} from "./lib/directory-column-hint-helpers";
 export type {
   DeprecatedSemanticIconKey,
   SemanticIconKey,
@@ -780,6 +854,11 @@ export { HubModalCloseButton, type HubModalCloseButtonProps } from "./shell/HubM
 export { HubModalFrame, type HubModalFrameProps } from "./shell/HubModalFrame";
 export { HubDetailModal, type HubDetailModalProps, type HubDetailModalSize } from "./shell/HubDetailModal";
 export {
+  HubToolDetailSplitLayout,
+  HubToolDetailPanel,
+  HubToolDetailRail,
+} from "./shell/HubToolDetailSplitLayout";
+export {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
@@ -793,9 +872,20 @@ export {
   type HubToolDetailModalTocLayoutProps,
 } from "./shell/HubToolDetailModal";
 export {
+  HubConfirmDialog,
+  type HubConfirmDialogProps,
+  type HubConfirmTone,
+} from "./shell/HubConfirmDialog";
+export { HubPromptDialog, type HubPromptDialogProps } from "./shell/HubPromptDialog";
+export {
   HubToolDetailModalFooterActions,
   type HubToolDetailModalFooterActionsProps,
 } from "./shell/HubToolDetailModalFooterActions";
+export {
+  HUB_ACCOUNT_DETAIL_MODAL_SHELL_CLASS,
+  HUB_ACCOUNT_DETAIL_MAIN_SCROLL_CLASS,
+  HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
+} from "./shell/hubAccountDetailModal";
 export { HubFormFieldLabel, type HubFormFieldLabelProps } from "./shell/HubFormFieldLabel";
 export { HubOpsFormField, type HubOpsFormFieldProps } from "./shell/HubOpsFormField";
 export { HubModalFilterField, type HubModalFilterFieldProps } from "./shell/HubModalFilterField";
@@ -898,6 +988,8 @@ export {
   HUB_ANALYTICS_CAPTION_TYPO_CLASS,
   HUB_DIRECTORY_TOOLBAR_TYPO_CLASS,
   HUB_SHELL_LABEL_TYPO_CLASS,
+  HUB_SIDEBAR_NAV_LABEL_CLASS,
+  HUB_SETTINGS_ICON_CLASS,
 } from "./shell/hub-typography";
 export {
   chartPanelTitleFromDefs,

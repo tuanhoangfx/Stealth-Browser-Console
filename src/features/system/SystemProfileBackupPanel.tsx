@@ -89,7 +89,7 @@ export function SystemProfileBackupPanel() {
     <Glass tone="amber">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">Profiles</p>
+          <p className="hub-analytics-caption uppercase tracking-wider text-amber-300">Profiles</p>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text)]">Backup / restore full state</h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--muted)]">
             Zip includes catalog JSON (match by <strong className="text-amber-200/90">name</strong>) plus Chrome folders under{" "}

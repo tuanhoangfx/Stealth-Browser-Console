@@ -113,7 +113,7 @@ function ProfileCreateModalToc({
                           }}
                         >
                           <span className="hub-toc-nav__label flex min-w-0 items-center gap-1.5 truncate rounded-lg py-1 pl-1.5 pr-2 font-medium text-[var(--muted)] transition-all duration-200 group-hover:text-[var(--text)]">
-                            <span className="shrink-0 text-[11px] leading-none opacity-90" aria-hidden>
+                            <span className="shrink-0 text-xs leading-none opacity-90" aria-hidden>
                               {modeItem.emoji}
                             </span>
                             <span className="truncate">{modeItem.label}</span>

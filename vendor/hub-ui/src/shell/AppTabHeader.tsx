@@ -159,9 +159,10 @@ function Rule({ visibleFrom = "sm" }: { visibleFrom?: "sm" | "md" | "lg" }) {
 }
 
 function metaActivityDotClass(hubTone: ReturnType<typeof hubActivityAgeHubTone>): string {
-  if (hubTone === "active") return "bg-cyan-400";
-  if (hubTone === "idle") return "bg-amber-400";
-  return "bg-slate-500";
+  if (hubTone === "age-fresh") return "bg-[var(--hub-activity-age-fresh)]";
+  if (hubTone === "age-recent") return "bg-[var(--hub-activity-age-recent)]";
+  if (hubTone === "age-aging") return "bg-[var(--hub-activity-age-aging)]";
+  return "bg-[var(--hub-activity-age-stale)]";
 }
 
 /** Release activity — dot + label uses the same value span as SessionLine. */

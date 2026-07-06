@@ -1,7 +1,19 @@
 /* Hub Users table — compact rows aligned with Hub lib-table */
+@import "./hub-directory-column-hint.css";
+
+:root {
+  --hub-directory-pane-surface: var(--panel);
+  --hub-directory-thead-surface: color-mix(in srgb, var(--panel) 92%, white 8%);
+  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
+  --hub-modal-panel-surface: var(--hub-directory-pane-surface);
+  --hub-activity-age-fresh: #3b82f6;
+  --hub-activity-age-recent: #3b82f6;
+  --hub-activity-age-aging: #f59e0b;
+  --hub-activity-age-stale: #64748b;
+}
 
 .hub-users-table-wrap {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-directory-pane-surface, var(--panel));
   margin-bottom: 10px;
 }
 
@@ -13,7 +25,7 @@ table.hub-users-table {
 }
 
 .hub-users-table thead {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-directory-thead-surface, var(--panel));
 }
 
 .hub-users-table th {
@@ -23,8 +35,8 @@ table.hub-users-table {
   font-weight: 600;
   font-size: 12px;
   vertical-align: middle;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--hub-directory-thead-border, rgba(255, 255, 255, 0.08));
+  background: var(--hub-directory-thead-surface, var(--panel));
 }
 
 .hub-users-th-btn {
@@ -48,6 +60,19 @@ table.hub-users-table {
   outline-offset: 2px;
 }
 
+.hub-users-th-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hub-users-th-emoji {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
 .hub-users-th-label {
   display: inline-flex;
   align-items: center;
@@ -63,6 +88,9 @@ table.hub-users-table {
 }
 
 .hub-users-th-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   opacity: 0.95;
 }
@@ -1082,6 +1110,10 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 .hub-users-status-dot--active { background: #06b6d4; }
 .hub-users-status-dot--idle { background: #f59e0b; }
 .hub-users-status-dot--offline { background: #64748b; }
+.hub-users-status-dot--age-fresh { background: var(--hub-activity-age-fresh); }
+.hub-users-status-dot--age-recent { background: var(--hub-activity-age-recent); }
+.hub-users-status-dot--age-aging { background: var(--hub-activity-age-aging); }
+.hub-users-status-dot--age-stale { background: var(--hub-activity-age-stale); }
 
 .hub-users-empty {
   padding: 24px 16px;

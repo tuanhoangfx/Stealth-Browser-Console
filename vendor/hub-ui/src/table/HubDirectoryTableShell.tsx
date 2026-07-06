@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { resolveHubTableColumnMeta } from "./hub-table-column-meta";
 import { HubPaginatedTableShell } from "../content/HubPaginatedTableShell";
 import { HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS } from "./directory-table-scroll";
 import { DirectoryInlineTable } from "./DirectoryInlineTable";
@@ -6,6 +7,10 @@ import { DirectorySplitScrollTable } from "./DirectorySplitScrollTable";
 import { hubPageAllSelected, hubTogglePageSelectAll, type HubServerPaginationControl } from "./hub-table-pagination";
 import { useHubTablePageSize } from "./hub-table-page-size";
 import { HubTableColumnHeader, type HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+} from "./HubDirectoryColumnHint";
 import type { HubTableColumnRole } from "./hub-table-column-meta";
 import { HubSortIndicator, type HubSortDir } from "./HubSortIndicator";
 
@@ -18,6 +23,12 @@ export type HubDirectoryTableColumn<TKey extends string> = {
   headerAlign?: "start" | "center";
   headerIcon?: HubTableColumnHeaderProps["icon"];
   headerIconClassName?: string;
+  headerBrandIcon?: HubTableColumnHeaderProps["brandIcon"];
+  headerEmoji?: string;
+  /** Native title fallback when rich hint is absent. */
+  headerTooltip?: string;
+  /** Rich multi-line popover with icon rows. */
+  headerHint?: HubDirectoryColumnHintContent;
 };
 
 export type HubDirectoryTableStaticColumn = {
@@ -138,9 +149,48 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
   const resolvedPageSize = useHubTablePageSize(pageSize);
 
   const columnHeaderProps = (col: (typeof columns)[number]) =>
-    col.headerIcon
-      ? { label: col.label, icon: col.headerIcon, iconClassName: col.headerIconClassName }
-      : { label: col.label, role: col.role };
+    col.headerEmoji
+      ? { label: col.label, headerEmoji: col.headerEmoji }
+      : col.headerIcon || col.headerBrandIcon
+        ? {
+            label: col.label,
+            icon: col.headerIcon,
+            iconClassName: col.headerIconClassName,
+            brandIcon: col.headerBrandIcon,
+          }
+        : { label: col.label, role: col.role };
+
+  const renderThLabel = (
+    col: (typeof columns)[number],
+    sortIndicator?: ReactNode,
+  ) => {
+    const labelClass = `hub-users-th-label${col.headerAlign === "start" ? " hub-users-th-label--start" : ""}`;
+    const label = (
+      <span className={labelClass}>
+        <HubTableColumnHeader {...columnHeaderProps(col)} />
+        {sortIndicator}
+      </span>
+    );
+    if (col.headerHint) {
+      const roleMeta = resolveHubTableColumnMeta(col.role);
+      return (
+        <HubDirectoryColumnHint
+          content={col.headerHint}
+          titleGlyph={{
+            icon: col.headerIcon ?? roleMeta?.icon,
+            brandIcon: col.headerBrandIcon,
+            toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
+          }}
+        >
+          {label}
+        </HubDirectoryColumnHint>
+      );
+    }
+    return label;
+  };
+
+  const headerTitleAttr = (col: (typeof columns)[number]) =>
+    col.headerHint ? undefined : col.headerTooltip;
 
   const wrapBorder = flushWrap ? "" : " rounded-2xl border border-white/5";
   const resolvedWrapClass = `hub-users-table-wrap${splitScroll ? " hub-directory-table-split" : ""} ${wrapClassName}${wrapBorder}`;
@@ -176,16 +226,13 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
               </th>
             ) : null}
             {columns.map((col) => (
-              <th key={col.key} className={col.colClass} scope="col">
+              <th key={col.key} className={col.colClass} scope="col" title={headerTitleAttr(col)}>
                 {col.sortable === false ? (
                   <span
                     className={`hub-users-th-btn hub-users-th-btn--static${col.headerAlign === "start" ? " hub-users-th-btn--align-start" : ""}`}
+                    title={headerTitleAttr(col)}
                   >
-                    <span
-                      className={`hub-users-th-label${col.headerAlign === "start" ? " hub-users-th-label--start" : ""}`}
-                    >
-                      <HubTableColumnHeader {...columnHeaderProps(col)} />
-                    </span>
+                    {renderThLabel(col)}
                   </span>
                 ) : (
                   <button
@@ -193,11 +240,12 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
                     className="hub-users-th-btn"
                     onClick={() => onSort(col.key)}
                     aria-sort={sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                    title={headerTitleAttr(col)}
                   >
-                    <span className="hub-users-th-label">
-                      <HubTableColumnHeader {...columnHeaderProps(col)} />
-                      <HubSortIndicator active={sortKey === col.key} dir={sortDir} />
-                    </span>
+                    {renderThLabel(
+                      col,
+                      <HubSortIndicator active={sortKey === col.key} dir={sortDir} />,
+                    )}
                   </button>
                 )}
               </th>

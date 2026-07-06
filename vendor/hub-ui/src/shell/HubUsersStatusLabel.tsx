@@ -1,4 +1,12 @@
-export type HubUsersStatusTone = "online" | "offline" | "idle" | "active";
+export type HubUsersStatusTone =
+  | "online"
+  | "offline"
+  | "idle"
+  | "active"
+  | "age-fresh"
+  | "age-recent"
+  | "age-aging"
+  | "age-stale";
 
 export type HubUsersStatusLabelProps = {
   label: string;

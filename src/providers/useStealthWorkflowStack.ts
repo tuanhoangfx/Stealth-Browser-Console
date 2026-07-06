@@ -50,6 +50,7 @@ export function useStealthWorkflowStack({
       targetUrl: string,
       wf: WorkflowConfig
     ) => {
+      workflow.recordWorkflowRun(wf.id);
       appendAutomationRun({
         id: result.runId || crypto.randomUUID(),
         profileId: profile.id,
@@ -69,7 +70,7 @@ export function useStealthWorkflowStack({
         })),
       });
     },
-    [appendAutomationRun],
+    [appendAutomationRun, workflow.recordWorkflowRun],
   );
 
   const runWorkflowConfigs = useMemo(
@@ -87,13 +88,31 @@ export function useStealthWorkflowStack({
   const openProfilesForWorkflow = useCallback(
     (workflowId: string) => {
       workflow.setActiveWorkflow(workflowId);
-      // Navigation helper: selecting a workflow should not implicitly enqueue automation.
-      // Keep it as the active workflow, but do not mark it as "selected" for bulk runs.
-      workflow.setSelectedWorkflowIds([]);
+      // Rail row click = run target for Profile Launch (checkbox not required).
+      workflow.setSelectedWorkflowIds([workflowId]);
       setView("profiles");
     },
-    [setView, workflow.setActiveWorkflow, workflow.setSelectedWorkflowIds]
+    [setView, workflow.setActiveWorkflow, workflow.setSelectedWorkflowIds],
   );
+
+  const runAutomationQueue = useCallback(() => {
+    const workflows = workflowFilters.selectedWorkflowConfigs.length
+      ? workflowFilters.selectedWorkflowConfigs
+      : workflow.activeWorkflowConfig
+        ? [workflow.activeWorkflowConfig]
+        : [];
+    if (!workflows.length) {
+      addLog("warn", "Workflow", "Select a workflow in the right rail.");
+      return;
+    }
+    void automation.runBatch(selectedProfiles, workflows);
+  }, [
+    addLog,
+    automation,
+    selectedProfiles,
+    workflow.activeWorkflowConfig,
+    workflowFilters.selectedWorkflowConfigs,
+  ]);
 
   const runWorkflowOnOpenProfiles = useCallback(
     async (workflowId: string) => {
@@ -247,11 +266,11 @@ export function useStealthWorkflowStack({
       runWorkflowConfigs: automation.runWorkflowConfigs,
       runWorkflowLabel: automation.runWorkflowLabel,
       automationRunning: automation.automationRunning,
-      runAutomationQueue: automation.runAutomationQueue,
+      runAutomationQueue,
       runWorkflowOnOpenProfiles,
-      openProfilesForWorkflow
+      openProfilesForWorkflow,
     }),
-    [automation, openProfilesForWorkflow, runWorkflowOnOpenProfiles]
+    [automation, openProfilesForWorkflow, runAutomationQueue, runWorkflowOnOpenProfiles],
   );
 
   return { workflowPicker, workflowEditor, workflowRuntime, error, view, profiles };

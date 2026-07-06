@@ -22,7 +22,7 @@ import {
   workflowPlatformTone,
 } from "./workflow-display";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
-import { workflowCreatedMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
+import { workflowCreatedMs, workflowLastRunMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import type { WorkflowConfig } from "./workflow-types";
 import type { StealthWorkflowSortKey } from "./StealthWorkflowDirectoryTable";
 
@@ -116,6 +116,12 @@ export function renderStealthWorkflowDirectoryBodyCell(
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           {renderWorkflowTimestampCell(workflowUpdatedMs(workflow))}
+        </DirectoryTableBodyCell>
+      );
+    case "lastRun":
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          {renderWorkflowTimestampCell(workflowLastRunMs(workflow))}
         </DirectoryTableBodyCell>
       );
     default:

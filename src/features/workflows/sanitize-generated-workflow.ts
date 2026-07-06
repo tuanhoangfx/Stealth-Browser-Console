@@ -27,7 +27,7 @@ function normalizeUrl(value: string) {
   return `https://${trimmed}`;
 }
 
-function parseSteps(raw: unknown, targetUrl: string): ScriptStep[] {
+function mapRawSteps(raw: unknown, targetUrl: string): ScriptStep[] {
   if (!Array.isArray(raw)) {
     return workflowSteps(targetUrl, true);
   }
@@ -42,13 +42,26 @@ function parseSteps(raw: unknown, targetUrl: string): ScriptStep[] {
         selector: row.selector !== undefined ? String(row.selector) : undefined,
         value: row.value !== undefined ? String(row.value) : undefined,
         timeoutMs: Number(row.timeoutMs) || undefined,
-        enabled: row.enabled !== false
+        enabled: row.enabled !== false,
       });
     })
     .filter(Boolean) as ScriptStep[];
 
   const preset = workflowSteps(targetUrl, true);
   return hydrateWorkflowSteps(mapped, preset, targetUrl);
+}
+
+function parseSteps(raw: unknown, targetUrl: string): ScriptStep[] {
+  return mapRawSteps(raw, targetUrl);
+}
+
+export function sanitizeGeneratedSteps(raw: unknown, targetUrl: string): ScriptStep[] {
+  const data = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  if (Array.isArray(raw)) return mapRawSteps(raw, targetUrl);
+  if (data.step && typeof data.step === "object") {
+    return mapRawSteps([data.step], targetUrl);
+  }
+  return mapRawSteps(data.steps, targetUrl);
 }
 
 export function sanitizeGeneratedWorkflow(raw: unknown, promptHint: string): WorkflowConfig {
@@ -81,16 +94,107 @@ export function sanitizeGeneratedWorkflow(raw: unknown, promptHint: string): Wor
   };
 }
 
+/** Find end index of JSON value starting at `start` (tracks nested `{}` and `[]`). */
+function findJsonEnd(text: string, start: number): number | null {
+  const first = text[start];
+  if (first !== "{" && first !== "[") return null;
+
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") {
+      const expected = stack.pop();
+      if (!expected || ch !== expected) return null;
+      if (stack.length === 0) return i;
+    }
+  }
+
+  return null;
+}
+
+function collectJsonCandidates(text: string): string[] {
+  const trimmed = text.trim();
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  function push(candidate: string | null | undefined) {
+    const value = candidate?.trim();
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    out.push(value);
+  }
+
+  for (const match of trimmed.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+    push(match[1]);
+    const inner = match[1]?.trim();
+    if (inner) {
+      for (let i = 0; i < inner.length; i += 1) {
+        if (inner[i] !== "{" && inner[i] !== "[") continue;
+        const end = findJsonEnd(inner, i);
+        if (end !== null) push(inner.slice(i, end + 1));
+      }
+    }
+  }
+
+  for (let i = 0; i < trimmed.length; i += 1) {
+    if (trimmed[i] !== "{" && trimmed[i] !== "[") continue;
+    const end = findJsonEnd(trimmed, i);
+    if (end !== null) push(trimmed.slice(i, end + 1));
+  }
+
+  return out;
+}
+
 export function extractJsonFromModelText(text: string): unknown {
   const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fence?.[1]) return JSON.parse(fence[1].trim());
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
-    throw new Error("Model response is not valid JSON.");
+  if (!trimmed) throw new Error("Model response is empty.");
+
+  const candidates = collectJsonCandidates(trimmed);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
   }
+
+  throw lastError ?? new Error("Model response is not valid JSON. Try a shorter prompt or Gen again.");
+}
+
+/** Parse OpenAI-style chat completion HTTP body. */
+export function parseRouterChatCompletionBody(body: string): string {
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("9Router returned an empty response.");
+
+  let payload: { choices?: Array<{ message?: { content?: string } }> };
+  try {
+    payload = JSON.parse(trimmed) as typeof payload;
+  } catch {
+    const candidate = collectJsonCandidates(trimmed)[0];
+    if (!candidate) throw new Error("9Router response is not valid JSON.");
+    payload = JSON.parse(candidate) as typeof payload;
+  }
+
+  const content = payload.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || !content.trim()) {
+    throw new Error("9Router returned empty model content.");
+  }
+  return content;
 }

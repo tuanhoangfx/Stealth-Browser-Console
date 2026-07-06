@@ -258,7 +258,7 @@ body.hub-modal-open {
   flex-shrink: 0;
   border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hub-modal-panel-surface, var(--panel));
   padding: 0.75rem;
   isolation: isolate;
 }
@@ -510,6 +510,16 @@ body.hub-modal-open {
     inset 0 0 0 1px rgba(255, 255, 255, 0.025);
 }
 
+.hub-toc-nav__heading {
+  margin: 0 0 0.35rem;
+  padding: 0 0.35rem 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgb(148, 163, 184);
+}
+
 .hub-toc-nav__item.is-highlighted .hub-toc-nav__label,
 .hub-toc-nav__item.is-active .hub-toc-nav__label {
   color: rgb(224 231 255);
@@ -520,6 +530,17 @@ body.hub-modal-open {
 .hub-toc-nav__item:focus-visible .hub-toc-nav__label {
   outline: 2px solid rgba(129, 140, 248, 0.55);
   outline-offset: 1px;
+}
+
+.hub-toc-nav__icon--plain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-toc-nav__icon--plain > svg {
+  width: 11px;
+  height: 11px;
 }
 
 /* Header panel modals — Settings · Log · User (TOC tokens; shell size via --hub-modal-*). */

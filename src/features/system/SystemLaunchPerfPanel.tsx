@@ -72,7 +72,7 @@ export function SystemLaunchPerfPanel() {
     <Glass tone="emerald">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Launch performance</p>
+          <p className="hub-analytics-caption uppercase tracking-wider text-emerald-300">Launch performance</p>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text)]">Profile browser spawn timeline</h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--muted)]">
             Marks from <code className="text-emerald-200/90">openProfile</code> (prep → spawn). CLI benchmark:{" "}

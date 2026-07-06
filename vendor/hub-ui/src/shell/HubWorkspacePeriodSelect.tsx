@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { HubPeriodSelect } from "../shell/HubPeriodSelect";
+import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "../shell/hub-typography";
 import { useWorkspacePeriod } from "../hooks/useWorkspacePeriod";
 import {
   workspacePeriodOptions,
@@ -53,6 +54,7 @@ export function HubWorkspacePeriodSelect({
       applyLabel={applyLabel}
       startLabel="Start"
       endLabel="End"
+      triggerTypoClass={HUB_DIRECTORY_TOOLBAR_TYPO_CLASS}
     />
   );
 }

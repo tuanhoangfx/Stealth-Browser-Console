@@ -6,13 +6,7 @@
   --hub-directory-page-rows: 20;
 }
 
-/* Directory pane surface tokens — SSOT for thead, wrap chrome, scrollbar track */
-.hub-directory-frame,
-.hub-split-directory-pane {
-  --hub-directory-pane-surface: rgba(255, 255, 255, 0.02);
-  --hub-directory-thead-surface: var(--hub-directory-pane-surface);
-  --hub-directory-thead-border: rgba(255, 255, 255, 0.08);
-}
+/* Directory pane surface tokens — SSOT in hub-users-table.css :root (--panel parity, P0003 Profiles) */
 
 .hub-directory-frame table.hub-users-table.hub-directory-frame-table {
   font-size: var(--hub-table-body-size, 12px);

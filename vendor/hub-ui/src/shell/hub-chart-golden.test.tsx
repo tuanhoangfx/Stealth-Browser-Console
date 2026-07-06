@@ -49,4 +49,13 @@ describe("MiniBarChart golden contract", () => {
     const { container } = render(<MiniBarChart title="By Activity" items={[{ label: "Online", value: 12 }]} />);
     expect(container.querySelectorAll(".hub-chart-row__value").length).toBeGreaterThan(0);
   });
+
+  it("keeps chart row typography on CSS classes only (no text-sm stack)", () => {
+    const { container } = render(<MiniBarChart title="By Health" items={[{ label: "Ready", value: 9 }]} />);
+    const label = container.querySelector(".hub-chart-legend-label");
+    const value = container.querySelector(".hub-chart-row__value");
+    expect(label?.className).not.toMatch(/\btext-sm\b/);
+    expect(value?.className).not.toMatch(/\btext-sm\b/);
+    expect(container.querySelector(".hub-analytics-caption")).toBeTruthy();
+  });
 });

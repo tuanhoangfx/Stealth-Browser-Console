@@ -66,7 +66,7 @@ export function buildWorkflowGeneratorSystemPrompt(fewShots: WorkflowPromptExamp
 
   return `You are a workflow author for Stealth Browser Console (browser automation via CloakBrowser + Playwright/CDP).
 
-Return ONLY valid JSON (no markdown, no commentary) matching this shape:
+Return ONLY a single JSON object. No markdown fences. No text before or after the JSON.
 {
   "name": string,
   "description": string,
@@ -116,6 +116,80 @@ export function buildWorkflowUserMessage(prompt: string, current?: WorkflowConfi
   return `Current workflow being edited:
 ${JSON.stringify(summary, null, 2)}
 
+User request:
+${trimmed}`;
+}
+
+export function buildStepSetGeneratorSystemPrompt() {
+  return `You are a browser automation step author for Stealth Browser Console.
+
+Return ONLY valid JSON — no markdown fences, no commentary before or after.
+
+Preferred shape (full revised step list):
+{
+  "steps": [
+    {
+      "kind": "navigate" | "wait" | "click" | "type" | "delay" | "scroll" | "screenshot" | "condition" | "action",
+      "name": string,
+      "selector": string (optional),
+      "value": string (optional),
+      "timeoutMs": number,
+      "enabled": boolean
+    }
+  ]
+}
+
+When the user asks to change ONLY the selected step, you may return:
+{ "step": { ...single step fields... } }
+
+Rules:
+- Keep existing steps that the user did not ask to change.
+- Use realistic Playwright selectors.
+- Do NOT change workflow name, targetUrl, or metadata — steps only.
+- Write step names in Vietnamese if the user writes in Vietnamese.`;
+}
+
+export function buildStepSetUserMessage(
+  prompt: string,
+  current: WorkflowConfig | null,
+  selectedStepId: string | null,
+) {
+  const trimmed = prompt.trim();
+  if (!current) return trimmed;
+
+  const stepsSummary = current.steps.map((step, index) => ({
+    index: index + 1,
+    id: step.id,
+    kind: step.kind,
+    name: step.name,
+    selector: step.selector,
+    value: step.value,
+    timeoutMs: step.timeoutMs,
+    enabled: step.enabled !== false,
+  }));
+
+  const selected = selectedStepId
+    ? current.steps.find((step) => step.id === selectedStepId)
+    : null;
+
+  const selectedBlock = selected
+    ? `\nSelected step to focus on:\n${JSON.stringify(
+        {
+          kind: selected.kind,
+          name: selected.name,
+          selector: selected.selector,
+          value: selected.value,
+          timeoutMs: selected.timeoutMs,
+          enabled: selected.enabled !== false,
+        },
+        null,
+        2,
+      )}\n`
+    : "";
+
+  return `Current workflow steps (keep unchanged unless the user asks to edit them):
+${JSON.stringify(stepsSummary, null, 2)}
+${selectedBlock}
 User request:
 ${trimmed}`;
 }
