@@ -1,21 +1,15 @@
 import {
   DirectoryTableBodyCell,
-  formatHubTimestampFull,
   HubDirectoryIconCell,
+  HubDirectoryTimestampLabel,
   HubUsersStatusLabel,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import { resolveHubBrandIconByMatch } from "@tool-workspace/hub-ui";
 import { Globe2 } from "lucide-react";
 import type { StealthWorkflowStoreColumnKey } from "../../lib/directory-column-meta";
-import { DIRECTORY_CELL_TRUNCATE, directoryCellTitle } from "../../lib/directory-cell-format";
+import { DIRECTORY_CELL_TRUNCATE } from "../../lib/directory-cell-format";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
-import {
-  formatLastOpenedRelativeAge,
-  formatLastOpenedStaleDate,
-  lastOpenedAgeTone,
-  lastOpenedHubTone,
-} from "../profiles/profile-directory-cell-helpers";
 import { workflowPlatformIconFor } from "./workflow-display";
 import { workflowStoreUpdatedMs } from "./workflow-store-meta";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
@@ -27,17 +21,7 @@ function renderStoreUpdatedCell(entry: WorkflowStoreEntry) {
   if (ms == null) {
     return <span className="hub-directory-table-body-text">—</span>;
   }
-  const iso = new Date(ms).toISOString();
-  const tone = lastOpenedAgeTone(ms);
-  const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
-  return (
-    <HubUsersStatusLabel
-      label={label}
-      tone={lastOpenedHubTone(tone)}
-      capitalize={false}
-      title={formatHubTimestampFull(iso)}
-    />
-  );
+  return <HubDirectoryTimestampLabel at={ms} />;
 }
 
 function storeStatusLabel(entry: WorkflowStoreEntry, localIds: Set<string>, installedIds: Set<string>) {
@@ -71,17 +55,13 @@ export function renderWorkflowStoreDirectoryBodyCell(
             imageSrc={platformImageSrc || undefined}
             imageShell={brand?.shell}
             label={entry.platform}
-            title={entry.platform}
           />
         </DirectoryTableBodyCell>
       );
     case "name":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span
-            className="stealth-workflow-name-cell min-w-0"
-            title={directoryCellTitle(entry.name, entry.description, entry.id)}
-          >
+          <span className="stealth-workflow-name-cell min-w-0">
             <span className={`hub-users-name-title ${DIRECTORY_CELL_TRUNCATE}`}>{entry.name}</span>
           </span>
         </DirectoryTableBodyCell>
@@ -89,17 +69,13 @@ export function renderWorkflowStoreDirectoryBodyCell(
     case "version":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass} typographyClass="hub-users-cell-muted">
-          <span className={DIRECTORY_CELL_TRUNCATE} title={`v${entry.version}`}>
-            v{entry.version}
-          </span>
+          <span className={DIRECTORY_CELL_TRUNCATE}>v{entry.version}</span>
         </DirectoryTableBodyCell>
       );
     case "group":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className={`hub-directory-table-body-text ${DIRECTORY_CELL_TRUNCATE}`} title={entry.group}>
-            {entry.group}
-          </span>
+          <span className={`hub-directory-table-body-text ${DIRECTORY_CELL_TRUNCATE}`}>{entry.group}</span>
         </DirectoryTableBodyCell>
       );
     case "status": {

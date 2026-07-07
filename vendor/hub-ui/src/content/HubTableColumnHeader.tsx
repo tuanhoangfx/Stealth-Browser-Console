@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { compactIconSize, HUB_DIRECTORY_HEADER_GLYPH_PX } from "../ui-scale";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
 import {
   type HubTableColumnRole,
@@ -46,7 +47,7 @@ export function HubTableColumnHeader({
       <HubSemanticGlyph
         icon={Icon}
         brandIcon={brandIcon}
-        size={13}
+        size={compactIconSize(HUB_DIRECTORY_HEADER_GLYPH_PX)}
         className={`hub-users-th-icon ${iconClass}`}
       />
       <span className="hub-users-th-text">{label}</span>

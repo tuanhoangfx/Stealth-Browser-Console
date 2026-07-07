@@ -1,19 +1,46 @@
 /**
  * In-memory Stealth API for Vite-only dev (no Electron preload).
- * Seeds one demo profile so Hub directory UI is usable in the browser.
+ * SSOT channel list: electron/stealth-api-channels.json → stealth-api-channel-list.ts
  */
-import type { BulkCreateProfilesResult, EngineHealth, OpenUrlResult, RunHistoryItem, StealthGroup, StealthProfile } from "../types";
+import type {
+  BulkCreateProfilesResult,
+  EngineHealth,
+  RunHistoryItem,
+  StealthGroup,
+  StealthProfile,
+  StealthUpdateStatus,
+} from "../types";
 import { DEFAULT_DEVICE, deviceConfigFromProfile } from "./device-presets";
 import { normalizeStartupUrl, resolveStartupUrlSave } from "./startup-url";
 import { matchesProfileDirectorySearch } from "../features/profiles/profile-directory-search";
+import { assertStealthApiChannelCoverage, buildStealthApiStubLayer } from "./stealth-api-mock-stubs";
 
 const DEMO_SEED = 424242;
+const SMOKE_PAGER_MIN_PROFILES = 21;
 const groups: StealthGroup[] = [{ id: "default", name: "Default", sortOrder: 0 }];
 const profiles: StealthProfile[] = [];
 const runs: RunHistoryItem[] = [];
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isSmokePagerSeedRequested() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("stealthSmokePager") === "1";
+}
+
+function ensureSmokePagerCatalog() {
+  if (!isSmokePagerSeedRequested()) return;
+  seedIfEmpty();
+  if (profiles.length >= SMOKE_PAGER_MIN_PROFILES) return;
+  const start = 99001;
+  for (let i = profiles.length; i < SMOKE_PAGER_MIN_PROFILES; i += 1) {
+    createMockProfile({
+      name: String(start + i - 1).padStart(5, "0"),
+      note: "smoke pager seed — web mock",
+    });
+  }
 }
 
 function seedIfEmpty() {
@@ -32,7 +59,7 @@ function seedIfEmpty() {
     startupUrl: "",
     ...DEFAULT_DEVICE,
     createdAt: ts,
-    updatedAt: ts
+    updatedAt: ts,
   });
 }
 
@@ -60,13 +87,18 @@ function createMockProfile(input: Partial<StealthProfile> & { name: string }) {
     startupUrl: normalizeStartupUrl(String(input.startupUrl || "")),
     ...deviceConfigFromProfile(input),
     createdAt: ts,
-    updatedAt: ts
+    updatedAt: ts,
   };
   profiles.unshift(profile);
   return profile;
 }
 
-function summarizeBulkResult(requested: number, createdNames: string[], skippedNames: string[], duplicateNames: string[]): BulkCreateProfilesResult {
+function summarizeBulkResult(
+  requested: number,
+  createdNames: string[],
+  skippedNames: string[],
+  duplicateNames: string[],
+): BulkCreateProfilesResult {
   return {
     requested,
     created: createdNames.length,
@@ -78,33 +110,55 @@ function summarizeBulkResult(requested: number, createdNames: string[], skippedN
   };
 }
 
-export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi> {
+function buildCatalogStats() {
+  seedIfEmpty();
+  ensureSmokePagerCatalog();
+  const total = profiles.length;
+  const groupCounts: Record<string, number> = {};
+  const stats = { total, closed: 0, opening: 0, running: 0, failed: 0, groupCounts };
+  for (const p of profiles) {
+    if (p.status === "closed") stats.closed += 1;
+    else if (p.status === "opening") stats.opening += 1;
+    else if (p.status === "running") stats.running += 1;
+    else if (p.status === "failed") stats.failed += 1;
+    const gid = String(p.groupId ?? "");
+    if (gid) groupCounts[gid] = (groupCounts[gid] ?? 0) + 1;
+  }
+  return stats;
+}
+
+function mockUpdateStatus(partial: Partial<StealthUpdateStatus> = {}): StealthUpdateStatus {
+  return {
+    state: "dev",
+    runtime: "dev",
+    supportsUpdates: false,
+    currentVersion: "web-mock",
+    message: "Web dev mock — packaged app only.",
+    updateVersion: "",
+    releaseName: "",
+    releaseDate: "",
+    progress: null,
+    ...partial,
+  };
+}
+
+function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>> {
   return {
     engineHealth: async (): Promise<EngineHealth> => ({
       ok: false,
       installed: false,
       error: "Web dev mock — run pnpm dev (Electron) for CloakBrowser engine.",
-      info: { version: "web-mock", path: "" }
+      info: { version: "web-mock", path: "" },
     }),
     updateBinary: async () => ({ ok: false, error: "Not available in web mock." }),
     listProfiles: async () => {
       seedIfEmpty();
+      ensureSmokePagerCatalog();
       return { ok: true, profiles: [...profiles], groups: [...groups] };
     },
     profileBootstrap: async () => {
       seedIfEmpty();
-      const total = profiles.length;
-      const groupCounts: Record<string, number> = {};
-      const stats = { total, closed: 0, opening: 0, running: 0, failed: 0, groupCounts };
-      for (const p of profiles) {
-        if (p.status === "closed") stats.closed += 1;
-        else if (p.status === "opening") stats.opening += 1;
-        else if (p.status === "running") stats.running += 1;
-        else if (p.status === "failed") stats.failed += 1;
-        const gid = String(p.groupId ?? "");
-        if (gid) groupCounts[gid] = (groupCounts[gid] ?? 0) + 1;
-      }
-      return { ok: true, groups: [...groups], stats };
+      return { ok: true, groups: [...groups], stats: buildCatalogStats() };
     },
     listProfilesPage: async (input: {
       search?: string;
@@ -114,40 +168,19 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       offset?: number;
     } = {}) => {
       seedIfEmpty();
+      ensureSmokePagerCatalog();
       const term = String(input.search || "").trim();
       const groupIds = Array.isArray(input.groupIds) ? input.groupIds.map(String) : [];
       const statuses = Array.isArray(input.statuses) ? input.statuses.map(String) : [];
       let rows = [...profiles];
       if (groupIds.length) rows = rows.filter((p) => groupIds.includes(String(p.groupId ?? "")));
       if (statuses.length) rows = rows.filter((p) => statuses.includes(p.status));
-      if (term) {
-        rows = rows.filter((p) => matchesProfileDirectorySearch(p, term));
-      }
+      if (term) rows = rows.filter((p) => matchesProfileDirectorySearch(p, term));
       const limit = Math.min(50_000, Math.max(1, Number(input.limit) || 100));
       const offset = Math.max(0, Number(input.offset) || 0);
-      return {
-        ok: true,
-        profiles: rows.slice(offset, offset + limit),
-        total: rows.length,
-        limit,
-        offset,
-      };
+      return { ok: true, profiles: rows.slice(offset, offset + limit), total: rows.length, limit, offset };
     },
-    catalogStats: async () => {
-      seedIfEmpty();
-      const total = profiles.length;
-      const groupCounts: Record<string, number> = {};
-      const stats = { total, closed: 0, opening: 0, running: 0, failed: 0, groupCounts };
-      for (const p of profiles) {
-        if (p.status === "closed") stats.closed += 1;
-        else if (p.status === "opening") stats.opening += 1;
-        else if (p.status === "running") stats.running += 1;
-        else if (p.status === "failed") stats.failed += 1;
-        const gid = String(p.groupId ?? "");
-        if (gid) groupCounts[gid] = (groupCounts[gid] ?? 0) + 1;
-      }
-      return { ok: true, stats };
-    },
+    catalogStats: async () => ({ ok: true, stats: buildCatalogStats() }),
     createProfile: async (input) => ({ ok: true, profile: createMockProfile(input) }),
     createProfilesBulkByNames: async (payload) => {
       const lines = Array.isArray(payload.names)
@@ -208,7 +241,7 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       }
       return { ok: true, count: ids.length };
     },
-      deleteProfile: async (payload) => {
+    deleteProfile: async (payload) => {
       const idx = profiles.findIndex((row) => row.id === String(payload.id));
       const name = idx >= 0 ? profiles[idx]!.name : String(payload.id);
       if (idx >= 0) profiles.splice(idx, 1);
@@ -224,13 +257,6 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
         }
       }
       return { ok: true, count: names.length, names, storagePurged: names.length };
-    },
-    launchProfile: async (payload) => {
-      const profile = findProfile(String(payload.id));
-      if (!profile) throw new Error("Profile not found.");
-      profile.status = "running";
-      profile.updatedAt = nowIso();
-      throw new Error("Launch requires Electron + CloakBrowser (pnpm dev).");
     },
     closeProfile: async (payload) => {
       const profile = findProfile(String(payload.id));
@@ -249,7 +275,7 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       const group: StealthGroup = {
         id: crypto.randomUUID(),
         name: String(payload.name || "Group").trim() || "Group",
-        sortOrder: groups.length
+        sortOrder: groups.length,
       };
       groups.push(group);
       return { ok: true, group };
@@ -281,14 +307,11 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       ok: true,
       meta: (payload.profileIds || []).map((id) => ({ id: String(id) })),
     }),
-    onProfilesBackupProgress: () => () => undefined,
     listRuns: async (payload) => ({
       ok: true,
-      runs: runs.slice(0, Number(payload?.limit) || 100)
+      runs: runs.slice(0, Number(payload?.limit) || 100),
     }),
-    openUrl: async (): Promise<OpenUrlResult> => {
-      throw new Error("Open URL automation requires Electron + CloakBrowser.");
-    },
+    listProfileEvents: async () => ({ ok: true, events: [] }),
     appInfo: async () => ({
       name: "Stealth Browser Console (web mock)",
       version: "0.4.1",
@@ -359,8 +382,20 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
       storeId: String(payload?.storeId ?? ""),
       iconDataUri: null,
     }),
-    onProfileSession: () => () => undefined
+    getUpdateStatus: async () => mockUpdateStatus(),
+    checkForUpdates: async () => mockUpdateStatus({ state: "latest" }),
+    downloadUpdate: async () => mockUpdateStatus({ state: "error", message: "Web mock" }),
+    installUpdate: async () => mockUpdateStatus({ state: "error", message: "Web mock" }),
   };
+}
+
+export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi> {
+  const api = {
+    ...buildStealthApiStubLayer(),
+    ...buildProfileOverrides(),
+  } as NonNullable<typeof window.stealthApi>;
+  assertStealthApiChannelCoverage(api);
+  return api;
 }
 
 export function installStealthWebMock() {
@@ -370,7 +405,6 @@ export function installStealthWebMock() {
     window.stealthApi = mock;
     return;
   }
-  // Dev HMR: patch stale Electron preload when new IPC methods were added without full restart.
   const live = window.stealthApi as Record<string, unknown>;
   for (const [key, value] of Object.entries(mock as Record<string, unknown>)) {
     if (typeof value === "function" && typeof live[key] !== "function") {

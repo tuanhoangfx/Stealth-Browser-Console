@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useEffect } from "react";
 import { useDirectorySplitScrollbarSync } from "./useDirectorySplitScrollbarSync";
 
@@ -14,6 +14,16 @@ export type DirectorySplitScrollTableProps = {
   /** Reset tbody scroll when filters/search/page change. */
   scrollResetKey?: string | number | boolean | null;
 };
+
+function focusDirectoryBodyScroll(body: HTMLDivElement | null) {
+  body?.focus({ preventScroll: true });
+}
+
+function onDirectoryBodyPointerDown(e: MouseEvent<HTMLDivElement>) {
+  const t = e.target as HTMLElement;
+  if (t.closest("tr, button, input, label, a, [role='button']")) return;
+  focusDirectoryBodyScroll(e.currentTarget);
+}
 
 export function DirectorySplitScrollTable({
   wrapClassName,
@@ -42,7 +52,13 @@ export function DirectorySplitScrollTable({
           <thead>{headRow}</thead>
         </table>
       </div>
-      <div className="hub-directory-table-body-scroll" ref={bodyRef}>
+      <div
+        className="hub-directory-table-body-scroll"
+        ref={bodyRef}
+        tabIndex={-1}
+        data-hub-directory-table-body
+        onMouseDown={onDirectoryBodyPointerDown}
+      >
         <table className={tableClassName} data-hub-directory-select={showSelect ? "" : undefined}>
           {colgroup}
           <tbody>{bodyRows}</tbody>

@@ -1,6 +1,8 @@
 import {
+  asDirectoryTableColumnPresetManagerProp,
   countHiddenDirectoryTableColumns,
   createDirectoryTableColumnPrefs,
+  createDirectoryTableColumnPresetManager,
   withDirectoryColumnIcons,
   type DirectoryTableColumnItem,
 } from "@tool-workspace/hub-ui";
@@ -59,6 +61,28 @@ export const workflowPanelDirectoryColumnPrefs = createDirectoryTableColumnPrefs
   defaultKeys: DEFAULT_WORKFLOW_PANEL_DIRECTORY_COLUMNS,
   changeEvent: WORKFLOW_PANEL_DIRECTORY_COLUMNS_CHANGE,
 });
+
+export const workflowRailDirectoryColumnPresetManager = createDirectoryTableColumnPresetManager({
+  prefs: workflowRailDirectoryColumnPrefs,
+  presetsStorageKey: "p0003_workflow_rail_directory_column_presets",
+  itemKeys: WORKFLOW_DIRECTORY_GOLDEN_ORDER,
+  defaultVisible: DEFAULT_WORKFLOW_RAIL_DIRECTORY_COLUMNS,
+});
+
+export const workflowPanelDirectoryColumnPresetManager = createDirectoryTableColumnPresetManager({
+  prefs: workflowPanelDirectoryColumnPrefs,
+  presetsStorageKey: "p0003_workflow_panel_directory_column_presets",
+  itemKeys: WORKFLOW_DIRECTORY_GOLDEN_ORDER,
+  defaultVisible: DEFAULT_WORKFLOW_PANEL_DIRECTORY_COLUMNS,
+});
+
+export const workflowRailDirectoryColumnPresetsProp = asDirectoryTableColumnPresetManagerProp(
+  workflowRailDirectoryColumnPresetManager,
+);
+
+export const workflowPanelDirectoryColumnPresetsProp = asDirectoryTableColumnPresetManagerProp(
+  workflowPanelDirectoryColumnPresetManager,
+);
 
 function orderWorkflowDirectoryColumns(visible: Set<StealthWorkflowPanelColumnKey>): StealthWorkflowPanelColumnKey[] {
   return WORKFLOW_DIRECTORY_GOLDEN_ORDER.filter((key) => visible.has(key));

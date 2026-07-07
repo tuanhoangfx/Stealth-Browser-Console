@@ -10,6 +10,7 @@ import {
   PROFILE_DIRECTORY_COLUMNS_CHANGE,
   PROFILE_DIRECTORY_COLUMN_ITEMS,
   profileDirectoryColumnPrefs,
+  profileDirectoryColumnPresetsProp,
   resetProfileDirectoryColumns,
 } from "../features/profiles/profile-directory-prefs";
 import {
@@ -21,7 +22,9 @@ import {
   resetWorkflowPanelDirectoryColumns,
   resetWorkflowRailDirectoryColumns,
   workflowPanelDirectoryColumnPrefs,
+  workflowPanelDirectoryColumnPresetsProp,
   workflowRailDirectoryColumnPrefs,
+  workflowRailDirectoryColumnPresetsProp,
 } from "../features/workflows/workflow-directory-prefs";
 import { SCREEN_DISPLAY_PREFS, resolveScreenDisplayPrefs } from "./display-prefs-registry";
 import type { StealthScreen } from "./stealth-screen";
@@ -145,6 +148,14 @@ export function useStealthDisplayPanelConfig(
       defaultFilterKeys: workflowColumnsOnly ? new Set<string>() : resolved.defaultFilterKeys,
       defaultHeaderStatKeys: workflowColumnsOnly ? new Set<string>() : resolved.defaultHeaderStatKeys,
       tablePanel,
+      tableColumnPresets:
+        screen === "profiles"
+          ? profileDirectoryColumnPresetsProp
+          : isWorkflowPanel
+            ? workflowPanelDirectoryColumnPresetsProp
+            : isWorkflowRail
+              ? workflowRailDirectoryColumnPresetsProp
+              : undefined,
       tableSectionActions,
       tableActiveCount:
         screen === "profiles" ? hiddenProfileCols : workflowColumnsOnly ? hiddenWorkflowCols : 0,

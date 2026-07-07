@@ -63,3 +63,16 @@ CREATE INDEX IF NOT EXISTS idx_profiles_fingerprint_seed ON profiles(fingerprint
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON profiles(status);
 CREATE INDEX IF NOT EXISTS idx_runs_started_at ON runs(started_at);
 CREATE INDEX IF NOT EXISTS idx_runs_profile_id ON runs(profile_id);
+
+-- profile lifecycle events (launch / close / save)
+CREATE TABLE IF NOT EXISTS profile_events (
+  id TEXT PRIMARY KEY,
+  profile_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  level TEXT DEFAULT 'info',
+  message TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_profile_events_profile_created ON profile_events(profile_id, created_at DESC);

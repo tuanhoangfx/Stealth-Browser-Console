@@ -239,6 +239,7 @@ export const ProfilesView = memo(function ProfilesView({
         allVisibleSelected={allVisibleSelected}
         openOne={handleOpenOne}
         closeOne={handleCloseOne}
+        onOpenDetail={setEditProfile}
         globalExtensionToggles={globalToggles}
         extensionBusy={extensionBusy}
         onExtensionSet={handleExtensionSet}

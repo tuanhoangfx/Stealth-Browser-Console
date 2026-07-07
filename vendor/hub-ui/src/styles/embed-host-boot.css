@@ -1,9 +1,9 @@
 /**
  * Embed gateway host boot — single import for multi-tool shells (P0026, …).
  * Load tool embed CSS after this file (p0020-todo-embed, p0005-customers-embed, p0024-places-embed).
- * Host PostCSS must process @tailwind in hub-globals-tokens.css.
+ * Host PostCSS must process @tailwind in hub-theme-tokens.css.
  */
-@import "./hub-globals-tokens.css";
+@import "./hub-theme-tokens.css";
 @import "./hub-boot.css";
 @import "./hub-appearance.css";
 @import "./hub-ui-bundle.css";

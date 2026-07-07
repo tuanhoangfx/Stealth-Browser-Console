@@ -155,6 +155,15 @@ export type RunHistoryItem = {
   logs?: RunLogEntry[];
 };
 
+export type ProfileEvent = {
+  id: string;
+  profileId: string;
+  eventType: string;
+  level: string;
+  message: string;
+  createdAt: string;
+};
+
 export type EngineHealth = {
   ok: boolean;
   installed?: boolean;
@@ -383,6 +392,10 @@ declare global {
       profileBackupMeta: (payload: { profileIds: string[] }) => Promise<{ ok: boolean; meta: ProfileBackupMeta[] }>;
       onProfilesBackupProgress?: (handler: (payload: ProfilesBackupProgressPayload) => void) => () => void;
       listRuns: (payload?: { limit?: number }) => Promise<{ ok: boolean; runs: RunHistoryItem[] }>;
+      listProfileEvents: (payload: {
+        profileId: string;
+        limit?: number;
+      }) => Promise<{ ok: boolean; events: ProfileEvent[] }>;
       openUrl: (payload: {
         profileId: string;
         targetUrl: string;

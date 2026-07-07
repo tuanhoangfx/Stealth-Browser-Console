@@ -1,30 +1,37 @@
+/**
+ * Hub theme tokens SSOT — canonical copy from P0004 golden pattern.
+ * Tools sync via: node Tool/scripts/sync-hub-theme-from-p0004.cjs --target <app>/src
+ * CI diff: node Tool/scripts/hub-theme-tokens-diff.mjs
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root,
 .theme-hub {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  --hub-user-zoom-pct: 100;
+  --hub-user-zoom-pct: 90;
   --hub-compact-scale: 0.9;
   --hub-control-h: 31px;
   --hub-card-min-h: 198px;
   --hub-search-min-w: 180px;
   --hub-count-badge-min-w: 14px;
-  --hub-metric-badge-h: 20px;
+  --hub-metric-badge-h: 22px;
+  --hub-directory-card-icon-box-px: 22px;
+  --hub-directory-card-glyph-px: 14px;
   --hub-card-meta-min-h: 6.75rem;
   --hub-card-chip-row-min-h: 20px;
-  --personality-dot-size: 7px;
-  --personality-dot-size-badge: 5px;
-  /* Directory tables — body/header/muted; P0020 Sheet parity */
+  /* Directory tables — body/header/muted; override per tool variant in hub-users-table.css */
   --hub-table-body-size: 12px;
   --hub-table-header-size: 12px;
   --hub-table-body-size-dense: 13px;
   --hub-table-muted-size: 11px;
   --hub-table-body-line-height: 1.45;
-  --hub-directory-row-h: 1.875rem;
-  --hub-directory-head-row-h: 2.125rem;
-  --overview-toc-w: 135px;
+  /* Runtime rail — Console + Run History (directory table parity) */
+  --hub-runtime-body-size: var(--hub-table-body-size);
+  --hub-runtime-muted-size: var(--hub-table-muted-size);
+  --hub-runtime-body-line-height: var(--hub-table-body-line-height);
+  --overview-toc-w: 10.5rem;
+  --overview-toc-row-h: 2.125rem;
   --overview-toc-h: 263px;
   --overview-toc-row-h: 30px;
   --schema-graph-h: 414px;
@@ -34,19 +41,17 @@
   --version-table-min-w: 738px;
   --version-title-max-w: 144px;
   --version-note-max-w: 180px;
-  --app-tab-header-py: 0.875rem;
-  /* P0004 Hub-UI golden header bleed — aligns actions to outer frame without edge clipping. */
+  --app-tab-header-py: 0.75rem;
   --app-tab-header-px: 1.5rem;
-  /* Stealth content frame — tighter than header bleed (Profiles/Workflow split layout). */
-  --stealth-frame-px: 0.75rem;
-  --app-tab-header-min-h: 3rem;
+  --app-tab-header-min-h: 2.75rem;
   --app-tab-header-gap-below: 0.75rem;
-  /* Hub scrollbar — global + hub-split-scroll panes */
+  /* Hub scrollbar — global + hub-split-scroll / filter dropdown panes */
   --hub-split-scroll-size: 10px;
   --hub-split-scroll-track: transparent;
   --hub-split-scroll-thumb: #2a3158;
   --hub-split-scroll-thumb-hover: #3a4178;
   --hub-split-scroll-radius: 6px;
+  --hub-split-scroll-end-padding: 0.75rem;
   /* Total block height (padding is inside min-height via box-border on .app-tab-header) */
   --app-tab-header-sticky-h: var(--app-tab-header-min-h);
   --hub-filter-pin-est-h: 6.75rem;
@@ -55,6 +60,11 @@
   --hub-chrome-sticky-est-h: calc(
     var(--app-tab-header-min-h) + var(--hub-filter-pin-est-h) + var(--hub-chrome-gap-below)
   );
+  /* Inline glyph + label gaps — directory tables & chrome (SSOT) */
+  --hub-inline-gap-tight: 4px;
+  --hub-inline-gap-meta: 5px;
+  --hub-inline-gap-comfort: 6px;
+  --hub-inline-gap-name: 8px;
   --bg: #0b1020;
   --panel: #121830;
   --panel-2: #1a2140;
@@ -67,22 +77,21 @@
   --danger: #ef4444;
 }
 
+.hub-inline-gap-tight {
+  gap: var(--hub-inline-gap-tight, 4px);
+}
+.hub-inline-gap-meta {
+  gap: var(--hub-inline-gap-meta, 5px);
+}
+.hub-inline-gap-comfort {
+  gap: var(--hub-inline-gap-comfort, 6px);
+}
+.hub-inline-gap-name {
+  gap: var(--hub-inline-gap-name, 8px);
+}
+
 html {
   font-size: calc(16px * var(--hub-user-zoom-pct, 90) / 100);
-}
-
-/* Personality accent dots — table, card, bulk menu, filters, badges */
-.personality-color-dot {
-  display: inline-block;
-  flex-shrink: 0;
-  width: var(--personality-dot-size, 7px);
-  height: var(--personality-dot-size, 7px);
-  border-radius: 9999px;
-}
-
-.personality-color-dot--badge {
-  width: var(--personality-dot-size-badge, 5px);
-  height: var(--personality-dot-size-badge, 5px);
 }
 
 .hub-ui-zoom-row {
@@ -166,17 +175,17 @@ html {
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.45);
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hub-split-scroll-thumb, #2a3158) var(--hub-split-scroll-track, transparent);
+}
+
 html,
 body,
 #root {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
-}
-
-.hub-app {
-  font-family: var(--font-sans);
 }
 
 * {
@@ -196,6 +205,11 @@ body,
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--hub-split-scroll-thumb-hover, #3a4178);
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 @keyframes fadeIn {
@@ -268,19 +282,7 @@ body,
 }
 
 .anim-fade {
-  opacity: 1;
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .anim-fade,
-  .anim-slide,
-  .anim-right,
-  .anim-pop {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
+  animation: fadeIn 0.3s ease-out both;
 }
 .anim-slide {
   animation: slideUp 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;

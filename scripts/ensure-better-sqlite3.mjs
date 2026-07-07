@@ -75,6 +75,7 @@ if (process.versions.electron) {
 
 if (probeOk()) {
   console.log("[predev] better-sqlite3 native bindings OK (Electron ABI)");
+  console.log("[predev] DB scripts: use electron-node runner (spawn-electron-node.mjs), not plain node");
   process.exit(0);
 }
 

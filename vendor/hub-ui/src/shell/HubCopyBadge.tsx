@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Fingerprint } from "lucide-react";
+import { copyTextWithFallback } from "../lib/copy-text-with-fallback";
 import { copyToastLabelFromTitle } from "../toast/copy-toast";
 import { useHubToast } from "../toast/HubToastContext";
 import { compactIconSize } from "../ui-scale";
@@ -44,7 +45,7 @@ export function HubCopyBadge({
   const toast = useHubToast();
   const [copied, setCopied] = useState(false);
   const displayLabel = hubCopyBadgeDisplayLabel(value, label);
-  const tip = title ?? `Copy ${value}`;
+  const copyActionTitle = title ?? `Copy ${value}`;
   const chip = display === "chip";
 
   const useToast =
@@ -59,24 +60,19 @@ export function HubCopyBadge({
 
   async function copy(e: React.MouseEvent) {
     e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(value);
-      if (useToast) {
-        toast?.pushCopyToast(value, copyToastLabel ?? copyToastLabelFromTitle(tip));
-      } else if (useInlineTick) {
-        setCopied(true);
-      }
-      onCopied?.();
-    } catch {
-      /* ignore */
+    await copyTextWithFallback(value);
+    if (useToast) {
+      toast?.pushCopyToast(value, copyToastLabel ?? copyToastLabelFromTitle(copyActionTitle));
+    } else if (useInlineTick) {
+      setCopied(true);
     }
+    onCopied?.();
   }
 
   return (
     <button
       type="button"
       onClick={(e) => void copy(e)}
-      title={tip}
       className={`hub-copy-badge inline-flex h-[var(--hub-metric-badge-h)] max-w-full items-center rounded-md border border-white/10 bg-white/[0.04] text-[var(--muted)] transition-colors hover:border-indigo-400/30 hover:bg-indigo-500/10 hover:text-indigo-200 ${
         chip
           ? "hub-copy-badge--chip gap-0 px-1"

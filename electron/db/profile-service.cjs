@@ -1,5 +1,5 @@
 const { randomInt, randomUUID } = require("node:crypto");
-const { getDb, isDatabaseReady } = require("./init.cjs");
+const { getDb, isDatabaseReady, checkpointDatabase } = require("./init.cjs");
 
 const VALID_PLATFORMS = new Set(["windows", "macos", "linux"]);
 const VALID_COLOR_SCHEMES = new Set(["", "light", "dark", "no-preference"]);
@@ -457,12 +457,128 @@ function createProfilesBulkByRange({ start, end, pad = 4, defaults = {} } = {}) 
 
 // Đổi riêng status — tránh chi phí normalize + double-SELECT của updateProfile.
 // Dùng cho session lifecycle (opening/running/closed/failed) chạy rất thường xuyên.
+const PROFILE_STATUS_EVENT = {
+  opening: { eventType: "opening", level: "info", message: "Profile is opening…" },
+  running: { eventType: "launch", level: "success", message: "Profile launched" },
+  closed: { eventType: "close", level: "info", message: "Profile closed" },
+  failed: { eventType: "failed", level: "error", message: "Profile session failed" },
+};
+
+function appendProfileEvent(profileId, { eventType, level = "info", message = "" } = {}) {
+  if (!isDatabaseReady()) return null;
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      `INSERT INTO profile_events (id, profile_id, event_type, level, message, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      String(profileId),
+      String(eventType || "event"),
+      String(level || "info"),
+      String(message || ""),
+      now,
+    );
+  return { id, profileId: String(profileId), eventType, level, message, createdAt: now };
+}
+
+function appendProfileStatusEvent(profileId, status) {
+  const key = String(status || "");
+  const preset = PROFILE_STATUS_EVENT[key];
+  if (!preset) return null;
+  return appendProfileEvent(profileId, preset);
+}
+
+function listProfileEvents(profileId, limit = 100) {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, profile_id, event_type, level, message, created_at
+       FROM profile_events
+       WHERE profile_id = ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .all(String(profileId), Math.min(500, Math.max(1, limit)));
+
+  return rows.map((row) => ({
+    id: row.id,
+    profileId: row.profile_id,
+    eventType: row.event_type,
+    level: row.level || "info",
+    message: row.message || "",
+    createdAt: row.created_at,
+  }));
+}
+
+/** One-time seed profile_events from last_opened_at + runs for legacy catalogs. */
+function backfillProfileEvents() {
+  if (!isDatabaseReady()) return;
+  const flag = getDb()
+    .prepare("SELECT value FROM settings WHERE key = ?")
+    .get("profile_events_backfill_v1");
+  if (flag?.value === "1") return;
+
+  const insertEvent = getDb().prepare(
+    `INSERT INTO profile_events (id, profile_id, event_type, level, message, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  const listRunsForProfile = getDb().prepare(
+    `SELECT workflow, target_url, status, started_at, finished_at, error
+     FROM runs WHERE profile_id = ? ORDER BY started_at ASC`,
+  );
+  const profiles = getDb()
+    .prepare(
+      `SELECT id, last_opened_at FROM profiles p
+       WHERE NOT EXISTS (SELECT 1 FROM profile_events e WHERE e.profile_id = p.id)`,
+    )
+    .all();
+
+  let inserted = 0;
+  for (const profile of profiles) {
+    const profileId = String(profile.id || "").trim();
+    if (!profileId) continue;
+
+    const lastOpened = Number(profile.last_opened_at);
+    if (Number.isFinite(lastOpened) && lastOpened > 0) {
+      insertEvent.run(
+        randomUUID(),
+        profileId,
+        "launch",
+        "info",
+        "Profile opened (backfilled from last opened)",
+        new Date(lastOpened).toISOString(),
+      );
+      inserted += 1;
+    }
+
+    const runs = listRunsForProfile.all(profileId);
+    for (const run of runs) {
+      const parts = [run.workflow || "workflow"];
+      if (run.target_url) parts.push(run.target_url);
+      if (run.error) parts.push(run.error);
+      const status = String(run.status || "");
+      const level = status === "failed" ? "error" : status === "success" ? "success" : "info";
+      const createdAt = run.finished_at || run.started_at || new Date(0).toISOString();
+      insertEvent.run(randomUUID(), profileId, "workflow", level, parts.join(" · "), createdAt);
+      inserted += 1;
+    }
+  }
+
+  getDb()
+    .prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`)
+    .run("profile_events_backfill_v1", "1");
+  if (inserted > 0) console.info(`[db] backfilled ${inserted} profile_events row(s)`);
+}
+
 function setProfileStatus(id, status) {
   if (!isDatabaseReady()) return null;
   const now = new Date().toISOString();
   getDb()
     .prepare("UPDATE profiles SET status = ?, updated_at = ? WHERE id = ?")
     .run(String(status), now, String(id));
+  appendProfileStatusEvent(id, status);
   return getProfile(id);
 }
 
@@ -473,6 +589,7 @@ function touchLastOpened(id) {
   getDb()
     .prepare("UPDATE profiles SET last_opened_at = ?, updated_at = ? WHERE id = ?")
     .run(ts, now, String(id));
+  checkpointDatabase();
   return getProfile(id);
 }
 
@@ -537,6 +654,16 @@ function updateProfile(id, patch) {
       now,
       String(id)
     );
+
+  const patchKeys = Object.keys(patch).filter((key) => key !== "id");
+  const statusOnly = patchKeys.length === 1 && patchKeys[0] === "status";
+  if (patchKeys.length > 0 && !statusOnly) {
+    appendProfileEvent(id, {
+      eventType: "save",
+      level: "success",
+      message: "Profile settings saved",
+    });
+  }
 
   return getProfile(id);
 }
@@ -854,6 +981,9 @@ module.exports = {
   importProfilesBundle,
   insertRun,
   listRuns,
+  listProfileEvents,
+  appendProfileEvent,
+  backfillProfileEvents,
   ensureSeedProfiles,
   getCatalogStats,
   normalizeStartupUrl,

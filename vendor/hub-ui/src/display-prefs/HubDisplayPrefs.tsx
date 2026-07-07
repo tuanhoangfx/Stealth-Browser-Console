@@ -44,7 +44,7 @@ export function HubDisplayPrefs({
   showHeaderPin = true,
   showRange = true,
   showLimit = true,
-  showNavToggle = true,
+  showNavToggle = false,
   hideSearchPinOnSystem = false,
   defaultKpiKeys,
   defaultChartKeys,

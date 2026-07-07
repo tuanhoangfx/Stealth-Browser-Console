@@ -7,7 +7,15 @@ import { runStep } from "./lib/run-step.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+if (!process.env.STEALTH_AGENT_SMOKE) {
+  process.env.STEALTH_AGENT_SMOKE = "1";
+}
+
 runStep("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
+runStep("sync-stealth-api-surface", "node", ["scripts/sync-stealth-api-surface.mjs"]);
+runStep("agent-smoke-mode", "node", ["--test", "electron/lib/agent-smoke-mode.test.cjs"]);
+runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
+runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
 runStep("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
 runStep("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);
@@ -47,4 +55,5 @@ runStep("profile-chrome-session", "node", ["--test", "electron/lib/profile-chrom
 runStep("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guard.test.cjs"]);
 runStep("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);
 runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
+runStep("profile-ops", "node", ["electron/services/profile-ops.test.cjs"]);
 runStep("api-routes", "node", ["electron/api-routes.test.cjs"]);

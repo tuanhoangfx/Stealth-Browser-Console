@@ -1,5 +1,7 @@
 /* Hub Users table — compact rows aligned with Hub lib-table */
-@import "./hub-directory-column-hint.css";
+@import "./hub-directory-popover.css";
+@import "./hub-directory-timestamp.css";
+@import "../shell/hub-directory-copy-control.css";
 
 :root {
   --hub-directory-pane-surface: var(--panel);
@@ -63,7 +65,7 @@ table.hub-users-table {
 .hub-users-th-heading {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--hub-inline-gap-comfort, 6px);
   min-width: 0;
 }
 
@@ -81,11 +83,7 @@ table.hub-users-table {
   white-space: nowrap;
 }
 
-.hub-users-th-text {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-}
+/* hub-users-th-text typography — hub-directory-frame-table.css (header label SSOT) */
 
 .hub-users-th-icon {
   display: inline-flex;
@@ -867,7 +865,7 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 .hub-users-cell-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--hub-inline-gap-name, 8px);
   min-width: 0;
 }
 
@@ -922,7 +920,7 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: var(--hub-inline-gap-meta, 5px);
   max-width: 100%;
   border-radius: 7px;
   border: 1px solid rgba(129, 140, 248, 0.28);
@@ -998,7 +996,7 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 }
 
 .hub-users-cell-num {
-  font-size: 12px;
+  font-size: var(--hub-table-body-size, 12px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -1033,6 +1031,13 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   text-align: center;
 }
 
+/* Directory metric chips — preserve inline-flex inside table cells (P0005/P0020 parity). */
+.hub-users-table td .hub-users-tool-badge,
+.hub-directory-frame-table td .hub-users-tool-badge {
+  display: inline-flex;
+  max-width: 100%;
+}
+
 .hub-users-tool-badge--admin {
   border-color: rgba(129, 140, 248, 0.35);
   background: rgba(99, 102, 241, 0.14);
@@ -1049,6 +1054,13 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   min-width: 2rem;
   height: 1.75rem;
   font-size: 13px;
+}
+
+/** Tiered metric badge — Design V1 (Mail Service count). Base = normal (emerald). */
+.hub-directory-metric-badge--low:not(.hub-users-tool-badge--empty) {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(14, 165, 233, 0.14);
+  color: #bae6fd;
 }
 
 .hub-users-role-select {
@@ -1088,7 +1100,7 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 .hub-users-status {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--hub-inline-gap-tight, 4px);
   font-size: 10px;
   line-height: 1.2;
   text-transform: capitalize;

@@ -105,13 +105,38 @@ function test(name, fn) {
   });
 
   console.log("proxy-pool:");
-  const { parseProxy, geoConsistency, ProxyPool } = require("./lib/proxy-pool.cjs");
+  const { parseProxy, formatProxyForLaunch, toPlaywrightProxy, geoConsistency, ProxyPool } = require("./lib/proxy-pool.cjs");
   await test("parseProxy — các định dạng", () => {
     assert.deepStrictEqual(parseProxy("http://u:p@1.2.3.4:8080"), { protocol: "http", host: "1.2.3.4", port: 8080, username: "u", password: "p" });
     assert.deepStrictEqual(parseProxy("1.2.3.4:8080:u:p"), { protocol: "http", host: "1.2.3.4", port: 8080, username: "u", password: "p" });
+    assert.deepStrictEqual(parseProxy("14.249.5.164:32350:infi:infi"), {
+      protocol: "http",
+      host: "14.249.5.164",
+      port: 32350,
+      username: "infi",
+      password: "infi",
+    });
+    assert.deepStrictEqual(parseProxy("14.249.5.164:32350:anhhanh"), {
+      protocol: "http",
+      host: "14.249.5.164",
+      port: 32350,
+      username: "anhhanh",
+      password: "",
+    });
     assert.deepStrictEqual(parseProxy("1.2.3.4:8080"), { protocol: "http", host: "1.2.3.4", port: 8080, username: "", password: "" });
     assert.strictEqual(parseProxy("garbage"), null);
     assert.strictEqual(parseProxy("socks5://1.2.3.4:1080").protocol, "socks5");
+  });
+  await test("formatProxyForLaunch + toPlaywrightProxy", () => {
+    assert.strictEqual(
+      formatProxyForLaunch("14.249.5.164:32350:infi:infi"),
+      "http://infi:infi@14.249.5.164:32350",
+    );
+    assert.deepStrictEqual(toPlaywrightProxy("14.249.5.164:32350:infi:infi"), {
+      server: "http://14.249.5.164:32350",
+      username: "infi",
+      password: "infi",
+    });
   });
   await test("geoConsistency — phát hiện lệch timezone/country", () => {
     const ok = geoConsistency({ timezone: "America/New_York", locale: "en-US" }, { timezone: "America/New_York", countryCode: "US" });
@@ -191,7 +216,7 @@ function test(name, fn) {
       send: { json: noop, sse: () => ({ send: noop, end: noop }) }
     });
     const ids = routes.map((r) => r.id);
-    for (const want of ["profiles.list", "profiles.cdp", "proxy.check", "jobs.enqueue", "jobs.stats", "jobs.events", "fb.create-pages"]) {
+    for (const want of ["profiles.list", "profiles.patch", "profiles.update", "profiles.cdp", "proxy.check", "jobs.enqueue", "jobs.stats", "jobs.events", "fb.create-pages"]) {
       assert.ok(ids.includes(want), `thiếu route ${want}`);
     }
     // jobs.stats phải đứng TRƯỚC jobs.get để không bị nuốt pattern.

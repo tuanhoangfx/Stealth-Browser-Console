@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Copy, Hash, ListOrdered, User, UserPlus } from "lucide-react";
+import { ClipboardList, Copy, Hash, ListOrdered, StickyNote, User, UserPlus } from "lucide-react";
 import {
   HubAlert,
   HubTocSectionNav,
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
+  HubToolDetailPanel,
+  HubToolDetailSplitLayout,
   HubToolDetailSection,
   HUB_TOOL_DETAIL_SCROLL_ROOT,
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
@@ -22,11 +24,11 @@ import type { DeviceConfig, ProfileRow } from "../../types";
 import { useAppToast } from "../../components/toast";
 import { ProfileFormFields } from "./ProfileFormFields";
 import { ProfileBasicsFields } from "./ProfileBasicsFields";
-import { ProfileFormModalLayout } from "./ProfileFormModalLayout";
+import { ProfileActivityLogRail } from "./ProfileActivityLogRail";
 import { profileFormTocItems } from "./profile-form-toc";
-import { PROFILE_FORM_MODAL_SHELL_CLASS } from "./profile-form-modal";
+import { PROFILE_CREATE_MODAL_SHELL_CLASS } from "./profile-form-modal";
 import { extractProfileCode } from "./profile-directory-search";
-import type { ProfileActivityLogEntry } from "./profile-run-log";
+import { bulkActivityToConsoleLines, type ProfileActivityLogEntry } from "./profile-run-log";
 
 type CreateProfileTab = "single" | "bulk";
 type BulkCreateMode = "names" | "range";
@@ -261,6 +263,7 @@ export function CreateProfileModal({
   const tocItems = useMemo(() => profileFormTocItems(), []);
   const singleSectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
   const sectionIds = tab === "single" ? singleSectionIds : [];
+  const bulkLogLines = useMemo(() => bulkActivityToConsoleLines(bulkActivityLog), [bulkActivityLog]);
   useEffect(() => {
     void fetchProfilesAndGroups()
       .then((data) => setExistingProfiles(data.profiles))
@@ -512,7 +515,7 @@ export function CreateProfileModal({
       headerIconClassName="text-indigo-200"
       title="New profile"
       onClose={onClose}
-      shellClassName={PROFILE_FORM_MODAL_SHELL_CLASS}
+      shellClassName={PROFILE_CREATE_MODAL_SHELL_CLASS}
       sectionIds={sectionIds}
       scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT}
       toc={
@@ -541,50 +544,70 @@ export function CreateProfileModal({
       }
     >
       {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
-      <ProfileFormModalLayout
-        note={note}
-        onNoteChange={setNote}
-        logFilterStorageKey="__create__"
-        activityLogEntries={tab === "bulk" ? bulkActivityLog : undefined}
-        logEmptyHint={
-          tab === "single"
-            ? "Activity log appears after the profile is created."
-            : busy
-              ? "Creating profiles…"
-              : "Activity log appears as each profile is created."
-        }
-        notePlaceholder={tab === "bulk" ? "Optional note applied to all created profiles" : undefined}
-      >
-        <div className="stealth-profile-create-tab-panels">
-          <div
-            className={`stealth-profile-create-tab-panel${tab === "single" ? " is-active" : ""}`}
-            aria-hidden={tab !== "single"}
-          >
-            <ProfileFormFields
-              layout="hub-sections"
-              name={name}
-              setName={setName}
-              groupId={groupId}
-              setGroupId={setGroupId}
-              proxy={proxy}
-              setProxy={setProxy}
-              fingerprintSeed={fingerprintSeed}
-              setFingerprintSeed={setFingerprintSeed}
-              device={device}
-              onDeviceChange={(patch) => setDevice((d) => ({ ...d, ...patch }))}
-              startupUrl={startupUrl}
-              setStartupUrl={setStartupUrl}
-              groups={groups}
+      <div className="stealth-profile-detail__body hub-tool-detail-split__body">
+        <HubToolDetailSplitLayout
+          main={
+            <>
+              <div className="stealth-profile-create-tab-panels">
+                <div
+                  className={`stealth-profile-create-tab-panel${tab === "single" ? " is-active" : ""}`}
+                  aria-hidden={tab !== "single"}
+                >
+                  <ProfileFormFields
+                    layout="hub-sections"
+                    name={name}
+                    setName={setName}
+                    groupId={groupId}
+                    setGroupId={setGroupId}
+                    proxy={proxy}
+                    setProxy={setProxy}
+                    fingerprintSeed={fingerprintSeed}
+                    setFingerprintSeed={setFingerprintSeed}
+                    device={device}
+                    onDeviceChange={(patch) => setDevice((d) => ({ ...d, ...patch }))}
+                    startupUrl={startupUrl}
+                    setStartupUrl={setStartupUrl}
+                    groups={groups}
+                  />
+                </div>
+                <div
+                  className={`stealth-profile-create-tab-panel${tab === "bulk" ? " is-active" : ""}`}
+                  aria-hidden={tab !== "bulk"}
+                >
+                  {bulkBody}
+                </div>
+              </div>
+              <HubToolDetailPanel title="Note" icon={StickyNote} className="hub-tool-detail-panel--grow">
+                <textarea
+                  className="field stealth-profile-adm-note-textarea stealth-profile-detail-note-field"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder={
+                    tab === "bulk"
+                      ? "Optional note applied to all created profiles"
+                      : "Profile notes, credentials hints, proxy labels…"
+                  }
+                  spellCheck={false}
+                />
+              </HubToolDetailPanel>
+            </>
+          }
+          rail={
+            <ProfileActivityLogRail
+              lines={tab === "bulk" ? bulkLogLines : []}
+              filterStorageKey="__create__"
+              emptyHint={
+                tab === "single"
+                  ? "Activity log appears after the profile is created."
+                  : busy
+                    ? "Creating profiles…"
+                    : "Activity log appears as each profile is created."
+              }
+              focused={false}
             />
-          </div>
-          <div
-            className={`stealth-profile-create-tab-panel${tab === "bulk" ? " is-active" : ""}`}
-            aria-hidden={tab !== "bulk"}
-          >
-            {bulkBody}
-          </div>
-        </div>
-      </ProfileFormModalLayout>
+          }
+        />
+      </div>
     </HubToolDetailModal>
   );
 }

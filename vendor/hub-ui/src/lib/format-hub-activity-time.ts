@@ -26,7 +26,8 @@ export function parseHubActivityMs(at: string | number | null | undefined): numb
 
 /** Fresh ≤1h (blue) · Recent ≤24h (orange) · Stale >24h (gray) — sync/load/profile activity SSOT. */
 export function hubActivityAgeTone(ms: number, now = Date.now()): HubActivityAgeTone {
-  const age = Math.max(0, now - ms);
+  if (ms > now) return "stale";
+  const age = now - ms;
   if (age <= HUB_ACTIVITY_FRESH_MS) return "fresh";
   if (age <= HUB_ACTIVITY_RECENT_MS) return "recent";
   return "stale";
@@ -45,7 +46,8 @@ export function formatHubActivityStaleLabel(ms: number): string {
 
 /** Relative label within the last 24 hours. */
 export function formatHubActivityRelativeAge(ms: number, now = Date.now()): string {
-  const ageMs = Math.max(0, now - ms);
+  if (ms > now) return formatHubActivityStaleLabel(ms);
+  const ageMs = now - ms;
   const ageSec = Math.floor(ageMs / 1000);
   if (ageSec < 60) return "Just now";
   const ageMin = Math.floor(ageSec / 60);

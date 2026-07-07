@@ -1,37 +1,17 @@
-import manifest from "../../tool.manifest.json";
+import {
+  resolveAppVersionReleaseMeta as hubResolveAppVersionReleaseMeta,
+  type AppVersionReleaseMeta,
+  type ToolManifestReleaseSlice,
+} from "@tool-workspace/hub-ui";
 import { APP_VERSION } from "./app-meta";
+import toolManifest from "../../tool.manifest.json";
 
-export type AppVersionReleaseMeta = {
-  shortLabel: string;
-  live: boolean;
-  publishedAt?: string;
-};
+export type { AppVersionReleaseMeta };
 
-function normalizeVersion(value?: string) {
-  return value?.replace(/^v/i, "").trim() ?? "";
-}
-
-/** Header release activity — manifest `latestPublished` or `manifestUpdatedAt` (P0004/P0016 parity). */
+/** Header release activity — manifest SSOT via hub-ui. */
 export function resolveAppVersionReleaseMeta(): AppVersionReleaseMeta {
-  const currentVersion = normalizeVersion(APP_VERSION);
-  const latest = manifest.release?.latestPublished;
-  const manifestUpdatedAt = manifest.manifestUpdatedAt;
-
-  if (normalizeVersion(latest?.tag) === currentVersion && latest?.publishedAt) {
-    return {
-      shortLabel: latest.publishedAt,
-      live: true,
-      publishedAt: latest.publishedAt,
-    };
-  }
-
-  if (manifestUpdatedAt) {
-    return {
-      shortLabel: manifestUpdatedAt,
-      live: false,
-      publishedAt: manifestUpdatedAt,
-    };
-  }
-
-  return { shortLabel: "dev", live: false };
+  return hubResolveAppVersionReleaseMeta({
+    appVersion: APP_VERSION,
+    manifest: toolManifest as ToolManifestReleaseSlice,
+  });
 }

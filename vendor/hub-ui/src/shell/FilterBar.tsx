@@ -25,19 +25,26 @@ import {
 } from "lucide-react";
 import type { FilterIconMeta, HubGlyphComponent } from "./filter-icons";
 import { resolveFilterAllIcon, resolveFilterOptionIcon } from "./filter-icons";
+import { resolveDirectoryFilterColumnIcon } from "./filter-directory-column-roles";
 import {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
+  hubFilterDropdownRowClass,
+  hubFilterUsesDirectoryValueTypo,
+  hubFilterDirectoryTriggerTypoClass,
+  hubFilterGlyphPx,
   HubFilterDropdownCircle,
   HubFilterDropdownPanelSearch,
   HUB_FILTER_OPTION_EMOJI_CLASS,
+  hubFilterOptionEmojiClass,
   HUB_FILTER_BRAND_ICON_CLASS,
   hubBrandIconImgClass,
   type HubBrandIconShell,
   filterDropdownPanelSearchPlaceholder,
   hubFilterTriggerClass,
+  HUB_FILTER_DROPDOWN_TRIGGER_COMPACT_TYPO_CLASS,
   multiFilterTriggerTitle,
 } from "./filter-dropdown-primitives";
 import { compactIconSize } from "../ui-scale";
@@ -200,7 +207,7 @@ export function FilterBar({
     <button
       type="button"
       onClick={clearAll}
-      className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/20"
+      className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center hub-inline-gap-comfort rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/20"
       title="Clear search and all filters"
     >
       Clear filters
@@ -216,6 +223,7 @@ export function FilterBar({
       filter={f}
       selected={values[f.key] ?? []}
       onChange={(vals) => setFilter(f.key, vals)}
+      panelScope={shortcutScope}
     />
   ));
 
@@ -229,23 +237,23 @@ export function FilterBar({
             : "space-y-2 rounded-2xl border border-white/5 bg-[var(--panel)] p-3"
         }
       >
-        <div className="flex w-full min-w-0 items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex w-full min-w-0 items-center hub-inline-gap-name">
+          <div className="flex min-w-0 flex-1 items-center hub-inline-gap-name">
             {hideSearch ? null : searchField}
             {searchTrailing}
           </div>
           {toolbar ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{toolbar}</div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end hub-inline-gap-name">{toolbar}</div>
           ) : null}
         </div>
-        <div className="flex min-h-[var(--hub-control-h)] flex-wrap items-center gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            {row2Leading ? <div className="flex shrink-0 flex-wrap items-center gap-2">{row2Leading}</div> : null}
+        <div className="flex min-h-[var(--hub-control-h)] flex-wrap items-center hub-inline-gap-name">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center hub-inline-gap-name">
+            {row2Leading ? <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div> : null}
             {filterDropdowns}
             {clearFiltersBtn}
           </div>
           {row2Actions ? (
-            <div className="ml-auto flex min-w-0 shrink flex-wrap items-center justify-end gap-2">{row2Actions}</div>
+            <div className="ml-auto flex min-w-0 shrink flex-wrap items-center justify-end hub-inline-gap-name">{row2Actions}</div>
           ) : null}
           {row2Trailing ? <div className="shrink-0">{row2Trailing}</div> : null}
         </div>
@@ -276,10 +284,10 @@ export function FilterBar({
 
   return (
     <div className="space-y-2 rounded-2xl border border-white/5 bg-[var(--panel)] p-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center hub-inline-gap-name">
         {hideSearch ? null : searchField}
         {filterRow}
-        {trailing ? <div className="ml-auto flex items-center gap-2">{trailing}</div> : null}
+        {trailing ? <div className="ml-auto flex items-center hub-inline-gap-name">{trailing}</div> : null}
       </div>
       {hasActive ? (
         <ActivePills
@@ -307,10 +315,20 @@ function FilterOptionCount({ value }: { value?: number }) {
   );
 }
 
-function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: FilterOption }) {
+function FilterOptionGlyph({
+  filterKey,
+  option,
+  directoryParity = false,
+  compact = false,
+}: {
+  filterKey: string;
+  option: FilterOption;
+  directoryParity?: boolean;
+  compact?: boolean;
+}) {
   if (option.emoji) {
     return (
-      <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+      <span className={hubFilterOptionEmojiClass()} aria-hidden>
         {option.emoji}
       </span>
     );
@@ -331,19 +349,31 @@ function FilterOptionGlyph({ filterKey, option }: { filterKey: string; option: F
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: option.color }} aria-hidden />
     ) : null;
   }
-  return <FilterIconGlyph meta={meta} />;
+  return <FilterIconGlyph meta={meta} size={compactIconSize(hubFilterGlyphPx({ directoryParity, compact }))} />;
 }
 
-function FilterAllRowGlyph({ filter }: { filter: FilterDef }) {
+function FilterAllRowGlyph({
+  filter,
+  directoryParity = false,
+  compact = false,
+}: {
+  filter: FilterDef;
+  directoryParity?: boolean;
+  compact?: boolean;
+}) {
   if (filter.triggerEmoji) {
     return (
-      <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+      <span className={hubFilterOptionEmojiClass()} aria-hidden>
         {filter.triggerEmoji}
       </span>
     );
   }
-  const allIcon = resolveFilterAllIcon(filter.key);
-  if (allIcon) return <FilterIconGlyph meta={allIcon} />;
+  const allIcon = directoryParity
+    ? resolveDirectoryFilterColumnIcon(filter.key) ?? resolveFilterAllIcon(filter.key)
+    : resolveFilterAllIcon(filter.key);
+  if (allIcon) {
+    return <FilterIconGlyph meta={allIcon} size={compactIconSize(hubFilterGlyphPx({ directoryParity, compact }))} />;
+  }
   return null;
 }
 
@@ -351,13 +381,21 @@ function filterAllRowLabel(filter: FilterDef): string {
   return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
 }
 
-function resolveFilterTriggerIcon(filter: FilterDef, selected: string[]): FilterIconMeta | null {
+function resolveFilterTriggerIcon(
+  filter: FilterDef,
+  selected: string[],
+  directoryParity = false,
+): FilterIconMeta | null {
   if (selected.length === 1) {
     const opt = filter.options.find((o) => o.value === selected[0]);
     if (opt) {
       const icon = resolveFilterOptionIcon(filter.key, opt.value);
       if (icon) return icon;
     }
+  }
+  if (directoryParity) {
+    const dirIcon = resolveDirectoryFilterColumnIcon(filter.key);
+    if (dirIcon) return dirIcon;
   }
   const allIcon = resolveFilterAllIcon(filter.key);
   if (allIcon) return allIcon;
@@ -378,6 +416,7 @@ export type HubMultiFilterDropdownProps = {
   /** Native button title — assignee tooltip, etc. */
   triggerTitle?: string;
   usePortal?: boolean;
+  panelScope?: string;
 };
 
 export function HubMultiFilterDropdown({
@@ -389,7 +428,17 @@ export function HubMultiFilterDropdown({
   triggerFormat = "label-value",
   triggerTitle,
   usePortal = true,
+  panelScope,
 }: HubMultiFilterDropdownProps) {
+  const compactDropdown = panelScope === "twofa";
+  const directoryValueTypo = hubFilterUsesDirectoryValueTypo(panelScope);
+  const rowClass = hubFilterDropdownRowClass(compactDropdown, directoryValueTypo);
+  const triggerTypo = directoryValueTypo
+    ? hubFilterDirectoryTriggerTypoClass(selected.length)
+    : compactDropdown
+      ? HUB_FILTER_DROPDOWN_TRIGGER_COMPACT_TYPO_CLASS
+      : undefined;
+  const glyphPx = hubFilterGlyphPx({ directoryParity: directoryValueTypo, compact: compactDropdown });
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -449,7 +498,7 @@ export function HubMultiFilterDropdown({
     return `${selected.length} selected`;
   })();
 
-  const triggerIcon = resolveFilterTriggerIcon(filter, selected);
+  const triggerIcon = resolveFilterTriggerIcon(filter, selected, directoryValueTypo);
   const selectedOpt = selected.length === 1 ? filter.options.find((o) => o.value === selected[0]) : undefined;
   const triggerIconSrc = selectedOpt?.iconSrc;
   const showTotalOnTrigger = selected.length === 0 && filter.totalCount !== undefined;
@@ -462,33 +511,33 @@ export function HubMultiFilterDropdown({
         : undefined);
 
   return (
-    <div ref={ref} className={`relative ${className}`.trim()}>
+    <div ref={ref} className={`relative ${open ? "z-[60]" : ""} ${className}`.trim()}>
       <button
         ref={triggerRef}
         type="button"
         title={resolvedTriggerTitle}
         onClick={() => setOpen((v) => !v)}
-        className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
+        className={hubFilterTriggerClass(selected.length > 0, triggerClassName, triggerTypo)}
       >
         {triggerIconSrc ? (
           <img
             src={triggerIconSrc}
             alt=""
-            className={`${hubBrandIconImgClass(selectedOpt?.iconShell)} !h-3 !w-3`}
+            className={hubBrandIconImgClass(selectedOpt?.iconShell)}
             aria-hidden
           />
         ) : selected.length === 1 && selectedOpt?.color ? (
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
         ) : filter.triggerEmoji ? (
-          <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+          <span className={hubFilterOptionEmojiClass()} aria-hidden>
             {filter.triggerEmoji}
           </span>
         ) : selectedOpt?.emoji ? (
-          <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+          <span className={hubFilterOptionEmojiClass()} aria-hidden>
             {selectedOpt.emoji}
           </span>
         ) : triggerIcon ? (
-          <FilterIconGlyph meta={triggerIcon} size={compactIconSize(12)} />
+          <FilterIconGlyph meta={triggerIcon} size={compactIconSize(glyphPx)} />
         ) : selectedOpt?.color ? (
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
         ) : null}
@@ -497,7 +546,7 @@ export function HubMultiFilterDropdown({
           <span className="shrink-0 tabular-nums text-[10px] font-medium text-[var(--muted)]">{filter.totalCount}</span>
         ) : null}
 
-        <ChevronDown size={compactIconSize(12)} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown size={compactIconSize(glyphPx)} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open ? (
@@ -505,13 +554,13 @@ export function HubMultiFilterDropdown({
           createPortal(
             <div
               data-hub-multi-filter-panel
-              className={HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS}
+              data-hub-filter-scope={panelScope}
+              className={`${HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS}${compactDropdown ? " hub-filter-panel--compact" : ""}`}
               style={{
                 position: "fixed",
                 top: panelPos.top,
                 left: panelPos.left,
                 width: panelPos.width,
-                zIndex: 2500,
               }}
               role="listbox"
             >
@@ -521,9 +570,9 @@ export function HubMultiFilterDropdown({
                 placeholder={filterDropdownPanelSearchPlaceholder(filter.label)}
               />
               <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-                <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                <button type="button" onClick={toggleAll} className={rowClass}>
                   <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
-                  <FilterAllRowGlyph filter={filter} />
+                  <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
                   <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
                   <FilterOptionCount
                     value={
@@ -536,9 +585,9 @@ export function HubMultiFilterDropdown({
                 </button>
                 <div className="my-1 border-t border-white/5" />
                 {filtered.map((o) => (
-                  <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                  <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
                     <HubFilterDropdownCircle checked={selected.includes(o.value)} />
-                    <FilterOptionGlyph filterKey={filter.key} option={o} />
+                    <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
                     <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                       {o.label}
                     </span>
@@ -551,16 +600,20 @@ export function HubMultiFilterDropdown({
             document.body,
           )
         ) : (
-          <div className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} absolute left-0 top-full z-30 mt-1`} role="listbox">
+          <div
+            data-hub-filter-scope={panelScope}
+            className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} absolute left-0 top-full z-30 mt-1${compactDropdown ? " hub-filter-panel--compact" : ""}`}
+            role="listbox"
+          >
             <HubFilterDropdownPanelSearch
               value={search}
               onChange={setSearch}
               placeholder={filterDropdownPanelSearchPlaceholder(filter.label)}
             />
             <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-              <button type="button" onClick={toggleAll} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+              <button type="button" onClick={toggleAll} className={rowClass}>
                 <HubFilterDropdownCircle checked={allSelected} indeterminate={someSelected} />
-                <FilterAllRowGlyph filter={filter} />
+                <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
                 <span className="min-w-0 flex-1 truncate text-left">{filterAllRowLabel(filter)}</span>
                 <FilterOptionCount
                   value={
@@ -573,9 +626,9 @@ export function HubMultiFilterDropdown({
               </button>
               <div className="my-1 border-t border-white/5" />
               {filtered.map((o) => (
-                <button key={o.value} type="button" onClick={() => toggle(o.value)} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
+                <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
                   <HubFilterDropdownCircle checked={selected.includes(o.value)} />
-                  <FilterOptionGlyph filterKey={filter.key} option={o} />
+                  <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
                   <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
                     {o.label}
                   </span>
@@ -714,7 +767,6 @@ export function HubSingleFilterDropdown({
               top: panelPos.top,
               left: panelPos.left,
               width: panelPos.width,
-              zIndex: 2500,
             }
           : undefined
       }
@@ -803,7 +855,7 @@ function ActivePills({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2 text-xs">
+    <div className="flex flex-wrap items-center hub-inline-gap-comfort border-t border-white/5 pt-2 text-xs">
       <SlidersHorizontal size={compactIconSize(10)} className="text-[var(--muted)]" />
       <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">Active:</span>
       {query ? (
@@ -822,7 +874,7 @@ function ActivePills({
           key={`${it.key}:${it.value}`}
           type="button"
           onClick={() => onRemove(it.key, (values[it.key] ?? []).filter((v) => v !== it.value))}
-          className="badge inline-flex cursor-pointer items-center gap-1 border border-white/15 bg-white/10 hover:bg-white/15"
+          className="badge inline-flex cursor-pointer items-center hub-inline-gap-tight border border-white/15 bg-white/10 hover:bg-white/15"
         >
           {PillIcon ? <PillIcon size={compactIconSize(10)} className={it.iconMeta!.className} aria-hidden /> : null}
           {it.label} <X size={compactIconSize(10)} className="ml-0.5" />

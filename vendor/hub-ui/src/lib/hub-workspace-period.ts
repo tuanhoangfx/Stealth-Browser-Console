@@ -1,16 +1,18 @@
 import { patchHubListPrefs, subscribeHubListPrefs } from "./hub-url-prefs";
 import { workspacePeriodDotColor } from "./workspace-period-dot-color";
 
-/** Golden workspace period keys — same as HubPeriodSelect. */
+/** Golden workspace period keys — same order as HubPeriodSelect. */
 export type WorkspacePeriodKey =
   | "all"
   | "today"
   | "thisWeek"
-  | "lastWeek"
   | "thisMonth"
+  | "thisYear"
+  | "lastWeek"
+  | "lastMonth"
+  | "lastYear"
   | "customMonth"
-  | "customRange"
-  | "last30Days";
+  | "customRange";
 
 export type WorkspacePeriodScope = "notes" | "todo" | "twofa" | "cookie" | "orders" | "customers";
 
@@ -25,12 +27,28 @@ export const WORKSPACE_PERIOD_LABELS: Record<WorkspacePeriodKey, string> = {
   all: "All",
   today: "Today",
   thisWeek: "This Week",
-  lastWeek: "Last Week",
-  last30Days: "Last 30 Days",
   thisMonth: "This Month",
+  thisYear: "This Year",
+  lastWeek: "Last Week",
+  lastMonth: "Last Month",
+  lastYear: "Last Year",
   customMonth: "By Month",
   customRange: "Date Range",
 };
+
+/** Canonical dropdown order — All default first. */
+export const WORKSPACE_PERIOD_ORDER: readonly WorkspacePeriodKey[] = [
+  "all",
+  "today",
+  "thisWeek",
+  "thisMonth",
+  "thisYear",
+  "lastWeek",
+  "lastMonth",
+  "lastYear",
+  "customMonth",
+  "customRange",
+];
 
 const VALID_KEYS = new Set<string>(Object.keys(WORKSPACE_PERIOD_LABELS));
 
@@ -54,9 +72,10 @@ const LEGACY_URL_KEYS = { range: "range", month: "periodMonth", from: "periodFro
 const LEGACY_RANGE_MAP: Record<string, WorkspacePeriodKey> = {
   yesterday: "today",
   "7d": "thisWeek",
-  "30d": "last30Days",
-  "90d": "last30Days",
-  "1y": "all",
+  "30d": "lastMonth",
+  "90d": "lastMonth",
+  "1y": "lastYear",
+  last30Days: "lastMonth",
 };
 
 export function normalizeWorkspacePeriodKey(
@@ -102,7 +121,7 @@ function readRawField(sp: URLSearchParams, scope: WorkspacePeriodScope, field: "
 
 export function readWorkspacePeriod(
   scope: WorkspacePeriodScope,
-  defaultRange: WorkspacePeriodKey = "last30Days",
+  defaultRange: WorkspacePeriodKey = "all",
 ): WorkspacePeriodPrefs {
   if (typeof window === "undefined") return defaultPrefs(defaultRange);
   const sp = new URLSearchParams(window.location.search);
@@ -118,7 +137,7 @@ export function readWorkspacePeriod(
 export function patchWorkspacePeriod(
   scope: WorkspacePeriodScope,
   patch: Partial<WorkspacePeriodPrefs>,
-  defaultRange: WorkspacePeriodKey = "last30Days",
+  defaultRange: WorkspacePeriodKey = "all",
 ) {
   const current = readWorkspacePeriod(scope, defaultRange);
   const next = { ...current, ...patch };
@@ -141,13 +160,11 @@ export function patchWorkspacePeriod(
 type HubPeriodOption = { value: WorkspacePeriodKey; label: string; dotColor: string };
 
 export function workspacePeriodOptions(): HubPeriodOption[] {
-  return (Object.keys(WORKSPACE_PERIOD_LABELS) as WorkspacePeriodKey[])
-    .filter((k) => k !== "lastWeek")
-    .map((value) => ({
-      value,
-      label: WORKSPACE_PERIOD_LABELS[value],
-      dotColor: workspacePeriodDotColor(value),
-    }));
+  return WORKSPACE_PERIOD_ORDER.map((value) => ({
+    value,
+    label: WORKSPACE_PERIOD_LABELS[value],
+    dotColor: workspacePeriodDotColor(value),
+  }));
 }
 
 /** Filter rows by created/updated ISO timestamp. */
@@ -195,11 +212,22 @@ export function matchesWorkspacePeriod(
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       endDate = todayEnd;
       break;
-    case "last30Days":
-      startDate = new Date(todayStart);
-      startDate.setDate(todayStart.getDate() - 30);
+    case "thisYear":
+      startDate = new Date(now.getFullYear(), 0, 1);
       endDate = todayEnd;
       break;
+    case "lastMonth": {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    }
+    case "lastYear": {
+      startDate = new Date(now.getFullYear() - 1, 0, 1);
+      endDate = new Date(now.getFullYear() - 1, 11, 31);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    }
     case "customMonth": {
       if (!prefs.customMonth) return true;
       const [year, month] = prefs.customMonth.split("-").map(Number);

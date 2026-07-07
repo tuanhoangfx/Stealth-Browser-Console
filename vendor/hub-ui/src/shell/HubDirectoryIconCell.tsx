@@ -13,6 +13,7 @@ export type HubDirectoryIconCellProps = {
   imageAlt?: string;
   label: string;
   iconClassName?: string;
+  /** @deprecated Body cells use no hover tooltip — header hints only. */
   title?: string;
 };
 
@@ -60,14 +61,13 @@ export function HubDirectoryIconCell({
   imageAlt = "",
   label,
   iconClassName = "text-indigo-300",
-  title,
 }: HubDirectoryIconCellProps) {
   const brand = brandId ? resolveHubBrandIcon(brandId) : null;
   const resolvedSrc = brand?.src ?? imageSrc;
   const resolvedShell = brand?.shell ?? imageShell;
 
   return (
-    <span className="hub-directory-icon-cell" title={title ?? label}>
+    <span className="hub-directory-icon-cell">
       <span className={`hub-directory-icon-cell__icon ${iconClassName}`} aria-hidden>
         {resolvedSrc ? (
           <DirectoryBrandImg

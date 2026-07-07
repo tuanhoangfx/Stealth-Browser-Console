@@ -6,6 +6,29 @@
   --hub-directory-page-rows: 20;
 }
 
+/* Directory body value — table cells + filter values when panelScope mirrors table (P0020 twofa). */
+.hub-directory-body-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--text);
+}
+
+/* Directory header label — table th + filter facet chips (single SSOT layer). */
+.hub-directory-header-label,
+.hub-users-th-text {
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text);
+}
+
 /* Directory pane surface tokens — SSOT in hub-users-table.css :root (--panel parity, P0003 Profiles) */
 
 .hub-directory-frame table.hub-users-table.hub-directory-frame-table {
@@ -57,6 +80,16 @@
 .hub-directory-frame .hub-directory-frame-table .hub-users-status-dot {
   width: 7px;
   height: 7px;
+}
+
+/* Metric / duration columns — tabular nums at body size, semibold (P0003/P0006 Processing parity). */
+.hub-directory-frame .hub-directory-frame-table td.hub-users-cell-num,
+.hub-directory-frame .hub-directory-frame-table .hub-users-cell-num {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.2;
 }
 
 /* Inline table wrap — content height only; pager flush below rows (no flex gap). */

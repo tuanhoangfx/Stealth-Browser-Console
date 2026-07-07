@@ -119,6 +119,7 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 - Modal / narrow context: `FilterBar layout="inline"` or `HubSingleFilterDropdown`.
 - Custom folder/tag pickers: import primitives from `@tool-workspace/hub-ui` only — no per-tool `filter-dropdown-ui` copies.
 - Register filter icons once: `configureFilterIcons` in app `setupHubUi()`.
+- Inline gaps: `.hub-inline-gap-comfort` on triggers · `.hub-inline-gap-name` on filter chip rows · see **Inline glyph + label gaps**.
 
 **Exceptions (documented)**
 
@@ -469,11 +470,13 @@ Checks: `session-in-start-rail`, `center-stats-always-visible`, `grid-three-colu
 
 ## Sidebar brand (golden — hub-ui)
 
-**Shell:** `HubSidebarShell` — `brandLeading` (tool avatar) + `brandTitle` (human product name) only.
+**Shell:** `HubSidebarShell` — `brandLeading` + `brandTitle` (human product name) only.
 
 | Rule | Detail |
 |------|--------|
-| **Title** | Human name only — e.g. `Data Box`, `Stealth Browser Console`, `Tool Hub`, `Map Places` |
+| **Brand mark** | `HubSidebarBrandIcon` — `src` + `alt`; do **not** use raw `HubAuthBrandIcon`, `ToolAvatar`, or `HubToolAvatar` in sidebar |
+| **Title** | Human name only — e.g. `Data Box`, `Tool Hub`, `Chat Center` |
+| **Auth gate only** | `HubAuthBrandIcon` (56px + glow) — sign-in / boot panels only |
 | **No code** | Do not show `P00xx` in `brandTitle` |
 | **No tagline** | Do **not** pass `brandTagline` — prop is `@deprecated` and not rendered; descriptor/version live in tab header (`AppTabHeader` meta) or auth gate only |
 | **No version** | Release `vX.Y.Z` lives in tab header meta (`buildVersionMetaItems`) — never duplicate in sidebar |
@@ -484,7 +487,7 @@ Checks: `session-in-start-rail`, `center-stats-always-visible`, `grid-three-colu
 - P0001 — `GpmHubShellSidebar.tsx`
 - P0003 — `StealthHubShellSidebar.tsx`
 - P0004 — `SalesSidebar.tsx`
-- P0005 — `OrderDeskSidebar.tsx`
+- P0005 — `P0005CrmSidebar.tsx`
 - P0016 — `HubShellSidebar.tsx`
 - P0020 — `WorkspaceSidebar.tsx`
 - P0024 — `MapPlacesSidebar.tsx`
@@ -648,6 +651,7 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 - **Full row (4–8 KPI / 4 Charts)** — `md+` grid columns = visible count (`repeat(n, 1fr)`); tiles **fill the full line**.
 - **Charts band** — `hub-charts-band` + `data-chart-count` (auto via `countAnalyticsBandSlots` in `HubTabScreenBody`; override with `chartCount` prop).
 - CSS canonical: `hub-shell-layout.css` only — `node Tool/scripts/hub-ui-duplication-check.mjs` fails on per-tool grid overrides.
+- Chart legend icon+label: `.hub-chart-legend-label` + `ChartLegendLabelContent` — emoji split, brand match, `configureChartLegend`; gap `--hub-inline-gap-comfort` (see **Inline glyph + label gaps**).
 - **P0016 dashboard** exception: `p0016-hub-charts.css` mirrors golden rules on `.p0016-charts-row[data-chart-count]` inside full-width layout wrapper.
 
 **Settings / multi-select rules**
@@ -744,7 +748,45 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 
 **Golden refs:** P0020 `TwofaAccountDetailModal` · P0016 `BotDetailModal` · P0027 `JobDetailModal` (job variant uses `--split` + custom CSS)
 
-**Verify:** `node Tool/scripts/hub-ui-css-check.mjs --code P00xx` · browser: modal max-height ≈ 92vh, main column scrolls, log rail fixed width ~34%.
+**Verify:** `node Tool/scripts/hub-ui-css-check.mjs --code P00xx` · `node Tool/scripts/hub-adm-detail-parity-check.mjs --code P0020` · browser: modal max-height ≈ 92vh, main column scrolls, log rail fixed width ~34%.
+
+### ADM credentials fields (account detail — hub-ui + P0020 golden)
+
+**Canonical source:** `TwofaAccountDetailModal.tsx` · `HubAdmClickEditField` / `HubAdmClickFilterField` / `HubAdmReadonlyField` · `HubAdmInlineFieldLabel` + `HubDirectoryColumnHint` · `hub-account-detail-modal.css`.
+
+| Piece | Rule |
+|-------|------|
+| Section blocks | `hubAdmSectionBlockClass` + `HubAdmSectionLabel` inside `HubToolDetailPanel` |
+| Grid | `hub-adm-form-row--aligned` (3-col) — **always 3 slots** even when only 1–2 fields (labels stay aligned); meta row adds `hub-adm-meta-row` |
+| Click-edit | `HubAdmClickEditField` — value shrink-wrap, pencil adjacent, glow on value only |
+| Click-filter | `HubAdmClickFilterField` — chevron adjacent to value, emoji + label |
+| Read-only | `HubAdmReadonlyField` — **no hover glow** on static values (`hub-adm-readonly-value--static`); tooltip via `title` / label hint · `valueLayout="inline"` for copy badges |
+| Label hints | `labelHint` / `twofaColumnHintContent` / `botColumnHintContent` → `HubDirectoryColumnHint` popover on hover |
+| TOTP code/period | Row `hub-adm-form-row--code-line`: **Code** col1 · **Time** (`period`) col2 · spacer col3 |
+| Note rail | `HubAdmNoteRail` (`mode="readonly"` \| `mode="editor"`) · body `hub-adm-note-rail__body` · CSS `hub-adm-note-*` in `hub-account-detail-modal.css` |
+
+**Typography tokens (modal shell) — unified 12px**
+
+| Tier | Token | Size | Weight | Meaning |
+|------|-------|------|--------|---------|
+| **Nav** | `--hub-adm-type-nav-*` + `HUB_ADM_TYPE_NAV_CLASS` on `HubToolDetailPanel`/`Rail` `__head` | 12px | **600** (semibold) | Navigate · Credentials · Note · Change log · TOC items |
+| **Label** | `--hub-adm-type-label-*` | 12px | **500** (medium) | Field labels, `HubAdmSectionLabel`, "Search note" |
+| **Value** | `--hub-adm-type-value-*` | 12px | **400** (regular) | Values, inputs, note body, log, muted `—` |
+| **Mono** | `--hub-adm-type-mono-*` + `HUB_ADM_TYPE_MONO_CLASS` | 12px | **600** (semibold) | TOTP code, Vault ID |
+
+Weights: **400** = regular · **500** = medium · **600** = semibold (nav + mono). Tokens live on `.hub-account-detail-modal` and `.hub-add-modal`. Export: `HUB_ADM_TYPE_CSS_VARS`.
+
+**Golden clones (must pass `hub-adm-detail-parity-check.mjs`):** P0020 `TwofaAccountDetailModal` · `TwofaQuotaDetailModal` · P0016 `BotDetailModal` · `FacebookAccountDetailModal` · `FacebookPageDetailModal` · P0005 `CustomerDetailModal` · `OrderDetailModal` · `ProductDetailModal` (readonly-only).
+
+**Tier inventory gate:** `node Tool/scripts/hub-detail-modal-inventory.mjs --code P00xx --fail-on-tier-c` — wired in `check-hub-ui-parity-product.cjs`.
+
+| Tier | Modals | Shell | ADM fields | Notes |
+|------|--------|-------|------------|-------|
+| **A — Golden ADM** | P0020 Mail/Quota · P0016 Bot/Channel/Facebook · P0005 Customer/Order/Product | `HUB_ACCOUNT_DETAIL_*` | Full parity gate | Product + FB Account + Channel = readonly-only |
+| **B — 3-frame shell only** | P0013 Channel · P0006 Job · P0004 system | `HUB_ACCOUNT_DETAIL_*` or job split | Domain tables/metrics | Not ADM credentials |
+| **C — Legacy / domain** | P0020 Cookie · P0023 Post preview | `HUB_TOOL_DETAIL_*` or custom | Custom forms | `hub-detail-modal-inventory: allow-tier-c` to exempt |
+
+**Verify:** `node Tool/scripts/hub-adm-detail-parity-check.mjs --code P00xx` · `node Tool/scripts/hub-ui-modal-parity-check.mjs --code P00xx --account-detail-only`
 
 ---
 
@@ -757,7 +799,8 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 | `HubCopyBadge` `display="full"` (default) | Directory table ID column — mono fingerprint chip (P0004 Users, P0016 bots/groups/channels) | Fingerprint + label + **Copy icon always visible**; small **Check** appended on success (~1.4s) |
 | `HubCopyBadge` `display="chip"` | Runtime rail job ID only (P0006 Run History) — sans Inter 11px via `hub-copy-badge--chip` | Same copy feedback; **never** use `full` mono in rail surfaces |
 | `CopyMetaChip` | Meta strip pills (note ID, tagged values) | Tone chip unchanged; **Check** beside chip on success — never swap label to "Copied" |
-| `TwofaCopyControl` | 2FA table Account / Password / Secret / Code (P0020 production) | Plain text or badge body unchanged; **Check 10px** beside value |
+| `TwofaCopyControl` / `HubTwofaCopyControl` | 2FA table Account / Password / Secret / Code (P0020 production) | Click to copy + toast — no cell hover tooltip |
+| `HubDirectoryCopyText` | Directory ID / email / login / phone — click-to-copy (P0020 Mail·Service parity) | Wraps `HubTwofaCopyControl` |
 
 **Rules**
 
@@ -767,12 +810,31 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 - Do **not** change chip tone on copy (`CopyMetaChip` keeps original `MetaTone`).
 - Table / rail cells: `e.stopPropagation()` on copy button so row select does not fire.
 
+### Directory column header hints (only portal tooltip)
+
+**Body cells have no hover tooltip.** Only `HubDirectoryColumnHint` on `<th>` headers uses `hub-directory-popover`.
+
+| Component | Role |
+|-----------|------|
+| `HubDirectoryColumnHint` | Rich popover on column header hover — title, description, option list |
+| `HubDirectoryEllipsisCell` | Truncated read-only cell — no tooltip |
+| `directoryCellHoverTitle` | Copy toast label helper only |
+
+**Rules**
+
+- No `HubDirectoryCellTooltip`, native `title`, or portal on directory **body** cells.
+- Click-to-copy still works via `HubTwofaCopyControl` / `HubDirectoryCopyText` (toast only).
+- Import from `@tool-workspace/hub-ui` — no per-tool cell tooltip forks.
+- **Still allowed (not body cells):** native `title=` on KPI tiles (`KpiStrip`), chart legend labels (`MiniBarChart`), toolbar/buttons (`HubBulkActionButton`, FilterBar), Settings `HubHintTooltip`.
+
+**Golden refs:** P0020 `twofa-copy-cells.tsx` · P0005 `customer-copy-cell.tsx` · column hints `HubDirectoryColumnHint`
+
 **Golden refs**
 
 - `HubCopyBadge` `display="full"` — `P0004/UserDirectoryTable.tsx` ID column
 - `HubCopyBadge` `display="chip"` — `P0006/ReupJobsRailPanels.tsx` Run History job ID
 - `CopyMetaChip` — `P0020/NoteEditorMetaStrip.tsx` note ID
-- `TwofaCopyControl` — `P0020/twofa-copy-cells.tsx` (Design V1 Platform Mirror)
+- `HubTwofaCopyControl` — `packages/hub-ui/src/shell/HubTwofaCopyControl.tsx` (P0020 re-exports as `TwofaCopyControl`)
 
 ---
 
@@ -794,6 +856,30 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 - Card: same components inside `HubDirectoryCardMetaRow`.
 
 **Golden refs:** P0016 `channel-ui.tsx`, `GroupDirectoryTable.tsx`, `PersonalityDirectoryTable.tsx`.
+
+---
+
+## Inline glyph + label gaps (golden — hub-ui)
+
+**Canonical source:** `packages/hub-ui/src/styles/hub-globals-tokens.css` (`:root` tokens + `.hub-inline-gap-*` utilities). Tool copies sync via `hub-theme-tokens.css` → `p0008-globals.css`.
+
+| Token / class | Default | Use for |
+|---------------|---------|---------|
+| `--hub-inline-gap-tight` / `.hub-inline-gap-tight` | **4px** | Table meta labels (Status, Ownership), `hub-users-status`, active filter pill icon+text |
+| `--hub-inline-gap-meta` / `.hub-inline-gap-meta` | **5px** | Role badge, copy controls, `.btn`, `.twofa-copy-control` |
+| `--hub-inline-gap-comfort` / `.hub-inline-gap-comfort` | **6px** | Filter trigger, compact dropdown row, table header icon+label |
+| `--hub-inline-gap-name` / `.hub-inline-gap-name` | **8px** | Brand icon + service/name column (`.hub-users-cell-name`), filter dropdown row (full), FilterBar chip row spacing |
+
+**Rules**
+
+- **Do not** use raw Tailwind `gap-1` / `gap-1.5` / `gap-2` for glyph+label or filter chrome — use `.hub-inline-gap-*` or `gap: var(--hub-inline-gap-*)`.
+- CSS: `gap: var(--hub-inline-gap-tight)` with fallback optional; prefer class on flex/grid container.
+- Filter SSOT: `filter-dropdown-primitives.tsx` — trigger `hub-inline-gap-comfort`, row `hub-inline-gap-name`, compact row `hub-inline-gap-comfort`.
+- P0020 2FA: `.twofa-directory-label-row` → `--hub-inline-gap-tight`; filter variant → `hub-inline-gap-comfort`.
+
+**Audit:** `node Tool/scripts/audit-hub-inline-gap.mjs` (report) · `--strict` (CI fail on unmigrated hits).
+
+**Allowlist:** sidebar, modal field grids, zoom slider, layout chrome — see script `ALLOWLIST`.
 
 ---
 
@@ -882,15 +968,16 @@ Do **not** fork select column width per tool — use shell + meta helpers only.
 
 ## Directory table body cells — one line per column (golden)
 
-**Table rows are flat.** Each data column = **exactly one truncated line** in the body. Multi-field content belongs in **separate columns** or the cell `title` tooltip — never stacked under Name.
+**Table rows are flat.** Each data column = **exactly one truncated line** in the body. Multi-field content belongs in **separate columns** — never stacked under Name. Body cells have **no hover tooltip** (see Directory column header hints).
 
 | Column type | Pattern | Golden |
 |-------------|---------|--------|
 | **Name** | `hub-users-name-title` + `DIRECTORY_CELL_TRUNCATE` | P0004 `hub-tools-directory-cells.tsx` |
 | **Status** | `HubUsersStatusLabel` in **Status** column | Hub tools `status`, P0003 store `status` |
-| **Timestamps** | `HubActivityTimestampLabel` — dot + relative (≤72h) or `dd/mm/yy` | Users, Hub tools `updated`, Created/Last update columns |
-| **Icon + label** | `HubDirectoryIconCell` — horizontal single line | Scripts platform, store platform |
-| **Long text** | `title={full text}` on truncate span — not a second line in cell | All directory tables |
+| **Timestamps** | `HubDirectoryTimestampLabel` (= `HubActivityTimestampLabel`) — dot + relative (≤24h) or `dd/mm/yy` stale; **no cell tooltip** | Users, Hub tools `updated`, Created/Last update columns |
+| **Icon + label** | `HubDirectoryIconCell` — horizontal single line, no tooltip | Scripts platform, store platform |
+| **Long text** | `HubDirectoryEllipsisCell` — truncate only, no tooltip | All directory tables |
+| **Copy values** | `HubDirectoryCopyText` / `HubTwofaCopyControl` — click + toast, no hover tooltip | P0020 Mail/Service, P0005 CRM |
 
 **Forbidden in `*directory-cells.tsx`:** `<p>` under name, `line-clamp-2+`, badge flex rows inside one column, description subtitle in Name.
 
@@ -910,7 +997,7 @@ Do **not** fork select column width per tool — use shell + meta helpers only.
 |-------|------|
 | `HubRuntimeChannelBadge` | Pill icon + **Title Case** label — parity P0020 `TodoHubBadge` priority pills |
 | `HubRuntimeConsoleTerm` | Legend row + scrollable body (directory table typography, not mono) |
-| `HubActivityTimestampLabel` | Run History time column — relative age + full stamp tooltip |
+| `HubActivityTimestampLabel` | Run History / directory time — relative age + dot; **no hover tooltip** on body cells |
 | `ReupRuntimeActivityTime` / `formatHubActivityRelativeAge` | Console time column — same activity-age SSOT as directory Created |
 | `HubCopyBadge` `display="chip"` | Run History job ID chip — sans 11px, not directory mono |
 | `reup-runtime-rail.css` (tool-local) | **Layout only** — 4-column subgrid, `@container` head reveal ≥280px; no local `font-size` / `font-mono` |

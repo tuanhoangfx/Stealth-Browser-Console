@@ -4,12 +4,12 @@ import type { HubTableColumn } from "../content/HubDataTable";
 export const HUB_ROUTE_ACCESS_MODAL_TABLE_CLASS = "hub-users-table hub-users-table--route-access-modal";
 
 export const HUB_ROUTE_ACCESS_MODAL_TABLE_WRAP_CLASS =
-  "hub-users-table-wrap min-w-0 overflow-x-auto rounded-xl border border-white/5";
+  "hub-users-table-wrap hub-scrollbar min-w-0 overflow-x-auto rounded-xl border border-white/5";
 
 /** Full-width directory variant (non-modal). */
 export const HUB_ROUTE_ACCESS_TABLE_CLASS = "hub-users-table hub-users-table--route-access";
 
-export const HUB_ROUTE_ACCESS_TABLE_WRAP_CLASS = "min-w-0 overflow-x-auto";
+export const HUB_ROUTE_ACCESS_TABLE_WRAP_CLASS = "hub-scrollbar min-w-0 overflow-x-auto";
 
 export type HubRouteAccessColumnLayout = "expanded" | "compact";
 

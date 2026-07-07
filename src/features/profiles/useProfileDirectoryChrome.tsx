@@ -1,26 +1,28 @@
-/** Profile table frame — search, filters, pager toolbar, bulk actions (inbox-split left pane). */
-import { memo, useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Bot } from "lucide-react";
 import {
   DirectorySearchToolbar,
   HubDirectoryBulkActionBar,
   HubDirectoryToolbarSelection,
   HubSplitDirectoryFilterBar,
-  type FilterValues
+  type FilterValues,
 } from "@tool-workspace/hub-ui";
 import { StealthDisplayBandToolbar } from "../../components/StealthDisplayBandToolbar";
 import type { ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
 import { useWorkflowPicker } from "../../context/workflow-picker-context";
-import { StealthProfilesDirectoryBulkActions, type ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
+import {
+  StealthProfilesDirectoryBulkActions,
+  type ExtensionSelectionState,
+} from "./StealthProfilesDirectoryBulkActions";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 import {
   buildProfileFiltersFromStats,
   profileFilterValuesToState,
-  profileStateToFilterValues
+  profileStateToFilterValues,
 } from "./profile-filters";
 
-export type ProfileFilterPaneProps = {
+export function useProfileDirectoryChrome(input: {
   catalogStats: ProfileCatalogStats | null;
   groups: StealthGroup[];
   filteredProfiles: ProfileRow[];
@@ -36,9 +38,6 @@ export type ProfileFilterPaneProps = {
   onTablePageSizeChange?: (size: number) => void;
   syncBusy: boolean;
   selectedProfiles: ProfileRow[];
-  allVisibleProfilesSelected: boolean;
-  onToggleProfileSelectAll: () => void;
-  openOne: (profile: ProfileRow) => void;
   closeOne: (profile: ProfileRow) => void;
   deleteSelected: () => void;
   setShowCreate: (value: boolean) => void;
@@ -50,54 +49,50 @@ export type ProfileFilterPaneProps = {
   extensionIcons?: ExtensionIconMap;
   extensionBusy?: boolean;
   onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
-};
+}) {
+  const {
+    catalogStats,
+    groups,
+    filteredProfiles,
+    totalProfiles,
+    shownProfiles,
+    search,
+    setSearch,
+    selectedGroupIds,
+    setSelectedStatuses,
+    setSelectedGroupIds,
+    selectedStatuses,
+    pageSize,
+    onTablePageSizeChange,
+    syncBusy,
+    selectedProfiles,
+    closeOne,
+    deleteSelected,
+    setShowCreate,
+    onEdit,
+    onGroups,
+    onExport,
+    onImport,
+    extensionState,
+    extensionIcons,
+    extensionBusy = false,
+    onExtensionSet,
+  } = input;
 
-export const ProfileFilterPane = memo(function ProfileFilterPane({
-  catalogStats,
-  groups,
-  filteredProfiles,
-  totalProfiles,
-  shownProfiles,
-  search,
-  setSearch,
-  selectedGroupIds,
-  setSelectedGroupIds,
-  selectedStatuses,
-  setSelectedStatuses,
-  pageSize,
-  onTablePageSizeChange,
-  syncBusy,
-  selectedProfiles,
-  allVisibleProfilesSelected,
-  onToggleProfileSelectAll,
-  openOne,
-  closeOne,
-  deleteSelected,
-  setShowCreate,
-  onEdit,
-  onGroups,
-  onExport,
-  onImport,
-  extensionState,
-  extensionIcons,
-  extensionBusy = false,
-  onExtensionSet,
-}: ProfileFilterPaneProps) {
   const { runAutomationQueue, automationRunning, runWorkflowLabel } = useWorkflowRuntime();
   const { selectedWorkflowCount, activeWorkflow, workflowConfigs } = useWorkflowPicker();
   const activeWorkflowName =
     workflowConfigs.find((workflow) => workflow.id === activeWorkflow)?.name ?? "workflow";
   const canLaunchWorkflow = selectedWorkflowCount > 0 || Boolean(activeWorkflow);
+
   const filters = useMemo(
-    () =>
-      catalogStats
-        ? buildProfileFiltersFromStats(groups, catalogStats)
-        : [],
+    () => (catalogStats ? buildProfileFiltersFromStats(groups, catalogStats) : []),
     [groups, catalogStats],
   );
+
   const filterValues = useMemo(
     () => profileStateToFilterValues(selectedGroupIds, selectedStatuses),
-    [selectedGroupIds, selectedStatuses]
+    [selectedGroupIds, selectedStatuses],
   );
 
   const handleFilterValuesChange = useCallback(
@@ -106,10 +101,10 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
       setSelectedGroupIds(next.groupIds);
       setSelectedStatuses(next.statuses);
     },
-    [setSelectedGroupIds, setSelectedStatuses]
+    [setSelectedGroupIds, setSelectedStatuses],
   );
 
-  return (
+  const filterBar = (
     <HubSplitDirectoryFilterBar
       shortcutScope="profiles"
       placeholder="Search profiles…"
@@ -135,6 +130,9 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
           showTimeRange={false}
           showRefresh={false}
           showResultCount={false}
+          showTablePageSize
+          tablePageSize={pageSize}
+          onTablePageSizeChange={onTablePageSizeChange}
           displayBand={<StealthDisplayBandToolbar screen="profiles" />}
         />
       }
@@ -170,4 +168,11 @@ export const ProfileFilterPane = memo(function ProfileFilterPane({
       }
     />
   );
-});
+
+  return {
+    filters,
+    filterValues,
+    handleFilterValuesChange,
+    filterBar,
+  };
+}

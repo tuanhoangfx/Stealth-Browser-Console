@@ -3,13 +3,27 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 import { stealthElectronEnv } from "./stealth-electron-env.mjs";
 import { winSpawnOpts } from "./win-spawn.mjs";
 
+const require = createRequire(import.meta.url);
+const { DEFAULT_PROD_API_PORT, DEFAULT_DEV_API_PORT } = require("../../electron/lib/user-data-root.cjs");
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const PID_FILE = path.join(root, ".dev-desktop.pid");
 export const LOG_FILE = path.join(root, ".dev-desktop.log");
+
+const DEV_SCRIPT_RE = /dev-node\.mjs|dev-desktop-reload\.mjs|reload-and-verify-p0003\.mjs/i;
+const PRODUCT_ROOT_RE = /P0003-Stealth-Browser-Console/i;
+
+/** True when command line belongs to this tool's dev orchestrator (not packaged Setup.exe). */
+export function isStealthDevCommandLine(commandLine) {
+  const cmd = String(commandLine || "");
+  if (!cmd) return false;
+  return PRODUCT_ROOT_RE.test(cmd) && DEV_SCRIPT_RE.test(cmd);
+}
 
 export function readDevPid() {
   try {
@@ -29,6 +43,28 @@ export function isPidAlive(pid) {
   }
 }
 
+function readProcessCommandLine(pid) {
+  if (process.platform !== "win32") return "";
+  const result = spawnSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      `(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}' -ErrorAction SilentlyContinue).CommandLine`,
+    ],
+    winSpawnOpts({ encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }),
+  );
+  return String(result.stdout || "").trim();
+}
+
+export function isStealthDevPid(pid) {
+  if (!pid || !isPidAlive(pid)) return false;
+  const cmd = readProcessCommandLine(pid);
+  if (cmd) return isStealthDevCommandLine(cmd);
+  // Non-Windows or query failed — trust pid file only when process is node running our scripts.
+  return false;
+}
+
 export function clearPidFile() {
   try {
     fs.unlinkSync(PID_FILE);
@@ -37,9 +73,20 @@ export function clearPidFile() {
   }
 }
 
+function killDevPorts() {
+  const killPort = path.join(root, "scripts", "kill-port.cjs");
+  if (!fs.existsSync(killPort)) return;
+  // Dev stack only — never :6003 (packaged prod API).
+  spawnSync(
+    process.execPath,
+    [killPort, String(5175), String(DEFAULT_DEV_API_PORT)],
+    winSpawnOpts({ cwd: root, stdio: "ignore" }),
+  );
+}
+
 export function killStealthDev() {
   const pid = readDevPid();
-  if (pid && isPidAlive(pid)) {
+  if (pid && isStealthDevPid(pid)) {
     try {
       if (process.platform === "win32") {
         spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], winSpawnOpts({ stdio: "ignore" }));
@@ -49,16 +96,13 @@ export function killStealthDev() {
     } catch {
       /* ignore */
     }
+  } else if (pid) {
+    console.warn(
+      `[dev-desktop] skip taskkill PID ${pid} — not a Stealth dev orchestrator (protect packaged :${DEFAULT_PROD_API_PORT})`,
+    );
   }
   clearPidFile();
-
-  // Free :5175 only when restarting this tool's dev stack (vite). Does not touch packaged exe.
-  if (process.platform === "win32") {
-    const killPort = path.join(root, "scripts", "kill-port.cjs");
-    if (fs.existsSync(killPort)) {
-      spawnSync(process.execPath, [killPort, String(5175)], winSpawnOpts({ cwd: root, stdio: "ignore" }));
-    }
-  }
+  killDevPorts();
 }
 
 /** Spawn dev-node detached — one process, log to .dev-desktop.log, Electron window only. */
@@ -88,6 +132,7 @@ export function focusStealthWindow() {
       "-NoProfile",
       "-Command",
       [
+        "$devPort = " + DEFAULT_DEV_API_PORT,
         "$p = Get-Process electron -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -match 'Stealth' } | Select-Object -First 1",
         "if ($p -and $p.MainWindowHandle -ne 0) {",
         "  Add-Type 'using System; using System.Runtime.InteropServices; public class W { [DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr h); }'",

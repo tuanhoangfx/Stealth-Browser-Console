@@ -103,9 +103,20 @@ export {
   type DirectoryTableColumnsSettingsProps,
 } from "./prefs/DirectoryTableColumnsSettings";
 export { DirectoryTableColumnsResetAction } from "./prefs/DirectoryTableColumnsResetAction";
-export { compactIconSize, HUB_CHROME_ICON_PX, HUB_COMPACT_SCALE } from "./ui-scale";
+export { compactIconSize, HUB_CHROME_ICON_PX, HUB_COMPACT_SCALE, HUB_DIRECTORY_HEADER_GLYPH_PX } from "./ui-scale";
 export { deployLabel } from "./lib/deploy-label";
 export { formatTabHeaderTimestamp } from "./lib/tab-header-timestamp";
+export {
+  resolveAppVersionReleaseMeta,
+  parseChangelogReleaseTimestamp,
+  normalizeChangelogTimestampRaw,
+  type AppVersionReleaseMeta,
+  type ToolManifestReleaseSlice,
+} from "./lib/app-version-release-meta";
+export {
+  buildConsoleVersionMetaItems,
+  buildConsoleVersionMetaItemsLegacy,
+} from "./shell/console-version-meta";
 export {
   CATEGORY,
   DEPLOY,
@@ -203,13 +214,24 @@ export {
 } from "./shell/HubTableCellFilterDropdown";
 export {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
+  HUB_SCROLLBAR_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
+  HUB_FILTER_DROPDOWN_ROW_COMPACT_CLASS,
+  HUB_FILTER_DROPDOWN_ROW_DIRECTORY_VALUE_CLASS,
+  hubFilterDropdownRowClass,
+  hubFilterUsesDirectoryValueTypo,
+  hubFilterDirectoryTriggerTypoClass,
+  hubFilterGlyphPx,
   HubFilterDropdownCircle,
   HubFilterDropdownPanelSearch,
   HubFilterDropdownTrigger,
   HUB_FILTER_OPTION_EMOJI_CLASS,
+  hubFilterOptionEmojiClass,
+  HUB_FILTER_DROPDOWN_TRIGGER_COMPACT_TYPO_CLASS,
+  HUB_FILTER_DROPDOWN_TRIGGER_DIRECTORY_HEADER_TYPO_CLASS,
+  HUB_FILTER_DROPDOWN_TRIGGER_DIRECTORY_VALUE_TYPO_CLASS,
   HUB_FILTER_BRAND_ICON_CLASS,
   hubBrandIconImgClass,
   type HubBrandIconShell,
@@ -218,6 +240,10 @@ export {
   multiFilterTriggerTitle,
   hubFilterTriggerClass,
 } from "./shell/filter-dropdown-primitives";
+export {
+  configureDirectoryFilterColumnRoles,
+  resolveDirectoryFilterColumnIcon,
+} from "./shell/filter-directory-column-roles";
 export { enrichFilterDefs } from "./lib/filter-option-counts";
 export {
   fetchWorkspaceUserDirectoryRows,
@@ -270,6 +296,7 @@ export {
   patchWorkspacePeriod,
   readWorkspacePeriod,
   workspacePeriodOptions,
+  WORKSPACE_PERIOD_ORDER,
   WORKSPACE_PERIOD_LABELS,
   type WorkspacePeriodKey,
   type WorkspacePeriodPrefs,
@@ -321,6 +348,15 @@ export { buildHubBrandFilterOption, type HubBrandFilterIcon } from "./lib/build-
 export { HubDirectoryToolBadge, type HubDirectoryToolBadgeProps } from "./shell/HubDirectoryToolBadge";
 export {
   HubDirectoryMetricBadge,
+  type HubDirectoryMetricBadgeProps,
+} from "./shell/HubDirectoryMetricBadge";
+export {
+  HUB_DIRECTORY_METRIC_TIER_THRESHOLDS,
+  hubDirectoryMetricTierClass,
+  resolveHubDirectoryMetricTier,
+  type HubDirectoryMetricTier,
+} from "./lib/directory-metric-tier";
+export {
   HubDirectoryMetricStrip,
   type HubDirectoryMetricItem,
   type HubDirectoryMetricTone,
@@ -332,6 +368,54 @@ export {
   useHubCopyFlash,
   type HubInlineCopyControlProps,
 } from "./shell/HubInlineCopyControl";
+export {
+  HubTwofaCopyControl,
+  type HubTwofaCopyControlProps,
+} from "./shell/HubTwofaCopyControl";
+export {
+  HUB_TWOFA_CODE_BADGE_CLASS,
+  HUB_TWOFA_CODE_BADGE_DESIGN_LOCK,
+} from "./shell/hub-twofa-code-badge";
+export {
+  formatHubOrderPriceParts,
+  formatHubOrderPricePillLabel,
+  type HubOrderPriceCurrency,
+  type HubOrderPriceParts,
+} from "./lib/format-order-price";
+export {
+  HubOrderPriceBadge,
+  HubOrderPriceText,
+  type HubOrderPriceBadgeProps,
+  type HubOrderPriceBadgeTone,
+} from "./shell/HubOrderPriceBadge";
+export {
+  HUB_ORDER_PRICE_TEXT_CLASS,
+  HUB_ORDER_PRICE_TEXT_DEFAULT_TONE,
+  HUB_ORDER_PRICE_BADGE_CLASS,
+  HUB_ORDER_PRICE_BADGE_DESIGN_LOCK,
+  HUB_ORDER_PRICE_BADGE_DEFAULT_TONE,
+  type HubOrderPriceTextTone,
+} from "./shell/hub-order-price-badge";
+export {
+  HubDirectoryCopyText,
+  type HubDirectoryCopyTextProps,
+} from "./shell/HubDirectoryCopyText";
+export { HubDirectoryEllipsisCell, type HubDirectoryEllipsisCellProps } from "./shell/HubDirectoryEllipsisCell";
+export {
+  DIRECTORY_CELL_TRUNCATE,
+  DIRECTORY_CELL_RICH_TOOLTIP_MIN_LEN,
+  directoryCellHoverTitle,
+  directoryCellNeedsRichTooltip,
+} from "./lib/directory-cell-hover";
+export {
+  copyTextWithExecCommand,
+  copyTextWithFallback,
+} from "./lib/copy-text-with-fallback";
+export { HUB_DIRECTORY_TIMESTAMP_CLASS } from "./lib/hub-directory-timestamp";
+export {
+  HUB_DIRECTORY_POPOVER_OFFSET_PX,
+  hubDirectoryPopoverPosition,
+} from "./lib/hub-directory-popover";
 export {
   HubToastProvider,
   HubToastContainer,
@@ -381,10 +465,21 @@ export {
   type DirectoryRelativeTimeCellProps,
 } from "./content/DirectoryRelativeTimeCell";
 export {
+  HubDirectoryCompactTimestampLabel,
+  HubDirectoryTimestampLabel,
+  type HubDirectoryCompactTimestampLabelProps,
+} from "./content/HubDirectoryCompactTimestampLabel";
+export {
   HubActivityTimestampLabel,
   type HubActivityTimestampLabelProps,
 } from "./content/HubActivityTimestampLabel";
 export { formatHubRelativeTime } from "./lib/format-hub-relative-time";
+export {
+  DIRECTORY_EMPTY_LABEL,
+  DirectoryEmptyDash,
+  HubDirectoryEmptyCell,
+  isDirectoryEmptyLabel,
+} from "./lib/directory-empty-label";
 export {
   formatHubActivityRelativeAge,
   formatHubActivityStaleLabel,
@@ -402,6 +497,7 @@ export {
   type HubActivityAgeTone,
 } from "./lib/format-hub-activity-time";
 export {
+  formatHubDirectoryDateCompact,
   formatHubTimestampCompact,
   formatHubTimestampDateOnly,
   formatHubTimestampFull,
@@ -483,10 +579,21 @@ export {
   type DirectoryColgroupOptions,
   type DirectoryColgroupForShellOptions,
   type HubDirectoryColumnDef,
+  type HubDirectoryColumnKind,
   type HubDirectoryColumnMetaInput,
   type HubDirectoryTableVariant,
   resolveDirectoryPanelFillRows,
 } from "./table/hub-directory-table-meta";
+export {
+  buildDirectoryFixedColumnTabularSelectors,
+  generateDirectoryFixedColumnCss,
+  verifyDirectoryColumnMetaKeys,
+  verifyDirectoryColumnWidths,
+  verifyDirectoryFixedColumnCss,
+  type DirectoryColumnWidthEntry,
+  type DirectoryFixedColumnEntry,
+  type GenerateDirectoryFixedColumnCssOptions,
+} from "./table/directory-fixed-column-css";
 export {
   HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY,
   HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS,
@@ -616,7 +723,25 @@ export {
   HUB_SIDEBAR_SHELL_NAV_CLASS,
   type HubSidebarShellProps,
 } from "./shell/HubSidebarShell";
+export {
+  HubSidebarBrandIcon,
+  HUB_SIDEBAR_BRAND_ICON_CLASS,
+  type HubSidebarBrandIconProps,
+} from "./shell/HubSidebarBrandIcon";
+export {
+  hubMainShellClassFromManifest,
+  hubMainShellClassName,
+  type HubMainShellClassOptions,
+  type HubMainShellMode,
+  type ToolManifestUiShell,
+} from "./shell/hub-main-shell-class";
 export { useNavGroupOpenState } from "./shell/useNavGroupOpenState";
+export {
+  applyFirstVisitNavGroupDefaults,
+  HUB_NAV_DENSITY_INIT_SUFFIX,
+  type ApplyFirstVisitNavGroupDefaultsOptions,
+  type NavGroupDensityContext,
+} from "./shell/applyFirstVisitNavGroupDefaults";
 export {
   flatMapNavScreenItems,
   isNavGroupActive,
@@ -883,9 +1008,61 @@ export {
 } from "./shell/HubToolDetailModalFooterActions";
 export {
   HUB_ACCOUNT_DETAIL_MODAL_SHELL_CLASS,
+  HUB_ADM_FORM_SHELL_CLASS,
+  HUB_ADM_FORM_ROW_CODE_LINE_CLASS,
+  HUB_ADM_GRID_SLOT_SPACER_CLASS,
+  HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS,
+  HUB_ADM_TYPE_MONO_CLASS,
+  HUB_ADM_TYPE_NAV_CLASS,
+  HUB_ADM_TYPE_CSS_VARS,
+  HUB_ADM_GLOW_SUBTLE_CLASS,
+  HUB_ADM_GLOW_CSS_VARS,
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_CLASS,
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
 } from "./shell/hubAccountDetailModal";
+export {
+  HubAccountDetailModalFrame,
+  type HubAccountDetailModalFrameProps,
+} from "./shell/HubAccountDetailModalFrame";
+export {
+  HUB_ACCOUNT_DETAIL_SECTION_META,
+  hubAccountDetailSectionIcon,
+  hubAccountDetailSectionIconClass,
+  type HubAccountDetailSectionKind,
+  type HubAccountDetailSectionTone,
+} from "./shell/hubAccountDetailSectionIcons";
+export { HubAdmSectionLabel } from "./shell/HubAdmSectionLabel";
+export { hubAdmSectionHeader, hubAdmSectionBlockClass, type HubAdmSectionKey } from "./shell/hubAdmSectionHeaders";
+export {
+  HubAdmClickEditField,
+  HubAdmClickFilterField,
+  HubAdmInlineFieldLabel,
+  HubAdmReadonlyField,
+  type HubAdmClickEditFieldProps,
+  type HubAdmClickEditRenderCtx,
+  type HubAdmClickFilterFieldProps,
+  type HubAdmReadonlyFieldProps,
+} from "./shell/HubAdmClickEditField";
+export {
+  HubAdmClickDateField,
+  type HubAdmClickDateFieldProps,
+} from "./shell/HubAdmClickDateField";
+export {
+  HubFilterDatePicker,
+  type HubFilterDatePickerProps,
+} from "./shell/HubFilterDatePicker";
+export { HubAdmNoteSearchBar, type HubAdmNoteSearchBarProps } from "./shell/HubAdmNoteSearchBar";
+export { HubAdmNoteHighlightText } from "./shell/HubAdmNoteHighlightText";
+export { HubAdmNoteReadonlyBody, type HubAdmNoteReadonlyBodyProps } from "./shell/HubAdmNoteReadonlyBody";
+export { HubAdmNoteEditorField, type HubAdmNoteEditorFieldProps } from "./shell/HubAdmNoteEditorField";
+export { HubAdmNoteRail, type HubAdmNoteRailEditorProps, type HubAdmNoteRailProps, type HubAdmNoteRailReadonlyProps } from "./shell/HubAdmNoteRail";
+export {
+  buildHubAdmNoteMirrorSegments,
+  findHubAdmNoteMatchRanges,
+  useHubAdmNoteSearch,
+  type HubAdmNoteMatchRange,
+  type HubAdmNoteMirrorSegment,
+} from "./shell/hubAdmNoteSearch";
 export { HubFormFieldLabel, type HubFormFieldLabelProps } from "./shell/HubFormFieldLabel";
 export { HubOpsFormField, type HubOpsFormFieldProps } from "./shell/HubOpsFormField";
 export { HubModalFilterField, type HubModalFilterFieldProps } from "./shell/HubModalFilterField";
@@ -986,7 +1163,11 @@ export {
 } from "./shell/HubDirectoryBulkActions";
 export {
   HUB_ANALYTICS_CAPTION_TYPO_CLASS,
+  HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT,
+  HUB_DIRECTORY_HEADER_LABEL_TYPO_SSOT,
   HUB_DIRECTORY_TOOLBAR_TYPO_CLASS,
+  HUB_FILTER_DIRECTORY_HEADER_TYPO_SSOT,
+  HUB_FILTER_DIRECTORY_VALUE_TYPO_SSOT,
   HUB_SHELL_LABEL_TYPO_CLASS,
   HUB_SIDEBAR_NAV_LABEL_CLASS,
   HUB_SETTINGS_ICON_CLASS,

@@ -1,5 +1,12 @@
 /** Run history + console display helpers (parity P0027 ReUp Studio rail). */
 
+/** Last 6 chars of run id — tooltip / copy only, not primary row. */
+export function shortRunRef(id: string): string {
+  const clean = String(id || "").replace(/^run-/, "");
+  if (clean.length <= 8) return clean;
+  return clean.slice(-6);
+}
+
 export function humanizeWorkflowSlug(slug: string): string {
   return String(slug || "workflow")
     .split(/[-_]+/)

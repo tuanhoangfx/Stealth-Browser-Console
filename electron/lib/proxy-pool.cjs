@@ -48,6 +48,9 @@ function parseProxy(input) {
   let host, port;
   if (parts.length === 2) {
     [host, port] = parts;
+  } else if (parts.length === 3 && !username) {
+    // host:port:user (password empty — common antidetect shorthand)
+    [host, port, username] = parts;
   } else if (parts.length === 4 && !username) {
     // host:port:user:pass
     [host, port, username, password] = parts;
@@ -63,6 +66,27 @@ function parseProxy(input) {
   if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) return null;
 
   return { protocol, host, port, username: username || "", password: password || "" };
+}
+
+/** Canonical proxy URL for cloakbrowser / Playwright (http://user:pass@host:port). */
+function formatProxyForLaunch(input) {
+  const p = parseProxy(input);
+  if (!p) return "";
+  const auth =
+    p.username || p.password
+      ? `${encodeURIComponent(p.username)}:${encodeURIComponent(p.password)}@`
+      : "";
+  return `${p.protocol}://${auth}${p.host}:${p.port}`;
+}
+
+/** Playwright proxy object — avoids Invalid URL on host:port:user:pass shorthand. */
+function toPlaywrightProxy(input) {
+  const p = parseProxy(input);
+  if (!p) return null;
+  const out = { server: `${p.protocol}://${p.host}:${p.port}` };
+  if (p.username) out.username = p.username;
+  if (p.password) out.password = p.password;
+  return out;
 }
 
 /** "en-US" / "vi-VN" → "US" / "VN". */
@@ -224,4 +248,4 @@ function checkProxy(proxyInput, { timeoutMs = 8000 } = {}) {
   });
 }
 
-module.exports = { parseProxy, localeToCountry, geoConsistency, ProxyPool, checkProxy };
+module.exports = { parseProxy, formatProxyForLaunch, toPlaywrightProxy, localeToCountry, geoConsistency, ProxyPool, checkProxy };

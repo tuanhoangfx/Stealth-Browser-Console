@@ -1,13 +1,15 @@
 import type { WorkspacePeriodKey } from "./hub-workspace-period";
 
-/** Distinct dot colors for workspace period options (Today, This Week, Last 30 Days, …). */
+/** Distinct dot colors for workspace period options. */
 export const WORKSPACE_PERIOD_DOT_COLORS: Record<WorkspacePeriodKey, string> = {
   all: "#94a3b8",
   today: "#34d399",
   thisWeek: "#38bdf8",
-  lastWeek: "#a78bfa",
-  last30Days: "#fbbf24",
   thisMonth: "#818cf8",
+  thisYear: "#2dd4bf",
+  lastWeek: "#a78bfa",
+  lastMonth: "#fbbf24",
+  lastYear: "#f97316",
   customMonth: "#f472b6",
   customRange: "#fb923c",
 };

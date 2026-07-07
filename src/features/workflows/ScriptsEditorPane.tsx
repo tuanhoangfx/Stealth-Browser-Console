@@ -1,6 +1,7 @@
 /** Scripts tab — workflow step editor (editor context only). */
 import { GitBranch, ListTree } from "lucide-react";
 import { memo, useEffect } from "react";
+import { useStealthShell } from "../../context/stealth-shell-context";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
 import { workflowDisplayId } from "./workflow-display";
 import { WORKFLOW_PICKER_SCROLL_STEP_THRESHOLD } from "./workflowScriptDagreLayout";
@@ -35,12 +36,15 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
     DEFAULT_WORKFLOWS,
   } = useWorkflowEditor();
 
+  const { view, workflowTab } = useStealthShell();
+  const canvasActive = view === "workflow" && workflowTab === "editor";
+
   const displayWorkflowId = (id: string) => workflowDisplayId(id, DEFAULT_WORKFLOWS);
   const steps = activeWorkflowConfig.steps;
 
   useEffect(() => {
-    prefetchWorkflowScriptFlow();
-  }, []);
+    if (canvasActive) prefetchWorkflowScriptFlow();
+  }, [canvasActive]);
 
   return (
     <div className="script-editor-stack min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -59,7 +63,7 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
           </header>
           <WorkflowAiStepsPanel
             activeWorkflowConfig={activeWorkflowConfig}
-            selectedScriptStep={selectedScriptStep}
+            selectedScriptStep={selectedScriptStep ?? null}
             defaultWorkflows={DEFAULT_WORKFLOWS}
             onApply={applyAiGeneratedWorkflow}
             onSave={saveWorkflowChanges}
@@ -145,7 +149,7 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
           </header>
           {steps.length === 0 ? (
             <p className="muted script-step-board-empty">Add the first step with the New button below.</p>
-          ) : (
+          ) : canvasActive ? (
             <WorkflowCanvasErrorBoundary>
               <WorkflowScriptFlowLazy
                 workflowId={activeWorkflow}
@@ -155,7 +159,7 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
                 onReorderBySortedIds={reorderScriptStepsBySortedIds}
               />
             </WorkflowCanvasErrorBoundary>
-          )}
+          ) : null}
         </div>
       </section>
     </div>

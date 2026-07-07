@@ -48,4 +48,10 @@ describe("format-hub-activity-time", () => {
     const twoHoursAgo = now - 2 * 60 * 60_000;
     expect(hubActivityAgeTone(twoHoursAgo, now)).toBe("recent");
   });
+
+  it("treats future timestamps as stale calendar dates (not Just now)", () => {
+    const future = now + 4 * 24 * 60 * 60_000;
+    expect(hubActivityAgeTone(future, now)).toBe("stale");
+    expect(formatHubActivityRelativeAge(future, now)).toBe("26/06/26");
+  });
 });

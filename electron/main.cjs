@@ -47,7 +47,12 @@ const { getProfileExtensionsEnabled, setProfileExtensionsEnabled, getExtensionTo
 const { getCookieBridgeStatus } = require("./lib/cookie-bridge-status.cjs");
 const { getExtensionsStatus, installStoreExtension, installUnpackedExtension } = require("./lib/extensions-status.cjs");
 const { nativeExtensionsEnabled } = require("./lib/extension-launch-mode.cjs");
-const { runOpenUrl } = require("./automation/open-url.cjs");
+const {
+  launchProfile: launchProfileOp,
+  closeProfile: closeProfileOp,
+  patchProfile: patchProfileOp,
+  performOpenUrl: performOpenUrlOp,
+} = require("./services/profile-ops.cjs");
 const {
   validateProfileId,
   validateCreateProfilePayload,
@@ -147,15 +152,13 @@ function bindIpc() {
 
   ipcMain.handle("profile:update", async (_event, payload = {}) => {
     const id = validateProfileId(payload.id);
-    const profile = profileService.updateProfile(id, payload);
-    try {
-      const binary = await getBinaryInfoCached();
-      const { ensureProfileExtensionPins } = require("./lib/profile-extension-pins.cjs");
-      await ensureProfileExtensionPins(profile, userDataRoot(), binary.cacheDir);
-    } catch (error) {
-      console.warn("[extension-profile] update:", error instanceof Error ? error.message : error);
-    }
-    return { ok: true, profile: profileService.getProfile(id) };
+    const profile = await patchProfileOp(
+      { profileService },
+      id,
+      payload,
+      { userDataRoot: userDataRoot() },
+    );
+    return { ok: true, profile };
   });
 
   ipcMain.handle("profile:bulkUpdateStartupUrl", (_event, payload = {}) => {
@@ -190,25 +193,22 @@ function bindIpc() {
   });
 
   ipcMain.handle("profile:launch", async (_event, payload = {}) => {
-    const runtime = verifyPackagedRuntime();
-    if (!runtime.ok) {
-      throw new Error(formatPackagedRuntimeRepairMessage(runtime));
-    }
-    const profile = profileService.resolveProfileForLaunch({
-      id: validateProfileId(payload.id),
-      name: payload.name,
-    });
-    if (!profile) throw new Error("Profile not found.");
-    return sessionManager.launch(profile);
+    return launchProfileOp(
+      {
+        sessionManager,
+        profileService,
+        verifyRuntime: verifyPackagedRuntime,
+        formatRuntimeError: formatPackagedRuntimeRepairMessage,
+      },
+      { id: validateProfileId(payload.id), name: payload.name },
+    );
   });
 
   ipcMain.handle("profile:close", async (_event, payload = {}) => {
-    const profile = profileService.resolveProfileForLaunch({
-      id: validateProfileId(payload.id),
-      name: payload.name,
-    });
-    if (!profile) throw new Error("Profile not found.");
-    return sessionManager.close(profile.id);
+    return closeProfileOp(
+      { sessionManager, profileService },
+      { id: validateProfileId(payload.id), name: payload.name },
+    );
   });
 
   ipcMain.handle("profile:focus", async (_event, payload = {}) => {
@@ -362,48 +362,20 @@ function bindIpc() {
     return { ok: true, runs: profileService.listRuns(limit) };
   });
 
+  ipcMain.handle("profileEvents:list", (_event, payload = {}) => {
+    const profileId = String(payload.profileId || "").trim();
+    if (!profileId) throw new Error("profileId is required.");
+    const limit = validateRunsLimit(payload.limit);
+    return { ok: true, events: profileService.listProfileEvents(profileId, limit) };
+  });
+
   ipcMain.handle("automation:openUrl", async (_event, payload = {}) => {
     const safe = validateOpenUrlPayload(payload);
-    const profile =
-      profileService.resolveProfileForLaunch({ id: safe.profileId, name: payload.profileName }) ||
-      profileService.getProfile(safe.profileId);
-    if (!profile) throw new Error("Profile not found.");
-
-    const context = await sessionManager.ensureAutomationContext(profile);
-
-    const result = await runOpenUrl({
-      context,
-      profile,
-      targetUrl: safe.targetUrl,
-      screenshot: safe.screenshot,
-      closeWhenDone: safe.closeWhenDone,
-      screenshotsRoot: userDataRoot(),
-      onCloseProfile: () => sessionManager.close(profile.id),
-      workflowAction: safe.workflowAction,
-      steps: safe.steps,
-      inspectMode: safe.inspectMode,
-      workflowId: safe.workflowId
-    });
-
-    profileService.insertRun({
-      id: result.runId,
-      profileId: profile.id,
-      workflow: safe.workflowId || safe.workflowAction || "open-url",
-      targetUrl: safe.targetUrl,
-      status: result.ok ? "success" : "failed",
-      startedAt: result.startedAt,
-      finishedAt: result.finishedAt,
-      durationMs: result.durationMs,
-      screenshotPath: result.screenshotPath,
-      error: result.error || null,
-      logsJson: JSON.stringify(result.logs)
-    });
-
-    if (!safe.closeWhenDone && result.ok) {
-      profileService.updateProfile(profile.id, { status: "running" });
-    }
-
-    return result;
+    return performOpenUrlOp(
+      { sessionManager, profileService, userDataRoot: userDataRoot() },
+      safe,
+      { profileName: payload.profileName },
+    );
   });
 
   ipcMain.handle("app:info", () => ({
@@ -850,6 +822,7 @@ app.whenReady().then(async () => {
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
   await openDatabase(userDataRoot());
+  profileService.backfillProfileEvents();
   profileService.ensureSeedProfiles();
   sessionManager.setUserDataRoot(userDataRoot());
   setImmediate(() => {

@@ -324,6 +324,16 @@
   text-transform: none;
 }
 
+.hub-runtime-history-list--chip-lanes .hub-runtime-history-list__meta .hub-users-status {
+  font-size: var(--hub-runtime-muted-size, var(--hub-table-muted-size, 11px));
+  color: var(--muted, rgb(148, 163, 184));
+}
+
+.hub-runtime-history-list--chip-lanes .hub-runtime-history-list__meta .hub-users-status-dot {
+  width: 6px;
+  height: 6px;
+}
+
 .stealth-runtime-history .hub-directory-table-body-text,
 .stealth-runtime-console .hub-directory-table-body-text,
 .hub-runtime-rail-surface .hub-directory-table-body-text,
@@ -339,14 +349,40 @@
 .hub-runtime-rail-surface .reup-runtime-grid-head__label,
 .reup-job-detail-log-rail .reup-runtime-grid-head__label {
   font-size: var(--hub-table-header-size, 12px);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0;
   text-transform: none;
-  color: var(--muted, rgb(148, 163, 184));
+  color: var(--text, rgb(226, 232, 240));
   opacity: 1;
 }
 
-/* Console grid time column — muted 11px (parity P0003 `.hub-runtime-term__time`). */
+.stealth-runtime-history .reup-runtime-grid-head .hub-users-th-heading,
+.stealth-runtime-console .reup-runtime-grid-head .hub-users-th-heading,
+.hub-runtime-rail-surface .reup-runtime-grid-head .hub-users-th-heading,
+.reup-job-detail-log-rail .reup-runtime-grid-head .hub-users-th-heading {
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.stealth-runtime-history .reup-runtime-grid-head .hub-users-th-text,
+.stealth-runtime-console .reup-runtime-grid-head .hub-users-th-text,
+.hub-runtime-rail-surface .reup-runtime-grid-head .hub-users-th-text,
+.reup-job-detail-log-rail .reup-runtime-grid-head .hub-users-th-text {
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 600;
+  color: var(--text, rgb(226, 232, 240));
+}
+
+.stealth-runtime-history .reup-runtime-grid-head .hub-users-th-icon,
+.stealth-runtime-console .reup-runtime-grid-head .hub-users-th-icon,
+.hub-runtime-rail-surface .reup-runtime-grid-head .hub-users-th-icon,
+.reup-job-detail-log-rail .reup-runtime-grid-head .hub-users-th-icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+
+/* Runtime grid time column — muted 11px (parity P0003 `.hub-runtime-term__time`). */
+.stealth-runtime-history .reup-runtime-activity-time,
 .stealth-runtime-console .reup-runtime-activity-time,
 .reup-job-detail-log-rail .reup-runtime-activity-time {
   font-size: var(--hub-runtime-muted-size, var(--hub-table-muted-size, 11px));
@@ -354,6 +390,31 @@
   line-height: var(--hub-runtime-body-line-height, var(--hub-table-body-line-height, 1.45));
   color: var(--muted, rgb(100, 116, 139));
 }
+
+/* Shared grid body typography — font only; Console message color stays on level modifiers. */
+.stealth-runtime-history .reup-runtime-grid-body-text,
+.stealth-runtime-console .reup-runtime-grid-body-text,
+.reup-job-detail-log-rail .reup-runtime-grid-body-text {
+  font-family: inherit;
+  font-size: var(--hub-runtime-body-size, var(--hub-table-body-size, 12px));
+  font-weight: 400;
+  line-height: var(--hub-runtime-body-line-height, var(--hub-table-body-line-height, 1.45));
+}
+
+.stealth-runtime-history .reup-runtime-grid-body-text {
+  color: var(--text, rgb(226, 232, 240));
+}
+
+/* History job ID chip — muted meta parity Console time column (restore when ID column returns). */
+.stealth-runtime-history .reup-history-list__id-badge .hub-copy-badge--chip {
+  font-family: inherit;
+  font-size: var(--hub-runtime-muted-size, var(--hub-table-muted-size, 11px));
+  font-weight: 400;
+  line-height: var(--hub-runtime-body-line-height, var(--hub-table-body-line-height, 1.45));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Run History job title — layout in tool reup-runtime-rail.css; typography via .reup-runtime-grid-body-text. */
 
 .stealth-runtime-history .reup-runtime-duration-ms,
 .stealth-runtime-console .reup-runtime-duration-ms,

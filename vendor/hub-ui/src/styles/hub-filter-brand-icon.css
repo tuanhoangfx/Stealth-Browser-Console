@@ -5,8 +5,8 @@
 [data-hub-multi-filter-panel] img.hub-filter-brand-icon-bare,
 [data-hub-single-filter-panel] img.hub-filter-brand-icon-bare {
   box-sizing: border-box;
-  width: 14px !important;
-  height: 14px !important;
+  width: var(--hub-directory-header-glyph-px, 13px) !important;
+  height: var(--hub-directory-header-glyph-px, 13px) !important;
   flex-shrink: 0;
   object-fit: cover;
   border-radius: 9999px;
@@ -21,8 +21,8 @@
 [data-hub-multi-filter-panel] img.hub-filter-brand-icon--tile,
 [data-hub-single-filter-panel] img.hub-filter-brand-icon--tile {
   box-sizing: border-box;
-  width: 14px !important;
-  height: 14px !important;
+  width: var(--hub-directory-header-glyph-px, 13px) !important;
+  height: var(--hub-directory-header-glyph-px, 13px) !important;
   flex-shrink: 0;
   padding: 1px;
   border-radius: 4px;
@@ -36,8 +36,8 @@
 [data-hub-multi-filter-panel] img.hub-filter-brand-icon--dark-ink,
 [data-hub-single-filter-panel] img.hub-filter-brand-icon--dark-ink {
   box-sizing: border-box;
-  width: 14px !important;
-  height: 14px !important;
+  width: var(--hub-directory-header-glyph-px, 13px) !important;
+  height: var(--hub-directory-header-glyph-px, 13px) !important;
   flex-shrink: 0;
   padding: 1px;
   border-radius: 4px;
@@ -57,10 +57,15 @@
   user-select: none;
 }
 
-/* Safety net — any filter dropdown img without explicit brand class stays 14px. */
+.hub-filter-option-emoji {
+  font-size: var(--hub-filter-option-emoji-size, 1rem);
+  line-height: 1;
+}
+
+/* Safety net — any filter dropdown img without explicit brand class */
 .hub-filter-dropdown-list img,
 [data-hub-multi-filter-panel] img,
 [data-hub-single-filter-panel] img {
-  max-width: 14px !important;
-  max-height: 14px !important;
+  max-width: var(--hub-directory-header-glyph-px, 13px) !important;
+  max-height: var(--hub-directory-header-glyph-px, 13px) !important;
 }

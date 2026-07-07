@@ -27,6 +27,7 @@ function runToolScript(name, extraArgs = []) {
 }
 
 runToolScript("sync-hub-ui-vendor.cjs");
+runToolScript("audit-react-hook-imports.cjs", ["--sidebar", "P0003"]);
 runToolScript("sync-hub-brand-icons.mjs", ["--code", "P0003"]);
 runToolScript("sync-hub-tool-icons.mjs", ["--code", "P0003"]);
 runToolScript("sync-hub-identity-vendor.cjs");
@@ -35,6 +36,7 @@ run("sync-hub-env.mjs");
 run("sync-hub-boot-public.mjs");
 runToolScript("sync-app-icon.cjs", ["--code", "P0003"]);
 run("sync-app-version.mjs");
+run("sync-stealth-api-surface.mjs");
 run("ensure-better-sqlite3.mjs");
 run("ensure-electron-binary.cjs");
 run("electron-dev-gate.mjs");

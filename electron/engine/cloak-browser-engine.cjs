@@ -10,6 +10,7 @@ const {
 const { markProfileChromeCleanExit, chromeSessionRestoreSuppressionArgs } = require("../lib/profile-chrome-session.cjs");
 const { ensureProfileChromeOmniboxSearchPrefs } = require("../lib/profile-chrome-omnibox.cjs");
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
+const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
 const { createLaunchTimer } = require("../lib/profile-launch-timer.cjs");
 const {
   cookieBridgeEnabled,
@@ -59,13 +60,16 @@ function profileDataDir(userDataRoot, profileId) {
   return path.join(userDataRoot, "profiles", String(profileId));
 }
 
+const { formatProxyForLaunch, toPlaywrightProxy } = require("../lib/proxy-pool.cjs");
+
 function proxyLaunchExtras(proxy) {
-  if (!proxy) return {};
+  const normalized = formatProxyForLaunch(proxy);
+  if (!normalized) return {};
   try {
     require.resolve("mmdb-lib");
-    return { proxy, geoip: true };
+    return { proxy: normalized, geoip: true };
   } catch {
-    return { proxy };
+    return { proxy: normalized };
   }
 }
 
@@ -217,9 +221,10 @@ function resolveExtraExtensionDirs(userDataRoot) {
 
 function buildLaunchOptions(profile, userDataDir, userDataRoot = "") {
   const proxy = String(profile.proxy || "").trim();
+  const agentSmoke = isAgentSmokeLaunch();
   const options = {
     userDataDir,
-    headless: profile.headless === true,
+    headless: profile.headless === true || agentSmoke,
     humanize: profile.humanize !== false,
     stealthArgs: false,
     ...proxyLaunchExtras(proxy),
@@ -403,12 +408,19 @@ async function launchStealthPersistentContext(profileOptions) {
     args = [...args, `--remote-debugging-port=${debugPort}`, "--remote-debugging-address=127.0.0.1"];
   }
 
+  const playwrightProxy = toPlaywrightProxy(options.proxy);
+  const proxyLaunch = playwrightProxy
+    ? { proxy: playwrightProxy }
+    : launchOpts.proxy
+      ? { proxy: launchOpts.proxy }
+      : {};
+
   const context = await chromium.launchPersistentContext(userDataDir, {
     executablePath: launchOpts.executablePath,
     headless: options.headless ?? false,
     args,
     ignoreDefaultArgs: buildIgnoreDefaultArgs(),
-    ...(launchOpts.proxy ? { proxy: launchOpts.proxy } : {}),
+    ...proxyLaunch,
     ...buildContextOptions(options)
   });
 

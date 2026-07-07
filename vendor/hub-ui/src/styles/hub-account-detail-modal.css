@@ -3,20 +3,63 @@
 
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
   --hub-modal-max-w: min(96rem, calc(100vw - var(--app-sidebar-width, 0px) - 1.5rem));
-  --hub-modal-max-h: 960px;
-  --hub-modal-max-vh: 92vh;
+  --hub-modal-max-h: 768px;
+  --hub-modal-max-vh: 73.6vh;
   --hub-tool-detail-rail-w: min(22rem, 34%);
-  --hub-tool-detail-split-min-h: 28rem;
+  --hub-tool-detail-split-min-h: 22.4rem;
+  --hub-adm-label-w: 6.5rem;
+  --hub-adm-field-gap: 0.7rem;
+  --hub-adm-value-h: var(--hub-control-h, 26px);
+  --hub-control-h: 26px;
+  --hub-table-header-size: 12px;
+  --hub-table-body-size: 12px;
 
   height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
-  min-height: min(640px, var(--hub-modal-max-vh));
+  min-height: min(512px, var(--hub-modal-max-vh));
   max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
+/* ADM glow + typography — detail modal + add modal (SSOT). */
+.hub-account-detail-modal,
+.hub-add-modal {
+  --hub-adm-glow-strength: 1;
+  --hub-adm-glow-rgb: 129 140 248;
+  --hub-adm-glow-accent-rgb: 99 102 241;
+  --hub-adm-glow-hover-bg: rgb(var(--hub-adm-glow-rgb) / calc(0.03 * var(--hub-adm-glow-strength)));
+  --hub-adm-glow-hover-ring: 0 0 0 1px rgb(var(--hub-adm-glow-rgb) / calc(0.2 * var(--hub-adm-glow-strength)));
+  --hub-adm-glow-edit-bg: rgb(var(--hub-adm-glow-rgb) / calc(0.04 * var(--hub-adm-glow-strength)));
+  --hub-adm-glow-edit-ring: 0 0 0 1px rgb(var(--hub-adm-glow-rgb) / calc(0.34 * var(--hub-adm-glow-strength)));
+  --hub-adm-glow-focus-border: rgb(var(--hub-adm-glow-accent-rgb) / calc(0.55 * var(--hub-adm-glow-strength)));
+  --hub-adm-glow-focus-bg: rgb(var(--hub-adm-glow-accent-rgb) / calc(0.05 * var(--hub-adm-glow-strength)));
+  --hub-adm-glow-focus-ring:
+    0 0 0 1px var(--hub-adm-glow-focus-border),
+    0 0 0 2px rgb(var(--hub-adm-glow-accent-rgb) / calc(0.1 * var(--hub-adm-glow-strength)));
+  --hub-adm-section-glow: 0 0 0 1px rgb(var(--hub-adm-glow-rgb) / calc(0.13 * var(--hub-adm-glow-strength)));
+
+  /* Unified 12px — nav semibold (600); label medium (500); value regular (400); mono semibold (600) */
+  --hub-adm-type-size: 12px;
+  --hub-adm-type-line: 1.45;
+  --hub-adm-type-label-weight: 500;
+  --hub-adm-type-value-weight: 400;
+  --hub-adm-type-mono-weight: 600;
+  --hub-adm-type-label-color: rgb(148 163 184);
+  --hub-adm-type-value-color: rgb(203 213 225);
+  --hub-adm-type-muted-color: rgb(100 116 139);
+  --hub-adm-type-nav-size: var(--hub-adm-type-size);
+  --hub-adm-type-nav-weight: 600;
+  --hub-adm-type-nav-line: 1.4;
+  --hub-adm-type-nav-color: var(--muted);
+}
+
+.hub-account-detail-modal.hub-adm-glow--subtle,
+.hub-add-modal.hub-adm-glow--subtle {
+  --hub-adm-glow-strength: 0.72;
 }
 
 /* Never content-fit — overrides accidental hub-header-panel-modal combo. */
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal.hub-header-panel-modal {
   height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
-  min-height: min(640px, var(--hub-modal-max-vh));
+  min-height: min(512px, var(--hub-modal-max-vh));
 }
 
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-modal__scroll {
@@ -74,18 +117,882 @@
   max-height: 100%;
 }
 
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-toc-highlight-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+  width: 100%;
+}
+
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-panel {
   flex: 0 0 auto;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal .hub-tool-detail-panel.hub-tool-detail-panel--grow {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Section head icons — Navigate · Credentials · Note · Change log */
+.hub-account-detail-section-icon {
+  flex-shrink: 0;
+}
+
+.hub-account-detail-section-icon--indigo {
+  color: rgb(129, 140, 248);
+}
+
+.hub-account-detail-section-icon--emerald {
+  color: rgb(52, 211, 153);
+}
+
+.hub-account-detail-section-icon--amber {
+  color: rgb(251, 191, 36);
+}
+
+.hub-account-detail-section-icon--violet {
+  color: rgb(167, 139, 250);
+}
+
+.hub-account-detail-section-icon--sky {
+  color: rgb(56, 189, 248);
+}
+
+/* Subsection frames — faint glow instead of hard border */
+.hub-adm-section-block {
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: var(--hub-adm-section-glow);
+}
+
+.hub-adm-section-block__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hub-adm-section-block__rows > .hub-adm-section-label + .twofa-adm-form-row,
+.hub-adm-section-block > .hub-adm-section-label + .hub-adm-section-block__rows {
+  margin-top: 0.35rem;
+}
+
+.hub-adm-section-icon--slate {
+  color: rgb(148, 163, 184);
+}
+
+.hub-adm-section-icon--rose {
+  color: rgb(251, 113, 133);
+}
+
+.hub-adm-section-icon--cyan {
+  color: rgb(34, 211, 238);
+}
+
+.hub-adm-section-icon--amber {
+  color: rgb(251, 191, 36);
+}
+
+.hub-adm-section-icon--violet {
+  color: rgb(167, 139, 250);
+}
+
+.hub-adm-section-icon--indigo {
+  color: rgb(129, 140, 248);
+}
+
+.hub-adm-section-icon--sky {
+  color: rgb(56, 189, 248);
+}
+
+.hub-adm-section-icon--teal {
+  color: rgb(45, 212, 191);
+}
+
+.hub-adm-section-icon--lime {
+  color: rgb(163, 230, 53);
+}
+
+.hub-adm-section-label {
+  margin: 0;
+  padding: 0;
+}
+
+.hub-adm-section-label__inner .hub-users-th-text {
+  font-size: var(--hub-adm-type-size, var(--hub-table-header-size, 12px));
+  font-weight: var(--hub-adm-type-label-weight, 500);
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--hub-adm-type-label-color, rgb(148, 163, 184));
+}
+
+.hub-adm-section-label + .twofa-adm-form-row,
+.hub-adm-section-label + .hub-adm-form-row,
+.hub-adm-section-block > .hub-adm-section-label + .twofa-adm-form-row {
+  margin-top: 0.35rem;
+}
+
+.hub-adm-credentials-stack,
+.hub-tool-detail-panel__body > .hub-adm-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hub-tool-detail-panel__head-extra {
+  flex-shrink: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-control,
+:is(.hub-account-detail-modal, .hub-add-modal) .field.auth-gate-field.twofa-adm-control {
+  padding: 0.1rem 0.4rem;
+  line-height: 1.25;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__label .hub-users-th-icon {
+  width: 12px;
+  height: 12px;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__label .hub-users-th-text,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-inline-field__label .hub-users-th-text {
+  font-size: var(--hub-adm-type-size, var(--hub-table-header-size, 12px));
+  font-weight: var(--hub-adm-type-label-weight, 500);
+  letter-spacing: 0.01em;
+  color: var(--hub-adm-type-label-color, rgb(148, 163, 184));
+}
+
+/* Golden 3-column aligned form grid — Account detail modals */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned {
+  display: grid;
+  grid-template-columns:
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr);
+  column-gap: var(--hub-adm-field-gap);
+  row-gap: 0.35rem;
+  align-items: center;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-adm-inline-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .hub-adm-inline-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .twofa-adm-inline-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .twofa-adm-inline-field {
+  display: contents;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .hub-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .twofa-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .twofa-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-directory-popover-anchor,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .hub-directory-popover-anchor {
+  min-width: var(--hub-adm-label-w);
+  max-width: var(--hub-adm-label-w);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.hub-adm-form-row--aligned,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.twofa-adm-form-row--aligned,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row.hub-adm-form-row--aligned,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row.twofa-adm-form-row--aligned {
+  grid-template-columns:
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .hub-adm-inline-field__value,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .twofa-adm-inline-field__value,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row time,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .hub-copy-badge,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row .twofa-adm-inline-field__value,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row time,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row .hub-copy-badge {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 {
+  display: grid;
+  grid-template-columns:
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .hub-adm-inline-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .hub-adm-inline-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .twofa-adm-inline-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .twofa-adm-inline-field {
+  display: contents;
+}
+
+/* TOTP code + period — standard 3-col slots (code · time · empty) */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-grid-slot-spacer {
+  grid-column: 3 / -1;
+  min-height: var(--hub-adm-value-h);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-grid-slot-spacer--tail {
+  grid-column: 5 / -1;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--code-line .twofa-adm-hero__code {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow: visible;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-inline-field__value,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing {
+  min-width: 0;
+  width: 100%;
+  min-height: var(--hub-adm-value-h);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: var(--hub-adm-type-size, var(--hub-table-body-size, 12px));
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  color: var(--hub-adm-type-value-color, rgb(203, 213, 225));
+  line-height: var(--hub-adm-type-line, var(--hub-table-body-line-height, 1.45));
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value time {
+  font: inherit;
+  color: inherit;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--hub-adm-value-h);
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.28rem;
+  transition:
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit:hover,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit:focus-visible {
+  background: var(--hub-adm-glow-hover-bg);
+  box-shadow: var(--hub-adm-glow-hover-ring);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .hub-adm-click-edit--editing {
+  border-radius: 0.28rem;
+  background: var(--hub-adm-glow-edit-bg);
+  box-shadow: var(--hub-adm-glow-edit-ring);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit--editing {
+  display: flex;
+  width: 100%;
+  min-height: var(--hub-adm-value-h);
+  padding: 0;
+  cursor: default;
+  background: transparent;
+  box-shadow: none;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__text {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__text--empty {
+  color: rgb(100, 116, 139);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__text--multiline {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  text-overflow: unset;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-1 .hub-adm-click-edit__text--multiline {
+  -webkit-line-clamp: 1;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-2 .hub-adm-click-edit__text--multiline {
+  -webkit-line-clamp: 2;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-3 .hub-adm-click-edit__text--multiline {
+  -webkit-line-clamp: 3;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline .hub-adm-click-edit {
+  align-items: flex-start;
+}
+
+/* Full-width detail row — label col 1, value spans cols 2–6 (golden 3-slot grid). */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline > .hub-adm-inline-field__label {
+  grid-column: 1;
+  align-self: start;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline > .hub-adm-inline-field__value {
+  grid-column: 2 / -1;
+  min-width: 0;
+  align-self: center;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline .hub-adm-click-edit {
+  align-items: center;
+  width: 100%;
+  min-height: var(--hub-adm-value-h);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline .hub-adm-click-edit__text--multiline {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline .hub-adm-click-edit__action {
+  align-self: center;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--readonly > .hub-adm-inline-field__label {
+  grid-column: 1;
+  align-self: start;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--readonly > .hub-adm-inline-field__value {
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline.hub-adm-inline-field--readonly .hub-adm-readonly-value--static {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline-2.hub-adm-inline-field--readonly .hub-adm-readonly-value--static {
+  -webkit-line-clamp: 2;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__textarea {
+  min-height: calc(var(--hub-adm-value-h, 1.65rem) * 2);
+  height: auto;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-date {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-date__trigger {
+  width: 100% !important;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: rgb(100, 116, 139);
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__chevron {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: rgb(100, 116, 139);
+  opacity: 0.7;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit:hover .hub-adm-click-edit__action,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit:focus-visible .hub-adm-click-edit__action {
+  opacity: 1;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger:hover .hub-adm-click-filter__chevron,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger:focus-visible .hub-adm-click-filter__chevron,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger[aria-expanded="true"] .hub-adm-click-filter__chevron {
+  opacity: 1;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: var(--hub-adm-value-h);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter.relative {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 0.2rem;
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+  height: var(--hub-adm-value-h) !important;
+  min-height: var(--hub-adm-value-h) !important;
+  padding: 0 0.15rem !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgb(203, 213, 225) !important;
+  box-shadow: none !important;
+  font-size: var(--hub-table-body-size, 12px) !important;
+  font-weight: 400 !important;
+  line-height: var(--hub-table-body-line-height, 1.45) !important;
+  letter-spacing: normal !important;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.2rem;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger .hub-adm-click-edit__text {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--click-filter .hub-adm-click-filter__trigger:hover,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--click-filter .hub-adm-click-filter__trigger:focus-visible,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger:hover {
+  background: var(--hub-adm-glow-hover-bg) !important;
+  box-shadow: var(--hub-adm-glow-hover-ring) !important;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger[aria-expanded="true"] {
+  background: var(--hub-adm-glow-edit-bg) !important;
+  box-shadow: var(--hub-adm-glow-edit-ring) !important;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__input,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit--editing .field,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit--editing .twofa-adm-control {
+  width: 100%;
+  min-width: 0;
+  height: var(--hub-adm-value-h);
+  min-height: var(--hub-adm-value-h);
+  padding: 0 0.35rem;
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  border-radius: 0.28rem;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .hub-adm-click-edit--editing:focus-within {
+  background: var(--hub-adm-glow-focus-bg);
+  box-shadow: var(--hub-adm-glow-focus-ring);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .hub-adm-click-edit__input:focus,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing input:focus,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .twofa-adm-password-field:focus-within {
+  outline: none;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .hub-adm-click-edit__input:focus,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing input:focus,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .twofa-adm-password-field:focus-within input {
+  border-color: transparent !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--hub-adm-value-h);
+  padding: 0 0.15rem;
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: rgb(203, 213, 225);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value--inline {
+  gap: 0.2rem;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value--empty {
+  color: rgb(100, 116, 139);
+}
+
+/* Static read-only — no hover glow; tooltip via `title` on child or label `HubDirectoryColumnHint` */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value--static {
+  cursor: default;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--readonly:hover .hub-adm-readonly-value--static,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--readonly:focus-within .hub-adm-readonly-value--static {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Legacy twofa class aliases — migrate callers to hub-adm-* */
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-click-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-click-edit__text--empty {
+  color: rgb(100, 116, 139);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-click-edit__btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-inline-field--click-edit:hover .twofa-adm-click-edit__btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-toc-nav__label {
+  font-size: var(--hub-adm-type-nav-size, 12px);
+  font-weight: var(--hub-adm-type-nav-weight, 600);
+  line-height: var(--hub-adm-type-nav-line, 1.4);
+  color: var(--hub-adm-type-nav-color, var(--muted));
+  letter-spacing: normal;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-toc-nav__item:hover .hub-toc-nav__label {
+  color: var(--text);
+}
+
+/* ADM nav tier — panel/rail heads (`HUB_ADM_TYPE_NAV_CLASS`) */
+.hub-adm-type-nav {
+  font-size: var(--hub-adm-type-nav-size, 12px);
+  font-weight: var(--hub-adm-type-nav-weight, 600);
+  line-height: var(--hub-adm-type-nav-line, 1.4);
+  color: var(--hub-adm-type-nav-color, var(--muted));
+  letter-spacing: normal;
+}
+
+/* ADM typography tiers — label (500) · value (400) · mono (600) @ 12px */
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-form-field-label {
+  font-size: var(--hub-adm-type-size, 12px);
+  font-weight: var(--hub-adm-type-label-weight, 500);
+  line-height: var(--hub-adm-type-line, 1.45);
+  letter-spacing: 0.01em;
+  color: var(--hub-adm-type-label-color, rgb(148, 163, 184));
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .field,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__input,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-users-cell-muted {
+  font-size: var(--hub-adm-type-size, 12px);
+  line-height: var(--hub-adm-type-line, 1.45);
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-users-cell-muted {
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  color: var(--hub-adm-type-muted-color, rgb(100, 116, 139));
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-type-mono,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-code-badge,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-copy-badge {
+  font-size: var(--hub-adm-type-size, 12px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-weight: var(--hub-adm-type-mono-weight, 600);
+  line-height: 1.3;
 }
 
 @media (max-width: 1023px) {
   .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
     --hub-tool-detail-rail-w: min(18rem, 36%);
   }
+
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned:not(.hub-adm-meta-row):not(.twofa-adm-meta-row):not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2),
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned:not(.hub-adm-meta-row):not(.twofa-adm-meta-row):not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2) {
+    grid-template-columns:
+      var(--hub-adm-label-w) minmax(0, 1fr)
+      var(--hub-adm-label-w) minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
   .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
-    --hub-tool-detail-split-min-h: 22rem;
+    --hub-tool-detail-split-min-h: 17.6rem;
+    --hub-adm-label-w: 5.75rem;
   }
+
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned,
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 {
+    grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
+  }
+
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .hub-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .twofa-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .twofa-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .hub-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .hub-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .twofa-adm-inline-field,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .twofa-adm-inline-field {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
+  }
+
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.hub-adm-form-row--aligned,
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.twofa-adm-form-row--aligned,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row.hub-adm-form-row--aligned,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row.twofa-adm-form-row--aligned {
+    grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
+  }
+}
+
+.hub-account-detail-modal__split {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.hub-account-detail-modal__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--note {
+  flex: 2 1 0;
+  min-height: 6rem;
+}
+
+.hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--log {
+  flex: 3 1 0;
+  min-height: 5.5rem;
+}
+
+/* Note rail — Search note + filter (P0020 Mail golden SSOT). */
+.hub-account-detail-modal .hub-tool-detail-rail__body--note,
+.hub-account-detail-modal .hub-adm-note-rail__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0.45rem;
+  gap: 0.45rem;
+  overflow: hidden;
+}
+
+.hub-adm-note-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.hub-adm-note-search-wrap .hub-form-field-label {
+  margin-bottom: 0;
+}
+
+.hub-adm-note-search {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.hub-account-detail-modal .hub-adm-note-search__field input.field {
+  font-size: var(--hub-table-body-size, 12px);
+  line-height: var(--hub-table-body-line-height, 1.45);
+}
+
+.hub-adm-note-search__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-adm-note-search__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.hub-adm-note-search__count {
+  min-width: 2.1rem;
+  font-size: var(--hub-adm-type-size, 12px);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  color: var(--hub-adm-type-muted-color, rgb(100, 116, 139));
+  text-align: right;
+}
+
+.hub-adm-note-search__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: rgb(148, 163, 184);
+  cursor: pointer;
+}
+
+.hub-adm-note-search__btn:hover:not(:disabled) {
+  color: rgb(226, 232, 240);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.hub-adm-note-search__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hub-adm-note-readonly-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--hub-adm-type-size, 12px);
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  line-height: var(--hub-adm-type-line, 1.45);
+  color: var(--hub-adm-type-value-color, rgb(203, 213, 225));
+}
+
+.hub-adm-note-editor {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.hub-adm-note-editor__backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 0.45rem;
+}
+
+.hub-adm-note-editor__mirror {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  padding: 0.45rem 0.55rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: var(--hub-adm-type-line, 1.45);
+  font-size: var(--hub-adm-type-size, 12px);
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  color: var(--hub-adm-type-value-color, rgb(226, 232, 240));
+}
+
+.hub-adm-note-mark {
+  border-radius: 0.15rem;
+  background: rgba(34, 211, 238, 0.32);
+  color: inherit;
+  padding: 0;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.28);
+}
+
+.hub-adm-note-mark--active {
+  background: rgba(251, 191, 36, 0.55);
+  color: rgb(255, 251, 235);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.65);
+}
+
+.hub-adm-note-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 5.5rem;
+  height: 100%;
+  resize: vertical;
+  line-height: var(--hub-adm-type-line, 1.45);
+  font-size: var(--hub-adm-type-size, 12px);
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  padding: 0.45rem 0.55rem;
+}
+
+.hub-adm-note-textarea--searching {
+  color: transparent;
+  caret-color: rgb(226, 232, 240);
+}
+
+.hub-adm-note-textarea--searching::selection {
+  color: transparent;
+  background: rgba(129, 140, 248, 0.45);
 }

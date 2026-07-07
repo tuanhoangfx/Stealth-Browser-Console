@@ -37,11 +37,14 @@ export const HUB_DIRECTORY_SELECT_COLGROUP_WIDTH = "3%";
 
 /** Modal directory tables — golden wrap chrome + horizontal scroll inside section. */
 export const HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS =
-  "hub-users-table-wrap hub-modal-directory-table-wrap min-w-0 overflow-x-auto";
+  "hub-users-table-wrap hub-modal-directory-table-wrap hub-scrollbar min-w-0 overflow-x-auto";
 
 /** Default wrap for HubDirectoryTableShell — Users golden (border applied in shell). */
 export const HUB_DIRECTORY_USER_TABLE_WRAP_CLASS = `hub-users-table-wrap ${HUB_DIRECTORY_TABLE_SCROLL_CLASS}`;
 export const HUB_DIRECTORY_TABLE_WRAP_CLASS = HUB_DIRECTORY_USER_TABLE_WRAP_CLASS;
+
+/** Predictable directory cell shapes — auto left-align header when columnKind is code/date. */
+export type HubDirectoryColumnKind = "code" | "date";
 
 /** Column meta input — width is SSOT for colgroup (`table-layout: fixed`). % values are relative weights per visible set (scaled to 100% in buildDirectoryColumns). */
 export type HubDirectoryColumnMetaInput = {
@@ -55,6 +58,8 @@ export type HubDirectoryColumnMetaInput = {
   headerEmoji?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
+  columnKind?: HubDirectoryColumnKind;
+  headerAlign?: "start" | "center";
 };
 
 export type HubDirectoryColumnDef<TKey extends string = string> = {
@@ -154,6 +159,9 @@ export function buildDirectoryColumns<TKey extends string>(
       role: def.role,
       width: def.width,
       sortable: options?.sortable ?? true,
+      headerAlign:
+        def.headerAlign ??
+        (def.columnKind === "code" || def.columnKind === "date" ? "start" : undefined),
       headerIcon: def.headerIcon,
       headerIconClassName: def.headerIconClassName,
       headerBrandIcon: def.headerBrandIcon,

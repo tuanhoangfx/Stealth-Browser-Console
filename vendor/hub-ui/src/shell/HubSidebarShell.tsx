@@ -9,7 +9,7 @@ export const HUB_SIDEBAR_SHELL_BRAND_TITLE_CLASS =
 /** @deprecated Sidebar brand is logo + title only — do not use for new UI. */
 export const HUB_SIDEBAR_SHELL_BRAND_TAGLINE_CLASS = "text-[10px] text-[var(--muted)]";
 
-export const HUB_SIDEBAR_SHELL_NAV_CLASS = "min-h-0 flex-1 space-y-0.5 overflow-y-auto";
+export const HUB_SIDEBAR_SHELL_NAV_CLASS = "hub-scrollbar min-h-0 flex-1 space-y-0.5 overflow-y-auto";
 
 export const HUB_SIDEBAR_SHELL_FOOTER_CLASS =
   "mt-2 shrink-0 space-y-0.5 overflow-visible border-t border-white/5 pt-2.5";

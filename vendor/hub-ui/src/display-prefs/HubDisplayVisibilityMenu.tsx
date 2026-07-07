@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ChevronDown } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
+import { HUB_FILTER_DROPDOWN_LIST_CLASS } from "../shell/filter-dropdown-primitives";
 import { compactIconSize } from "../ui-scale";
 import { ToggleRow } from "./primitives";
 import type { PrefItem } from "./types";
@@ -66,7 +67,7 @@ export function HubDisplayVisibilityMenu({
         <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (
-        <div className="anim-pop absolute right-0 top-full z-30 mt-1 max-h-[min(60vh,16rem)] min-w-[12.5rem] overflow-y-auto rounded-xl border border-white/10 bg-[var(--panel)] p-1 shadow-xl shadow-black/40">
+        <div className={`anim-pop absolute right-0 top-full z-30 mt-1 min-w-[12.5rem] rounded-xl border border-white/10 bg-[var(--panel)] p-1 shadow-xl shadow-black/40 ${HUB_FILTER_DROPDOWN_LIST_CLASS} max-h-[min(60vh,16rem)]`}>
           {items.map((item) => {
             const selected = isHubPrefVisible(visibleSet, defaults, item.key);
             return (

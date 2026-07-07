@@ -1,5 +1,6 @@
-import type { RunHistoryItem } from "../../types";
+import type { RunHistoryItem, RunLogEntry } from "../../types";
 import { formatRunDuration, formatRunTimestamp } from "../../lib/stealth-profile-utils";
+import type { ConsoleLog } from "../runtime/RunLogsContext";
 
 export type ProfileRunLogFilter = "all" | "today" | "errors";
 
@@ -117,4 +118,104 @@ export function filterProfileRunLogs(
   if (filter === "errors") return entries.filter((entry) => entry.status === "failed");
   if (filter === "today") return entries.filter((entry) => isProfileRunLogToday(entry, now));
   return entries;
+}
+
+export type ProfileConsoleLine = {
+  id: string;
+  level: RunLogEntry["level"] | "success" | "failed" | "running";
+  time: string;
+  source: string;
+  message: string;
+};
+
+function runStatusToLevel(status: RunHistoryItem["status"]): ProfileConsoleLine["level"] {
+  if (status === "failed") return "error";
+  if (status === "success") return "success";
+  return "info";
+}
+
+export function bulkActivityToConsoleLines(entries: ProfileActivityLogEntry[]): ProfileConsoleLine[] {
+  return entries.map((entry, index) => ({
+    id: entry.id || `bulk-${entry.startedAt}-${index}`,
+    level: entry.status === "failed" ? "error" : entry.status === "success" ? "success" : "info",
+    time: entry.finishedAt || entry.startedAt || new Date(0).toISOString(),
+    source: "Lifecycle",
+    message: entry.message,
+  }));
+}
+
+/** Merge session console lines (source = profile name) + persisted workflow runs + lifecycle events. */
+export function buildProfileConsoleLines(
+  profileId: string,
+  profileName: string,
+  history: RunHistoryItem[],
+  consoleLogs: ConsoleLog[],
+  profileEvents: import("../../types").ProfileEvent[] = [],
+): ProfileConsoleLine[] {
+  const nameKey = profileName.trim();
+  const runLines: ProfileConsoleLine[] = history
+    .filter((run) => run.profileId === profileId)
+    .map((run) => ({
+      id: `run-${run.id || run.startedAt}`,
+      level: runStatusToLevel(run.status),
+      time: run.finishedAt || run.startedAt || new Date(0).toISOString(),
+      source: run.workflow || "Workflow",
+      message: profileRunLogMessage(run),
+    }));
+
+  const consoleLines: ProfileConsoleLine[] = consoleLogs
+    .filter((log) => log.source.trim() === nameKey)
+    .map((log) => ({
+      id: log.id,
+      level: log.level,
+      time: log.time,
+      source: log.source,
+      message: log.message,
+    }));
+
+  const eventLines: ProfileConsoleLine[] = profileEvents
+    .filter((event) => event.profileId === profileId)
+    .map((event) => ({
+      id: `event-${event.id}`,
+      level: profileEventLevel(event.level),
+      time: event.createdAt,
+      source: "Lifecycle",
+      message: event.message || event.eventType,
+    }));
+
+  return [...consoleLines, ...runLines, ...eventLines].sort(
+    (a, b) => consoleLineTimestamp(b) - consoleLineTimestamp(a),
+  );
+}
+
+function profileEventLevel(level: string): ProfileConsoleLine["level"] {
+  if (level === "error") return "error";
+  if (level === "success") return "success";
+  if (level === "warn" || level === "warning") return "warn";
+  return "info";
+}
+
+function consoleLineTimestamp(line: ProfileConsoleLine): number {
+  const ms = Date.parse(line.time);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+export function isProfileConsoleLineToday(line: ProfileConsoleLine, now = new Date()): boolean {
+  const ms = consoleLineTimestamp(line);
+  if (!ms) return false;
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  return ms >= start.getTime();
+}
+
+export function filterProfileConsoleLines(
+  lines: ProfileConsoleLine[],
+  filter: ProfileRunLogFilter,
+  now = new Date(),
+): ProfileConsoleLine[] {
+  if (filter === "errors") {
+    return lines.filter((line) => line.level === "error" || line.level === "failed");
+  }
+  if (filter === "today") return lines.filter((line) => isProfileConsoleLineToday(line, now));
+  return lines;
 }

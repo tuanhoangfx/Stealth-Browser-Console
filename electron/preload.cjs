@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld("stealthApi", {
     return () => ipcRenderer.removeListener("profiles:backupProgress", listener);
   },
   listRuns: (payload) => invoke("runs:list", payload),
+  listProfileEvents: (payload) => invoke("profileEvents:list", payload),
   openUrl: (payload) => invoke("automation:openUrl", payload),
   appInfo: () => invoke("app:info"),
   openDataFolder: () => invoke("app:openDataFolder"),

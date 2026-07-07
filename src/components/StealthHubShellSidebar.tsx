@@ -1,18 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { LogIn, RefreshCcw } from "lucide-react";
 import { hubSessionLabels } from "@tool-workspace/hub-identity";
 import {
   HubLogButton,
+  HubSidebarBrandIcon,
   HubSidebarFooterButton,
   HubSidebarNavList,
   HubSidebarShell,
-  HubToolAvatar,
   HubUiZoomControl,
   HubWorkspaceUserAvatar,
   HubWorkspaceUserModal,
   HubWorkspaceUserShell,
-  readHubListPrefsCore,
-  subscribeHubListPrefs,
   useNavGroupOpenState,
   useWorkspaceRoleKey,
 } from "@tool-workspace/hub-ui";
@@ -61,10 +59,6 @@ export function StealthHubShellSidebar({
   const { session, offline, signOut } = useStealthAuth();
   const showAnonymous = hubAuthEnabled && offline;
   const { groupOpen, setGroupSubnavOpen } = useNavGroupOpenState(STEALTH_NAV_SUBNAV_PREFIX, STEALTH_NAV_GROUP_IDS);
-  const [showSubnavToggleIcon, setShowSubnavToggleIcon] = useState(() => {
-    const prefs = readHubListPrefsCore() as { navToggleIcon?: boolean };
-    return Boolean(prefs.navToggleIcon);
-  });
   const [refreshing, setRefreshing] = useState(false);
   const labels = hubSessionLabels(session);
   const { roleKey } = useWorkspaceRoleKey(session, {
@@ -72,15 +66,6 @@ export function StealthHubShellSidebar({
     profileRoleUserId: session?.user?.id,
     profileRoleEmail: session?.user?.email,
   });
-
-  useEffect(
-    () =>
-      subscribeHubListPrefs(() => {
-        const prefs = readHubListPrefsCore() as { navToggleIcon?: boolean };
-        setShowSubnavToggleIcon(Boolean(prefs.navToggleIcon));
-      }),
-    [],
-  );
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -92,9 +77,7 @@ export function StealthHubShellSidebar({
 
   return (
     <HubSidebarShell
-      brandLeading={
-        <HubToolAvatar code={STEALTH_PRODUCT.code} size="md" svgSrc={STEALTH_BRAND_ICON} />
-      }
+      brandLeading={<HubSidebarBrandIcon src={STEALTH_BRAND_ICON} alt={STEALTH_PRODUCT.name} />}
       brandTitle={STEALTH_PRODUCT.name}
       nav={
         <HubSidebarNavList
@@ -105,7 +88,7 @@ export function StealthHubShellSidebar({
           }
           groupOpen={groupOpen}
           setGroupSubnavOpen={setGroupSubnavOpen}
-          showToggleIcon={showSubnavToggleIcon}
+          showToggleIcon={false}
           onNavigateScreen={onNavigate}
           onSelectView={(view, parentScreen) => {
             if (parentScreen === "system" && isStealthSystemTab(view)) {

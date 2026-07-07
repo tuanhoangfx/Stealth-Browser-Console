@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Archive } from "lucide-react";
-import { HubListChromeHeader, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
-import { buildConsoleVersionMetaItems } from "../../lib/hub-tab-header-meta";
+import { HubListChromeHeader, buildConsoleVersionMetaItems, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
+import { APP_VERSION } from "../../lib/app-meta";
+import toolManifest from "../../../tool.manifest.json";
 
 export function SystemBackupChromeHeader({
   centerStats,
@@ -16,7 +17,7 @@ export function SystemBackupChromeHeader({
       titleIcon={Archive}
       titleIconClass="text-amber-300"
       title="Backup"
-      metaItems={buildConsoleVersionMetaItems()}
+      metaItems={buildConsoleVersionMetaItems(APP_VERSION, toolManifest)}
       centerStats={centerStats ?? []}
       actions={actions}
     />

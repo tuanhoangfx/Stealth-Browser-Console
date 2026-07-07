@@ -8,13 +8,13 @@ export function MetaChip({
   icon,
   label,
   tone,
-  title,
   className = "",
   labelClassName = "",
 }: {
   icon: ReactNode;
   label: string;
   tone: MetaTone;
+  /** @deprecated Body cells use no hover tooltip — header hints only. */
   title?: string;
   className?: string;
   labelClassName?: string;
@@ -32,7 +32,6 @@ export function MetaChip({
   return (
     <span
       className={`inline-flex max-w-[11rem] items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium leading-4 ${toneClass} ${className}`}
-      title={title}
     >
       <span className="shrink-0">{icon}</span>
       <span className={labelClassName || "truncate"}>{label}</span>
@@ -61,29 +60,30 @@ export function CopyMetaChip({
 }) {
   const { copied, flash } = useHubCopyFlash();
 
+  const chipButton = (
+    <button
+      type="button"
+      className="group inline-flex max-w-full"
+      onClick={(e) => {
+        e.stopPropagation();
+        void navigator.clipboard?.writeText(value).then(() => {
+          flash();
+          onCopied?.();
+        });
+      }}
+    >
+      <MetaChip
+        icon={icon}
+        label={label}
+        tone={tone}
+        className={className}
+        labelClassName={labelClassName}
+      />
+    </button>
+  );
+
   return (
-    <HubCopyTickWrap copied={copied}>
-      <button
-        type="button"
-        title={title ?? "Copy"}
-        className="group inline-flex max-w-full"
-        onClick={(e) => {
-          e.stopPropagation();
-          void navigator.clipboard?.writeText(value).then(() => {
-            flash();
-            onCopied?.();
-          });
-        }}
-      >
-        <MetaChip
-          icon={icon}
-          label={label}
-          tone={tone}
-          className={className}
-          labelClassName={labelClassName}
-        />
-      </button>
-    </HubCopyTickWrap>
+    <HubCopyTickWrap copied={copied}>{chipButton}</HubCopyTickWrap>
   );
 }
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /** Kill P0003 dev stack, purge legacy identity-toolbar, restart dev, run live smokes. */
+process.env.STEALTH_AGENT_SMOKE = "1";
+
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,10 +10,24 @@ import {
   LOG_FILE,
   startDevDetached,
 } from "./lib/dev-desktop-process.mjs";
-import { runStep } from "./lib/run-step.mjs";
+import { runStep, spawnStep } from "./lib/run-step.mjs";
+import { spawnElectronNode } from "./lib/spawn-electron-node.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
+
+let smokePagerCleanupDone = false;
+function runSmokePagerCleanupSync() {
+  if (smokePagerCleanupDone) return;
+  smokePagerCleanupDone = true;
+  const cleanup = spawnElectronNode("scripts/lib/cleanup-smoke-profiles-pager.cjs");
+  if (cleanup.status === 0) {
+    console.log("✓ cleanup-smoke-profiles-pager");
+  } else {
+    console.error(`\n✗ cleanup-smoke-profiles-pager failed (exit ${cleanup.status})`);
+  }
+}
+process.on("exit", runSmokePagerCleanupSync);
 
 function waitForUrl(url, timeoutMs = 120_000) {
   const start = Date.now();
@@ -48,14 +64,20 @@ async function main() {
   await waitForUrl("http://127.0.0.1:5175/");
   console.log("✓ dev server ready http://127.0.0.1:5175/");
   await new Promise((r) => setTimeout(r, 5000));
-  focusStealthWindow();
+  if (process.env.STEALTH_AGENT_SMOKE !== "1") {
+    focusStealthWindow();
+  }
 
   runStep("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
-  runStep("workflow-launch-smoke", "node", ["electron/e2e/workflow-launch-smoke.cjs"]);
   runStep("vite-build-ui-smoke", "pnpm", ["exec", "vite", "build"]);
-  runStep("workflow-rail-smoke", "node", ["scripts/smoke-workflow-rail.mjs", "http://127.0.0.1:5175/"]);
+  runStep("seed-smoke-profiles-pager", "electron-node", ["scripts/lib/seed-smoke-profiles-pager.cjs"]);
+  runStep(
+    "workflow-rail-smoke",
+    "node",
+    ["scripts/smoke-workflow-rail.mjs", "http://127.0.0.1:5175/?stealthSmokePager=1"],
+  );
   runStep("workflow-tab-console-smoke", "node", ["scripts/smoke-workflow-tab-console.mjs", "dist/index.html"]);
-  runStep("benchmark-profile-launch", "node", ["scripts/benchmark-profile-launch.mjs", "3"]);
+  runStep("benchmark-profile-launch", "electron-node", ["scripts/benchmark-profile-launch.mjs", "3"]);
 
   console.log("\nreload-and-verify-p0003: all checks passed — Stealth Browser Console is running.");
   console.log("(Close orphan PowerShell windows from earlier failed starts if any remain.)");

@@ -5,22 +5,23 @@ import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubUsersStatusTone } from "../shell/HubUsersStatusLabel";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
+import { hubDirectoryPopoverPosition } from "../lib/hub-directory-popover";
 import { compactIconSize } from "../ui-scale";
+import "../styles/hub-directory-popover.css";
 
 export type HubDirectoryColumnHintGlyph = {
   icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   toneClass?: string;
+  /** Native emoji — matches sheet-parity column headers (e.g. 🪪 Buyer ID). */
+  emoji?: string;
 };
 
 export type HubDirectoryColumnHintLine = {
   label: string;
   detail?: string;
-  /** Native emoji — same glyph as table cells (12px body scale, not filter dropdown 16px). */
   emoji?: string;
-  /** 7px directory status dot — `HubUsersStatusLabel` tones. */
   statusDot?: HubUsersStatusTone;
-  /** Tool-specific dot classes (e.g. TOTP period marker). */
   dotClassName?: string;
   icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
@@ -29,27 +30,22 @@ export type HubDirectoryColumnHintLine = {
 
 export type HubDirectoryColumnHintContent = {
   title?: string;
-  /** Popover title row icon — falls back to column header glyph from table shell. */
   titleGlyph?: HubDirectoryColumnHintGlyph;
-  /** Brief intro — what this column represents. */
   description?: string;
-  /** Section label before option rows — default "Option". */
   optionsLabel?: string;
-  /** Options section icon — default list glyph. */
   optionsLabelGlyph?: HubDirectoryColumnHintGlyph;
   lines: HubDirectoryColumnHintLine[];
 };
 
 type Props = {
   content: HubDirectoryColumnHintContent;
-  /** Column header glyph — auto-fills popover title row when titleGlyph omitted. */
   titleGlyph?: HubDirectoryColumnHintGlyph;
   children: ReactNode;
 };
 
 const DEFAULT_OPTIONS_GLYPH: HubDirectoryColumnHintGlyph = {
   icon: ListChecks,
-  toneClass: "text-violet-300",
+  toneClass: "text-[var(--muted)]",
 };
 
 function HintSectionHeading({
@@ -65,19 +61,23 @@ function HintSectionHeading({
     <p
       className={
         variant === "title"
-          ? "hub-dir-col-hint-popover__heading hub-dir-col-hint-popover__heading--title"
-          : "hub-dir-col-hint-popover__heading hub-dir-col-hint-popover__heading--section"
+          ? "hub-directory-popover__heading hub-directory-popover__heading--title"
+          : "hub-directory-popover__heading hub-directory-popover__heading--section"
       }
     >
-      <span className="hub-dir-col-hint-popover__icon" aria-hidden>
-        <HubSemanticGlyph
-          icon={glyph.icon}
-          brandIcon={glyph.brandIcon}
-          size={compactIconSize(variant === "title" ? 12 : 11)}
-          className={glyph.toneClass ?? "text-indigo-300"}
-        />
+      <span className="hub-directory-popover__icon" aria-hidden>
+        {glyph.emoji ? (
+          <span className="hub-directory-popover__emoji">{glyph.emoji}</span>
+        ) : (
+          <HubSemanticGlyph
+            icon={glyph.icon}
+            brandIcon={glyph.brandIcon}
+            size={compactIconSize(variant === "title" ? 12 : 11)}
+            className={glyph.toneClass ?? "text-[var(--muted)]"}
+          />
+        )}
       </span>
-      <span className="hub-dir-col-hint-popover__heading-text">{text}</span>
+      <span className="hub-directory-popover__heading-text">{text}</span>
     </p>
   );
 }
@@ -92,19 +92,19 @@ function HintLineGlyph({ line }: { line: HubDirectoryColumnHintLine }) {
     return <span className={line.dotClassName} aria-hidden />;
   }
   if (line.emoji) {
-    return <span className="hub-dir-col-hint-popover__emoji">{line.emoji}</span>;
+    return <span className="hub-directory-popover__emoji">{line.emoji}</span>;
   }
   return (
     <HubSemanticGlyph
       icon={line.icon}
       brandIcon={line.brandIcon}
       size={compactIconSize(12)}
-      className={line.toneClass ?? "text-indigo-300"}
+      className={line.toneClass ?? "text-[var(--muted)]"}
     />
   );
 }
 
-/** Rich multi-line column header hint — portal popover with icon rows. */
+/** Rich multi-line column header hint — hub-directory-popover SSOT (below anchor). */
 export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props) {
   const anchorRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
@@ -113,8 +113,7 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
   const show = useCallback(() => {
     const el = anchorRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setPos({ top: rect.bottom + 6, left: Math.max(8, rect.left) });
+    setPos(hubDirectoryPopoverPosition(el.getBoundingClientRect()));
     setOpen(true);
   }, []);
 
@@ -127,7 +126,7 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
     open && typeof document !== "undefined"
       ? createPortal(
           <div
-            className="hub-dir-col-hint-popover"
+            className="hub-directory-popover"
             style={{ top: pos.top, left: pos.left }}
             role="tooltip"
             onMouseEnter={show}
@@ -137,11 +136,11 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
               resolvedTitleGlyph ? (
                 <HintSectionHeading glyph={resolvedTitleGlyph} text={content.title} variant="title" />
               ) : (
-                <p className="hub-dir-col-hint-popover__title">{content.title}</p>
+                <p className="hub-directory-popover__title">{content.title}</p>
               )
             ) : null}
             {content.description ? (
-              <p className="hub-dir-col-hint-popover__desc">{content.description}</p>
+              <p className="hub-directory-popover__desc">{content.description}</p>
             ) : null}
             {content.lines.length > 0 ? (
               <HintSectionHeading
@@ -150,15 +149,15 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
                 variant="section"
               />
             ) : null}
-            <ul className="hub-dir-col-hint-popover__list">
+            <ul className="hub-directory-popover__list">
               {content.lines.map((line, index) => {
                 const text = line.detail ? `${line.label} · ${line.detail}` : line.label;
                 return (
-                  <li key={`${line.label}-${index}`} className="hub-dir-col-hint-popover__row">
-                    <span className="hub-dir-col-hint-popover__icon" aria-hidden>
+                  <li key={`${line.label}-${index}`} className="hub-directory-popover__row">
+                    <span className="hub-directory-popover__icon" aria-hidden>
                       <HintLineGlyph line={line} />
                     </span>
-                    <span className="hub-dir-col-hint-popover__line">{text}</span>
+                    <span className="hub-directory-popover__line">{text}</span>
                   </li>
                 );
               })}
@@ -172,7 +171,7 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
     <>
       <span
         ref={anchorRef}
-        className="hub-dir-col-hint-anchor"
+        className="hub-directory-popover-anchor"
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}

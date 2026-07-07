@@ -268,9 +268,21 @@ function WorkflowScriptFlowInner({
 
   onReorderBySortedIds,
 }: WorkflowScriptFlowProps): ReactElement {
-  const { fitView, getNodes, updateNodeInternals } = useReactFlow();
+  const reactFlow = useReactFlow();
+  const { fitView, getNodes } = reactFlow;
+  const updateNodeInternals = (
+    reactFlow as unknown as { updateNodeInternals?: (nodeId: string) => void }
+  ).updateNodeInternals;
   const fitViewRef = useRef(fitView);
   fitViewRef.current = fitView;
+  const flowMountedRef = useRef(true);
+
+  useEffect(() => {
+    flowMountedRef.current = true;
+    return () => {
+      flowMountedRef.current = false;
+    };
+  }, []);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<
     Node<ScriptFlowNodeData>
@@ -339,14 +351,16 @@ function WorkflowScriptFlowInner({
   }, [workflowId, steps, structuralKey, selectedStepId, layoutMode]);
 
   useLayoutEffect(() => {
-    if (!nodes.length) return;
+    if (!nodes.length || typeof updateNodeInternals !== "function") return;
+    if (flowWidth <= 0 || flowHeight <= 0) return;
     const frame = requestAnimationFrame(() => {
+      if (!flowMountedRef.current) return;
       for (const node of nodes) {
         updateNodeInternals(node.id);
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [nodes, structuralKey, updateNodeInternals]);
+  }, [nodes, structuralKey, updateNodeInternals, flowWidth, flowHeight]);
 
   const onNodeDragStop = useCallback(() => {
     const orderedIds = [...getNodes()]

@@ -19,6 +19,8 @@ type Props = {
   className?: string;
   /** Plain Lucide glyphs — no bordered icon tile (tool-detail modals). */
   plainIcons?: boolean;
+  /** ADM account-detail modal — inherit `--hub-adm-type-nav-*` (12px semibold) from shell CSS. */
+  admNav?: boolean;
 };
 
 function HubTocSectionNavItem({
@@ -26,11 +28,13 @@ function HubTocSectionNavItem({
   sectionId,
   scrollRootSelector,
   plainIcons = false,
+  admNav = false,
 }: {
   item: HubTocNavItem;
   sectionId: string;
   scrollRootSelector?: string;
   plainIcons?: boolean;
+  admNav?: boolean;
 }) {
   const isHighlighted = useHubTocNavHighlight(sectionId);
   const isActive = useHubTocNavActive(sectionId);
@@ -42,11 +46,17 @@ function HubTocSectionNavItem({
         event.preventDefault();
         scrollToHubTocSection(sectionId, scrollRootSelector);
       }}
-      className={`hub-toc-nav__item group relative z-[1] min-h-[var(--overview-toc-row-h,2rem)] w-full cursor-pointer text-left text-[13px] transition-colors${
-        isHighlighted ? " is-highlighted" : isActive ? " is-active" : ""
-      }`}
+      className={`hub-toc-nav__item group relative z-[1] min-h-[var(--overview-toc-row-h,2rem)] w-full cursor-pointer text-left transition-colors${
+        admNav ? "" : " text-[13px]"
+      }${isHighlighted ? " is-highlighted" : isActive ? " is-active" : ""}`}
     >
-      <span className="hub-toc-nav__label flex min-w-0 items-center gap-1.5 truncate rounded-lg px-2 py-1 font-medium text-[var(--muted)] transition-all duration-200 group-hover:text-[var(--text)]">
+      <span
+        className={`hub-toc-nav__label flex min-w-0 items-center gap-1.5 truncate rounded-lg px-2 py-1 transition-all duration-200${
+          admNav
+            ? ""
+            : " font-medium text-[var(--muted)] group-hover:text-[var(--text)]"
+        }`}
+      >
         {item.emoji ? (
           <span className="shrink-0 text-[12px] leading-none opacity-90" aria-hidden>
             {item.emoji}
@@ -76,6 +86,7 @@ export function HubTocSectionNav({
   scrollRootSelector = HUB_TOOL_DETAIL_SCROLL_ROOT,
   className = "",
   plainIcons = false,
+  admNav = false,
 }: Props) {
   if (!items.length) return null;
 
@@ -90,6 +101,7 @@ export function HubTocSectionNav({
             sectionId={sectionId}
             scrollRootSelector={scrollRootSelector}
             plainIcons={plainIcons}
+            admNav={admNav}
           />
         );
       })}

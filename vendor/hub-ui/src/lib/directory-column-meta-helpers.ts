@@ -11,6 +11,9 @@ export type DirectoryColumnMetaOptions = {
   headerTooltip?: string;
   /** Rich multi-line popover — icon rows for enum / source types. */
   headerHint?: HubDirectoryColumnHintContent;
+  /** Predictable cell shape — header left-align via buildDirectoryColumns. */
+  columnKind?: "code" | "date";
+  headerAlign?: "start" | "center";
 };
 
 export type DirectoryColumnHeaderMeta = {
@@ -23,6 +26,8 @@ export type DirectoryColumnHeaderMeta = {
   headerBrandIcon?: HubBrandIconId;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
+  columnKind?: "code" | "date";
+  headerAlign?: "start" | "center";
 };
 
 /** SSOT helper — per-tool column defs call `col()` then `toHubDirectoryColumnMeta()`. */
@@ -46,6 +51,8 @@ export function createDirectoryColumnMetaHelpers() {
       headerBrandIcon: icon.headerBrandIcon,
       headerTooltip: options?.headerTooltip,
       headerHint: options?.headerHint,
+      columnKind: options?.columnKind,
+      headerAlign: options?.headerAlign,
     };
   }
 
@@ -65,6 +72,8 @@ export function createDirectoryColumnMetaHelpers() {
           headerBrandIcon: def.headerBrandIcon,
           headerTooltip: def.headerTooltip,
           headerHint: def.headerHint,
+          columnKind: def.columnKind,
+          headerAlign: def.headerAlign,
         },
       ]),
     );

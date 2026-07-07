@@ -1,10 +1,24 @@
 const { execSync } = require("node:child_process");
+const { createRequire } = require("node:module");
+
+const requireRoot = createRequire(__filename);
+const { DEFAULT_PROD_API_PORT } = requireRoot("../electron/lib/user-data-root.cjs");
 
 const ports = process.argv.slice(2).map((p) => Number(p)).filter((p) => p > 0);
 
 if (ports.length === 0) {
   console.error("Usage: node scripts/kill-port.cjs <port> [port2 ...]");
   process.exit(1);
+}
+
+const protectedPorts = new Set([DEFAULT_PROD_API_PORT]);
+if (process.env.STEALTH_KILL_ALLOW_PROD !== "1") {
+  for (const port of ports) {
+    if (protectedPorts.has(port)) {
+      console.error(`[kill-port] refused protected prod port :${port} (packaged Stealth API)`);
+      process.exit(1);
+    }
+  }
 }
 
 for (const port of ports) {

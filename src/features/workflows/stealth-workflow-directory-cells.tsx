@@ -1,19 +1,12 @@
 import type { MouseEvent } from "react";
 import {
   DirectoryTableBodyCell,
-  formatHubTimestampFull,
   HubCopyBadge,
   HubDirectoryIconCell,
-  HubUsersStatusLabel,
+  HubDirectoryTimestampLabel,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import type { StealthWorkflowColumnKey } from "../../lib/directory-column-meta";
-import {
-  formatLastOpenedRelativeAge,
-  formatLastOpenedStaleDate,
-  lastOpenedAgeTone,
-  lastOpenedHubTone,
-} from "../profiles/profile-directory-cell-helpers";
 import {
   workflowDisplayId,
   workflowDisplayPlatform,
@@ -30,17 +23,7 @@ function renderWorkflowTimestampCell(ms: number | null) {
   if (ms == null || !Number.isFinite(ms) || !ms) {
     return <span className="hub-directory-table-body-text">—</span>;
   }
-  const iso = new Date(ms).toISOString();
-  const tone = lastOpenedAgeTone(ms);
-  const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
-  return (
-    <HubUsersStatusLabel
-      label={label}
-      tone={lastOpenedHubTone(tone)}
-      capitalize={false}
-      title={formatHubTimestampFull(iso)}
-    />
-  );
+  return <HubDirectoryTimestampLabel at={ms} />;
 }
 
 type RenderWorkflowCellOpts = {
@@ -72,7 +55,6 @@ export function renderStealthWorkflowDirectoryBodyCell(
               imageShell={brand?.shell}
               iconClassName={workflowPlatformTone(displayPlatform)}
               label={displayPlatform}
-              title={displayPlatform}
             />
           </span>
         </DirectoryTableBodyCell>
@@ -80,7 +62,7 @@ export function renderStealthWorkflowDirectoryBodyCell(
     case "name":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="stealth-workflow-name-cell min-w-0" title={workflow.name}>
+          <span className="stealth-workflow-name-cell min-w-0">
             <span className="hub-users-name-title truncate">{workflow.name}</span>
           </span>
         </DirectoryTableBodyCell>
@@ -103,7 +85,7 @@ export function renderStealthWorkflowDirectoryBodyCell(
     case "steps":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass} typographyClass="hub-users-cell-num">
-          <span title={`${workflowStepCount(workflow)} steps`}>{workflowStepCount(workflow)}</span>
+          {workflowStepCount(workflow)}
         </DirectoryTableBodyCell>
       );
     case "created":

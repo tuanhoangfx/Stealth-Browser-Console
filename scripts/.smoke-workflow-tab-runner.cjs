@@ -60,7 +60,9 @@ app.whenReady().then(async () => {
   }
 
   const depthErrors = logs.filter((l) => /Maximum update depth exceeded/i.test(l.message));
-  const ok = depthErrors.length === 0;
+  const needsCanvas = probe.clickedWorkflow && probe.builderPresent;
+  const canvasOk = !needsCanvas || probe.canvasPresent === true;
+  const ok = depthErrors.length === 0 && canvasOk;
   fs.writeFileSync(outFile, JSON.stringify({ url, ok, probe, depthErrorCount: depthErrors.length, errors: logs.filter((l) => l.level >= 2).slice(0, 15) }, null, 2));
   app.exit(ok ? 0 : 1);
 });

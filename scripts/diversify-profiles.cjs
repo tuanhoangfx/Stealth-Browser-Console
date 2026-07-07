@@ -6,12 +6,9 @@
  *
  * AN TOÀN: từ chối ghi nếu app P0003 đang mở (port 6003) — trừ --dry (chỉ đọc, xem trước).
  *
- * Dùng:
- *   node scripts/diversify-profiles.cjs --dry          # xem phân bố sẽ áp (đọc, an toàn dù app mở)
- *   node scripts/diversify-profiles.cjs                # áp cho profile blank (app phải đóng)
- *   node scripts/diversify-profiles.cjs --all          # áp cho TẤT CẢ (kể cả đã cấu hình)
- *   node scripts/diversify-profiles.cjs --platforms    # đa dạng cả OS (rủi ro lộ host — cân nhắc)
- *   node scripts/diversify-profiles.cjs --no-colors    # bỏ đa dạng color scheme
+ * Dùng (Electron ABI — better-sqlite3):
+ *   node scripts/run-electron-node.mjs scripts/diversify-profiles.cjs --dry
+ *   node scripts/run-electron-node.mjs scripts/diversify-profiles.cjs
  */
 const http = require("node:http");
 const path = require("node:path");

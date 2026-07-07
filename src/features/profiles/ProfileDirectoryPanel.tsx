@@ -1,6 +1,6 @@
-import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import {
-  HUB_SPLIT_DIRECTORY_PANE_CLASS,
+  HubSplitDirectoryPane,
   KpiStrip,
   hubDirectoryListResetKey,
   resolveDirectoryPanelFillRows,
@@ -8,7 +8,6 @@ import {
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
 import type { ExtensionToggles, ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
-import { ProfileFilterPane } from "./ProfileFilterPane";
 import { ProfilesHubChrome } from "./ProfilesHubChrome";
 import type { ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
 import { useExtensionIcons } from "./useExtensionIcons";
@@ -18,7 +17,7 @@ import {
   resolveProfileDirectoryVisibleTotal,
 } from "./profile-directory-counts";
 import { StealthProfileDirectoryTable } from "./StealthProfileDirectoryTable";
-import { profileStateToFilterValues } from "./profile-filters";
+import { useProfileDirectoryChrome } from "./useProfileDirectoryChrome";
 
 export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   profiles,
@@ -47,6 +46,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected,
   openOne,
   closeOne,
+  onOpenDetail,
   globalExtensionToggles,
   extensionState,
   extensionBusy,
@@ -89,6 +89,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected: boolean;
   openOne: (profile: ProfileRow) => void;
   closeOne: (profile: ProfileRow) => void;
+  onOpenDetail?: (profile: ProfileRow) => void;
   globalExtensionToggles: ExtensionToggles;
   extensionState: Record<"e0001" | "surfshark", ExtensionSelectionState>;
   extensionBusy?: boolean;
@@ -106,29 +107,6 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   rail: ReactNode;
 }) {
   const extensionIcons = useExtensionIcons();
-  const filterValues = useMemo(
-    () => profileStateToFilterValues(selectedGroupIds, selectedStatuses),
-    [selectedGroupIds, selectedStatuses],
-  );
-  const listResetKey = hubDirectoryListResetKey(search, filterValues);
-  const panelFillStyle = useMemo(() => {
-    const fillRows = resolveDirectoryPanelFillRows(pageSize, filteredProfiles.length);
-    return { "--hub-directory-page-rows": String(fillRows) } as CSSProperties;
-  }, [filteredProfiles.length, pageSize, listResetKey]);
-  const compactDirectoryTable =
-    filteredProfiles.length > 0 && filteredProfiles.length < pageSize;
-  const directoryBodyRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    directoryBodyRef.current?.scrollTo?.(0, 0);
-  }, [listResetKey, filteredProfiles.length]);
-  const emptyMessage =
-    apiStatus === "offline"
-      ? "CloakBrowser engine offline — check Settings or run pnpm dev in Electron."
-      : filteredProfiles.length === 0
-        ? "No profiles found."
-        : undefined;
-
   const directoryQuery = useMemo(
     () => ({ search, groupIds: selectedGroupIds, statuses: selectedStatuses }),
     [search, selectedGroupIds, selectedStatuses],
@@ -142,57 +120,66 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   const filtersActive = hasActiveProfileDirectoryFilters(directoryQuery);
   const paginationTotal = filtersActive ? directoryVisibleTotal : catalogTotal;
 
+  const chrome = useProfileDirectoryChrome({
+    catalogStats,
+    groups,
+    filteredProfiles,
+    totalProfiles: catalogTotal,
+    shownProfiles: directoryVisibleTotal,
+    search,
+    setSearch,
+    selectedGroupIds,
+    setSelectedGroupIds,
+    selectedStatuses,
+    setSelectedStatuses,
+    pageSize,
+    onTablePageSizeChange,
+    syncBusy,
+    selectedProfiles,
+    closeOne,
+    deleteSelected,
+    setShowCreate,
+    onEdit,
+    onGroups,
+    onExport,
+    onImport,
+    extensionState,
+    extensionIcons,
+    extensionBusy,
+    onExtensionSet,
+  });
+
+  const listResetKey = hubDirectoryListResetKey(search, chrome.filterValues);
+  const panelFillRows = resolveDirectoryPanelFillRows(pageSize, filteredProfiles.length);
+  const compactDirectoryTable =
+    filteredProfiles.length > 0 && filteredProfiles.length < pageSize;
+  const directoryBodyRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    directoryBodyRef.current?.scrollTo?.(0, 0);
+  }, [listResetKey, filteredProfiles.length]);
+
+  const emptyMessage =
+    apiStatus === "offline"
+      ? "CloakBrowser engine offline — check Settings or run pnpm dev in Electron."
+      : filteredProfiles.length === 0
+        ? "No profiles found."
+        : undefined;
+
   return (
     <ProfilesHubChrome centerStats={centerStats} headerActions={headerActions}>
       <div className="stealth-profile-layout flex min-h-0 flex-1 overflow-hidden">
-        <div className="stealth-profile-directory-pane min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
-          <section
-            className={`${HUB_SPLIT_DIRECTORY_PANE_CLASS} stealth-profile-directory-frame hub-directory-frame hub-directory-frame--panel-fill`}
-            style={panelFillStyle}
-            data-hub-directory-compact={compactDirectoryTable ? "" : undefined}
+        <div
+          className="stealth-profile-directory-pane min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden"
+          data-hub-directory-compact={compactDirectoryTable ? "" : undefined}
+        >
+          <HubSplitDirectoryPane
+            className="stealth-profile-directory-frame hub-directory-frame"
+            panelFillRows={panelFillRows}
+            kpiBand={kpis?.length ? <KpiStrip items={kpis} /> : undefined}
+            filterBar={chrome.filterBar}
           >
-            <div className="hub-split-directory-pane__filters shrink-0 border-b border-white/5 px-3 py-3">
-              <ProfileFilterPane
-                catalogStats={catalogStats}
-                groups={groups}
-                filteredProfiles={filteredProfiles}
-                totalProfiles={catalogTotal}
-                shownProfiles={directoryVisibleTotal}
-                search={search}
-                setSearch={setSearch}
-                selectedGroupIds={selectedGroupIds}
-                setSelectedGroupIds={setSelectedGroupIds}
-                selectedStatuses={selectedStatuses}
-                setSelectedStatuses={setSelectedStatuses}
-                pageSize={pageSize}
-                onTablePageSizeChange={onTablePageSizeChange}
-                syncBusy={syncBusy}
-                selectedProfiles={selectedProfiles}
-                allVisibleProfilesSelected={allVisibleSelected}
-                onToggleProfileSelectAll={onToggleSelectAll}
-                openOne={openOne}
-                closeOne={closeOne}
-                deleteSelected={deleteSelected}
-                setShowCreate={setShowCreate}
-                onEdit={onEdit}
-                onGroups={onGroups}
-                onExport={onExport}
-                onImport={onImport}
-                extensionState={extensionState}
-                extensionIcons={extensionIcons}
-                extensionBusy={extensionBusy}
-                onExtensionSet={onExtensionSet}
-              />
-            </div>
-            {kpis?.length ? (
-              <div className="hub-split-directory-pane__kpi-band shrink-0 min-w-0 border-b border-white/5 px-3 py-3">
-                <KpiStrip items={kpis} />
-              </div>
-            ) : null}
-            <div
-              ref={directoryBodyRef}
-              className="hub-split-directory-pane__body flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-3"
-            >
+            <div ref={directoryBodyRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <StealthProfileDirectoryTable
                 items={filteredProfiles}
                 selectedIds={selectedIds}
@@ -215,13 +202,14 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 allVisibleSelected={allVisibleSelected}
                 onOpen={openOne}
                 onClose={closeOne}
+                onOpenDetail={onOpenDetail}
                 globalExtensionToggles={globalExtensionToggles}
                 extensionIcons={extensionIcons}
                 searchQuery={search}
                 emptyMessage={emptyMessage}
               />
             </div>
-          </section>
+          </HubSplitDirectoryPane>
         </div>
         {rail}
       </div>

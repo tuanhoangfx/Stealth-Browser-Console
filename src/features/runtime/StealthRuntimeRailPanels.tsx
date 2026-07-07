@@ -1,30 +1,29 @@
 import { useMemo } from "react";
 import {
   CheckCircle2,
-  Clock,
   History,
   Loader2,
   Terminal,
   Timer,
-  Workflow,
   XCircle,
 } from "lucide-react";
 import {
+  HubActivityTimestampLabel,
   HubPanel,
   HubRuntimeConsoleLine,
   HubRuntimeConsoleTerm,
   HubRuntimeHistoryList,
   compactIconSize,
+  formatHubTimestampFull,
 } from "@tool-workspace/hub-ui";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
-import { formatRunHistoryPrimaryLabel } from "../workflows/resolve-workflow-run-label";
-import { formatDateTime, formatDurationMs } from "../../lib/run-display";
+import { resolveWorkflowRunLabel } from "../workflows/resolve-workflow-run-label";
+import { formatDurationMs, shortRunRef } from "../../lib/run-display";
 import type { RunHistoryItem } from "../../types";
 import { StealthConsoleChannelBadge, inferStealthConsoleChannel } from "./StealthConsoleChannelBadge";
 import { useRunLogs } from "./RunLogsContext";
 
 const CONSOLE_RENDER_LIMIT = 200;
-const ICON = compactIconSize(12);
 const ICON_SM = compactIconSize(10);
 
 function RunStatusIcon({ status }: { status: RunHistoryItem["status"] }) {
@@ -108,19 +107,31 @@ export function StealthRunHistoryPanel({
       entries.map((entry) => {
         const stamp = entry.finishedAt ?? entry.startedAt;
         const duration = formatDurationMs(entry.durationMs);
+        const taskLabel = resolveWorkflowRunLabel(entry.workflow, workflowConfigs);
+        const runTitle = [
+          formatHubTimestampFull(stamp) || undefined,
+          entry.id ? `#${shortRunRef(entry.id)}` : undefined,
+        ]
+          .filter(Boolean)
+          .join(" · ");
         return {
           id: entry.id,
           active: activeRunId === entry.id,
-          titleAttr: formatDateTime(stamp),
+          titleAttr: runTitle || undefined,
           onClick: () => onSelectRun(entry),
-          leading: <Workflow size={ICON} className="text-sky-300/90" aria-hidden />,
-          primaryRow: formatRunHistoryPrimaryLabel(entry, workflowConfigs),
+          leading: <RunStatusIcon status={entry.status} />,
+          primaryRow: (
+            <>
+              <span className="hub-runtime-history-profile-chip">{entry.profileId.trim()}</span>
+              <span className="hub-runtime-history-list__task">{taskLabel}</span>
+            </>
+          ),
           primaryTrailing: <RunStatusIcon status={entry.status} />,
           metaRow: (
             <>
+              <span className="hub-runtime-history-list__browser">{entry.profileName.trim()}</span>
               <span className="hub-runtime-history-list__meta-part">
-                <Clock size={ICON_SM} aria-hidden />
-                {formatDateTime(stamp)}
+                <HubActivityTimestampLabel at={stamp} title={runTitle || undefined} fallback="—" />
               </span>
               {duration ? (
                 <span className="hub-runtime-history-list__meta-part hub-runtime-history-list__meta-part--dur">
@@ -144,7 +155,7 @@ export function StealthRunHistoryPanel({
       {backupJobLabel ? (
         <p className="mb-2 text-xs font-medium text-amber-200/95">{backupJobLabel}</p>
       ) : null}
-      <HubRuntimeHistoryList rows={rows} />
+      <HubRuntimeHistoryList rows={rows} className="hub-runtime-history-list--chip-lanes" />
     </HubPanel>
   );
 }

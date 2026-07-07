@@ -236,6 +236,8 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "filter.links": { icon: Link2, className: "text-amber-400", tone: "amber" },
   "filter.dueDate": { icon: CalendarClock, className: "opacity-75", tone: "indigo" },
   "filter.phone": { icon: Phone, className: "text-emerald-300", tone: "emerald" },
+  "filter.recoveryMail": { icon: Mail, className: "text-cyan-300", tone: "cyan" },
+  "filter.ownership": { icon: UserRound, className: "text-violet-300", tone: "violet" },
   "filter.website": { icon: Globe2, className: "text-amber-300", tone: "amber" },
   "filter.rating": { icon: Star, className: "text-amber-300", tone: "amber" },
   "col.directory.page": { icon: LayoutGrid, className: "text-indigo-300", tone: "indigo" },

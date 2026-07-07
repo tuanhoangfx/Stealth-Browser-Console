@@ -7,9 +7,10 @@ table.hub-users-table[data-hub-directory-select] td.hub-users-col--select {
   width: 36px;
   max-width: 36px;
   min-width: 36px;
-  padding: 4px;
+  padding: 6px 4px;
   box-sizing: border-box;
   text-align: center;
+  vertical-align: middle;
 }
 
 table.hub-users-table[data-hub-directory-select] .hub-users-select-all,
@@ -18,9 +19,11 @@ table.hub-users-table[data-hub-directory-select] .hub-users-select-row {
   align-items: center;
   justify-content: center;
   width: 16px;
+  height: 16px;
   margin: 0 auto;
   padding: 0;
   cursor: pointer;
+  vertical-align: middle;
 }
 
 /* Legacy variant hooks — same geometry when data-hub-directory-select is present */
@@ -48,9 +51,10 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--selec
   width: 36px;
   max-width: 36px;
   min-width: 36px;
-  padding: 4px;
+  padding: 6px 4px;
   box-sizing: border-box;
   text-align: center;
+  vertical-align: middle;
 }
 
 table.hub-users-table.hub-users-table--directory {

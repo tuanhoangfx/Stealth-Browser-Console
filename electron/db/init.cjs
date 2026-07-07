@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { randomUUID } = require("node:crypto");
 
 let dbInstance = null;
 let sqlDb = null;
@@ -246,7 +247,7 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   const dbDir = path.join(userDataPath, "data");
   fs.mkdirSync(dbDir, { recursive: true });
   dbFilePath = path.join(dbDir, "stealth-console.db");
-  removeWalSidecars(dbFilePath);
+  // Do NOT delete -wal/-shm on open — installer/restart may skip graceful quit; WAL holds recent last_opened_at.
 
   nativeDb = new DatabaseCtor(dbFilePath);
   nativeDb.pragma("journal_mode = WAL");
@@ -373,8 +374,18 @@ function flushDatabase() {
   flushSqlJsDatabase();
 }
 
+/** Checkpoint WAL into main db file — call on quit and after critical writes (last_opened_at). */
+function checkpointDatabase({ truncate = false } = {}) {
+  if (dbBackend === "better-sqlite3" && nativeDb) {
+    nativeDb.pragma(truncate ? "wal_checkpoint(TRUNCATE)" : "wal_checkpoint(PASSIVE)");
+    return;
+  }
+  flushSqlJsDatabase();
+}
+
 function closeDatabase() {
   if (dbInstance) {
+    checkpointDatabase({ truncate: true });
     dbInstance.close();
     dbInstance = null;
     sqlDb = null;
@@ -390,4 +401,5 @@ module.exports = {
   isDatabaseReady,
   closeDatabase,
   flushDatabase,
+  checkpointDatabase,
 };

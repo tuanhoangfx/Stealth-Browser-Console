@@ -18,6 +18,10 @@ export function stealthElectronEnv(extra = {}) {
     STEALTH_DEV_ISOLATED: process.env.STEALTH_DEV_ISOLATED ?? "1",
     ...extra,
   };
+  // Interactive dev must stay headed — agent smokes set these on child node scripts only.
+  delete env.STEALTH_AGENT_SMOKE;
+  delete env.STEALTH_HEADLESS_SMOKE;
+  delete env.CURSOR_AGENT;
   delete env.ELECTRON_RUN_AS_NODE;
   if (isDevIsolated()) {
     if (!env.STEALTH_USER_DATA) {

@@ -20,8 +20,8 @@ export type HubWorkspacePeriodSelectProps = {
 /** Golden Period filter — HubPeriodSelect + per-tab URL prefs. */
 export function HubWorkspacePeriodSelect({
   scope,
-  defaultRange = "last30Days",
-  inactiveKeys = ["all", "last30Days"],
+  defaultRange = "all",
+  inactiveKeys = ["all"],
   language = typeof navigator !== "undefined" ? navigator.language : "en",
   labels,
   applyLabel = "Apply",

@@ -8,6 +8,9 @@ const { markProfileChromeCleanExit } = require("./profile-chrome-session.cjs");
 
 const CHROME_NAMES = new Set(["chrome.exe", "chromium.exe"]);
 const PROFILE_LOCK_FILES = ["SingletonLock", "SingletonCookie", "lockfile", "SingletonSocket", "SingletonBadge"];
+const PID_LIST_CACHE_MS = 2000;
+/** @type {Map<string, { pids: number[], at: number }>} */
+const pidListCache = new Map();
 
 function escapePsSingleQuoted(value) {
   return String(value).replace(/'/g, "''");
@@ -115,6 +118,9 @@ async function listProfileBrowserPidsByLock(userDataDir) {
 
 async function listProfileBrowserPids(userDataDir) {
   if (!userDataDir || process.platform !== "win32") return [];
+  const key = path.resolve(String(userDataDir));
+  const cached = pidListCache.get(key);
+  if (cached && Date.now() - cached.at < PID_LIST_CACHE_MS) return cached.pids;
   try {
     const { stdout } = await execFileAsync(
       "powershell",
@@ -125,11 +131,19 @@ async function listProfileBrowserPids(userDataDir) {
       .split(/\r?\n/)
       .map((line) => Number.parseInt(line.trim(), 10))
       .filter((pid) => Number.isFinite(pid) && pid > 0);
-    if (cliPids.length) return [...new Set(cliPids)];
-    return listProfileBrowserPidsByLock(userDataDir);
+    const pids = cliPids.length ? [...new Set(cliPids)] : await listProfileBrowserPidsByLock(userDataDir);
+    pidListCache.set(key, { pids, at: Date.now() });
+    return pids;
   } catch {
-    return listProfileBrowserPidsByLock(userDataDir);
+    const pids = await listProfileBrowserPidsByLock(userDataDir);
+    pidListCache.set(key, { pids, at: Date.now() });
+    return pids;
   }
+}
+
+function invalidateProfileBrowserPidCache(userDataDir) {
+  if (!userDataDir) return;
+  pidListCache.delete(path.resolve(String(userDataDir)));
 }
 
 async function hasProfileBrowserProcess(userDataDir) {
@@ -151,6 +165,7 @@ async function hasProfileBrowserProcess(userDataDir) {
  * Kill Chrome/CloakBrowser processes still holding a profile user-data-dir.
  */
 async function killOrphanProfileBrowser(userDataDir) {
+  invalidateProfileBrowserPidCache(userDataDir);
   const pids = await listProfileBrowserPids(userDataDir);
   if (!pids.length) return { killed: 0 };
   markProfileChromeCleanExit(userDataDir);

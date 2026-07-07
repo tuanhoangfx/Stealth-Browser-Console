@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Measure profile launch timing (openProfile) — prints min/avg/max from launch-perf ring buffer.
- * Usage: node scripts/benchmark-profile-launch.mjs [rounds]
+ * Usage: node scripts/run-electron-node.mjs scripts/benchmark-profile-launch.mjs [rounds]
  */
 import fs from "node:fs";
 import os from "node:os";

@@ -11,6 +11,12 @@ const os = require("node:os");
 
 const { domainPlugins } = require("./automation/plugins.cjs");
 const { validateOpenUrlPayload } = require("./ipc-contracts.cjs");
+const {
+  launchProfile: launchProfileOp,
+  patchProfile: patchProfileOp,
+  performOpenUrl: performOpenUrlOp,
+  resolveProfileId: resolveProfileIdOp,
+} = require("./services/profile-ops.cjs");
 const { checkProxy, geoConsistency } = require("./lib/proxy-pool.cjs");
 const { extractProfileCode } = require("./lib/profile-identity.cjs");
 const { diagnoseMailCredentials } = require("./lib/twofa-vault-bridge.cjs");
@@ -53,12 +59,7 @@ function buildRoutes(services) {
   }
 
   function resolveProfileId(body) {
-    const byId = String(body.profile_id ?? body.profileId ?? "").trim();
-    if (byId) return byId;
-    const name = String(body.profile_name ?? body.profileName ?? "").trim();
-    if (!name) return null;
-    const hit = profileService.listProfiles().find((p) => String(p.name).trim() === name);
-    return hit?.id ?? null;
+    return resolveProfileIdOp(profileService, body || {});
   }
 
   function screenshotsRoot() {
@@ -67,8 +68,7 @@ function buildRoutes(services) {
 
   // ── Op dùng chung (gọi trực tiếp HOẶC bọc trong job) ─────────────────────
   async function performOpenUrl(rawBody, emit = () => {}) {
-    const { runOpenUrl } = require("./automation/open-url.cjs");
-    const profileId = resolveProfileId(rawBody);
+    const profileId = resolveProfileIdOp(profileService, rawBody);
     if (!profileId) throw new Error("profile_id hoặc profile_name là bắt buộc");
     const safe = validateOpenUrlPayload({
       profileId,
@@ -78,28 +78,17 @@ function buildRoutes(services) {
       workflowAction: rawBody.workflow_action ?? rawBody.workflowAction,
       workflowId: rawBody.workflow_id ?? rawBody.workflowId,
       steps: rawBody.steps,
-      inspectMode: Boolean(rawBody.inspect_mode ?? rawBody.inspectMode)
+      inspectMode: Boolean(rawBody.inspect_mode ?? rawBody.inspectMode),
     });
     emit({ event: "progress", msg: `Mở URL: ${safe.targetUrl}` });
     const profile = profileService.getProfile(safe.profileId);
     if (!profile) throw new Error("Profile không tồn tại");
     await preflightMailCredentials(profile, safe.steps);
-    const { profile: launchedProfile, context } = await ensureProfileContext(safe.profileId, { skipStartupUrl: true });
-    const result = await runOpenUrl({
-      context,
-      profile: launchedProfile,
-      targetUrl: safe.targetUrl,
-      screenshot: safe.screenshot,
-      closeWhenDone: safe.closeWhenDone,
-      screenshotsRoot: screenshotsRoot(),
-      onCloseProfile: () => sessionManager.close(profile.id),
-      workflowAction: safe.workflowAction,
-      steps: safe.steps,
-      inspectMode: safe.inspectMode,
-      workflowId: safe.workflowId
-    });
-    for (const log of result.logs || []) emit({ event: "log", ...log });
-    return result;
+    return performOpenUrlOp(
+      { sessionManager, profileService, userDataRoot: screenshotsRoot() },
+      safe,
+      { emit },
+    );
   }
 
   // ── Job runners (POST /api/jobs { type, payload }) ───────────────────────
@@ -129,6 +118,28 @@ function buildRoutes(services) {
       return { ok: true, results: out };
     }
   };
+
+  function patchProfileHandler(ctx) {
+    const profileId = ctx.params[1];
+    const body = ctx.body && typeof ctx.body === "object" ? ctx.body : {};
+    return patchProfileOp(
+      { profileService },
+      profileId,
+      body,
+      { userDataRoot: userDataRoot || path.join(os.tmpdir(), "stealth-browser-api") },
+    )
+      .then((profile) => send.json(ctx.res, 200, { ok: true, profile }))
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message === "Profile not found.") {
+          return send.json(ctx.res, 404, { ok: false, error: "Profile không tồn tại" });
+        }
+        if (message === "Empty patch body.") {
+          return send.json(ctx.res, 400, { ok: false, error: "Body rỗng — không có field nào để cập nhật" });
+        }
+        return send.json(ctx.res, 400, { ok: false, error: message });
+      });
+  }
 
   // ── Core routes ──────────────────────────────────────────────────────────
   const coreRoutes = [
@@ -180,12 +191,20 @@ function buildRoutes(services) {
       pattern: /^\/api\/profiles\/([^/]+)\/launch$/,
       async handler(ctx) {
         const profileId = ctx.params[1];
-        const profile = profileService.getProfile(profileId);
-        if (!profile) return send.json(ctx.res, 404, { ok: false, error: "Profile không tồn tại" });
-        const result = await sessionManager.launch(profile);
-        // Launch qua API → minimize đúng cửa sổ profile này (CDP), không cướp focus.
-        if (result.ok) await sessionManager.minimizeProfile(profileId).catch(() => undefined);
-        return send.json(ctx.res, 200, result);
+        try {
+          const result = await launchProfileOp(
+            { sessionManager, profileService },
+            { id: profileId },
+          );
+          if (result.ok) await sessionManager.minimizeProfile(profileId).catch(() => undefined);
+          return send.json(ctx.res, 200, result);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message === "Profile not found.") {
+            return send.json(ctx.res, 404, { ok: false, error: "Profile không tồn tại" });
+          }
+          return send.json(ctx.res, 500, { ok: false, error: message });
+        }
       }
     },
     {
@@ -211,6 +230,35 @@ function buildRoutes(services) {
           status: profile?.status ?? "unknown"
         });
       }
+    },
+    {
+      id: "profiles.patch",
+      method: "PATCH",
+      pattern: /^\/api\/profiles\/([^/]+)$/,
+      handler(ctx) {
+        return patchProfileHandler(ctx);
+      }
+    },
+    {
+      id: "profiles.update",
+      method: "POST",
+      pattern: /^\/api\/profiles\/([^/]+)\/update$/,
+      handler(ctx) {
+        return patchProfileHandler(ctx);
+      }
+    },
+    {
+      id: "profiles.events",
+      method: "GET",
+      pattern: /^\/api\/profiles\/([^/]+)\/events$/,
+      handler(ctx) {
+        const profileId = ctx.params[1];
+        const limit = Math.min(500, Math.max(1, Number(ctx.query.limit) || 100));
+        return send.json(ctx.res, 200, {
+          ok: true,
+          events: profileService.listProfileEvents(profileId, limit),
+        });
+      },
     },
     {
       id: "profiles.cdp",

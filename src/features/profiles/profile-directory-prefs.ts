@@ -1,6 +1,8 @@
 import {
+  asDirectoryTableColumnPresetManagerProp,
   countHiddenDirectoryTableColumns,
   createDirectoryTableColumnPrefs,
+  createDirectoryTableColumnPresetManager,
   withDirectoryColumnIcons,
   type DirectoryTableColumnItem,
 } from "@tool-workspace/hub-ui";
@@ -48,6 +50,17 @@ export const profileDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
   defaultKeys: DEFAULT_PROFILE_DIRECTORY_COLUMNS,
   changeEvent: PROFILE_DIRECTORY_COLUMNS_CHANGE,
 });
+
+export const profileDirectoryColumnPresetManager = createDirectoryTableColumnPresetManager({
+  prefs: profileDirectoryColumnPrefs,
+  presetsStorageKey: "p0003_profile_directory_column_presets",
+  itemKeys: PROFILE_DIRECTORY_GOLDEN_ORDER,
+  defaultVisible: DEFAULT_PROFILE_DIRECTORY_COLUMNS,
+});
+
+export const profileDirectoryColumnPresetsProp = asDirectoryTableColumnPresetManagerProp(
+  profileDirectoryColumnPresetManager,
+);
 
 /** Visible columns in golden table order. */
 export function readProfileDirectoryColumns(): ProfileDirectoryColumnKey[] {

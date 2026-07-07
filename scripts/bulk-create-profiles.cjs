@@ -6,11 +6,9 @@
  * AN TOÀN: từ chối chạy nếu app P0003 đang mở (port 6003) — sql.js ghi đè TOÀN BỘ
  * file DB, ghi song song với app đang chạy sẽ mất dữ liệu. Đóng app trước.
  *
- * Dùng:
- *   node scripts/bulk-create-profiles.cjs                 # 0000..4999, DB mặc định (APPDATA)
- *   node scripts/bulk-create-profiles.cjs --start 1 --end 5000
- *   node scripts/bulk-create-profiles.cjs --pad 4 --dry   # xem trước, không ghi
- *   node scripts/bulk-create-profiles.cjs --userdata "D:/path/to/userData"
+ * Dùng (Electron ABI — better-sqlite3):
+ *   node scripts/run-electron-node.mjs scripts/bulk-create-profiles.cjs
+ *   node scripts/run-electron-node.mjs scripts/bulk-create-profiles.cjs --start 1 --end 5000 --dry
  *
  * Idempotent: tên đã tồn tại sẽ bỏ qua. Chạy lại an toàn.
  */

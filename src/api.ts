@@ -197,6 +197,13 @@ export async function fetchRunHistory(limit = 100): Promise<RunHistoryItem[]> {
   return data.runs;
 }
 
+export async function fetchProfileEvents(profileId: string, limit = 200): Promise<import("./types").ProfileEvent[]> {
+  const bridge = api();
+  if (typeof bridge.listProfileEvents !== "function") return [];
+  const data = await bridge.listProfileEvents({ profileId, limit });
+  return data.events ?? [];
+}
+
 export async function fetchAppInfo() {
   return api().appInfo();
 }

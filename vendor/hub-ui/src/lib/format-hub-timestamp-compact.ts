@@ -1,3 +1,19 @@
+/** Directory column: `dd/mm hh:mm` tabular — compact absolute without year (Design V2 lock). */
+export function formatHubDirectoryDateCompact(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${dd}/${mo} ${hh}:${mm}`;
+  } catch {
+    return "";
+  }
+}
+
 /** Local date: `dd/mm/yy` (e.g. `03/06/26`) — stale activity labels, compact directory cells. */
 export function formatHubTimestampDateOnly(iso: string | null | undefined): string {
   if (!iso?.trim()) return "";

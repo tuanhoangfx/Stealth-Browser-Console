@@ -24,7 +24,7 @@ export function HubRuntimeHistoryList({
   className?: string;
 }) {
   return (
-    <ul className={`hub-runtime-history-list max-h-full space-y-0 overflow-auto ${className}`.trim()}>
+    <ul className={`hub-runtime-history-list hub-scrollbar max-h-full space-y-0 overflow-auto ${className}`.trim()}>
       {rows.length === 0 ? (
         <li className="hub-runtime-history-list__empty">{emptyMessage}</li>
       ) : (

@@ -1,5 +1,6 @@
 /* Golden split-pane scroll — Notes rail, editor body, History TOC rails (P0020 / P0016). */
-/* Tokens: p0008-globals --hub-split-scroll-* */
+/* Scrollbar chrome: hub-scrollbar.css — tokens: hub-theme-tokens --hub-split-scroll-* */
+@import "./hub-scrollbar.css";
 
 .hub-split-scroll {
   flex: 1 1 0;
@@ -8,8 +9,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--hub-split-scroll-thumb) var(--hub-split-scroll-track);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -21,32 +20,12 @@
   scroll-padding-bottom: var(--hub-split-scroll-end-padding, 0.75rem);
 }
 
-.hub-split-scroll::-webkit-scrollbar {
-  width: var(--hub-split-scroll-size);
-  height: var(--hub-split-scroll-size);
-}
-
-.hub-split-scroll::-webkit-scrollbar-track {
-  background: var(--hub-split-scroll-track);
-}
-
-.hub-split-scroll::-webkit-scrollbar-thumb {
-  background: var(--hub-split-scroll-thumb);
-  border-radius: var(--hub-split-scroll-radius);
-}
-
-.hub-split-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--hub-split-scroll-thumb-hover);
-}
-
 /* Directory tables (Accounts, Pages, …) — standalone scroll only; split-pane uses hub-directory-table-split */
 .hub-directory-table-scroll:not(.hub-directory-table-split) {
   max-height: min(68dvh, calc(100dvh - var(--hub-chrome-sticky-est-h, 8rem) - 10rem));
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--hub-split-scroll-thumb) var(--hub-split-scroll-track);
   -webkit-overflow-scrolling: touch;
   padding-bottom: var(--hub-split-scroll-end-padding, 0.75rem);
   scroll-padding-bottom: calc(var(--hub-split-scroll-end-padding, 0.75rem) + 2px);
@@ -68,58 +47,14 @@
   z-index: 3;
 }
 
-.hub-directory-table-scroll:not(.hub-directory-table-split)::-webkit-scrollbar {
-  width: var(--hub-split-scroll-size);
-  height: var(--hub-split-scroll-size);
-}
-
-.hub-directory-table-scroll:not(.hub-directory-table-split)::-webkit-scrollbar-track {
-  background: var(--hub-split-scroll-track);
-}
-
-.hub-directory-table-scroll:not(.hub-directory-table-split)::-webkit-scrollbar-thumb {
-  background: var(--hub-split-scroll-thumb);
-  border-radius: var(--hub-split-scroll-radius);
-}
-
-.hub-directory-table-scroll:not(.hub-directory-table-split)::-webkit-scrollbar-thumb:hover {
-  background: var(--hub-split-scroll-thumb-hover);
-}
-
-/* Split flex-pane layout — SSOT hub-directory-table.css (.hub-directory-table-split.hub-directory-table-scroll--flex-pane) */
-
 .hub-filter-dropdown-list {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--hub-split-scroll-thumb) var(--hub-split-scroll-track);
 }
 
-.hub-filter-dropdown-list::-webkit-scrollbar {
-  width: var(--hub-split-scroll-size);
-  height: 0;
-}
-
-.hub-filter-dropdown-list::-webkit-scrollbar-track {
-  background: var(--hub-split-scroll-track);
-}
-
-.hub-filter-dropdown-list::-webkit-scrollbar-thumb {
-  background: var(--hub-split-scroll-thumb);
-  border-radius: var(--hub-split-scroll-radius);
-}
-
-.hub-filter-dropdown-list::-webkit-scrollbar-thumb:hover {
-  background: var(--hub-split-scroll-thumb-hover);
-}
-
-.hub-filter-dropdown-list::-webkit-scrollbar-corner {
-  background: var(--panel);
-}
-
-/* Split thead/body shell — head lives outside scroll pane; cancel sticky + outer scroll (must follow rules above) */
+/* Split flex-pane layout — head lives outside scroll pane; cancel sticky + outer scroll (must follow rules above) */
 .hub-directory-table-split.hub-directory-table-scroll,
 .hub-directory-table-split.hub-directory-table-scroll--flex-pane {
   overflow: hidden !important;

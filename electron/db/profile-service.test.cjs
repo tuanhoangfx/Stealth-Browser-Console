@@ -76,6 +76,12 @@ async function main() {
     const runs = profileService.listRuns(10);
     if (runs.length !== 1) throw new Error("insertRun/listRuns failed");
 
+    profileService.setProfileStatus(created.id, "running");
+    profileService.setProfileStatus(created.id, "closed");
+    profileService.updateProfile(created.id, { note: "event-test" });
+    const events = profileService.listProfileEvents(created.id, 20);
+    if (events.length < 3) throw new Error(`profile_events expected >=3, got ${events.length}`);
+
     const fpNoise = profileService.createProfile({ name: "0448", note: "fp-noise" });
     profileService.updateProfile(fpNoise.id, { fingerprintSeed: 1231477890 });
     const exact = profileService.createProfile({ name: "1477", note: "exact" });

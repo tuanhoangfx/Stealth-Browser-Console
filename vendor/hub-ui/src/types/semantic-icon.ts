@@ -147,6 +147,8 @@ export type SemanticIconKey =
   | "filter.links"
   | "filter.dueDate"
   | "filter.phone"
+  | "filter.recoveryMail"
+  | "filter.ownership"
   | "filter.website"
   | "filter.rating"
   | "col.directory.page"

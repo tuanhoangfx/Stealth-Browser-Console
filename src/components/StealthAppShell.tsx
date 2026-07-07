@@ -1,4 +1,4 @@
-import { HubLoaderRoot } from "@tool-workspace/hub-ui";
+import { HubLoaderRoot, hubMainShellClassFromManifest } from "@tool-workspace/hub-ui";
 import { lazy, memo, Suspense, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { StealthHubShellSidebar } from "./StealthHubShellSidebar";
 import { StealthScreenLoadingView } from "./StealthScreenLoadingView";
@@ -14,6 +14,7 @@ import type { StealthSystemTab } from "../lib/stealth-system-tab";
 import type { StealthWorkflowTab } from "../lib/stealth-workflow-tab";
 import { ViewChunkErrorBoundary } from "../ui/ViewChunkErrorBoundary";
 import { SystemView } from "../views/SystemView";
+import toolManifest from "../../tool.manifest.json";
 
 type StealthEngineStatus = "checking" | "ready" | "offline";
 
@@ -174,7 +175,7 @@ export const StealthAppShell = memo(function StealthAppShell({
       />
       <main
         ref={mainRef}
-        className={`hub-main stealth-hub-main hub-main--${view} flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden`}
+        className={hubMainShellClassFromManifest(view, toolManifest.uiShell, "stealth-hub-main")}
       >
         <HubLoaderRoot mainRef={mainRef} />
         {mainContent}

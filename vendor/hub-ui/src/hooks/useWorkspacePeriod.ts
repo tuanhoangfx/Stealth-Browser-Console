@@ -11,7 +11,7 @@ import {
 /** URL-synced workspace period — one scope per Hub tab. */
 export function useWorkspacePeriod(
   scope: WorkspacePeriodScope,
-  defaultRange: WorkspacePeriodKey = "last30Days",
+  defaultRange: WorkspacePeriodKey = "all",
 ) {
   const [period, setPeriod] = useState<WorkspacePeriodPrefs>(() => readWorkspacePeriod(scope, defaultRange));
 

@@ -37,15 +37,7 @@
   flex-shrink: 0;
 }
 
-/* Center stats rail — scroll without visible track (P0004 golden; fixes faint gray streak). */
-.app-tab-header-center-stats {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.app-tab-header-center-stats::-webkit-scrollbar {
-  display: none;
-}
+/* Center stats rail — scroll without visible track: hub-scrollbar.css (.app-tab-header-center-stats) */
 
 /* Narrow viewports — KPI rail on second row; avoid overlap with title/meta. */
 @media (max-width: 1100px) {

@@ -36,14 +36,16 @@ async function waitForProfileUnlock(userDataDir, { timeoutMs = 1400, intervalMs 
   while (Date.now() - start <= timeoutMs) {
     removeStaleProfileArtifacts(userDataDir);
     const hasLockFiles = PROFILE_LOCK_FILES.some((name) => fs.existsSync(path.join(userDataDir, name)));
-    const hasLiveProcess = await hasProfileBrowserProcess(userDataDir);
-    if (!hasLockFiles && !hasLiveProcess) {
+    if (!hasLockFiles) {
       return { released: true, waitedMs: Date.now() - start };
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
   removeStaleProfileArtifacts(userDataDir);
   const hasLockFiles = PROFILE_LOCK_FILES.some((name) => fs.existsSync(path.join(userDataDir, name)));
+  if (!hasLockFiles) {
+    return { released: true, waitedMs: Date.now() - start };
+  }
   const hasLiveProcess = await hasProfileBrowserProcess(userDataDir);
   return {
     released: !hasLockFiles && !hasLiveProcess,

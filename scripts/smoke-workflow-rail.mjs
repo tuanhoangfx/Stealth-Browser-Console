@@ -7,12 +7,31 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSmokeAppUrl, smokeProjectRoot } from "./lib/smoke-electron-url.mjs";
+import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
+import { spawnElectronNode } from "./lib/spawn-electron-node.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = smokeProjectRoot;
 const outFile = path.join(root, ".smoke-workflow-rail.json");
 const url = resolveSmokeAppUrl(process.argv[2]);
+const smokeUrl =
+  /^https?:\/\//i.test(url) && !/[?&]stealthSmokePager=/.test(url)
+    ? `${url}${url.includes("?") ? "&" : "?"}stealthSmokePager=1`
+    : url;
 const WORKFLOW_RAIL_PAGE_SIZE = 5;
+/** Hub-UI DEFAULT_TABLE_PAGE_SIZE — keep in sync with src/app/constants.ts */
+const PROFILE_DIRECTORY_PAGE_SIZE = 20;
+const isLiveDev = /^https?:\/\//i.test(url);
+
+if (isLiveDev) {
+  const seed = spawnElectronNode("scripts/lib/seed-smoke-profiles-pager.cjs", [], {
+    env: stealthElectronEnv(),
+  });
+  if (seed.status !== 0) {
+    console.error("smoke-workflow-rail: seed-smoke-profiles-pager failed");
+    process.exit(1);
+  }
+}
 
 function findElectronCli() {
   const cli = path.join(root, "node_modules", "electron", "cli.js");
@@ -26,7 +45,61 @@ const probeScript = `
     /^profiles$/i.test((el.textContent || "").trim()),
   );
   if (profilesNav) profilesNav.click();
-  await new Promise((r) => setTimeout(r, 2000));
+  await new Promise((r) => setTimeout(r, 1500));
+
+  let profilesPane = null;
+  let profilesTable = null;
+  let profilesPager = null;
+  let profilesPagerText = "";
+  let profilesRowCount = 0;
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    await new Promise((r) => setTimeout(r, 400));
+    profilesPane = document.querySelector(".stealth-profile-directory-pane");
+    profilesTable = profilesPane?.querySelector("table.hub-directory-frame-table") || null;
+    profilesPager = profilesPane?.querySelector(".hub-table-pager") || null;
+    profilesPagerText = profilesPager?.textContent?.trim() || "";
+    profilesRowCount = profilesTable?.querySelectorAll("tbody tr")?.length || 0;
+    const fullPage = profilesRowCount >= ${PROFILE_DIRECTORY_PAGE_SIZE};
+    if (profilesRowCount > 0 && (profilesPager || !fullPage || attempt >= 12)) break;
+  }
+
+  const profilesCatalogMatch = profilesPagerText.match(/Showing\\s+\\d+-\\d+\\s+of\\s+(\\d+)/i);
+  const profilesCatalogTotal = profilesCatalogMatch
+    ? Number(profilesCatalogMatch[1])
+    : profilesRowCount;
+  const profilesPagerVisible =
+    Boolean(profilesPager) &&
+    /Page\\s+\\d+\\s+of\\s+\\d+/i.test(profilesPagerText) &&
+    /Showing\\s+\\d+-\\d+\\s+of\\s+\\d+/i.test(profilesPagerText);
+  const profilesPagerRequired = ${isLiveDev}
+    ? profilesRowCount >= ${PROFILE_DIRECTORY_PAGE_SIZE} || profilesCatalogTotal > ${PROFILE_DIRECTORY_PAGE_SIZE}
+    : profilesCatalogTotal > ${PROFILE_DIRECTORY_PAGE_SIZE};
+  const profilesPagerOk = !profilesPagerRequired || profilesPagerVisible;
+  const profilesDirectoryOk =
+    Boolean(profilesPane) &&
+    Boolean(profilesTable) &&
+    profilesRowCount > 0 &&
+    profilesPagerOk;
+  const workflowCanvasAbsent = !document.querySelector(".workflow-script-flow");
+
+  let workflowCanvasOk = true;
+  let workflowBuilderPresent = false;
+  let workflowCanvasPresent = false;
+  if (${isLiveDev}) {
+    const workflowNav = [...document.querySelectorAll("button,a,[role='tab']")].find((el) =>
+      /^workflow$/i.test((el.textContent || "").trim()),
+    );
+    if (workflowNav) workflowNav.click();
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      await new Promise((r) => setTimeout(r, 500));
+      workflowBuilderPresent = Boolean(document.querySelector(".script-builder"));
+      workflowCanvasPresent = Boolean(document.querySelector(".workflow-script-flow"));
+      if (workflowBuilderPresent && workflowCanvasPresent) break;
+    }
+    const needsWorkflowCanvas = Boolean(workflowNav) && workflowBuilderPresent;
+    workflowCanvasOk = !needsWorkflowCanvas || workflowCanvasPresent;
+  }
+
   const pageSize = ${WORKFLOW_RAIL_PAGE_SIZE};
   const rail = document.querySelector(".stealth-workflow-rail");
   const boot = document.getElementById("hub-boot-loader");
@@ -36,7 +109,7 @@ const probeScript = `
   );
   const workflowTable =
     scope.querySelector(".stealth-workflow-rail-table") ||
-    [...scope.querySelectorAll("table")].find((el) => /wf\d+/i.test(el.textContent || ""));
+    [...scope.querySelectorAll("table")].find((el) => /wf\\d+/i.test(el.textContent || ""));
   const historyHeading = [...scope.querySelectorAll("h1,h2,h3,[role='heading']")].find((el) =>
     /run history/i.test(el.textContent || ""),
   );
@@ -63,6 +136,7 @@ const probeScript = `
   const totalMatch = pagerText.match(/Showing\\s+\\d+-\\d+\\s+of\\s+(\\d+)/i);
   const catalogTotal = totalMatch ? Number(totalMatch[1]) : rowCount;
   const expectedRows = Math.min(pageSize, Math.max(catalogTotal, rowCount));
+
   const ok =
     !boot &&
     Boolean(workflowSearch) &&
@@ -73,7 +147,10 @@ const probeScript = `
     rowCount === expectedRows &&
     !pageSizeBtn &&
     !quickRunBtn &&
-    !tableOverlapsHistory;
+    !tableOverlapsHistory &&
+    profilesDirectoryOk &&
+    workflowCanvasAbsent &&
+    workflowCanvasOk;
   return {
     ok,
     clickedProfiles: Boolean(profilesNav),
@@ -90,6 +167,18 @@ const probeScript = `
     quickRunAbsent: !quickRunBtn,
     tableOverlapsHistory,
     bootPresent: Boolean(boot),
+    profilesDirectoryOk,
+    profilesPagerVisible,
+    profilesPagerRequired,
+    profilesPagerOk,
+    profilesPagerText,
+    profilesRowCount,
+    profilesCatalogTotal,
+    workflowCanvasAbsent,
+    workflowBuilderPresent,
+    workflowCanvasPresent,
+    workflowCanvasOk,
+    liveDevCanvasCheck: ${isLiveDev},
   };
 })()
 `.trim();
@@ -99,7 +188,7 @@ spawnSync(node, [...args, path.join(root, "scripts", "lib", "smoke-electron-runn
   cwd: root,
   env: {
     ...process.env,
-    SMOKE_URL: url,
+    SMOKE_URL: smokeUrl,
     SMOKE_OUT: outFile,
     SMOKE_PROBE: probeScript,
   },

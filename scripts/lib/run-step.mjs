@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveNodeExe, winSpawnOpts } from "./win-spawn.mjs";
+import { spawnElectronNode } from "./spawn-electron-node.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const p0003Root = path.resolve(__dirname, "..", "..");
@@ -16,6 +17,11 @@ const { findPnpmCjs } = require(path.join(devRoot, "Tool", "scripts", "lib", "wi
 
 export function spawnStep(cmd, args, cwd = p0003Root) {
   const node = resolveNodeExe();
+  if (cmd === "electron-node") {
+    const script = args[0];
+    const scriptArgs = args.slice(1);
+    return spawnElectronNode(script, scriptArgs, { cwd, stdio: "inherit" });
+  }
   if (cmd === "node") {
     return spawnSync(node, args, winSpawnOpts({ cwd, stdio: "inherit" }));
   }

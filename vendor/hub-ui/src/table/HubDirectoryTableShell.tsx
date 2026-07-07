@@ -176,11 +176,15 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
       return (
         <HubDirectoryColumnHint
           content={col.headerHint}
-          titleGlyph={{
-            icon: col.headerIcon ?? roleMeta?.icon,
-            brandIcon: col.headerBrandIcon,
-            toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
-          }}
+          titleGlyph={
+            col.headerEmoji
+              ? { emoji: col.headerEmoji }
+              : {
+                  icon: col.headerIcon ?? roleMeta?.icon,
+                  brandIcon: col.headerBrandIcon,
+                  toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
+                }
+          }
         >
           {label}
         </HubDirectoryColumnHint>
@@ -189,8 +193,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
     return label;
   };
 
-  const headerTitleAttr = (col: (typeof columns)[number]) =>
-    col.headerHint ? undefined : col.headerTooltip;
+  const headerTitleAttr = (_col: (typeof columns)[number]) => undefined;
 
   const wrapBorder = flushWrap ? "" : " rounded-2xl border border-white/5";
   const resolvedWrapClass = `hub-users-table-wrap${splitScroll ? " hub-directory-table-split" : ""} ${wrapClassName}${wrapBorder}`;

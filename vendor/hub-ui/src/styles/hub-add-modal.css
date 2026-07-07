@@ -6,6 +6,12 @@
   --overview-toc-w: 11.5rem;
   --hub-add-modal-body-h: 18rem;
   --hub-add-modal-toc-bulk-slot-h: 4.5rem;
+  --hub-adm-label-w: 6.5rem;
+  --hub-adm-field-gap: 0.7rem;
+  --hub-adm-value-h: var(--hub-control-h, 26px);
+  --hub-control-h: 26px;
+  --hub-table-header-size: 12px;
+  --hub-table-body-size: 12px;
   min-height: calc(var(--hub-add-modal-body-h) + 8.75rem);
 }
 

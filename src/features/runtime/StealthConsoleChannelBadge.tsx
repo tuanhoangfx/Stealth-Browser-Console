@@ -1,14 +1,15 @@
-import { Archive, Bot, Workflow, Zap, type LucideIcon } from "lucide-react";
+import { Archive, Bot, History, Workflow, Zap, type LucideIcon } from "lucide-react";
 import { HubRuntimeChannelBadge } from "@tool-workspace/hub-ui";
 
 /** Console log channel — SSOT labels Title Case (parity P0020 TodoHubBadge priority pills). */
-export type StealthConsoleChannel = "workflow" | "profile" | "backup" | "system";
+export type StealthConsoleChannel = "workflow" | "profile" | "backup" | "system" | "lifecycle";
 
 const CHANNEL_LABEL: Record<StealthConsoleChannel, string> = {
   workflow: "Workflow",
   profile: "Profile",
   backup: "Backup",
   system: "System",
+  lifecycle: "Lifecycle",
 };
 
 const CHANNEL_ICON: Record<StealthConsoleChannel, LucideIcon> = {
@@ -16,6 +17,7 @@ const CHANNEL_ICON: Record<StealthConsoleChannel, LucideIcon> = {
   profile: Bot,
   backup: Archive,
   system: Zap,
+  lifecycle: History,
 };
 
 /** Thin wrapper — channel registry local; pill SSOT `HubRuntimeChannelBadge`. */
@@ -41,6 +43,7 @@ export function StealthConsoleChannelBadge({
 export function inferStealthConsoleChannel(source: string): StealthConsoleChannel {
   const key = source.trim().toLowerCase();
   if (key === "workflow") return "workflow";
+  if (key === "lifecycle") return "lifecycle";
   if (key === "backup") return "backup";
   if (key === "system" || key === "groups" || key === "profiles") return "system";
   return "profile";

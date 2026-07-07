@@ -1,4 +1,6 @@
-/* Profile New/Edit modal — main form left · Note + Log rail right (P0020 Account Detail parity). */
+/* Profile New/Edit modal — create (fit) · edit split (P0006 Job detail parity). */
+@import "../../../vendor/hub-ui/src/styles/hub-tool-detail-split.css";
+
 .modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal {
   --hub-modal-max-w: min(96rem, calc(100vw - var(--app-sidebar-width, 0px) - 1.5rem));
   --hub-modal-max-h: 720px;
@@ -54,16 +56,181 @@
   padding: 0 0.65rem 0.65rem;
 }
 
-.stealth-profile-detail__split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--stealth-profile-detail-rail-w);
-  gap: 0.65rem;
+/* Edit + create modal — split shell (main panels · log rail). */
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal,
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-create-modal {
+  --hub-tool-detail-rail-w: var(--stealth-profile-detail-rail-w);
+  --hub-tool-detail-split-min-h: var(--stealth-profile-detail-min-h);
+  --hub-modal-max-h: 720px;
+  --hub-modal-max-vh: 86vh;
+  height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  min-height: min(var(--stealth-profile-detail-min-h), var(--hub-modal-max-vh));
+  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-create-modal
+  .stealth-profile-create-tab-panels {
   flex: 1;
-  min-height: var(--stealth-profile-detail-min-h);
-  overflow: hidden;
+  min-height: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal .hub-tool-detail-modal__layout {
   align-items: stretch;
 }
 
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal .hub-tool-detail-modal__toc {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.stealth-profile-detail-toc-rail {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.stealth-profile-detail-toc-rail .hub-tool-detail-rail__body {
+  padding: 0.35rem 0.45rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal .hub-toc-nav__list {
+  margin: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal
+  .hub-tool-detail-split__main
+  .hub-tool-detail-panel--grow {
+  flex: 1 1 auto;
+  min-height: 8rem;
+}
+
+.stealth-profile-detail-note-field {
+  min-height: 7rem;
+  height: 100%;
+}
+
+.stealth-profile-detail-log-rail {
+  container-type: inline-size;
+  container-name: stealth-profile-console;
+}
+
+.stealth-profile-detail-log-rail .hub-tool-detail-rail__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem;
+}
+
+.stealth-profile-detail-log-rail .hub-runtime-term {
+  flex: 1;
+  min-height: 0;
+}
+
+.stealth-profile-detail-log-rail .hub-runtime-term__body {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+  font-size: var(--hub-table-muted-size, 11px);
+}
+
+.stealth-profile-detail-log-rail--focused {
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.45), 0 0 18px rgba(99, 102, 241, 0.18);
+  transition: box-shadow 0.2s ease;
+}
+
+.stealth-profile-detail-log-rail__filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.stealth-console-terminal {
+  --stealth-grid-cols: minmax(3.25rem, auto) minmax(3rem, auto) minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: var(--stealth-grid-cols);
+  column-gap: 0.35rem;
+  row-gap: 0.06rem;
+  min-width: 0;
+}
+
+.stealth-console-terminal-head,
+.stealth-console-terminal-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+@supports not (grid-template-columns: subgrid) {
+  .stealth-console-terminal-head,
+  .stealth-console-terminal-row {
+    grid-template-columns: var(--stealth-grid-cols);
+  }
+}
+
+.stealth-console-terminal-head {
+  display: none;
+  align-items: end;
+  padding: 0 0.28rem 0.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 0.04rem;
+}
+
+@container stealth-profile-console (min-width: 280px) {
+  .stealth-console-terminal-head {
+    display: grid;
+  }
+}
+
+.stealth-console-terminal-row__col {
+  min-width: 0;
+}
+
+.stealth-console-terminal-row__col--ch {
+  display: flex;
+  align-items: baseline;
+}
+
+.stealth-console-terminal-row__col--msg {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(226, 232, 240);
+}
+
+.stealth-console-terminal-row--success .stealth-console-terminal-row__col--msg,
+.stealth-console-terminal-row--ok .stealth-console-terminal-row__col--msg {
+  color: rgb(110, 231, 183);
+}
+
+.stealth-console-terminal-row--error .stealth-console-terminal-row__col--msg,
+.stealth-console-terminal-row--failed .stealth-console-terminal-row__col--msg {
+  color: rgb(252, 165, 165);
+}
+
+.stealth-console-terminal-row--warn .stealth-console-terminal-row__col--msg {
+  color: rgb(253, 224, 71);
+}
+
+.stealth-runtime-activity-time {
+  font-size: var(--hub-table-muted-size, 11px);
+  color: rgb(100, 116, 139);
+  font-variant-numeric: tabular-nums;
+}
+
+.stealth-profile-detail__split {
+  flex: 1;
+  min-height: var(--stealth-profile-detail-min-h);
+}
+
+/* Create modal — nested tab panels keep local scroll. */
 .stealth-profile-detail__main {
   display: flex;
   flex-direction: column;
@@ -96,6 +263,22 @@
 .stealth-profile-adm-rail--note {
   flex: 1 1 58%;
   min-height: 12rem;
+}
+
+.stealth-profile-detail__rail:has(.stealth-profile-adm-rail--note:only-child) .stealth-profile-adm-rail--note {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.stealth-profile-detail-log-term {
+  min-height: 14rem;
+  flex: 1 1 auto;
+}
+
+.stealth-profile-detail-log-term .hub-runtime-term__body {
+  min-height: 12rem;
+  max-height: min(28rem, 42vh);
+  overflow: auto;
 }
 
 .stealth-profile-adm-rail--log {
@@ -386,9 +569,8 @@
 }
 
 @media (max-width: 900px) {
-  .stealth-profile-detail__split {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(10rem, 28vh);
+  .modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal {
+    --stealth-profile-detail-rail-w: min(18rem, 36%);
   }
 
   .stealth-profile-adm-rail--log,

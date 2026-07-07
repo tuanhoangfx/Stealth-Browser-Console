@@ -16,6 +16,7 @@ const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-clea
 const { markProfileChromeCleanExit } = require("../lib/profile-chrome-session.cjs");
 const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks, writeSidecarPid, readSidecarPid, removeSidecarPid } = require("../lib/profile-user-data-repair.cjs");
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
+const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
 
 /** CDP passthrough bật mặc định; tắt bằng STEALTH_CDP_ENABLE=0. */
 function cdpEnabled() {
@@ -23,6 +24,8 @@ function cdpEnabled() {
 }
 
 const SESSION_WATCHDOG_MS = 8000;
+/** Ignore transient empty pages / watchdog during startup navigation. */
+const LAUNCH_GRACE_MS = 45_000;
 
 /** Skip expensive WMI orphan probe when profile dir is clean (typical Run path). */
 function shouldSkipOrphanProbe(userDataDir, priorStatus) {
@@ -61,9 +64,11 @@ function isContextAlive(context) {
 }
 
 class SessionManager {
-  /** @type {Map<string, { context: import('playwright-core').BrowserContext, userDataDir: string, alive: boolean, watchdog?: NodeJS.Timeout, startupNavigation?: Promise<void> }>} */
+  /** @type {Map<string, { context: import('playwright-core').BrowserContext, userDataDir: string, alive: boolean, watchdog?: NodeJS.Timeout, startupNavigation?: Promise<void>, launchedAt?: number }>} */
   #sessions = new Map();
   #userDataRoot = "";
+  /** Profiles mid-launch — reconcile must not mark closed while spawn is in flight. */
+  #launchingIds = new Set();
   /** @type {((profileId: string, profile: object, event: string) => void) | null} */
   #onSessionChange = null;
 
@@ -76,8 +81,15 @@ class SessionManager {
   }
 
   isRunning(profileId) {
-    const session = this.#sessions.get(String(profileId));
+    const id = String(profileId);
+    if (this.#launchingIds.has(id)) return true;
+    const session = this.#sessions.get(id);
     return Boolean(session?.alive);
+  }
+
+  #inLaunchGrace(session) {
+    if (!session) return false;
+    return Date.now() - (session.launchedAt || 0) < LAUNCH_GRACE_MS;
   }
 
   #emitSessionChange(profileId, profile, event) {
@@ -98,6 +110,7 @@ class SessionManager {
     for (const row of profileService.listActiveProfileIds()) {
       if (this.isRunning(row.id)) continue;
       const userDataDir = profileDataDir(root, row.id);
+      if (!profileDirHasLock(userDataDir) && !readSidecarPid(userDataDir)?.pid) continue;
       await killOrphanProfileBrowser(userDataDir);
       removeStaleProfileLocks(userDataDir);
       const next = profileService.setProfileStatus(row.id, "closed");
@@ -149,6 +162,7 @@ class SessionManager {
       debugPort: opened.debugPort || 0,
     });
 
+    const launchedAt = Date.now();
     this.#sessions.set(id, {
       context: opened.context,
       userDataDir: opened.userDataDir,
@@ -158,6 +172,7 @@ class SessionManager {
       profileCode,
       focusOnly: false,
       startupNavigation,
+      launchedAt,
     });
     this.#bindSessionLifecycle(id, opened.context, profile);
 
@@ -219,6 +234,7 @@ class SessionManager {
     }
 
     if (!(await hasProfileBrowserProcess(userDataDir))) return null;
+    if (isAgentSmokeLaunch()) return null;
 
     const focused = await focusProfileBrowserWindow(userDataDir);
     if (!focused.ok) return null;
@@ -234,6 +250,7 @@ class SessionManager {
       profile,
       profileCode,
       focusOnly: true,
+      launchedAt: Date.now(),
     });
     this.#bindFocusOnlyLifecycle(id, userDataDir);
     profileService.touchLastOpened(id);
@@ -267,6 +284,7 @@ class SessionManager {
     }
     // (b) DB đánh dấu active nhưng không còn session sống → set closed (dọn trạng thái treo).
     for (const row of profileService.listActiveProfileIds()) {
+      if (row.status === "opening") continue;
       if (!this.isRunning(row.id)) {
         const next = profileService.setProfileStatus(row.id, "closed");
         this.#emitSessionChange(row.id, next, "closed");
@@ -301,12 +319,19 @@ class SessionManager {
 
     const maybeFinalizeWhenEmpty = () => {
       setTimeout(() => {
-        try {
-          if (context.pages().length === 0) finalize("window-closed");
-        } catch {
-          finalize("window-closed");
-        }
-      }, 200);
+        void (async () => {
+          const session = this.#sessions.get(id);
+          if (!session || session.context !== context || !session.alive) return;
+          if (this.#inLaunchGrace(session)) return;
+          try {
+            if (context.pages().length > 0) return;
+            if (await hasProfileBrowserProcess(session.userDataDir)) return;
+            finalize("window-closed");
+          } catch {
+            if (!this.#inLaunchGrace(session)) finalize("window-closed");
+          }
+        })();
+      }, 400);
     };
 
     const bindPageClose = (page) => {
@@ -335,9 +360,11 @@ class SessionManager {
         clearInterval(watchdog);
         return;
       }
-      if (!isContextAlive(context)) {
-        finalize("watchdog");
-      }
+      if (this.#inLaunchGrace(session)) return;
+      if (isContextAlive(context)) return;
+      void hasProfileBrowserProcess(session.userDataDir).then((alive) => {
+        if (!alive) finalize("watchdog");
+      }).catch(() => finalize("watchdog"));
     }, SESSION_WATCHDOG_MS);
 
     const session = this.#sessions.get(id);
@@ -438,6 +465,8 @@ class SessionManager {
 
   async launch(profile, { skipStartupUrl = false } = {}) {
     const id = String(profile.id);
+    this.#launchingIds.add(id);
+    try {
     const existing = this.#sessions.get(id);
     if (existing?.alive) {
       if (existing.context) {
@@ -447,7 +476,9 @@ class SessionManager {
         return { ok: true, status: "running", profile: next, focused: true };
       }
       if (existing.focusOnly) {
-        await focusProfileBrowserWindow(existing.userDataDir);
+        if (!isAgentSmokeLaunch()) {
+          await focusProfileBrowserWindow(existing.userDataDir);
+        }
         profileService.touchLastOpened(id);
         const next = profileService.setProfileStatus(id, "running");
         return { ok: true, status: "running", profile: next, focused: true };
@@ -465,14 +496,16 @@ class SessionManager {
     let lastError = null;
 
     let attached = null;
+
+    // Repair stale locks/orphans before WMI attach probe — dead lockfile used to cost 20s+.
+    await prepareProfileForLaunch(userDataDir, {
+      aggressive: needsAggressivePrep || profileDirHasLock(userDataDir),
+    });
+
     if (!shouldSkipOrphanProbe(userDataDir, priorStatus)) {
       attached = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
     }
     if (attached) return attached;
-
-    await prepareProfileForLaunch(userDataDir, {
-      aggressive: needsAggressivePrep || profileDirHasLock(userDataDir),
-    });
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -510,6 +543,9 @@ class SessionManager {
     const failed = profileService.setProfileStatus(id, "failed");
     this.#emitSessionChange(id, failed, "failed");
     throw lastError;
+    } finally {
+      this.#launchingIds.delete(id);
+    }
   }
 
   async close(profileId) {
@@ -607,6 +643,7 @@ class SessionManager {
     if (!session?.alive) return { ok: false, reason: "not-running" };
 
     if (session.focusOnly) {
+      if (isAgentSmokeLaunch()) return { ok: true };
       const focused = await focusProfileBrowserWindow(session.userDataDir);
       return focused.ok ? { ok: true } : { ok: false, reason: focused.reason || "focus-failed" };
     }

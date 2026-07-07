@@ -83,6 +83,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   allVisibleSelected,
   onOpen,
   onClose,
+  onOpenDetail,
   globalExtensionToggles,
   extensionIcons,
   emptyMessage,
@@ -101,6 +102,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   allVisibleSelected: boolean;
   onOpen: (profile: ProfileRow) => void;
   onClose: (profile: ProfileRow) => void;
+  onOpenDetail?: (profile: ProfileRow) => void;
   globalExtensionToggles: ExtensionToggles;
   extensionIcons?: ExtensionIconMap;
   emptyMessage?: string;
@@ -213,7 +215,12 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
             }
           : undefined
       }
-      getRowClassName={(profile) => (selectedIds.has(profileRowKey(profile)) ? " is-selected" : "")}
+      getRowClassName={(profile) => {
+        const selected = selectedIds.has(profileRowKey(profile)) ? " is-selected" : "";
+        const clickable = onOpenDetail ? " cursor-pointer" : "";
+        return `${selected}${clickable}`;
+      }}
+      onRowClick={onOpenDetail}
       renderRowCells={(profile) => (
         <>
           {columns.map((col) =>

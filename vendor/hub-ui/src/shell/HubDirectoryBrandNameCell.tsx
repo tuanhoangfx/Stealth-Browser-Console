@@ -14,6 +14,7 @@ export type HubDirectoryBrandNameCellProps = {
   imageSrc?: string;
   imageShell?: HubBrandIconShell;
   fallbackIcon?: HubGlyphComponent;
+  /** @deprecated Body cells use no hover tooltip — header hints only. */
   title?: string;
 };
 
@@ -62,18 +63,16 @@ export function HubDirectoryBrandNameCell({
   imageSrc,
   imageShell = "bare",
   fallbackIcon: Fallback,
-  title,
 }: HubDirectoryBrandNameCellProps) {
   const brand = brandId ? resolveHubBrandIcon(brandId) : null;
   const resolvedSrc = brand?.src ?? imageSrc;
   const resolvedShell = brand?.shell ?? imageShell;
   const px = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
-  const tip = title ?? label;
 
   return (
-    <span className="hub-users-cell-name" title={tip}>
+    <span className="hub-users-cell-name">
       {brandId && brand ? (
-        <HubBrandIcon brandId={brandId} size={HUB_DIRECTORY_TABLE_BRAND_ICON_PX} context="chrome" title={tip} />
+        <HubBrandIcon brandId={brandId} size={HUB_DIRECTORY_TABLE_BRAND_ICON_PX} context="chrome" />
       ) : resolvedSrc ? (
         <DirectoryBrandImg src={resolvedSrc} shell={resolvedShell} alt="" px={px} fallbackIcon={Fallback} />
       ) : Fallback ? (

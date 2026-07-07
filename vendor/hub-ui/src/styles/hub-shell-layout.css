@@ -419,7 +419,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--hub-inline-gap-comfort, 6px);
   overflow: hidden;
   color: var(--muted);
   font-size: var(--hub-chart-label-size);
@@ -456,6 +456,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.hub-chart-legend-label__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.hub-chart-legend-label__glyph--emoji {
+  font-size: var(--hub-chart-label-size, 12px);
+  line-height: 1;
+}
+
+.hub-chart-legend-label__glyph--dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
 }
 
 .hub-chart-card__donut {

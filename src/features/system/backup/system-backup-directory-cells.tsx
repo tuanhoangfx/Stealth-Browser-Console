@@ -1,8 +1,8 @@
 import {
   DirectoryTableBodyCell,
-  formatHubTimestampFull,
   getDirectorySearchHighlight,
   HubDirectorySearchHighlightText,
+  HubDirectoryTimestampLabel,
   HubUsersOnOffLabel,
   HubUsersStatusLabel,
   type HubDirectoryColumnDef,
@@ -16,17 +16,7 @@ function renderLastBackupCell(iso?: string) {
   if (!iso) return <span className="hub-directory-table-body-text">—</span>;
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return <span className="hub-directory-table-body-text">—</span>;
-  const ageMs = Date.now() - ms;
-  const hours = ageMs / (60 * 60 * 1000);
-  const label = hours < 24 ? `${Math.max(1, Math.round(hours))}h ago` : new Date(ms).toLocaleDateString("vi-VN");
-  return (
-    <HubUsersStatusLabel
-      label={label}
-      tone={hours < 24 ? "active" : "idle"}
-      capitalize={false}
-      title={formatHubTimestampFull(iso)}
-    />
-  );
+  return <HubDirectoryTimestampLabel at={iso} />;
 }
 
 export function renderSystemBackupDirectoryBodyCell(
@@ -49,13 +39,11 @@ export function renderSystemBackupDirectoryBodyCell(
     case "profile":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span title={profile.name}>
-            <HubDirectorySearchHighlightText
-              text={profile.name}
-              terms={profileNameTerms}
-              className="hub-users-name-title"
-            />
-          </span>
+          <HubDirectorySearchHighlightText
+            text={profile.name}
+            terms={profileNameTerms}
+            className="hub-users-name-title"
+          />
         </DirectoryTableBodyCell>
       );
     case "group": {
@@ -66,7 +54,6 @@ export function renderSystemBackupDirectoryBodyCell(
             label={label}
             tone={groupHubTone(label, profile.groupId)}
             capitalize={false}
-            title={label}
           />
         </DirectoryTableBodyCell>
       );
@@ -92,16 +79,7 @@ export function renderSystemBackupDirectoryBodyCell(
     case "folder":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubUsersOnOffLabel
-            on={Boolean(ctx.storage?.folderExists)}
-            title={
-              ctx.storage?.folderExists
-                ? ctx.storage.folderBytes != null && ctx.storage.folderBytes >= 0
-                  ? `Chrome userData folder present (${formatBackupBytes(ctx.storage.folderBytes)})`
-                  : "Chrome userData folder present"
-                : "No on-disk profile folder"
-            }
-          />
+          <HubUsersOnOffLabel on={Boolean(ctx.storage?.folderExists)} />
         </DirectoryTableBodyCell>
       );
     default:

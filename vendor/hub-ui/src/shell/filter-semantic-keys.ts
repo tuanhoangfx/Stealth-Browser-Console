@@ -35,6 +35,8 @@ export const FILTER_BAR_SEMANTIC_KEY: Record<string, SemanticIconLookupKey> = {
   links: "filter.links",
   dueDate: "filter.dueDate",
   phone: "filter.phone",
+  recoveryMail: "filter.recoveryMail",
+  ownership: "filter.ownership",
   website: "filter.website",
   rating: "filter.rating",
 };

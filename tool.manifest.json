@@ -20,6 +20,16 @@
     "SQLite"
   ],
   "devPort": 5175,
+  "uiShell": {
+    "golden": "P0020",
+    "mainMode": "directory",
+    "splitScreens": [
+      "profiles",
+      "workflow",
+      "system"
+    ],
+    "userFooter": "workspace"
+  },
   "commands": {
     "dev": "corepack pnpm dev",
     "dev:web": "corepack pnpm dev:web",
@@ -48,17 +58,54 @@
     "release": "RELEASE.md",
     "architecture": "ARCHITECTURE.md"
   },
+  "directoryDisplayPrefs": {
+    "ssot": "src/lib/stealth-display-panel-config.tsx",
+    "profiles": {
+      "module": "src/features/profiles/profile-directory-prefs.ts",
+      "scope": "Profiles tab directory table only",
+      "columnStorageKey": "p0003_profile_directory_columns",
+      "presetsStorageKey": "p0003_profile_directory_column_presets",
+      "displayPanelVariant": "panel"
+    },
+    "workflowRail": {
+      "module": "src/features/workflows/workflow-directory-prefs.ts",
+      "scope": "Workflow split left rail (Run History + Console workspace)",
+      "columnStorageKey": "p0003_workflow_rail_directory_columns",
+      "presetsStorageKey": "p0003_workflow_rail_directory_column_presets",
+      "displayPanelVariant": "rail"
+    },
+    "workflowPanel": {
+      "module": "src/features/workflows/workflow-directory-prefs.ts",
+      "scope": "Workflow Scripts tab directory table",
+      "columnStorageKey": "p0003_workflow_panel_directory_columns",
+      "presetsStorageKey": "p0003_workflow_panel_directory_column_presets",
+      "displayPanelVariant": "panel"
+    },
+    "notes": "Rail vs panel presets are independent localStorage scopes — never share storage keys across variants."
+  },
+  "smoke": {
+    "workflowRail": "scripts/smoke-workflow-rail.mjs",
+    "liveDevUrl": "http://127.0.0.1:5175/?stealthSmokePager=1",
+    "profilesPagerSeed": {
+      "webMockQuery": "stealthSmokePager=1",
+      "minProfiles": 21,
+      "dbSeedScript": "scripts/lib/seed-smoke-profiles-pager.cjs",
+      "dbCleanupScript": "scripts/lib/cleanup-smoke-profiles-pager.cjs",
+      "electronNodeRunner": "scripts/run-electron-node.mjs",
+      "profileNameRange": "99001-99021"
+    }
+  },
   "health": {
     "status": "Beta",
     "note": "Requires CloakBrowser binary (auto-download on first launch). No external antidetect app."
   },
   "engine": {
     "package": "cloakbrowser",
-    "version": "0.4.3",
+    "version": "0.4.8",
     "pinned": true,
     "bumpPolicy": "docs/ENGINE-CLOAKBROWSER.md#bump-policy",
     "forkDecision": "docs/cloakbrowser-fork-evaluation.md#decision-record",
-    "updatedAt": "2026-06-25"
+    "updatedAt": "2026-07-06"
   },
   "uiScreens": [
     {
@@ -89,15 +136,15 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-07-06T09:25:00.000Z",
+  "manifestUpdatedAt": "2026-07-06T22:37:27.659Z",
   "release": {
-    "version": "0.10.39",
-    "updatedAt": "2026-07-05",
+    "version": "0.10.62",
+    "updatedAt": "2026-07-07",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {
-      "tag": "v0.10.8",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.8",
-      "publishedAt": "2026-07-04T23:10:20.704Z"
+      "tag": "v0.10.62",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.62",
+      "publishedAt": "2026-07-06T22:37:27.658Z"
     }
   },
   "ship": {

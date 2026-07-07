@@ -5,21 +5,19 @@ export type DirectoryTableBodyCellProps = {
   /** Optional typography helper e.g. hub-users-cell-num, hub-users-cell-muted */
   typographyClass?: string;
   children: ReactNode;
-  title?: string;
   onClick?: (e: MouseEvent<HTMLTableCellElement>) => void;
 };
 
-/** Golden directory body cell — td class must match colgroup colClass (P0004 Users parity). */
+/** Golden directory body cell — td class must match colgroup colClass (P0004 Users parity). No native title tooltip. */
 export function DirectoryTableBodyCell({
   colClass,
   typographyClass,
   children,
-  title,
   onClick,
 }: DirectoryTableBodyCellProps) {
   const className = [colClass, typographyClass].filter(Boolean).join(" ");
   return (
-    <td className={className} title={title} onClick={onClick}>
+    <td className={className} onClick={onClick}>
       {children}
     </td>
   );

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import {
+  HubAdmSectionLabel,
   HubModalFilterField,
-  HubToolDetailSection,
-  HUB_TOOL_DETAIL_SECTIONS_CLASS
+  HUB_TOOL_DETAIL_SECTIONS_CLASS,
+  hubAdmSectionBlockClass,
+  hubAdmSectionHeader,
 } from "@tool-workspace/hub-ui";
-import { MonitorSmartphone, User } from "lucide-react";
 import { randomFingerprintSeed } from "../../lib/stealth-profile-utils";
 import {
   LOCALE_OPTIONS,
@@ -58,6 +59,7 @@ export function ProfileFormFields({
   showFingerprint = true,
   layout = "flat"
 }: ProfileFormFieldsProps) {
+  const [deviceExpanded, setDeviceExpanded] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const editDevice = (patch: Partial<DeviceConfig>) => onDeviceChange({ ...patch, devicePreset: "custom" });
 
@@ -91,6 +93,17 @@ export function ProfileFormFields({
         onChange={(presetId) => onDeviceChange(applyDevicePreset(device, presetId))}
       />
 
+      <button
+        type="button"
+        className="col-span-full self-start text-xs text-[var(--accent-2)] underline-offset-2 hover:underline"
+        onClick={() => setDeviceExpanded((v) => !v)}
+        aria-expanded={deviceExpanded}
+      >
+        {deviceExpanded ? "Hide advanced device settings" : "Show advanced device settings"}
+      </button>
+
+      {deviceExpanded ? (
+        <>
       <HubModalFilterField
         filterKey="browser-platform"
         label="Operating system"
@@ -190,7 +203,7 @@ export function ProfileFormFields({
         className="col-span-full self-start text-xs text-[var(--accent-2)] underline-offset-2 hover:underline"
         onClick={() => setShowAdvanced((v) => !v)}
       >
-        {showAdvanced ? "Hide advanced" : "Advanced (User-Agent override)"}
+        {showAdvanced ? "Hide User-Agent override" : "Advanced (User-Agent override)"}
       </button>
 
       {showAdvanced ? (
@@ -204,22 +217,22 @@ export function ProfileFormFields({
           />
         </label>
       ) : null}
+        </>
+      ) : null}
     </div>
   );
 
   if (layout === "hub-sections") {
     return (
-      <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>
-        <HubToolDetailSection id="profile-basics" title="Profile" icon={<User size={14} className="text-indigo-300" aria-hidden />}>
-          {basics}
-        </HubToolDetailSection>
-        <HubToolDetailSection
-          id="profile-device"
-          title="Device"
-          icon={<MonitorSmartphone size={14} className="text-violet-300" aria-hidden />}
-        >
-          {deviceSection}
-        </HubToolDetailSection>
+      <div className={`${HUB_TOOL_DETAIL_SECTIONS_CLASS} twofa-adm-credentials-stack`}>
+        <div id="profile-basics" className={hubAdmSectionBlockClass("profile")}>
+          <HubAdmSectionLabel header={hubAdmSectionHeader("profile")} />
+          <div className="hub-adm-section-block__rows">{basics}</div>
+        </div>
+        <div id="profile-device" className={hubAdmSectionBlockClass("device")}>
+          <HubAdmSectionLabel header={hubAdmSectionHeader("device")} />
+          <div className="hub-adm-section-block__rows">{deviceSection}</div>
+        </div>
       </div>
     );
   }

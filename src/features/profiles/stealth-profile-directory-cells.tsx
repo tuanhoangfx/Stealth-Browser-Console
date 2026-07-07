@@ -1,7 +1,6 @@
 import {
   compactIconSize,
   DirectoryTableBodyCell,
-  formatHubTimestampFull,
   getDirectorySearchHighlight,
   HubDirectorySearchHighlightText,
   HubUsersOnOffLabel,
@@ -9,33 +8,18 @@ import {
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import { Loader2, Play, Square } from "lucide-react";
-import { formatStartupUrlDisplay, resolveProfileLaunchUrl } from "../../lib/startup-url";
+import { HubDirectoryTimestampLabel } from "@tool-workspace/hub-ui";
+import { formatStartupUrlDisplay } from "../../lib/startup-url";
 import type { ExtensionToggles, ProfileRow } from "../../types";
 import { resolveProfileExtensionEffective } from "../../lib/profile-extension-effective";
-import {
-  formatLastOpenedRelativeAge,
-  formatLastOpenedStaleDate,
-  groupHubTone,
-  lastOpenedAgeTone,
-  lastOpenedHubTone,
-} from "./profile-directory-cell-helpers";
+import { groupHubTone } from "./profile-directory-cell-helpers";
 import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
 
 function renderProfileTimestampCell(ms: number | null | undefined) {
   if (ms == null || !Number.isFinite(ms) || !ms) {
     return <span className="hub-directory-table-body-text">—</span>;
   }
-  const iso = new Date(ms).toISOString();
-  const tone = lastOpenedAgeTone(ms);
-  const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
-  return (
-    <HubUsersStatusLabel
-      label={label}
-      tone={lastOpenedHubTone(tone)}
-      capitalize={false}
-      title={formatHubTimestampFull(iso)}
-    />
-  );
+  return <HubDirectoryTimestampLabel at={ms} />;
 }
 
 export function renderStealthProfileDirectoryBodyCell(
@@ -59,13 +43,11 @@ export function renderStealthProfileDirectoryBodyCell(
     case "profile":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span title={profile.name}>
-            <HubDirectorySearchHighlightText
-              text={profile.name}
-              terms={profileNameTerms}
-              className="hub-users-name-title"
-            />
-          </span>
+          <HubDirectorySearchHighlightText
+            text={profile.name}
+            terms={profileNameTerms}
+            className="hub-users-name-title"
+          />
         </DirectoryTableBodyCell>
       );
     case "group": {
@@ -76,7 +58,6 @@ export function renderStealthProfileDirectoryBodyCell(
             label={label}
             tone={groupHubTone(label, profile.groupId)}
             capitalize={false}
-            title={label}
           />
         </DirectoryTableBodyCell>
       );
@@ -86,10 +67,9 @@ export function renderStealthProfileDirectoryBodyCell(
       const extKey = key;
       const global = handlers?.globalExtensionToggles ?? { e0001: true, surfshark: false, webStore: false };
       const enabled = resolveProfileExtensionEffective(global, profile.extensionOverrides, extKey);
-      const label = extKey === "e0001" ? "E0001 Cookie Bridge" : "Surfshark VPN";
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubUsersOnOffLabel on={enabled} title={`${label}: ${enabled ? "On" : "Off"}`} />
+          <HubUsersOnOffLabel on={enabled} />
         </DirectoryTableBodyCell>
       );
     }
@@ -102,7 +82,6 @@ export function renderStealthProfileDirectoryBodyCell(
             <button
               type="button"
               className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-              title="Run profile with startup URL"
               aria-label={`Run ${profile.name} with startup URL`}
               disabled={opening}
               onClick={(event) => {
@@ -123,7 +102,6 @@ export function renderStealthProfileDirectoryBodyCell(
             <button
               type="button"
               className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90"
-              title="Stop profile"
               aria-label={`Stop ${profile.name}`}
               onClick={(event) => {
                 event.stopPropagation();
@@ -142,23 +120,11 @@ export function renderStealthProfileDirectoryBodyCell(
     case "lastOpened":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          {(() => {
-            const ms =
-              profile.lastOpenedAt ??
+          {renderProfileTimestampCell(
+            profile.lastOpenedAt ??
               (profile.updatedAt ? Date.parse(profile.updatedAt) : undefined) ??
-              (profile.createdAt ? Date.parse(profile.createdAt) : undefined);
-            if (!Number.isFinite(ms) || !ms) return <span className="hub-directory-table-body-text">—</span>;
-            const tone = lastOpenedAgeTone(ms);
-            const label = tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
-            return (
-              <HubUsersStatusLabel
-                label={label}
-                tone={lastOpenedHubTone(tone)}
-                capitalize={false}
-                title={new Date(ms).toLocaleString()}
-              />
-            );
-          })()}
+              (profile.createdAt ? Date.parse(profile.createdAt) : undefined),
+          )}
         </DirectoryTableBodyCell>
       );
     case "createdAt":
@@ -168,13 +134,10 @@ export function renderStealthProfileDirectoryBodyCell(
         </DirectoryTableBodyCell>
       );
     case "startupUrl": {
-      const url = resolveProfileLaunchUrl(profile.startupUrl || "");
       const label = formatStartupUrlDisplay(profile.startupUrl || "");
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text line-clamp-1" title={url}>
-            {label}
-          </span>
+          <span className="hub-directory-table-body-text line-clamp-1">{label}</span>
         </DirectoryTableBodyCell>
       );
     }
@@ -187,9 +150,7 @@ export function renderStealthProfileDirectoryBodyCell(
     case "note":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text line-clamp-1" title={profile.note || undefined}>
-            {profile.note || "—"}
-          </span>
+          <span className="hub-directory-table-body-text line-clamp-1">{profile.note || "—"}</span>
         </DirectoryTableBodyCell>
       );
     default:

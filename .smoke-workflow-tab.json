@@ -3,13 +3,15 @@
   "ok": true,
   "probe": {
     "clickedWorkflow": true,
-    "builderPresent": false
+    "builderPresent": false,
+    "canvasPresent": false,
+    "canvasOk": false
   },
   "depthErrorCount": 0,
   "errors": [
     {
       "level": 2,
-      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-500-normal-CilQvTGz.woff2"
+      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-600-normal-CbzDIYP1.woff2"
     },
     {
       "level": 2,
@@ -25,7 +27,7 @@
     },
     {
       "level": 2,
-      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-600-normal-CbzDIYP1.woff2"
+      "message": "Failed to decode downloaded font: file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/assets/inter-latin-500-normal-CilQvTGz.woff2"
     },
     {
       "level": 2,

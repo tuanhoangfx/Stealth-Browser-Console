@@ -14,6 +14,7 @@ export const WORKFLOW_PICKER_SCROLL_STEP_THRESHOLD = 6;
 export type WorkflowLayoutMode = "curve_spaced";
 
 const LOCKED_LAYOUT: WorkflowLayoutMode = "curve_spaced";
+const WORKFLOW_LAYOUT_STORAGE_KEY = "p0003_workflow_layout_mode";
 
 const V5_COLS_MAX = 5;
 const GAP_X_GRID = Math.round(30 * WORKFLOW_CANVAS_VISUAL_SCALE);

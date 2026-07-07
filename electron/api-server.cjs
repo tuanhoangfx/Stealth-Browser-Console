@@ -69,7 +69,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
     if (req.method === "OPTIONS") {
       res.writeHead(204, {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST",
+        "Access-Control-Allow-Methods": "GET, POST, PATCH",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Api-Token"
       });
       res.end();
@@ -106,7 +106,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
       if (!route) return sendJson(res, 404, { ok: false, error: "Not found" });
 
       const params = urlPath.match(route.pattern) || [];
-      const body = req.method === "POST" ? await readBody(req) : {};
+      const body = req.method === "POST" || req.method === "PATCH" ? await readBody(req) : {};
       const ctx = { req, res, urlPath, params, query, body, send, util, services };
 
       await route.handler(ctx);

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { HubListChromeHeader, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
-import { buildConsoleVersionMetaItems } from "../../lib/hub-tab-header-meta";
+import { HubListChromeHeader, buildConsoleVersionMetaItems, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
+import { APP_VERSION } from "../../lib/app-meta";
+import toolManifest from "../../../tool.manifest.json";
 import { stealthScreenChrome } from "../../lib/stealth-nav-structure";
 
 type ScriptsListChromeHeaderProps = {
@@ -18,7 +19,7 @@ export function ScriptsListChromeHeader({ centerStats, actions }: ScriptsListChr
       titleIcon={workflowChrome.icon}
       titleIconClass={workflowChrome.titleIconClass}
       title={workflowChrome.label}
-      metaItems={buildConsoleVersionMetaItems()}
+      metaItems={buildConsoleVersionMetaItems(APP_VERSION, toolManifest)}
       centerStats={centerStats ?? []}
       actions={actions}
     />

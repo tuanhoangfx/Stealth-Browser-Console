@@ -1,4 +1,281 @@
+# Changelog
+
+## 2026-07-07 - P0003 version sync
+
+- Version: `0.10.62`
+- Timestamp: 2026-07-07 05:32 (UTC+7)
+- Type: Patch
+- Status: Committed
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.62
+
+### Changes
+
+- Align CHANGELOG with package.json v0.10.62.
+
+### Verification
+
+- pending
+
+---
 # Changelog — P0003 Stealth Browser Console
+
+## 2026-07-06 — v0.10.61 — Electron dev reload
+
+- Version: `0.10.61`
+- Timestamp: 2026-07-06 02:26 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.60 — Electron dev reload
+
+- Version: `0.10.60`
+- Timestamp: 2026-07-06 02:19 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.59 — Electron dev reload
+
+- Version: `0.10.59`
+- Timestamp: 2026-07-06 02:09 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.58 — Electron dev reload
+
+- Version: `0.10.58`
+- Timestamp: 2026-07-06 01:06 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.57 — Electron dev reload
+
+- Version: `0.10.57`
+- Timestamp: 2026-07-06 00:55 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.56 — Electron dev reload
+
+- Version: `0.10.56`
+- Timestamp: 2026-07-06 00:53 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.55 — Electron dev reload
+
+- Version: `0.10.55`
+- Timestamp: 2026-07-06 00:53 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.54 — Electron dev reload
+
+- Version: `0.10.54`
+- Timestamp: 2026-07-06 23:58 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.53 — Electron dev reload
+
+- Version: `0.10.53`
+- Timestamp: 2026-07-06 23:53 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.52 — Electron dev reload
+
+- Version: `0.10.52`
+- Timestamp: 2026-07-06 23:50 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.51 — Electron dev reload
+
+- Version: `0.10.51`
+- Timestamp: 2026-07-06 23:36 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.50 — Electron dev reload
+
+- Version: `0.10.50`
+- Timestamp: 2026-07-06 22:32 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.49 — Profile log realtime + backfill + create split
+
+- Version: `0.10.49`
+- Timestamp: 2026-07-06 22:30 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Realtime log** — `useProfileLogRealtime` subscribes `profile:session` to refresh log rail on launch/close/fail without reopening modal.
+- **Backfill** — one-time `profile_events` seed from `last_opened_at` + `runs` for legacy catalogs (`profile_events_backfill_v1`).
+- **Create modal** — `hub-tool-detail-modal--split` with shared `ProfileActivityLogRail` (bulk create streams to grid terminal).
+
+## 2026-07-06 — v0.10.48 — Profile detail: Log rail parity P0006 Job detail
+
+- Version: `0.10.48`
+- Timestamp: 2026-07-06 21:40 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profile edit modal** — migrate to `hub-tool-detail-modal--split` (P0006 Job detail parity): main = Profile/Device/Extensions/Note panels, right rail = Log console.
+- **Log rail** — `ProfileDetailLogRail` with `HubToolDetailRail` + grid terminal (`Time · Channel · Message`) and channel legend Profile/Workflow/Lifecycle.
+- **TOC Log** — click focuses log rail (scroll + highlight pulse); `lifecycle` channel badge added to Hub-UI `hub-runtime-rail.css`.
+
+## 2026-07-06 — v0.10.47 — Profile detail scroll + lifecycle log + identity header
+
+- Version: `0.10.47`
+- Timestamp: 2026-07-06 20:56 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profile detail modal** — migrate edit shell to `hub-account-detail-modal` SSOT; TOC scroll root targets `hub-account-detail-modal__main-scroll` so Log section is reachable.
+- **Log frame** — `HubRuntimeConsoleTerm` with All/Today/Errors filters; merges session console, workflow runs, and persisted `profile_events` (launch/close/save).
+- **Header** — `HubToolDetailIdentityHeader` with profile name, group, and status (replaces plain "Edit profile" title).
+- Electron dev reload gate (electron sources changed).
+
+## 2026-07-06 — v0.10.46 — Profile detail scroll + lifecycle log + identity header
+
+- Version: `0.10.46`
+- Timestamp: 2026-07-06 20:45 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- (Superseded by v0.10.47 dev-reload bump — same feature set.)
+
+## 2026-07-06 — v0.10.45 — Electron dev reload
+
+- Version: `0.10.45`
+- Timestamp: 2026-07-06 19:31 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.44 — Profile detail modal: Log console + row open + Device collapse
+
+- Version: `0.10.44`
+- Timestamp: 2026-07-06 19:22 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Profile detail modal** — Log tab uses `HubRuntimeConsoleTerm` (session console + workflow runs filtered per profile); Note rail only on edit.
+- **Directory** — single-click profile row opens detail modal (`onOpenDetail`).
+- **Device section** — advanced fingerprint/viewport/UA settings collapsed by default behind toggle.
+
+## 2026-07-06 — v0.10.43 — Last Opened survives deploy + dev reload protects prod exe
+
+- Version: `0.10.43`
+- Timestamp: 2026-07-06 18:37 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Last Opened** — stop deleting SQLite WAL on DB open (installer/restart without graceful quit was dropping recent `last_opened_at`); checkpoint WAL on quit and after each profile open.
+- **Dev reload** — `killStealthDev` verifies PID is `dev-node.mjs` before `taskkill`; frees `:5175` + dev API `:6004` only; `kill-port` refuses prod `:6003`.
+- **Dev catalog sync** — preserve newer `last_opened_at` from dev DB when copying prod catalog.
+
+## 2026-07-06 — v0.10.42 — Electron dev reload
+
+- Version: `0.10.42`
+- Timestamp: 2026-07-06 18:11 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 — v0.10.41 — Electron dev reload
+
+- Version: `0.10.41`
+- Timestamp: 2026-07-06 17:52 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-06 - Proxy launch fix (host:port:user:pass → Playwright)
+
+- Version: `0.10.41`
+- Timestamp: 2026-07-06 17:50 (UTC+7)
+- Type: Patch
+- Product: P0003
+
+### Changes
+
+- **Proxy** — `parseProxy` supports `host:port:user` shorthand; `formatProxyForLaunch` + `toPlaywrightProxy` normalize GPM/antidetect strings before `launchPersistentContext` (fixes `Invalid URL` on `14.249.5.164:32350:infi:infi`).
+
+### Verification
+
+- `node electron/api-routes.test.cjs` (proxy-pool)
+- Profile Run with HTTP proxy credentials
 
 ## 2026-07-06 - Workflow footer chrome (minimap + zoom)
 

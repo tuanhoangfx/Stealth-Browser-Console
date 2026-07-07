@@ -1,0 +1,31 @@
+/* Directory timestamp typography — SSOT for Created / Updated / Date columns (all P00xx). */
+
+.hub-directory-timestamp {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.hub-directory-timestamp .hub-users-status {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-transform: none;
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-directory-timestamp,
+table.hub-users-table[data-hub-directory-select] td .hub-directory-timestamp {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-directory-timestamp .hub-users-status,
+table.hub-users-table[data-hub-directory-select] td .hub-directory-timestamp .hub-users-status {
+  color: var(--muted);
+}

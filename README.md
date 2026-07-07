@@ -2,6 +2,12 @@
 
 Standalone desktop console for **CloakBrowser** antidetect profiles and Open URL automation.
 
+## Agent contract
+
+- **Dev:** `node Tool/scripts/ensure-dev-product.cjs P0003 --open` (workspace: `pnpm dev:stealth` from `E:\Dev`)
+- **Verify:** `node Tool/scripts/agent-verify-gate.mjs --code P0003 --json --ensure-dev --mark-active`
+- **Shell SSOT:** [Tool/docs/ssot/hub-shell-ssot.md](../docs/ssot/hub-shell-ssot.md)
+
 Engine pin & bump policy: [`docs/ENGINE-CLOAKBROWSER.md`](docs/ENGINE-CLOAKBROWSER.md) · Fork decision: [`docs/cloakbrowser-fork-evaluation.md`](docs/cloakbrowser-fork-evaluation.md).
 
 ## Stack

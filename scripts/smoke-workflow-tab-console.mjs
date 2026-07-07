@@ -25,9 +25,20 @@ const probeScript = `
     /^workflow$/i.test((el.textContent || "").trim()),
   );
   if (workflowNav) workflowNav.click();
-  await new Promise((r) => setTimeout(r, 4000));
-  const depthProbe = { clickedWorkflow: Boolean(workflowNav), builderPresent: Boolean(document.querySelector(".script-builder")) };
-  return depthProbe;
+  let builderPresent = false;
+  let canvasPresent = false;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await new Promise((r) => setTimeout(r, 500));
+    builderPresent = Boolean(document.querySelector(".script-builder"));
+    canvasPresent = Boolean(document.querySelector(".workflow-script-flow"));
+    if (builderPresent && canvasPresent) break;
+  }
+  return {
+    clickedWorkflow: Boolean(workflowNav),
+    builderPresent,
+    canvasPresent,
+    canvasOk: builderPresent && canvasPresent,
+  };
 })()
 `.trim();
 
@@ -94,7 +105,9 @@ app.whenReady().then(async () => {
   }
 
   const depthErrors = logs.filter((l) => /Maximum update depth exceeded/i.test(l.message));
-  const ok = depthErrors.length === 0;
+  const needsCanvas = probe.clickedWorkflow && probe.builderPresent;
+  const canvasOk = !needsCanvas || probe.canvasPresent === true;
+  const ok = depthErrors.length === 0 && canvasOk;
   fs.writeFileSync(outFile, JSON.stringify({ url, ok, probe, depthErrorCount: depthErrors.length, errors: logs.filter((l) => l.level >= 2).slice(0, 15) }, null, 2));
   app.exit(ok ? 0 : 1);
 });

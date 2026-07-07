@@ -15,3 +15,21 @@ export const HUB_ANALYTICS_CAPTION_TYPO_CLASS = "hub-analytics-caption uppercase
 
 /** Chart row label/value — typography from hub-shell-layout.css only; do not add text-sm here. */
 export const HUB_CHART_ROW_TYPO_SSOT = "hub-chart-legend-label";
+
+/**
+ * Directory table body primary value — service name, account label (12px / 400 / lh 1.45).
+ * CSS: `.hub-directory-body-value` in hub-directory-frame-table.css
+ */
+export const HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT = "hub-directory-body-value";
+
+/**
+ * Directory table header label — column title (12px / 600 / ls 0.02em).
+ * CSS: `.hub-directory-header-label` ≡ `.hub-users-th-text` in hub-directory-frame-table.css
+ */
+export const HUB_DIRECTORY_HEADER_LABEL_TYPO_SSOT = "hub-directory-header-label";
+
+/** Filter option/trigger value when it must mirror directory table body (P0020 twofa vault). */
+export const HUB_FILTER_DIRECTORY_VALUE_TYPO_SSOT = HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT;
+
+/** Filter trigger facet label (Service, Status…) — mirror directory table header. */
+export const HUB_FILTER_DIRECTORY_HEADER_TYPO_SSOT = HUB_DIRECTORY_HEADER_LABEL_TYPO_SSOT;
