@@ -2,8 +2,9 @@ import type { LucideIcon } from "lucide-react";
 import { HubLoadingView } from "./HubLoadingView";
 
 export type HubScreenChunkFallbackProps = {
-  icon: LucideIcon;
-  ariaLabel: string;
+  /** @deprecated Prefer HubToolLoadingProvider — tool catalog icon is the SSOT. */
+  icon?: LucideIcon;
+  ariaLabel?: string;
   variant?: "full" | "overlay" | "skeleton";
   /** When false, skip portal overlay (hidden/inactive tabs must not block the active screen). */
   enabled?: boolean;
@@ -28,4 +29,11 @@ export function HubScreenChunkFallback({
       portaled={portaled}
     />
   );
+}
+
+/** Golden chunk fallback — tool icon from HubToolLoadingProvider. */
+export function HubToolScreenChunkFallback(props: Omit<HubScreenChunkFallbackProps, "icon" | "ariaLabel"> & {
+  ariaLabel?: string;
+}) {
+  return <HubScreenChunkFallback {...props} />;
 }

@@ -1,5 +1,5 @@
 import { Search, X } from "lucide-react";
-import type { Ref } from "react";
+import { startTransition, useEffect, useRef, useState, type Ref } from "react";
 import { compactIconSize } from "../ui-scale";
 
 export type HubSearchFieldProps = {
@@ -10,8 +10,12 @@ export type HubSearchFieldProps = {
   inputRef?: Ref<HTMLInputElement>;
   /** Show `F` focus hint when empty (directory FilterBar). Off in modals. */
   showShortcutHint?: boolean;
+  /** Ignored — P0020 shell never animates the search icon. */
+  queryPending?: boolean;
   /** Keyboard focus scope — FilterBar registers shortcuts when embedded. */
   shortcutScope?: string;
+  /** Debounce parent onChange — keeps draft local so directory chrome does not re-render per keystroke. */
+  debounceMs?: number;
 };
 
 /** Golden directory search input — P0004 FilterBar row-1 (shared across tools). */
@@ -22,7 +26,37 @@ export function HubSearchField({
   className = "",
   inputRef,
   showShortcutHint = true,
+  debounceMs = 0,
 }: HubSearchFieldProps) {
+  const debounced = debounceMs > 0;
+  const [draft, setDraft] = useState(value);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  useEffect(() => {
+    if (!debounced) return;
+    if (value !== draftRef.current) {
+      setDraft(value);
+    }
+  }, [debounced, value]);
+
+  useEffect(() => {
+    if (!debounced) return;
+    const id = window.setTimeout(() => startTransition(() => onChange(draft)), debounceMs);
+    return () => window.clearTimeout(id);
+  }, [debounced, debounceMs, draft, onChange]);
+
+  const displayValue = debounced ? draft : value;
+
+  const setDisplayValue = (next: string, flush = false) => {
+    if (debounced) {
+      setDraft(next);
+      if (flush || next === "") onChange(next);
+      return;
+    }
+    onChange(next);
+  };
+
   return (
     <div className={`relative min-w-[var(--hub-search-min-w)] flex-1 ${className}`.trim()}>
       <Search
@@ -40,25 +74,25 @@ export function HubSearchField({
         autoCapitalize="off"
         spellCheck={false}
         name="hub-directory-search"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayValue}
+        onChange={(e) => setDisplayValue(e.target.value)}
         placeholder={placeholder}
         className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
-        style={{ paddingLeft: 31, paddingRight: value ? 25 : 36 }}
+        style={{ paddingLeft: 31, paddingRight: displayValue ? 25 : 36 }}
         aria-label={placeholder}
         role="searchbox"
       />
-      {showShortcutHint && !value ? (
+      {showShortcutHint && !displayValue ? (
         <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:flex">
           <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-indigo-200/90">
             F
           </kbd>
         </span>
       ) : null}
-      {value ? (
+      {displayValue ? (
         <button
           type="button"
-          onClick={() => onChange("")}
+          onClick={() => setDisplayValue("", true)}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
           aria-label="Clear search"
         >

@@ -2,7 +2,13 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { HUB_ADM_TYPE_NAV_CLASS } from "./hubAccountDetailModal";
 
-/** Main + right rail — P0020 Account detail golden split. */
+/**
+ * Main + right rail grid — generic split (non–account-detail tools).
+ *
+ * @deprecated Account-detail modals must use `HubAccountDetailModalFrame` (golden
+ * `hub-account-detail-modal__rail` + note/log flex fill). Parity gate fails on bare
+ * `HubToolDetailSplitLayout` inside account-detail modal files.
+ */
 export function HubToolDetailSplitLayout({
   main,
   rail,

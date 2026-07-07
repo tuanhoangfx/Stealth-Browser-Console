@@ -1,25 +1,13 @@
 ﻿/* Filter dropdown brand icons — SSOT for option.iconSrc (trigger + list, including portal). */
-
-.hub-filter-brand-icon-bare,
-.hub-filter-dropdown-list img.hub-filter-brand-icon-bare,
-[data-hub-multi-filter-panel] img.hub-filter-brand-icon-bare,
-[data-hub-single-filter-panel] img.hub-filter-brand-icon-bare {
-  box-sizing: border-box;
-  width: var(--hub-directory-header-glyph-px, 13px) !important;
-  height: var(--hub-directory-header-glyph-px, 13px) !important;
-  flex-shrink: 0;
-  object-fit: cover;
-  border-radius: 9999px;
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-}
+@import "./hub-brand-icon-bare.css";
 
 .hub-filter-brand-icon--tile,
 .hub-filter-brand-icon.hub-filter-brand-icon--tile,
 .hub-filter-dropdown-list img.hub-filter-brand-icon--tile,
 [data-hub-multi-filter-panel] img.hub-filter-brand-icon--tile,
-[data-hub-single-filter-panel] img.hub-filter-brand-icon--tile {
+[data-hub-single-filter-panel] img.hub-filter-brand-icon--tile,
+.hub-chart-legend-label img.hub-filter-brand-icon--tile,
+.hub-chart-legend-label img.hub-filter-brand-icon.hub-filter-brand-icon--tile {
   box-sizing: border-box;
   width: var(--hub-directory-header-glyph-px, 13px) !important;
   height: var(--hub-directory-header-glyph-px, 13px) !important;
@@ -34,7 +22,8 @@
 .hub-filter-brand-icon--dark-ink,
 .hub-filter-dropdown-list img.hub-filter-brand-icon--dark-ink,
 [data-hub-multi-filter-panel] img.hub-filter-brand-icon--dark-ink,
-[data-hub-single-filter-panel] img.hub-filter-brand-icon--dark-ink {
+[data-hub-single-filter-panel] img.hub-filter-brand-icon--dark-ink,
+.hub-chart-legend-label img.hub-filter-brand-icon--dark-ink {
   box-sizing: border-box;
   width: var(--hub-directory-header-glyph-px, 13px) !important;
   height: var(--hub-directory-header-glyph-px, 13px) !important;
@@ -62,10 +51,16 @@
   line-height: 1;
 }
 
+/* Filter trigger — emoji fits 13px glyph slot (panel rows may use 1rem). */
+.hub-filter-trigger .hub-filter-option-emoji {
+  font-size: var(--hub-directory-header-glyph-px, 13px);
+}
+
 /* Safety net — any filter dropdown img without explicit brand class */
 .hub-filter-dropdown-list img,
 [data-hub-multi-filter-panel] img,
-[data-hub-single-filter-panel] img {
+[data-hub-single-filter-panel] img,
+.hub-chart-legend-label img {
   max-width: var(--hub-directory-header-glyph-px, 13px) !important;
   max-height: var(--hub-directory-header-glyph-px, 13px) !important;
 }

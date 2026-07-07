@@ -11,6 +11,7 @@ export type BarItem = {
   value: number;
   color?: string;
   iconMeta?: FilterIconMeta | null;
+  emojiGlyph?: string;
   iconSrc?: string;
   iconShell?: HubBrandIconShell;
 };
@@ -69,6 +70,10 @@ export function MiniBarChart({
                     className={hubBrandIconImgClass(it.iconShell)}
                     aria-hidden
                   />
+                ) : it.emojiGlyph ? (
+                  <span className="shrink-0 text-[11px] leading-none" aria-hidden>
+                    {it.emojiGlyph}
+                  </span>
                 ) : it.iconMeta ? (
                   <it.iconMeta.icon size={compactIconSize(11)} className={`shrink-0 ${it.iconMeta.className}`} aria-hidden />
                 ) : null}

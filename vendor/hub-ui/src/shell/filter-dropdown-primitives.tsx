@@ -17,7 +17,7 @@ export function hubFilterTriggerClass(
   extra = "",
   typoClass: string = HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
 ) {
-  return `inline-flex h-[var(--hub-control-h)] max-w-full items-center hub-inline-gap-comfort rounded-lg border px-3 ${typoClass} transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+  return `hub-filter-trigger inline-flex h-[var(--hub-control-h)] max-w-full items-center hub-inline-gap-comfort rounded-lg border px-3 ${typoClass} transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
     active
       ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
       : "border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5"
@@ -196,6 +196,8 @@ export function hubFilterGlyphPx(opts?: { directoryParity?: boolean; compact?: b
 
 export const HUB_FILTER_BRAND_ICON_CLASS = "hub-filter-brand-icon hub-filter-brand-icon--tile";
 
+export const HUB_BRAND_ICON_BARE_CLASS = "hub-brand-icon-bare";
+
 export type HubBrandIconShell = "bare" | "tile" | "darkInk";
 
 export function hubBrandIconImgClass(shell: HubBrandIconShell = "bare"): string {
@@ -205,8 +207,13 @@ export function hubBrandIconImgClass(shell: HubBrandIconShell = "bare"): string 
     case "tile":
       return HUB_FILTER_BRAND_ICON_CLASS;
     default:
-      return "hub-filter-brand-icon-bare";
+      return HUB_BRAND_ICON_BARE_CLASS;
   }
+}
+
+/** Directory table body — always bare colored logos at 16px (no filter tile / dark-ink chrome). */
+export function hubDirectoryTableBrandImgClass(_shell: HubBrandIconShell = "bare"): string {
+  return HUB_BRAND_ICON_BARE_CLASS;
 }
 
 export function filterDropdownPanelSearchPlaceholder(filterLabel: string) {

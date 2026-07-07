@@ -5,6 +5,7 @@ import {
   hubDirectoryTableClass,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
   resolveHubBrandIcon,
+  shouldPadDirectoryBodyToPageSize,
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -206,6 +207,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       emptyMessage={emptyMessage}
       pageSize={pageSize}
       resetKey={`${resetKey || ""}|clock:${clockTick}`}
+      padBodyRowsToPageSize={shouldPadDirectoryBodyToPageSize(items.length, pageSize)}
       serverPagination={
         serverPagination
           ? {

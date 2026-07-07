@@ -317,6 +317,43 @@ table.hub-users-table[data-hub-directory-select] .hub-users-th-label .hub-chrome
   vertical-align: middle;
 }
 
+/* Directory table body — brand glyph SSOT (parity P0005 Product / P0020 Service). */
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table.hub-users-table--directory td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table.hub-users-table--twofa td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table[data-hub-directory-select] td .hub-users-cell-name img.hub-brand-icon-bare,
+table.hub-users-table[class*="hub-users-table--directory"] td .quota-platform-cell img.hub-brand-icon-bare,
+table.hub-users-table.hub-users-table--twofa td .quota-platform-cell img.hub-brand-icon-bare {
+  width: var(--hub-directory-table-brand-icon-px, 16px);
+  height: var(--hub-directory-table-brand-icon-px, 16px);
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* Safety — strip legacy filter/chrome tile chrome if any directory cell still emits it. */
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-name img.hub-chrome-brand-icon,
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-users-cell-name img.hub-filter-brand-icon,
+table.hub-users-table.hub-users-table--twofa td .hub-users-cell-name img.hub-chrome-brand-icon,
+table.hub-users-table.hub-users-table--twofa td .hub-users-cell-name img.hub-filter-brand-icon,
+table.hub-users-table[class*="hub-users-table--directory"] td .quota-platform-cell img.hub-chrome-brand-icon,
+table.hub-users-table[class*="hub-users-table--directory"] td .quota-platform-cell img.hub-filter-brand-icon {
+  width: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  height: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  filter: none !important;
+  object-fit: contain;
+}
+
+.hub-directory-brand-glyph {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+}
+
 table.hub-users-table.hub-users-table--directory thead .hub-users-th-text,
 table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   color: var(--text);
@@ -416,6 +453,16 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   gap: 6px;
   max-width: 100%;
   min-width: 0;
+}
+
+/* Expanded hit target — icon size unchanged (Profiles Run/Stop, ReUp Cancel). */
+.hub-directory-icon-cell--hit-expand {
+  min-height: 1.875rem;
+  min-width: 4rem;
+  padding: 5px 12px;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .hub-directory-icon-cell__icon {

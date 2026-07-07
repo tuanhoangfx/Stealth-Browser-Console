@@ -1,5 +1,6 @@
-import { Copy, Package, Pencil, Plus, RefreshCw, SquareStack, Trash2 } from "lucide-react";
+import { Copy, Package, Pencil, RefreshCw, SquareStack, Trash2 } from "lucide-react";
 import { HubBulkActionButton } from "./HubBulkActionButton";
+import { HubDirectoryNewBulkAction } from "./HubDirectoryNewBulkAction";
 
 /** Optional Hub tools bulk refresh — P0004 golden Hub uses auto-sync; card select-all only. */
 export type HubToolsDirectoryBulkActionsProps = {
@@ -124,17 +125,14 @@ export function HubUsersDirectoryBulkActions({
 
   return (
     <>
-      <HubBulkActionButton
-        icon={<Plus size={14} aria-hidden />}
-        label="Add"
+      <HubDirectoryNewBulkAction
         title={
           roleLoading
             ? "Loading your role…"
             : isAdmin
-              ? "Add user (ID or email) or bulk import"
+              ? "New user (ID or email) or bulk import"
               : "Admin only"
         }
-        tone="emerald"
         disabled={!addEnabled}
         onClick={onAdd}
       />

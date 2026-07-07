@@ -1,5 +1,5 @@
-import { Copy, Plus, Trash2 } from "lucide-react";
-import { HubBulkActionButton } from "@tool-workspace/hub-ui";
+import { Copy, Trash2 } from "lucide-react";
+import { HubBulkActionButton, HubDirectoryNewBulkAction } from "@tool-workspace/hub-ui";
 
 export type StealthWorkflowsDirectoryBulkActionsProps = {
   hasSelection: boolean;
@@ -19,13 +19,7 @@ export function StealthWorkflowsDirectoryBulkActions({
 }: StealthWorkflowsDirectoryBulkActionsProps) {
   return (
     <>
-      <HubBulkActionButton
-        icon={<Plus size={14} aria-hidden />}
-        label="New"
-        title="Create workflow"
-        tone="emerald"
-        onClick={onNew}
-      />
+      <HubDirectoryNewBulkAction title="Create workflow" onClick={onNew} />
       <HubBulkActionButton
         icon={<Copy size={14} aria-hidden />}
         label="Copy"

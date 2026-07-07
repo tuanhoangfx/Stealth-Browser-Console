@@ -16,6 +16,7 @@ export function withPrefItemIcons<T extends { key: string; label: string }>(
     ...item,
     icon: icons[item.key]?.icon,
     iconClassName: icons[item.key]?.iconClassName,
+    emoji: icons[item.key]?.emoji,
   }));
 }
 

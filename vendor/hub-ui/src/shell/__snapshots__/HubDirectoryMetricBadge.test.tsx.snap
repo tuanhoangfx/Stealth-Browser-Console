@@ -1,0 +1,154 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`HubDirectoryMetricBadge > renders large count 999 with tier chrome and overflow-safe count node 1`] = `
+<div>
+  <span
+    class="hub-users-tool-badge hub-directory-metric-badge hub-directory-metric-badge--high hub-users-tool-badge--admin"
+  >
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-clipboard-list hub-users-tool-badge__icon"
+      fill="none"
+      height="11"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="11"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        height="4"
+        rx="1"
+        ry="1"
+        width="8"
+        x="8"
+        y="2"
+      />
+      <path
+        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+      />
+      <path
+        d="M12 11h4"
+      />
+      <path
+        d="M12 16h4"
+      />
+      <path
+        d="M8 11h.01"
+      />
+      <path
+        d="M8 16h.01"
+      />
+    </svg>
+    <span
+      class="hub-users-tool-badge__count tabular-nums"
+    >
+      999
+    </span>
+  </span>
+</div>
+`;
+
+exports[`HubDirectoryMetricBadge > renders large count 1416 with tier chrome and overflow-safe count node 1`] = `
+<div>
+  <span
+    class="hub-users-tool-badge hub-directory-metric-badge hub-directory-metric-badge--high hub-users-tool-badge--admin"
+  >
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-clipboard-list hub-users-tool-badge__icon"
+      fill="none"
+      height="11"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="11"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        height="4"
+        rx="1"
+        ry="1"
+        width="8"
+        x="8"
+        y="2"
+      />
+      <path
+        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+      />
+      <path
+        d="M12 11h4"
+      />
+      <path
+        d="M12 16h4"
+      />
+      <path
+        d="M8 11h.01"
+      />
+      <path
+        d="M8 16h.01"
+      />
+    </svg>
+    <span
+      class="hub-users-tool-badge__count tabular-nums"
+    >
+      1416
+    </span>
+  </span>
+</div>
+`;
+
+exports[`HubDirectoryMetricBadge > renders large count 120000 with tier chrome and overflow-safe count node 1`] = `
+<div>
+  <span
+    class="hub-users-tool-badge hub-directory-metric-badge hub-directory-metric-badge--high hub-users-tool-badge--admin"
+  >
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-clipboard-list hub-users-tool-badge__icon"
+      fill="none"
+      height="11"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="11"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        height="4"
+        rx="1"
+        ry="1"
+        width="8"
+        x="8"
+        y="2"
+      />
+      <path
+        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+      />
+      <path
+        d="M12 11h4"
+      />
+      <path
+        d="M12 16h4"
+      />
+      <path
+        d="M8 11h.01"
+      />
+      <path
+        d="M8 16h.01"
+      />
+    </svg>
+    <span
+      class="hub-users-tool-badge__count tabular-nums"
+    >
+      120000
+    </span>
+  </span>
+</div>
+`;

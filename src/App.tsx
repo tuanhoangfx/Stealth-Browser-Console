@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   HubAppLogProvider,
+  HubToolLoadingProvider,
   hideBootLoader,
   useHubActiveScreenSync,
 } from "@tool-workspace/hub-ui";
@@ -14,20 +15,27 @@ import { defaultStealthWorkflowTab, type StealthWorkflowTab } from "./lib/stealt
 import { resolveStealthActiveScreenId } from "./lib/stealth-active-screen";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
 import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
+import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "./lib/stealth-product";
 
 prefetchWorkflowChunks();
 prefetchSystemChunks();
 
 export function App() {
   return (
-    <ToastProvider>
-      <RunLogsProvider>
-        <AuthSessionProvider>
-          <StealthAppRoot />
-        </AuthSessionProvider>
-      </RunLogsProvider>
-      <ToastContainer />
-    </ToastProvider>
+    <HubToolLoadingProvider
+      toolCode={STEALTH_PRODUCT.code}
+      toolName={STEALTH_PRODUCT.name}
+      iconSrc={STEALTH_BRAND_ICON}
+    >
+      <ToastProvider>
+        <RunLogsProvider>
+          <AuthSessionProvider>
+            <StealthAppRoot />
+          </AuthSessionProvider>
+        </RunLogsProvider>
+        <ToastContainer />
+      </ToastProvider>
+    </HubToolLoadingProvider>
   );
 }
 

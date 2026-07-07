@@ -2,6 +2,7 @@ import {
   compactIconSize,
   DirectoryTableBodyCell,
   getDirectorySearchHighlight,
+  HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS,
   HubDirectorySearchHighlightText,
   HubUsersOnOffLabel,
   HubUsersStatusLabel,
@@ -81,7 +82,7 @@ export function renderStealthProfileDirectoryBodyCell(
           {!running ? (
             <button
               type="button"
-              className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+              className={`hub-directory-icon-cell ${HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS} rounded-md border-0 bg-transparent transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45`}
               aria-label={`Run ${profile.name} with startup URL`}
               disabled={opening}
               onClick={(event) => {
@@ -101,7 +102,7 @@ export function renderStealthProfileDirectoryBodyCell(
           ) : (
             <button
               type="button"
-              className="hub-directory-icon-cell rounded-md border-0 bg-transparent p-0 transition-opacity hover:opacity-90"
+              className={`hub-directory-icon-cell ${HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS} rounded-md border-0 bg-transparent transition-opacity hover:opacity-90`}
               aria-label={`Stop ${profile.name}`}
               onClick={(event) => {
                 event.stopPropagation();

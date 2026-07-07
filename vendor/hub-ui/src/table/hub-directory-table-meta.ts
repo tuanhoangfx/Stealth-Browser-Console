@@ -280,7 +280,19 @@ export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "defa
   return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--directory-${variant}`;
 }
 
-/** Panel-fill row divisor — always `pageSize` so search/filter partial pages keep compact rows under thead (not 100% stretch). */
+/** Panel-fill row divisor — always `pageSize` so partial pages keep stable frame height (pad rows fill remainder). */
 export function resolveDirectoryPanelFillRows(pageSize: number, _visibleRowCount = 0): number {
   return Math.max(1, pageSize);
+}
+
+export type HubDirectoryPartialPagePad = "invisible" | "visible";
+
+/** Panel-fill — pad when page has data but fewer than `pageSize` rows (search/filter). */
+export function shouldPadDirectoryBodyToPageSize(visibleCount: number, pageSize: number): boolean {
+  return visibleCount > 0 && visibleCount < pageSize;
+}
+
+/** fixedRows rail — pad to N rows whenever the page is partial (including search). */
+export function shouldPadDirectoryBodyToFixedRows(visibleCount: number, fixedRows: number): boolean {
+  return visibleCount > 0 && visibleCount < fixedRows;
 }

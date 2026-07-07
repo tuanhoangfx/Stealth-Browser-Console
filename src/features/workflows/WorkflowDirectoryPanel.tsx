@@ -1,6 +1,6 @@
 /** Scripts tab left pane — table-only-directory, no-form-directory, no-read-only-table; filter in WorkflowFilterPane. */
 import { memo, type ReactNode } from "react";
-import { HubDirectoryBulkActionBar, HubDirectoryToolbarSelection, HubSplitDirectoryPane } from "@tool-workspace/hub-ui";
+import { HubDirectoryBulkActionBar, HubDirectoryToolbarSelection, HubSplitDirectoryPane, resolveDirectoryPanelFillRows } from "@tool-workspace/hub-ui";
 import type { WorkflowConfig } from "./workflow-types";
 import { StealthWorkflowDirectoryTable } from "./StealthWorkflowDirectoryTable";
 import { WorkflowFilterPane } from "./WorkflowFilterPane";
@@ -64,6 +64,8 @@ export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
     <HubSplitDirectoryPane
       className="stealth-workflow-directory-frame hub-directory-frame"
       variant="panel"
+      panelFillRows={resolveDirectoryPanelFillRows(workflowTablePageSize, filteredWorkflows.length)}
+      partialPagePad="invisible"
       filterBar={
         <WorkflowFilterPane
           variant="panel"

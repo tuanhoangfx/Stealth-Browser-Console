@@ -1,6 +1,6 @@
 /** Profiles tab — workflow rail: unified directory pane (filter + table). */
 import { memo, useMemo, useCallback } from "react";
-import { HubDirectoryToolbarSelection, HubSplitDirectoryPane } from "@tool-workspace/hub-ui";
+import { HubSplitDirectoryPane } from "@tool-workspace/hub-ui";
 import { WORKFLOW_RAIL_PAGE_SIZE } from "../../app/constants";
 import type { WorkflowConfig } from "./workflow-types";
 import { StealthWorkflowDirectoryTable } from "./StealthWorkflowDirectoryTable";
@@ -71,6 +71,7 @@ export const WorkflowRailPanel = memo(function WorkflowRailPanel({
       className="stealth-workflow-directory-frame hub-directory-frame shrink-0"
       variant="rail"
       fixedRows={WORKFLOW_RAIL_PAGE_SIZE}
+      partialPagePad="visible"
       filterBar={
         <WorkflowFilterPane
           variant="rail"
@@ -81,13 +82,11 @@ export const WorkflowRailPanel = memo(function WorkflowRailPanel({
           setWorkflowSearch={setWorkflowSearch}
           filteredCount={filteredWorkflows.length}
           totalCount={workflowConfigs.length}
-          searchTrailing={
-            <HubDirectoryToolbarSelection
-              visibleCount={filteredWorkflows.length}
-              selectedCount={selectedWorkflowIds.length}
-              noun="workflows"
-            />
-          }
+          filterSelectionToolbar={{
+            visibleCount: filteredWorkflows.length,
+            selectedCount: selectedWorkflowIds.length,
+            noun: "workflows",
+          }}
         />
       }
     >

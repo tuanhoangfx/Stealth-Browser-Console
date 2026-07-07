@@ -8,6 +8,8 @@ export type HubToolDetailIdentityHeaderProps = {
   leading?: ReactNode;
   /** Domain, email, meta chips — right of title. */
   trailing?: ReactNode;
+  /** Center slot — account-detail header search (grid column 2). */
+  center?: ReactNode;
 };
 
 /** Golden tool-detail header — P0004 User Access · P0020 Cookie Route. */
@@ -16,6 +18,7 @@ export function HubToolDetailIdentityHeader({
   title,
   leading,
   trailing,
+  center,
 }: HubToolDetailIdentityHeaderProps) {
   return (
     <header className="user-access-modal__header">
@@ -29,6 +32,7 @@ export function HubToolDetailIdentityHeader({
         </h2>
         {trailing}
       </div>
+      {center ? <div className="user-access-modal__header-center min-w-0">{center}</div> : null}
     </header>
   );
 }

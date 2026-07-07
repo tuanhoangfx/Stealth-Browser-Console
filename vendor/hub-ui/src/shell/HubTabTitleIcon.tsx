@@ -7,10 +7,25 @@ type Props = {
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
+  /** Sheet-parity emoji — takes precedence over Lucide/brand title icon. */
+  titleEmojiGlyph?: string;
 };
 
-/** Tab header title glyph — Lucide tone icon or shared Hub brand mark. */
-export function HubTabTitleIcon({ titleIcon: TitleIcon, titleIconClass = "", titleBrandIcon }: Props) {
+/** Tab header title glyph — emoji sticker, Lucide tone icon, or shared Hub brand mark. */
+export function HubTabTitleIcon({
+  titleIcon: TitleIcon,
+  titleIconClass = "",
+  titleBrandIcon,
+  titleEmojiGlyph,
+}: Props) {
+  if (titleEmojiGlyph) {
+    return (
+      <span className="hub-users-th-emoji shrink-0 leading-none" style={{ fontSize: HUB_CHROME_ICON_PX }} aria-hidden>
+        {titleEmojiGlyph}
+      </span>
+    );
+  }
+
   if (titleBrandIcon) {
     return <HubBrandIcon brandId={titleBrandIcon} size={HUB_CHROME_ICON_PX} />;
   }

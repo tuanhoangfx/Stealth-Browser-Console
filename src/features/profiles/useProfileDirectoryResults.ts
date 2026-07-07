@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchProfileDirectoryPage } from "../../api";
-import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import type { ProfileRow } from "../../types";
 import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
 import { profileDirectorySortParam } from "./profile-directory-sort";
 
 export type ProfileDirectoryQuery = {
+  /** Debounced search — from `useDirectorySearchQuery().query`. */
   search: string;
   groupIds: readonly string[];
   statuses: readonly ProfileRow["status"][];
@@ -23,7 +23,6 @@ export function useProfileDirectoryResults(
   /** Bump after open/close/session so server page reflects lastOpenedAt + status. */
   refreshKey = 0,
 ) {
-  const debouncedSearch = useDebouncedValue(query.search, 200);
   const [state, setState] = useState<{
     filteredProfiles: ProfileRow[];
     filteredTotal: number;
@@ -40,7 +39,7 @@ export function useProfileDirectoryResults(
     setState((prev) => ({ ...prev, directoryBusy: true }));
 
     fetchProfileDirectoryPage({
-      search: debouncedSearch,
+      search: query.search,
       groupIds: [...query.groupIds],
       statuses: [...query.statuses],
       limit: pageSize,
@@ -61,7 +60,7 @@ export function useProfileDirectoryResults(
         setState((prev) => ({ ...prev, directoryBusy: false }));
       });
   }, [
-    debouncedSearch,
+    query.search,
     query.groupIds,
     query.statuses,
     pageIndex,
@@ -74,6 +73,6 @@ export function useProfileDirectoryResults(
   return {
     filteredProfiles: state.filteredProfiles,
     filteredTotal: state.filteredTotal,
-    directoryBusy: state.directoryBusy || debouncedSearch !== query.search,
+    directoryBusy: state.directoryBusy,
   };
 }

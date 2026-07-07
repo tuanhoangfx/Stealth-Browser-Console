@@ -87,8 +87,10 @@ export function needsLargeDirectoryBoot(rowCount: number): boolean {
 
 export type DirectoryBootGateProps = {
   ready: boolean;
-  ariaLabel: string;
-  icon: LucideIcon;
+  /** Defaults to provider ariaLabel (`Loading {toolName}`). */
+  ariaLabel?: string;
+  /** @deprecated Prefer HubToolLoadingProvider — tool catalog icon is the SSOT. */
+  icon?: LucideIcon;
   /** When false, hidden eager-mounted tabs must not portal over the active screen. */
   enabled?: boolean;
   portaled?: boolean;

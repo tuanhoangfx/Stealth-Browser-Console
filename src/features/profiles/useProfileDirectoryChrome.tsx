@@ -3,7 +3,6 @@ import { Bot } from "lucide-react";
 import {
   DirectorySearchToolbar,
   HubDirectoryBulkActionBar,
-  HubDirectoryToolbarSelection,
   HubSplitDirectoryFilterBar,
   type FilterValues,
 } from "@tool-workspace/hub-ui";
@@ -30,6 +29,7 @@ export function useProfileDirectoryChrome(input: {
   shownProfiles?: number;
   search: string;
   setSearch: (value: string) => void;
+  queryPending?: boolean;
   selectedGroupIds: string[];
   setSelectedGroupIds: (values: string[]) => void;
   selectedStatuses: ProfileRow["status"][];
@@ -58,6 +58,7 @@ export function useProfileDirectoryChrome(input: {
     shownProfiles,
     search,
     setSearch,
+    queryPending = false,
     selectedGroupIds,
     setSelectedStatuses,
     setSelectedGroupIds,
@@ -111,15 +112,14 @@ export function useProfileDirectoryChrome(input: {
       filters={filters}
       query={search}
       onQueryChange={setSearch}
+      queryPending={queryPending}
       values={filterValues}
       onValuesChange={handleFilterValuesChange}
-      searchTrailing={
-        <HubDirectoryToolbarSelection
-          visibleCount={shownProfiles ?? filteredProfiles.length}
-          selectedCount={selectedProfiles.length}
-          noun="profiles"
-        />
-      }
+      filterSelectionToolbar={{
+        visibleCount: shownProfiles ?? filteredProfiles.length,
+        selectedCount: selectedProfiles.length,
+        noun: "profiles",
+      }}
       toolbar={
         <DirectorySearchToolbar
           countIcon={Bot}

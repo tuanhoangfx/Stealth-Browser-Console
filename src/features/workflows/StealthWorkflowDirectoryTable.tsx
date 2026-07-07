@@ -9,6 +9,7 @@ import {
   buildDirectoryColumns,
   hubDirectoryTableClass,
   useDirectoryTableSort,
+  shouldPadDirectoryBodyToPageSize,
 } from "@tool-workspace/hub-ui";
 import {
   STEALTH_WORKFLOW_PANEL_COLUMN_META,
@@ -149,6 +150,8 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
       emptyMessage={emptyMessage}
       pageSize={pageSize}
       resetKey={`${resetKey}|${sortKey}|${sortDir}`}
+      padBodyRowsToPageSize={isRail ? true : shouldPadDirectoryBodyToPageSize(items.length, pageSize)}
+      hideWhenSinglePage={isRail ? false : undefined}
       getRowClassName={(workflow) =>
         !isRail && activeWorkflowId && workflow.id === activeWorkflowId ? " is-detail" : ""
       }

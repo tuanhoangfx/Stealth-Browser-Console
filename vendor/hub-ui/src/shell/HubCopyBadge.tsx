@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Check, Copy, Fingerprint } from "lucide-react";
 import { copyTextWithFallback } from "../lib/copy-text-with-fallback";
 import { copyToastLabelFromTitle } from "../toast/copy-toast";
@@ -22,6 +22,8 @@ export type HubCopyBadgeProps = {
   /** Toast label override; defaults to label derived from `title`. */
   copyToastLabel?: string;
   display?: HubCopyBadgeDisplay;
+  /** Optional label override (e.g. search highlight). */
+  labelContent?: ReactNode;
 };
 
 export function hubCopyBadgeDisplayLabel(value: string, label?: string): string {
@@ -41,6 +43,7 @@ export function HubCopyBadge({
   copyFeedback = "auto",
   copyToastLabel,
   display = "full",
+  labelContent,
 }: HubCopyBadgeProps) {
   const toast = useHubToast();
   const [copied, setCopied] = useState(false);
@@ -82,7 +85,7 @@ export function HubCopyBadge({
       {!chip ? (
         <Fingerprint size={compactIconSize(10)} className="shrink-0 text-indigo-300/80" aria-hidden />
       ) : null}
-      <span className="truncate">{displayLabel}</span>
+      <span className="truncate">{labelContent ?? displayLabel}</span>
       {!chip ? (
         <Copy size={compactIconSize(10)} className="shrink-0 opacity-60" aria-hidden />
       ) : null}

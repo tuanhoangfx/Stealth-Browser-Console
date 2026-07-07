@@ -116,8 +116,43 @@ const probeScript = `
   const consoleHeading = [...scope.querySelectorAll("h1,h2,h3,[role='heading']")].find((el) =>
     /^console$/i.test((el.textContent || "").trim()),
   );
-  const rows = workflowTable?.querySelectorAll("tbody tr") || [];
+  const rows = [...(workflowTable?.querySelectorAll("tbody tr") || [])].filter(
+    (tr) => !tr.classList.contains("hub-users-row--pad"),
+  );
   const rowCount = rows.length;
+  const paginatedShell = rail?.querySelector(".hub-paginated-table-shell");
+  const shellHeight = () => paginatedShell?.getBoundingClientRect().height ?? 0;
+  const pagerHeight = () => rail?.querySelector(".hub-table-pager")?.getBoundingClientRect().height ?? 0;
+  const heightBefore = shellHeight();
+  const pagerBefore = pagerHeight();
+  let searchStable = true;
+  let searchFilteredRows = rowCount;
+  let searchPadRows = 0;
+  let searchTbodyRows = rowCount;
+  let shellHeightAfter = heightBefore;
+  let pagerHeightAfter = pagerBefore;
+  if (workflowSearch && paginatedShell) {
+    const setSearch = (value) => {
+      const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+      desc?.set?.call(workflowSearch, value);
+      workflowSearch.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    setSearch("openai");
+    await new Promise((r) => setTimeout(r, 400));
+    searchFilteredRows = [...(workflowTable?.querySelectorAll("tbody tr") || [])].filter(
+      (tr) => !tr.classList.contains("hub-users-row--pad"),
+    ).length;
+    searchPadRows = workflowTable?.querySelectorAll("tbody tr.hub-users-row--pad").length ?? 0;
+    searchTbodyRows = workflowTable?.querySelectorAll("tbody tr").length ?? 0;
+    shellHeightAfter = shellHeight();
+    pagerHeightAfter = pagerHeight();
+    searchStable =
+      Math.abs(shellHeightAfter - heightBefore) <= 3 &&
+      Math.abs(pagerHeightAfter - pagerBefore) <= 2 &&
+      searchTbodyRows === pageSize;
+    setSearch("");
+    await new Promise((r) => setTimeout(r, 200));
+  }
   const pageSizeBtn = [...scope.querySelectorAll("button")].find((b) =>
     /\\d+\\s*rows/i.test(b.textContent || ""),
   );
@@ -148,6 +183,7 @@ const probeScript = `
     !pageSizeBtn &&
     !quickRunBtn &&
     !tableOverlapsHistory &&
+    searchStable &&
     profilesDirectoryOk &&
     workflowCanvasAbsent &&
     workflowCanvasOk;
@@ -166,6 +202,14 @@ const probeScript = `
     pageSizeBtnText: pageSizeBtn?.textContent || null,
     quickRunAbsent: !quickRunBtn,
     tableOverlapsHistory,
+    searchStable,
+    searchFilteredRows,
+    searchPadRows,
+    searchTbodyRows,
+    shellHeightBefore: heightBefore,
+    shellHeightAfter,
+    pagerHeightBefore: pagerBefore,
+    pagerHeightAfter,
     bootPresent: Boolean(boot),
     profilesDirectoryOk,
     profilesPagerVisible,

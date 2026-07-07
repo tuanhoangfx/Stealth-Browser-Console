@@ -36,11 +36,15 @@ export type TabHeaderMetaItem = {
 export type TabHeaderStatItem = {
   key: string;
   icon?: HubGlyphComponent;
+  /** Sheet-parity emoji sticker — takes precedence over `icon` when set. */
+  emojiGlyph?: string;
   brandIcon?: HubBrandIconId;
   dotClass?: string;
   label: string;
   value: number | string;
   toneClass: string;
+  /** `money` — amber tabular text (hub-order-price-text SSOT). */
+  valueKind?: "number" | "money";
   /** Optional — interactive header stat (P0020 Todo preview popover). */
   onClick?: () => void;
   active?: boolean;
@@ -51,6 +55,8 @@ type AppTabHeaderProps = {
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
+  /** Sheet-parity emoji sticker — takes precedence over `titleIcon` when set. */
+  titleEmojiGlyph?: string;
   title: string;
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;
@@ -68,6 +74,7 @@ function TitleWithMenu({
   titleIcon,
   titleIconClass,
   titleBrandIcon,
+  titleEmojiGlyph,
   titleMenu,
   activeTitleMenuId,
   onTitleMenuSelect,
@@ -76,6 +83,7 @@ function TitleWithMenu({
   titleIcon: HubGlyphComponent;
   titleIconClass: string;
   titleBrandIcon?: HubBrandIconId;
+  titleEmojiGlyph?: string;
   titleMenu: TabTitleMenuItem[];
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
@@ -106,6 +114,7 @@ function TitleWithMenu({
           titleIcon={titleIcon}
           titleIconClass={titleIconClass}
           titleBrandIcon={titleBrandIcon}
+          titleEmojiGlyph={titleEmojiGlyph}
         />
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="app-tab-header__chrome-text tracking-tight text-[var(--text)]">{title}</span>
@@ -216,23 +225,36 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
 
 function StatLine({
   icon: Icon,
+  emojiGlyph,
   brandIcon,
   dotClass,
   value,
   label,
   toneClass,
+  valueKind = "number",
   onClick,
   active,
 }: Omit<TabHeaderStatItem, "key">) {
+  const valueClassName = [
+    "app-tab-header-stat-value tabular-nums",
+    valueKind === "money"
+      ? "hub-order-price-text hub-order-price-text--amber"
+      : "text-[var(--text)]/90",
+  ].join(" ");
+
   const content = (
     <>
       {dotClass ? (
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
+      ) : emojiGlyph ? (
+        <span className="app-tab-header-stat-emoji shrink-0" aria-hidden>
+          {emojiGlyph}
+        </span>
       ) : Icon || brandIcon ? (
         <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={13} className={`shrink-0 ${toneClass}`} />
       ) : null}
-      <span className="tabular-nums text-[var(--text)]/90">{value}</span>
-      <span className="text-[var(--muted)]/80">{label}</span>
+      <span className={valueClassName}>{value}</span>
+      <span className="shrink-0 text-[var(--muted)]/80">{label}</span>
     </>
   );
 
@@ -242,7 +264,7 @@ function StatLine({
         type="button"
         onClick={onClick}
         title={label}
-        className={`app-tab-header__chrome-text inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-colors ${
+        className={`app-tab-header-stat-line app-tab-header__chrome-text inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-1 py-0.5 transition-colors ${
           active ? "bg-white/10 text-[var(--text)]" : "text-[var(--muted)] hover:bg-white/5"
         }`}
       >
@@ -252,7 +274,10 @@ function StatLine({
   }
 
   return (
-    <div className="app-tab-header__chrome-text inline-flex items-center gap-1 text-[var(--muted)]" title={label}>
+    <div
+      className="app-tab-header-stat-line app-tab-header__chrome-text inline-flex min-w-0 max-w-full items-center gap-1 text-[var(--muted)]"
+      title={label}
+    >
       {content}
     </div>
   );
@@ -273,6 +298,7 @@ export function AppTabHeader({
   titleIcon: TitleIcon,
   titleIconClass = "text-indigo-400",
   titleBrandIcon,
+  titleEmojiGlyph,
   title,
   titleMenu,
   activeTitleMenuId,
@@ -301,6 +327,7 @@ export function AppTabHeader({
             titleIcon={TitleIcon}
             titleIconClass={titleIconClass}
             titleBrandIcon={titleBrandIcon}
+            titleEmojiGlyph={titleEmojiGlyph}
             titleMenu={titleMenu}
             activeTitleMenuId={activeTitleMenuId}
             onTitleMenuSelect={onTitleMenuSelect}
@@ -311,6 +338,7 @@ export function AppTabHeader({
               titleIcon={TitleIcon}
               titleIconClass={titleIconClass}
               titleBrandIcon={titleBrandIcon}
+              titleEmojiGlyph={titleEmojiGlyph}
             />
             <h1 className="app-tab-header__chrome-text min-w-0 truncate tracking-tight text-[var(--text)]">
               {title}
@@ -340,7 +368,7 @@ export function AppTabHeader({
         {centerStats.map((stat, index) => {
           const { key, ...statProps } = stat;
           return (
-            <span key={key} className="inline-flex items-center gap-x-2.5">
+            <span key={key} className="inline-flex min-w-0 shrink items-center gap-x-2.5">
               {index > 0 ? <Rule /> : null}
               <StatLine {...statProps} />
             </span>

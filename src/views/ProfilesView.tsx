@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { patchHubListPrefs, patchHubTablePageSizeValue, useHubDirectorySelection } from "@tool-workspace/hub-ui";
+import { patchHubListPrefs, patchHubTablePageSizeValue, useDirectorySearchQuery, useHubDirectorySelection, DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS } from "@tool-workspace/hub-ui";
 import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import { useStealthShell } from "../context/stealth-shell-context";
 import type { ProfileRow } from "../types";
@@ -36,7 +36,7 @@ export const ProfilesView = memo(function ProfilesView({
   }, []);
   const { profiles, groups, catalogStats, openOne, closeOne, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
     useProfilesRuntime();
-  const [search, setSearch] = useState("");
+  const directorySearch = useDirectorySearchQuery({ debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS });
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>([]);
   const pageSize = useProfileDirectoryPageSize();
@@ -52,7 +52,7 @@ export const ProfilesView = memo(function ProfilesView({
     migrateProfilesDisplayPrefsFromUrl();
   }, []);
 
-  const filterKey = `${search}|${selectedGroupIds.join(",")}|${selectedStatuses.join(",")}|${sortKey}|${sortDir}`;
+  const filterKey = `${directorySearch.query}|${selectedGroupIds.join(",")}|${selectedStatuses.join(",")}|${sortKey}|${sortDir}`;
   const prevFilterKey = useRef(filterKey);
   useEffect(() => {
     if (prevFilterKey.current !== filterKey) {
@@ -96,7 +96,7 @@ export const ProfilesView = memo(function ProfilesView({
 
   const { filteredProfiles, filteredTotal, directoryBusy } = useProfileDirectoryResults(
     {
-      search,
+      search: directorySearch.query,
       groupIds: selectedGroupIds,
       statuses: selectedStatuses,
     },
@@ -217,8 +217,10 @@ export const ProfilesView = memo(function ProfilesView({
         groups={groups}
         filteredProfiles={filteredProfiles}
         filteredTotal={filteredTotal}
-        search={search}
-        setSearch={setSearch}
+        search={directorySearch.queryInput}
+        setSearch={directorySearch.setQueryInput}
+        filterSearch={directorySearch.query}
+        queryPending={directorySearch.queryPending}
         selectedGroupIds={selectedGroupIds}
         setSelectedGroupIds={setSelectedGroupIds}
         selectedStatuses={selectedStatuses}
@@ -230,7 +232,7 @@ export const ProfilesView = memo(function ProfilesView({
         sortDir={sortDir}
         onSort={handleSort}
         onTablePageSizeChange={handleTablePageSizeChange}
-        syncBusy={syncBusy || directoryBusy}
+        syncBusy={syncBusy || directoryBusy || directorySearch.queryPending}
         selectedProfiles={selectedProfiles}
         extensionState={extensionSelectionState}
         selectedIds={selectedIds}

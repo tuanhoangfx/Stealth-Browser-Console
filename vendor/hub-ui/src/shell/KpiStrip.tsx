@@ -43,10 +43,14 @@ export type KpiTileData = {
   value: string | number;
   hint?: string;
   icon?: HubGlyphComponent;
+  /** Sheet-parity emoji sticker — takes precedence over `icon` when set. */
+  emojiGlyph?: string;
   brandIcon?: HubBrandIconId;
   /** Extra classes on KPI icon (e.g. animate-spin for in-progress). */
   iconClassName?: string;
   tone?: Tone;
+  /** `money` — amber tabular text (hub-order-price-text SSOT). */
+  valueKind?: "number" | "money";
   /** Matches DisplayPrefs KPI keys (total, ready, …). */
   prefKey?: string;
 };
@@ -69,9 +73,25 @@ export function KpiStrip({ items, className = "" }: { items: KpiTileData[]; clas
   );
 }
 
-function KpiTile({ label, value, hint, icon: Icon, brandIcon, iconClassName, tone = "indigo" }: KpiTileData) {
+function KpiTile({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  emojiGlyph,
+  brandIcon,
+  iconClassName,
+  tone = "indigo",
+  valueKind = "number",
+}: KpiTileData) {
   const t = tones[tone];
   const iconClasses = ["hub-kpi-tile__icon-svg", iconClassName].filter(Boolean).join(" ");
+  const valueClassName = [
+    "hub-kpi-tile__value truncate tabular-nums",
+    valueKind === "money" ? "hub-order-price-text hub-order-price-text--amber" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div
       className={`hub-kpi-tile anim-slide relative min-w-0 overflow-hidden rounded-2xl border border-white/5 bg-[var(--panel)] transition-all hover:-translate-y-0.5 hover:ring-2 ${t.ring}`}
@@ -79,7 +99,11 @@ function KpiTile({ label, value, hint, icon: Icon, brandIcon, iconClassName, ton
       <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br ${t.bg} blur-2xl`} />
       <div className="hub-kpi-tile__inner relative flex min-w-0 items-center">
         <div className={`hub-kpi-tile__icon grid shrink-0 place-items-center rounded-xl ${t.icon}`}>
-          {brandIcon || Icon ? (
+          {emojiGlyph ? (
+            <span className="hub-kpi-tile__emoji" aria-hidden>
+              {emojiGlyph}
+            </span>
+          ) : brandIcon || Icon ? (
             <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={18} className={iconClasses} />
           ) : null}
         </div>
@@ -90,7 +114,7 @@ function KpiTile({ label, value, hint, icon: Icon, brandIcon, iconClassName, ton
           >
             {label}
           </div>
-          <div className="hub-kpi-tile__value truncate font-medium tabular-nums">{value}</div>
+          <div className={valueClassName}>{value}</div>
           {hint ? <div className="hub-kpi-tile__hint truncate text-[var(--muted)]">{hint}</div> : null}
         </div>
       </div>

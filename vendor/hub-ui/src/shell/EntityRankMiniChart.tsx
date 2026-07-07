@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import type { FilterIconMeta } from "../types/filter-badge";
+import { ChartLegendLabelContent } from "../lib/chart-legend-label-content";
 import { chartRankBarColor, isChartOthersLabel } from "../lib/chart-palette";
+import type { HubBrandIconShell } from "./filter-dropdown-primitives";
 import { MetricBadge, type MetricBadgeTone } from "./MetricBadge";
 
 export type EntityRankRow = {
@@ -8,6 +11,9 @@ export type EntityRankRow = {
   value: number;
   total?: number;
   color?: string;
+  iconMeta?: FilterIconMeta | null;
+  iconSrc?: string;
+  iconShell?: HubBrandIconShell;
   statusLabel?: string;
   statusTone?: MetricBadgeTone;
   badgeLabel?: string;
@@ -54,7 +60,12 @@ export function EntityRankMiniChart({ title, rows, footer, emptyLabel = "—" }:
                   title={row.label}
                   onClick={row.onClick}
                 >
-                  <span className="hub-chart-legend-label__text truncate">{row.label}</span>
+                  <ChartLegendLabelContent
+                    label={row.label}
+                    iconSrc={row.iconSrc}
+                    iconShell={row.iconShell}
+                    iconMeta={row.iconMeta}
+                  />
                 </LabelTag>
                 <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-white/5">
                   <div

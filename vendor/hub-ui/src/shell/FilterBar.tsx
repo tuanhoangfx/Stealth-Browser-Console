@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Search,
@@ -71,6 +71,9 @@ export type FilterDef = {
   triggerEmoji?: string;
   /** Skip lucide/semantic fallback on trigger when no option icon (brand filters). */
   suppressDefaultTriggerIcon?: boolean;
+  /** Brand img for panel “all” row + empty multi-select trigger (enum SSOT parity with directory cells). */
+  allRowIconSrc?: string;
+  allRowIconShell?: HubBrandIconShell;
 };
 
 const FILTER_ICONS: Record<string, HubGlyphComponent> = {
@@ -105,6 +108,8 @@ export type FilterBarProps = {
   filters?: FilterDef[];
   query: string;
   onQueryChange: (q: string) => void;
+  /** Debounced search still pending — a11y only (HubSearchField aria-busy). */
+  queryPending?: boolean;
   values: FilterValues;
   onValuesChange: (next: FilterValues) => void;
   /** Row 1 — immediately after search (selection chip `x/y`). */
@@ -129,6 +134,8 @@ export type FilterBarProps = {
   shortcutScope?: string;
   /** Hub dashboard-style row: filters only, no search field or F shortcut. */
   hideSearch?: boolean;
+  /** Debounce directory filter query — draft stays in HubSearchField (large vault perf). */
+  searchDebounceMs?: number;
   /** Inside HubSplitDirectoryPane — parent owns border/bg; no nested panel chrome. */
   frameless?: boolean;
 };
@@ -138,6 +145,7 @@ export function FilterBar({
   filters = [],
   query,
   onQueryChange,
+  queryPending = false,
   values,
   onValuesChange,
   searchTrailing,
@@ -152,6 +160,7 @@ export function FilterBar({
   embedded = false,
   shortcutScope = "default",
   hideSearch = false,
+  searchDebounceMs = 0,
   frameless = false,
 }: FilterBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +207,8 @@ export function FilterBar({
       inputRef={inputRef}
       value={query}
       onChange={onQueryChange}
+      debounceMs={searchDebounceMs}
+      queryPending={queryPending}
       placeholder={placeholder}
       className={layout === "hub" ? "min-w-0" : ""}
     />
@@ -217,15 +228,19 @@ export function FilterBar({
     </button>
   ) : null;
 
-  const filterDropdowns = filters.map((f) => (
-    <HubMultiFilterDropdown
-      key={f.key}
-      filter={f}
-      selected={values[f.key] ?? []}
-      onChange={(vals) => setFilter(f.key, vals)}
-      panelScope={shortcutScope}
-    />
-  ));
+  const filterDropdowns = useMemo(
+    () =>
+      filters.map((f) => (
+        <HubMultiFilterDropdown
+          key={f.key}
+          filter={f}
+          selected={values[f.key] ?? []}
+          onChange={(vals) => setFilter(f.key, vals)}
+          panelScope={shortcutScope}
+        />
+      )),
+    [filters, shortcutScope, values],
+  );
 
   if (layout === "hub") {
     const stickyTop = headerPinned ? "top-[var(--app-tab-header-sticky-h)]" : "top-0";
@@ -326,30 +341,31 @@ function FilterOptionGlyph({
   directoryParity?: boolean;
   compact?: boolean;
 }) {
+  const glyphPx = compactIconSize(hubFilterGlyphPx({ directoryParity, compact }));
+  const slotStyle = { width: glyphPx, height: glyphPx };
   if (option.emoji) {
     return (
-      <span className={hubFilterOptionEmojiClass()} aria-hidden>
-        {option.emoji}
+      <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+        <span className={hubFilterOptionEmojiClass()}>{option.emoji}</span>
       </span>
     );
   }
   if (option.iconSrc) {
     return (
-      <img
-        src={option.iconSrc}
-        alt=""
-        className={hubBrandIconImgClass(option.iconShell)}
-        aria-hidden
-      />
+      <span className="inline-flex shrink-0 items-center justify-center" style={slotStyle} aria-hidden>
+        <img src={option.iconSrc} alt="" className={hubBrandIconImgClass(option.iconShell)} />
+      </span>
     );
   }
   const meta = resolveFilterOptionIcon(filterKey, option.value);
   if (!meta) {
     return option.color ? (
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: option.color }} aria-hidden />
+      <span className="inline-flex shrink-0 items-center justify-center" style={slotStyle} aria-hidden>
+        <span className="h-2 w-2 rounded-full" style={{ background: option.color }} />
+      </span>
     ) : null;
   }
-  return <FilterIconGlyph meta={meta} size={compactIconSize(hubFilterGlyphPx({ directoryParity, compact }))} />;
+  return <FilterIconGlyph meta={meta} size={glyphPx} />;
 }
 
 function FilterAllRowGlyph({
@@ -361,10 +377,19 @@ function FilterAllRowGlyph({
   directoryParity?: boolean;
   compact?: boolean;
 }) {
+  const glyphPx = compactIconSize(hubFilterGlyphPx({ directoryParity, compact }));
+  const slotStyle = { width: glyphPx, height: glyphPx };
+  if (filter.allRowIconSrc) {
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center" style={slotStyle} aria-hidden>
+        <img src={filter.allRowIconSrc} alt="" className={hubBrandIconImgClass(filter.allRowIconShell)} />
+      </span>
+    );
+  }
   if (filter.triggerEmoji) {
     return (
-      <span className={hubFilterOptionEmojiClass()} aria-hidden>
-        {filter.triggerEmoji}
+      <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+        <span className={hubFilterOptionEmojiClass()}>{filter.triggerEmoji}</span>
       </span>
     );
   }
@@ -393,6 +418,7 @@ function resolveFilterTriggerIcon(
       if (icon) return icon;
     }
   }
+  if (selected.length === 0 && filter.allRowIconSrc) return null;
   if (directoryParity) {
     const dirIcon = resolveDirectoryFilterColumnIcon(filter.key);
     if (dirIcon) return dirIcon;
@@ -519,29 +545,60 @@ export function HubMultiFilterDropdown({
         onClick={() => setOpen((v) => !v)}
         className={hubFilterTriggerClass(selected.length > 0, triggerClassName, triggerTypo)}
       >
-        {triggerIconSrc ? (
-          <img
-            src={triggerIconSrc}
-            alt=""
-            className={hubBrandIconImgClass(selectedOpt?.iconShell)}
-            aria-hidden
-          />
-        ) : selected.length === 1 && selectedOpt?.color ? (
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
-        ) : filter.triggerEmoji ? (
-          <span className={hubFilterOptionEmojiClass()} aria-hidden>
-            {filter.triggerEmoji}
-          </span>
-        ) : selectedOpt?.emoji ? (
-          <span className={hubFilterOptionEmojiClass()} aria-hidden>
-            {selectedOpt.emoji}
-          </span>
-        ) : triggerIcon ? (
-          <FilterIconGlyph meta={triggerIcon} size={compactIconSize(glyphPx)} />
-        ) : selectedOpt?.color ? (
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: selectedOpt.color }} aria-hidden />
-        ) : null}
-        <span>{buttonLabel}</span>
+        {(() => {
+          const triggerSlotStyle = { width: compactIconSize(glyphPx), height: compactIconSize(glyphPx) };
+          if (triggerIconSrc) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center" style={triggerSlotStyle} aria-hidden>
+                <img src={triggerIconSrc} alt="" className={hubBrandIconImgClass(selectedOpt?.iconShell)} />
+              </span>
+            );
+          }
+          if (selected.length === 0 && filter.allRowIconSrc) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center" style={triggerSlotStyle} aria-hidden>
+                <img src={filter.allRowIconSrc} alt="" className={hubBrandIconImgClass(filter.allRowIconShell)} />
+              </span>
+            );
+          }
+          if (selected.length === 1 && selectedOpt?.color) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center" style={triggerSlotStyle} aria-hidden>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: selectedOpt.color }} />
+              </span>
+            );
+          }
+          if (filter.triggerEmoji) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center leading-none" style={triggerSlotStyle} aria-hidden>
+                <span className={hubFilterOptionEmojiClass()}>{filter.triggerEmoji}</span>
+              </span>
+            );
+          }
+          if (selectedOpt?.emoji) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center leading-none" style={triggerSlotStyle} aria-hidden>
+                <span className={hubFilterOptionEmojiClass()}>{selectedOpt.emoji}</span>
+              </span>
+            );
+          }
+          if (triggerIcon) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center" style={triggerSlotStyle} aria-hidden>
+                <FilterIconGlyph meta={triggerIcon} size={compactIconSize(glyphPx)} />
+              </span>
+            );
+          }
+          if (selectedOpt?.color) {
+            return (
+              <span className="inline-flex shrink-0 items-center justify-center" style={triggerSlotStyle} aria-hidden>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: selectedOpt.color }} />
+              </span>
+            );
+          }
+          return null;
+        })()}
+        <span className="min-w-0 truncate leading-none">{buttonLabel}</span>
         {showTotalOnTrigger ? (
           <span className="shrink-0 tabular-nums text-[10px] font-medium text-[var(--muted)]">{filter.totalCount}</span>
         ) : null}
@@ -660,6 +717,12 @@ export type HubSingleFilterDropdownProps = {
   triggerContent?: React.ReactNode;
   triggerHideChevron?: boolean;
   ariaLabel?: string;
+  /** Server/async option lists — panel search drives parent fetch; skip client label filter when true. */
+  panelSearchAsync?: {
+    query: string;
+    onQueryChange: (query: string) => void;
+    serverFiltered?: boolean;
+  };
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -677,12 +740,22 @@ export function HubSingleFilterDropdown({
   triggerContent,
   triggerHideChevron = false,
   ariaLabel,
+  panelSearchAsync,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 288 });
+
+  const search = panelSearchAsync?.query ?? localSearch;
+  const setSearch = panelSearchAsync?.onQueryChange ?? setLocalSearch;
+
+  useEffect(() => {
+    if (open) return;
+    setLocalSearch("");
+    panelSearchAsync?.onQueryChange("");
+  }, [open, panelSearchAsync]);
 
   const filter: FilterDef = { key: filterKey, label, options };
   const selected = value ? [value] : [];
@@ -709,9 +782,9 @@ export function HubSingleFilterDropdown({
     return () => document.removeEventListener("mousedown", onClick);
   }, [open, usePortal]);
 
-  const filtered = options.filter(
-    (o) => !search || o.label.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = panelSearchAsync?.serverFiltered
+    ? options
+    : options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()));
 
   const opt = options.find((o) => o.value === value);
   const triggerIcon = resolveFilterTriggerIcon(filter, selected);

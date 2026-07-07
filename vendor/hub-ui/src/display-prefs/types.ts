@@ -13,6 +13,8 @@ export type PrefItem = {
   label: string;
   icon?: PrefIcon;
   iconClassName?: string;
+  /** Sheet-parity emoji — takes precedence over `icon` in ToggleRow. */
+  emoji?: string;
 };
 
 /** Extra settings tab (e.g. Cookie bridge / vault) between General and Display. */

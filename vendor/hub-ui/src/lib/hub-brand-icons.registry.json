@@ -344,6 +344,22 @@
     "faviconDomain": "binance.com"
   },
   {
+    "id": "5sim",
+    "label": "5sim",
+    "match": "5\\s*sim|fivesim",
+    "src": "/assets/brand-icons/5sim.png",
+    "shell": "bare",
+    "faviconDomain": "5sim.net"
+  },
+  {
+    "id": "shopvia",
+    "label": "Shopvia",
+    "match": "shopvia",
+    "src": "/assets/brand-icons/shopvia.png",
+    "shell": "bare",
+    "faviconDomain": "shopvia.com"
+  },
+  {
     "id": "grizzlysms",
     "label": "Grizzlysms",
     "match": "grizzly\\s*sms|grizzlysms",
@@ -793,7 +809,7 @@
     "label": "OpenAI",
     "match": "chatgpt|openai|gpt",
     "src": "/assets/brand-icons/chatgpt.png",
-    "shell": "tile",
+    "shell": "bare",
     "faviconDomain": "chatgpt.com"
   },
   {

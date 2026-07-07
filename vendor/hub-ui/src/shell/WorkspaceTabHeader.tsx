@@ -15,6 +15,8 @@ export type WorkspaceTabHeaderProps = {
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
+  /** Sheet-parity emoji sticker — takes precedence over `titleIcon` when set. */
+  titleEmojiGlyph?: string;
   title: string;
   titleMenu?: TabTitleMenuItem[];
   activeTitleMenuId?: string;

@@ -1,11 +1,32 @@
 /** Shell class — wide 3-frame account detail (TOC · main scroll · log rail). */
 export const HUB_ACCOUNT_DETAIL_MODAL_SHELL_CLASS = "hub-account-detail-modal";
 
+/** P0020 2FA / P0004 overview — shared twofa ADM skin on top of hub-account-detail-modal. */
+export const HUB_TWOfA_ACCOUNT_DETAIL_SHELL_CLASS = "twofa-account-detail-modal";
+
 /** Shared ADM form context — detail modal + add modal (glow tokens, click-edit grid). */
 export const HUB_ADM_FORM_SHELL_CLASS = "hub-adm-form-shell";
 
 /** Preset — softer hairline glow (multiply token alphas via --hub-adm-glow-strength). */
 export const HUB_ADM_GLOW_SUBTLE_CLASS = "hub-adm-glow--subtle";
+
+export type HubAccountDetailShellOptions = {
+  /** Softer hairline glow preset (`hub-adm-glow--subtle`). */
+  glowSubtle?: boolean;
+  extra?: string;
+};
+
+/** Single shell class string — modal overlay + page embed (P0020 golden). */
+export function hubAccountDetailShellClass(options: HubAccountDetailShellOptions = {}): string {
+  return [
+    HUB_ACCOUNT_DETAIL_MODAL_SHELL_CLASS,
+    HUB_TWOfA_ACCOUNT_DETAIL_SHELL_CLASS,
+    options.glowSubtle ? HUB_ADM_GLOW_SUBTLE_CLASS : "",
+    options.extra ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /** CSS custom properties for ADM field glow — set on `.hub-account-detail-modal` / `.hub-add-modal`. */
 export const HUB_ADM_GLOW_CSS_VARS = {
@@ -54,6 +75,9 @@ export const HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS = "hub-adm-grid-slot-spacer hub
 
 /** Main column scroll container inside HubToolDetailSplitLayout. */
 export const HUB_ACCOUNT_DETAIL_MAIN_SCROLL_CLASS = "hub-account-detail-modal__main-scroll hub-scrollbar";
+
+/** Wraps `HubAccountDetailModalFrame` inside modal scroll — flex fill to rail height. */
+export const HUB_ACCOUNT_DETAIL_CONTENT_ROOT_CLASS = "hub-account-detail-modal__content-root";
 
 /** TOC spy + section jump target (main column only — not log rail). */
 export const HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT = ".hub-account-detail-modal__main-scroll";

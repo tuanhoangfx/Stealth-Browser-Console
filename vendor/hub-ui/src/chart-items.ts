@@ -10,6 +10,8 @@ export type ChartRow = {
   value: number;
   color?: string;
   iconMeta?: FilterIconMeta | null;
+  /** Sticker emoji — takes precedence over iconMeta in chart legends. */
+  emojiGlyph?: string;
   /** Brand image — takes precedence over iconMeta when set. */
   iconSrc?: string;
   iconShell?: HubBrandIconShell;
@@ -40,6 +42,7 @@ function legendFor(label: string): FilterIconMeta | null {
 }
 
 export function withChartLegendIcon<T extends ChartRow>(row: T): T {
+  if (row.emojiGlyph) return row;
   const iconMeta = row.iconMeta ?? legendFor(row.label);
   return iconMeta ? { ...row, iconMeta } : row;
 }

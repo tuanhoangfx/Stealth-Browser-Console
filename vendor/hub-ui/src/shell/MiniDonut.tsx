@@ -10,6 +10,7 @@ export type DonutItem = {
   value: number;
   color?: string;
   iconMeta?: FilterIconMeta | null;
+  emojiGlyph?: string;
   iconSrc?: string;
   iconShell?: HubBrandIconShell;
 };
@@ -96,6 +97,10 @@ export function MiniDonut({
                 className={hubBrandIconImgClass(s.iconShell)}
                 aria-hidden
               />
+            ) : s.emojiGlyph ? (
+              <span className="shrink-0 text-[11px] leading-none" aria-hidden>
+                {s.emojiGlyph}
+              </span>
             ) : s.iconMeta ? (
               <s.iconMeta.icon size={compactIconSize(11)} className={`shrink-0 ${s.iconMeta.className}`} aria-hidden />
             ) : (

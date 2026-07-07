@@ -19,6 +19,7 @@ import { SystemBackupDirectoryBulkActions } from "./SystemBackupDirectoryBulkAct
 export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   search,
   setSearch,
+  queryPending = false,
   shownProfiles,
   totalProfiles,
   selectedCount,
@@ -35,6 +36,7 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
 }: {
   search: string;
   setSearch: (value: string) => void;
+  queryPending?: boolean;
   shownProfiles: number;
   totalProfiles: number;
   selectedCount: number;
@@ -74,6 +76,7 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
       filters={filters}
       query={search}
       onQueryChange={setSearch}
+      queryPending={queryPending}
       values={filterValues}
       onValuesChange={handleFilterValuesChange}
       searchTrailing={

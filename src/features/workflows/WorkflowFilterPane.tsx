@@ -16,6 +16,12 @@ export type WorkflowFilterPaneProps = {
   setWorkflowSearch: (value: string) => void;
   filteredCount: number;
   totalCount: number;
+  /** Table mode — x/y selection chip beside search (Profiles golden). */
+  filterSelectionToolbar?: {
+    visibleCount: number;
+    selectedCount: number;
+    noun?: string;
+  };
   /** Panel variant — pager rows SSOT from useWorkflows. */
   tablePageSize?: number;
   onTablePageSizeChange?: (size: number) => void;
@@ -33,6 +39,7 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
   setWorkflowSearch,
   filteredCount,
   totalCount,
+  filterSelectionToolbar,
   tablePageSize,
   onTablePageSizeChange,
   row2Actions,
@@ -50,12 +57,15 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
       onQueryChange={setWorkflowSearch}
       values={filterValues}
       onValuesChange={onFilterValuesChange}
+      filterSelectionToolbar={filterSelectionToolbar}
       toolbar={
         <DirectorySearchToolbar
           showViewToggle={false}
           showTimeRange={false}
           showRefresh={false}
-          displayBand={<StealthDisplayBandToolbar screen="workflow" directoryVariant={variant} />}
+          displayBand={
+            isPanel ? <StealthDisplayBandToolbar screen="workflow" directoryVariant="panel" /> : undefined
+          }
           showTablePageSize={isPanel}
           tablePageSize={tablePageSize}
           onTablePageSizeChange={onTablePageSizeChange}

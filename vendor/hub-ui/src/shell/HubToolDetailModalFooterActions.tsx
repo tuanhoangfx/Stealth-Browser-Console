@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   HubToolDetailModalPrimaryAction,
 } from "./HubToolDetailModal";
+import { HUB_DETAIL_MODAL_SAVING_LABEL } from "./hubToolDetailModalFooter";
 
 export type HubToolDetailModalFooterActionsProps = {
   saveLabel: string;
@@ -14,7 +15,7 @@ export type HubToolDetailModalFooterActionsProps = {
   deleteLabel?: string;
 };
 
-/** Golden footer row — optional delete (left) + primary save (right). */
+/** Golden footer row — optional delete (left) + primary save (right). Compact forms without Close. */
 export function HubToolDetailModalFooterActions({
   saveLabel,
   saveIcon,
@@ -26,18 +27,21 @@ export function HubToolDetailModalFooterActions({
   deleteLabel = "Delete",
 }: HubToolDetailModalFooterActionsProps) {
   return (
-    <div className="flex w-full items-center gap-3">
+    <div className="hub-tool-detail-modal__footer-bar hub-tool-detail-modal__footer-bar--split">
       {showDelete && onDelete ? (
-        <HubToolDetailModalPrimaryAction
-          label={deleteLabel}
-          onClick={onDelete}
-          danger
-          disabled={busy}
-        />
+        <div className="hub-tool-detail-modal__footer-leading">
+          <HubToolDetailModalPrimaryAction
+            label={deleteLabel}
+            onClick={onDelete}
+            danger
+            disabled={busy}
+          />
+        </div>
       ) : null}
-      <div className="ml-auto">
+      <div className="hub-tool-detail-modal__footer-main ml-auto">
         <HubToolDetailModalPrimaryAction
           label={saveLabel}
+          busyLabel={HUB_DETAIL_MODAL_SAVING_LABEL}
           onClick={onSave}
           disabled={saveDisabled}
           busy={busy}

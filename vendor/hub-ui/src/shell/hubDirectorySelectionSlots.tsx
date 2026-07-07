@@ -5,6 +5,14 @@ import {
 } from "./HubDirectoryToolbarSelection";
 import type { HubViewMode } from "./ViewToggle";
 
+export type DirectorySearchResultCountGuardInput = {
+  showResultCount?: boolean;
+  hasSearchSelectionChip?: boolean;
+  /** HubDirectoryScreen registered `filterSelectionToolbar`. */
+  filterSelectionToolbarActive?: boolean;
+  viewMode?: HubViewMode;
+};
+
 export type HubDirectorySelectionSlots = {
   searchTrailing?: ReactNode;
   row2Trailing?: ReactNode;
@@ -18,6 +26,18 @@ export function shouldShowHubDirectoryResultCount(opts: {
   if (opts.showResultCount === false) return false;
   if (opts.hasSearchSelectionChip) return false;
   return true;
+}
+
+/** Auto-guard — table mode + registered selection toolbar hides duplicate HubResultCount. */
+export function resolveDirectorySearchResultCountGuard(
+  input: DirectorySearchResultCountGuardInput,
+): { showResultCount?: boolean; hasSearchSelectionChip: boolean } {
+  const mode = input.viewMode ?? "table";
+  const autoChip = Boolean(input.filterSelectionToolbarActive) && mode === "table";
+  return {
+    showResultCount: input.showResultCount,
+    hasSearchSelectionChip: Boolean(input.hasSearchSelectionChip) || autoChip,
+  };
 }
 
 /** Route V2 selection chip — table: beside search · card: row-2 after bulk actions. */

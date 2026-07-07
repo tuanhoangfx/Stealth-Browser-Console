@@ -5,7 +5,7 @@
  */
 (function () {
   var BOOT_ID = "hub-boot-loader";
-  var TIMEOUT_MS = 12000;
+  var TIMEOUT_MS = 28000;
 
   window.__hubBootReady = false;
 
@@ -54,12 +54,13 @@
 
   window.setTimeout(function () {
     if (window.__hubBootReady) return;
+    var port = window.location.port || "PORT";
     var hungHint =
       "Hung Vite zombie or stale cache. In the tool folder run:\n" +
       "  pnpm dev:recover\n" +
       "If recover fails (Access Denied), in PowerShell:\n" +
       "  tskill <PID> /A\n" +
-      "  (find PID: netstat -ano | findstr :5186)";
+      "  (find PID: netstat -ano | findstr :" + port + ")";
     showBootError("JavaScript did not start in time.", hungHint);
   }, TIMEOUT_MS);
 })();

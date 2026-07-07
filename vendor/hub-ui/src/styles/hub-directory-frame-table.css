@@ -86,7 +86,7 @@
 .hub-directory-frame .hub-directory-frame-table td.hub-users-cell-num,
 .hub-directory-frame .hub-directory-frame-table .hub-users-cell-num {
   font-size: var(--hub-table-body-size, 12px);
-  font-weight: 600;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1.2;
@@ -244,4 +244,26 @@
   margin-top: 4px;
   position: relative;
   z-index: 2;
+}
+
+/* Partial-page pad rows — SSOT for panel-fill stable frame */
+.hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad {
+  pointer-events: none;
+  user-select: none;
+}
+
+.hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad td {
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hub-directory-frame[data-partial-page-pad="visible"] tbody tr.hub-users-row--pad {
+  pointer-events: none;
+  user-select: none;
+}
+
+.hub-directory-frame[data-partial-page-pad="visible"] tbody tr.hub-users-row--pad td {
+  border-top-color: rgba(255, 255, 255, 0.02);
 }

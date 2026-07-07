@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-07 — v0.10.63 — Electron dev reload
+
+- Version: `0.10.63`
+- Timestamp: 2026-07-07 05:11 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-07 - P0003 version sync
 
 - Version: `0.10.62`

@@ -5,7 +5,11 @@ import type { TimeRange } from "../display-prefs/constants";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { useDirectoryTimeRange } from "../lib/directory-time-range";
 import { HubResultCount } from "./HubResultCount";
-import { shouldShowHubDirectoryResultCount } from "./hubDirectorySelectionSlots";
+import { useHubDirectorySelectionChrome } from "./HubDirectorySelectionChromeContext";
+import {
+  resolveDirectorySearchResultCountGuard,
+  shouldShowHubDirectoryResultCount,
+} from "./hubDirectorySelectionSlots";
 import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
 import { HubTimeRangeSelect } from "./HubTimeRangeSelect";
 import { HubWorkspacePeriodSelect, type HubWorkspacePeriodSelectProps } from "./HubWorkspacePeriodSelect";
@@ -74,10 +78,14 @@ export function DirectorySearchToolbar({
 }: DirectorySearchToolbarProps) {
   const period = useDirectoryTimeRange(timeRange);
   const resolvedShowTablePageSize = showTablePageSize ?? !displayBand;
-  const resultCountVisible = shouldShowHubDirectoryResultCount({
+  const filterSelectionToolbarActive = useHubDirectorySelectionChrome();
+  const resultCountGuard = resolveDirectorySearchResultCountGuard({
     showResultCount,
     hasSearchSelectionChip,
+    filterSelectionToolbarActive,
+    viewMode,
   });
+  const resultCountVisible = shouldShowHubDirectoryResultCount(resultCountGuard);
   return (
     <>
       {leading}

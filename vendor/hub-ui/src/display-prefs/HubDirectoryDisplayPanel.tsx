@@ -338,6 +338,7 @@ export function HubDirectoryDisplayPanel({
                       label={item.label}
                       icon={item.icon}
                       iconClassName={item.iconClassName}
+                      emoji={item.emoji}
                       on={selected}
                       disabled={kpiAtMax && !selected}
                       onDisabledClick={() =>
@@ -364,6 +365,7 @@ export function HubDirectoryDisplayPanel({
                       label={item.label}
                       icon={item.icon}
                       iconClassName={item.iconClassName}
+                      emoji={item.emoji}
                       on={selected}
                       disabled={chartAtMax && !selected}
                       onDisabledClick={() =>
@@ -388,6 +390,7 @@ export function HubDirectoryDisplayPanel({
                     label={item.label}
                     icon={item.icon}
                     iconClassName={item.iconClassName}
+                    emoji={item.emoji}
                     on={isHubPrefVisible(visHeaderStats, headerStatDefaults, item.key)}
                     onChange={() => toggle(headerStatParam, headerStatsProp, headerStatDefaults, item.key)}
                   />
@@ -407,6 +410,7 @@ export function HubDirectoryDisplayPanel({
                     label={item.label}
                     icon={item.icon}
                     iconClassName={item.iconClassName}
+                    emoji={item.emoji}
                     on={isHubPrefVisible(visHubFilters, filterDefaults, item.key)}
                     onChange={() => toggle(filterParam, tabFilters, filterDefaults, item.key)}
                   />

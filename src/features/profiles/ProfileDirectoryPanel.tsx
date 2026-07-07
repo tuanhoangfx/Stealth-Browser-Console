@@ -27,6 +27,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   filteredTotal,
   search,
   setSearch,
+  filterSearch: filterSearchProp,
+  queryPending = false,
   selectedGroupIds,
   setSelectedGroupIds,
   selectedStatuses,
@@ -70,6 +72,9 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   filteredTotal?: number;
   search: string;
   setSearch: (value: string) => void;
+  /** Debounced filter query — defaults to `search` when omitted. */
+  filterSearch?: string;
+  queryPending?: boolean;
   selectedGroupIds: string[];
   setSelectedGroupIds: (values: string[]) => void;
   selectedStatuses: ProfileRow["status"][];
@@ -107,9 +112,10 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   rail: ReactNode;
 }) {
   const extensionIcons = useExtensionIcons();
+  const filterSearch = filterSearchProp ?? search;
   const directoryQuery = useMemo(
-    () => ({ search, groupIds: selectedGroupIds, statuses: selectedStatuses }),
-    [search, selectedGroupIds, selectedStatuses],
+    () => ({ search: filterSearch, groupIds: selectedGroupIds, statuses: selectedStatuses }),
+    [filterSearch, selectedGroupIds, selectedStatuses],
   );
   const catalogTotal = resolveCatalogTotal(catalogStats, profiles.length);
   const directoryVisibleTotal = resolveProfileDirectoryVisibleTotal(
@@ -128,6 +134,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     shownProfiles: directoryVisibleTotal,
     search,
     setSearch,
+    queryPending,
     selectedGroupIds,
     setSelectedGroupIds,
     selectedStatuses,
@@ -149,10 +156,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     onExtensionSet,
   });
 
-  const listResetKey = hubDirectoryListResetKey(search, chrome.filterValues);
+  const listResetKey = hubDirectoryListResetKey(filterSearch, chrome.filterValues);
   const panelFillRows = resolveDirectoryPanelFillRows(pageSize, filteredProfiles.length);
-  const compactDirectoryTable =
-    filteredProfiles.length > 0 && filteredProfiles.length < pageSize;
   const directoryBodyRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -169,13 +174,11 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   return (
     <ProfilesHubChrome centerStats={centerStats} headerActions={headerActions}>
       <div className="stealth-profile-layout flex min-h-0 flex-1 overflow-hidden">
-        <div
-          className="stealth-profile-directory-pane min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden"
-          data-hub-directory-compact={compactDirectoryTable ? "" : undefined}
-        >
+        <div className="stealth-profile-directory-pane min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
           <HubSplitDirectoryPane
             className="stealth-profile-directory-frame hub-directory-frame"
             panelFillRows={panelFillRows}
+            partialPagePad="invisible"
             kpiBand={kpis?.length ? <KpiStrip items={kpis} /> : undefined}
             filterBar={chrome.filterBar}
           >

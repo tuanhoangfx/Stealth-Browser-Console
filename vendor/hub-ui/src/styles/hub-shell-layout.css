@@ -270,6 +270,11 @@
   align-self: center;
 }
 
+.hub-kpi-strip .hub-kpi-tile__emoji {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
 .hub-kpi-strip .hub-kpi-tile__body {
   display: flex;
   min-width: 0;
@@ -286,6 +291,15 @@
 }
 
 .hub-kpi-strip .hub-kpi-tile__value {
+  font-size: var(--hub-kpi-value-size);
+  line-height: 1.15;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-kpi-strip .hub-kpi-tile__value.hub-order-price-text {
   font-size: var(--hub-kpi-value-size);
   line-height: 1.15;
 }

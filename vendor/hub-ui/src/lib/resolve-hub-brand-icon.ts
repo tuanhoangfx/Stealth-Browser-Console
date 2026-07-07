@@ -51,6 +51,21 @@ export function resolveHubBrandIconByMatch(service: string): HubBrandIconMeta | 
   return resolved;
 }
 
+/**
+ * Emoji fallback for unknown platform/service labels (no brand icon match).
+ * Keeps UI glyph-only parity without Lucide fallback.
+ */
+export function resolveHubBrandFallbackGlyph(label: string): string {
+  const key = label.trim().toLowerCase();
+  if (!key) return "⭕";
+  if (/(gmail|outlook|icloud|mail)/.test(key)) return "✉️";
+  if (/(facebook|zalo|telegram|tiktok|douyin|weibo|instagram|youtube|whatsapp|discord|twitter|x\\b)/.test(key)) {
+    return "🌐";
+  }
+  if (/(chatgpt|gpt|claude|gemini|cursor|openai|copilot|ai)/.test(key)) return "✨";
+  return "⭕";
+}
+
 /** All registered brand icon ids — for tests and tooling. */
 export function listHubBrandIconIds(): HubBrandIconId[] {
   return ENTRIES.map((entry) => entry.id);

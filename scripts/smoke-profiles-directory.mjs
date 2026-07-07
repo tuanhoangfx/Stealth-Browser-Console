@@ -34,7 +34,9 @@ while ((m = colClassRe.exec(metaSrc))) {
   classes.push(m[1]);
 }
 
-const profileBlock = metaSrc.match(/export const STEALTH_PROFILE_COLUMN_META = \{([\s\S]*?)\n\};/);
+const profileBlock = metaSrc.match(
+  /export const STEALTH_PROFILE_COLUMN_META = applyStandardDirectoryColumnHints\(\{([\s\S]*?)\n\}\);/,
+);
 if (!profileBlock) fail("STEALTH_PROFILE_COLUMN_META not found");
 const profileClasses = [...profileBlock[1].matchAll(/"(hub-users-col--[^"]+)"/g)].map((x) => x[1]);
 const seen = new Set();
@@ -47,25 +49,25 @@ if (!profileClasses.includes("hub-users-col--metric-b")) fail("Surfshark colClas
 if (!profileClasses.includes("hub-users-col--metric-c")) fail("Proxy colClass missing");
 
 const cells = fs.readFileSync(path.join(root, "src/features/profiles/stealth-profile-directory-cells.tsx"), "utf8");
+if (!cells.includes("HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS")) {
+  fail("profiles Run/Stop must use hub-ui HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS");
+}
 if (!cells.includes('case "e0001"') || !cells.includes('case "surfshark"')) {
   fail("directory cells missing e0001/surfshark cases");
 }
 if (cells.includes("hub-checkbox") && cells.includes('case "e0001"')) {
   fail("extension cells must be read-only indicators, not hub-checkbox");
 }
-if (!cells.includes("Check") || !cells.includes("<X ")) {
-  fail("extension cells missing Check/X indicators");
+if (!cells.includes("HubUsersOnOffLabel")) {
+  fail("extension cells must use HubUsersOnOffLabel for e0001/surfshark");
 }
 
 const bulk = fs.readFileSync(
   path.join(root, "src/features/profiles/StealthProfilesDirectoryBulkActions.tsx"),
   "utf8",
 );
-for (const label of ["E0001 On", "E0001 Off", "Surfshark On", "Surfshark Off"]) {
+for (const label of ["Extension", "Cookie Bridge", "Surfshark VPN"]) {
   if (!bulk.includes(label)) fail(`bulk actions missing "${label}"`);
-}
-if (!bulk.includes("Extension")) {
-  fail('bulk actions missing primary "Extension" button');
 }
 if (!bulk.includes("selectedCount={selectedCount}") && !bulk.includes("HubBulkActionCountBadge")) {
   fail("Extension bulk button missing selected count badge");
@@ -77,6 +79,47 @@ const webStore = fs.readFileSync(
 );
 if (webStore.includes("<Glass") && !webStore.includes('from "../../theme/p0008"')) {
   fail("SystemWebStoreExtensionsPanel uses Glass without import");
+}
+
+const table = fs.readFileSync(
+  path.join(root, "src/features/profiles/StealthProfileDirectoryTable.tsx"),
+  "utf8",
+);
+if (!table.includes("shouldPadDirectoryBodyToPageSize")) {
+  fail("StealthProfileDirectoryTable missing shouldPadDirectoryBodyToPageSize");
+}
+
+const layoutCss = fs.readFileSync(path.join(root, "src/theme/stealth-profile-layout.css"), "utf8");
+if (layoutCss.includes("tr.hub-users-row--pad")) {
+  fail("stealth-profile-layout must not duplicate hub-ui partial-page pad CSS");
+}
+
+const panel = fs.readFileSync(path.join(root, "src/features/profiles/ProfileDirectoryPanel.tsx"), "utf8");
+if (panel.includes("compactDirectory")) {
+  fail("ProfileDirectoryPanel still uses compactDirectory");
+}
+if (!panel.includes('partialPagePad="invisible"')) {
+  fail("ProfileDirectoryPanel missing partialPagePad invisible SSOT");
+}
+
+const workflowPanel = fs.readFileSync(path.join(root, "src/features/workflows/WorkflowDirectoryPanel.tsx"), "utf8");
+if (!workflowPanel.includes('partialPagePad="invisible"')) {
+  fail("WorkflowDirectoryPanel missing partialPagePad invisible SSOT");
+}
+if (!workflowPanel.includes("resolveDirectoryPanelFillRows")) {
+  fail("WorkflowDirectoryPanel missing panelFillRows SSOT");
+}
+
+const workflowTable = fs.readFileSync(
+  path.join(root, "src/features/workflows/StealthWorkflowDirectoryTable.tsx"),
+  "utf8",
+);
+if (!workflowTable.includes("shouldPadDirectoryBodyToPageSize")) {
+  fail("StealthWorkflowDirectoryTable missing partial-page pad helper");
+}
+
+if (!fs.existsSync(path.join(root, "scripts/smoke-profiles-partial-page.mjs"))) {
+  fail("smoke-profiles-partial-page.mjs missing");
 }
 
 console.log("smoke-profiles-directory: ok");

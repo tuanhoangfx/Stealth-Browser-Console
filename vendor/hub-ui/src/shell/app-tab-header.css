@@ -37,6 +37,31 @@
   flex-shrink: 0;
 }
 
+.app-tab-header-stat-line {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-tab-header-stat-emoji {
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+.app-tab-header-stat-value {
+  min-width: 0;
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+.app-tab-header-stat-value.hub-order-price-text {
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
 /* Center stats rail — scroll without visible track: hub-scrollbar.css (.app-tab-header-center-stats) */
 
 /* Narrow viewports — KPI rail on second row; avoid overlap with title/meta. */

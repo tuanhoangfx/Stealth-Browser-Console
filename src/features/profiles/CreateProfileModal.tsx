@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Copy, Hash, ListOrdered, StickyNote, User, UserPlus } from "lucide-react";
+import { ClipboardList, Copy, Hash, ListOrdered, User, UserPlus } from "lucide-react";
 import {
+  HubAccountDetailAdmScaffold,
+  HubAccountDetailHeaderSearch,
+  HubAccountDetailSearchProvider,
+  HubAdmNoteRail,
   HubAlert,
   HubTocSectionNav,
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-  HubToolDetailPanel,
-  HubToolDetailSplitLayout,
   HubToolDetailSection,
-  HUB_TOOL_DETAIL_SCROLL_ROOT,
+  HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
   HUB_TOOL_DETAIL_FORM_GRID_3_CLASS,
   KpiStrip,
@@ -27,6 +29,7 @@ import { ProfileBasicsFields } from "./ProfileBasicsFields";
 import { ProfileActivityLogRail } from "./ProfileActivityLogRail";
 import { profileFormTocItems } from "./profile-form-toc";
 import { PROFILE_CREATE_MODAL_SHELL_CLASS } from "./profile-form-modal";
+import { PROFILE_DETAIL_NOTE_LABEL, PROFILE_DETAIL_SECTION_CREDENTIALS } from "./profile-detail-toc";
 import { extractProfileCode } from "./profile-directory-search";
 import { bulkActivityToConsoleLines, type ProfileActivityLogEntry } from "./profile-run-log";
 
@@ -132,7 +135,11 @@ function ProfileCreateModalToc({
       </ul>
       {tab === "single" ? (
         <div className="hub-add-modal__toc-sections mt-3 border-t border-white/5 pt-3">
-          <HubTocSectionNav items={singleTocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+          <HubTocSectionNav
+            items={singleTocItems}
+            scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
+            admNav
+          />
         </div>
       ) : (
         <div className="hub-add-modal__toc-sections mt-3 border-t border-white/5 pt-3" aria-hidden />
@@ -509,15 +516,17 @@ export function CreateProfileModal({
   );
 
   return (
+    <HubAccountDetailSearchProvider>
     <HubToolDetailModal
       open
       headerIcon={UserPlus}
       headerIconClassName="text-indigo-200"
       title="New profile"
+      headerCenter={<HubAccountDetailHeaderSearch />}
       onClose={onClose}
       shellClassName={PROFILE_CREATE_MODAL_SHELL_CLASS}
       sectionIds={sectionIds}
-      scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT}
+      scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
       toc={
         <ProfileCreateModalToc
           tab={tab}
@@ -544,55 +553,57 @@ export function CreateProfileModal({
       }
     >
       {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
-      <div className="stealth-profile-detail__body hub-tool-detail-split__body">
-        <HubToolDetailSplitLayout
-          main={
-            <>
-              <div className="stealth-profile-create-tab-panels">
-                <div
-                  className={`stealth-profile-create-tab-panel${tab === "single" ? " is-active" : ""}`}
-                  aria-hidden={tab !== "single"}
-                >
-                  <ProfileFormFields
-                    layout="hub-sections"
-                    name={name}
-                    setName={setName}
-                    groupId={groupId}
-                    setGroupId={setGroupId}
-                    proxy={proxy}
-                    setProxy={setProxy}
-                    fingerprintSeed={fingerprintSeed}
-                    setFingerprintSeed={setFingerprintSeed}
-                    device={device}
-                    onDeviceChange={(patch) => setDevice((d) => ({ ...d, ...patch }))}
-                    startupUrl={startupUrl}
-                    setStartupUrl={setStartupUrl}
-                    groups={groups}
-                  />
-                </div>
-                <div
-                  className={`stealth-profile-create-tab-panel${tab === "bulk" ? " is-active" : ""}`}
-                  aria-hidden={tab !== "bulk"}
-                >
-                  {bulkBody}
-                </div>
-              </div>
-              <HubToolDetailPanel title="Note" icon={StickyNote} className="hub-tool-detail-panel--grow">
-                <textarea
-                  className="field stealth-profile-adm-note-textarea stealth-profile-detail-note-field"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder={
-                    tab === "bulk"
-                      ? "Optional note applied to all created profiles"
-                      : "Profile notes, credentials hints, proxy labels…"
-                  }
-                  spellCheck={false}
-                />
-              </HubToolDetailPanel>
-            </>
-          }
-          rail={
+      <HubAccountDetailAdmScaffold
+        panelId={PROFILE_DETAIL_SECTION_CREDENTIALS}
+        panelTitle="Profile"
+        frameClassName="twofa-account-detail-modal__frame"
+        panelClassName="twofa-account-detail__panel"
+        main={
+          <div className="stealth-profile-create-tab-panels">
+            <div
+              className={`stealth-profile-create-tab-panel${tab === "single" ? " is-active" : ""}`}
+              aria-hidden={tab !== "single"}
+            >
+              <ProfileFormFields
+                layout="hub-sections"
+                name={name}
+                setName={setName}
+                groupId={groupId}
+                setGroupId={setGroupId}
+                proxy={proxy}
+                setProxy={setProxy}
+                fingerprintSeed={fingerprintSeed}
+                setFingerprintSeed={setFingerprintSeed}
+                device={device}
+                onDeviceChange={(patch) => setDevice((d) => ({ ...d, ...patch }))}
+                startupUrl={startupUrl}
+                setStartupUrl={setStartupUrl}
+                groups={groups}
+              />
+            </div>
+            <div
+              className={`stealth-profile-create-tab-panel${tab === "bulk" ? " is-active" : ""}`}
+              aria-hidden={tab !== "bulk"}
+            >
+              {bulkBody}
+            </div>
+          </div>
+        }
+        rail={
+          <>
+            <HubAdmNoteRail
+              mode="editor"
+              title={PROFILE_DETAIL_NOTE_LABEL}
+              className="stealth-profile-adm-rail--note"
+              value={note}
+              onChange={setNote}
+              placeholder={
+                tab === "bulk"
+                  ? "Optional note applied to all created profiles"
+                  : "Profile notes, credentials hints, proxy labels…"
+              }
+              controlClassName="field auth-gate-field hub-adm-note-textarea"
+            />
             <ProfileActivityLogRail
               lines={tab === "bulk" ? bulkLogLines : []}
               filterStorageKey="__create__"
@@ -605,9 +616,10 @@ export function CreateProfileModal({
               }
               focused={false}
             />
-          }
-        />
-      </div>
+          </>
+        }
+      />
     </HubToolDetailModal>
+    </HubAccountDetailSearchProvider>
   );
 }

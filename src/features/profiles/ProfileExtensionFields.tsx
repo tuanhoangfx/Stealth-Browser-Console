@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Puzzle } from "lucide-react";
-import { HubToolDetailSection, compactIconSize } from "@tool-workspace/hub-ui";
+import { HubAdmSectionBlock } from "@tool-workspace/hub-ui";
 import { fetchExtensionToggles } from "../../api";
 import type { ExtensionToggles, ProfileExtensionOverrides } from "../../types";
 
@@ -109,10 +109,9 @@ export function ProfileExtensionFields({
   };
 
   return (
-    <HubToolDetailSection
+    <HubAdmSectionBlock
       id="profile-extensions"
-      title="Extensions"
-      icon={<Puzzle size={compactIconSize(12)} className="text-orange-300" aria-hidden />}
+      header={{ label: "Extensions", icon: Puzzle, iconClassName: "hub-adm-section-icon--amber" }}
     >
       <p className="col-span-full text-xs text-[var(--muted)]">
         Override app-wide extension defaults for this profile only. After save, close Chrome and Run again.
@@ -139,6 +138,6 @@ export function ProfileExtensionFields({
         disabled={disabled}
         onChange={(mode) => setMode("webStore", mode)}
       />
-    </HubToolDetailSection>
+    </HubAdmSectionBlock>
   );
 }

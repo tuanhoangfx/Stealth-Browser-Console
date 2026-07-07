@@ -5,9 +5,10 @@ type Props = {
   text: string;
   ranges: HubAdmNoteMatchRange[];
   activeIndex: number;
+  markClassName?: string;
 };
 
-export function HubAdmNoteHighlightText({ text, ranges, activeIndex }: Props) {
+export function HubAdmNoteHighlightText({ text, ranges, activeIndex, markClassName = "hub-adm-note-mark" }: Props) {
   const segments = useMemo(
     () => buildHubAdmNoteMirrorSegments(text, ranges, activeIndex),
     [activeIndex, ranges, text],
@@ -27,8 +28,8 @@ export function HubAdmNoteHighlightText({ text, ranges, activeIndex }: Props) {
             key={index}
             className={
               segment.kind === "active"
-                ? "hub-adm-note-mark hub-adm-note-mark--active"
-                : "hub-adm-note-mark"
+                ? `${markClassName} ${markClassName}--active`
+                : markClassName
             }
           >
             {segment.text}

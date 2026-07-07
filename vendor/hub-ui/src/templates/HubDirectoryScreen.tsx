@@ -6,6 +6,7 @@ import type { HubViewMode } from "../shell/ViewToggle";
 import type { SettingsExtraTab } from "../display-prefs/types";
 import type { TabHeaderStatItem } from "../shell/AppTabHeader";
 import type { KpiTileData } from "../shell/KpiStrip";
+import { HubDirectorySelectionChromeProvider } from "../shell/HubDirectorySelectionChromeContext";
 import { HubTabChrome, useHubChromePrefs } from "../shell/HubTabChrome";
 import { HubTabScreenBody } from "../content/HubTabScreenBody";
 
@@ -24,11 +25,14 @@ export type HubDirectoryScreenProps = {
   filters?: FilterDef[];
   query?: string;
   onQueryChange?: (q: string) => void;
+  queryPending?: boolean;
   filterValues?: FilterValues;
   onFilterValuesChange?: (v: FilterValues) => void;
   filterPlaceholder?: string;
   /** FilterBar keyboard focus scope (e.g. `library`, `bots`). */
   filterShortcutScope?: string;
+  /** Debounce filter query in HubSearchField — avoids directory chrome re-render per keystroke. */
+  searchDebounceMs?: number;
   filterToolbar?: ReactNode;
   /** `x/y` selection chip — table: beside search · card: filter row-2 trailing. */
   filterSelectionToolbar?: HubDirectoryToolbarSelectionProps;
@@ -61,10 +65,12 @@ export function HubDirectoryScreen({
   filters = [],
   query = "",
   onQueryChange,
+  queryPending = false,
   filterValues = {},
   onFilterValuesChange,
   filterPlaceholder = "Search…",
   filterShortcutScope = "default",
+  searchDebounceMs = 0,
   filterToolbar,
   filterSelectionToolbar,
   directoryViewMode = "table",
@@ -90,6 +96,7 @@ export function HubDirectoryScreen({
       filters={filters}
       query={query}
       onQueryChange={onQueryChange!}
+      queryPending={queryPending}
       values={filterValues}
       onValuesChange={noopFilterValues}
       searchTrailing={selectionSlots.searchTrailing}
@@ -104,24 +111,27 @@ export function HubDirectoryScreen({
       row2Leading={filterRowLeading}
       row2Actions={filterRowActions}
       row2Trailing={selectionSlots.row2Trailing}
+      searchDebounceMs={searchDebounceMs}
     />
   ) : undefined;
 
   return (
-    <HubTabChrome header={header} filterBar={filterBar}>
-      <HubTabScreenBody
-        kpis={kpis}
-        kpiBand={kpiBand}
-        charts={charts}
-        chartCount={chartCount}
-        sectionRuleLabel={sectionRuleLabel}
-        reserveAnalyticsBand={reserveAnalyticsBand}
-        bandOrder={bandOrder}
-        kpiZoneClassName={kpiZoneClassName}
-        bodyFlex={bodyFlex}
-      >
-        {children}
-      </HubTabScreenBody>
-    </HubTabChrome>
+    <HubDirectorySelectionChromeProvider active={Boolean(filterSelectionToolbar)}>
+      <HubTabChrome header={header} filterBar={filterBar}>
+        <HubTabScreenBody
+          kpis={kpis}
+          kpiBand={kpiBand}
+          charts={charts}
+          chartCount={chartCount}
+          sectionRuleLabel={sectionRuleLabel}
+          reserveAnalyticsBand={reserveAnalyticsBand}
+          bandOrder={bandOrder}
+          kpiZoneClassName={kpiZoneClassName}
+          bodyFlex={bodyFlex}
+        >
+          {children}
+        </HubTabScreenBody>
+      </HubTabChrome>
+    </HubDirectorySelectionChromeProvider>
   );
 }

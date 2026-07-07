@@ -1,10 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  HubAdmSectionLabel,
+  HubAdmSectionBlock,
   HubModalFilterField,
-  HUB_TOOL_DETAIL_SECTIONS_CLASS,
-  hubAdmSectionBlockClass,
-  hubAdmSectionHeader,
 } from "@tool-workspace/hub-ui";
 import { randomFingerprintSeed } from "../../lib/stealth-profile-utils";
 import {
@@ -224,15 +221,13 @@ export function ProfileFormFields({
 
   if (layout === "hub-sections") {
     return (
-      <div className={`${HUB_TOOL_DETAIL_SECTIONS_CLASS} twofa-adm-credentials-stack`}>
-        <div id="profile-basics" className={hubAdmSectionBlockClass("profile")}>
-          <HubAdmSectionLabel header={hubAdmSectionHeader("profile")} />
-          <div className="hub-adm-section-block__rows">{basics}</div>
-        </div>
-        <div id="profile-device" className={hubAdmSectionBlockClass("device")}>
-          <HubAdmSectionLabel header={hubAdmSectionHeader("device")} />
-          <div className="hub-adm-section-block__rows">{deviceSection}</div>
-        </div>
+      <div className="twofa-adm-credentials-stack">
+        <HubAdmSectionBlock id="profile-basics" sectionKey="profile">
+          {basics}
+        </HubAdmSectionBlock>
+        <HubAdmSectionBlock id="profile-device" sectionKey="device">
+          {deviceSection}
+        </HubAdmSectionBlock>
       </div>
     );
   }

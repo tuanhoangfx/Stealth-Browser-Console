@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import { resolveHubBrandIcon, type HubBrandIconId } from "../lib/resolve-hub-brand-icon";
-import { hubBrandIconImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
+import { hubBrandIconImgClass, HUB_BRAND_ICON_BARE_CLASS, type HubBrandIconShell } from "./filter-dropdown-primitives";
 
 export type HubBrandIconProps = {
   brandId: HubBrandIconId;
@@ -13,7 +13,7 @@ export type HubBrandIconProps = {
 };
 
 function chromeImgClass(shell: HubBrandIconShell): string {
-  if (shell === "bare") return "hub-chrome-brand-icon-bare";
+  if (shell === "bare") return HUB_BRAND_ICON_BARE_CLASS;
   if (shell === "darkInk") return "hub-chrome-brand-icon hub-chrome-brand-icon--dark-ink";
   return "hub-chrome-brand-icon hub-chrome-brand-icon--tile";
 }

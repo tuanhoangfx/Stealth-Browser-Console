@@ -1,13 +1,5 @@
-/* Chrome brand icons — sidebar, tab header, directory card (14px SSOT). */
-
-.hub-chrome-brand-icon-bare {
-  box-sizing: border-box;
-  flex-shrink: 0;
-  object-fit: contain;
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-}
+/* Chrome brand icons — sidebar, tab header, directory table (14px SSOT). */
+@import "./hub-brand-icon-bare.css";
 
 .hub-chrome-brand-icon,
 .hub-chrome-brand-icon--tile {

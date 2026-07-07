@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollText } from "lucide-react";
-import { HubRuntimeConsoleTerm, HubToolDetailRail } from "@tool-workspace/hub-ui";
-import { PROFILE_DETAIL_SECTION_LOG } from "./profile-form-toc";
+import {
+  HubRuntimeConsoleTerm,
+  HubToolDetailRail,
+  hubAccountDetailSectionIcon,
+  hubAccountDetailSectionIconClass,
+} from "@tool-workspace/hub-ui";
+import { PROFILE_DETAIL_SECTION_LOG } from "./profile-detail-toc";
 import { readProfileLogFilter, writeProfileLogFilter } from "./profile-log-filter-storage";
 import {
   filterProfileConsoleLines,
@@ -56,9 +60,12 @@ export function ProfileActivityLogRail({
   return (
     <HubToolDetailRail
       id={PROFILE_DETAIL_SECTION_LOG}
-      title="Log"
-      icon={ScrollText}
-      className={`stealth-profile-detail-log-rail${focused ? " stealth-profile-detail-log-rail--focused" : ""}`}
+      title="Activity log"
+      icon={hubAccountDetailSectionIcon("log")}
+      iconClassName={hubAccountDetailSectionIconClass("log")}
+      className={`twofa-adm-rail--log hub-adm-rail--log stealth-profile-detail-log-rail${
+        focused ? " stealth-profile-detail-log-rail--focused" : ""
+      }`}
       ariaLabel="Activity log"
     >
       <div className="stealth-profile-detail-log-rail__filters" role="tablist" aria-label="Log filter">

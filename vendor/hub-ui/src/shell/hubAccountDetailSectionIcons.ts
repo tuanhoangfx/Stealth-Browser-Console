@@ -1,8 +1,9 @@
-import { Compass, Package, ScrollText, StickyNote, User, type LucideIcon } from "lucide-react";
+import { Archive, Compass, Package, ScrollText, StickyNote, User, type LucideIcon } from "lucide-react";
 
 /** Account-detail modal section keys — TOC · main panel · note · log rail. */
 export type HubAccountDetailSectionKind =
   | "navigate"
+  | "record"
   | "credentials"
   | "note"
   | "log"
@@ -21,6 +22,7 @@ export const HUB_ACCOUNT_DETAIL_SECTION_META: Record<
   HubAccountDetailSectionMeta
 > = {
   navigate: { Icon: Compass, tone: "indigo" },
+  record: { Icon: Archive, tone: "sky" },
   credentials: { Icon: User, tone: "emerald" },
   note: { Icon: StickyNote, tone: "amber" },
   log: { Icon: ScrollText, tone: "violet" },

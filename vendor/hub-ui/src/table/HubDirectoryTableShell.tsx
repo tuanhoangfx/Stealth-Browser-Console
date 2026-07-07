@@ -297,14 +297,10 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
           );
         });
 
+        const padCount = padBodyRowsToPageSize ? Math.max(0, resolvedPageSize - pageItems.length) : 0;
         const padRows =
-          padBodyRowsToPageSize && pageItems.length > 0
-            ? buildDirectoryPadBodyRows(
-                Math.max(0, resolvedPageSize - pageItems.length),
-                columns,
-                staticColumns,
-                showSelect,
-              )
+          padCount > 0
+            ? buildDirectoryPadBodyRows(padCount, columns, staticColumns, showSelect)
             : [];
 
         const allBodyRows = (
@@ -313,6 +309,8 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
             {padRows}
           </>
         );
+
+        const tableHasRows = pageItems.length > 0 || padRows.length > 0;
 
         if (splitScroll) {
           return (
@@ -324,7 +322,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
               headRow={headRow}
               bodyRows={allBodyRows}
               emptyMessage={emptyMessage}
-              hasRows={pageItems.length > 0}
+              hasRows={tableHasRows}
               scrollResetKey={resetKey}
             />
           );
@@ -339,7 +337,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
             headRow={headRow}
             bodyRows={allBodyRows}
             emptyMessage={emptyMessage}
-            hasRows={pageItems.length > 0}
+            hasRows={tableHasRows}
           />
         );
       }}

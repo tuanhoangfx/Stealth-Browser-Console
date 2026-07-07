@@ -67,6 +67,8 @@
   --hub-inline-gap-meta: 5px;
   --hub-inline-gap-comfort: 6px;
   --hub-inline-gap-name: 8px;
+  /* Account detail modal — Navigate · Credentials · Note frame gutters (SSOT) */
+  --hub-account-detail-columns-gap: 0.65rem;
   --bg: #0b1020;
   --panel: #121830;
   --panel-2: #1a2140;

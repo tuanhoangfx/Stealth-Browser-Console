@@ -170,6 +170,20 @@
   display: block;
 }
 
+.hub-loader-orb__tool-icon {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+}
+
+.hub-boot-orb__core img {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+}
+
 .hub-loader-orb__gauge {
   position: absolute;
   top: 0.35rem;

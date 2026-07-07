@@ -18,6 +18,8 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
   total,
   search,
   setSearch,
+  filterSearch: filterSearchProp,
+  queryPending = false,
   selectedGroupIds,
   setSelectedGroupIds,
   selectedStatuses,
@@ -47,6 +49,8 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
   total: number;
   search: string;
   setSearch: (value: string) => void;
+  filterSearch?: string;
+  queryPending?: boolean;
   selectedGroupIds: string[];
   setSelectedGroupIds: (values: string[]) => void;
   selectedStatuses: ProfileRow["status"][];
@@ -73,7 +77,8 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
   catalogStats: import("../../../types").ProfileCatalogStats | null;
 }) {
   const pageSize = useProfileDirectoryPageSize();
-  const listResetKey = hubDirectoryListResetKey(search, {
+  const filterSearch = filterSearchProp ?? search;
+  const listResetKey = hubDirectoryListResetKey(filterSearch, {
     group: selectedGroupIds,
     status: selectedStatuses,
   });
@@ -110,6 +115,7 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
                   setSearch(value);
                   onPageChange(0);
                 }}
+                queryPending={queryPending}
                 shownProfiles={profiles.length}
                 totalProfiles={total}
                 selectedCount={selectedCount}

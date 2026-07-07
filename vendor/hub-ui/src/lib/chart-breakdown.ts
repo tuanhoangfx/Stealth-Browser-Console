@@ -5,6 +5,8 @@ export { DEFAULT_CHART_PALETTE } from "./chart-palette";
 
 export type ChartBreakdownOptions = {
   iconFor?: (label: string) => FilterIconMeta | null;
+  /** Sticker emoji for chart legend — preferred over iconFor when set. */
+  emojiFor?: (label: string) => string | undefined;
 };
 
 function rowsFromCounts(
@@ -12,11 +14,17 @@ function rowsFromCounts(
   opts?: ChartBreakdownOptions,
 ): ChartRow[] {
   return [...map.entries()]
-    .map(([label, value]) => ({
-      label,
-      value,
-      iconMeta: opts?.iconFor?.(label) ?? null,
-    }))
+    .map(([label, value]) => {
+      const emojiGlyph = opts?.emojiFor?.(label);
+      if (emojiGlyph) {
+        return { label, value, emojiGlyph };
+      }
+      return {
+        label,
+        value,
+        iconMeta: opts?.iconFor?.(label) ?? null,
+      };
+    })
     .sort((a, b) => b.value - a.value);
 }
 

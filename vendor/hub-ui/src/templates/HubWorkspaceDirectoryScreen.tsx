@@ -20,10 +20,12 @@ export type HubWorkspaceDirectoryScreenProps = {
   filters?: FilterDef[];
   query?: string;
   onQueryChange?: (q: string) => void;
+  queryPending?: boolean;
   filterValues?: FilterValues;
   onFilterValuesChange?: (next: FilterValues) => void;
   filterPlaceholder?: string;
   filterShortcutScope?: string;
+  searchDebounceMs?: number;
   directoryToolbar?: ReactNode;
   filterSelectionToolbar?: HubDirectoryToolbarSelectionProps;
   directoryViewMode?: HubViewMode;
@@ -49,10 +51,12 @@ export function HubWorkspaceDirectoryScreen({
   filters = [],
   query = "",
   onQueryChange = () => {},
+  queryPending = false,
   filterValues = {},
   onFilterValuesChange = () => {},
   filterPlaceholder,
   filterShortcutScope = "default",
+  searchDebounceMs = 0,
   directoryToolbar,
   filterSelectionToolbar,
   directoryViewMode,
@@ -102,10 +106,12 @@ export function HubWorkspaceDirectoryScreen({
       filters={visibleFilters}
       query={query}
       onQueryChange={onQueryChange}
+      queryPending={queryPending}
       filterValues={filterValues}
       onFilterValuesChange={onFilterValuesChange}
       filterPlaceholder={filterPlaceholder}
       filterShortcutScope={filterShortcutScope}
+      searchDebounceMs={searchDebounceMs}
       directoryToolbar={directoryToolbar}
       filterSelectionToolbar={filterSelectionToolbar}
       directoryViewMode={directoryViewMode}

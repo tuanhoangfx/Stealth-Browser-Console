@@ -1,33 +1,20 @@
-import type { LucideIcon } from "lucide-react";
-import { flatMapNavScreenItems, HubScreenChunkFallback } from "@tool-workspace/hub-ui";
-import { STEALTH_NAV_STRUCTURE } from "../lib/stealth-nav-structure";
-import type { StealthScreen } from "../lib/stealth-screen";
+import { HubToolScreenChunkFallback, type HubLoadingViewProps } from "@tool-workspace/hub-ui";
 
-const STEALTH_LOADING_PRESETS = Object.fromEntries(
-  flatMapNavScreenItems(STEALTH_NAV_STRUCTURE).map((item) => [
-    item.screen,
-    { icon: item.icon, ariaLabel: `Loading ${item.label.toLowerCase()}` },
-  ]),
-) as Record<StealthScreen, { icon: LucideIcon; ariaLabel: string }>;
-
-/** P0004/P0016 Suspense fallback — portaled orb in main pane via HubLoaderRoot. */
+/** Golden Suspense chunk fallback — tool icon from HubToolLoadingProvider. */
 export function StealthScreenLoadingView({
-  screen,
   enabled = true,
+  portaled = true,
+  variant = "overlay",
 }: {
-  screen: StealthScreen;
+  /** @deprecated Ignored — tool catalog icon is SSOT. */
+  screen?: string;
   enabled?: boolean;
+  portaled?: boolean;
+  variant?: HubLoadingViewProps["variant"];
 }) {
-  const preset = STEALTH_LOADING_PRESETS[screen];
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <HubScreenChunkFallback
-        icon={preset.icon}
-        ariaLabel={preset.ariaLabel}
-        variant="overlay"
-        enabled={enabled}
-        portaled
-      />
+      <HubToolScreenChunkFallback variant={variant} enabled={enabled} portaled={portaled} />
     </div>
   );
 }

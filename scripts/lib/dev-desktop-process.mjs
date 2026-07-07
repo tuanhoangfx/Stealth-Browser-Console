@@ -14,8 +14,9 @@ const { DEFAULT_PROD_API_PORT, DEFAULT_DEV_API_PORT } = require("../../electron/
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const PID_FILE = path.join(root, ".dev-desktop.pid");
 export const LOG_FILE = path.join(root, ".dev-desktop.log");
+const WATCH_PID_FILE = path.join(root, ".dev-desktop-watch.pid");
 
-const DEV_SCRIPT_RE = /dev-node\.mjs|dev-desktop-reload\.mjs|reload-and-verify-p0003\.mjs/i;
+const DEV_SCRIPT_RE = /dev-node\.mjs|dev-desktop-only\.mjs|dev-desktop-reload\.mjs|reload-and-verify-p0003\.mjs/i;
 const PRODUCT_ROOT_RE = /P0003-Stealth-Browser-Console/i;
 
 /** True when command line belongs to this tool's dev orchestrator (not packaged Setup.exe). */
@@ -84,6 +85,26 @@ function killDevPorts() {
   );
 }
 
+function killWatchBuild() {
+  try {
+    const pid = Number(fs.readFileSync(WATCH_PID_FILE, "utf8").trim());
+    if (Number.isFinite(pid) && pid > 0 && isPidAlive(pid)) {
+      if (process.platform === "win32") {
+        spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], winSpawnOpts({ stdio: "ignore" }));
+      } else {
+        process.kill(pid, "SIGTERM");
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    fs.unlinkSync(WATCH_PID_FILE);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function killStealthDev() {
   const pid = readDevPid();
   if (pid && isStealthDevPid(pid)) {
@@ -102,6 +123,7 @@ export function killStealthDev() {
     );
   }
   clearPidFile();
+  killWatchBuild();
   killDevPorts();
 }
 

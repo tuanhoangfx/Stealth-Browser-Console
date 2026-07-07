@@ -64,6 +64,24 @@
   overflow: hidden;
 }
 
+/* Stable rail frame — always reserve N data rows (+ thead) even when search filters to fewer results. */
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  .hub-paginated-table-shell
+  > .hub-users-table-wrap:not(.hub-directory-table-split) {
+  min-height: calc(
+    var(--hub-directory-head-row-h, 2.125rem) +
+      var(--hub-workflow-rail-rows, 5) * var(--hub-directory-row-h, 1.875rem)
+  );
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  table.stealth-workflow-rail-table
+  tbody
+  tr.hub-users-row--pad
+  td {
+  height: var(--hub-directory-row-h, 1.875rem);
+}
+
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {
   min-width: 0;
   width: 100%;
@@ -84,8 +102,19 @@
 
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-pager {
   flex: 0 0 auto;
+  min-height: 1.75rem;
   margin-top: 4px;
   padding-top: 0;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-pager-group {
+  min-height: 1.5rem;
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-table-page-label {
+  display: inline-block;
+  min-height: 1.125rem;
+  line-height: 1.125rem;
 }
 
 .stealth-workflow-rail .hub-split-directory-pane--fixed-rows .hub-users-table-wrap {

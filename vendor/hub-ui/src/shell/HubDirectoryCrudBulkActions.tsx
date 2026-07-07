@@ -1,7 +1,11 @@
-import { CopyMinus, Pencil, Plus, Trash2 } from "lucide-react";
+import { CopyMinus, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { HubBulkActionButton, type HubBulkActionTone } from "./HubBulkActionButton";
 import { HubDirectoryBulkActionRail } from "./HubDirectoryBulkActionRail";
+import { HubDirectoryDeleteBulkAction } from "./HubDirectoryDeleteBulkAction";
+import { HubDirectoryEditBulkAction } from "./HubDirectoryEditBulkAction";
+import { HubDirectoryNewBulkAction } from "./HubDirectoryNewBulkAction";
+import { HUB_DIRECTORY_NEW_ACTION_LABEL, HUB_DIRECTORY_NEW_ACTION_TONE } from "./hub-directory-new-action";
 
 export type HubDirectoryCrudBulkExtraAction = {
   label: string;
@@ -39,7 +43,7 @@ export function HubDirectoryCrudBulkActions({
   onPrimary,
   onEdit,
   onDelete,
-  primaryLabel = "New",
+  primaryLabel = HUB_DIRECTORY_NEW_ACTION_LABEL,
   primaryTitle,
   primaryDisabled = false,
   editDisabled = false,
@@ -65,28 +69,30 @@ export function HubDirectoryCrudBulkActions({
 
   const buttons = (
     <>
-      <HubBulkActionButton
-        icon={<Plus size={14} aria-hidden />}
-        label={primaryLabel}
-        title={primaryTitle ?? primaryLabel}
-        tone="emerald"
-        disabled={primaryDisabled}
-        onClick={onPrimary}
-      />
-      <HubBulkActionButton
-        icon={<Pencil size={14} aria-hidden />}
-        label="Edit"
+      {primaryLabel === HUB_DIRECTORY_NEW_ACTION_LABEL ? (
+        <HubDirectoryNewBulkAction
+          title={primaryTitle ?? primaryLabel}
+          disabled={primaryDisabled}
+          onClick={onPrimary}
+        />
+      ) : (
+        <HubBulkActionButton
+          icon={<Plus size={14} aria-hidden />}
+          label={primaryLabel}
+          title={primaryTitle ?? primaryLabel}
+          tone={HUB_DIRECTORY_NEW_ACTION_TONE}
+          disabled={primaryDisabled}
+          onClick={onPrimary}
+        />
+      )}
+      <HubDirectoryEditBulkAction
         title={resolvedEditTitle}
-        tone="indigo"
         disabled={!editEnabled}
         selectedCount={hasSelection ? selectedCount : undefined}
         onClick={onEdit}
       />
-      <HubBulkActionButton
-        icon={<Trash2 size={14} aria-hidden />}
-        label="Delete"
+      <HubDirectoryDeleteBulkAction
         title={resolvedDeleteTitle}
-        tone="rose"
         disabled={!deleteEnabled}
         onClick={onDelete}
       />

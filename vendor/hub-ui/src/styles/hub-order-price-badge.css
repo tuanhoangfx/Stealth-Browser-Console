@@ -6,7 +6,7 @@
 .hub-order-price-text {
   display: inline;
   font-size: var(--hub-table-body-size, 12px);
-  font-weight: 600;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   letter-spacing: 0.02em;
@@ -15,7 +15,6 @@
 
 /* C1 — neutral body */
 .hub-order-price-text--neutral {
-  font-weight: 500;
   color: #e2e8f0;
 }
 

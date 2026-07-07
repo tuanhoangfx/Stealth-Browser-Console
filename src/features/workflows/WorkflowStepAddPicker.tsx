@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   HUB_FILTER_DROPDOWN_LIST_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
-  HubBulkActionButton,
+  HubDirectoryNewBulkAction,
   compactIconSize,
 } from "@tool-workspace/hub-ui";
 import type { ScriptStepKind } from "../../types";
@@ -144,11 +144,8 @@ export function WorkflowStepAddPicker({ onAdd }: WorkflowStepAddPickerProps) {
   return (
     <div ref={ref} className="workflow-step-add-picker relative">
       <div ref={triggerRef} className="workflow-step-add-picker__trigger inline-flex">
-        <HubBulkActionButton
-          icon={<Plus size={14} aria-hidden />}
-          label="New"
+        <HubDirectoryNewBulkAction
           title="Add workflow step"
-          tone="emerald"
           onClick={() => setOpen((value) => !value)}
         />
       </div>

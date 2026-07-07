@@ -17,6 +17,7 @@
 @import "../../vendor/hub-ui/src/styles/hub-directory-frame-table.css";
 @import "../../vendor/hub-ui/src/styles/hub-modal.css";
 @import "../../vendor/hub-ui/src/styles/hub-account-detail-modal.css";
+@import "../../vendor/hub-ui/src/styles/twofa-account-detail-modal.css";
 @import "../../vendor/hub-ui/src/styles/hub-tool-detail-split.css";
 @import "../../vendor/hub-ui/src/styles/hub-auth-gate.css";
 @import "../styles/hub-checkbox.css";

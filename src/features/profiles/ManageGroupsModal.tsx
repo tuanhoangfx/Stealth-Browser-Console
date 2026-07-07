@@ -93,7 +93,8 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setNewName(e.target.value)}
             />
             <HubToolDetailModalPrimaryAction
-              label="Add"
+              label="New"
+              variant="create"
               disabled={busy || !newName.trim()}
               busy={busy}
               onClick={() => {

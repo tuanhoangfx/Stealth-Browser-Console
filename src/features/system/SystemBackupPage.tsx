@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useHubDirectorySelection } from "@tool-workspace/hub-ui";
+import { useHubDirectorySelection, useDirectorySearchQuery, DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS } from "@tool-workspace/hub-ui";
 import {
   backupProfilesState,
   fetchProfileDirectoryPage,
@@ -12,9 +12,8 @@ import { useStealthShell } from "../../context/stealth-shell-context";
 import { useRunLogs } from "../runtime/RunLogsContext";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { ProfileRow, ProfileStorageStat } from "../../types";
-import { useProfilesDirectoryChrome } from "../profiles/useProfilesDirectoryChrome";
 import { useProfileDirectoryPageSize } from "../profiles/useProfileDirectoryPageSize";
-import { useDebouncedValue } from "../../lib/useDebouncedValue";
+import { useProfilesDirectoryChrome } from "../profiles/useProfilesDirectoryChrome";
 import { SystemBackupDirectoryPanel } from "./backup/SystemBackupDirectoryPanel";
 import {
   backupStatusLabel,
@@ -44,8 +43,7 @@ export const SystemBackupPage = memo(function SystemBackupPage({
   const { pushToast } = useAppToast();
   const { addLog } = useRunLogs();
   const pageSize = useProfileDirectoryPageSize();
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search, 250);
+  const directorySearch = useDirectorySearchQuery({ debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS });
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>([]);
   const [pageIndex, setPageIndex] = useState(0);
@@ -83,7 +81,7 @@ export const SystemBackupPage = memo(function SystemBackupPage({
     setBusy(true);
     try {
       const page = await fetchProfileDirectoryPage({
-        search: debouncedSearch,
+        search: directorySearch.query,
         groupIds: selectedGroupIds.length ? selectedGroupIds : undefined,
         statuses: selectedStatuses.length ? selectedStatuses : undefined,
         limit: pageSize,
@@ -125,11 +123,11 @@ export const SystemBackupPage = memo(function SystemBackupPage({
       notifyError(err instanceof Error ? err.message : String(err));
       setBusy(false);
     }
-  }, [debouncedSearch, notifyError, pageIndex, pageSize, selectedGroupIds, selectedStatuses]);
+  }, [directorySearch.query, notifyError, pageIndex, pageSize, selectedGroupIds, selectedStatuses]);
 
   useEffect(() => {
     setPageIndex(0);
-  }, [debouncedSearch, selectedGroupIds, selectedStatuses]);
+  }, [directorySearch.query, selectedGroupIds, selectedStatuses]);
 
   useEffect(() => {
     void loadPage();
@@ -333,15 +331,17 @@ export const SystemBackupPage = memo(function SystemBackupPage({
     <SystemBackupDirectoryPanel
       profiles={profiles}
       total={total}
-      search={search}
-      setSearch={setSearch}
+      search={directorySearch.queryInput}
+      setSearch={directorySearch.setQueryInput}
+      filterSearch={directorySearch.query}
+      queryPending={directorySearch.queryPending}
       selectedGroupIds={selectedGroupIds}
       setSelectedGroupIds={setSelectedGroupIds}
       selectedStatuses={selectedStatuses}
       setSelectedStatuses={setSelectedStatuses}
       pageIndex={pageIndex}
       onPageChange={setPageIndex}
-      busy={busy}
+      busy={busy || directorySearch.queryPending}
       jobBusy={jobBusy}
       storageById={storageById}
       lastBackupById={lastBackupById}

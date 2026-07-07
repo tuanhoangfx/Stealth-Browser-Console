@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { HubAdmSearchHighlightText } from "./HubAdmSearchHighlightText";
 import { ChevronDown, Pencil } from "lucide-react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
 import { HubTableColumnHeader } from "../content/HubTableColumnHeader";
@@ -9,7 +10,7 @@ import {
   type HubDirectoryColumnHintGlyph,
 } from "../table/HubDirectoryColumnHint";
 import { compactIconSize } from "../ui-scale";
-import { HubSingleFilterDropdown, type FilterOption } from "./FilterBar";
+import { HubSingleFilterDropdown, type FilterOption, type HubSingleFilterDropdownProps } from "./FilterBar";
 
 export type HubAdmClickEditRenderCtx = {
   value: string;
@@ -200,7 +201,13 @@ export function HubAdmClickEditField({
           className={`hub-adm-click-edit__text${empty ? " hub-adm-click-edit__text--empty" : ""}`}
           title={empty ? undefined : shown}
         >
-          {renderDisplay ? renderDisplay(value) : empty ? placeholder || "—" : shown}
+          {renderDisplay ? (
+            renderDisplay(value)
+          ) : empty ? (
+            placeholder || "—"
+          ) : (
+            <HubAdmSearchHighlightText text={shown} />
+          )}
         </span>
         <span className="hub-adm-click-edit__action" aria-hidden>
           <Pencil size={compactIconSize(10)} />
@@ -220,6 +227,7 @@ export type HubAdmClickFilterFieldProps = {
   onChange: (value: string) => void;
   className?: string;
   disabled?: boolean;
+  panelSearchAsync?: HubSingleFilterDropdownProps["panelSearchAsync"];
 };
 
 /** Account-detail modal — plain label + emoji/value; chevron always visible; opens filter panel. */
@@ -233,6 +241,7 @@ export function HubAdmClickFilterField({
   onChange,
   className = "",
   disabled = false,
+  panelSearchAsync,
 }: HubAdmClickFilterFieldProps) {
   const opt = options.find((o) => o.value === value);
 
@@ -254,11 +263,12 @@ export function HubAdmClickFilterField({
         className="hub-adm-click-filter w-full min-w-0"
         triggerClassName="hub-adm-click-filter__trigger"
         ariaLabel={fieldLabel}
+        panelSearchAsync={panelSearchAsync}
         triggerContent={
           <>
             <span className="hub-adm-click-edit__text min-w-0 truncate" title={opt?.label ?? fieldLabel}>
               {opt?.emoji ? `${opt.emoji} ` : ""}
-              {opt?.label ?? fieldLabel}
+              <HubAdmSearchHighlightText text={opt?.label ?? fieldLabel} />
             </span>
             <ChevronDown size={compactIconSize(10)} className="hub-adm-click-filter__chevron shrink-0" aria-hidden />
           </>

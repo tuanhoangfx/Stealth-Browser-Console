@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { compactIconSize } from "../ui-scale";
 import { resolveHubBrandIcon, type HubBrandIconId } from "../lib/resolve-hub-brand-icon";
-import { HubBrandIcon } from "./HubBrandIcon";
-import type { HubBrandIconShell } from "./filter-dropdown-primitives";
+import { hubDirectoryTableBrandImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
 import type { HubGlyphComponent } from "../types/filter-badge";
 
 /** P0020 Services table — brand glyph in name column (16px). */
@@ -13,40 +12,51 @@ export type HubDirectoryBrandNameCellProps = {
   brandId?: HubBrandIconId;
   imageSrc?: string;
   imageShell?: HubBrandIconShell;
+  fallbackGlyph?: string;
   fallbackIcon?: HubGlyphComponent;
   /** @deprecated Body cells use no hover tooltip — header hints only. */
   title?: string;
 };
+
+function DirectoryBrandGlyph({ px, glyph }: { px: number; glyph: string }) {
+  return (
+    <span
+      className="hub-directory-brand-glyph inline-flex shrink-0 items-center justify-center"
+      style={{ width: px, height: px }}
+      aria-hidden
+    >
+      {glyph}
+    </span>
+  );
+}
 
 function DirectoryBrandImg({
   src,
   shell,
   alt,
   px,
+  fallbackGlyph,
   fallbackIcon: Fallback,
 }: {
   src: string;
   shell: HubBrandIconShell;
   alt: string;
   px: number;
+  fallbackGlyph?: string;
   fallbackIcon?: HubGlyphComponent;
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
+    if (fallbackGlyph) return <DirectoryBrandGlyph px={px} glyph={fallbackGlyph} />;
     return Fallback ? <Fallback size={px} strokeWidth={2.25} aria-hidden /> : null;
   }
-  const tile = shell === "tile" || shell === "darkInk";
   return (
     <img
       src={src}
       alt={alt}
       width={px}
       height={px}
-      className={
-        tile
-          ? `hub-chrome-brand-icon hub-chrome-brand-icon--${shell === "darkInk" ? "dark-ink" : "tile"}`
-          : "hub-chrome-brand-icon-bare"
-      }
+      className={hubDirectoryTableBrandImgClass(shell)}
       loading="lazy"
       decoding="async"
       draggable={false}
@@ -62,6 +72,7 @@ export function HubDirectoryBrandNameCell({
   brandId,
   imageSrc,
   imageShell = "bare",
+  fallbackGlyph,
   fallbackIcon: Fallback,
 }: HubDirectoryBrandNameCellProps) {
   const brand = brandId ? resolveHubBrandIcon(brandId) : null;
@@ -72,9 +83,25 @@ export function HubDirectoryBrandNameCell({
   return (
     <span className="hub-users-cell-name">
       {brandId && brand ? (
-        <HubBrandIcon brandId={brandId} size={HUB_DIRECTORY_TABLE_BRAND_ICON_PX} context="chrome" />
+        <DirectoryBrandImg
+          src={brand.src}
+          shell={brand.shell}
+          alt=""
+          px={px}
+          fallbackGlyph={fallbackGlyph}
+          fallbackIcon={Fallback}
+        />
       ) : resolvedSrc ? (
-        <DirectoryBrandImg src={resolvedSrc} shell={resolvedShell} alt="" px={px} fallbackIcon={Fallback} />
+        <DirectoryBrandImg
+          src={resolvedSrc}
+          shell={resolvedShell}
+          alt=""
+          px={px}
+          fallbackGlyph={fallbackGlyph}
+          fallbackIcon={Fallback}
+        />
+      ) : fallbackGlyph ? (
+        <DirectoryBrandGlyph px={px} glyph={fallbackGlyph} />
       ) : Fallback ? (
         <Fallback size={px} strokeWidth={2.25} aria-hidden />
       ) : null}

@@ -19,3 +19,6 @@ export const HUB_DIRECTORY_TABLE_SCROLL_FLEX_CLASS =
 
 /** Split wrap inside HubSplitDirectoryPane — golden border/radius (Sheet grid, legacy split flex-pane). */
 export const HUB_DIRECTORY_TABLE_PANE_CHROME_SPLIT_CLASS = "hub-directory-table-wrap--pane-chrome";
+
+/** Directory action button — larger click target; icon size unchanged (Run/Stop/Cancel). */
+export const HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS = "hub-directory-icon-cell--hit-expand";

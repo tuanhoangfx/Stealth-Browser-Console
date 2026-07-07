@@ -15,6 +15,9 @@ export type HubAdmNoteSearchBarProps = {
   inputRef?: RefObject<HTMLInputElement | null>;
   searchLabel?: string;
   placeholder?: string;
+  /** `header` — centered modal search (no rail label). */
+  variant?: "rail" | "header";
+  ariaLabel?: string;
 };
 
 /** Golden note rail search row — label + filter + match navigation. */
@@ -30,6 +33,8 @@ export function HubAdmNoteSearchBar({
   inputRef: inputRefProp,
   searchLabel = "Search note",
   placeholder = "Filter in note…",
+  variant = "rail",
+  ariaLabel = "Search note",
 }: HubAdmNoteSearchBarProps) {
   const localRef = useRef<HTMLInputElement>(null);
   const searchRef = inputRefProp ?? localRef;
@@ -51,12 +56,16 @@ export function HubAdmNoteSearchBar({
     return () => el.removeEventListener("keydown", onKeyDown);
   }, [matchRangesLength, matchRevealed, onRevealFirst, onStepMatch, searchRef]);
 
+  const isHeader = variant === "header";
+
   return (
-    <div className="hub-adm-note-search-wrap">
-      <HubFormFieldLabel icon={Search} iconClassName="text-indigo-300">
-        {searchLabel}
-      </HubFormFieldLabel>
-      <div className="hub-adm-note-search" role="search">
+    <div className={`hub-adm-note-search-wrap${isHeader ? " hub-adm-note-search-wrap--header" : ""}`}>
+      {isHeader ? null : (
+        <HubFormFieldLabel icon={Search} iconClassName="text-indigo-300">
+          {searchLabel}
+        </HubFormFieldLabel>
+      )}
+      <div className={`hub-adm-note-search${isHeader ? " hub-adm-note-search--header" : ""}`} role="search" aria-label={ariaLabel}>
         <HubSearchField
           value={searchQuery}
           onChange={onSearchQueryChange}

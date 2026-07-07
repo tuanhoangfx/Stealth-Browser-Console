@@ -1,19 +1,25 @@
 import { useMemo, useState } from "react";
-import { StickyNote, UserRoundPen } from "lucide-react";
+import { Save, UserRoundPen } from "lucide-react";
 import {
+  HubAccountDetailAdmScaffold,
+  HubAccountDetailHeaderSearch,
+  HubAccountDetailSearchProvider,
+  HubAdmNoteRail,
+  HubAdmRecordMetaRow,
   HubAlert,
-  HubToolDetailIdentityHeader,
+  HubCopyBadge,
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-  HubToolDetailPanel,
   HubToolDetailRail,
-  HubToolDetailSplitLayout,
-  HUB_TOOL_DETAIL_SCROLL_ROOT,
+  HubTocSectionNav,
+  HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
+  HUB_ADM_TYPE_MONO_CLASS,
   hubAccountDetailSectionIcon,
   hubAccountDetailSectionIconClass,
 } from "@tool-workspace/hub-ui";
 import { deviceConfigFromProfile } from "../../lib/device-presets";
+import { formatDateTime } from "../../lib/run-display";
 import { resolveProfileLaunchUrl, resolveStartupUrlSave, startupUrlSaveError } from "../../lib/startup-url";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { DeviceConfig, ProfileExtensionOverrides, ProfileRow } from "../../types";
@@ -21,7 +27,11 @@ import { ProfileFormFields } from "./ProfileFormFields";
 import { ProfileExtensionFields } from "./ProfileExtensionFields";
 import { ProfileDetailLogRail } from "./ProfileDetailLogRail";
 import { ProfileDetailTocNav } from "./ProfileDetailTocNav";
-import { profileFormTocItems } from "./profile-form-toc";
+import {
+  PROFILE_DETAIL_NOTE_LABEL,
+  PROFILE_DETAIL_SECTION_CREDENTIALS,
+  PROFILE_DETAIL_TOC,
+} from "./profile-detail-toc";
 import { PROFILE_EDIT_MODAL_SHELL_CLASS } from "./profile-form-modal";
 
 function profileStatusLabel(status: string): string {
@@ -63,8 +73,7 @@ export function EditProfileModal({
   const [error, setError] = useState("");
   const [logRailFocused, setLogRailFocused] = useState(false);
 
-  const tocItems = useMemo(() => profileFormTocItems(), []);
-  const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
+  const sectionIds = useMemo(() => PROFILE_DETAIL_TOC.map((item) => item.id), []);
   const groupName = useMemo(
     () => groups.find((group) => group.id === groupId)?.name || "Default",
     [groupId, groups],
@@ -104,50 +113,80 @@ export function EditProfileModal({
   };
 
   return (
-    <HubToolDetailModal
-      open
-      onClose={onClose}
-      shellClassName={PROFILE_EDIT_MODAL_SHELL_CLASS}
-      sectionIds={sectionIds}
-      scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT}
-      header={
-        <HubToolDetailIdentityHeader
-          titleId="profile-detail-title"
-          title={displayName}
-          leading={<UserRoundPen size={18} className="text-indigo-200 shrink-0" aria-hidden />}
-          trailing={
-            <span className="flex min-w-0 items-center gap-2 text-xs">
-              <span className="truncate text-hub-muted">{groupName}</span>
-              <span className={`shrink-0 font-medium ${profileStatusClass(profile.status)}`}>
-                {profileStatusLabel(profile.status)}
-              </span>
+    <HubAccountDetailSearchProvider>
+      <HubToolDetailModal
+        open
+        onClose={onClose}
+        title={displayName}
+        titleId="profile-detail-title"
+        headerIcon={UserRoundPen}
+        headerIconClassName="text-indigo-300"
+        headerCenter={<HubAccountDetailHeaderSearch />}
+        headerTrailing={
+          <span className="ml-2 flex min-w-0 items-center gap-2 text-xs">
+            <span className="truncate text-hub-muted">{groupName}</span>
+            <span className={`shrink-0 font-medium ${profileStatusClass(profile.status)}`}>
+              {profileStatusLabel(profile.status)}
             </span>
-          }
-        />
-      }
-      toc={
-        <HubToolDetailRail
-          title="Navigate"
-          icon={hubAccountDetailSectionIcon("navigate")}
-          iconClassName={hubAccountDetailSectionIconClass("navigate")}
-          className="stealth-profile-detail-toc-rail"
-        >
-          <ProfileDetailTocNav items={tocItems} onLogFocus={handleLogFocus} />
-        </HubToolDetailRail>
-      }
-      footer={
-        <>
-          <HubToolDetailModalSecondaryAction label="Cancel" onClick={onClose} disabled={busy} />
-          <HubToolDetailModalPrimaryAction label="Save changes" onClick={save} disabled={busy || !name.trim()} busy={busy} />
-        </>
-      }
-      ariaLabelledBy="profile-detail-title"
-    >
-      {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
-      <div className="stealth-profile-detail__body hub-tool-detail-split__body">
-        <HubToolDetailSplitLayout
+          </span>
+        }
+        shellClassName={PROFILE_EDIT_MODAL_SHELL_CLASS}
+        sectionIds={sectionIds}
+        scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
+        toc={
+          <HubToolDetailRail
+            title="Navigate"
+            icon={hubAccountDetailSectionIcon("navigate")}
+            iconClassName={hubAccountDetailSectionIconClass("navigate")}
+            className="twofa-adm-rail--toc stealth-profile-detail-toc-rail"
+            scroll={false}
+            ariaLabel="Sections"
+          >
+            <ProfileDetailTocNav items={[...PROFILE_DETAIL_TOC]} onLogFocus={handleLogFocus} />
+          </HubToolDetailRail>
+        }
+        footer={
+          <>
+            <HubToolDetailModalSecondaryAction label="Close" onClick={onClose} disabled={busy} />
+            <HubToolDetailModalPrimaryAction
+              label={busy ? "Saving…" : "Save changes"}
+              icon={Save}
+              onClick={save}
+              disabled={busy || !name.trim()}
+              busy={busy}
+            />
+          </>
+        }
+        ariaLabelledBy="profile-detail-title"
+      >
+        {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
+        <HubAccountDetailAdmScaffold
+          panelId={PROFILE_DETAIL_SECTION_CREDENTIALS}
+          panelTitle="Profile"
+          frameClassName="twofa-account-detail-modal__frame"
+          panelClassName="twofa-account-detail__panel"
           main={
             <>
+              <HubAdmRecordMetaRow
+                vaultId={
+                  <HubCopyBadge
+                    value={profile.id}
+                    title="Copy profile ID"
+                    className={`${HUB_ADM_TYPE_MONO_CLASS} hub-adm-type-mono`}
+                    labelContent={profile.id}
+                  />
+                }
+                created={
+                  <time dateTime={profile.createdAt} title={formatDateTime(profile.createdAt)}>
+                    {formatDateTime(profile.createdAt)}
+                  </time>
+                }
+                updated={
+                  <time dateTime={profile.updatedAt} title={formatDateTime(profile.updatedAt)}>
+                    {formatDateTime(profile.updatedAt)}
+                  </time>
+                }
+              />
               <ProfileFormFields
                 layout="hub-sections"
                 name={name}
@@ -169,26 +208,28 @@ export function EditProfileModal({
                 onChange={setExtensionOverrides}
                 disabled={busy}
               />
-              <HubToolDetailPanel title="Note" icon={StickyNote} className="hub-tool-detail-panel--grow">
-                <textarea
-                  className="field stealth-profile-adm-note-textarea stealth-profile-detail-note-field"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="Profile notes, credentials hints, proxy labels…"
-                  spellCheck={false}
-                />
-              </HubToolDetailPanel>
             </>
           }
           rail={
-            <ProfileDetailLogRail
-              profileId={profile.id}
-              profileName={displayName}
-              focused={logRailFocused}
-            />
+            <>
+              <HubAdmNoteRail
+                mode="editor"
+                title={PROFILE_DETAIL_NOTE_LABEL}
+                className="stealth-profile-adm-rail--note"
+                value={note}
+                onChange={setNote}
+                placeholder="Profile notes, credentials hints, proxy labels…"
+                controlClassName="field auth-gate-field hub-adm-note-textarea"
+              />
+              <ProfileDetailLogRail
+                profileId={profile.id}
+                profileName={displayName}
+                focused={logRailFocused}
+              />
+            </>
           }
         />
-      </div>
-    </HubToolDetailModal>
+      </HubToolDetailModal>
+    </HubAccountDetailSearchProvider>
   );
 }

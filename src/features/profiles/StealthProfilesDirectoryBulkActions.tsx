@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HubBulkActionButton,
+  HubDirectoryNewBulkAction,
 } from "@tool-workspace/hub-ui";
-import { Blocks, EllipsisVertical, FolderTree, Layers, Pencil, Play, Plus, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
+import { Blocks, EllipsisVertical, FolderTree, Layers, Pencil, Play, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
 export type ExtensionSelectionState = "all-on" | "all-off" | "mixed";
@@ -174,13 +175,7 @@ export function StealthProfilesDirectoryBulkActions({
 
   return (
     <>
-      <HubBulkActionButton
-        icon={<Plus size={14} aria-hidden />}
-        label="New"
-        title="Create a new browser profile"
-        tone="emerald"
-        onClick={onCreate}
-      />
+      <HubDirectoryNewBulkAction title="Create a new browser profile" onClick={onCreate} />
       <HubBulkActionButton
         icon={<Pencil size={14} aria-hidden />}
         label="Edit"

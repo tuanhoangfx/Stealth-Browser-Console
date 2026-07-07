@@ -659,6 +659,7 @@ async function waitForStealthDevServer(url, { timeoutMs = 60000 } = {}) {
 
 async function resolveDevServerUrl() {
   if (app.isPackaged) return null;
+  if (String(process.env.STEALTH_LOAD_DIST || "") === "1") return null;
 
   const fromEnv = normalizeDevServerUrl(process.env.VITE_DEV_SERVER_URL);
   const candidates = [];
@@ -881,6 +882,18 @@ app.whenReady().then(async () => {
   sessionTray.start();
   bindRouterApi();
   await createWindow();
+
+  if (!app.isPackaged && String(process.env.STEALTH_DIST_WATCH || "") === "1") {
+    const { bindDistUiWatch } = require("./lib/dist-ui-watch.cjs");
+    bindDistUiWatch({
+      distDir: path.join(__dirname, "..", "dist"),
+      onReload: () => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) win.webContents.reload();
+        }
+      },
+    });
+  }
 
   setImmediate(() => {
     try {

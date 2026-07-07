@@ -3,7 +3,7 @@
 .hub-tool-detail-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--hub-tool-detail-rail-w, min(28rem, 40%));
-  gap: 0.65rem;
+  gap: var(--hub-account-detail-columns-gap, 0.65rem);
   flex: 1;
   min-height: var(--hub-tool-detail-split-min-h, 24rem);
   overflow: hidden;
@@ -13,7 +13,7 @@
 .hub-tool-detail-split__main {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--hub-account-detail-columns-gap, 0.65rem);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -22,7 +22,7 @@
 .hub-tool-detail-split__rail {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--hub-account-detail-columns-gap, 0.65rem);
   min-width: 0;
   min-height: 0;
   height: 100%;

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getDirectorySearchHighlight } from "../lib/directory-id-search";
 
+/** Note rail highlights text terms only — id/numeric search targets Credentials · Log, not date substrings in note. */
+export function getHubAccountDetailNoteHighlightTerms(searchQuery: string): string[] {
+  const highlight = getDirectorySearchHighlight(searchQuery, { mixedRequiresWhitespace: false });
+  if (!highlight) return [];
+  return highlight.textTerms.filter(Boolean);
+}
+
 export type HubAdmNoteMatchRange = { start: number; end: number };
 
 export type HubAdmNoteMirrorSegment = { text: string; kind: "plain" | "match" | "active" };
