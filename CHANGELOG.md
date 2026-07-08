@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-07-08 - fix desktop updater packaged deps (fs-extra)
+
+- Version: `0.10.66`
+- Timestamp: 2026-07-08 07:43 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Stage `electron-updater` runtime deps into `electron/packaged-node_modules/` before electron-builder pack (fixes `Cannot find module 'fs-extra'` on install).
+- Lazy-load updater + prepend `Module.globalPaths` in `desktop-updater.cjs` so startup survives missing deps in dev.
+- Add direct deps: fs-extra, builder-util-runtime, js-yaml, lazy-val, semver, tiny-typed-emitter, lodash.*.
+- Gate: `verify-packaged-unpacked.mjs` checks updater deps inside asar.
+
+### Verification
+
+- verify-lockfile-importers: OK
+- verify-packaged-unpacked: pending release build
+
+---
 ## 2026-07-08 - P0003 version sync
 
 - Version: `0.10.65`

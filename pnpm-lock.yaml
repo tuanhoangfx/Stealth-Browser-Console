@@ -44,6 +44,9 @@ importers:
       better-sqlite3:
         specifier: ^12.11.1
         version: 12.11.1
+      builder-util-runtime:
+        specifier: 9.7.0
+        version: 9.7.0
       cloakbrowser:
         specifier: 0.4.8
         version: 0.4.8(mmdb-lib@3.0.2)(playwright-core@1.60.0)
@@ -59,6 +62,21 @@ importers:
       electron-updater:
         specifier: ^6.8.9
         version: 6.8.9
+      fs-extra:
+        specifier: ^10.1.0
+        version: 10.1.0
+      js-yaml:
+        specifier: ^4.3.0
+        version: 4.3.0
+      lazy-val:
+        specifier: ^1.0.5
+        version: 1.0.5
+      lodash.escaperegexp:
+        specifier: ^4.1.2
+        version: 4.1.2
+      lodash.isequal:
+        specifier: ^4.5.0
+        version: 4.5.0
       lucide-react:
         specifier: ^0.561.0
         version: 0.561.0(react@19.2.7)
@@ -77,9 +95,15 @@ importers:
       react-dom:
         specifier: ^19.2.1
         version: 19.2.7(react@19.2.7)
+      semver:
+        specifier: ~7.7.4
+        version: 7.7.4
       sql.js:
         specifier: 1.12.0
         version: 1.12.0
+      tiny-typed-emitter:
+        specifier: ^2.1.0
+        version: 2.1.0
       vite:
         specifier: ^7.2.7
         version: 7.3.5(@types/node@25.9.3)(jiti@2.7.0)(yaml@2.9.0)
@@ -1792,8 +1816,8 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
-  js-yaml@4.2.0:
-    resolution: {integrity: sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==}
+  js-yaml@4.3.0:
+    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
     hasBin: true
 
   jsdom@26.1.0:
@@ -2329,11 +2353,6 @@ packages:
 
   semver@7.7.4:
     resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
-    engines: {node: '>=10'}
-    hasBin: true
-
-  semver@7.8.4:
-    resolution: {integrity: sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -3671,7 +3690,7 @@ snapshots:
       hosted-git-info: 4.1.0
       isbinaryfile: 5.0.7
       jiti: 2.7.0
-      js-yaml: 4.2.0
+      js-yaml: 4.3.0
       json5: 2.2.3
       lazy-val: 1.0.5
       minimatch: 10.2.5
@@ -3810,7 +3829,7 @@ snapshots:
       fs-extra: 10.1.0
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
-      js-yaml: 4.2.0
+      js-yaml: 4.3.0
       sanitize-filename: 1.6.4
       source-map-support: 0.5.21
       stat-mode: 1.0.0
@@ -4056,7 +4075,7 @@ snapshots:
       app-builder-lib: 26.15.3(dmg-builder@26.15.3)(electron-builder-squirrel-windows@26.15.3)
       builder-util: 26.15.3
       fs-extra: 10.1.0
-      js-yaml: 4.2.0
+      js-yaml: 4.3.0
     transitivePeerDependencies:
       - electron-builder-squirrel-windows
       - supports-color
@@ -4126,7 +4145,7 @@ snapshots:
     dependencies:
       builder-util-runtime: 9.7.0
       fs-extra: 10.1.0
-      js-yaml: 4.2.0
+      js-yaml: 4.3.0
       lazy-val: 1.0.5
       lodash.escaperegexp: 4.1.2
       lodash.isequal: 4.5.0
@@ -4384,7 +4403,7 @@ snapshots:
       es6-error: 4.1.1
       matcher: 3.0.0
       roarr: 2.15.4
-      semver: 7.8.4
+      semver: 7.7.4
       serialize-error: 7.0.1
     optional: true
 
@@ -4542,7 +4561,7 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  js-yaml@4.2.0:
+  js-yaml@4.3.0:
     dependencies:
       argparse: 2.0.1
 
@@ -4708,15 +4727,15 @@ snapshots:
 
   node-abi@3.92.0:
     dependencies:
-      semver: 7.8.4
+      semver: 7.7.4
 
   node-abi@4.31.0:
     dependencies:
-      semver: 7.8.4
+      semver: 7.7.4
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.8.4
+      semver: 7.7.4
 
   node-gyp@12.4.0:
     dependencies:
@@ -4725,7 +4744,7 @@ snapshots:
       graceful-fs: 4.2.11
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.8.4
+      semver: 7.7.4
       tar: 7.5.16
       tinyglobby: 0.2.17
       undici: 6.26.0
@@ -5066,8 +5085,6 @@ snapshots:
 
   semver@7.7.4: {}
 
-  semver@7.8.4: {}
-
   serialize-error@7.0.1:
     dependencies:
       type-fest: 0.13.1
@@ -5077,7 +5094,7 @@ snapshots:
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
-      semver: 7.8.4
+      semver: 7.7.4
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -5126,7 +5143,7 @@ snapshots:
 
   simple-update-notifier@2.0.0:
     dependencies:
-      semver: 7.8.4
+      semver: 7.7.4
 
   source-map-js@1.2.1: {}
 

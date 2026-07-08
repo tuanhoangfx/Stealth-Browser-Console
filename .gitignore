@@ -21,6 +21,7 @@ out/
 .env*.local
 config/router.local.json
 build/updater-gh-token
+electron/packaged-node_modules/
 
 # OS
 Thumbs.db

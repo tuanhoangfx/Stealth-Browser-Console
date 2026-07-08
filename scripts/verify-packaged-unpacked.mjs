@@ -1,26 +1,61 @@
 #!/usr/bin/env node
-/** Gate: win-unpacked must contain critical app.asar.unpacked modules (playwright-core, cloakbrowser). */
+/**
+ * Gate: packaged win-unpacked must include critical native modules + electron-updater runtime deps in app.asar.
+ */
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const unpacked = path.join(root, "dist-desktop", "win-unpacked", "resources", "app.asar.unpacked");
+const require = createRequire(import.meta.url);
+const { PACKAGED_UPDATER_RUNTIME_DEPS } = require("../electron/lib/packaged-updater-deps.cjs");
 
-const REQUIRED = [
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const resources = path.join(root, "dist-desktop", "win-unpacked", "resources");
+const unpacked = path.join(resources, "app.asar.unpacked");
+const asarPath = path.join(resources, "app.asar");
+
+const UNPACKED_REQUIRED = [
   "node_modules/playwright-core/index.js",
   "node_modules/cloakbrowser/package.json",
 ];
 
-const missing = REQUIRED.filter((rel) => !fs.existsSync(path.join(unpacked, rel)));
-if (missing.length === 0) {
-  console.log("verify-packaged-unpacked: OK");
+function listAsar() {
+  if (!fs.existsSync(asarPath)) return [];
+  const asar = require("@electron/asar");
+  return asar.listPackage(asarPath);
+}
+
+function hasAsarModule(list, name) {
+  const needles = [
+    `node_modules${path.sep}${name}${path.sep}`,
+    `node_modules/${name}/`,
+    `electron${path.sep}packaged-node_modules${path.sep}${name}${path.sep}`,
+    `electron/packaged-node_modules/${name}/`,
+  ];
+  return list.some((entry) => needles.some((needle) => entry.includes(needle)));
+}
+
+const missingUnpacked = UNPACKED_REQUIRED.filter((rel) => !fs.existsSync(path.join(unpacked, rel)));
+const asarList = listAsar();
+const missingUpdater = PACKAGED_UPDATER_RUNTIME_DEPS.filter((name) => !hasAsarModule(asarList, name));
+
+if (missingUnpacked.length === 0 && missingUpdater.length === 0) {
+  console.log("verify-packaged-unpacked: OK (native unpack + updater runtime deps in asar)");
   process.exit(0);
 }
 
-console.error("verify-packaged-unpacked: FAIL — missing under app.asar.unpacked:");
-for (const rel of missing) {
-  console.error(`  ${rel}`);
+if (missingUnpacked.length) {
+  console.error("verify-packaged-unpacked: FAIL — missing under app.asar.unpacked:");
+  for (const rel of missingUnpacked) console.error(`  ${rel}`);
+  console.error(`  root: ${unpacked}`);
 }
-console.error(`  root: ${unpacked}`);
+
+if (missingUpdater.length) {
+  console.error("verify-packaged-unpacked: FAIL — missing electron-updater runtime deps in app.asar:");
+  for (const name of missingUpdater) console.error(`  node_modules/${name}`);
+  console.error("  Fix: list deps in electron/lib/packaged-updater-deps.cjs + package.json dependencies");
+  console.error(`  asar: ${asarPath}`);
+}
+
 process.exit(1);
