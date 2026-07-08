@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "label": "2026-07-08-v0.10.65-stable",
-  "version": "0.10.65",
-  "gitCommit": null,
-  "gitTag": "v0.10.65-stable",
-  "notes": "v0.10.65 stable: updater GH token baked, visibility toggle SSOT, restore-known-good fix, vitest 93/93.",
+  "label": "2026-07-08-v0.10.66-stable",
+  "version": "0.10.66",
+  "gitCommit": "6f6ca99b49f2656ccea668890a1438676d273fbe",
+  "gitTag": "v0.10.66-stable",
+  "notes": "v0.10.66 stable: bundle electron-updater runtime deps (fs-extra) into asar — fixes install-time crash; verify-packaged-unpacked gate; vendor hub-ui synced to golden.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-0.10.65.exe",
+    "installer": "Stealth-Browser-Console-Setup-0.10.66.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "vr0u++QO38mcDPzevv99vtvfO+6ikING9Xt5RN/ijDII2tu8JifrirS2csKVv9OOgb+m1imqfwXhMYx4qDO+Xw==",
-    "capturedAt": "2026-07-08T00:30:24.823Z"
+    "sha512": "2JkwMpDNECPUUnnZ9dX3pG/70opXZ7sVHmY4y4T+LhVz7x6t4ijwXpgEVUyBfkf28t6qP5XnK/Bd6tksCuO6uw==",
+    "capturedAt": "2026-07-08T07:16:54.851Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

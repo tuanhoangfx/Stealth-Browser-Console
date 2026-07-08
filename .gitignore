@@ -11,10 +11,10 @@ out/
 # Logs & runtime artifacts
 *.log
 *.pid
-.smoke-ui-render.json
-.smoke-workflow-rail.json
-.smoke-packaged-auth.json
+.smoke-*.json
 .tmp-asar-check/
+tsconfig.tsbuildinfo
+vendor/hub-ui/P0005-CRM/
 
 # Env & secrets (hub keys, tokens)
 .env.local
