@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-07-08 - P0003 version sync
+
+- Version: `0.10.64`
+- Timestamp: 2026-07-08 07:01 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.64
+
+### Changes
+
+- Align CHANGELOG with package.json v0.10.64.
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-07 — v0.10.63 — Electron dev reload
 
 - Version: `0.10.63`

@@ -151,15 +151,15 @@
     "branch": "main",
     "manifestPath": "tool.manifest.json"
   },
-  "manifestUpdatedAt": "2026-07-07T22:11:23.320Z",
+  "manifestUpdatedAt": "2026-07-08T00:06:22.230Z",
   "release": {
-    "version": "0.10.63",
+    "version": "0.10.64",
     "updatedAt": "2026-07-07",
     "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
     "latestPublished": {
-      "tag": "v0.10.62",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.62",
-      "publishedAt": "2026-07-07T07:46:17.938Z"
+      "tag": "v0.10.64",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.64",
+      "publishedAt": "2026-07-08T00:06:22.229Z"
     }
   },
   "ship": {
