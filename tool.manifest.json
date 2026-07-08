@@ -149,13 +149,16 @@
   "github": {
     "repo": "tuanhoangfx/Stealth-Browser-Console",
     "branch": "main",
-    "manifestPath": "tool.manifest.json"
+    "manifestPath": "tool.manifest.json",
+    "visibility": "public",
+    "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
+    "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
   "manifestUpdatedAt": "2026-07-08T00:06:22.230Z",
   "release": {
     "version": "0.10.64",
     "updatedAt": "2026-07-07",
-    "desktopAutoUpdate": "GitHub Releases (public repo required). electron-updater NSIS: auto-download + install on quit. Portable: manual .exe replace. Feed: /releases/latest/download/latest.yml",
+    "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
       "tag": "v0.10.64",
       "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.64",
