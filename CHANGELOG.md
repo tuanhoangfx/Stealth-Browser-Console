@@ -2,6 +2,23 @@
 
 ## 2026-07-08 - P0003 version sync
 
+- Version: `0.10.68`
+- Timestamp: 2026-07-08 16:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.68
+
+### Changes
+
+- Align CHANGELOG with package.json v0.10.68.
+
+### Verification
+
+- pending
+
+---
+## 2026-07-08 - P0003 version sync
+
 - Version: `0.10.67`
 - Timestamp: 2026-07-08 15:55 (UTC+7)
 - Type: Patch
