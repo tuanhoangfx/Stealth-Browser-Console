@@ -10,7 +10,7 @@
     "installer": "Stealth-Browser-Console-Setup-0.10.64.exe",
     "winUnpacked": "win-unpacked",
     "sha512": "hBebubzyoIcLfMLBubOWy7ko7zmaZb/y+xmrUw6OK0vQE5uW/bdWxciV43s/y6HLMg0unNA07rSaQr/yTVpBrg==",
-    "capturedAt": "2026-07-08T00:13:53.544Z"
+    "capturedAt": "2026-07-08T00:16:59.281Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
