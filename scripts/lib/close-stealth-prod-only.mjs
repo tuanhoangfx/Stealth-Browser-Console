@@ -32,5 +32,5 @@ export function closeStealthProdOnly() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { killed } = closeStealthProdOnly();
-  console.log(`close-stealth-prod-only: killed ${killed.length} prod process(es)`);
+  console.log(`close-stealth-prod-only: killed ${killed ?? 0} prod process(es)`);
 }
