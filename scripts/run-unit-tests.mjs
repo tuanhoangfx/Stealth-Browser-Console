@@ -14,6 +14,7 @@ if (!process.env.STEALTH_AGENT_SMOKE) {
 runStep("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
 runStep("sync-stealth-api-surface", "node", ["scripts/sync-stealth-api-surface.mjs"]);
 runStep("agent-smoke-mode", "node", ["--test", "electron/lib/agent-smoke-mode.test.cjs"]);
+runStep("cloakbrowser-packaged-resolve", "node", ["--test", "electron/lib/cloakbrowser-packaged-resolve.test.cjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("refresh-hub-ui-node-link", "node", [

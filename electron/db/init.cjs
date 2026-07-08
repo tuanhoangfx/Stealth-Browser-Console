@@ -243,9 +243,44 @@ function removeWalSidecars(filePath) {
   }
 }
 
+/**
+ * Rename a broken DB out of the way so the next open creates a clean catalog.
+ * Prefer this over opening the same corrupt bytes with sql.js (which still fails on writes).
+ */
+function rotateCorruptDatabaseFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return { ok: false, reason: "missing" };
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const dest = `${filePath}.corrupt.${stamp}.bak`;
+  try {
+    try {
+      fs.renameSync(filePath, dest);
+    } catch {
+      fs.copyFileSync(filePath, dest);
+      fs.unlinkSync(filePath);
+    }
+    removeWalSidecars(filePath);
+    console.warn(`[db] rotated corrupt database → ${dest} (fresh DB next open)`);
+    return { ok: true, backup: dest };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[db] rotate failed (${message})`);
+    return { ok: false, reason: message };
+  }
+}
+
 function verifyBetterSqliteIntegrity(db) {
   const rows = db.pragma("integrity_check");
   return rows.every((row) => String(row.integrity_check || "").toLowerCase() === "ok");
+}
+
+function verifySqlJsIntegrity(database) {
+  try {
+    const result = database.exec("PRAGMA integrity_check");
+    const value = result[0]?.values?.[0]?.[0];
+    return String(value || "").toLowerCase() === "ok";
+  } catch {
+    return false;
+  }
 }
 
 async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
@@ -313,7 +348,31 @@ async function openSqlJsDatabase(userDataPath) {
   dbFilePath = path.join(dbDir, "stealth-console.db");
 
   if (fs.existsSync(dbFilePath)) {
-    sqlDb = new SQL.Database(fs.readFileSync(dbFilePath));
+    try {
+      sqlDb = new SQL.Database(fs.readFileSync(dbFilePath));
+      if (!verifySqlJsIntegrity(sqlDb)) {
+        sqlDb.close();
+        sqlDb = null;
+        rotateCorruptDatabaseFile(dbFilePath);
+        sqlDb = new SQL.Database();
+      }
+    } catch (error) {
+      if (sqlDb) {
+        try {
+          sqlDb.close();
+        } catch {
+          // ignore
+        }
+        sqlDb = null;
+      }
+      if (isCorruptSqliteError(error) || /malformed|corrupt/i.test(String(error))) {
+        rotateCorruptDatabaseFile(dbFilePath);
+      } else {
+        console.warn("[db] sql.js open failed — starting empty", error);
+        rotateCorruptDatabaseFile(dbFilePath);
+      }
+      sqlDb = new SQL.Database();
+    }
   } else {
     sqlDb = new SQL.Database();
   }
@@ -340,7 +399,7 @@ async function openDatabase(userDataPath) {
         return dbInstance;
       }
 
-      const BetterSqlite = forced === "better-sqlite3" ? loadBetterSqliteCtor() : loadBetterSqliteCtor();
+      const BetterSqlite = loadBetterSqliteCtor();
       if (BetterSqlite) {
         try {
           dbInstance = await openBetterSqliteDatabase(BetterSqlite, userDataPath);
@@ -355,8 +414,12 @@ async function openDatabase(userDataPath) {
                 dbInstance = await openBetterSqliteDatabase(BetterSqlite, userDataPath);
                 return dbInstance;
               } catch (retryError) {
-                console.warn("[db] better-sqlite3 retry after repair failed — falling back to sql.js", retryError);
+                console.warn("[db] better-sqlite3 retry after repair failed — rotating corrupt DB", retryError);
+                rotateCorruptDatabaseFile(file);
               }
+            } else {
+              console.warn("[db] sql.js repair failed — rotating corrupt DB");
+              rotateCorruptDatabaseFile(file);
             }
           } else {
             console.warn("[db] better-sqlite3 open failed — falling back to sql.js", error);
@@ -409,16 +472,31 @@ function closeDatabase() {
   }
 }
 
-/** Close, re-export via sql.js, reopen — for SQLITE_CORRUPT during runtime (often bad WAL). */
+/**
+ * Close → repair (or rotate) → reopen.
+ * Repair keeps data when possible; rotate starts a clean catalog when repair cannot reopen.
+ */
 async function recoverCorruptDatabase(userDataPath) {
   const root = String(userDataPath || "").trim();
   if (!root) return { ok: false, reason: "missing-user-data" };
   const file = path.join(root, "data", "stealth-console.db");
   closeDatabase();
   const repaired = await repairDatabaseFile(file);
-  if (!repaired.ok) return { ok: false, reason: repaired.reason || "repair-failed" };
+  if (repaired.ok) {
+    try {
+      await openDatabase(root);
+      return { ok: true, backup: repaired.backup, rotated: false };
+    } catch (error) {
+      if (!isCorruptSqliteError(error)) throw error;
+      console.warn("[db] reopen after repair still corrupt — rotating");
+    }
+  }
+  const rotated = rotateCorruptDatabaseFile(file);
+  if (!rotated.ok) {
+    return { ok: false, reason: repaired.reason || rotated.reason || "recover-failed" };
+  }
   await openDatabase(root);
-  return { ok: true, backup: repaired.backup };
+  return { ok: true, backup: rotated.backup, rotated: true };
 }
 
 module.exports = {
@@ -430,4 +508,5 @@ module.exports = {
   checkpointDatabase,
   isCorruptSqliteError,
   recoverCorruptDatabase,
+  rotateCorruptDatabaseFile,
 };

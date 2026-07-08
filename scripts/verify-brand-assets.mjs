@@ -46,7 +46,9 @@ async function main() {
     console.error("Run: node ../../scripts/sync-hub-brand-icons.mjs --code P0003");
     process.exit(1);
   }
-  console.log(`verify-brand-assets OK (${label}) — ${REQUIRED_BRAND.length} brand + ${REQUIRED_VECTOR.length} vector`);
+  console.log(
+    `verify-brand-assets OK (${label}) — ${REQUIRED_BRAND.length} brand + ${OPTIONAL_VECTOR.length} optional vector`,
+  );
 }
 
 main();

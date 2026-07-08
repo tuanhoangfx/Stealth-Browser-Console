@@ -193,7 +193,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
     return label;
   };
 
-  const headerTitleAttr = (_col: (typeof columns)[number]) => undefined;
+  const headerTitleAttr = (col: (typeof columns)[number]) => col.headerTooltip ?? col.label;
 
   const wrapBorder = flushWrap ? "" : " rounded-2xl border border-white/5";
   const resolvedWrapClass = `hub-users-table-wrap${splitScroll ? " hub-directory-table-split" : ""} ${wrapClassName}${wrapBorder}`;

@@ -24,6 +24,11 @@ export default defineConfig({
   server: {
     port: 5175,
     strictPort: true,
+    // Packaging writes under dist-desktop/ while Electron/Vite are up — ignore so
+    // license/html changes do not force full client reloads / stack churn.
+    watch: {
+      ignored: ["**/dist-desktop/**", "**/dist/**", "**/.tmp-asar-check/**"],
+    },
     fs: {
       allow: [rootDir, hubUiSrc, hubIdentitySrc, path.resolve(rootDir, "../packages"), devRoot]
     }

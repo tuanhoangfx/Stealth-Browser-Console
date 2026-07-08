@@ -18,6 +18,8 @@ const asarPath = path.join(resources, "app.asar");
 const UNPACKED_REQUIRED = [
   "node_modules/playwright-core/index.js",
   "node_modules/cloakbrowser/package.json",
+  // cloakbrowser ESM download path — must sit beside cloakbrowser (afterPack)
+  "node_modules/tar/package.json",
 ];
 
 function listAsar() {
@@ -29,6 +31,7 @@ function listAsar() {
 function hasAsarModule(list, name) {
   const sepName = String(name).split("/").join(path.sep);
   const needles = [
+    `\\node_modules\\${sepName}\\`,
     `node_modules${path.sep}${sepName}${path.sep}`,
     `node_modules/${name}/`,
     // Nested under packaged vendor root (NODE_PATH / parent.paths entry)

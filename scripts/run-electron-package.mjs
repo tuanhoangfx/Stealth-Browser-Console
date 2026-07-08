@@ -310,6 +310,7 @@ promoteStagingToProductOutput(stagingOutput, productOutput, version);
 rmDir(stagingOutput);
 
 runNodeScript("scripts/verify-packaged-unpacked.mjs");
+runNodeScript("scripts/smoke-packaged-cloakbrowser-import.cjs");
 
 const tag = `v${version}`;
 

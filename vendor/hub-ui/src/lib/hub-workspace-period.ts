@@ -14,7 +14,18 @@ export type WorkspacePeriodKey =
   | "customMonth"
   | "customRange";
 
-export type WorkspacePeriodScope = "notes" | "todo" | "twofa" | "cookie" | "orders" | "customers";
+export type WorkspacePeriodScope =
+  | "notes"
+  | "todo"
+  | "twofa"
+  | "twofa.mail"
+  | "twofa.services"
+  | "twofa.facebook"
+  | "twofa.quota"
+  | "twofa.browser"
+  | "cookie"
+  | "orders"
+  | "customers";
 
 export type WorkspacePeriodPrefs = {
   range: WorkspacePeriodKey;
@@ -60,10 +71,23 @@ const SCOPE_URL_KEYS: Record<
   notes: { range: "nrange", month: "nperiodMonth", from: "nperiodFrom", to: "nperiodTo" },
   todo: { range: "trange", month: "tperiodMonth", from: "tperiodFrom", to: "tperiodTo" },
   twofa: { range: "frange", month: "fperiodMonth", from: "fperiodFrom", to: "fperiodTo" },
+  "twofa.mail": { range: "fmailrange", month: "fmailperiodMonth", from: "fmailperiodFrom", to: "fmailperiodTo" },
+  "twofa.services": { range: "fsvcrange", month: "fsvcperiodMonth", from: "fsvcperiodFrom", to: "fsvcperiodTo" },
+  "twofa.facebook": { range: "ffbrange", month: "ffbperiodMonth", from: "ffbperiodFrom", to: "ffbperiodTo" },
+  "twofa.quota": { range: "fqrange", month: "fqperiodMonth", from: "fqperiodFrom", to: "fqperiodTo" },
+  "twofa.browser": { range: "fbrwrange", month: "fbrwperiodMonth", from: "fbrwperiodFrom", to: "fbrwperiodTo" },
   cookie: { range: "crange", month: "cperiodMonth", from: "cperiodFrom", to: "cperiodTo" },
   orders: { range: "osrange", month: "osperiodMonth", from: "osperiodFrom", to: "osperiodTo" },
   customers: { range: "csrange", month: "csperiodMonth", from: "csperiodFrom", to: "csperiodTo" },
 };
+
+const TWOFA_VAULT_PERIOD_SCOPES = new Set<WorkspacePeriodScope>([
+  "twofa.mail",
+  "twofa.services",
+  "twofa.facebook",
+  "twofa.quota",
+  "twofa.browser",
+]);
 
 /** Legacy global URL keys (pre per-tab migration). */
 const LEGACY_URL_KEYS = { range: "range", month: "periodMonth", from: "periodFrom", to: "periodTo" };
@@ -101,10 +125,18 @@ function defaultPrefs(defaultRange: WorkspacePeriodKey): WorkspacePeriodPrefs {
   };
 }
 
+function scopeUrlKeys(scope: WorkspacePeriodScope) {
+  return SCOPE_URL_KEYS[scope] ?? SCOPE_URL_KEYS.twofa;
+}
+
 function readRawRange(sp: URLSearchParams, scope: WorkspacePeriodScope, defaultKey: WorkspacePeriodKey) {
-  const keys = SCOPE_URL_KEYS[scope];
+  const keys = scopeUrlKeys(scope);
   const scoped = sp.get(keys.range);
   if (scoped) return normalizeWorkspacePeriodKey(scoped, defaultKey);
+  if (TWOFA_VAULT_PERIOD_SCOPES.has(scope)) {
+    const legacyTwofa = sp.get(SCOPE_URL_KEYS.twofa.range);
+    if (legacyTwofa) return normalizeWorkspacePeriodKey(legacyTwofa, defaultKey);
+  }
   if (scope === "notes" || scope === "todo") {
     const legacy = sp.get(LEGACY_URL_KEYS.range);
     if (legacy) return normalizeWorkspacePeriodKey(legacy, defaultKey);
@@ -113,10 +145,18 @@ function readRawRange(sp: URLSearchParams, scope: WorkspacePeriodScope, defaultK
 }
 
 function readRawField(sp: URLSearchParams, scope: WorkspacePeriodScope, field: "month" | "from" | "to") {
-  const keys = SCOPE_URL_KEYS[scope];
+  const keys = scopeUrlKeys(scope);
   const legacyKey = LEGACY_URL_KEYS[field];
   const scopedKey = field === "month" ? keys.month : field === "from" ? keys.from : keys.to;
-  return sp.get(scopedKey) ?? (scope === "notes" || scope === "todo" ? sp.get(legacyKey) : null);
+  const scoped = sp.get(scopedKey);
+  if (scoped) return scoped;
+  if (TWOFA_VAULT_PERIOD_SCOPES.has(scope)) {
+    const twofaKeys = SCOPE_URL_KEYS.twofa;
+    const legacyTwofaKey = field === "month" ? twofaKeys.month : field === "from" ? twofaKeys.from : twofaKeys.to;
+    const fromTwofa = sp.get(legacyTwofaKey);
+    if (fromTwofa) return fromTwofa;
+  }
+  return scope === "notes" || scope === "todo" ? sp.get(legacyKey) : null;
 }
 
 export function readWorkspacePeriod(
@@ -141,7 +181,7 @@ export function patchWorkspacePeriod(
 ) {
   const current = readWorkspacePeriod(scope, defaultRange);
   const next = { ...current, ...patch };
-  const keys = SCOPE_URL_KEYS[scope];
+  const keys = scopeUrlKeys(scope);
   const urlPatch: Record<string, string | null> = {
     [keys.range]: next.range === defaultRange ? null : next.range,
     [keys.month]: next.range === "customMonth" ? next.customMonth : null,
@@ -153,6 +193,13 @@ export function patchWorkspacePeriod(
     urlPatch[LEGACY_URL_KEYS.month] = null;
     urlPatch[LEGACY_URL_KEYS.from] = null;
     urlPatch[LEGACY_URL_KEYS.to] = null;
+  }
+  if (TWOFA_VAULT_PERIOD_SCOPES.has(scope)) {
+    /** Prefer vault-scoped keys; clear shared Account legacy once a vault writes its own. */
+    urlPatch[SCOPE_URL_KEYS.twofa.range] = null;
+    urlPatch[SCOPE_URL_KEYS.twofa.month] = null;
+    urlPatch[SCOPE_URL_KEYS.twofa.from] = null;
+    urlPatch[SCOPE_URL_KEYS.twofa.to] = null;
   }
   patchHubListPrefs(urlPatch);
 }
@@ -170,9 +217,11 @@ export function workspacePeriodOptions(): HubPeriodOption[] {
 /** Filter rows by created/updated ISO timestamp. */
 export function matchesWorkspacePeriod(
   isoDate: string | undefined,
-  period: WorkspacePeriodPrefs | WorkspacePeriodKey,
+  period: WorkspacePeriodPrefs | WorkspacePeriodKey | null | undefined,
 ): boolean {
+  if (period == null) return true;
   const prefs = typeof period === "string" ? { ...defaultPrefs(period), range: period } : period;
+  if (!prefs?.range) return true;
 
   if (prefs.range === "all") return true;
   if (!isoDate?.trim()) return false;

@@ -2,6 +2,22 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
 const {
+  resolveCloakbrowserImportSpecifier,
+  resolveCloakbrowserPackageDir,
+} = require("../lib/cloakbrowser-packaged-resolve.cjs");
+
+function packagedRuntime() {
+  try {
+    const { app } = require("electron");
+    return {
+      isPackaged: Boolean(app?.isPackaged),
+      resourcesPath: process.resourcesPath,
+    };
+  } catch {
+    return { isPackaged: false, resourcesPath: process.resourcesPath };
+  }
+}
+const {
   purgeLegacyProfileIdentityChrome,
   purgeProfileIdentityToolbar,
   purgeBrokenExtensionPrefs,
@@ -45,14 +61,17 @@ const EXTENSION_BLOCK_FLAGS = ["--disable-extensions"];
 
 function loadCloakbrowser() {
   if (!cloakModulePromise) {
-    cloakModulePromise = import("cloakbrowser");
+    const runtime = packagedRuntime();
+    const specifier = resolveCloakbrowserImportSpecifier(runtime);
+    cloakModulePromise = import(specifier);
   }
   return cloakModulePromise;
 }
 
 function cloakDistImport(relativePath) {
-  const pkgJson = require.resolve("cloakbrowser/package.json");
-  const filePath = path.join(path.dirname(pkgJson), "dist", relativePath);
+  const runtime = packagedRuntime();
+  const pkgDir = resolveCloakbrowserPackageDir(runtime);
+  const filePath = path.join(pkgDir, "dist", relativePath);
   return import(pathToFileURL(filePath).href);
 }
 

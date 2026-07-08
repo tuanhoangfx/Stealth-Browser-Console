@@ -25,7 +25,7 @@ function findBin(pkg, bins) {
 
 function run(bin, args) {
   const result = spawnSync(node, [bin, ...args], winSpawnOpts({ cwd: root, stdio: "inherit" }));
-  process.exit(result.status ?? 1);
+  if ((result.status ?? 1) !== 0) process.exit(result.status ?? 1);
 }
 
 spawnSync(node, [path.join(root, "scripts", "sync-app-version.mjs")], winSpawnOpts({ cwd: root, stdio: "inherit" }));
@@ -45,3 +45,20 @@ run(findBin("typescript", ["bin/tsc"]), ["--noEmit"]);
 run(findBin("vite", ["bin/vite.js"]), ["build"]);
 const verifyAssets = spawnSync(node, [path.join(root, "scripts", "verify-brand-assets.mjs"), "--dist"], winSpawnOpts({ cwd: root, stdio: "inherit" }));
 if ((verifyAssets.status ?? 1) !== 0) process.exit(verifyAssets.status ?? 1);
+
+/** Fail ship if UI bundle still embeds a stale APP_VERSION. */
+const pkgVersion = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
+const assetsDir = path.join(root, "dist", "assets");
+const indexJs = fs.existsSync(assetsDir)
+  ? fs.readdirSync(assetsDir).find((f) => /^index-.*\.js$/.test(f))
+  : null;
+if (!indexJs) {
+  console.error("run-build: missing dist/assets/index-*.js after vite build");
+  process.exit(1);
+}
+const bundle = fs.readFileSync(path.join(assetsDir, indexJs), "utf8");
+if (!bundle.includes(pkgVersion)) {
+  console.error(`run-build: dist UI bundle missing APP_VERSION ${pkgVersion} (file=${indexJs})`);
+  process.exit(1);
+}
+console.log(`run-build: ok — ${indexJs} embeds v${pkgVersion}`);

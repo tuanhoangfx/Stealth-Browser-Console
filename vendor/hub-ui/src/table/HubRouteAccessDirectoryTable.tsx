@@ -40,6 +40,8 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   resetKey?: string | number | boolean | null;
   getRowKey: (row: TRow) => string;
   getUserDisplay: (row: TRow) => { label: string; title?: string };
+  /** Optional user cell override (e.g. search highlight) — defaults to plain `label`. */
+  renderUserCell?: (row: TRow, display: { label: string; title?: string }) => ReactNode;
   renderRoleCell: (row: TRow) => ReactNode;
   /** Expanded layout — Synced timestamp column. */
   renderSyncAtCell?: (row: TRow) => ReactNode;
@@ -74,6 +76,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
   resetKey,
   getRowKey,
   getUserDisplay,
+  renderUserCell,
   renderRoleCell,
   renderSyncAtCell,
   renderLoadAtCell,
@@ -206,7 +209,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
                 className={`${HUB_ROUTE_ACCESS_COL.user} mono text-left`}
                 title={user.title ?? user.label}
               >
-                {user.label}
+                {renderUserCell ? renderUserCell(row, user) : user.label}
               </td>
               <td className={HUB_ROUTE_ACCESS_COL.role}>
                 <div className="hub-users-role-cell">{renderRoleCell(row)}</div>

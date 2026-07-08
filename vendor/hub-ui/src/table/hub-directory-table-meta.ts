@@ -32,8 +32,12 @@ export const HUB_DIRECTORY_TABLE_BASE_CLASS = "hub-users-table hub-users-table--
 /** Fixed checkbox column — 36px (16px hub-checkbox + 4px cell pad ×2). Use px not rem (root font-size varies). */
 export const HUB_DIRECTORY_SELECT_COL_WIDTH = "36px";
 
-/** Colgroup track under table-layout:fixed — 3% + data % must stay ≤100%; th/td locked to 36px in CSS. */
-export const HUB_DIRECTORY_SELECT_COLGROUP_WIDTH = "3%";
+/**
+ * Colgroup track for the select column — same px as th/td (never %).
+ * `%` under `table-layout:fixed` reserves ~3% of table width (~40–60px on wide panes)
+ * and creates a visual gap before the first data column even when th/td CSS locks to 36px.
+ */
+export const HUB_DIRECTORY_SELECT_COLGROUP_WIDTH = HUB_DIRECTORY_SELECT_COL_WIDTH;
 
 /** Modal directory tables — golden wrap chrome + horizontal scroll inside section. */
 export const HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS =

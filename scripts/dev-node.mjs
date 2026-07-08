@@ -4,6 +4,9 @@
  * PowerShell blocks under a restricted ExecutionPolicy. Spawns vite + electron
  * directly via this Node binary, waits for the dev port, then launches Electron.
  *
+ * Health gate: Vite stays up even if Electron exits or a single profile/DB
+ * error occurs. Stack only shuts down on SIGINT/SIGTERM or Vite death.
+ *
  * Usage: node scripts/dev-node.mjs   (or: pnpm dev:node)
  */
 import { spawn } from "node:child_process";
@@ -50,7 +53,11 @@ const vite = spawn(node, [viteBin, "--host", "127.0.0.1", "--port", String(PORT)
 }));
 
 let electron;
+let shuttingDown = false;
+
 function shutdown(code) {
+  if (shuttingDown) return;
+  shuttingDown = true;
   if (electron && !electron.killed) electron.kill();
   if (vite && !vite.killed) vite.kill();
   process.exit(code ?? 0);
@@ -58,7 +65,13 @@ function shutdown(code) {
 
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
-vite.on("exit", (code) => shutdown(code ?? 0));
+
+// Vite is the stack life-cycle owner — only exit when Vite dies.
+vite.on("exit", (code, signal) => {
+  if (shuttingDown) return;
+  console.error(`[dev-node] Vite exited (code=${code ?? "null"} signal=${signal ?? "null"}) — shutting down`);
+  shutdown(code ?? 1);
+});
 
 if (!useProdData) {
   await syncDevCatalogFromProd().catch((err) => {
@@ -66,8 +79,7 @@ if (!useProdData) {
   });
 }
 
-try {
-  await waitForPort(PORT);
+function spawnElectron() {
   const electronEnv = stealthElectronEnv({
     VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/`,
     ...(useProdData ? { STEALTH_DEV_ISOLATED: "0" } : {}),
@@ -80,7 +92,21 @@ try {
     stdio: "inherit",
     env: electronEnv,
   }));
-  electron.on("exit", (code) => shutdown(code ?? 0));
+  electron.on("exit", (code, signal) => {
+    if (shuttingDown) return;
+    // Profile/DB errors must not kill Vite — keep HMR alive for the next relaunch.
+    console.warn(
+      `[dev-node] Electron exited (code=${code ?? "null"} signal=${signal ?? "null"}) — Vite stays on :${PORT}. ` +
+        `Relaunch: pnpm dev:desktop-only  (or Ctrl+C to stop stack)`,
+    );
+    electron = null;
+  });
+}
+
+try {
+  await waitForPort(PORT);
+  console.log(`[dev-node] DEV_READY web=http://127.0.0.1:${PORT}/`);
+  spawnElectron();
 } catch (error) {
   console.error("[dev-node]", error instanceof Error ? error.message : error);
   shutdown(1);

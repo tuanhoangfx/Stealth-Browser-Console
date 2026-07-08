@@ -300,16 +300,30 @@ table.hub-users-table.hub-users-table--directory .hub-users-th-btn,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-btn {
   min-height: 28px;
   padding: 2px 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-heading,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-heading {
   gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-label {
   gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  /* Sort icon must not steal flex space from the column title. */
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+table.hub-users-table.hub-users-table--directory .hub-users-th-label > svg,
+table.hub-users-table[data-hub-directory-select] .hub-users-th-label > svg {
+  flex-shrink: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label .hub-chrome-brand-icon-bare,
@@ -358,6 +372,13 @@ table.hub-users-table.hub-users-table--directory thead .hub-users-th-text,
 table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   color: var(--text);
   font-weight: 600;
+  /* Prefer showing the full title; ellipsis only after emoji+sort flex siblings take their intrinsic size. */
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Split scroll — thead fixed outside scroll; scrollbar only on tbody pane */
@@ -540,12 +561,16 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 .hub-directory-table-body-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--hub-split-scroll-thumb-hover, #3a4178);
 }
+/* Tight glyph paint only — no padding/bold/outward ring (avoids layout shift + neighbor bleed). */
 .hub-directory-search-highlight {
-  background: rgba(34, 211, 238, 0.5);
-  color: #ffffff;
-  border-radius: 3px;
-  padding: 0 2px;
-  font-weight: 700;
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45);
+  background: var(--hub-search-highlight-bg, rgba(99, 102, 241, 0.38));
+  color: var(--hub-search-highlight-fg, rgb(224, 231, 255));
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  font-weight: inherit;
+  box-shadow: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 

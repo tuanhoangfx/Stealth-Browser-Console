@@ -1308,33 +1308,35 @@
 }
 
 .hub-adm-note-mark {
-  border-radius: 0.15rem;
-  background: rgba(34, 211, 238, 0.32);
-  color: inherit;
+  border-radius: 2px;
+  background: var(--hub-search-highlight-bg, rgba(99, 102, 241, 0.38));
+  color: var(--hub-search-highlight-fg, rgb(224, 231, 255));
   padding: 0;
-  font-weight: 600;
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.28);
+  margin: 0;
+  font-weight: inherit;
+  box-shadow: none;
 }
 
 .hub-adm-note-mark--active {
   background: rgba(251, 191, 36, 0.55);
   color: rgb(255, 251, 235);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.65);
+  box-shadow: none;
 }
 
 .hub-adm-search-mark {
-  border-radius: 0.15rem;
-  background: rgba(34, 211, 238, 0.32);
-  color: inherit;
+  border-radius: 2px;
+  background: var(--hub-search-highlight-bg, rgba(99, 102, 241, 0.38));
+  color: var(--hub-search-highlight-fg, rgb(224, 231, 255));
   padding: 0;
-  font-weight: 600;
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.28);
+  margin: 0;
+  font-weight: inherit;
+  box-shadow: none;
 }
 
 .hub-adm-search-mark--active {
   background: rgba(251, 191, 36, 0.55);
   color: rgb(255, 251, 235);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.65);
+  box-shadow: none;
 }
 
 :is(

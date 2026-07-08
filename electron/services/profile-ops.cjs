@@ -68,8 +68,18 @@ async function launchProfile(deps, { id, name, skipStartupUrl = false } = {}) {
     if (!userDataRoot || !isCorruptSqliteError(error)) throw error;
     const recovered = await recoverCorruptDatabase(userDataRoot);
     if (!recovered.ok) throw error;
-    console.warn("[profile-ops] recovered corrupt stealth-console.db — retrying launch");
-    return launchProfileOnce(deps, { id, name, skipStartupUrl });
+    const how = recovered.rotated ? "rotated to fresh DB" : "repaired in place";
+    console.warn(`[profile-ops] recovered corrupt stealth-console.db (${how}) — retrying launch`);
+    try {
+      return await launchProfileOnce(deps, { id, name, skipStartupUrl });
+    } catch (retryError) {
+      // Do not rethrow as unhandled process death — surface as launch failure only.
+      console.error(
+        "[profile-ops] launch still failed after DB recover:",
+        retryError instanceof Error ? retryError.message : retryError,
+      );
+      throw retryError;
+    }
   }
 }
 

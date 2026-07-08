@@ -67,6 +67,10 @@
   --hub-inline-gap-meta: 5px;
   --hub-inline-gap-comfort: 6px;
   --hub-inline-gap-name: 8px;
+  /* Search match mark — P0020 Sheet indigo lock (directory + ADM + Sheet/Todo/Inbox) */
+  --hub-search-highlight-bg: rgba(99, 102, 241, 0.38);
+  --hub-search-highlight-fg: rgb(224, 231, 255);
+  --hub-search-highlight-ring: rgba(99, 102, 241, 0.45);
   /* Account detail modal — Navigate · Credentials · Note frame gutters (SSOT) */
   --hub-account-detail-columns-gap: 0.65rem;
   --bg: #0b1020;

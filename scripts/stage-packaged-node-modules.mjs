@@ -28,13 +28,39 @@ function copyDir(src, dest) {
   }
 }
 
+function resolveSearchPaths(fromDir) {
+  return [
+    fromDir,
+    root,
+    path.join(root, "node_modules"),
+    // pnpm may leave scoped packages only under the virtual store.
+    path.join(root, "node_modules", ".pnpm", "node_modules"),
+  ].filter((p) => p && fs.existsSync(p));
+}
+
 function resolvePackageRoot(name, fromDir) {
+  const searchPaths = resolveSearchPaths(fromDir);
   try {
-    const entry = require.resolve(`${name}/package.json`, { paths: [fromDir, root] });
+    const entry = require.resolve(`${name}/package.json`, { paths: searchPaths });
     return path.dirname(entry);
   } catch (error) {
     // Some packages omit package.json from "exports" (e.g. @supabase/phoenix).
-    const resolved = require.resolve(name, { paths: [fromDir, root] });
+    let resolved;
+    try {
+      resolved = require.resolve(name, { paths: searchPaths });
+    } catch {
+      // Last resort: walk pnpm store for @scope/name
+      const pnpm = path.join(root, "node_modules", ".pnpm");
+      if (fs.existsSync(pnpm)) {
+        const needle = path.join(...String(name).split("/"));
+        for (const entry of fs.readdirSync(pnpm, { withFileTypes: true })) {
+          if (!entry.isDirectory()) continue;
+          const candidate = path.join(pnpm, entry.name, "node_modules", needle);
+          if (fs.existsSync(path.join(candidate, "package.json"))) return candidate;
+        }
+      }
+      throw error;
+    }
     let dir = path.dirname(resolved);
     while (dir && dir !== path.dirname(dir)) {
       const pkgFile = path.join(dir, "package.json");

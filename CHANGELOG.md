@@ -1,5 +1,128 @@
 # Changelog
 
+## 2026-07-08 — v1.0.0 — Packaged profile launch fix (cloakbrowser tar)
+
+- Version: `1.0.0`
+- Timestamp: 2026-07-08 21:15 (UTC+7)
+- Type: **Major**
+- Status: Release
+
+### Changes
+
+- **Fix** — `ERR_MODULE_NOT_FOUND: tar` when Run profile on installed Setup.exe (v0.10.77): load `cloakbrowser` from `app.asar.unpacked` so ESM resolves `tar` beside unpacked `node_modules`.
+- **Packaging** — `afterPack` stages `tar` + transitive ESM deps; gate `smoke-packaged-cloakbrowser-import.cjs`.
+- **Dev catalog** — sync from prod no longer down-seeds full catalog back to 80 profiles.
+
+### Verification
+
+- `verify-packaged-unpacked` + cloakbrowser/tar ESM smoke pass after NSIS pack.
+
+---
+
+- Version: `0.10.80`
+- Timestamp: 2026-07-08 20:56 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v0.10.79 — Electron dev reload
+
+- Version: `0.10.79`
+- Timestamp: 2026-07-08 20:56 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v0.10.80 — Fix packaged profile launch (cloakbrowser tar ESM)
+
+- Version: `0.10.80`
+- Timestamp: 2026-07-08 20:55 (UTC+7)
+- Type: Patch
+- Status: Verified (pack dir + ESM smoke)
+
+### Changes
+
+- **Packaged launch** — load `cloakbrowser` from `app.asar.unpacked` file URL so ESM sub-import `tar` resolves beside unpacked `node_modules` (fixes `ERR_MODULE_NOT_FOUND: tar` on profile Run in installed exe).
+- **afterPack** — keep staging `tar` + transitive ESM deps under `app.asar.unpacked/node_modules`.
+- **Gate** — `smoke-packaged-cloakbrowser-import.cjs` after `verify-packaged-unpacked.mjs`.
+
+### Verification
+
+- `pnpm pack` (dir) + `verify-packaged-unpacked` + cloakbrowser/tar ESM smoke pass.
+
+---
+
+- Version: `0.10.74`
+- Timestamp: 2026-07-08 19:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v0.10.72 — Electron dev reload
+
+- Version: `0.10.72`
+- Timestamp: 2026-07-08 18:49 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v0.10.71 — Electron dev reload
+
+- Version: `0.10.71`
+- Timestamp: 2026-07-08 17:20 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 - P0003 version sync
+
+- Version: `0.10.70`
+- Timestamp: 2026-07-08 16:47 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.70
+
+### Changes
+
+- Align CHANGELOG with package.json v0.10.70.
+
+### Verification
+
+- pending
+
+---
+## 2026-07-08 - P0003 version sync
+
+- Version: `0.10.69`
+- Timestamp: 2026-07-08 16:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.69
+
+### Changes
+
+- Align CHANGELOG with package.json v0.10.69.
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-08 - P0003 version sync
 
 - Version: `0.10.68`

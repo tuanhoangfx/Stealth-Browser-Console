@@ -8,6 +8,7 @@ const RELEASE_URL = "https://github.com/tuanhoangfx/Stealth-Browser-Console/rele
 const REQUIRED_UNPACKED = [
   "node_modules/playwright-core/index.js",
   "node_modules/cloakbrowser/package.json",
+  "node_modules/tar/package.json",
 ];
 
 function unpackedRoot() {

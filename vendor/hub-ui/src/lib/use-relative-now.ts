@@ -26,8 +26,12 @@ function getSnapshot() {
   return sharedNow;
 }
 
-/** Shared 60s tick for relative timestamps — isolates re-renders to subscribing cells. */
+/**
+ * Shared 60s tick for relative timestamps — isolates re-renders to subscribing cells.
+ * Returns fresh `Date.now()` each render; the store tick only schedules periodic updates.
+ */
 export function useRelativeNow(intervalMs = 60_000): number {
   const sub = useCallback((cb: () => void) => subscribe(intervalMs)(cb), [intervalMs]);
-  return useSyncExternalStore(sub, getSnapshot, getSnapshot);
+  useSyncExternalStore(sub, getSnapshot, getSnapshot);
+  return Date.now();
 }

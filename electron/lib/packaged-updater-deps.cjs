@@ -11,9 +11,18 @@ module.exports.PACKAGED_UPDATER_RUNTIME_DEPS = [
   "lodash.isequal",
 ];
 
-/** Main-process transitive deps missing under pnpm + asar (supabase stack). */
+/**
+ * Main-process transitive deps missing under pnpm + asar.
+ * Seeds so stage-packaged-node-modules walks phoenix/tslib/tar/… into
+ * electron/packaged-node_modules/node_modules (resolve hook finds them).
+ */
 module.exports.PACKAGED_MAIN_RUNTIME_DEPS = [
   "tslib",
+  "@supabase/phoenix",
+  "@supabase/supabase-js",
+  // cloakbrowser engine download (profile launch extracts Chromium archive)
+  "tar",
+  "cloakbrowser",
 ];
 
 module.exports.PACKAGED_RUNTIME_DEPS = [
