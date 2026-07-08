@@ -154,15 +154,15 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-07-08T00:06:22.230Z",
+  "manifestUpdatedAt": "2026-07-08T00:30:06.743Z",
   "release": {
-    "version": "0.10.64",
+    "version": "0.10.65",
     "updatedAt": "2026-07-07",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v0.10.64",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.64",
-      "publishedAt": "2026-07-08T00:06:22.229Z"
+      "tag": "v0.10.65",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.65",
+      "publishedAt": "2026-07-08T00:30:06.742Z"
     }
   },
   "ship": {

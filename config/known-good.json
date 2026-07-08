@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "label": "2026-07-08-v0.10.64-stable",
-  "version": "0.10.64",
+  "label": "2026-07-08-v0.10.65-stable",
+  "version": "0.10.65",
   "gitCommit": null,
-  "gitTag": "v0.10.64-stable",
-  "notes": "v0.10.64 stable: DB recovery, profile table 20-row panel-fill, dev keep-alive, public GitHub auto-update feed.",
+  "gitTag": "v0.10.65-stable",
+  "notes": "v0.10.65 stable: updater GH token baked, visibility toggle SSOT, restore-known-good fix, vitest 93/93.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-0.10.64.exe",
+    "installer": "Stealth-Browser-Console-Setup-0.10.65.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "hBebubzyoIcLfMLBubOWy7ko7zmaZb/y+xmrUw6OK0vQE5uW/bdWxciV43s/y6HLMg0unNA07rSaQr/yTVpBrg==",
-    "capturedAt": "2026-07-08T00:16:59.281Z"
+    "sha512": "vr0u++QO38mcDPzevv99vtvfO+6ikING9Xt5RN/ijDII2tu8JifrirS2csKVv9OOgb+m1imqfwXhMYx4qDO+Xw==",
+    "capturedAt": "2026-07-08T00:30:24.823Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
