@@ -222,14 +222,14 @@
 .twofa-adm-log-row__head {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--hub-inline-gap-name, 8px);
   min-width: 0;
 }
 
 .twofa-adm-log-row__action {
   display: inline-flex;
   align-items: center;
-  gap: 0.22rem;
+  gap: var(--hub-inline-gap-name, 8px);
   min-width: 0;
   flex: 1 1 auto;
   font-weight: 500;
@@ -309,7 +309,7 @@
 .twofa-adm-log-row__field {
   display: inline-flex;
   align-items: center;
-  gap: 0.22rem;
+  gap: var(--hub-inline-gap-comfort, 6px);
   flex-shrink: 0;
   font-weight: 500;
   color: rgb(148, 163, 184);

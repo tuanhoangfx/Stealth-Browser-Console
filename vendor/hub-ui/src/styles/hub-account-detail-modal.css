@@ -394,7 +394,7 @@
 .hub-adm-section-label__inner {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
+  gap: var(--hub-inline-gap-name, 8px);
   max-width: 100%;
   padding: 0.12rem 0.42rem 0.12rem 0.32rem;
   border-radius: 0.32rem;
@@ -480,6 +480,18 @@
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__label .hub-users-th-icon {
   width: 12px;
   height: 12px;
+}
+
+/* Account-detail glyph + label — SSOT name gap (UI_PATTERNS § Inline glyph + label gaps). */
+:is(.hub-account-detail-modal, .hub-add-modal) :is(
+  .hub-adm-section-label__inner,
+  .hub-adm-inline-field__label,
+  .hub-users-th-heading,
+  .twofa-adm-log-row__action,
+  .twofa-adm-log-row__field,
+  .twofa-log-cell
+) {
+  gap: var(--hub-inline-gap-name, 8px);
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__label .hub-users-th-text,

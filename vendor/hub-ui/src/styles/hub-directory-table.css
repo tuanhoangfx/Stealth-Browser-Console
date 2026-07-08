@@ -457,12 +457,19 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
 
 /* Expanded hit target — icon size unchanged (Profiles Run/Stop, ReUp Cancel). */
 .hub-directory-icon-cell--hit-expand {
-  min-height: 1.875rem;
+  position: relative;
   min-width: 4rem;
-  padding: 5px 12px;
+  padding: 2px 10px;
   justify-content: center;
   align-items: center;
   box-sizing: border-box;
+}
+
+.hub-directory-icon-cell--hit-expand::before {
+  content: "";
+  position: absolute;
+  inset: -6px -10px;
+  border-radius: inherit;
 }
 
 .hub-directory-icon-cell__icon {

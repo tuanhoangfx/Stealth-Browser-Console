@@ -58,4 +58,12 @@ describe("MiniBarChart golden contract", () => {
     expect(value?.className).not.toMatch(/\btext-sm\b/);
     expect(container.querySelector(".hub-analytics-caption")).toBeTruthy();
   });
+
+  it("splits leading emoji via ChartLegendLabelContent SSOT", () => {
+    const { container } = render(
+      <MiniBarChart title="By Tier" items={[{ label: "⭐ VIP", value: 4 }]} />,
+    );
+    expect(container.querySelector(".hub-chart-legend-label__glyph--emoji")?.textContent).toBe("⭐");
+    expect(container.querySelector(".hub-chart-legend-label__text")?.textContent).toBe("VIP");
+  });
 });

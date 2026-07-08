@@ -7,7 +7,9 @@
  * - Electron STEALTH_LOAD_DIST=1 STEALTH_DIST_WATCH=1
  * - UI refresh: window reload only (exe process stays open)
  *
- * Usage: node scripts/dev-desktop-only.mjs [--no-watch] [--skip-build]
+ * Usage: node scripts/dev-desktop-only.mjs [--no-watch] [--skip-build] [--keep-dev]
+ *
+ * --keep-dev  Do NOT kill/restart Electron when dev is already running (CSS/UI edits only).
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -17,6 +19,7 @@ import { fileURLToPath } from "node:url";
 
 import { closePackagedStealth } from "./close-packaged-stealth.mjs";
 import {
+  isStealthDevRunning,
   killStealthDev,
   LOG_FILE,
   PID_FILE,
@@ -33,6 +36,7 @@ const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
 const args = process.argv.slice(2);
 const watch = !args.includes("--no-watch");
 const skipBuild = args.includes("--skip-build");
+const keepDev = args.includes("--keep-dev");
 const require = createRequire(path.join(root, "package.json"));
 const electronCli = require.resolve("electron/cli.js");
 
@@ -100,9 +104,26 @@ function startElectron() {
   return child.pid;
 }
 
-console.log("[dev-desktop-only] stopping prior dev…");
-killStealthDev();
-killWatch();
+function isWatchRunning() {
+  try {
+    const pid = Number(fs.readFileSync(WATCH_PID_FILE, "utf8").trim());
+    if (!Number.isFinite(pid) || pid <= 0) return false;
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const devAlreadyRunning = keepDev && isStealthDevRunning();
+
+if (devAlreadyRunning) {
+  console.log("[dev-desktop-only] --keep-dev: Electron dev still running — skip kill/restart");
+} else {
+  console.log("[dev-desktop-only] stopping prior dev…");
+  killStealthDev();
+  killWatch();
+}
 
 const { killed } = closePackagedStealth();
 if (killed) console.log(`[dev-desktop-only] closed ${killed} packaged instance(s)`);
@@ -113,8 +134,10 @@ if (!skipBuild || !fs.existsSync(path.join(root, "dist", "index.html"))) {
   console.log("[dev-desktop-only] skip build — dist/index.html exists");
 }
 
-if (watch) startWatchBuild();
-startElectron();
+if (watch && !isWatchRunning()) startWatchBuild();
+else if (watch && devAlreadyRunning) console.log("[dev-desktop-only] vite build --watch already running");
+
+if (!devAlreadyRunning) startElectron();
 focusStealthWindow();
 
 console.log("\n[dev-desktop-only] ready — no :5175 dev server");

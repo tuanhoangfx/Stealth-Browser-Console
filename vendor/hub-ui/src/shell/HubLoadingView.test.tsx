@@ -2,6 +2,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Activity } from "lucide-react";
+import { HubToolLoadingProvider } from "../loading/HubToolLoadingContext";
 import { HubLoadingView } from "./HubLoadingView";
 import { HUB_TAB_LOADER_ROOT_ID } from "../loading/hub-loader-dom";
 
@@ -41,6 +42,24 @@ describe("HubLoadingView", () => {
 
     expect(root.querySelector('[role="status"]')).toBeNull();
     expect(screen.getByRole("status", { name: "Loading inline" })).toHaveClass("hub-tab-loader-inline");
+    root.remove();
+  });
+
+  it("uses tool catalog icon from HubToolLoadingProvider", () => {
+    const root = document.createElement("div");
+    root.id = HUB_TAB_LOADER_ROOT_ID;
+    document.body.appendChild(root);
+
+    render(
+      <HubToolLoadingProvider toolCode="P0020" toolName="Data Box" iconSrc="/icons/tools/P0020.svg">
+        <HubLoadingView variant="overlay" enabled />
+      </HubToolLoadingProvider>,
+    );
+
+    const status = root.querySelector('[role="status"]');
+    expect(status).not.toBeNull();
+    expect(status?.getAttribute("aria-label")).toBe("Loading Data Box");
+    expect(root.querySelector(".hub-loader-orb__tool-icon")?.getAttribute("src")).toBe("/icons/tools/P0020.svg");
     root.remove();
   });
 });

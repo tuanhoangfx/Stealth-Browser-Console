@@ -5,7 +5,7 @@ import { HubTableColumnHeader } from "../content/HubTableColumnHeader";
 export function HubAdmSectionLabel({ header }: { header: HubTableColumnHeaderProps }) {
   return (
     <div className="hub-adm-section-label">
-      <span className="hub-adm-section-label__inner hub-users-th-label hub-users-th-label--start">
+      <span className="hub-adm-section-label__inner hub-users-th-label hub-users-th-label--start hub-inline-gap-name">
         <HubTableColumnHeader {...header} />
       </span>
     </div>

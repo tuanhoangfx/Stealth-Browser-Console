@@ -17,7 +17,10 @@
     "./styles/hub-route-detail.css": "./src/styles/hub-route-detail.css",
     "./styles/hub-thread-preview.css": "./src/styles/hub-thread-preview.css",
     "./styles/hub-filter-brand-icon.css": "./src/styles/hub-filter-brand-icon.css",
-    "./styles/hub-chrome-brand-icon.css": "./src/styles/hub-chrome-brand-icon.css"
+    "./styles/hub-chrome-brand-icon.css": "./src/styles/hub-chrome-brand-icon.css",
+    "./styles/hub-brand-icon-bare.css": "./src/styles/hub-brand-icon-bare.css",
+    "./styles/hub-theme-tokens.css": "./src/styles/hub-theme-tokens.css",
+    "./lib/directory-fixed-column-css": "./src/lib/directory-fixed-column-css.mjs"
   },
   "peerDependencies": {
     "lucide-react": ">=0.451.0",
@@ -26,6 +29,7 @@
   },
   "devDependencies": {
     "@fontsource/inter": "5.2.8",
+    "@rollup/rollup-win32-x64-msvc": "4.61.1",
     "@testing-library/react": "^16.3.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -37,6 +41,6 @@
     "vitest": "^4.1.6"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "node scripts/verify-hub-directory-select-column-css.mjs && vitest run"
   }
 }

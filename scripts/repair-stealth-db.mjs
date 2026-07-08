@@ -6,8 +6,15 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
+import { closeStealthProdOnly } from "./lib/close-stealth-prod-only.mjs";
+
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const closeProd = process.argv.includes("--keep-running") ? null : closeStealthProdOnly();
+if (closeProd?.killed) {
+  console.log(`repair-stealth-db: closed ${closeProd.killed} packaged instance(s) (dev Electron untouched)`);
+}
 
 const userData =
   process.env.STEALTH_USER_DATA ||

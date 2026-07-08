@@ -53,6 +53,13 @@ describe("resolveHubBrandIconByMatch", () => {
     expect(resolveHubBrandIconByMatch("Messenger")?.id).toBe("messenger");
   });
 
+  it("maps 5sim and shopvia to bare raster icons", () => {
+    expect(resolveHubBrandIconByMatch("5sim")?.id).toBe("5sim");
+    expect(resolveHubBrandIconByMatch("5sim")?.shell).toBe("bare");
+    expect(resolveHubBrandIconByMatch("shopvia.info")?.id).toBe("shopvia");
+    expect(resolveHubBrandIconByMatch("shopvia.info")?.src).toBe("/assets/brand-icons/shopvia.png");
+  });
+
   it("returns null for unknown platform", () => {
     expect(resolveHubBrandIconByMatch("UnknownPlatformXYZ")).toBeNull();
   });

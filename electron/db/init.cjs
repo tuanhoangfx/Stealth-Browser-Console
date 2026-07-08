@@ -243,20 +243,34 @@ function removeWalSidecars(filePath) {
   }
 }
 
+function verifyBetterSqliteIntegrity(db) {
+  const rows = db.pragma("integrity_check");
+  return rows.every((row) => String(row.integrity_check || "").toLowerCase() === "ok");
+}
+
 async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   const dbDir = path.join(userDataPath, "data");
   fs.mkdirSync(dbDir, { recursive: true });
   dbFilePath = path.join(dbDir, "stealth-console.db");
-  // Do NOT delete -wal/-shm on open — installer/restart may skip graceful quit; WAL holds recent last_opened_at.
 
   nativeDb = new DatabaseCtor(dbFilePath);
   nativeDb.pragma("journal_mode = WAL");
   nativeDb.pragma("foreign_keys = ON");
+  if (!verifyBetterSqliteIntegrity(nativeDb)) {
+    nativeDb.close();
+    nativeDb = null;
+    throw Object.assign(new Error("database disk image is malformed"), { code: "SQLITE_CORRUPT" });
+  }
   nativeDb.exec(fs.readFileSync(schemaPath(), "utf8"));
   migrateProfilesTable(nativeDb);
   dropLegacyProfileChromeColumns(nativeDb);
   backfillEmptyStartupUrls(nativeDb);
   backfillLastOpenedAt(nativeDb);
+  if (!verifyBetterSqliteIntegrity(nativeDb)) {
+    nativeDb.close();
+    nativeDb = null;
+    throw Object.assign(new Error("database disk image is malformed"), { code: "SQLITE_CORRUPT" });
+  }
 
   dbBackend = "better-sqlite3";
   console.info("[db] backend=better-sqlite3 (incremental WAL)");
@@ -395,6 +409,18 @@ function closeDatabase() {
   }
 }
 
+/** Close, re-export via sql.js, reopen — for SQLITE_CORRUPT during runtime (often bad WAL). */
+async function recoverCorruptDatabase(userDataPath) {
+  const root = String(userDataPath || "").trim();
+  if (!root) return { ok: false, reason: "missing-user-data" };
+  const file = path.join(root, "data", "stealth-console.db");
+  closeDatabase();
+  const repaired = await repairDatabaseFile(file);
+  if (!repaired.ok) return { ok: false, reason: repaired.reason || "repair-failed" };
+  await openDatabase(root);
+  return { ok: true, backup: repaired.backup };
+}
+
 module.exports = {
   openDatabase,
   getDb,
@@ -402,4 +428,6 @@ module.exports = {
   closeDatabase,
   flushDatabase,
   checkpointDatabase,
+  isCorruptSqliteError,
+  recoverCorruptDatabase,
 };

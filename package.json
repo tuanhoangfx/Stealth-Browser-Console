@@ -21,6 +21,7 @@
     "sync:9router": "node scripts/sync-9router-from-p0007.mjs",
     "dev:node": "node scripts/dev-node.mjs",
     "dev:desktop-only": "node scripts/dev-desktop-only.mjs",
+    "dev:desktop-rebuild": "node scripts/dev-desktop-only.mjs --keep-dev --skip-build",
     "dev:web": "vite --host 127.0.0.1",
     "build": "node scripts/run-build.mjs",
     "test": "pnpm test:unit",

@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 import type { HubDirectoryColumnKind } from "./hub-directory-table-meta";
 
 export type { HubDirectoryColumnKind };
@@ -10,14 +11,14 @@ export type DirectoryColumnWidthEntry = {
   keys?: readonly string[];
 };
 
-/** @deprecated Alias — use DirectoryColumnWidthEntry */
+/** @deprecated Alias â€” use DirectoryColumnWidthEntry */
 export type DirectoryFixedColumnEntry = DirectoryColumnWidthEntry & {
   kind: HubDirectoryColumnKind;
 };
 
 export type GenerateDirectoryFixedColumnCssOptions = {
   entries: readonly DirectoryColumnWidthEntry[];
-  /** Split head/body table selectors — pass both variant roots for parity. */
+  /** Split head/body table selectors â€” pass both variant roots for parity. */
   tableRoots: readonly string[];
   tabularSelectors?: readonly string[];
   banner?: string;

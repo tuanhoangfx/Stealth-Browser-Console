@@ -1,4 +1,4 @@
-import { startTransition, useEffect } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import type { KpiTileData } from "../shell/KpiStrip";
 
 export type DirectoryBandHandlers = {
@@ -18,8 +18,8 @@ export type DirectoryBandSyncSnapshot = {
 };
 
 /**
- * Lift KPI/charts into WorkspaceDirectoryScreen (P0004 Hub parity).
- * useEffect + startTransition keeps band updates off the search hot-path layout frame.
+ * Lift KPI/charts into WorkspaceDirectoryScreen before paint (P0004 Hub parity).
+ * useLayoutEffect keeps chrome frame stable on vault/tab switch — no deferred band gap.
  */
 export function useDirectoryBandSync(
   snapshot: DirectoryBandSyncSnapshot,
@@ -28,30 +28,24 @@ export function useDirectoryBandSync(
 ) {
   const { kpis, charts, sectionRuleLabel, kpiKey = "", chartsKey = "" } = snapshot;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) {
-      startTransition(() => {
-        handlers.setDirectoryKpis(undefined);
-        handlers.setDirectoryCharts(null);
-        handlers.setSectionRuleLabel(undefined);
-      });
+      handlers.setDirectoryKpis(undefined);
+      handlers.setDirectoryCharts(null);
+      handlers.setSectionRuleLabel(undefined);
       return;
     }
-    startTransition(() => {
-      handlers.setDirectoryKpis(kpis?.length ? kpis : undefined);
-      handlers.setDirectoryCharts(charts ?? null);
-      handlers.setSectionRuleLabel(sectionRuleLabel);
-    });
+    handlers.setDirectoryKpis(kpis?.length ? kpis : undefined);
+    handlers.setDirectoryCharts(charts ?? null);
+    handlers.setSectionRuleLabel(sectionRuleLabel);
     // kpiKey/chartsKey are stable fingerprints; kpis/charts omitted from deps to avoid ReactNode identity loops.
   }, [enabled, kpiKey, chartsKey, sectionRuleLabel, handlers.setDirectoryCharts, handlers.setDirectoryKpis, handlers.setSectionRuleLabel]);
 
-  useEffect(
+  useLayoutEffect(
     () => () => {
-      startTransition(() => {
-        handlers.setDirectoryKpis(undefined);
-        handlers.setDirectoryCharts(null);
-        handlers.setSectionRuleLabel(undefined);
-      });
+      handlers.setDirectoryKpis(undefined);
+      handlers.setDirectoryCharts(null);
+      handlers.setSectionRuleLabel(undefined);
     },
     [handlers.setDirectoryCharts, handlers.setDirectoryKpis, handlers.setSectionRuleLabel],
   );

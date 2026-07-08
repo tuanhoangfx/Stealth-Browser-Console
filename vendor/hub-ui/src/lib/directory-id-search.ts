@@ -73,6 +73,16 @@ export function getDirectorySearchHighlight(
   };
 }
 
+/** Flat terms for `HubDirectorySearchHighlightText` — bind to live `queryInput`, not debounced `query`. */
+export function directorySearchHighlightTerms(
+  searchTerm: string,
+  options: DirectoryIdSearchOptions = {},
+): readonly string[] {
+  const highlight = getDirectorySearchHighlight(searchTerm, options);
+  if (!highlight) return [];
+  return [...highlight.idTerms, ...highlight.textTerms];
+}
+
 export type HighlightSegment = { text: string; highlight: boolean };
 
 export function buildHighlightSegments(text: string, terms: string[]): HighlightSegment[] {

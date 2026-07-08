@@ -192,6 +192,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       ariaLabel="Browser profiles"
       tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table`}
       wrapClassName={HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS}
+      paginatedShellClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       flushWrap
       colgroup={colgroup}
       columns={columns}

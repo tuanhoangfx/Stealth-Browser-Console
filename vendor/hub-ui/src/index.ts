@@ -346,6 +346,9 @@ export {
   DIRECTORY_SEARCH_UI_DEBOUNCE_MS,
   DIRECTORY_SEARCH_FILTER_DEBOUNCE_MS,
   DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS,
+  DIRECTORY_SEARCH_CLIENT_FILTER_DEBOUNCE_MS,
+  DIRECTORY_SEARCH_CLIENT_FILTER_OPTS,
+  DIRECTORY_SEARCH_CLIENT_FILTER_LIVE_OPTS,
 } from "./lib/directory-search-contract";
 export {
   directorySortMatchesPrimaryDefault,
@@ -553,6 +556,7 @@ export {
   extractNumericSearchTerm,
   matchesDirectoryIdSearch,
   getDirectorySearchHighlight,
+  directorySearchHighlightTerms,
   buildHighlightSegments,
   type DirectoryIdSearchInput,
   type DirectoryIdSearchOptions,
@@ -952,7 +956,16 @@ export {
   type HubGlyphComponent,
   type FilterIconResolver,
 } from "./shell/filter-icons";
-export { countryCodeForLocale, flagCdnUrl, localeFlagIconSrc } from "./lib/locale-flag";
+export { countryCodeForLocale, flagCdnUrl, flagsApiUrl, localeFlagIconSrc, type FlagsApiSize, type FlagsApiStyle } from "./lib/locale-flag";
+export {
+  HUB_COUNTRY_BY_CODE,
+  HUB_COUNTRY_CATALOG,
+  normalizeHubCountryCode,
+  resolveHubCountry,
+  type HubCountryEntry,
+} from "./lib/country-catalog";
+export { buildHubCountryFilterOptions, hubCountryFilterOption } from "./lib/country-filter-options";
+export { HubCountryFlagBadge, HubCountryInline, type HubCountryInlineProps } from "./shell/HubCountryInline";
 export {
   AGENT_KIND_SEMANTIC,
   AGENT_SCOPE_SEMANTIC,

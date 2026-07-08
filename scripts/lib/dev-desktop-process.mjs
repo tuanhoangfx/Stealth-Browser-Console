@@ -17,13 +17,24 @@ export const LOG_FILE = path.join(root, ".dev-desktop.log");
 const WATCH_PID_FILE = path.join(root, ".dev-desktop-watch.pid");
 
 const DEV_SCRIPT_RE = /dev-node\.mjs|dev-desktop-only\.mjs|dev-desktop-reload\.mjs|reload-and-verify-p0003\.mjs/i;
+const ELECTRON_CLI_RE = /electron[/\\]cli\.js/i;
 const PRODUCT_ROOT_RE = /P0003-Stealth-Browser-Console/i;
 
 /** True when command line belongs to this tool's dev orchestrator (not packaged Setup.exe). */
 export function isStealthDevCommandLine(commandLine) {
   const cmd = String(commandLine || "");
   if (!cmd) return false;
-  return PRODUCT_ROOT_RE.test(cmd) && DEV_SCRIPT_RE.test(cmd);
+  if (PRODUCT_ROOT_RE.test(cmd) && DEV_SCRIPT_RE.test(cmd)) return true;
+  // dev-desktop-only stores `node …/electron/cli.js .` — hoisted path has no P0003 folder in cmdline.
+  if (ELECTRON_CLI_RE.test(cmd) && /\s\.\s*$/.test(cmd.trim())) return true;
+  return false;
+}
+
+/** Electron renderer/gpu from dev-desktop-only (isolated userData). Never packaged prod. */
+export function isStealthDevElectronProcess(commandLine) {
+  const cmd = String(commandLine || "");
+  if (!cmd) return false;
+  return /electron\.exe/i.test(cmd) && /stealth-browser-console-dev/i.test(cmd);
 }
 
 export function readDevPid() {
@@ -66,6 +77,12 @@ export function isStealthDevPid(pid) {
   return false;
 }
 
+/** True when dev-desktop-only Electron orchestrator is alive (pid file + electron/cli.js). */
+export function isStealthDevRunning() {
+  const pid = readDevPid();
+  return Boolean(pid && isStealthDevPid(pid));
+}
+
 export function clearPidFile() {
   try {
     fs.unlinkSync(PID_FILE);
@@ -105,6 +122,25 @@ function killWatchBuild() {
   }
 }
 
+function killOrphanDevElectron() {
+  if (process.platform !== "win32") return;
+  spawnSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      [
+        "$procs = Get-CimInstance Win32_Process -Filter \"Name='electron.exe'\" -ErrorAction SilentlyContinue",
+        "| Where-Object { $_.CommandLine -match 'stealth-browser-console-dev' }",
+        "foreach ($p in $procs) {",
+        "  Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue",
+        "}",
+      ].join(" "),
+    ],
+    winSpawnOpts({ stdio: "ignore" }),
+  );
+}
+
 export function killStealthDev() {
   const pid = readDevPid();
   if (pid && isStealthDevPid(pid)) {
@@ -123,6 +159,7 @@ export function killStealthDev() {
     );
   }
   clearPidFile();
+  killOrphanDevElectron();
   killWatchBuild();
   killDevPorts();
 }

@@ -65,7 +65,7 @@ export function HubAdmInlineFieldLabel({
   labelHint?: HubDirectoryColumnHintContent;
 }) {
   const label = (
-    <span className="hub-adm-inline-field__label hub-users-th-label hub-users-th-label--start">
+    <span className="hub-adm-inline-field__label hub-users-th-label hub-users-th-label--start hub-inline-gap-name">
       <HubTableColumnHeader {...header} />
     </span>
   );
@@ -266,8 +266,12 @@ export function HubAdmClickFilterField({
         panelSearchAsync={panelSearchAsync}
         triggerContent={
           <>
-            <span className="hub-adm-click-edit__text min-w-0 truncate" title={opt?.label ?? fieldLabel}>
-              {opt?.emoji ? `${opt.emoji} ` : ""}
+            <span className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate" title={opt?.label ?? fieldLabel}>
+              {opt?.iconSrc ? (
+                <img src={opt.iconSrc} alt="" className="h-[14px] w-[20px] shrink-0 rounded-[2px] border border-white/10 object-cover" />
+              ) : opt?.emoji ? (
+                `${opt.emoji} `
+              ) : null}
               <HubAdmSearchHighlightText text={opt?.label ?? fieldLabel} />
             </span>
             <ChevronDown size={compactIconSize(10)} className="hub-adm-click-filter__chevron shrink-0" aria-hidden />

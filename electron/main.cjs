@@ -197,6 +197,7 @@ function bindIpc() {
       {
         sessionManager,
         profileService,
+        userDataRoot,
         verifyRuntime: verifyPackagedRuntime,
         formatRuntimeError: formatPackagedRuntimeRepairMessage,
       },

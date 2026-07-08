@@ -2,6 +2,7 @@
 
 const { runOpenUrl } = require("../automation/open-url.cjs");
 const { getBinaryInfoCached } = require("../engine/cloak-browser-engine.cjs");
+const { isCorruptSqliteError, recoverCorruptDatabase } = require("../db/init.cjs");
 
 const PATCH_ALLOWED_FIELDS = [
   "name",
@@ -44,10 +45,7 @@ async function ensureProfileExtensionPins(profile, userDataRoot) {
   }
 }
 
-/**
- * @param {{ sessionManager: import('../engine/session-manager.cjs').SessionManager, profileService: object, verifyRuntime?: () => { ok: boolean }, formatRuntimeError?: (r: object) => string }} deps
- */
-async function launchProfile(deps, { id, name, skipStartupUrl = false } = {}) {
+async function launchProfileOnce(deps, { id, name, skipStartupUrl = false } = {}) {
   if (deps.verifyRuntime) {
     const runtime = deps.verifyRuntime();
     if (!runtime.ok) {
@@ -56,8 +54,23 @@ async function launchProfile(deps, { id, name, skipStartupUrl = false } = {}) {
   }
   const profile = deps.profileService.resolveProfileForLaunch({ id, name });
   if (!profile) throw new Error("Profile not found.");
-  const result = await deps.sessionManager.launch(profile, { skipStartupUrl });
-  return result;
+  return deps.sessionManager.launch(profile, { skipStartupUrl });
+}
+
+/**
+ * @param {{ sessionManager: import('../engine/session-manager.cjs').SessionManager, profileService: object, userDataRoot?: () => string, verifyRuntime?: () => { ok: boolean }, formatRuntimeError?: (r: object) => string }} deps
+ */
+async function launchProfile(deps, { id, name, skipStartupUrl = false } = {}) {
+  try {
+    return await launchProfileOnce(deps, { id, name, skipStartupUrl });
+  } catch (error) {
+    const userDataRoot = deps.userDataRoot?.();
+    if (!userDataRoot || !isCorruptSqliteError(error)) throw error;
+    const recovered = await recoverCorruptDatabase(userDataRoot);
+    if (!recovered.ok) throw error;
+    console.warn("[profile-ops] recovered corrupt stealth-console.db — retrying launch");
+    return launchProfileOnce(deps, { id, name, skipStartupUrl });
+  }
 }
 
 async function closeProfile(deps, { id, name } = {}) {

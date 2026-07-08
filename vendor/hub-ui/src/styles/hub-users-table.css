@@ -79,7 +79,7 @@ table.hub-users-table {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--hub-inline-gap-comfort, 6px);
   white-space: nowrap;
 }
 

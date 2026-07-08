@@ -193,7 +193,7 @@ function buildRoutes(services) {
         const profileId = ctx.params[1];
         try {
           const result = await launchProfileOp(
-            { sessionManager, profileService },
+            { sessionManager, profileService, userDataRoot },
             { id: profileId },
           );
           if (result.ok) await sessionManager.minimizeProfile(profileId).catch(() => undefined);

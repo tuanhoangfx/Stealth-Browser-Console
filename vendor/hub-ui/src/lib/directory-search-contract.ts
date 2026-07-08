@@ -9,5 +9,19 @@ export const DIRECTORY_SEARCH_UI_DEBOUNCE_MS = 0 as const;
 /** Client filter, facet counts, haystack scan — default for `useDirectorySearchQuery`. */
 export const DIRECTORY_SEARCH_FILTER_DEBOUNCE_MS = 140;
 
+/** P0020 large client vaults — slightly tighter than default; still batches keystrokes safely. */
+export const DIRECTORY_SEARCH_CLIENT_FILTER_DEBOUNCE_MS = 100;
+
+/**
+ * P0020 client catalogs — debounced filter + transition apply; input UI stays live via `queryInput`.
+ * Never `live: true` on large vaults (Mail ~10k rows) — sync filter per keystroke freezes/crashes.
+ */
+export const DIRECTORY_SEARCH_CLIENT_FILTER_OPTS = {
+  debounceMs: DIRECTORY_SEARCH_CLIENT_FILTER_DEBOUNCE_MS,
+} as const;
+
+/** @deprecated Use `DIRECTORY_SEARCH_CLIENT_FILTER_OPTS` — live filter is not safe on large client vaults. */
+export const DIRECTORY_SEARCH_CLIENT_FILTER_LIVE_OPTS = DIRECTORY_SEARCH_CLIENT_FILTER_OPTS;
+
 /** Server-paginated directory fetch (SQL/API) — P0003 Profiles golden. */
 export const DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS = 200;
