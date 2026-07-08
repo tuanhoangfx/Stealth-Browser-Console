@@ -23,6 +23,8 @@ module.exports.PACKAGED_MAIN_RUNTIME_DEPS = [
   // cloakbrowser engine download (profile launch extracts Chromium archive)
   "tar",
   "cloakbrowser",
+  // proxy + geoip (cloakbrowser/dist/geoip.js dynamic import)
+  "mmdb-lib",
 ];
 
 module.exports.PACKAGED_RUNTIME_DEPS = [

@@ -1,6 +1,21 @@
 # Changelog
 
-## 2026-07-08 — v1.0.0 — Packaged profile launch fix (cloakbrowser tar)
+## 2026-07-08 — v1.0.1 — Fix proxy geoip (mmdb-lib) on packaged build
+
+- Version: `1.0.1`
+- Timestamp: 2026-07-08 21:40 (UTC+7)
+- Type: Patch
+- Status: Release
+
+### Changes
+
+- **Packaged proxy launch** — stage `mmdb-lib` beside unpacked `cloakbrowser` (ESM `geoip.js` import); only enable `geoip: true` when unpacked module exists (fixes false-positive `require.resolve` from asar).
+
+### Verification
+
+- `afterPack` 7/7 ESM deps · `smoke-packaged-cloakbrowser-import` tar + mmdb-lib/geoip OK.
+
+---
 
 - Version: `1.0.0`
 - Timestamp: 2026-07-08 21:15 (UTC+7)

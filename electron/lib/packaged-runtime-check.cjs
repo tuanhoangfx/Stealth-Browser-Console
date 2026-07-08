@@ -9,6 +9,7 @@ const REQUIRED_UNPACKED = [
   "node_modules/playwright-core/index.js",
   "node_modules/cloakbrowser/package.json",
   "node_modules/tar/package.json",
+  "node_modules/mmdb-lib/package.json",
 ];
 
 function unpackedRoot() {

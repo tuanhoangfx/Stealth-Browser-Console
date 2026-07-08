@@ -1,7 +1,15 @@
 "use strict";
 
-/** ESM deps cloakbrowser/dist/download.js imports — must sit beside cloakbrowser at runtime. */
-const CLOAK_ESM_DEPS = ["tar", "minipass", "minizlib", "yallist", "chownr", "@isaacs/fs-minipass"];
+/** ESM deps cloakbrowser imports — must sit beside cloakbrowser at runtime (unpacked). */
+const CLOAK_ESM_DEPS = [
+  "tar",
+  "minipass",
+  "minizlib",
+  "yallist",
+  "chownr",
+  "@isaacs/fs-minipass",
+  "mmdb-lib",
+];
 
 function unpackedNodeModulesRoot(resourcesPath) {
   return require("node:path").join(resourcesPath, "app.asar.unpacked", "node_modules");

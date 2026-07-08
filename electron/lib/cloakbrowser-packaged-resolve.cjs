@@ -37,9 +37,30 @@ function resolveCloakbrowserPackageDir({ isPackaged, resourcesPath } = {}) {
   return path.dirname(require.resolve("cloakbrowser/package.json"));
 }
 
+/** True when module exists beside unpacked cloakbrowser (ESM import from cloakbrowser/*.js). */
+function isPackagedUnpackedModuleAvailable(resourcesPath, moduleName) {
+  if (!resourcesPath || !moduleName) return false;
+  const pkgJson = path.join(unpackedNodeModulesRoot(resourcesPath), ...String(moduleName).split("/"), "package.json");
+  return fs.existsSync(pkgJson);
+}
+
+function isMmdbLibAvailableForGeoip({ isPackaged, resourcesPath } = {}) {
+  if (isPackaged) {
+    return isPackagedUnpackedModuleAvailable(resourcesPath, "mmdb-lib");
+  }
+  try {
+    require.resolve("mmdb-lib");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 module.exports = {
   resolveUnpackedCloakbrowserDir,
   resolveUnpackedCloakbrowserImport,
   resolveCloakbrowserImportSpecifier,
   resolveCloakbrowserPackageDir,
+  isPackagedUnpackedModuleAvailable,
+  isMmdbLibAvailableForGeoip,
 };

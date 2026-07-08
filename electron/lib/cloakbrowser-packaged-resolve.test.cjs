@@ -1,9 +1,11 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
 const {
   resolveCloakbrowserImportSpecifier,
   resolveUnpackedCloakbrowserImport,
+  isMmdbLibAvailableForGeoip,
 } = require("./cloakbrowser-packaged-resolve.cjs");
 
 describe("cloakbrowser packaged resolve", () => {
@@ -24,5 +26,14 @@ describe("cloakbrowser packaged resolve", () => {
       resolveCloakbrowserImportSpecifier({ isPackaged: true, resourcesPath: distDesktop }),
       href,
     );
+  });
+
+  it("detects mmdb-lib beside unpacked cloakbrowser for geoip", () => {
+    const distDesktop = path.resolve(__dirname, "..", "..", "dist-desktop", "win-unpacked", "resources");
+    if (!fs.existsSync(path.join(distDesktop, "app.asar.unpacked", "node_modules", "mmdb-lib", "package.json"))) {
+      console.log("skip: dist-desktop mmdb-lib not built");
+      return;
+    }
+    assert.equal(isMmdbLibAvailableForGeoip({ isPackaged: true, resourcesPath: distDesktop }), true);
   });
 });

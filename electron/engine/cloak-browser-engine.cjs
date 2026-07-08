@@ -4,6 +4,7 @@ const { pathToFileURL } = require("node:url");
 const {
   resolveCloakbrowserImportSpecifier,
   resolveCloakbrowserPackageDir,
+  isMmdbLibAvailableForGeoip,
 } = require("../lib/cloakbrowser-packaged-resolve.cjs");
 
 function packagedRuntime() {
@@ -84,12 +85,10 @@ const { formatProxyForLaunch, toPlaywrightProxy } = require("../lib/proxy-pool.c
 function proxyLaunchExtras(proxy) {
   const normalized = formatProxyForLaunch(proxy);
   if (!normalized) return {};
-  try {
-    require.resolve("mmdb-lib");
+  if (isMmdbLibAvailableForGeoip(packagedRuntime())) {
     return { proxy: normalized, geoip: true };
-  } catch {
-    return { proxy: normalized };
   }
+  return { proxy: normalized };
 }
 
 function shouldStripSandboxFlags() {

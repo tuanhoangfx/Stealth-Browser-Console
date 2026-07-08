@@ -23,7 +23,11 @@ async function main() {
   }
   const downloadPath = path.join(resources, "app.asar.unpacked", "node_modules", "cloakbrowser", "dist", "download.js");
   await import(pathToFileURL(downloadPath).href);
-  console.log("smoke-packaged-cloakbrowser-import: OK (cloakbrowser + download/tar ESM resolve)");
+  const geoipPath = path.join(resources, "app.asar.unpacked", "node_modules", "cloakbrowser", "dist", "geoip.js");
+  await import(pathToFileURL(geoipPath).href);
+  const mmdbPath = path.join(resources, "app.asar.unpacked", "node_modules", "mmdb-lib", "lib", "index.js");
+  await import(pathToFileURL(mmdbPath).href);
+  console.log("smoke-packaged-cloakbrowser-import: OK (cloakbrowser + tar + mmdb-lib/geoip ESM resolve)");
 }
 
 main().catch((error) => {
