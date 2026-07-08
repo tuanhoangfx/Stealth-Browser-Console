@@ -2,10 +2,9 @@ const { app, ipcMain } = require("electron");
 
 const { autoUpdater } = require("electron-updater");
 
-
+const { resolveUpdaterGhToken } = require("./lib/updater-auth.cjs");
 
 /** @type {import("electron").BrowserWindow | null} */
-
 let mainWindow = null;
 
 
@@ -103,9 +102,10 @@ function friendlyUpdateError(error) {
   const message = error instanceof Error ? error.message : String(error);
 
   if (/404|not found/i.test(message)) {
-
-    return "Update feed not reachable (GitHub Releases must be public for electron-updater).";
-
+    const hasAuth = Boolean(resolveUpdaterGhToken(app));
+    return hasAuth
+      ? "Update feed not reachable — check GitHub Releases or updater token scope."
+      : "Update feed not reachable (GitHub Releases must be public, or add updater-gh-token for private repo).";
   }
 
   return message;
@@ -114,9 +114,20 @@ function friendlyUpdateError(error) {
 
 
 
-function configureAutoUpdater() {
+function applyUpdaterRequestHeaders() {
+  const token = resolveUpdaterGhToken(app);
+  if (!token) return false;
+  autoUpdater.requestHeaders = {
+    ...(autoUpdater.requestHeaders || {}),
+    Authorization: `Bearer ${token}`,
+    Accept: "application/octet-stream",
+  };
+  return true;
+}
 
+function configureAutoUpdater() {
   const channel = runtimeChannel();
+  applyUpdaterRequestHeaders();
 
   // Installer: silent download + install on quit. Portable: manual replace .exe.
 

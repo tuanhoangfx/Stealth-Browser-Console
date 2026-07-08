@@ -16,6 +16,12 @@ runStep("sync-stealth-api-surface", "node", ["scripts/sync-stealth-api-surface.m
 runStep("agent-smoke-mode", "node", ["--test", "electron/lib/agent-smoke-mode.test.cjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
+runStep("refresh-hub-ui-node-link", "node", [
+  path.join(root, "..", "scripts", "refresh-hub-ui-node-link.cjs"),
+  "--code",
+  "P0003",
+  "--fix",
+]);
 runStep("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
 runStep("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
 runStep("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);

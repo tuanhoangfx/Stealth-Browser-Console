@@ -118,6 +118,12 @@
       "**/node_modules/cloakbrowser/**",
       "**/node_modules/playwright-core/**"
     ],
+    "extraResources": [
+      {
+        "from": "build/updater-gh-token",
+        "to": "updater-gh-token"
+      }
+    ],
     "win": {
       "icon": "build/icons/app.ico",
       "target": [

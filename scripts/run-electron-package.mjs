@@ -276,6 +276,8 @@ if (process.platform === "win32") {
   runNodeScript("scripts/ensure-better-sqlite3.mjs");
 }
 
+runNodeScript("scripts/write-updater-auth.mjs");
+
 const stagingOutput = path.join(os.tmpdir(), `p0003-eb-${Date.now()}`);
 rmDir(stagingOutput);
 
