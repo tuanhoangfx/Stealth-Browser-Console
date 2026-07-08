@@ -11,31 +11,35 @@ $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $ConfigPath = Join-Path $RepoRoot "config\known-good.json"
 
 if (-not (Test-Path $ConfigPath)) {
-  throw "Missing $ConfigPath — run: node scripts/snapshot-known-good.mjs"
+  throw "Missing $ConfigPath - run: node scripts/snapshot-known-good.mjs"
 }
 
 $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 $backupRoot = Join-Path $RepoRoot ($cfg.backup.dir -replace "/", "\")
 $installer = Join-Path $backupRoot $cfg.backup.installer
-$unpackedExe = Join-Path $backupRoot $cfg.backup.winUnpacked "Stealth Browser Console.exe"
+$unpackedExe = Join-Path (Join-Path $backupRoot $cfg.backup.winUnpacked) "Stealth Browser Console.exe"
 
 Write-Host ""
 Write-Host "==> Known-good restore: $($cfg.label) v$($cfg.version)" -ForegroundColor Cyan
 if ($cfg.gitCommit) { Write-Host "    git: $($cfg.gitCommit)" }
 if ($cfg.backup.capturedAt) { Write-Host "    snapshot: $($cfg.backup.capturedAt)" }
 
-function Stop-Stealth {
-  Get-Process -ErrorAction SilentlyContinue | Where-Object {
-    $_.Path -and $_.Path -match "Stealth Browser Console"
-  } | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
-  Start-Sleep -Seconds 2
+function Stop-StealthProdOnly {
+  Push-Location $RepoRoot
+  try {
+    node (Join-Path $RepoRoot "scripts\lib\close-stealth-prod-only.mjs")
+    if ($LASTEXITCODE -ne 0) { throw "close-stealth-prod-only failed" }
+  } finally {
+    Pop-Location
+  }
+  Start-Sleep -Seconds 1
 }
 
-Stop-Stealth
+Stop-StealthProdOnly
 
 if ($GitCheckout) {
   if (-not $cfg.gitCommit) {
-    Write-Warning "known-good.json has no gitCommit — commit+tag first, then re-run snapshot-known-good.mjs"
+    Write-Warning "known-good.json has no gitCommit - commit+tag first, then re-run snapshot-known-good.mjs"
   } else {
     Write-Host "==> git checkout $($cfg.gitTag) ($($cfg.gitCommit))" -ForegroundColor Cyan
     Push-Location $RepoRoot
@@ -67,7 +71,7 @@ if ($cfg.backup.sha512 -and (Test-Path $installer)) {
   $bytes = [IO.File]::ReadAllBytes($installer)
   $sha = [Convert]::ToBase64String(([Security.Cryptography.SHA512]::Create().ComputeHash($bytes)))
   if ($sha -ne $cfg.backup.sha512) {
-    Write-Warning "Installer SHA512 mismatch — backup may be stale. Re-run snapshot-known-good.mjs"
+    Write-Warning "Installer SHA512 mismatch - backup may be stale. Re-run snapshot-known-good.mjs"
   } else {
     Write-Host "    installer SHA512 OK" -ForegroundColor DarkGreen
   }
@@ -78,7 +82,7 @@ if ($Install -and (Test-Path $installer)) {
   $proc = Start-Process -FilePath $installer -ArgumentList "/CURRENTUSER", "/S" -PassThru -Wait
   Write-Host "    installer exit: $($proc.ExitCode)"
 } elseif ($Install) {
-  Write-Warning "No installer backup — use -LaunchOnly or build snapshot with desktop:dist"
+  Write-Warning "No installer backup - use -LaunchOnly or build snapshot with desktop:dist"
 }
 
 if ($PurgeSurfshark) {

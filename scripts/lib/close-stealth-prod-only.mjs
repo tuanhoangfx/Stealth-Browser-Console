@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Close packaged Setup.exe only — never dev Electron (stealth-browser-console-dev). */
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { closePackagedStealth } from "../close-packaged-stealth.mjs";
 import { winSpawnOpts } from "./win-spawn.mjs";
@@ -27,4 +28,9 @@ export function closeStealthProdOnly() {
   const { killed } = closePackagedStealth();
   killProdApiOrphans();
   return { killed };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { killed } = closeStealthProdOnly();
+  console.log(`close-stealth-prod-only: killed ${killed.length} prod process(es)`);
 }
