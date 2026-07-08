@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.10.66",
+  "version": "0.10.67",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
