@@ -272,6 +272,19 @@
   z-index: 2;
 }
 
+/*
+ * Panel-fill even row height on partial pages (search/filter).
+ * `table { height: 100% }` distributes surplus height by natural content height,
+ * so one data row + empty pad rows lets the data row absorb ALL surplus (giant row).
+ * Give each pad cell a full line's natural height so surplus spreads evenly.
+ */
+.hub-directory-frame.hub-directory-frame--panel-fill tbody tr.hub-users-row--pad td::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: calc(var(--hub-table-body-size, 12px) * var(--hub-table-body-line-height, 1.45));
+}
+
 /* Partial-page pad rows — SSOT for panel-fill stable frame */
 .hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad {
   pointer-events: none;
