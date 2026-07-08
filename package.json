@@ -118,7 +118,8 @@
       "dist/**",
       "electron/**",
       "package.json",
-      "RELEASE.md"
+      "RELEASE.md",
+      "node_modules/tslib/**"
     ],
     "asar": true,
     "asarUnpack": [
