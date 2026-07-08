@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "0.10.68",
+  "version": "0.10.69",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -118,8 +118,7 @@
       "dist/**",
       "electron/**",
       "package.json",
-      "RELEASE.md",
-      "node_modules/tslib/**"
+      "RELEASE.md"
     ],
     "asar": true,
     "asarUnpack": [

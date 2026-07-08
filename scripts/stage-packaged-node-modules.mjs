@@ -76,16 +76,21 @@ function collectDeps(names) {
   return resolved;
 }
 
+function packageDest(name) {
+  // Node resolves require(X) against <path>/node_modules/X — never <path>/X.
+  return path.join(targetRoot, "node_modules", ...String(name).split("/"));
+}
+
 function main() {
   const modules = collectDeps(PACKAGED_RUNTIME_DEPS);
   fs.rmSync(targetRoot, { recursive: true, force: true });
-  fs.mkdirSync(targetRoot, { recursive: true });
+  fs.mkdirSync(path.join(targetRoot, "node_modules"), { recursive: true });
 
   for (const [name, src] of modules) {
-    copyDir(src, path.join(targetRoot, name));
+    copyDir(src, packageDest(name));
   }
 
-  console.log(`stage-packaged-node-modules: copied ${modules.size} module(s) → electron/packaged-node_modules`);
+  console.log(`stage-packaged-node-modules: copied ${modules.size} module(s) → electron/packaged-node_modules/node_modules`);
 }
 
 main();

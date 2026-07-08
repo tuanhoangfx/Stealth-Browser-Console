@@ -27,10 +27,15 @@ function listAsar() {
 }
 
 function hasAsarModule(list, name) {
+  const sepName = String(name).split("/").join(path.sep);
   const needles = [
-    `node_modules${path.sep}${name}${path.sep}`,
+    `node_modules${path.sep}${sepName}${path.sep}`,
     `node_modules/${name}/`,
-    `electron${path.sep}packaged-node_modules${path.sep}${name}${path.sep}`,
+    // Nested under packaged vendor root (NODE_PATH / parent.paths entry)
+    `packaged-node_modules${path.sep}node_modules${path.sep}${sepName}${path.sep}`,
+    `packaged-node_modules/node_modules/${name}/`,
+    // Legacy flat layout (pre-0.10.70)
+    `electron${path.sep}packaged-node_modules${path.sep}${sepName}${path.sep}`,
     `electron/packaged-node_modules/${name}/`,
   ];
   return list.some((entry) => needles.some((needle) => entry.includes(needle)));
