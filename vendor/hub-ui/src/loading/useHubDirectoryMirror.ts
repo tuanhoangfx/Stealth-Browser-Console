@@ -51,6 +51,8 @@ export function useHubDirectoryMirror<T>({
 
   const [loading, setLoading] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
+  const revalidatingRef = useRef(false);
+  revalidatingRef.current = revalidating;
   const [fetchSettled, setFetchSettled] = useState(() => readMirror().length > 0);
   const { directoryBootReady, settleBoot, beginBootGate, bootedRef } = useHubDirectoryBoot({
     initialReady: initialMirror.length > 0,
@@ -60,6 +62,7 @@ export function useHubDirectoryMirror<T>({
 
   const applyRows = useCallback(
     (next: T[]) => {
+      if (revalidatingRef.current && next.length > 0 && next.length < rowsRef.current.length) return;
       rowsRef.current = next;
       setRows(next);
       onRowsLoaded?.(next);
@@ -71,6 +74,8 @@ export function useHubDirectoryMirror<T>({
   const syncFromMirror = useCallback(() => {
     const next = normalize(readMirrorRef.current());
     if (next.length === 0 && rowsRef.current.length > 0) return;
+    // Keep stale full cache visible during silent revalidate (progressive mirror warm parity).
+    if (revalidatingRef.current && next.length > 0 && next.length < rowsRef.current.length) return;
     applyRows(next);
   }, [applyRows, normalize]);
 

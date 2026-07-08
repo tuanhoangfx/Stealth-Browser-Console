@@ -63,6 +63,8 @@ type AppTabHeaderProps = {
   onTitleMenuSelect?: (id: string) => void;
   metaItems: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
+  /** Custom center rail (live tickers, tool-specific KPI). Takes precedence over `centerStats`. */
+  centerContent?: ReactNode;
   pinSticky?: boolean;
   dividerBelow?: boolean;
   embedded?: boolean;
@@ -305,6 +307,7 @@ export function AppTabHeader({
   onTitleMenuSelect,
   metaItems,
   centerStats,
+  centerContent,
   pinSticky = true,
   dividerBelow = true,
   embedded = false,
@@ -365,15 +368,16 @@ export function AppTabHeader({
         role="status"
         aria-label={`${title} summary`}
       >
-        {centerStats.map((stat, index) => {
-          const { key, ...statProps } = stat;
-          return (
-            <span key={key} className="inline-flex min-w-0 shrink items-center gap-x-2.5">
-              {index > 0 ? <Rule /> : null}
-              <StatLine {...statProps} />
-            </span>
-          );
-        })}
+        {centerContent ??
+          centerStats.map((stat, index) => {
+            const { key, ...statProps } = stat;
+            return (
+              <span key={key} className="inline-flex min-w-0 shrink items-center gap-x-2.5">
+                {index > 0 ? <Rule /> : null}
+                <StatLine {...statProps} />
+              </span>
+            );
+          })}
       </div>
 
       <div className="app-tab-header__end app-tab-header__chrome-text flex shrink-0 items-center justify-self-end gap-2 text-[var(--muted)]">
