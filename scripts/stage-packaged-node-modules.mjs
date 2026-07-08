@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Copy electron-updater runtime deps into electron/packaged-node_modules for asar (pnpm + narrow build.files).
- * Run before electron-builder pack — wired in run-electron-package.mjs.
+ * Copy main-process + electron-updater runtime deps into electron/packaged-node_modules
+ * for asar (pnpm + narrow build.files). Run before electron-builder pack.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const { PACKAGED_UPDATER_RUNTIME_DEPS } = require("../electron/lib/packaged-updater-deps.cjs");
+const { PACKAGED_RUNTIME_DEPS } = require("../electron/lib/packaged-updater-deps.cjs");
 
 const targetRoot = path.join(root, "electron", "packaged-node_modules");
 
@@ -29,8 +29,29 @@ function copyDir(src, dest) {
 }
 
 function resolvePackageRoot(name, fromDir) {
-  const entry = require.resolve(`${name}/package.json`, { paths: [fromDir, root] });
-  return path.dirname(entry);
+  try {
+    const entry = require.resolve(`${name}/package.json`, { paths: [fromDir, root] });
+    return path.dirname(entry);
+  } catch (error) {
+    // Some packages omit package.json from "exports" (e.g. @supabase/phoenix).
+    const resolved = require.resolve(name, { paths: [fromDir, root] });
+    let dir = path.dirname(resolved);
+    while (dir && dir !== path.dirname(dir)) {
+      const pkgFile = path.join(dir, "package.json");
+      if (fs.existsSync(pkgFile)) {
+        try {
+          const pkg = readJson(pkgFile);
+          if (pkg.name === name || dir.endsWith(`${path.sep}${name}`) || dir.endsWith(`/${name}`)) {
+            return dir;
+          }
+        } catch {
+          /* continue */
+        }
+      }
+      dir = path.dirname(dir);
+    }
+    throw error;
+  }
 }
 
 function collectDeps(names) {
@@ -56,7 +77,7 @@ function collectDeps(names) {
 }
 
 function main() {
-  const modules = collectDeps(PACKAGED_UPDATER_RUNTIME_DEPS);
+  const modules = collectDeps(PACKAGED_RUNTIME_DEPS);
   fs.rmSync(targetRoot, { recursive: true, force: true });
   fs.mkdirSync(targetRoot, { recursive: true });
 

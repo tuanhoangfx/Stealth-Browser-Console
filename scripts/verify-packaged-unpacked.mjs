@@ -8,7 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { PACKAGED_UPDATER_RUNTIME_DEPS } = require("../electron/lib/packaged-updater-deps.cjs");
+const { PACKAGED_RUNTIME_DEPS } = require("../electron/lib/packaged-updater-deps.cjs");
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const resources = path.join(root, "dist-desktop", "win-unpacked", "resources");
@@ -38,10 +38,10 @@ function hasAsarModule(list, name) {
 
 const missingUnpacked = UNPACKED_REQUIRED.filter((rel) => !fs.existsSync(path.join(unpacked, rel)));
 const asarList = listAsar();
-const missingUpdater = PACKAGED_UPDATER_RUNTIME_DEPS.filter((name) => !hasAsarModule(asarList, name));
+const missingRuntime = PACKAGED_RUNTIME_DEPS.filter((name) => !hasAsarModule(asarList, name));
 
-if (missingUnpacked.length === 0 && missingUpdater.length === 0) {
-  console.log("verify-packaged-unpacked: OK (native unpack + updater runtime deps in asar)");
+if (missingUnpacked.length === 0 && missingRuntime.length === 0) {
+  console.log("verify-packaged-unpacked: OK (native unpack + packaged runtime deps in asar)");
   process.exit(0);
 }
 
@@ -51,9 +51,9 @@ if (missingUnpacked.length) {
   console.error(`  root: ${unpacked}`);
 }
 
-if (missingUpdater.length) {
-  console.error("verify-packaged-unpacked: FAIL — missing electron-updater runtime deps in app.asar:");
-  for (const name of missingUpdater) console.error(`  node_modules/${name}`);
+if (missingRuntime.length) {
+  console.error("verify-packaged-unpacked: FAIL — missing packaged runtime deps in app.asar:");
+  for (const name of missingRuntime) console.error(`  node_modules/${name} (or electron/packaged-node_modules/${name})`);
   console.error("  Fix: list deps in electron/lib/packaged-updater-deps.cjs + package.json dependencies");
   console.error(`  asar: ${asarPath}`);
 }

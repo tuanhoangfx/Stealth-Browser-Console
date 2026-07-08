@@ -1,3 +1,4 @@
+require("./lib/ensure-packaged-module-paths.cjs");
 const { app, BrowserWindow, ipcMain, session, shell, dialog } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");

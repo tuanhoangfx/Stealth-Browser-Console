@@ -1,10 +1,7 @@
 const { app, ipcMain } = require("electron");
 
-const fs = require("node:fs");
-const path = require("node:path");
-const Module = require("node:module");
-
 const { resolveUpdaterGhToken } = require("./lib/updater-auth.cjs");
+require("./lib/ensure-packaged-module-paths.cjs");
 
 /** @type {import("electron").BrowserWindow | null} */
 let mainWindow = null;
@@ -12,18 +9,9 @@ let mainWindow = null;
 /** @type {import("electron-updater").AppUpdater | null | undefined} */
 let autoUpdaterInstance;
 
-function ensurePackagedUpdaterModulePaths() {
-  const vendor = path.join(__dirname, "packaged-node_modules");
-  if (!fs.existsSync(vendor)) return;
-  if (!Module.globalPaths.includes(vendor)) {
-    Module.globalPaths.unshift(vendor);
-  }
-}
-
 function getAutoUpdater() {
   if (autoUpdaterInstance !== undefined) return autoUpdaterInstance;
   try {
-    ensurePackagedUpdaterModulePaths();
     autoUpdaterInstance = require("electron-updater").autoUpdater;
   } catch (error) {
     console.error("[updater] electron-updater unavailable:", error);
