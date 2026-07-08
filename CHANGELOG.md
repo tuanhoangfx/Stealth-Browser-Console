@@ -5,7 +5,8 @@
 - Version: `0.10.66`
 - Timestamp: 2026-07-08 07:43 (UTC+7)
 - Type: Patch
-- Status: Draft
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.66
 
 ### Changes
 
