@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "1.0.1",
+  "version": "1.0.11",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -46,7 +46,11 @@
     "desktop:swap-unpacked": "node scripts/desktop-swap-unpacked.mjs",
     "desktop:shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
     "desktop:release": "powershell -ExecutionPolicy Bypass -File scripts/release-desktop.ps1",
+    "desktop:release:bg": "powershell -ExecutionPolicy Bypass -File scripts/release-desktop-background.ps1",
+    "desktop:release:status": "node scripts/release-desktop-status.mjs",
     "desktop:release:patch": "pnpm desktop:release -- -Bump patch -Publish",
+    "desktop:release:ship": "pnpm desktop:release -- -Publish -FastTests -SkipInstall",
+    "desktop:release:patch:bg": "pnpm desktop:release:bg -- -Bump patch -Publish",
     "desktop:release:minor": "pnpm desktop:release -- -Bump minor -Publish",
     "desktop:release:major": "pnpm desktop:release -- -Bump major -Publish",
     "workflow:publish": "node scripts/publish-workflow-catalog.mjs",
@@ -119,6 +123,7 @@
     "files": [
       "dist/**",
       "electron/**",
+      "shared/**",
       "package.json",
       "RELEASE.md"
     ],
@@ -170,5 +175,6 @@
         "releaseType": "release"
       }
     ]
-  }
+  },
+  "packageManager": "pnpm@9.15.9"
 }
