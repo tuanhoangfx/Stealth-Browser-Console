@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
  * Pin current desktop build as known-good rollback target.
+ * Desktop / Electron only — NOT Vercel. Do not use resolve-known-good-deploy
+ * (ship-cache / Vercel API); that helper is for Web products (P0020/P0005/P0024).
+ *
  * Copies installer (or win-unpacked) → dist-desktop/known-good/ + updates config/known-good.json.
  *
  * Usage:
