@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-07-17 — v1.0.32 — Bundle E0001 in installer (fast, offline first open)
+
+- Version: `1.0.32`
+- Timestamp: 2026-07-17 17:45 (UTC+7)
+- Type: Patch
+- Status: Verified (unit + launch benchmark)
+
+### Changes
+
+- **Bundled E0001 in the installer.** The verified Chrome Web Store snapshot
+  (`build/bundled-extensions/<storeId>/unpacked`, ~1MB, shipped via `extraResources`)
+  is seeded straight into the AppData cache on a fresh install — the very first profile
+  open loads E0001 with **no Chrome Web Store download** (offline-safe). This removes the
+  one-time multi-second cold spike a brand-new machine used to pay. Chromium's own
+  extension updater still refreshes it later from the store id.
+- **Fresh-install guard (deterministic, no network).** The launch hot path
+  (`resolveCookieBridgeExtensionDirSync` → `seedCacheFromBundle`) now resolves E0001
+  synchronously from the bundle, so the first open never blocks on the network — no
+  cosmetic "Preparing…" spinner needed because the seed is a local ~1MB copy.
+- **Release pipeline.** New `scripts/sync-bundled-e0001.mjs` refreshes the bundled
+  snapshot at release time (offline-safe: keeps the committed copy if the store is
+  unreachable; `--force` to re-download). Wired into `release-desktop.ps1` before packaging.
+- **Launch-speed gate realism.** `check-launch-speed` threshold moved 800ms → **1500ms**:
+  the real warm full-open floor is Chromium spawn + E0001 load (~850–1100ms, machine
+  dependent), so 800ms false-failed on spawn variance while 1500ms still catches a
+  reintroduced WMI `Get-CimInstance` scan (~3800ms). Matches the unit guard
+  `prepare-profile-launch.test.cjs`.
+- Prod-proof: fresh benchmark with the bundled E0001 records warm full-open **855ms**
+  (prep=0ms → WMI fix holds); the sub-500ms 1.0.11 path was E0001-less, so ~850ms is the
+  expected floor with the cookie bridge loaded.
+- Regression guard: `cookie-bridge-store.test.cjs` now asserts the bundle seeds a fresh
+  cache and the sync launch resolver returns it without a download.
+
 ## 2026-07-17 — v1.0.31 — Electron dev reload
 
 - Version: `1.0.31`

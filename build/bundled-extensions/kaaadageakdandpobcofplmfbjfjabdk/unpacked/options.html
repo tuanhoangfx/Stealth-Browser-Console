@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E0001 Cookie Bridge — Settings</title>
+    <link rel="stylesheet" href="options-theme.css" />
+  </head>
+  <body class="options-page">
+    <div class="shell">
+      <header class="header">
+        <div class="logo">C</div>
+        <div class="header-text">
+          <h1>Cookie Bridge — Settings</h1>
+          <p id="options-ver-meta">Manual bindings (offline fallback)</p>
+        </div>
+      </header>
+
+      <div class="body-scroll">
+        <section class="setup-card setup-card--web">
+          <h2 class="setup-card__title">Manage on web (recommended)</h2>
+          <p class="text-[11px] text-[var(--muted)] mb-2">
+            Routes, vault status, and Link extension live in Workspace Tools → Cookie sync.
+          </p>
+          <div class="btn-row btn-row--tools">
+            <button type="button" id="open-tool-local" class="btn-primary">Open Cookie sync (local)</button>
+            <button type="button" id="open-tool-prod" class="btn-secondary">Open Cookie sync (prod)</button>
+          </div>
+        </section>
+
+        <section class="setup-card">
+          <h2 class="setup-card__title">Import Cookie-Editor JSON (login fix)</h2>
+          <p class="text-[11px] text-[var(--muted)] mb-2">
+            Paste export from
+            <a href="https://github.com/moustachauve/cookie-editor" target="_blank" rel="noopener">Cookie-Editor</a>
+            → Apply to this browser. Snapshot in Tool is masked only — cannot log in.
+          </p>
+          <textarea
+            id="cookie-editor-json"
+            class="field cookie-json"
+            rows="6"
+            placeholder='[{"domain":".facebook.com","name":"c_user",...}]'
+          ></textarea>
+          <div class="btn-row btn-row--tools mt-2">
+            <button type="button" id="import-cookie-editor" class="btn-primary">Apply JSON to browser</button>
+          </div>
+        </section>
+
+        <section class="setup-card">
+          <h2 class="setup-card__title">New browser — auto sync setup</h2>
+          <ol class="setup-steps">
+            <li>
+              <strong>Link session (required)</strong> — Open Tool → sign in →
+              <em>Cookie sync</em> → <strong>Link extension</strong>. This stores JWT + Supabase for sync.
+            </li>
+            <li>
+              <strong>Add binding</strong> — In Tool: domain <code>.facebook.com</code> → note UUID. Or use rows below.
+            </li>
+            <li>
+              <strong>Log in on this browser</strong> — Open facebook.com (or target site) and sign in normally. Extension reads cookies only.
+            </li>
+            <li>
+              <strong>Sync</strong> — Extension popup → <em>Sync</em> on each route row (manual only). Options “Sync now” below is legacy and requires a route in the popup.
+            </li>
+          </ol>
+          <p id="auth-status" class="auth-status auth-status--off">Checking link…</p>
+          <div class="btn-row btn-row--tools">
+            <button type="button" id="apply-vault" class="btn-secondary">Load cookies (vault)</button>
+            <button type="button" id="sync-now" class="btn-secondary">Sync now</button>
+          </div>
+        </section>
+
+        <p class="hint">Manual bindings below — only when Tool is offline.</p>
+
+        <div class="preset-row">
+          <span class="preset-label">Domain presets:</span>
+          <button type="button" class="btn-chip" data-preset=".facebook.com">.facebook.com</button>
+          <button type="button" class="btn-chip" data-preset=".zalo.me">.zalo.me</button>
+          <button type="button" class="btn-chip" data-preset=".google.com">.google.com</button>
+        </div>
+
+        <div id="bindings" class="bindings-root" aria-live="polite"></div>
+
+        <div class="btn-row">
+          <button type="button" id="add" class="btn-secondary">+ Add binding</button>
+          <button type="button" id="save" class="btn-primary" style="flex: 1">Save bindings</button>
+        </div>
+        <p id="msg"></p>
+      </div>
+    </div>
+
+    <script src="build-info.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

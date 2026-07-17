@@ -1,0 +1,58 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+  "manifest_version": 3,
+  "name": "E0001 Cookie Bridge",
+  "version": "1.1.25",
+  "description": "Manual Sync/Load per route only; snapshot + AES-GCM vault on explicit Sync (V4).",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["cookies", "storage", "tabs", "scripting"],
+  "host_permissions": [
+    "<all_urls>",
+    "https://*.supabase.co/*",
+    "https://hub-api.infi.io.vn/*",
+    "https://sb-api.infi.io.vn/*",
+    "https://*.infi.io.vn/*",
+    "http://127.0.0.1:5176/*",
+    "http://127.0.0.1:5177/*",
+    "https://infi.io.vn/*",
+    "https://databox.infi.io.vn/*",
+    "https://tool-manager-zeta.vercel.app/*",
+    "https://*.vercel.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://127.0.0.1:5176/*",
+        "http://127.0.0.1:5177/*",
+        "https://infi.io.vn/*",
+        "https://databox.infi.io.vn/*",
+        "https://tool-manager-zeta.vercel.app/*",
+        "https://tool-hub.vercel.app/*",
+        "https://*.vercel.app/*"
+      ],
+      "js": ["content-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "E0001 Cookie Bridge",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html"
+}

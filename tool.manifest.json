@@ -156,8 +156,8 @@
   },
   "manifestUpdatedAt": "2026-07-17T11:02:37.086Z",
   "release": {
-    "version": "1.0.31",
-    "updatedAt": "2026-07-07",
+    "version": "1.0.32",
+    "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
       "tag": "v1.0.31",

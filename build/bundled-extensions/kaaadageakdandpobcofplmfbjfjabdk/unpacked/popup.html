@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>E0001 Cookie Bridge</title>
+    <link rel="stylesheet" href="hub-workspace-user-modal.css" />
+    <link rel="stylesheet" href="hub-directory-popover.css" />
+    <link rel="stylesheet" href="popup-theme.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="header">
+        <img class="logo logo-img" src="icons/e0001.svg" alt="" aria-hidden="true" />
+        <div class="header-text">
+          <h1>Cookie Bridge</h1>
+          <p id="ver-meta" class="ver-meta">E0001-cookie-bridge</p>
+        </div>
+        <div class="header-actions">
+          <div id="header-user-chip" class="hub-auth-logout-chip">
+            <button
+              type="button"
+              id="header-user-detail"
+              class="hub-auth-logout-chip__identity"
+              title="User details"
+              aria-label="Open user details"
+            >
+              <span id="header-user-role-icon" class="hub-auth-logout-chip__user-icon hub-user-icon--emerald" aria-hidden="true"></span>
+              <span id="header-user-email-text" class="hub-auth-logout-chip__email">User</span>
+            </button>
+            <button
+              type="button"
+              id="logout"
+              class="hub-auth-logout-chip__logout"
+              title="Log out"
+              aria-label="Log out"
+            >
+              <span data-icon="logout" aria-hidden="true"></span>
+            </button>
+          </div>
+          <button type="button" id="open-settings" class="header-web-link" title="Open Cookie Bridge on Web" aria-label="Open Cookie Bridge on Web">
+            <span data-icon="external" aria-hidden="true"></span>
+          </button>
+        </div>
+      </header>
+
+      <div class="body-scroll">
+        <div class="route-filter-bar">
+          <div class="route-filter-row route-filter-row--top">
+            <label class="route-search">
+              <span class="route-search-icon" data-icon="search" aria-hidden="true"></span>
+              <input id="route-search" type="search" placeholder="Search routes by title, domain, user..." />
+              <button type="button" id="route-search-clear" class="route-search-clear" title="Clear search" hidden>×</button>
+              <span class="route-search-kbd" aria-hidden="true"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+            </label>
+            <span id="route-count" class="route-count">0/0</span>
+          </div>
+          <div class="route-filter-row route-filter-row--filters">
+            <div class="route-filter-dd" data-filter="platform"></div>
+            <div class="route-filter-dd" data-filter="role"></div>
+            <div class="route-filter-dd" data-filter="vault"></div>
+            <div class="route-filter-dd" data-filter="source"></div>
+          </div>
+        </div>
+
+        <nav id="route-table-pager" class="route-table-pager" hidden aria-label="Route pages">
+          <div class="route-table-pager-group">
+            <button type="button" id="route-page-prev" class="route-page-btn" aria-label="Previous routes" disabled>
+              <span data-icon="chevronLeft" aria-hidden="true"></span>
+            </button>
+            <span id="route-page-label" class="route-page-label">Page 1 of 1 · Showing 1-5 of 7</span>
+            <button type="button" id="route-page-next" class="route-page-btn" aria-label="Next routes" disabled>
+              <span data-icon="chevronRight" aria-hidden="true"></span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="table-wrap table-wrap--max-five">
+          <table class="routes-table">
+            <thead>
+              <tr>
+                <th class="col-route" data-col-hint="route"><span class="th-label">Route</span></th>
+                <th class="col-cookies" data-col-hint="cookies"><span class="th-label">Cookies</span></th>
+                <th class="col-user" data-col-hint="user"><span class="th-label">User</span></th>
+                <th class="col-synced" data-col-hint="synced"><span class="th-label">Synced</span></th>
+                <th class="col-loaded" data-col-hint="loaded"><span class="th-label">Loaded</span></th>
+                <th class="col-status" data-col-hint="status"><span class="th-label">Status</span></th>
+                <th class="col-actions" data-col-hint="actions"><span class="th-label th-label--right">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="bindings-body"></tbody>
+          </table>
+          <div id="empty" class="empty" hidden>
+            No bindings yet.<br />
+            Open Tool → Cookie sync to add routes.
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div id="apply-progress-modal" class="apply-progress-modal" role="dialog" aria-modal="true" aria-live="polite" hidden>
+      <div class="apply-progress-card">
+        <div class="apply-progress-icon" aria-hidden="true"></div>
+        <p class="apply-progress-kicker">Load cookies</p>
+        <h2 id="apply-progress-title">Applying cookies</h2>
+        <p id="apply-progress-subtitle">Preparing browser cookie jar…</p>
+        <div class="apply-progress-bar" aria-hidden="true">
+          <span id="apply-progress-fill"></span>
+        </div>
+        <div class="apply-progress-steps">
+          <span id="apply-step-vault" class="is-active">Reading vault</span>
+          <span id="apply-step-write" class="is-pending">Applying cookies</span>
+          <span id="apply-step-verify" class="is-pending">Verifying browser</span>
+        </div>
+        <p class="apply-progress-note">Please keep this tab open for a few seconds.</p>
+      </div>
+    </div>
+    <div id="toast-host" class="toast-host" aria-live="polite"></div>
+    <div id="extension-login-modal" class="auth-gate-root" role="dialog" aria-modal="true" aria-labelledby="extension-login-title" hidden>
+      <div class="auth-gate-backdrop" id="extension-login-backdrop" aria-hidden="true"></div>
+      <div class="auth-gate-panel auth-gate-panel--modal hub-modal-frame">
+        <button type="button" id="extension-login-close" class="hub-modal-close" aria-label="Close sign in">×</button>
+        <div class="auth-gate-brand">
+          <img class="auth-gate-logo" src="icons/e0001.svg" width="48" height="48" alt="" aria-hidden="true" />
+        </div>
+        <h2 id="extension-login-title" class="auth-gate-title">Welcome to Cookie Bridge</h2>
+        <p class="auth-gate-tool-info">E0001 · Cookie Bridge — cookie routes &amp; vault sync</p>
+        <div class="auth-gate-tabs" role="tablist">
+          <button type="button" id="extension-login-tab-signin" class="auth-gate-tab auth-gate-tab--active" role="tab" aria-selected="true">
+            <span class="auth-gate-tab__icon" data-icon="lock" aria-hidden="true"></span>
+            <span>Sign In</span>
+          </button>
+          <button type="button" id="extension-login-tab-signup" class="auth-gate-tab" role="tab" aria-selected="false">
+            <span class="auth-gate-tab__icon" data-icon="user" aria-hidden="true"></span>
+            <span>Sign Up</span>
+          </button>
+        </div>
+        <form id="extension-login-form" class="auth-gate-form">
+          <input id="extension-login-email" class="auth-gate-field" type="text" name="login" placeholder="User ID or email" autocomplete="username" required />
+          <div class="auth-gate-password-wrap">
+            <input id="extension-login-password" class="auth-gate-field" type="password" name="password" placeholder="Password" autocomplete="current-password" required />
+            <button type="button" id="extension-login-forgot" class="auth-gate-forgot">Forgot Password?</button>
+          </div>
+          <p id="extension-login-error" class="auth-gate-message" hidden></p>
+          <button type="submit" id="extension-login-submit" class="auth-gate-submit">
+            <span id="extension-login-submit-icon" class="auth-gate-tab__icon" data-icon="lock" aria-hidden="true"></span>
+            <span id="extension-login-submit-label">Sign In</span>
+          </button>
+        </form>
+      </div>
+    </div>
+    <div id="user-modal" class="modal-backdrop modal-backdrop--tool-detail hub-workspace-user-modal" role="presentation" hidden>
+      <div class="hub-modal-frame">
+        <button type="button" id="user-modal-close" class="hub-modal-close" aria-label="Close user modal">×</button>
+        <div class="modal-shell modal-shell--tool-detail hub-tool-detail-modal hub-header-panel-modal hub-tool-detail-modal--fit" role="dialog" aria-modal="true" aria-labelledby="hub-workspace-user-modal-title">
+          <header class="user-access-modal__header">
+            <div class="user-access-modal__header-main">
+              <span id="hub-workspace-user-avatar" class="user-access-modal__avatar hub-workspace-user-avatar" aria-hidden="true"></span>
+              <h2 id="hub-workspace-user-modal-title" class="user-access-modal__header-name">User</h2>
+            </div>
+          </header>
+          <div class="hub-tool-detail-modal__body">
+            <div class="hub-tool-detail-modal__layout">
+              <aside class="hub-tool-detail-modal__toc">
+                <nav class="hub-toc-nav" aria-label="User account sections">
+                  <button type="button" class="hub-toc-nav__item is-active" data-section="hub-user-account">
+                    <span class="hub-toc-nav__label"><span class="hub-toc-nav__icon" data-icon="user" aria-hidden="true"></span>Account</span>
+                  </button>
+                  <button type="button" class="hub-toc-nav__item" data-section="hub-user-session">
+                    <span class="hub-toc-nav__label"><span class="hub-toc-nav__icon" data-icon="key" aria-hidden="true"></span>Session</span>
+                  </button>
+                </nav>
+              </aside>
+              <div class="hub-tool-detail-modal__content">
+                <div class="hub-tool-detail-modal__scroll hub-tool-detail-modal__scroll--fit">
+                  <div class="hub-tool-detail-modal__scroll-inner">
+                    <div class="hub-tool-detail-sections">
+                      <section id="hub-user-account" class="hub-tool-detail-section">
+                        <header class="hub-tool-detail-section__header">
+                          <h3 class="hub-tool-detail-section__title"><span class="hub-tool-detail-section__title-icon" data-icon="user" aria-hidden="true"></span>Account</h3>
+                        </header>
+                        <div class="hub-tool-detail-section__body">
+                          <table class="hub-user-field-table">
+                            <tbody>
+                              <tr><th><span data-icon="mail" aria-hidden="true"></span>Email</th><td id="user-field-email">—</td></tr>
+                              <tr><th><span data-icon="crown" aria-hidden="true"></span>Role</th><td id="user-field-role">—</td></tr>
+                              <tr><th><span data-icon="key" aria-hidden="true"></span>Provider</th><td id="user-field-provider">—</td></tr>
+                              <tr><th><span data-icon="user" aria-hidden="true"></span>Created</th><td id="user-field-created">—</td></tr>
+                              <tr><th><span data-icon="sync" aria-hidden="true"></span>Last sign in</th><td id="user-field-last-sign-in">—</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                      <section id="hub-user-session" class="hub-tool-detail-section">
+                        <header class="hub-tool-detail-section__header">
+                          <h3 class="hub-tool-detail-section__title"><span class="hub-tool-detail-section__title-icon" data-icon="key" aria-hidden="true"></span>Session</h3>
+                        </header>
+                        <div class="hub-tool-detail-section__body">
+                          <table class="hub-user-field-table">
+                            <tbody>
+                              <tr><th><span data-icon="key" aria-hidden="true"></span>User ID</th><td id="user-field-user-id" class="user-field-mono">—</td></tr>
+                              <tr><th><span data-icon="stickyNote" aria-hidden="true"></span>Note</th><td id="user-field-note" class="hub-user-field-note">Workspace data syncs per signed-in user on Data Box Supabase.</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <footer class="hub-tool-detail-modal__footer">
+            <div class="hub-tool-detail-modal__footer-inner">
+              <button type="button" id="user-modal-logout" class="hub-tool-detail-modal__confirm hub-tool-detail-modal__confirm--danger">
+                <span data-icon="logout" aria-hidden="true"></span>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+    <script src="build-info.js"></script>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

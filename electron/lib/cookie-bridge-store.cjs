@@ -93,6 +93,56 @@ function syncExtensionDirToCache(sourceDir, userDataRoot = defaultUserDataRoot()
 }
 
 /**
+ * Verified store E0001 shipped inside the installer (extraResources →
+ * `resources/bundled-extensions/<id>/unpacked`). Lets a fresh install load E0001
+ * on the very first profile open with NO Chrome Web Store download — the ~1MB
+ * verified snapshot is copied straight into the AppData cache. Chromium's own
+ * extension updater still refreshes it later from the store id.
+ */
+function bundledCookieBridgeDir() {
+  const storeId = COOKIE_BRIDGE_STORE_ID;
+  const candidates = [];
+  try {
+    const { app } = require("electron");
+    if (app?.isPackaged && process.resourcesPath) {
+      candidates.push(path.join(process.resourcesPath, "bundled-extensions", storeId, "unpacked"));
+    }
+  } catch {
+    // not running under Electron (unit tests / node) — fall back to repo build dir
+  }
+  candidates.push(path.resolve(__dirname, "..", "..", "build", "bundled-extensions", storeId, "unpacked"));
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "manifest.json"))) return dir;
+  }
+  return null;
+}
+
+/** Copy the bundled verified store snapshot into the AppData cache (once, when empty). */
+function seedCacheFromBundle(userDataRoot = defaultUserDataRoot()) {
+  const dest = unpackedDir(userDataRoot);
+  if (fs.existsSync(path.join(dest, "manifest.json"))) return dest;
+  const bundle = bundledCookieBridgeDir();
+  // Only seed verified store bytes — an unverified copy cannot load under the store id.
+  if (!bundle || !isVerifiedStoreExtension(bundle)) return null;
+  const staging = `${dest}.seed`;
+  try {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+    fs.cpSync(bundle, staging, { recursive: true, force: true });
+    if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+    fs.renameSync(staging, dest);
+    return dest;
+  } catch {
+    try {
+      if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+}
+
+/**
  * Launch path for profile prefs — always the AppData cache, never workspace.
  * Workspace is synced into cache when present so dev edits still apply.
  */
@@ -105,6 +155,8 @@ function resolveCachedExtensionDir(userDataRoot = defaultUserDataRoot()) {
   }
   if (isVerifiedStoreExtension(cache)) return cache;
   if (fs.existsSync(path.join(cache, "manifest.json"))) return cache;
+  const seeded = seedCacheFromBundle(userDataRoot);
+  if (seeded && isVerifiedStoreExtension(seeded)) return seeded;
   return null;
 }
 
@@ -155,6 +207,8 @@ module.exports = {
   warmCookieBridgeStoreCache,
   resolveCookieBridgeExtensionDirSync,
   resolveCachedExtensionDir,
+  bundledCookieBridgeDir,
+  seedCacheFromBundle,
   syncExtensionDirToCache,
   isVerifiedStoreExtension,
   workspaceExtensionDir,

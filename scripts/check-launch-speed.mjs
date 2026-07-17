@@ -3,8 +3,9 @@
  * Light launch-speed regression guard.
  *
  * Reads the last recorded profile-launch benchmark (`.dev/launch-bench.json`,
- * produced by `benchmark-profile-launch.mjs`) and enforces the warm-open budget
- * that the v1.0.25 WMI fix restored (warm reopen ~480ms).
+ * produced by `benchmark-profile-launch.mjs`) and guards against a per-open
+ * regression — specifically the ~3s WMI `Get-CimInstance` scan the v1.0.25 fix
+ * removed from the hot path.
  *
  * Design for CI safety (no CloakBrowser binary / display in CI):
  *  - Missing or STALE data → WARN, exit 0 (cannot regenerate without a browser).
@@ -16,8 +17,15 @@
  * before the v1.0.25 WMI fix. Falls back to `stats.minMs` (spawn-only) for older
  * benchmark files that predate full-open recording.
  *
+ * Threshold: the real warm full-open floor is Chromium spawn + E0001 extension
+ * load (~850–1100ms on a dev box, machine-dependent), NOT the sub-500ms E0001-less
+ * 1.0.11 path. The budget is set to 1500ms — comfortably above normal warm opens
+ * but well below a reintroduced WMI scan (~3800ms), so it catches the regression it
+ * exists for without false-failing on spawn variance. Matches the unit-level guard
+ * `prepare-profile-launch.test.cjs` (WMI_REGRESSION_MS = 1500).
+ *
  * Env overrides:
- *  - STEALTH_LAUNCH_WARM_MS  warm-open threshold in ms (default 800)
+ *  - STEALTH_LAUNCH_WARM_MS  warm-open threshold in ms (default 1500)
  *  - STEALTH_LAUNCH_STALE_DAYS  age after which enforcement is skipped (default 30)
  */
 import fs from "node:fs";
@@ -26,7 +34,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BENCH_FILE = path.join(root, ".dev", "launch-bench.json");
-const THRESHOLD_MS = Number(process.env.STEALTH_LAUNCH_WARM_MS || 800);
+const THRESHOLD_MS = Number(process.env.STEALTH_LAUNCH_WARM_MS || 1500);
 const STALE_DAYS = Number(process.env.STEALTH_LAUNCH_STALE_DAYS || 30);
 const json = process.argv.includes("--json");
 

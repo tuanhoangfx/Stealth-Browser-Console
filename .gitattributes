@@ -1,0 +1,5 @@
+# Bundled verified Chrome Web Store extension (E0001) is byte-signed via
+# _metadata/verified_contents.json. Git line-ending normalization (core.autocrlf)
+# would rewrite bytes on checkout and make Chromium reject the signature, so the
+# whole tree must be stored and checked out verbatim (treated as binary).
+build/bundled-extensions/** -text

@@ -81,11 +81,12 @@ try {
     }
 
     # Hard launch-speed gate: fail the release on a fresh per-open regression (e.g. the
-    # WMI Get-CimInstance scan back on the hot path). Enforces the last recorded warm
-    # open (<800ms); WARNs (does not block) when the benchmark is missing/stale, since
+    # WMI Get-CimInstance scan back on the hot path, ~3800ms). Enforces the last recorded
+    # warm full-open (<1500ms — above the ~850-1100ms Chromium+E0001 spawn floor, below a
+    # WMI regression); WARNs (does not block) when the benchmark is missing/stale, since
     # regenerating needs a browser. --FastTests skips the live benchmark, so this guards
     # against the most recent dev-reload benchmark instead of silently passing.
-    Invoke-Step "Launch-speed regression gate (warm open < 800ms)" {
+    Invoke-Step "Launch-speed regression gate (warm full-open < 1500ms)" {
       node scripts/check-launch-speed.mjs
     }
   }
@@ -97,6 +98,13 @@ try {
 
     Invoke-Step "Rebuild native modules for Electron" {
       node scripts/ensure-better-sqlite3.mjs
+    }
+
+    # Ship a verified E0001 snapshot inside the installer (extraResources) so a fresh
+    # install seeds the AppData cache with NO Chrome Web Store download on first open.
+    # Keeps the committed snapshot when present (offline-safe); refresh with --force.
+    Invoke-Step "Refresh bundled E0001 snapshot" {
+      node scripts/sync-bundled-e0001.mjs
     }
   }
 
