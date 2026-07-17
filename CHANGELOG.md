@@ -6,6 +6,7 @@
 - Timestamp: 2026-07-17 17:45 (UTC+7)
 - Type: Patch
 - Status: Verified (unit + launch benchmark)
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.32
 
 ### Changes
 
