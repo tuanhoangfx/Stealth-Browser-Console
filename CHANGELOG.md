@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-07-17 - P0003 version sync
+
+- Version: `1.0.20`
+- Timestamp: 2026-07-17 11:19 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.20
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-17 — v1.0.19 — Electron dev reload
 
 - Version: `1.0.19`
