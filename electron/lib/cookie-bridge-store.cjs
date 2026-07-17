@@ -45,12 +45,28 @@ function workspaceExtensionDir() {
   return fs.existsSync(path.join(local, "manifest.json")) ? local : null;
 }
 
+// Dev/publish dirs that are never runtime extension files. Must match
+// cloakbrowser-extension-stage.cjs — kept as a local copy to avoid a circular
+// require (that module already depends on this one).
+const NON_RUNTIME_EXTENSION_DIRS = new Set([
+  ".git",
+  "node_modules",
+  ".chrome-store-profile",
+  ".github",
+  ".cursor",
+  ".vscode",
+  ".dev",
+  "docs",
+  "coverage",
+  ".turbo",
+]);
+
 /** Copy extension sources into a stable AppData cache (CloakBrowser stages by unpacked id under `.cloakbrowser`). */
 function shouldCopyExtensionEntry(relativePath) {
   const rel = String(relativePath || "").replace(/\\/g, "/").toLowerCase();
   if (!rel || rel === ".") return true;
-  if (rel === ".git" || rel.startsWith(".git/")) return false;
-  if (rel === "node_modules" || rel.startsWith("node_modules/")) return false;
+  const top = rel.split("/")[0];
+  if (NON_RUNTIME_EXTENSION_DIRS.has(top)) return false;
   return true;
 }
 

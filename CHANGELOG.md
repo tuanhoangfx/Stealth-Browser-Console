@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-07-17 — v1.0.24 — Lean dev extension sync (align with staging)
+
+- Version: `1.0.24`
+- Timestamp: 2026-07-17 16:01 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Perf: `cookie-bridge-store.syncExtensionDirToCache` (dev `STEALTH_COOKIE_BRIDGE_LOCAL`
+  path) now excludes the same non-runtime dirs as staging (`.chrome-store-profile`,
+  `docs`, `.github`, `.cursor`, `.vscode`, `.dev`, `coverage`, `.turbo`). Previously
+  only `.git`/`node_modules` were skipped, so dev builds copied E0001's 90MB
+  `.chrome-store-profile` into the cache before staging pruned it.
+- Companion: E0001 repo untracked `.chrome-store-profile` (974 files) + gitignore;
+  `package-extension.ps1` unpacked zip excludes dev dirs. Production store CRX was
+  already lean (allowlist), so this targets dev + repo bloat.
+
 ## 2026-07-17 — v1.0.22 — Lean extension staging (fix slow profile opens)
 
 - Version: `1.0.22`
