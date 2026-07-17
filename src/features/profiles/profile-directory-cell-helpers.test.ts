@@ -25,9 +25,9 @@ describe("profile-directory-cell-helpers", () => {
     expect(lastOpenedAgeTone(now - 2 * 60 * 60_000, now)).toBe("recent");
   });
 
-  it("marks old opens as stale", () => {
-    const ms = now - 48 * 60 * 60_000;
-    expect(lastOpenedAgeTone(ms, now)).toBe("stale");
+  it("maps multi-day opens to days/stale buckets", () => {
+    expect(lastOpenedAgeTone(now - 48 * 60 * 60_000, now)).toBe("days");
+    expect(lastOpenedAgeTone(now - 8 * 24 * 60 * 60_000, now)).toBe("stale");
   });
 
   it("maps Default group to gray tone", () => {

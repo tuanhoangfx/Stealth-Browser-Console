@@ -4,9 +4,9 @@
   "sidePanel": false,
   "stats": {
     "count": 3,
-    "minMs": 383,
-    "maxMs": 8428,
-    "avgMs": 3071
+    "minMs": 910,
+    "maxMs": 9364,
+    "avgMs": 3769
   },
   "latestPhases": [
     {
@@ -15,29 +15,29 @@
     },
     {
       "phase": "spawn-start",
-      "ms": 7
+      "ms": 8
     },
     {
       "phase": "spawn-done",
-      "ms": 401
+      "ms": 1033
     }
   ],
   "entries": [
     {
-      "totalMs": 401,
+      "totalMs": 1033,
       "profileName": "Launch Bench",
-      "at": "2026-07-16T09:33:46.141Z"
+      "at": "2026-07-17T00:30:54.845Z"
     },
     {
-      "totalMs": 383,
+      "totalMs": 910,
       "profileName": "Launch Bench",
-      "at": "2026-07-16T09:33:43.583Z"
+      "at": "2026-07-17T00:30:48.630Z"
     },
     {
-      "totalMs": 8428,
+      "totalMs": 9364,
       "profileName": "Launch Bench",
-      "at": "2026-07-16T09:33:37.730Z"
+      "at": "2026-07-17T00:30:37.356Z"
     }
   ],
-  "at": "2026-07-16T09:33:47.613Z"
+  "at": "2026-07-17T00:30:56.538Z"
 }

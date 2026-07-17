@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-17 — v1.0.17 — Electron dev reload
+
+- Version: `1.0.17`
+- Timestamp: 2026-07-17 07:28 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-16 — v1.0.16 — Electron dev reload
 
 - Version: `1.0.16`

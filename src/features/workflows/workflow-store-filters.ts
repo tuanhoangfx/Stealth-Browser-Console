@@ -84,7 +84,7 @@ export function filterWorkflowStoreEntries(
     if (groupIds.length > 0 && !groupIds.includes(entry.group)) return false;
     if (platformIds.length > 0 && !platformIds.includes(entry.platform)) return false;
     if (sourceIds.length > 0 && !sourceIds.includes(entry.source)) return false;
-    if (!matchesDirectoryTimeRange(entry.updatedAt, timeRange, { staticAlwaysVisible: true })) return false;
+    if (!matchesDirectoryTimeRange(entry.createdAt, timeRange, { staticAlwaysVisible: true })) return false;
     if (!query) return true;
     return [entry.id, entry.name, entry.description, entry.platform, entry.group, entry.version]
       .some((value) => String(value).toLowerCase().includes(query));

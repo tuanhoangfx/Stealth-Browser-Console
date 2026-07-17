@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mergeInstalledWorkflow, normalizeImportedWorkflow, resolveUniqueWorkflowId } from "./workflow-import-utils";
 import { filterWorkflowStoreEntries } from "./workflow-store-filters";
 import { mergeWorkflowStoreEntries } from "./workflow-store-merge";
@@ -64,6 +64,10 @@ describe("mergeWorkflowStoreEntries", () => {
 });
 
 describe("filterWorkflowStoreEntries", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const sample: WorkflowStoreEntry[] = [
     {
       id: "a",
@@ -90,6 +94,27 @@ describe("filterWorkflowStoreEntries", () => {
   it("filters by platform and source", () => {
     expect(filterWorkflowStoreEntries(sample, "", [], ["Google"], [], "all")).toHaveLength(1);
     expect(filterWorkflowStoreEntries(sample, "", [], [], ["drive"], "all")).toHaveLength(1);
+  });
+
+  it("uses createdAt for period even when updated later", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-17T00:00:00.000Z"));
+    const entries = [
+      {
+        ...sample[0]!,
+        createdAt: "2024-03-10T00:00:00.000Z",
+        updatedAt: "2026-07-17T00:00:00.000Z",
+      },
+      {
+        ...sample[1]!,
+        createdAt: "2026-03-10T00:00:00.000Z",
+        updatedAt: "2024-07-17T00:00:00.000Z",
+      },
+    ];
+
+    expect(filterWorkflowStoreEntries(entries, "", [], [], [], "1y").map((entry) => entry.id)).toEqual([
+      "b",
+    ]);
   });
 });
 

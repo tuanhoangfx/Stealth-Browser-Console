@@ -9,6 +9,8 @@ export type WorkflowStoreEntry = {
   group: string;
   source: WorkflowStoreSource;
   sortOrder: number;
+  /** ISO timestamp — creation-date SSOT for workspace period filters. */
+  createdAt?: string;
   /** ISO timestamp — Supabase `updated_at` or Drive manifest `updatedAt`. */
   updatedAt?: string;
   /** Full workflow JSON when bundled (Supabase payload or inline Drive manifest). */

@@ -17,6 +17,7 @@ function rowToEntry(row: Record<string, unknown>): WorkflowStoreEntry | null {
     group: String(row.workflow_group || row.group || "Core"),
     source: "supabase",
     sortOrder: Number(row.sort_order ?? 0),
+    createdAt: row.created_at ? String(row.created_at) : undefined,
     updatedAt: row.updated_at ? String(row.updated_at) : undefined,
     payload: payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>) : undefined,
   };
@@ -31,7 +32,7 @@ export async function fetchSupabaseWorkflowCatalog(): Promise<{ entries: Workflo
     if (!supabase) return { entries: [], error: "Hub Supabase client unavailable" };
     const { data, error } = await supabase
       .from("stealth_workflow_catalog")
-      .select("id,name,description,version,platform,workflow_group,source,payload,sort_order,updated_at")
+      .select("id,name,description,version,platform,workflow_group,source,payload,sort_order,created_at,updated_at")
       .eq("published", true)
       .order("sort_order", { ascending: true });
     if (error) return { entries: [], error: error.message };

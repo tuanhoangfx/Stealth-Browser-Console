@@ -1,11 +1,11 @@
 {
-  "url": "http://127.0.0.1:5175/",
+  "url": "file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/index.html",
   "ok": true,
   "probe": {
     "clickedWorkflow": true,
-    "builderPresent": true,
-    "canvasPresent": true,
-    "canvasOk": true
+    "builderPresent": false,
+    "canvasPresent": false,
+    "canvasOk": false
   },
   "depthErrorCount": 0,
   "errors": [
