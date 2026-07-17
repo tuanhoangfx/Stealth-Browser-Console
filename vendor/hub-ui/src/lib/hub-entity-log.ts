@@ -1,0 +1,195 @@
+/**
+ * Hub entity activity-log SSOT — framework-agnostic core (P0020 vault audit-log parity).
+ *
+ * Persistent, structured audit trail stored on a row at `metadata.activity_log`
+ * (or a dedicated jsonb column). Each tool builds its per-field diff on top of
+ * these primitives; the render rail (`HubChangeLogList`) consumes the generic shapes.
+ *
+ * No React / entity imports here so it stays portable across every Hub tool.
+ */
+
+/** One field-level delta. `field` is entity-defined (kept as a plain string here). */
+export type HubEntityLogChange = {
+  field: string;
+  before?: string;
+  after?: string;
+};
+
+export type HubEntityLogEntry = {
+  /** ISO timestamp. */
+  at: string;
+  /** Human summary — e.g. `Price: 100 → 120 · Qty: 1 → 2`. */
+  message: string;
+  /** Structured deltas (preferred over parsing message). */
+  changes?: HubEntityLogChange[];
+};
+
+/** Sticker + label used by the render rail to draw one change row. */
+export type HubEntityLogFieldMeta = {
+  label: string;
+  emoji?: string;
+};
+
+export const HUB_ENTITY_ACTIVITY_LOG_META_KEY = "activity_log";
+export const MAX_HUB_ENTITY_LOG_ENTRIES = 80;
+
+export function hubEntityLogSameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a?.trim() || "") === (b?.trim() || "");
+}
+
+export function hubEntityLogTextValue(value: string | null | undefined): string {
+  return value?.trim() || "";
+}
+
+/** Append a change only when the value actually differs. */
+export function pushHubEntityLogChange(
+  changes: HubEntityLogChange[],
+  field: string,
+  before: string,
+  after: string,
+): void {
+  if (before.trim() === after.trim()) return;
+  changes.push({ field, before, after });
+}
+
+function normalizeChange(raw: unknown, allowedFields?: ReadonlySet<string>): HubEntityLogChange | null {
+  if (!raw || typeof raw !== "object") return null;
+  const field = "field" in raw && typeof raw.field === "string" ? raw.field.trim() : "";
+  if (!field) return null;
+  if (allowedFields && !allowedFields.has(field)) return null;
+  const before = "before" in raw && typeof raw.before === "string" ? raw.before : undefined;
+  const after = "after" in raw && typeof raw.after === "string" ? raw.after : undefined;
+  return { field, before, after };
+}
+
+/**
+ * Coerce untrusted JSON (from `metadata.activity_log`) into a clean entry list.
+ * `allowedFields` optionally drops changes with fields the entity no longer knows.
+ */
+export function normalizeHubEntityLog(
+  entries: unknown,
+  allowedFields?: ReadonlySet<string>,
+): HubEntityLogEntry[] {
+  if (!Array.isArray(entries)) return [];
+  const out: HubEntityLogEntry[] = [];
+  for (const item of entries) {
+    if (!item || typeof item !== "object") continue;
+    const at = "at" in item && typeof item.at === "string" ? item.at.trim() : "";
+    const message = "message" in item && typeof item.message === "string" ? item.message.trim() : "";
+    if (!at || !message) continue;
+    const changesRaw = "changes" in item && Array.isArray(item.changes) ? item.changes : [];
+    const changes = changesRaw
+      .map((change: unknown) => normalizeChange(change, allowedFields))
+      .filter((change: HubEntityLogChange | null): change is HubEntityLogChange => Boolean(change));
+    out.push({ at, message, ...(changes.length ? { changes } : {}) });
+  }
+  return out;
+}
+
+/** Append one entry, capping to the newest `MAX_HUB_ENTITY_LOG_ENTRIES`. */
+export function appendHubEntityLogEntry(
+  existing: HubEntityLogEntry[] | undefined,
+  entry: HubEntityLogEntry,
+): HubEntityLogEntry[] {
+  const message = entry.message.trim();
+  if (!message || !entry.at.trim()) return existing ? [...existing] : [];
+  const next = [...(existing ?? []), { ...entry, message }];
+  return next.length > MAX_HUB_ENTITY_LOG_ENTRIES ? next.slice(-MAX_HUB_ENTITY_LOG_ENTRIES) : next;
+}
+
+const mergeKey = (entry: HubEntityLogEntry) => `${entry.at}\u0000${entry.message}`;
+
+/**
+ * Union two logs, de-duped by `at + message`, oldest → newest, capped.
+ * P0020 `mergeTwofaVaultAuditLogs` parity — guarantees no history is dropped
+ * when merging a local snapshot with the freshest DB copy under concurrent edits.
+ */
+export function mergeHubEntityAuditLogs(a: unknown, b: unknown): HubEntityLogEntry[] {
+  const seen = new Map<string, HubEntityLogEntry>();
+  for (const entry of [...normalizeHubEntityLog(a), ...normalizeHubEntityLog(b)]) {
+    const key = mergeKey(entry);
+    const prev = seen.get(key);
+    // Prefer the copy that carries structured changes.
+    if (!prev || (!prev.changes?.length && entry.changes?.length)) seen.set(key, entry);
+  }
+  const merged = [...seen.values()].sort((x, y) => {
+    const dx = Date.parse(x.at);
+    const dy = Date.parse(y.at);
+    if (Number.isFinite(dx) && Number.isFinite(dy) && dx !== dy) return dx - dy;
+    return x.at < y.at ? -1 : x.at > y.at ? 1 : 0;
+  });
+  return merged.length > MAX_HUB_ENTITY_LOG_ENTRIES ? merged.slice(-MAX_HUB_ENTITY_LOG_ENTRIES) : merged;
+}
+
+/** Read the persisted audit trail from a row's metadata. */
+export function readHubEntityActivityLog(
+  row: { metadata?: unknown } | null | undefined,
+  allowedFields?: ReadonlySet<string>,
+): HubEntityLogEntry[] {
+  const meta = (row?.metadata ?? null) as Record<string, unknown> | null;
+  return normalizeHubEntityLog(meta?.[HUB_ENTITY_ACTIVITY_LOG_META_KEY], allowedFields);
+}
+
+/** Merge one entry into a metadata object's activity_log (append + cap). */
+export function withHubEntityActivityLog(
+  metadata: Record<string, unknown> | null | undefined,
+  entry: HubEntityLogEntry | null,
+): Record<string, unknown> {
+  const meta = { ...((metadata ?? {}) as Record<string, unknown>) };
+  if (!entry) return meta;
+  const existing = normalizeHubEntityLog(meta[HUB_ENTITY_ACTIVITY_LOG_META_KEY]);
+  meta[HUB_ENTITY_ACTIVITY_LOG_META_KEY] = appendHubEntityLogEntry(existing, entry);
+  return meta;
+}
+
+/** Render a single `Label: before → after` line for a change. */
+export function formatHubEntityLogChangeLine(
+  change: HubEntityLogChange,
+  labels: Record<string, string>,
+): string {
+  const label = labels[change.field] ?? change.field;
+  if (change.before !== undefined && change.after !== undefined) {
+    const before = change.before.trim() === "" ? "—" : change.before;
+    const after = change.after.trim() === "" ? "—" : change.after;
+    return `${label}: ${before} → ${after}`;
+  }
+  if (change.after !== undefined) return `${label}: ${change.after}`;
+  return label;
+}
+
+/** Human summary joining every change with `·`. */
+export function buildHubEntityLogMessage(
+  changes: HubEntityLogChange[],
+  labels: Record<string, string>,
+  fallback: string,
+): string {
+  if (!changes.length) return fallback;
+  return changes.map((change) => formatHubEntityLogChangeLine(change, labels)).join(" · ");
+}
+
+/** Round-trip legacy `Label: a → b · …` messages back into structured changes. */
+export function parseHubEntityLogMessageChanges(
+  message: string,
+  labelToField: Record<string, string>,
+): HubEntityLogChange[] {
+  const parts = message.split(" · ").map((part) => part.trim()).filter(Boolean);
+  const changes: HubEntityLogChange[] = [];
+  for (const part of parts) {
+    const match = part.match(/^(.+?):\s*(.+?)\s*→\s*(.+)$/);
+    if (!match) continue;
+    const field = labelToField[match[1].trim()];
+    if (!field) continue;
+    const before = match[2].trim() === "—" ? "" : match[2].trim();
+    const after = match[3].trim() === "—" ? "" : match[3].trim();
+    changes.push({ field, before, after });
+  }
+  return changes;
+}
+
+/** Build a field-meta resolver from label + emoji maps (used by the render rail). */
+export function hubEntityLogFieldMetaResolver(
+  labels: Record<string, string>,
+  emoji: Record<string, string>,
+): (field: string) => HubEntityLogFieldMeta {
+  return (field: string) => ({ label: labels[field] ?? field, emoji: emoji[field] });
+}

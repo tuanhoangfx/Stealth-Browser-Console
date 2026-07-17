@@ -10,6 +10,7 @@
  * @property {string} colClass
  * @property {string} width
  * @property {DirectoryFixedColumnKind} kind
+ * @property {'left' | 'center'} [align] Body text-align override (defaults: date=center, code=left).
  * @property {readonly string[]} [keys] Tool meta keys — verify gate only, not used in CSS.
  */
 
@@ -67,10 +68,22 @@ export function generateDirectoryFixedColumnCss(options) {
 }`;
   }
 
-  const colClasses = entries.map((entry) => entry.colClass);
-  const tdAlignSelectors = colClasses
-    .flatMap((colClass) => tableRoots.map((root) => `${root} td.${colClass}`))
-    .join(",\n");
+  /** @param {readonly DirectoryFixedColumnEntry[]} list @param {string} align */
+  function alignBlock(list, align) {
+    if (!list.length) return "";
+    const selectors = list
+      .flatMap((entry) => tableRoots.map((root) => `${root} td.${entry.colClass}`))
+      .join(",\n");
+    return `${selectors} {
+  text-align: ${align};
+}`;
+  }
+
+  // Date payloads are fixed-width — center under the (centered) column header; code stays left.
+  // Per-entry `align` overrides the kind default (e.g. an ID code column that should center).
+  const alignOf = (entry) => entry.align ?? (entry.kind === "date" ? "center" : "left");
+  const leftEntries = entries.filter((entry) => alignOf(entry) === "left");
+  const centerEntries = entries.filter((entry) => alignOf(entry) === "center");
 
   const tabular = tabularSelectors ?? buildDirectoryFixedColumnTabularSelectors(tableRoots, entries);
 
@@ -79,9 +92,7 @@ export function generateDirectoryFixedColumnCss(options) {
 
 ${entries.map((entry) => widthBlock(entry.colClass, entry.width)).join("\n\n")}
 
-${tdAlignSelectors} {
-  text-align: left;
-}
+${[alignBlock(leftEntries, "left"), alignBlock(centerEntries, "center")].filter(Boolean).join("\n\n")}
 
 ${tabular.join(",\n")} {
   font-variant-numeric: tabular-nums;

@@ -47,7 +47,7 @@ export const HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS =
 export const HUB_DIRECTORY_USER_TABLE_WRAP_CLASS = `hub-users-table-wrap ${HUB_DIRECTORY_TABLE_SCROLL_CLASS}`;
 export const HUB_DIRECTORY_TABLE_WRAP_CLASS = HUB_DIRECTORY_USER_TABLE_WRAP_CLASS;
 
-/** Predictable directory cell shapes — auto left-align header when columnKind is code/date. */
+/** Predictable directory cell shapes — SSOT header align: code→left, date→center (matches centered date body). Override via headerAlign. */
 export type HubDirectoryColumnKind = "code" | "date";
 
 /** Column meta input — width is SSOT for colgroup (`table-layout: fixed`). % values are relative weights per visible set (scaled to 100% in buildDirectoryColumns). */
@@ -169,7 +169,7 @@ export function buildDirectoryColumns<TKey extends string>(
       sortable: options?.sortable ?? true,
       headerAlign:
         def.headerAlign ??
-        (def.columnKind === "code" || def.columnKind === "date" ? "start" : undefined),
+        (def.columnKind === "date" ? "center" : def.columnKind === "code" ? "start" : undefined),
       headerIcon: def.headerIcon,
       headerIconClassName: def.headerIconClassName,
       headerBrandIcon: def.headerBrandIcon,

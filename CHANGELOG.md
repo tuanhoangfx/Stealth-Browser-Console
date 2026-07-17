@@ -5,7 +5,7 @@
 - Version: `1.0.21`
 - Timestamp: 2026-07-17 14:49 (UTC+7)
 - Type: Patch
-- Status: Dev
+- Status: Committed
 
 ### Changes
 

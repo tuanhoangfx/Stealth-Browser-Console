@@ -1170,8 +1170,8 @@
     --hub-tool-detail-rail-w: min(18rem, 36%);
   }
 
-  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned:not(.hub-adm-meta-row):not(.twofa-adm-meta-row):not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2),
-  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned:not(.hub-adm-meta-row):not(.twofa-adm-meta-row):not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2) {
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2),
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2) {
     grid-template-columns:
       var(--hub-adm-label-w) minmax(0, 1fr)
       var(--hub-adm-label-w) minmax(0, 1fr);

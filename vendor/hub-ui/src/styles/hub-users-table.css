@@ -1527,6 +1527,8 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--rol
 /* Profile / Own / Status — Mail rem floors (browser/own/Status 5.5). */
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--profile,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--profile,
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--source,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--source,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--live-status,
@@ -1688,6 +1690,9 @@ table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col-
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--profile,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--profile,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--profile,
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--source,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--source,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--source,
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--ownership,

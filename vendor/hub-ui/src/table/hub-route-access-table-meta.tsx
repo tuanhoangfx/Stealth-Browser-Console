@@ -18,6 +18,7 @@ export const HUB_ROUTE_ACCESS_COL = {
   user: "hub-route-access-col--user",
   role: "hub-route-access-col--role",
   profile: "hub-route-access-col--profile",
+  source: "hub-route-access-col--source",
   syncAt: "hub-route-access-col--sync-at",
   loadAt: "hub-route-access-col--load-at",
   ownership: "hub-route-access-col--ownership",
@@ -41,6 +42,8 @@ export type HubRouteAccessModalColumnOptions = {
   showSyncAtColumn?: boolean;
   /** Teams members — Profile (Service browser / profile code). */
   showProfileColumn?: boolean;
+  /** Teams members — Ownership/Status/Profile source (Service · Mail · Manual). */
+  showSourceColumn?: boolean;
   /** Teams members — sheet Ownership column. */
   showOwnershipColumn?: boolean;
   /** Teams members — sheet Live Status column. */
@@ -87,6 +90,13 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     label: "Loaded",
     className: HUB_ROUTE_ACCESS_COL.loadAt,
     role: "load" as const,
+  },
+  source: {
+    key: "source",
+    label: "Source",
+    className: HUB_ROUTE_ACCESS_COL.source,
+    role: "links" as const,
+    headerEmoji: "🔗",
   },
   ownership: {
     key: "ownership",
@@ -182,6 +192,7 @@ export function buildHubRouteAccessModalColumns(
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
   const showSyncAtColumn = options.showSyncAtColumn ?? true;
   const showProfileColumn = options.showProfileColumn ?? false;
+  const showSourceColumn = options.showSourceColumn ?? false;
   const showOwnershipColumn = options.showOwnershipColumn ?? false;
   const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
   const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
@@ -204,6 +215,7 @@ export function buildHubRouteAccessModalColumns(
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.user,
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.role,
     ...(showProfileColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.profile] : []),
+    ...(showSourceColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.source] : []),
     ...(showOwnershipColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.ownership] : []),
     ...(showLiveStatusColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.liveStatus] : []),
     ...(showSyncAtColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.syncAt] : []),
@@ -230,6 +242,7 @@ export function hubRouteAccessModalColumnCount(
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
   const showSyncAtColumn = options.showSyncAtColumn ?? true;
   const showProfileColumn = options.showProfileColumn ?? false;
+  const showSourceColumn = options.showSourceColumn ?? false;
   const showOwnershipColumn = options.showOwnershipColumn ?? false;
   const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
   const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
@@ -244,6 +257,7 @@ export function hubRouteAccessModalColumnCount(
   let dataCols = showRouteColumn ? 7 : 6;
   if (!showSyncAtColumn) dataCols -= 1;
   if (showProfileColumn) dataCols += 1;
+  if (showSourceColumn) dataCols += 1;
   if (showOwnershipColumn) dataCols += 1;
   if (showLiveStatusColumn) dataCols += 1;
   if (showPlanScheduleColumns) dataCols += 4;
@@ -282,6 +296,7 @@ export type HubRouteAccessSortKey =
   | "user"
   | "role"
   | "profile"
+  | "source"
   | "ownership"
   | "liveStatus"
   | "syncAt"

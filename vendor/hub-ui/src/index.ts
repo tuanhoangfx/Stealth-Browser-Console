@@ -413,6 +413,13 @@ export {
 } from "./shell/HubDirectoryBrandNameCell";
 export { HUB_DIRECTORY_BRAND_EMPTY_GLYPH } from "./lib/resolve-hub-brand-icon";
 export {
+  PRODUCT_PLAN_SUFFIX_PATTERNS,
+  inferProductCategory,
+  parseProductPlanDurationDays,
+  resolveProductPlatformGroup,
+  stripProductPlanSuffix,
+} from "./lib/product-category-infer";
+export {
   escapeHtml as escapeHubRouteHtml,
   mapCloudRouteToExtensionStatus,
   resolveCloudRouteHealthDisplay,
@@ -519,9 +526,11 @@ export {
   CRM_ORDER_DETAILS_EMAIL_REGEX,
   countCrmOrderDetailMentions,
   crmOrderDetailsSnippet,
+  crmOrderProductMatchesService,
   extractCrmOrderDetailCredentialTokens,
   extractCrmOrderDetailEmails,
   extractCrmOrderDetailIdentityTokens,
+  isCrmOrderCompletedStatus,
   normalizeCrmOrderDetailsIdentifier,
   normalizeCrmOrderDetailsText,
   readCrmOrderDetailsFromRow,
@@ -596,6 +605,33 @@ export {
   HubDirectoryLogLabel,
   type HubDirectoryLogLabelProps,
 } from "./content/HubDirectoryLogLabel";
+export { HubChangeLogList, type HubChangeLogListProps } from "./content/HubChangeLogList";
+export {
+  HUB_ENTITY_ACTIVITY_LOG_META_KEY,
+  MAX_HUB_ENTITY_LOG_ENTRIES,
+  appendHubEntityLogEntry,
+  buildHubEntityLogMessage,
+  formatHubEntityLogChangeLine,
+  hubEntityLogFieldMetaResolver,
+  hubEntityLogSameText,
+  hubEntityLogTextValue,
+  mergeHubEntityAuditLogs,
+  normalizeHubEntityLog,
+  parseHubEntityLogMessageChanges,
+  pushHubEntityLogChange,
+  readHubEntityActivityLog,
+  withHubEntityActivityLog,
+  type HubEntityLogChange,
+  type HubEntityLogEntry,
+  type HubEntityLogFieldMeta,
+} from "./lib/hub-entity-log";
+export {
+  flattenHubEntityLog,
+  formatHubEntityLogActionLabel,
+  resolveHubEntityLogEntryChanges,
+  type FlattenHubEntityLogOptions,
+  type HubEntityLogRow,
+} from "./lib/hub-entity-log-rows";
 export { formatHubRelativeTime } from "./lib/format-hub-relative-time";
 export {
   DIRECTORY_EMPTY_LABEL,

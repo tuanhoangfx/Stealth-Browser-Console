@@ -13,8 +13,9 @@ export type DirectoryColumnMetaOptions = {
   headerHint?: HubDirectoryColumnHintContent;
   /** Sheet-parity emoji sticker — takes precedence over Lucide in table headers. */
   headerEmoji?: string;
-  /** Predictable cell shape — header left-align via buildDirectoryColumns. */
+  /** Predictable cell shape — header align via buildDirectoryColumns (code→left, date→center). */
   columnKind?: "code" | "date";
+  /** Override buildDirectoryColumns default header align (code→start, date→center). */
   headerAlign?: "start" | "center";
 };
 

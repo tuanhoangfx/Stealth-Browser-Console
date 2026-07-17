@@ -1,13 +1,45 @@
 /** SSOT — parse CRM Order Details (`metadata.raw_details`) for credential matching. */
 
+import { inferProductCategory, stripProductPlanSuffix } from "./product-category-infer";
+
 export const CRM_ORDER_DETAILS_EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 
 export type CrmOrderDetailsMirrorRow = {
   id: string;
   product_name?: string | null;
   external_order_id?: string | null;
+  /** CRM order status (🚦 sheet_status) — used to keep only completed orders in usage counts. */
+  sheet_status?: string | null;
   metadata?: Record<string, unknown> | null;
 };
+
+/** True when an order's sheet status is a "Completed" state (CRM Usage count gate). */
+export function isCrmOrderCompletedStatus(status: string | null | undefined): boolean {
+  if (!status) return false;
+  return status.includes("Completed");
+}
+
+/**
+ * True when an order's product resolves to the same service/category as an account's service.
+ * Primary match uses the shared `inferProductCategory` SSOT (brand registry + plan-suffix strip);
+ * falls back to a normalized substring match for labels with no brand-registry entry.
+ */
+export function crmOrderProductMatchesService(
+  productName: string | null | undefined,
+  service: string | null | undefined,
+): boolean {
+  const product = productName?.trim();
+  const svc = service?.trim();
+  if (!product || !svc) return false;
+
+  const productKey = inferProductCategory(product).groupKey;
+  const serviceKey = inferProductCategory(svc).groupKey;
+  if (productKey && serviceKey && productKey === serviceKey) return true;
+
+  const p = (stripProductPlanSuffix(product) || product).toLowerCase();
+  const s = (stripProductPlanSuffix(svc) || svc).toLowerCase();
+  return p.includes(s) || s.includes(p);
+}
 
 export function normalizeCrmOrderDetailsText(raw: unknown): string {
   return typeof raw === "string" ? raw.trim() : "";

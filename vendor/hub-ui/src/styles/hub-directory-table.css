@@ -1,4 +1,5 @@
 /* Directory tables — select chrome + layout skin. Bulk: CSS colClass widths; read-only: buildDirectoryColgroup inline %. */
+@import "./hub-flash-border.css";
 
 /* Select column SSOT — 36px col + 16px hub-checkbox; applies when shell sets data-hub-directory-select */
 table.hub-users-table[data-hub-directory-select] col.hub-users-col--select,
@@ -693,6 +694,4 @@ table.hub-users-table[data-hub-directory-select] thead th:has(
 .hub-route-status-label--neutral {
   color: var(--muted);
 }
-
-@import "./hub-flash-border.css";
 

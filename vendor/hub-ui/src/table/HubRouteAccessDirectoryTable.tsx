@@ -68,6 +68,8 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   renderRoleCell: (row: TRow) => ReactNode;
   /** Teams — Profile (Service browser code). */
   renderProfileCell?: (row: TRow) => ReactNode;
+  /** Teams — Ownership/Status/Profile source (Service · Mail · Manual). */
+  renderSourceCell?: (row: TRow) => ReactNode;
   /** Expanded layout — Synced timestamp column. */
   renderSyncAtCell?: (row: TRow) => ReactNode;
   /** Expanded layout — Loaded timestamp column. */
@@ -103,6 +105,8 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   canSelectRow?: (row: TRow) => boolean;
   selectAllLabel?: string;
   rowClassName?: (row: TRow) => string;
+  /** Click a row (outside interactive cells) to open detail — SSOT: edit in modal, not inline. */
+  onRowActivate?: (row: TRow) => void;
   ariaLabel?: string;
   pageSize?: number;
   /** Hide pager when all rows fit one page (Teams frame embeds). */
@@ -113,6 +117,8 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   showSyncAtColumn?: boolean;
   /** Teams — Profile (Service browser code). */
   showProfileColumn?: boolean;
+  /** Teams — Source column (Service · Mail · Manual). */
+  showSourceColumn?: boolean;
   showOwnershipColumn?: boolean;
   showLiveStatusColumn?: boolean;
   /** Teams — Date / Duration / Due / Left columns. */
@@ -136,6 +142,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
   renderUserCell,
   renderRoleCell,
   renderProfileCell,
+  renderSourceCell,
   renderSyncAtCell,
   renderLoadAtCell,
   renderOwnershipCell,
@@ -160,6 +167,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
   canSelectRow,
   selectAllLabel = "Select all on this page",
   rowClassName,
+  onRowActivate,
   ariaLabel = "Route access table pages",
   pageSize,
   hidePagerWhenSinglePage = false,
@@ -167,6 +175,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
   showRouteColumn,
   showSyncAtColumn = true,
   showProfileColumn = false,
+  showSourceColumn = false,
   showOwnershipColumn = false,
   showLiveStatusColumn = false,
   showPlanScheduleColumns = false,
@@ -180,6 +189,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
     showRouteColumn,
     showSyncAtColumn,
     showProfileColumn,
+    showSourceColumn,
     showOwnershipColumn,
     showLiveStatusColumn,
     showPlanScheduleColumns,
@@ -288,8 +298,9 @@ export function HubRouteAccessDirectoryTable<TRow>({
             <tr
               key={key}
               className={`hub-users-row hub-users-row--static${selected ? " is-selected" : ""}${
-                rowClassName?.(row) ?? ""
-              }`}
+                onRowActivate ? " cursor-pointer" : ""
+              }${rowClassName?.(row) ?? ""}`}
+              onClick={onRowActivate ? () => onRowActivate(row) : undefined}
             >
               {showSelectColumn ? (
                 <td className={HUB_ROUTE_ACCESS_COL.select} onClick={(e) => e.stopPropagation()}>
@@ -318,6 +329,11 @@ export function HubRouteAccessDirectoryTable<TRow>({
               {showProfileColumn ? (
                 <td className={`${HUB_ROUTE_ACCESS_COL.profile} hub-users-cell-muted text-center`}>
                   {renderProfileCell?.(row)}
+                </td>
+              ) : null}
+              {showSourceColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.source} hub-users-cell-muted text-center`}>
+                  {renderSourceCell?.(row)}
                 </td>
               ) : null}
               {showOwnershipColumn ? (

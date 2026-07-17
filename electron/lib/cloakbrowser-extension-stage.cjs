@@ -3,11 +3,28 @@ const path = require("node:path");
 const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
 const { COOKIE_BRIDGE_STORE_ID, workspaceExtensionDir } = require("./cookie-bridge-store.cjs");
 
+// Top-level dirs that are dev/publish artifacts, never referenced by an
+// extension manifest at runtime. Excluding them from the staging copy keeps the
+// cpSync tiny — e.g. E0001 ships a 988-file `.chrome-store-profile` dev folder
+// that otherwise inflated cold profile opens by ~9s (staging 98MB per new root).
+const NON_RUNTIME_STAGE_DIRS = new Set([
+  ".git",
+  "node_modules",
+  ".chrome-store-profile",
+  ".github",
+  ".cursor",
+  ".vscode",
+  ".dev",
+  "docs",
+  "coverage",
+  ".turbo",
+]);
+
 function shouldCopyExtensionEntry(relativePath) {
   const rel = String(relativePath || "").replace(/\\/g, "/").toLowerCase();
   if (!rel || rel === ".") return true;
-  if (rel === ".git" || rel.startsWith(".git/")) return false;
-  if (rel === "node_modules" || rel.startsWith("node_modules/")) return false;
+  const top = rel.split("/")[0];
+  if (NON_RUNTIME_STAGE_DIRS.has(top)) return false;
   return true;
 }
 
@@ -65,8 +82,25 @@ function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir) {
     });
   }
 
+  // Prune dev/publish dirs that older (unfiltered) stages may have already
+  // copied — cpSync never removes stale entries, and Chromium re-validates the
+  // whole unpacked folder on each new profile's first install, so a leftover
+  // 98MB `.chrome-store-profile` keeps opens slow until pruned.
+  pruneNonRuntimeStageDirs(stageDir);
+
   if (!fs.existsSync(stageManifest)) return null;
   return { extId, stageDir, sourceDir: src };
+}
+
+function pruneNonRuntimeStageDirs(stageDir) {
+  for (const name of NON_RUNTIME_STAGE_DIRS) {
+    const target = path.join(stageDir, name);
+    try {
+      if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
+    } catch {
+      // best-effort — a locked dev dir just stays, no correctness impact
+    }
+  }
 }
 
 function ensureCloakbrowserExtensionStages(extensionDirs, cloakCacheDir) {
