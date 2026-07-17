@@ -27,6 +27,10 @@ export function useHubDirectorySelection<T>(
 
   const hasSelection = selectedIds.size > 0;
 
+  // Count = visible checked rows, not Set size. Stays in sync with the table even when duplicate
+  // ids collapse into one Set entry, so gating/labels never desync from what the user sees.
+  const selectionCount = selectedRows.length;
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -53,6 +57,7 @@ export function useHubDirectorySelection<T>(
     selectedIds,
     setSelectedIds,
     selectedRows,
+    selectionCount,
     allVisibleSelected,
     hasSelection,
     toggleSelect,

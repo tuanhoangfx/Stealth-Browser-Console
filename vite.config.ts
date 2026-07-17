@@ -1,6 +1,7 @@
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { hubUiVendorWatchPlugin } from "../scripts/hub-ui-vendor-watch-vite-plugin.mjs";
 
 const rootDir = path.resolve(__dirname);
 const hubUiSrc = path.resolve(rootDir, "vendor/hub-ui/src");
@@ -9,7 +10,7 @@ const devRoot = path.resolve(rootDir, "../..");
 
 export default defineConfig({
   base: "./",
-  plugins: [react()],
+  plugins: [react(), hubUiVendorWatchPlugin({ toolRoot: rootDir, devRoot, code: "P0003" })],
   resolve: {
     dedupe: ["react", "react-dom"],
     alias: [

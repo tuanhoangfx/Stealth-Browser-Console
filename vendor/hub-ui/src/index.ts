@@ -604,6 +604,11 @@ export {
   type HubDirectoryDateOnlyLabelProps,
 } from "./content/HubDirectoryDateOnlyLabel";
 export {
+  HubDirectoryTimestampTooltipCell,
+  type HubDirectoryTimestampTooltipCellProps,
+  type HubDirectoryTimestampTooltipVariant,
+} from "./content/HubDirectoryTimestampTooltipCell";
+export {
   HubActivityTimestampLabel,
   type HubActivityTimestampLabelProps,
 } from "./content/HubActivityTimestampLabel";
@@ -1091,6 +1096,7 @@ export {
   type HubCountryEntry,
 } from "./lib/country-catalog";
 export { buildHubCountryFilterOptions, hubCountryFilterOption } from "./lib/country-filter-options";
+export { HUB_NONE_EMOJI, HUB_NONE_LABEL, hubNoneFilterOption } from "./lib/hub-none-option";
 export { HubCountryFlagBadge, HubCountryInline, type HubCountryInlineProps } from "./shell/HubCountryInline";
 export {
   AGENT_KIND_SEMANTIC,
