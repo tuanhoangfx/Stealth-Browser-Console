@@ -79,6 +79,15 @@ try {
         node scripts/run-unit-tests.mjs
       }
     }
+
+    # Hard launch-speed gate: fail the release on a fresh per-open regression (e.g. the
+    # WMI Get-CimInstance scan back on the hot path). Enforces the last recorded warm
+    # open (<800ms); WARNs (does not block) when the benchmark is missing/stale, since
+    # regenerating needs a browser. --FastTests skips the live benchmark, so this guards
+    # against the most recent dev-reload benchmark instead of silently passing.
+    Invoke-Step "Launch-speed regression gate (warm open < 800ms)" {
+      node scripts/check-launch-speed.mjs
+    }
   }
 
   if (-not $SkipBuild) {
