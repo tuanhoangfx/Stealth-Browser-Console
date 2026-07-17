@@ -788,11 +788,13 @@
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline > .hub-adm-inline-field__value {
   grid-column: 2 / -1;
   min-width: 0;
-  align-self: center;
+  /* Top-align value so its first line lines up with the col-1 label (which is align-self: start).
+     `center` left single-line details ~4-5px lower than the label → visible vertical drift. */
+  align-self: start;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline .hub-adm-click-edit {
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
   min-height: var(--hub-adm-value-h);
 }
@@ -803,7 +805,8 @@
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline .hub-adm-click-edit__action {
-  align-self: center;
+  align-self: flex-start;
+  margin-top: 0.1rem;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--readonly > :is(.hub-adm-inline-field__label, .hub-directory-popover-anchor) {

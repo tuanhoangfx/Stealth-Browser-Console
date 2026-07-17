@@ -1,11 +1,14 @@
 /** Electron child env — product defaults override stale STEALTH_COOKIE_BRIDGE=0. */
 import { createRequire } from "node:module";
 
+import path from "node:path";
+
 const require = createRequire(import.meta.url);
 const {
   DEFAULT_DEV_API_PORT,
   DEFAULT_PROD_API_PORT,
-  resolveStealthUserDataRoot,
+  DEV_DIR,
+  roamingAppData,
 } = require("../../electron/lib/user-data-root.cjs");
 
 /**
@@ -31,9 +34,15 @@ export function stealthElectronEnv(extra = {}) {
   delete env.CURSOR_AGENT;
   delete env.ELECTRON_RUN_AS_NODE;
   if (isolated) {
-    if (!env.STEALTH_USER_DATA) {
-      env.STEALTH_USER_DATA = resolveStealthUserDataRoot({ packaged: false });
-    }
+    // PROD-SAFETY: pin the dev window to the isolated `-dev` userData root
+    // DETERMINISTICALLY. Do NOT go through resolveStealthUserDataRoot() here — it
+    // decides dev-vs-prod from the *ambient* process.env.STEALTH_DEV_ISOLATED,
+    // which is usually unset in a plain reload shell and would resolve to the
+    // PROD root. A dev window booted on the prod root runs reconcileOrphansOnStartup
+    // against prod and kills the profiles the user has open in the packaged app.
+    // Also ignore any stale inherited STEALTH_USER_DATA (=prod) unless the caller
+    // explicitly overrides it via `extra`.
+    env.STEALTH_USER_DATA = extra.STEALTH_USER_DATA ?? path.join(roamingAppData(), DEV_DIR);
     // Always use dev API port when isolated — ignore workspace STEALTH_API_PORT=6003 (prod).
     env.STEALTH_API_PORT = extra.STEALTH_API_PORT ?? String(DEFAULT_DEV_API_PORT);
   } else if (!env.STEALTH_API_PORT) {

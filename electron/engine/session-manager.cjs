@@ -306,7 +306,11 @@ class SessionManager {
       }
     }
 
-    if (!(await hasProfileBrowserProcess(userDataDir))) return null;
+    // A lock file means a browser already holds this profile — skip the extra
+    // ~3s WMI confirm and go straight to focus (focusProfileBrowserWindow runs
+    // its own scoped lookup). Only pay the WMI probe when there is no lock to
+    // disambiguate; a stale lock just yields a MISSING focus → null → respawn.
+    if (!profileDirHasLock(userDataDir) && !(await hasProfileBrowserProcess(userDataDir))) return null;
     if (isAgentSmokeLaunch()) {
       await killOrphanProfileBrowser(userDataDir);
       removeStaleProfileLocks(userDataDir);
@@ -821,4 +825,11 @@ class SessionManager {
   }
 }
 
-module.exports = { SessionManager, removeStaleProfileLocks, isLaunchLockError, isContextAlive };
+module.exports = {
+  SessionManager,
+  removeStaleProfileLocks,
+  isLaunchLockError,
+  isContextAlive,
+  prepareProfileForLaunch,
+  shouldSkipOrphanProbe,
+};

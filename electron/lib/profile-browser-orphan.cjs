@@ -25,12 +25,16 @@ function listChromeProcessesPs(userDataDir) {
   const dir = path.resolve(String(userDataDir));
   const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
   const backslash = escapePsSingleQuoted(dir);
-  const profileId = escapePsSingleQuoted(path.basename(dir));
-  // Only profile-scoped needles. `--stealth-user-data-tag=<root>` is shared by
-  // every profile (same user-data root), so including it made launching one
-  // profile match — and kill — all other running profiles.
+  // ROOT-SCOPED only: match strictly on the full `--user-data-dir` path (the
+  // browser process always carries it; `taskkill /T` then kills the whole tree,
+  // and lock-owner detection is a second root-scoped source). We deliberately do
+  // NOT match on the bare profile UUID or `--stealth-profile-id=<uuid>`: those are
+  // identical across user-data roots, so a *dev*-root reconcile would otherwise
+  // match — and kill — the *prod* app's Chrome for the same profile id. The full
+  // path is a strict subset of the old needles (a same-root Chrome always contains
+  // the path), so this only removes cross-root false positives.
   return [
-    `$needles = @('${backslash}', '${forward}', '${profileId}', '--stealth-profile-id=${profileId}')`,
+    `$needles = @('${backslash}', '${forward}')`,
     "Get-CimInstance Win32_Process | Where-Object {",
     "  $cmd = $_.CommandLine; $name = $_.Name;",
     "  if (-not $cmd) { return $false }",
@@ -213,9 +217,11 @@ async function focusProfileBrowserWindow(userDataDir) {
   if (!userDataDir || process.platform !== "win32") return { ok: false, reason: "unsupported" };
   const dir = path.resolve(String(userDataDir));
   const escaped = escapePsSingleQuoted(dir);
-  const profileId = escapePsSingleQuoted(path.basename(dir));
+  const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
+  // Root-scoped path needles only — the bare UUID is identical across user-data
+  // roots, so a dev instance must not focus (or later act on) the prod app's window.
   const script = [
-    `$needles = @('${escaped}', '${profileId}')`,
+    `$needles = @('${escaped}', '${forward}')`,
     "$pids = Get-CimInstance Win32_Process | Where-Object {",
     "  $cmd = $_.CommandLine; $name = $_.Name;",
     "  if (-not $cmd) { return $false }",

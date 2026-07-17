@@ -452,6 +452,7 @@ export { HubCopyBadge, type HubCopyBadgeProps, type HubCopyBadgeDisplay, type Hu
 export {
   HubAdmCopyValueBadge,
   type HubAdmCopyValueBadgeProps,
+  type HubAdmCopyValueBadgeTone,
 } from "./shell/HubAdmCopyValueBadge";
 export { HubCopyTickWrap, type HubCopyTickWrapProps } from "./shell/HubCopyTickWrap";
 export {

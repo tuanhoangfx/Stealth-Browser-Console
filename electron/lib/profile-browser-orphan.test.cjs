@@ -22,13 +22,28 @@ test("orphan match is profile-scoped, not root-wide", async (t) => {
     );
   });
 
-  await t.test("includes profile-specific needles only", () => {
+  await t.test("matches on the full user-data-dir path (root-scoped)", () => {
+    const script = listChromeProcessesPs(PROFILE_A);
+    assert.ok(script.includes(PROFILE_A), "must match profile A full path (backslash)");
+    assert.ok(
+      script.includes(PROFILE_A.replace(/\\/g, "/")),
+      "must match profile A full path (forward slash)",
+    );
+  });
+
+  await t.test("does NOT match on the bare UUID / stealth-profile-id (cross-root safe)", () => {
     const script = listChromeProcessesPs(PROFILE_A);
     const idA = path.basename(PROFILE_A);
-    assert.ok(script.includes(idA), "must match profile A id");
+    // A prod-root Chrome carries the same UUID and `--stealth-profile-id`; matching
+    // on those made a dev-root reconcile kill the prod app's profile. Only the full
+    // path (which embeds the root) may be used as a needle.
     assert.ok(
-      script.includes(`--stealth-profile-id=${idA}`),
-      "must match profile A stealth-profile-id flag",
+      !script.includes(`'${idA}'`),
+      "must not use the bare profile UUID as a standalone needle",
+    );
+    assert.ok(
+      !script.includes(`--stealth-profile-id=${idA}`),
+      "must not match on the cross-root --stealth-profile-id flag",
     );
   });
 

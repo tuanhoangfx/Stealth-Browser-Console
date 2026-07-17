@@ -22,6 +22,7 @@ runStep("verify-agent-smoke-headless", "node", ["scripts/verify-agent-smoke-head
 runStep("cloakbrowser-packaged-resolve", "node", ["--test", "electron/lib/cloakbrowser-packaged-resolve.test.cjs"]);
 runStep("cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.mjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
+runStep("stealth-electron-env", "node", ["scripts/lib/stealth-electron-env.test.mjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("refresh-hub-ui-node-link", "node", [
   path.join(root, "..", "scripts", "refresh-hub-ui-node-link.cjs"),
@@ -76,5 +77,7 @@ runStep("cloakbrowser-extension-stage", "node", ["--test", "electron/lib/cloakbr
 runStep("profile-browser-orphan", "node", ["--test", "electron/lib/profile-browser-orphan.test.cjs"]);
 runStep("profile-extension-pins", "node", ["--test", "electron/lib/profile-extension-pins.test.cjs"]);
 runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
+runStep("prepare-profile-launch", "node", ["--test", "electron/engine/prepare-profile-launch.test.cjs"]);
+runStep("check-launch-speed", "node", ["scripts/check-launch-speed.mjs"]);
 runStep("profile-ops", "node", ["electron/services/profile-ops.test.cjs"]);
 runStep("api-routes", "node", ["electron/api-routes.test.cjs"]);

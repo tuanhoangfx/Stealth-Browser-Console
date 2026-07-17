@@ -1,11 +1,111 @@
 # Changelog
 
+## 2026-07-17 — v1.0.31 — Electron dev reload
+
+- Version: `1.0.31`
+- Timestamp: 2026-07-17 17:31 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-17 — v1.0.30 — Electron dev reload
+
+- Version: `1.0.30`
+- Timestamp: 2026-07-17 17:18 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-17 — v1.0.31 — Fix: dev reload no longer kills prod profiles (+ defense-in-depth)
+
+- Version: `1.0.31`
+- Timestamp: 2026-07-17 17:35 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **PROD-SAFETY fix**: `stealthElectronEnv` now pins the dev Electron window to the isolated `-dev`
+  userData root (`stealth-browser-console-dev`, API :6004) **deterministically**, instead of via
+  `resolveStealthUserDataRoot()` which decided dev-vs-prod from the *ambient* `STEALTH_DEV_ISOLATED`.
+  In a plain `dev-desktop-reload` shell that variable is unset, so it resolved to the **prod** root —
+  the dev window then booted on the packaged app's root/DB and its `reconcileOrphansOnStartup()`
+  killed the profiles the user had open in prod. The isolated dev root is now forced and any stale
+  inherited `STEALTH_USER_DATA=prod` is ignored (unless the caller overrides via `extra`).
+- **Defense-in-depth**: `listChromeProcessesPs` and `focusProfileBrowserWindow` now match Chrome
+  strictly on the full `--user-data-dir` path (root-scoped). The bare profile UUID and
+  `--stealth-profile-id=<uuid>` needles were dropped — they are identical across user-data roots, so
+  a dev-root reconcile could match/kill the prod app's Chrome for the same profile id. The path is a
+  strict subset of the old needles (a same-root Chrome always contains it), so only cross-root false
+  positives are removed; `taskkill /T` + lock-owner detection still cover child processes.
+- **Cold-open finding (root-caused)**: the ~8s "cold spike" is the **first-time E0001 download from
+  GitHub** (`ensureCookieBridgeStoreExtension`), which the first `sessions.launch` triggers inline
+  only on a root that has never cached E0001. Proof: pre-caching E0001 drops first open 8.2s → 2.2s
+  (2nd open ~0.9s); the download itself measured 8.2s. Production roots already have E0001 cached
+  (and startup `warmCookieBridgeStoreCache` downloads it in the background off the interactive path),
+  so real profile opens never pay it. The per-open ~3s users felt on ≤1.0.24 was the WMI
+  `Get-CimInstance` scan removed in 1.0.25+. `benchmark-profile-launch` now pre-warms E0001 like
+  production so its numbers reflect real (warm-root) opens instead of a fresh-root download artifact.
+- Regression guards: `scripts/lib/stealth-electron-env.test.mjs` (dev env → `-dev`/:6004 even with a
+  stale prod `STEALTH_USER_DATA`; `--prod-data` still :6003; `extra` overrides win) and updated
+  `electron/lib/profile-browser-orphan.test.cjs` (root-scoped path needle; no cross-root UUID match).
+
+## 2026-07-17 — v1.0.28 — Electron dev reload
+
+- Version: `1.0.28`
+- Timestamp: 2026-07-17 17:08 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-17 — v1.0.27 — Electron dev reload
+
+- Version: `1.0.27`
+- Timestamp: 2026-07-17 17:06 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-17 — v1.0.26 — Fewer WMI scans on orphan attach + open-speed guard
+
+- Version: `1.0.26`
+- Timestamp: 2026-07-17 16:53 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Perf: orphan attach (`#tryAttachOrFocusOrphan`) no longer runs a redundant
+  `hasProfileBrowserProcess` WMI confirm when a `SingletonLock` already proves a
+  browser holds the profile — it goes straight to focus, saving a second ~3s WMI
+  scan when reattaching an already-open profile (e.g. after an app restart).
+- Test: `prepare-profile-launch` guards the sub-500ms open path — asserts a
+  cleanly-closed profile (and a dead-sidecar profile) never trigger the WMI scan,
+  plus `shouldSkipOrphanProbe` only skips when the dir is clean. Registered in
+  `run-unit-tests`.
+- Verified (no change needed): startup already pre-warms the E0001 store CRX +
+  CloakBrowser staging (`warmCookieBridgeStoreCache` + `ensureCloakbrowserExtensionStage`),
+  so first-open provisioning is a one-time background cost, not per-open.
+
 ## 2026-07-17 — v1.0.25 — Sub-500ms profile opens (drop per-open WMI scan)
 
 - Version: `1.0.25`
 - Timestamp: 2026-07-17 16:35 (UTC+7)
 - Type: Patch
-- Status: Dev
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.25
 
 ### Changes
 

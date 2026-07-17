@@ -53,12 +53,30 @@ async function main() {
     sessions = new SessionManager();
     sessions.setUserDataRoot(tmpRoot);
 
+    // Pre-warm E0001 like production does at startup (warmCookieBridgeStoreCache).
+    // Otherwise the first sessions.launch() on this FRESH temp root pays an ~8s
+    // GitHub download of the extension inline, which no real (warm) root ever does —
+    // it made the benchmark's cold max look like a per-open regression when it is not.
+    try {
+      const { warmCookieBridgeStoreCache } = require("../electron/lib/cookie-bridge-store.cjs");
+      await warmCookieBridgeStoreCache(tmpRoot);
+    } catch {
+      // best-effort — offline runs just measure the (still valid) launch path
+    }
+
+    // Full launch() wall-clock per round — captures the whole open path
+    // (prepare/orphan probe + spawn), unlike the launch-perf ring buffer which
+    // times openProfile only. This is what the sub-500ms guard enforces, since
+    // the WMI regression lived in prepareProfileForLaunch, outside spawn.
+    const fullOpenMs = [];
     for (let i = 0; i < rounds; i += 1) {
       if (sessions.isRunning(profile.id)) {
         await sessions.close(profile.id);
         await new Promise((r) => setTimeout(r, 600));
       }
+      const wallStart = Date.now();
       const launched = await sessions.launch(profile);
+      fullOpenMs.push(Date.now() - wallStart);
       if (!launched.ok) throw new Error(`launch round ${i + 1} failed`);
       await new Promise((r) => setTimeout(r, 1200));
     }
@@ -67,15 +85,19 @@ async function main() {
 
     const entries = listLaunchPerf(rounds + 2);
     const stats = summarize(entries);
+    const fullOpenStats = summarize(fullOpenMs.map((totalMs) => ({ totalMs })));
     console.log("Profile launch benchmark (post-rollback, no side-panel extension)");
     console.log(`  rounds: ${rounds}`);
     if (!stats) {
       console.log("  no timing entries recorded");
       return;
     }
-    console.log(`  min: ${stats.minMs} ms`);
-    console.log(`  avg: ${stats.avgMs} ms`);
-    console.log(`  max: ${stats.maxMs} ms`);
+    console.log(`  spawn min/avg/max: ${stats.minMs} / ${stats.avgMs} / ${stats.maxMs} ms`);
+    if (fullOpenStats) {
+      console.log(
+        `  full open min/avg/max: ${fullOpenStats.minMs} / ${fullOpenStats.avgMs} / ${fullOpenStats.maxMs} ms (warm=${fullOpenStats.minMs}ms)`,
+      );
+    }
     const latest = entries[0];
     if (latest?.marks?.length) {
       console.log(
@@ -88,6 +110,7 @@ async function main() {
       rounds,
       sidePanel: false,
       stats,
+      fullOpenStats,
       latestPhases: latest?.marks ?? [],
       entries: entries.slice(0, rounds).map((e) => ({
         totalMs: e.totalMs,
