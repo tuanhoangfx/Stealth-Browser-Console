@@ -64,8 +64,8 @@ function scheduleIdle(run: () => void, timeoutMs = 500): Scheduled {
 
 function cancelScheduled(handle: Scheduled | null): void {
   if (!handle) return;
-  if (handle.kind === "idle" && typeof window.cancelIdleCallback === "function") {
-    window.cancelIdleCallback(handle.id);
+  if (handle.kind === "idle") {
+    if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(handle.id);
     return;
   }
   if (handle.kind === "timeout") {
