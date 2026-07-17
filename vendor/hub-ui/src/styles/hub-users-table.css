@@ -134,8 +134,9 @@ table.hub-users-table {
 /* Select column width — hub-directory-table.css (import after hub-users-table.css) */
 
 /* Legacy alignment only — directory tables use buildDirectoryColgroup width SSOT (hub-directory-table.css) */
+/* Golden Pattern: ID/code columns are body-centered (matches centered date columns). Name/email stay left. */
 .hub-users-col--name { text-align: left; }
-.hub-users-col--id { text-align: left; }
+.hub-users-col--id { text-align: center; }
 .hub-users-col--email { text-align: left; }
 .hub-users-col--role { text-align: center; }
 .hub-users-col--tools { text-align: center; }
@@ -147,7 +148,7 @@ table.hub-users-table {
 .hub-users-col--hub-code {
   width: 4.5rem;
   min-width: 4.5rem;
-  text-align: left;
+  text-align: center;
 }
 .hub-users-col--hub-project {
   width: 26%;
@@ -722,6 +723,7 @@ table.hub-users-table--tool-versions th.hub-users-col--ver-version,
 table.hub-users-table--tool-versions td.hub-users-col--ver-version {
   width: 5.5rem;
   min-width: 5.5rem;
+  text-align: center;
 }
 
 table.hub-users-table--tool-versions col.hub-users-col--ver-released,
@@ -729,6 +731,7 @@ table.hub-users-table--tool-versions th.hub-users-col--ver-released,
 table.hub-users-table--tool-versions td.hub-users-col--ver-released {
   width: 6.25rem;
   min-width: 6.25rem;
+  text-align: center;
 }
 
 table.hub-users-table--tool-versions col.hub-users-col--ver-title,

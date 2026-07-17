@@ -48,7 +48,7 @@ try {
 
   if (-not $SkipInstall) {
     Invoke-Step "Install locked dependencies" {
-      pnpm install --frozen-lockfile
+      node (Join-Path $ToolScripts "run-pnpm.mjs") install --frozen-lockfile
     }
   }
 
@@ -58,14 +58,14 @@ try {
 
   if ($Version.Trim()) {
     Invoke-Step "Set desktop version to $Version" {
-      pnpm version $Version --no-git-tag-version
+      node (Join-Path $ToolScripts "run-pnpm.mjs") version $Version --no-git-tag-version
       node scripts/sync-app-version.mjs
     }
   }
 
   if ($Bump.Trim()) {
     Invoke-Step "Bump desktop version ($Bump)" {
-      pnpm version $Bump --no-git-tag-version
+      node (Join-Path $ToolScripts "run-pnpm.mjs") version $Bump --no-git-tag-version
       node scripts/sync-app-version.mjs
     }
   }
@@ -76,7 +76,7 @@ try {
       if ($FastTests) {
         node scripts/run-unit-tests.mjs --fast
       } else {
-        pnpm test:unit
+        node scripts/run-unit-tests.mjs
       }
     }
   }
