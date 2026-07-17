@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-17 — v1.0.22 — Electron dev reload
+
+- Version: `1.0.22`
+- Timestamp: 2026-07-17 15:45 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-17 — v1.0.21 — Faster repeat profile opens (E0001 native prefs-load)
 
 - Version: `1.0.21`
