@@ -178,7 +178,7 @@
     ],
     "preShipCommands": {
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
-      "build": "corepack pnpm run build"
+      "build": "node scripts/run-build.mjs"
     },
     "syncedAt": "2026-07-16T19:14:23.633Z"
   }
