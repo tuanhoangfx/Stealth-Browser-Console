@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-07-17 — v1.0.25 — Sub-500ms profile opens (drop per-open WMI scan)
+
+- Version: `1.0.25`
+- Timestamp: 2026-07-17 16:35 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Perf (major): `prepareProfileForLaunch` no longer runs the WMI
+  `Get-CimInstance Win32_Process` orphan scan on the hot path. Measured at
+  **3143ms** per open on Windows, it ran on every launch of a cleanly-closed
+  profile just to confirm "not running". Chromium always holds `SingletonLock`
+  while a profile is live, so with no lock file we skip the scan; a cheap sidecar
+  pid `process.kill(pid, 0)` still covers the crash/detach edge case, and the
+  existing lock-error retry loop still kills any real orphan on spawn failure.
+- Result: warm profile reopens drop from ~3s to **~480ms** — back to 1.0.11 speed.
+
+### Measured
+
+- WMI scan alone: 3143ms. Clean reopen after fix: 477–480ms (nav ~40ms).
+
 ## 2026-07-17 — v1.0.24 — Lean dev extension sync (align with staging)
 
 - Version: `1.0.24`

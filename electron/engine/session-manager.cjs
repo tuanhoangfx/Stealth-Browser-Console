@@ -58,8 +58,22 @@ async function prepareProfileForLaunch(userDataDir, { aggressive = false } = {})
   if (aggressive || profileDirHasLock(userDataDir)) {
     return repairProfileUserDataDir(userDataDir);
   }
-  if (await hasProfileBrowserProcess(userDataDir)) {
-    return repairProfileUserDataDir(userDataDir);
+  // No lock file → Chromium is not holding this profile (it writes SingletonLock
+  // for the whole lifetime of a live profile). Skip the 1–3s WMI Get-CimInstance
+  // scan on this hot path; only pay it when a cheap sidecar pid says a process may
+  // still be attached without a lock (crash/detach edge case).
+  const sidecarPid = readSidecarPid(userDataDir)?.pid;
+  if (sidecarPid) {
+    let sidecarAlive = false;
+    try {
+      process.kill(sidecarPid, 0);
+      sidecarAlive = true;
+    } catch {
+      // sidecar pid is dead — profile dir is clean, no repair needed
+    }
+    if (sidecarAlive && (await hasProfileBrowserProcess(userDataDir))) {
+      return repairProfileUserDataDir(userDataDir);
+    }
   }
   return { repaired: false };
 }
