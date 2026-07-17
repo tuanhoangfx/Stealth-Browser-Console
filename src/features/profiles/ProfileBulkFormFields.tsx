@@ -103,7 +103,7 @@ export function resolveBulkDevicePatch(presetId: string) {
       colorScheme: "",
       headless: false,
       humanize: true,
-      windowMode: "normal",
+      windowMode: "host-maximized",
     },
     presetId,
   );
