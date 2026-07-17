@@ -11,10 +11,13 @@
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveNodeExe, winSpawnOpts } from "./lib/win-spawn.mjs";
+
+const require = createRequire(import.meta.url);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const node = resolveNodeExe();
@@ -43,6 +46,35 @@ function findElectronBuilder() {
     dir = parent;
   }
   throw new Error("electron-builder not found — run pnpm install");
+}
+
+/** electron-builder's node-module-collector shells `pnpm` from PATH — Node's corepack shim is often broken. */
+function resolvePnpmCjs() {
+  const toolWinShell = path.join(root, "..", "scripts", "lib", "win-shell-env.cjs");
+  if (fs.existsSync(toolWinShell)) {
+    try {
+      const pnpmCjs = require(toolWinShell).findPnpmCjs(root);
+      if (pnpmCjs && fs.existsSync(pnpmCjs)) return pnpmCjs;
+    } catch {
+      /* ignore */
+    }
+  }
+  const fallback = path.join(root, "..", "scripts", ".tools", "pnpm", "9.15.9", "package", "bin", "pnpm.cjs");
+  return fs.existsSync(fallback) ? fallback : "";
+}
+
+function ensureWorkingPnpmOnPath(env) {
+  if (process.platform !== "win32") return env;
+  const pnpmCjs = resolvePnpmCjs();
+  if (!pnpmCjs) {
+    console.warn("run-electron-package: no working pnpm.cjs — electron-builder may fail on broken corepack shim");
+    return env;
+  }
+  const shimDir = path.join(os.tmpdir(), "p0003-pnpm-path-shim");
+  fs.mkdirSync(shimDir, { recursive: true });
+  fs.writeFileSync(path.join(shimDir, "pnpm.cmd"), `@echo off\r\n"${node}" "${pnpmCjs}" %*\r\n`, "utf8");
+  console.log(`run-electron-package: PATH pnpm shim → ${pnpmCjs}`);
+  return { ...env, PATH: `${shimDir};${env.PATH || process.env.PATH || ""}` };
 }
 
 function copyDir(src, dest) {
@@ -298,7 +330,12 @@ console.log(
   `run-electron-package: targets=${targetDir ? "dir" : winTargets.join("+")} builder-publish=${builderPublish}${publish === "always" ? " (gh upload after pack)" : ""}${withPortable ? " (portable adds ~3–5 min)" : ""}`,
 );
 
-const result = spawnSync(node, [findElectronBuilder(), ...builderArgs], winSpawnOpts({ cwd: root, stdio: "inherit" }));
+const builderEnv = ensureWorkingPnpmOnPath({ ...process.env });
+const result = spawnSync(
+  node,
+  [findElectronBuilder(), ...builderArgs],
+  winSpawnOpts({ cwd: root, stdio: "inherit", env: builderEnv }),
+);
 if ((result.status ?? 1) !== 0) {
   rmDir(stagingOutput);
   process.exit(result.status ?? 1);
