@@ -4,6 +4,22 @@ export const HUB_ACCOUNT_DETAIL_MODAL_SHELL_CLASS = "hub-account-detail-modal";
 /** P0020 2FA / P0004 overview — shared twofa ADM skin on top of hub-account-detail-modal. */
 export const HUB_TWOfA_ACCOUNT_DETAIL_SHELL_CLASS = "twofa-account-detail-modal";
 
+/**
+ * Layout 3 SSOT tokens — Services Account Detail golden (TOC · Main · Note+Log).
+ * Applied by `.hub-account-detail-modal` in hub-account-detail-modal.css.
+ * Every Layout 3 modal must use `hubAccountDetailShellClass()` — do not invent per-product TOC/rail widths.
+ */
+export const HUB_LAYOUT3_DETAIL_TOKENS = {
+  tocW: "10.5rem",
+  railW: "min(22rem, 34%)",
+  splitMinH: "22.4rem",
+  columnsGap: "0.65rem",
+  noteFlex: 2,
+  logFlex: 3,
+  modalMaxH: "768px",
+  modalMaxVh: "73.6vh",
+} as const;
+
 /** Shared ADM form context — detail modal + add modal (glow tokens, click-edit grid). */
 export const HUB_ADM_FORM_SHELL_CLASS = "hub-adm-form-shell";
 
@@ -49,6 +65,15 @@ export const HUB_ADM_TYPE_MONO_CLASS = "hub-adm-type-mono";
 /** Nav tier — panel/rail heads + TOC labels (12px semibold via `HUB_ADM_TYPE_NAV_CLASS`). */
 export const HUB_ADM_TYPE_NAV_CLASS = "hub-adm-type-nav";
 
+/** Log / Activity rail empty + hint text — pairs with `twofa-adm-muted` in CSS. */
+export const HUB_ADM_LOG_MUTED_CLASS = "hub-adm-muted";
+
+/** ADM Activity rail title — bulk detail, account detail log rails (P0020 / P0016 SSOT). */
+export const HUB_ADM_ACTIVITY_RAIL_TITLE = "Activity";
+
+/** ADM Activity rail empty state when no log lines exist yet. */
+export const HUB_ADM_ACTIVITY_LOG_EMPTY_MESSAGE = "No activity for this account yet.";
+
 /** CSS custom properties for ADM typography — set on `.hub-account-detail-modal` / `.hub-add-modal`. */
 export const HUB_ADM_TYPE_CSS_VARS = {
   size: "--hub-adm-type-size",
@@ -67,8 +92,11 @@ export const HUB_ADM_TYPE_CSS_VARS = {
 
 export const HUB_ADM_FORM_ROW_CODE_LINE_CLASS = "hub-adm-form-row--code-line";
 
-/** Preserve 3-col grid height when slot 2+3 empty (1 field in row). */
+/** Preserve 3-col grid height when slot 2+3 empty (1 field in row). Do not also add --tail. */
 export const HUB_ADM_GRID_SLOT_SPACER_CLASS = "hub-adm-grid-slot-spacer";
+
+/** Empty middle slot only — columns 3–4 (field · empty · field). */
+export const HUB_ADM_GRID_SLOT_SPACER_MID_CLASS = "hub-adm-grid-slot-spacer hub-adm-grid-slot-spacer--mid";
 
 /** Preserve 3-col grid height when only slot 3 empty (2 fields in row). */
 export const HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS = "hub-adm-grid-slot-spacer hub-adm-grid-slot-spacer--tail";

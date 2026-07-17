@@ -88,6 +88,22 @@
     "faviconDomain": "kalodata.com"
   },
   {
+    "id": "kalowave",
+    "label": "Kalowave",
+    "match": "kalowave|kalo\\s*wave",
+    "src": "/assets/brand-icons/kalowave.png",
+    "shell": "bare",
+    "faviconDomain": "clip.kalowave.com"
+  },
+  {
+    "id": "kaloboost",
+    "label": "Kaloboost",
+    "match": "kaloboost|kalo\\s*boost",
+    "src": "/assets/brand-icons/kaloboost.png",
+    "shell": "bare",
+    "faviconDomain": "kaloboost.com"
+  },
+  {
     "id": "nordvpn",
     "label": "NordVPN",
     "match": "nord|vpn\\s*nord",
@@ -477,7 +493,8 @@
     "match": "claude|anthropic",
     "src": "/assets/brand-icons/claude.png",
     "shell": "bare",
-    "faviconDomain": "claude.com"
+    "faviconDomain": "claude.ai",
+    "faviconDomains": ["claude.ai", "claude.com", "anthropic.com"]
   },
   {
     "id": "1password",
@@ -798,6 +815,22 @@
     "shell": "bare"
   },
   {
+    "id": "temp-mail",
+    "label": "Temp Mail",
+    "match": "temp\\s*mail|tempmail",
+    "src": "/icons/mailbox.svg",
+    "shell": "bare",
+    "faviconDomain": "temp-mail.org"
+  },
+  {
+    "id": "gmail-edu",
+    "label": "Gmail Edu",
+    "match": "gmail\\s*edu|google\\s*workspace\\s*(?:for\\s*)?education|gsuite\\s*edu",
+    "src": "/assets/brand-icons/gmail-edu.png",
+    "shell": "bare",
+    "faviconDomain": "edu.google.com"
+  },
+  {
     "id": "google",
     "label": "Google",
     "match": "gmail|google",
@@ -967,5 +1000,157 @@
     "src": "/assets/brand-icons/facebook.png",
     "shell": "bare",
     "faviconDomain": "messenger.com"
+  },
+  {
+    "id": "tpbank",
+    "label": "TPBank",
+    "match": "tp\\s*bank|tpbank",
+    "src": "/assets/brand-icons/tpbank.png",
+    "shell": "bare",
+    "faviconDomain": "tpb.vn"
+  },
+  {
+    "id": "techcombank",
+    "label": "Techcombank",
+    "match": "techcombank",
+    "src": "/assets/brand-icons/techcombank.png",
+    "shell": "bare",
+    "faviconDomain": "techcombank.com.vn"
+  },
+  {
+    "id": "acb",
+    "label": "ACB",
+    "match": "\\bacb\\b",
+    "src": "/assets/brand-icons/acb.png",
+    "shell": "bare",
+    "faviconDomain": "acb.com.vn"
+  },
+  {
+    "id": "vib",
+    "label": "VIB",
+    "match": "\\bvib\\b",
+    "src": "/assets/brand-icons/vib.png",
+    "shell": "bare",
+    "faviconDomain": "vib.com.vn"
+  },
+  {
+    "id": "seabank",
+    "label": "SeaBank",
+    "match": "sea\\s*bank|seabank",
+    "src": "/assets/brand-icons/seabank.png",
+    "shell": "bare",
+    "faviconDomain": "seabank.com.vn"
+  },
+  {
+    "id": "vietcombank",
+    "label": "Vietcombank",
+    "match": "vietcombank",
+    "src": "/assets/brand-icons/vietcombank.png",
+    "shell": "bare",
+    "faviconDomain": "vietcombank.com.vn"
+  },
+  {
+    "id": "scb",
+    "label": "SCB",
+    "match": "\\bscb\\b",
+    "src": "/assets/brand-icons/scb.png",
+    "shell": "bare",
+    "faviconDomain": "scb.com.vn"
+  },
+  {
+    "id": "bidv",
+    "label": "BIDV",
+    "match": "\\bbidv\\b",
+    "src": "/assets/brand-icons/bidv.png",
+    "shell": "bare",
+    "faviconDomain": "bidv.com.vn"
+  },
+  {
+    "id": "ncb",
+    "label": "NCB",
+    "match": "\\bncb\\b",
+    "src": "/assets/brand-icons/ncb.png",
+    "shell": "bare",
+    "faviconDomain": "ncb-bank.vn"
+  },
+  {
+    "id": "ocb",
+    "label": "OCB",
+    "match": "\\bocb\\b",
+    "src": "/assets/brand-icons/ocb.png",
+    "shell": "bare",
+    "faviconDomain": "ocb.com.vn"
+  },
+  {
+    "id": "abbank",
+    "label": "AB Bank",
+    "match": "ab\\s*bank|abbank",
+    "src": "/assets/brand-icons/abbank.png",
+    "shell": "bare",
+    "faviconDomain": "abbank.vn"
+  },
+  {
+    "id": "msb",
+    "label": "MSB",
+    "match": "\\bmsb\\b",
+    "src": "/assets/brand-icons/msb.png",
+    "shell": "bare",
+    "faviconDomain": "www.msb.com.vn"
+  },
+  {
+    "id": "mbbank",
+    "label": "MB Bank",
+    "match": "mb\\s*bank|mbbank",
+    "src": "/assets/brand-icons/mbbank.png",
+    "shell": "bare",
+    "faviconDomain": "www.mbbank.com.vn"
+  },
+  {
+    "id": "ubank",
+    "label": "UBank",
+    "match": "ubank",
+    "src": "/assets/brand-icons/ubank.png",
+    "shell": "bare",
+    "faviconDomain": "ubank.vn"
+  },
+  {
+    "id": "vietinbank",
+    "label": "VietinBank",
+    "match": "vietinbank",
+    "src": "/assets/brand-icons/vietinbank.png",
+    "shell": "bare",
+    "faviconDomain": "vietinbank.vn"
+  },
+  {
+    "id": "vpbank",
+    "label": "VPBank",
+    "match": "vp\\s*bank|vpbank",
+    "src": "/assets/brand-icons/vpbank.png",
+    "shell": "bare",
+    "faviconDomain": "vpbank.com.vn"
+  },
+  {
+    "id": "cake",
+    "label": "Cake",
+    "match": "\\bcake\\b",
+    "src": "/assets/brand-icons/cake.png",
+    "shell": "bare",
+    "faviconDomain": "cake.vn"
+  },
+  {
+    "id": "liobank",
+    "label": "Liobank",
+    "match": "lio\\s*bank|liobank",
+    "src": "/assets/brand-icons/liobank.png",
+    "shell": "bare",
+    "faviconDomain": "liobank.vn"
+  },
+  {
+    "id": "umee",
+    "label": "Umee",
+    "match": "\\bumee\\b",
+    "src": "/assets/brand-icons/umee.png",
+    "shell": "bare",
+    "faviconDomain": "umee.vn"
   }
 ]

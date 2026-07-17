@@ -109,6 +109,7 @@ export function HubUserChangePasswordModal({
             (step === "idle" ? !canRecover || !email.trim() : !code.trim() || password.length < 6)
           }
           busy={busy}
+          icon={step === "idle" ? Mail : KeyRound}
         />
       }
     >

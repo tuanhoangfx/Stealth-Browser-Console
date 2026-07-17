@@ -15,8 +15,8 @@ export type HubAdmRecordMetaRowProps = {
 };
 
 /**
- * Fixed record metadata row — Created · Last Updated · Vault ID.
- * Embed inside Credentials (or any domain panel); no section heading.
+ * Fixed record metadata row — Created · Update · Vault ID (standalone frame).
+ * Place above domain sections (Order / Customer SSOT); no section heading.
  */
 export function HubAdmRecordMetaRow({
   vaultId,

@@ -18,6 +18,17 @@ const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLoc
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
 
+function launchMeta(profile) {
+  const agentSmoke = isAgentSmokeLaunch();
+  return {
+    agentSmoke,
+    headless: profile.headless === true || agentSmoke,
+  };
+}
+const { isGoogleSessionUrl } = require("../lib/google-session-detect.cjs");
+const { isMicrosoftSessionUrl } = require("../lib/microsoft-session-detect.cjs");
+const { captureAndQueueStealthSnapshotSafe } = require("../lib/stealth-account-sync.cjs");
+
 /** CDP passthrough bật mặc định; tắt bằng STEALTH_CDP_ENABLE=0. */
 function cdpEnabled() {
   return String(process.env.STEALTH_CDP_ENABLE || "1") !== "0";
@@ -26,6 +37,8 @@ function cdpEnabled() {
 const SESSION_WATCHDOG_MS = 8000;
 /** Ignore transient empty pages / watchdog during startup navigation. */
 const LAUNCH_GRACE_MS = 45_000;
+const STEALTH_NAV_CAPTURE_DELAY_MS = 1200;
+const STEALTH_NAV_CAPTURE_DEBOUNCE_MS = 6000;
 
 /** Skip expensive WMI orphan probe when profile dir is clean (typical Run path). */
 function shouldSkipOrphanProbe(userDataDir, priorStatus) {
@@ -40,7 +53,12 @@ function profileDirHasLock(userDataDir) {
 }
 
 async function prepareProfileForLaunch(userDataDir, { aggressive = false } = {}) {
+  // Always probe for live Chrome when lock files exist — stale lock + missed orphan
+  // was the ProcessSingleton Error 32 failure mode (profile already in use).
   if (aggressive || profileDirHasLock(userDataDir)) {
+    return repairProfileUserDataDir(userDataDir);
+  }
+  if (await hasProfileBrowserProcess(userDataDir)) {
     return repairProfileUserDataDir(userDataDir);
   }
   return { repaired: false };
@@ -97,6 +115,31 @@ class SessionManager {
       this.#onSessionChange?.(String(profileId), profile, event);
     } catch {
       // listener errors should not break session lifecycle
+    }
+  }
+
+  #scheduleStealthCapture(id, context, profile, source, { delayMs = STEALTH_NAV_CAPTURE_DELAY_MS, force = false } = {}) {
+    const session = this.#sessions.get(id);
+    if (!session || session.context !== context || session.focusOnly || !session.alive) return;
+    const now = Date.now();
+    if (!force && session.lastStealthCaptureAt && now - session.lastStealthCaptureAt < STEALTH_NAV_CAPTURE_DEBOUNCE_MS) {
+      return;
+    }
+    if (session.stealthCaptureTimer) clearTimeout(session.stealthCaptureTimer);
+    session.stealthCaptureTimer = setTimeout(() => {
+      const latest = this.#sessions.get(id);
+      if (!latest || latest.context !== context || latest.focusOnly || !latest.alive) return;
+      void (async () => {
+        try {
+          await captureAndQueueStealthSnapshotSafe(context, profile, { source });
+          latest.lastStealthCaptureAt = Date.now();
+        } catch (error) {
+          console.warn("[stealth-sync] nav capture:", error instanceof Error ? error.message : error);
+        }
+      })();
+    }, delayMs);
+    if (typeof session.stealthCaptureTimer.unref === "function") {
+      session.stealthCaptureTimer.unref();
     }
   }
 
@@ -171,10 +214,25 @@ class SessionManager {
       profile,
       profileCode,
       focusOnly: false,
+      headless: launchMeta(profile).headless,
       startupNavigation,
       launchedAt,
     });
     this.#bindSessionLifecycle(id, opened.context, profile);
+
+    void (async () => {
+      try {
+        if (startupNavigation) await startupNavigation;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (isContextAlive(opened.context)) {
+          await captureAndQueueStealthSnapshotSafe(opened.context, profile, { source: "profile_open" });
+          const session = this.#sessions.get(id);
+          if (session) session.lastStealthCaptureAt = Date.now();
+        }
+      } catch (error) {
+        console.warn("[stealth-sync] open capture:", error instanceof Error ? error.message : error);
+      }
+    })();
 
     profileService.touchLastOpened(id);
     const running = profileService.setProfileStatus(id, "running");
@@ -185,6 +243,7 @@ class SessionManager {
       profile: running,
       userDataDir: opened.userDataDir,
       debugPort: opened.debugPort || 0,
+      ...launchMeta(profile),
     };
   }
 
@@ -234,7 +293,11 @@ class SessionManager {
     }
 
     if (!(await hasProfileBrowserProcess(userDataDir))) return null;
-    if (isAgentSmokeLaunch()) return null;
+    if (isAgentSmokeLaunch()) {
+      await killOrphanProfileBrowser(userDataDir);
+      removeStaleProfileLocks(userDataDir);
+      return null;
+    }
 
     const focused = await focusProfileBrowserWindow(userDataDir);
     if (!focused.ok) return null;
@@ -250,6 +313,7 @@ class SessionManager {
       profile,
       profileCode,
       focusOnly: true,
+      headless: launchMeta(profile).headless,
       launchedAt: Date.now(),
     });
     this.#bindFocusOnlyLifecycle(id, userDataDir);
@@ -306,15 +370,27 @@ class SessionManager {
       finalized = true;
       const session = this.#sessions.get(id);
       if (!session || session.context !== context) return;
-      if (session.watchdog) clearInterval(session.watchdog);
-      session.alive = false;
-      this.#sessions.delete(id);
-      try {
-        const next = profileService.setProfileStatus(id, "closed");
-        if (next) this.#emitSessionChange(id, next, reason);
-      } catch (error) {
-        console.warn("[session] finalize status:", error instanceof Error ? error.message : error);
-      }
+
+      void (async () => {
+        try {
+          if (!session.focusOnly && isContextAlive(context)) {
+            await captureAndQueueStealthSnapshotSafe(context, profile, { source: reason });
+          }
+        } catch (error) {
+          console.warn("[stealth-sync] finalize capture:", error instanceof Error ? error.message : error);
+        } finally {
+          if (session.watchdog) clearInterval(session.watchdog);
+          if (session.stealthCaptureTimer) clearTimeout(session.stealthCaptureTimer);
+          session.alive = false;
+          this.#sessions.delete(id);
+          try {
+            const next = profileService.setProfileStatus(id, "closed");
+            if (next) this.#emitSessionChange(id, next, reason);
+          } catch (error) {
+            console.warn("[session] finalize status:", error instanceof Error ? error.message : error);
+          }
+        }
+      })();
     };
 
     const maybeFinalizeWhenEmpty = () => {
@@ -336,6 +412,21 @@ class SessionManager {
 
     const bindPageClose = (page) => {
       page.once("close", maybeFinalizeWhenEmpty);
+      const maybeCapture = (frame = null) => {
+        try {
+          if (frame && frame !== page.mainFrame()) return;
+          const session = this.#sessions.get(id);
+          if (!session || session.context !== context || !session.alive) return;
+          const url = page.url();
+          if (!isGoogleSessionUrl(url) && !isMicrosoftSessionUrl(url)) return;
+          const navSource = isMicrosoftSessionUrl(url) ? "microsoft_nav" : "google_nav";
+          this.#scheduleStealthCapture(id, context, profile, navSource);
+        } catch {
+          // page may already be closing
+        }
+      };
+      page.on("framenavigated", maybeCapture);
+      page.on("load", () => maybeCapture());
     };
 
     context.on("close", () => finalize("context-closed"));
@@ -473,7 +564,7 @@ class SessionManager {
         await this.focusProfile(id);
         profileService.touchLastOpened(id);
         const next = profileService.setProfileStatus(id, "running");
-        return { ok: true, status: "running", profile: next, focused: true };
+        return { ok: true, status: "running", profile: next, focused: true, ...launchMeta(profile) };
       }
       if (existing.focusOnly) {
         if (!isAgentSmokeLaunch()) {
@@ -481,7 +572,7 @@ class SessionManager {
         }
         profileService.touchLastOpened(id);
         const next = profileService.setProfileStatus(id, "running");
-        return { ok: true, status: "running", profile: next, focused: true };
+        return { ok: true, status: "running", profile: next, focused: true, ...launchMeta(profile) };
       }
     }
     if (existing) {
@@ -531,6 +622,7 @@ class SessionManager {
         if (attempt < 2 && isLaunchLockError(error)) {
           const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
           if (retried) return retried;
+          await killOrphanProfileBrowser(userDataDir);
           await repairProfileUserDataDir(userDataDir);
           continue;
         }
@@ -555,6 +647,14 @@ class SessionManager {
       if (session.watchdog) clearInterval(session.watchdog);
       session.alive = false;
       this.#sessions.delete(id);
+      if (!session.focusOnly && session.context) {
+        const profile = profileService.getProfile(id) || session.profile;
+        if (profile) {
+          await captureAndQueueStealthSnapshotSafe(session.context, profile, { source: "profile_close" });
+          session.lastStealthCaptureAt = Date.now();
+        }
+      }
+      if (session.stealthCaptureTimer) clearTimeout(session.stealthCaptureTimer);
       if (session.focusOnly) {
         await killOrphanProfileBrowser(session.userDataDir);
       } else {
@@ -609,7 +709,8 @@ class SessionManager {
         id,
         name: profile?.name || id,
         userDataDir: session.userDataDir,
-        debugPort: session.debugPort || 0
+        debugPort: session.debugPort || 0,
+        headless: Boolean(session.headless),
       });
     }
     return rows;
@@ -678,6 +779,17 @@ class SessionManager {
   }
 
   /** Force-release Chrome storage for delete/replace — kill orphan, purge userDataDir. */
+  async forceStealthCapture(profile, { source = "workflow_done" } = {}) {
+    const id = String(profile?.id || "");
+    if (!id) return { ok: false, reason: "missing profile" };
+    const context = this.getContext(id);
+    if (!context) return { ok: false, reason: "no live context" };
+    const result = await captureAndQueueStealthSnapshotSafe(context, profile, { source });
+    const session = this.#sessions.get(id);
+    if (session) session.lastStealthCaptureAt = Date.now();
+    return result;
+  }
+
   async releaseProfileStorage(profileId) {
     const id = String(profileId);
     const userDataDir = profileDataDir(this.#userDataRoot, id);

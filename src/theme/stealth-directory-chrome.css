@@ -57,6 +57,8 @@
 /* fixedRows rail — clip table inside pane; explicit min-height fits 5 rows + pager */
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows {
   --hub-workflow-rail-rows: 5;
+  /* Real rail cells run taller than default directory row (badge/name lines). */
+  --hub-workflow-rail-row-h: 2.75rem;
 }
 
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-split-directory-pane__body {
@@ -65,12 +67,19 @@
 }
 
 /* Stable rail frame — always reserve N data rows (+ thead) even when search filters to fewer results. */
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows .hub-paginated-table-shell {
+  min-height: calc(
+    var(--hub-directory-head-row-h, 2.125rem) +
+      var(--hub-workflow-rail-rows, 5) * var(--hub-workflow-rail-row-h, 2.75rem)
+  );
+}
+
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
   .hub-paginated-table-shell
   > .hub-users-table-wrap:not(.hub-directory-table-split) {
   min-height: calc(
     var(--hub-directory-head-row-h, 2.125rem) +
-      var(--hub-workflow-rail-rows, 5) * var(--hub-directory-row-h, 1.875rem)
+      var(--hub-workflow-rail-rows, 5) * var(--hub-workflow-rail-row-h, 2.75rem)
   );
 }
 
@@ -79,7 +88,26 @@
   tbody
   tr.hub-users-row--pad
   td {
-  height: var(--hub-directory-row-h, 1.875rem);
+  height: var(--hub-workflow-rail-row-h, 2.75rem);
+}
+
+/* Keep data + pad rows the same height so search pad-fill does not shrink the shell. */
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  table.stealth-workflow-rail-table
+  tbody
+  tr {
+  height: var(--hub-workflow-rail-row-h, 2.75rem);
+}
+
+.stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows
+  table.stealth-workflow-rail-table
+  tbody
+  tr
+  > td {
+  height: var(--hub-workflow-rail-row-h, 2.75rem);
+  max-height: var(--hub-workflow-rail-row-h, 2.75rem);
+  overflow: hidden;
+  vertical-align: middle;
 }
 
 .stealth-workflow-directory-frame.hub-split-directory-pane--fixed-rows table.stealth-workflow-rail-table {

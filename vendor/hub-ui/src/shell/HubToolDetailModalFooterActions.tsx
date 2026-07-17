@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { Save, Trash2 } from "lucide-react";
 import {
   HubToolDetailModalPrimaryAction,
 } from "./HubToolDetailModal";
@@ -13,18 +14,20 @@ export type HubToolDetailModalFooterActionsProps = {
   showDelete?: boolean;
   onDelete?: () => void;
   deleteLabel?: string;
+  deleteIcon?: LucideIcon;
 };
 
 /** Golden footer row — optional delete (left) + primary save (right). Compact forms without Close. */
 export function HubToolDetailModalFooterActions({
   saveLabel,
-  saveIcon,
+  saveIcon = Save,
   onSave,
   saveDisabled,
   busy,
   showDelete,
   onDelete,
   deleteLabel = "Delete",
+  deleteIcon = Trash2,
 }: HubToolDetailModalFooterActionsProps) {
   return (
     <div className="hub-tool-detail-modal__footer-bar hub-tool-detail-modal__footer-bar--split">
@@ -35,6 +38,7 @@ export function HubToolDetailModalFooterActions({
             onClick={onDelete}
             danger
             disabled={busy}
+            icon={deleteIcon}
           />
         </div>
       ) : null}

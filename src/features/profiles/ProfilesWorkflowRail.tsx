@@ -9,8 +9,11 @@ import { AutomationRuntimePanel } from "../runtime/AutomationRuntimePanel";
 /** Profiles right rail — Hub workflow picker pattern. */
 export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail({
   backupJobLabel = null,
+  runtimeOnly = false,
 }: {
   backupJobLabel?: string | null;
+  /** System Backup / Extensions — History + Console only (no workflow script rail). */
+  runtimeOnly?: boolean;
 }) {
   const { setView, setWorkflowTab } = useStealthShell();
   const { openProfilesForWorkflow } = useWorkflowRuntime();
@@ -47,6 +50,14 @@ export const ProfilesWorkflowRail = memo(function ProfilesWorkflowRail({
     },
     [setActiveWorkflow, setSelectedWorkflowIds, setView, setWorkflowTab],
   );
+
+  if (runtimeOnly) {
+    return (
+      <aside className="stealth-workflow-rail stealth-runtime-rail-only">
+        <AutomationRuntimePanel backupJobLabel={backupJobLabel} />
+      </aside>
+    );
+  }
 
   return (
     <aside className="stealth-workflow-rail">

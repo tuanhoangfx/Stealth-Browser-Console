@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { StealthScreen } from "../lib/stealth-screen";
 import {
   bulkUpdateStartupUrl,
+  closeAllRunningProfiles,
   closeProfile,
   createGroup,
   createProfile,
@@ -12,6 +13,7 @@ import {
   exportProfilesBundle,
   fetchProfileBootstrap,
   fetchProfileCatalogStats,
+  fetchRunningProfileSessions,
   fetchRunHistory,
   importProfilesBundle,
   launchProfile,
@@ -26,6 +28,7 @@ import {
   reconcileCatalogStats,
 } from "../features/profiles/profile-catalog-stats-patch";
 import { useRunLogs } from "../features/runtime/RunLogsContext";
+import { useAppToast } from "../components/toast";
 import { buildProfileExportFilename, downloadJson } from "../lib/stealth-profile-utils";
 import { resolveStartupUrlSave } from "../lib/startup-url";
 import type { BulkCreateProfileDefaults, BulkCreateProfilesResult, ProfileRow, RunHistoryItem, ProfileCatalogStats, StealthGroup, StealthProfile } from "../types";
@@ -60,6 +63,8 @@ export type ProfilesRuntimeContextValue = {
   importProfiles: (bundle: unknown) => Promise<void>;
   openOne: (profile: ProfileRow) => Promise<void>;
   closeOne: (profile: ProfileRow) => Promise<void>;
+  closeAllRunning: () => Promise<void>;
+  runningHeadlessIds: ReadonlySet<string>;
   runOpenUrl: (
     selectedProfiles: ProfileRow[],
     options: { targetUrl: string; screenshot: boolean; closeWhenDone: boolean },
@@ -85,12 +90,23 @@ export function ProfilesRuntimeProvider({
   children: ReactNode;
 }) {
   const { addLog } = useRunLogs();
+  const { pushToast } = useAppToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [groups, setGroups] = useState<StealthGroup[]>([]);
   const [catalogStats, setCatalogStats] = useState<ProfileCatalogStats | null>(null);
   const [history, setHistory] = useState<RunHistoryItem[]>([]);
   const [syncBusy, setSyncBusy] = useState(false);
   const [automationProfiles, setAutomationProfileSelection] = useState<ProfileRow[]>([]);
+  const [runningHeadlessIds, setRunningHeadlessIds] = useState<ReadonlySet<string>>(() => new Set());
+
+  const refreshRunningHeadless = useCallback(async () => {
+    try {
+      const sessions = await fetchRunningProfileSessions();
+      setRunningHeadlessIds(new Set(sessions.filter((row) => row.headless).map((row) => row.id)));
+    } catch {
+      // stale preload or API offline — keep last known set
+    }
+  }, []);
 
   const refreshHistory = useCallback(async () => {
     try {
@@ -157,14 +173,26 @@ export function ProfilesRuntimeProvider({
         return reconcileCatalogStats(patchCatalogStatsForSessionEvent(stats, event));
       });
       if (event === "closed" || event === "failed" || event === "storage-released") {
+        setRunningHeadlessIds((prev) => {
+          if (!prev.has(profile.id)) return prev;
+          const next = new Set(prev);
+          next.delete(profile.id);
+          return next;
+        });
         scheduleReconcile();
+      } else if (event === "running" || event === "focused" || event === "opening") {
+        void refreshRunningHeadless();
       }
     });
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);
       off?.();
     };
-  }, [refreshCatalogStats]);
+  }, [refreshCatalogStats, refreshRunningHeadless]);
+
+  useEffect(() => {
+    void refreshRunningHeadless();
+  }, [refreshRunningHeadless]);
 
   useEffect(() => {
     if (view === "workflow") {
@@ -383,15 +411,25 @@ export function ProfilesRuntimeProvider({
     async (profile: ProfileRow) => {
       addLog("info", profile.name, "Run — opening with startup URL");
       try {
-        const next = await launchProfile(profile.id, profile.name);
+        const result = await launchProfile(profile.id, profile.name);
+        const next = result.profile;
         addLog("success", profile.name, "Profile running");
         setProfiles((prev) => prev.map((row) => (row.id === next.id ? next : row)));
+        if (result.focused) {
+          pushToast(`${profile.name} — browser focused (already running).`, "success");
+        } else if (result.headless) {
+          const mode = result.agentSmoke ? "headless (agent smoke)" : "headless";
+          pushToast(`${profile.name} — Chrome opened (${mode}).`, result.agentSmoke ? "warn" : "success");
+        } else {
+          pushToast(`${profile.name} — Chrome opened (headed).`, "success");
+        }
+        void refreshRunningHeadless();
       } catch (error) {
         addLog("error", profile.name, error instanceof Error ? error.message : "Launch failed");
         await refreshProfiles();
       }
     },
-    [addLog, refreshProfiles],
+    [addLog, pushToast, refreshProfiles, refreshRunningHeadless],
   );
 
   const handleCloseOne = useCallback(
@@ -407,6 +445,24 @@ export function ProfilesRuntimeProvider({
     },
     [addLog],
   );
+
+  const handleCloseAllRunning = useCallback(async () => {
+    addLog("info", "Profiles", "Closing all running browsers");
+    try {
+      const { count } = await closeAllRunningProfiles();
+      addLog("success", "Profiles", count > 0 ? `Closed ${count} browser${count === 1 ? "" : "s"}` : "No running browsers");
+      if (count > 0) {
+        pushToast(`Closed ${count} running profile${count === 1 ? "" : "s"}.`, "success");
+      }
+      setRunningHeadlessIds(new Set());
+      await refreshProfiles();
+      await refreshRunningHeadless();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Close all failed";
+      addLog("error", "Profiles", message);
+      pushToast(message, "error");
+    }
+  }, [addLog, pushToast, refreshProfiles, refreshRunningHeadless]);
 
   const handleReplayRun = useCallback(
     async (run: RunHistoryItem) => {
@@ -466,6 +522,8 @@ export function ProfilesRuntimeProvider({
       importProfiles: handleImportProfiles,
       openOne: handleOpenOne,
       closeOne: handleCloseOne,
+      closeAllRunning: handleCloseAllRunning,
+      runningHeadlessIds,
       runOpenUrl: executeOpenUrl,
       replayRun: handleReplayRun,
       exportRunLogs: handleExportRunLogs,
@@ -493,6 +551,8 @@ export function ProfilesRuntimeProvider({
       handleImportProfiles,
       handleOpenOne,
       handleCloseOne,
+      handleCloseAllRunning,
+      runningHeadlessIds,
       executeOpenUrl,
       handleReplayRun,
       handleExportRunLogs,

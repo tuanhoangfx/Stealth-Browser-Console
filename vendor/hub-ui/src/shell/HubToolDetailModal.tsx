@@ -78,23 +78,40 @@ export function HubToolDetailModalPrimaryAction({
   );
 }
 
+/** Accent tone for cross-entity footer nav (View orders / customer / catalog). */
+export type HubToolDetailModalSecondaryTone = "emerald" | "sky" | "violet" | "amber" | "rose";
+
+export type HubToolDetailModalSecondaryActionProps = {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  /** Required — Layout-3 / form footer SSOT (Close=X, Reset=RotateCcw, …). */
+  icon: LucideIcon;
+  /** Optional accent — hover brightens border (not neutral gray wash). */
+  tone?: HubToolDetailModalSecondaryTone;
+};
+
 export function HubToolDetailModalSecondaryAction({
   label,
   onClick,
   disabled,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
+  icon: Icon,
+  tone,
+}: HubToolDetailModalSecondaryActionProps) {
   return (
     <button
       type="button"
-      className="hub-tool-detail-modal__secondary"
+      className={[
+        "hub-tool-detail-modal__secondary",
+        tone ? `hub-tool-detail-modal__secondary--${tone}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       disabled={disabled}
       onClick={onClick}
     >
-      {label}
+      <Icon size={16} aria-hidden />
+      <span>{label}</span>
     </button>
   );
 }

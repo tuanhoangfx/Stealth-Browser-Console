@@ -5,6 +5,20 @@ export type DirectorySortState = {
   sortDir: HubSortDir;
 };
 
+/**
+ * Directory sort behavior for a given vault/screen.
+ *
+ * Tools can introduce local overrides (for example, P0020 Data Box uses a
+ * `twofaDirectorySortMode` contract to lock additional 2FA tabs to their
+ * documented primary default order). Hub-UI stays conservative here — we only
+ * treat classic mail-style vaults as "default-order-only" at the shell level.
+ */
+export type DirectorySortMode = "default-order-only" | "interactive-sort";
+
+export function directorySortMode(vaultScope: string): DirectorySortMode {
+  return isDirectoryDefaultSortOnlyVault(vaultScope) ? "default-order-only" : "interactive-sort";
+}
+
 /** Mail-style vaults — fixed multi-key default; no column override or URL persistence. */
 export function isDirectoryDefaultSortOnlyVault(vaultScope: string): boolean {
   return vaultScope === "mail";
@@ -33,6 +47,6 @@ export function shouldPersistDirectorySortUrl(
   sort: DirectorySortState,
   primaryDefault: DirectorySortState,
 ): boolean {
-  if (vaultScope === "mail") return false;
+  if (directorySortMode(vaultScope) === "default-order-only") return false;
   return !directorySortMatchesPrimaryDefault(sort, primaryDefault);
 }

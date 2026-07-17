@@ -6,7 +6,7 @@ const SORT_SQL: Record<StealthProfileSortKey, string> = {
   e0001: "updated_at",
   surfshark: "updated_at",
   status: "status",
-  lastOpened: "last_opened_at",
+  updated: "last_opened_at",
   createdAt: "created_at",
   startupUrl: "startup_url",
   proxy: "proxy",

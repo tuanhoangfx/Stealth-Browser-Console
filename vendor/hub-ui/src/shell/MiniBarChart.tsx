@@ -1,10 +1,11 @@
 import type { FilterIconMeta } from "../types/filter-badge";
-import { prepareChartItems } from "../chart-items";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
+import { CHART_TOP_N, prepareChartItems } from "../chart-items";
 import { chartRankBarColor, isChartOthersLabel, CHART_OTHERS_BAR_COLOR } from "../lib/chart-palette";
 import { hubValueBandColor } from "../lib/hub-value-band";
-import { compactIconSize } from "../ui-scale";
-import { hubBrandIconImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
-import { HUB_ANALYTICS_CAPTION_TYPO_CLASS, HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
+import { AnalyticsCaptionLabel, ChartLegendRowLabel } from "./AnalyticsCaptionHint";
+import { type HubBrandIconShell } from "./filter-dropdown-primitives";
+import { HUB_SHELL_LABEL_TYPO_CLASS } from "./hub-typography";
 
 export type BarItem = {
   label: string;
@@ -14,6 +15,7 @@ export type BarItem = {
   emojiGlyph?: string;
   iconSrc?: string;
   iconShell?: HubBrandIconShell;
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 export type MiniBarChartColorMode = "value-band" | "rank";
@@ -36,49 +38,51 @@ function resolveBarColor(
 
 export function MiniBarChart({
   title,
+  titleEmoji,
+  titleHint,
   items,
   max,
   formatter,
   colorMode = "rank",
+  topN,
 }: {
   title: string;
+  titleEmoji?: string;
+  titleHint?: HubDirectoryColumnHintContent;
   items: BarItem[];
   max?: number;
   formatter?: (n: number) => string;
-  /** `rank` — golden top-3 palette + grey Others. `value-band` — optional ratio gradient. */
+  /** `rank` — golden top-3 palette + grey Other. `value-band` — optional ratio gradient. */
   colorMode?: MiniBarChartColorMode;
+  /** Override Hub `CHART_TOP_N` (rare). Default → 3 + Other = 4 legend rows. */
+  topN?: number;
 }) {
-  const rows = prepareChartItems(items);
+  const rows = prepareChartItems(items, topN != null ? { topN } : undefined);
   const m = max ?? Math.max(1, ...rows.map((i) => i.value));
   const fmt = formatter ?? fmtInt;
 
   return (
     <div className="hub-chart-card rounded-2xl border border-white/5 bg-[var(--panel)] p-4">
-      <div className={`mb-2 shrink-0 text-[var(--muted)] ${HUB_ANALYTICS_CAPTION_TYPO_CLASS}`}>{title}</div>
+      <div className="mb-2 shrink-0">
+        <AnalyticsCaptionLabel label={title} emojiGlyph={titleEmoji} labelHint={titleHint} />
+      </div>
       <ul className="hub-chart-card__body space-y-1.5">
         {rows.map((it, i) => {
           const pct = Math.max(2, (it.value / m) * 100);
           const color = resolveBarColor(it, i, m, colorMode);
           const othersRow = isChartOthersLabel(it.label);
+          const heat = Boolean(it.color) && !othersRow;
           return (
             <li key={`${it.label}-${i}`} className="hub-chart-row anim-slide">
-              <span className="hub-chart-legend-label" title={it.label}>
-                {it.iconSrc ? (
-                  <img
-                    src={it.iconSrc}
-                    alt=""
-                    className={hubBrandIconImgClass(it.iconShell)}
-                    aria-hidden
-                  />
-                ) : it.emojiGlyph ? (
-                  <span className="shrink-0 text-[11px] leading-none" aria-hidden>
-                    {it.emojiGlyph}
-                  </span>
-                ) : it.iconMeta ? (
-                  <it.iconMeta.icon size={compactIconSize(11)} className={`shrink-0 ${it.iconMeta.className}`} aria-hidden />
-                ) : null}
-                <span className="hub-chart-legend-label__text">{it.label}</span>
-              </span>
+              <ChartLegendRowLabel
+                label={it.label}
+                iconSrc={it.iconSrc}
+                iconShell={it.iconShell}
+                iconMeta={it.iconMeta}
+                emojiGlyph={it.emojiGlyph}
+                labelHint={it.labelHint}
+                colorDot={!it.iconSrc && !it.emojiGlyph ? it.color : undefined}
+              />
               <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-white/5">
                 <div
                   className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-out"
@@ -91,7 +95,7 @@ export function MiniBarChart({
               </div>
               <span
                 className="hub-chart-row__value tabular-nums"
-                style={colorMode === "value-band" ? { color } : undefined}
+                style={heat || colorMode === "value-band" ? { color } : undefined}
               >
                 {fmt(it.value)}
               </span>

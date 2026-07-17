@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { hubDirectoryListResetKey, type FilterValues } from "@tool-workspace/hub-ui";
+import { applyStealthFilterLabelHints } from "../../lib/stealth-filter-hints";
 import type { WorkflowConfig } from "./workflow-types";
 import {
   buildWorkflowFilters,
@@ -29,7 +30,10 @@ export function useWorkflowDirectoryFilters({
   workflowPlatformFilters,
   setWorkflowPlatformFilters,
 }: UseWorkflowDirectoryFiltersArgs) {
-  const filters = useMemo(() => buildWorkflowFilters(workflowConfigs), [workflowConfigs]);
+  const filters = useMemo(
+    () => applyStealthFilterLabelHints(buildWorkflowFilters(workflowConfigs), "workflow"),
+    [workflowConfigs],
+  );
   const filterValues = useMemo(
     () => workflowStateToFilterValues(workflowGroupFilters, workflowPlatformFilters),
     [workflowGroupFilters, workflowPlatformFilters],

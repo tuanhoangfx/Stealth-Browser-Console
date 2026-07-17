@@ -1,6 +1,5 @@
-const { COOKIE_BRIDGE_STORE_ID, cookieBridgeEnabled } = require("./cookie-bridge-store.cjs");
-
-const SURFSHARK_STORE_ID = "ailoabdmgclmfmhdagmlohpjlbpffblp";
+const { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } = require("./stealth-extension-store-ids.cjs");
+const { cookieBridgeEnabled } = require("./cookie-bridge-store.cjs");
 
 const DEFAULT_EXTENSION_TOGGLES = Object.freeze({
   e0001: true,

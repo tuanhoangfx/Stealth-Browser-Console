@@ -1,3 +1,5 @@
+import { focusHubModalSearch } from "./hub-modal-search";
+
 export type HubShortcutId = "search" | "clear" | "new" | "edit" | "settings" | "dismiss";
 
 export const HUB_SHORTCUT_LEGEND: { id: HubShortcutId; keys: string; label: string }[] = [
@@ -106,6 +108,7 @@ function isHubModalOpen(): boolean {
   return Boolean(document.querySelector(".modal-backdrop [role='dialog'][aria-modal='true']"));
 }
 
+
 function onGlobalKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") {
     const entry = searchClearByScreen.get(activeScreenId);
@@ -122,7 +125,13 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   const modalOpen = isHubModalOpen();
 
   if (key === "f" && !hasModifier(e)) {
-    if (modalOpen || isHubTypingTarget(e.target)) return;
+    if (isHubTypingTarget(e.target)) return;
+    if (modalOpen) {
+      if (focusHubModalSearch()) {
+        e.preventDefault();
+      }
+      return;
+    }
     const focus = searchFocusByScreen.get(activeScreenId);
     if (focus) {
       e.preventDefault();

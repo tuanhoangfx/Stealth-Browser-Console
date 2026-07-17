@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HubBulkActionButton,
+  HubDirectoryAdaptiveEditAction,
   HubDirectoryNewBulkAction,
 } from "@tool-workspace/hub-ui";
-import { Blocks, EllipsisVertical, FolderTree, Layers, Pencil, Play, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
+import { Blocks, EllipsisVertical, FolderTree, Layers, Play, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
+import { profileAdaptiveEditLabelHint } from "./profile-bulk-action-hints";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
 export type ExtensionSelectionState = "all-on" | "all-off" | "mixed";
@@ -94,6 +96,7 @@ function ExtensionToggleRow({
 
 export function StealthProfilesDirectoryBulkActions({
   hasSelection,
+  runningCount = 0,
   selectedCount = 0,
   extensionState = { e0001: "mixed", surfshark: "mixed" },
   extensionIcons,
@@ -104,15 +107,18 @@ export function StealthProfilesDirectoryBulkActions({
   launchTitle = "Launch selected profiles with the chosen workflow (skips startup URL)",
   onLaunch,
   onClose,
+  onCloseAllRunning,
   onDelete,
   onCreate,
-  onEdit,
+  onEditSingle,
+  onEditBulk,
   onGroups,
   onExport,
   onImport,
   onExtensionSet,
 }: {
   hasSelection: boolean;
+  runningCount?: number;
   selectedCount?: number;
   extensionState?: Record<"e0001" | "surfshark", ExtensionSelectionState>;
   extensionIcons?: ExtensionIconMap;
@@ -123,15 +129,24 @@ export function StealthProfilesDirectoryBulkActions({
   launchTitle?: string;
   onLaunch: () => void;
   onClose: () => void;
+  onCloseAllRunning: () => void;
   onDelete: () => void;
   onCreate: () => void;
-  onEdit: () => void;
+  onEditSingle: () => void;
+  onEditBulk: () => void;
   onGroups: () => void;
   onExport: () => void;
   onImport: () => void;
   onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
 }) {
   const extDisabled = !hasSelection || syncBusy || extensionBusy;
+  const closeAllMode = !hasSelection && runningCount > 0;
+  const closeEnabled = hasSelection || runningCount > 0;
+  const closeTitle = hasSelection
+    ? "Close selected profiles"
+    : runningCount > 0
+      ? `Close all running profiles (${runningCount})`
+      : "No profiles selected or running";
   const [extensionOpen, setExtensionOpen] = useState(false);
   const extensionRef = useRef<HTMLDivElement>(null);
 
@@ -176,13 +191,16 @@ export function StealthProfilesDirectoryBulkActions({
   return (
     <>
       <HubDirectoryNewBulkAction title="Create a new browser profile" onClick={onCreate} />
-      <HubBulkActionButton
-        icon={<Pencil size={14} aria-hidden />}
-        label="Edit"
-        title="Edit selected profile"
-        tone="indigo"
-        disabled={!hasSelection || syncBusy}
-        onClick={onEdit}
+      <HubDirectoryAdaptiveEditAction
+        selectedCount={selectedCount}
+        onEditSingle={onEditSingle}
+        onEditBulk={onEditBulk}
+        singleLabel="Detail"
+        bulkLabel="Detail"
+        noneTitle="Select one row to open detail, or 2+ rows for bulk detail edit"
+        singleTitle="Open detail modal for selected profile"
+        bulkTitle="Open bulk detail modal for selected profiles"
+        labelHint={profileAdaptiveEditLabelHint(selectedCount)}
       />
       <HubBulkActionButton
         icon={<Play size={14} aria-hidden />}
@@ -190,15 +208,17 @@ export function StealthProfilesDirectoryBulkActions({
         title={launchTitle}
         tone="emerald"
         disabled={!hasSelection || syncBusy || launchBusy || launchDisabled}
+        selectedCount={hasSelection ? selectedCount : undefined}
         onClick={onLaunch}
       />
       <HubBulkActionButton
         icon={<Square size={14} aria-hidden />}
         label="Close"
-        title="Close selected profiles"
-        tone="neutral"
-        disabled={!hasSelection || syncBusy}
-        onClick={onClose}
+        title={closeTitle}
+        tone="rose"
+        disabled={!closeEnabled || syncBusy}
+        selectedCount={closeAllMode ? runningCount : hasSelection ? selectedCount : undefined}
+        onClick={closeAllMode ? onCloseAllRunning : onClose}
       />
       <div ref={extensionRef} className="relative">
         <HubBulkActionButton

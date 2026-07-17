@@ -74,7 +74,7 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
           total={totalCount}
           countLabel="workflows"
           refreshing={loading}
-          displayBand={<StealthDisplayBandToolbar screen="workflow" directoryVariant="panel" />}
+          displayBand={<StealthDisplayBandToolbar screen="workflow" directoryVariant="store" />}
         />
       }
       row2Actions={row2Actions}

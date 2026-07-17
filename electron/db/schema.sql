@@ -76,3 +76,19 @@ CREATE TABLE IF NOT EXISTS profile_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_profile_events_profile_created ON profile_events(profile_id, created_at DESC);
+
+-- P0020 stealth snapshot sync queue (local-first)
+CREATE TABLE IF NOT EXISTS stealth_sync_outbox (
+  id TEXT PRIMARY KEY,
+  account_email TEXT NOT NULL DEFAULT '',
+  account_id TEXT,
+  snapshot_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  synced_at TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  skip_cloud INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_stealth_sync_outbox_pending ON stealth_sync_outbox(created_at)
+  WHERE synced_at IS NULL AND skip_cloud = 0;

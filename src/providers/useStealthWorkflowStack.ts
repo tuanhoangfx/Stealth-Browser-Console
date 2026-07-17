@@ -105,6 +105,10 @@ export function useStealthWorkflowStack({
       addLog("warn", "Workflow", "Select a workflow in the right rail.");
       return;
     }
+    if (!selectedProfiles.length) {
+      addLog("warn", "Launch", "Select at least one profile before Launch.");
+      return;
+    }
     void automation.runBatch(selectedProfiles, workflows);
   }, [
     addLog,
@@ -266,6 +270,7 @@ export function useStealthWorkflowStack({
       runWorkflowConfigs: automation.runWorkflowConfigs,
       runWorkflowLabel: automation.runWorkflowLabel,
       automationRunning: automation.automationRunning,
+      launchProgress: automation.launchProgress,
       runAutomationQueue,
       runWorkflowOnOpenProfiles,
       openProfilesForWorkflow,

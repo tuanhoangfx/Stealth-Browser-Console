@@ -111,3 +111,66 @@
   color: var(--text, #e2e8f0);
   white-space: nowrap;
 }
+
+.hub-directory-popover__body {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text, #e2e8f0);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: min(92vw, 28rem);
+}
+
+/* Activity-age dots inside column header hints (extension + hub parity). */
+.hub-directory-popover .hub-users-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.hub-directory-popover .hub-users-status-dot--age-recent {
+  background: var(--hub-activity-age-recent, #ef4444);
+}
+
+.hub-directory-popover .hub-users-status-dot--age-aging {
+  background: var(--hub-activity-age-aging, #f59e0b);
+}
+
+.hub-directory-popover .hub-users-status-dot--age-days {
+  background: var(--hub-activity-age-days, #3b82f6);
+}
+
+.hub-directory-popover .hub-users-status-dot--age-week {
+  background: var(--hub-activity-age-week, #14b8a6);
+}
+
+.hub-directory-popover .hub-users-status-dot--age-stale {
+  background: var(--hub-activity-age-stale, #64748b);
+}
+
+.hub-directory-popover .hint-tone-ready {
+  color: #38bdf8;
+}
+
+.hub-directory-popover .hint-tone-ok {
+  color: #34d399;
+}
+
+.hub-directory-popover .hint-tone-empty {
+  color: #a78bfa;
+}
+
+.hub-directory-popover .hint-tone-error {
+  color: #f87171;
+}
+
+.hub-directory-popover .hint-tone-warn {
+  color: #fcd34d;
+}
+
+.hub-directory-popover .hint-tone-accent {
+  color: #a78bfa;
+}

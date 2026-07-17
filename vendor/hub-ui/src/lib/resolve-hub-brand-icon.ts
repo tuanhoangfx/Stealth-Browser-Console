@@ -10,6 +10,8 @@ export type HubBrandIconMeta = {
   src: string;
   shell: HubBrandIconShell;
   faviconDomain?: string;
+  /** Extra hosts for Cookie Bridge / route icons (e.g. Claude.ai + Claude.com). */
+  faviconDomains?: string[];
 };
 
 const ENTRIES = registry as HubBrandIconMeta[];
@@ -52,18 +54,26 @@ export function resolveHubBrandIconByMatch(service: string): HubBrandIconMeta | 
 }
 
 /**
+ * SSOT empty / unknown brand glyph — directory table + filter dropdowns (⭕).
+ * Render inside 16px brand icon box for size parity with brand imgs.
+ */
+export const HUB_DIRECTORY_BRAND_EMPTY_GLYPH = "⭕";
+
+/**
  * Emoji fallback for unknown platform/service labels (no brand icon match).
  * Keeps UI glyph-only parity without Lucide fallback.
  */
 export function resolveHubBrandFallbackGlyph(label: string): string {
   const key = label.trim().toLowerCase();
-  if (!key) return "⭕";
-  if (/(gmail|outlook|icloud|mail)/.test(key)) return "✉️";
+  if (!key) return HUB_DIRECTORY_BRAND_EMPTY_GLYPH;
+  if (/(temp\s*mail|tempmail|gmail\s*edu|gmail|outlook|icloud)/.test(key)) return "✉️";
+  if (/\bmail\b/.test(key)) return "✉️";
   if (/(facebook|zalo|telegram|tiktok|douyin|weibo|instagram|youtube|whatsapp|discord|twitter|x\\b)/.test(key)) {
     return "🌐";
   }
-  if (/(chatgpt|gpt|claude|gemini|cursor|openai|copilot|ai)/.test(key)) return "✨";
-  return "⭕";
+  if (/(chatgpt|gpt|claude|gemini|cursor|openai|copilot|\bai\b)/.test(key)) return "✨";
+  if (/(bank|tpbank|techcom|vietcom|bidv|acb|mbbank|vpbank|seabank)/.test(key)) return "🏦";
+  return HUB_DIRECTORY_BRAND_EMPTY_GLYPH;
 }
 
 /** All registered brand icon ids — for tests and tooling. */

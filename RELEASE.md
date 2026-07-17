@@ -29,7 +29,34 @@ powershell -File scripts/release-desktop.ps1 -Publish -SkipInstall -FastTests
 
 **After publish:** `verify-github-release-assets.mjs` checks Setup.exe + `latest.yml` on GitHub; single `gh release upload` (electron-builder `--publish never` avoids duplicate releases per tag); `dedupe-github-releases.mjs` cleans legacy duplicates.
 
-**Latest release:** [v0.10.8](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v0.10.8)
+**Latest release:** [v1.0.5](https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.5)
+
+### Last opened catalog durability (v1.0.5+)
+
+Profiles **Last opened** column reads `last_opened_at` from prod SQLite (`%APPDATA%/stealth-browser-console`). Dev isolated (`-dev`) is a separate DB until merge on prod startup.
+
+| Mechanism | When | Perf impact |
+|-----------|------|-------------|
+| Debounced WAL checkpoint | After profile open (2.5s coalesce) | None on table render |
+| Startup maintenance | +3s after boot (background) | One-time SQL; no UI block |
+| Pre-update checkpoint | In-app auto-update only | ~ms at install click |
+
+**Healthy log line (every boot):**
+
+```text
+[last-opened] startup maintenance reconciled=0 siblingMerged=0
+```
+
+Non-zero values after update/reinstall are OK once; persistent non-zero every boot → run repair script.
+
+**Manual repair (close Setup.exe first):**
+
+```powershell
+node E:\Dev\Tool\P0003-Stealth-Browser-Console\scripts\repair-last-opened-catalog.mjs
+node E:\Dev\Tool\P0003-Stealth-Browser-Console\scripts\verify-last-opened-durability.mjs
+```
+
+**Intentionally not used:** sidecar JSON per profile; NSIS HTTP checkpoint during install.
 
 ### Stable auto-update checklist (v0.10.8+)
 

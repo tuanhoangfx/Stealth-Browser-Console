@@ -1,10 +1,5 @@
 import { useMemo } from "react";
-import {
-  HubFormFieldLabel,
-  HubModalFilterField,
-  HUB_TOOL_DETAIL_FORM_GRID_3_CLASS,
-} from "@tool-workspace/hub-ui";
-import { Link2, User } from "lucide-react";
+import { HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS } from "@tool-workspace/hub-ui";
 import { formatStartupUrlOnBlur } from "../../lib/startup-url";
 import { PROXY_PRESETS } from "../../lib/stealth-profile-utils";
 import {
@@ -13,8 +8,11 @@ import {
   resolveProxyPresetId,
 } from "../../lib/device-filter-options";
 import type { StealthGroup } from "../../types";
-
-const PROFILE_BASICS_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_3_CLASS} stealth-settings-form stealth-settings-form--3 min-w-0`;
+import {
+  PROFILE_DETAIL_FORM_ROW_ALIGNED_3,
+  ProfileDetailClickEditField,
+  ProfileDetailClickFilterField,
+} from "./ProfileDetailField";
 
 export type ProfileBasicsFieldsProps = {
   name?: string;
@@ -30,7 +28,7 @@ export type ProfileBasicsFieldsProps = {
   nameAutoFocus?: boolean;
 };
 
-/** Profile defaults — 3 fields per row (Hub filter dropdowns + field inputs). */
+/** Profile defaults — P0020 ADM inline rows (label + value same line, 3 columns). */
 export function ProfileBasicsFields({
   name = "",
   setName,
@@ -42,70 +40,66 @@ export function ProfileBasicsFields({
   setStartupUrl,
   groups,
   showName = true,
-  nameAutoFocus = false,
 }: ProfileBasicsFieldsProps) {
   const groupOptions = useMemo(() => profileGroupFilterOptions(groups), [groups]);
 
   return (
-    <div className={PROFILE_BASICS_FORM_CLASS}>
-      {showName ? (
-        <label className="block min-w-0">
-          <HubFormFieldLabel icon={User} iconClassName="text-indigo-300">
-            Name
-          </HubFormFieldLabel>
-          <input
-            className="field h-[var(--hub-control-h)] w-full text-xs"
-            value={name}
-            onChange={(e) => setName?.(e.target.value)}
-            autoFocus={nameAutoFocus}
-          />
-        </label>
-      ) : null}
-
-      <HubModalFilterField
-        filterKey="browser-profile-group"
-        label="Group"
-        options={groupOptions}
-        value={groupId}
-        onChange={setGroupId}
-      />
-
-      <label className="block min-w-0">
-        <HubFormFieldLabel icon={Link2} iconClassName="text-violet-300">
-          Startup URL
-        </HubFormFieldLabel>
-        <input
-          className="field h-[var(--hub-control-h)] w-full text-xs"
-          value={startupUrl}
-          onChange={(e) => setStartupUrl(e.target.value)}
-          onBlur={() => {
-            const next = formatStartupUrlOnBlur(startupUrl);
-            if (next !== startupUrl) setStartupUrl(next);
-          }}
-          placeholder="https://myaccount.google.com/"
+    <>
+      <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+        {showName ? (
+          <ProfileDetailClickEditField fieldKey="name" value={name} onChange={(value) => setName?.(value)} />
+        ) : null}
+        <ProfileDetailClickFilterField
+          fieldKey="group"
+          filterKey="browser-profile-group"
+          options={groupOptions}
+          value={groupId}
+          onChange={setGroupId}
         />
-      </label>
+        <ProfileDetailClickEditField
+          fieldKey="startupUrl"
+          value={startupUrl}
+          onChange={setStartupUrl}
+          placeholder="https://myaccount.google.com/"
+          formatValue={(raw) => raw}
+          renderDisplay={(value) => value}
+          renderEdit={({ value, onChange, onDone, inputRef, className }) => (
+            <input
+              ref={inputRef}
+              className={className}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              onBlur={() => {
+                const next = formatStartupUrlOnBlur(value);
+                if (next !== value) onChange(next);
+                onDone();
+              }}
+              placeholder="https://myaccount.google.com/"
+            />
+          )}
+        />
+        {!showName ? <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden /> : null}
+      </div>
 
-      <HubModalFilterField
-        filterKey="browser-proxy-preset"
-        label="Proxy preset"
-        options={proxyPresetFilterOptions()}
-        value={resolveProxyPresetId(proxy)}
-        onChange={(presetId) => {
-          const preset = PROXY_PRESETS.find((item) => item.id === presetId);
-          if (preset) setProxy(preset.value);
-        }}
-      />
-
-      <label className="block min-w-0">
-        <HubFormFieldLabel>Proxy (optional)</HubFormFieldLabel>
-        <input
-          className="field h-[var(--hub-control-h)] w-full text-xs"
+      <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+        <ProfileDetailClickFilterField
+          fieldKey="proxyPreset"
+          filterKey="browser-proxy-preset"
+          options={proxyPresetFilterOptions()}
+          value={resolveProxyPresetId(proxy)}
+          onChange={(presetId) => {
+            const preset = PROXY_PRESETS.find((item) => item.id === presetId);
+            if (preset) setProxy(preset.value);
+          }}
+        />
+        <ProfileDetailClickEditField
+          fieldKey="proxy"
           value={proxy}
-          onChange={(e) => setProxy(e.target.value)}
+          onChange={setProxy}
           placeholder="http://user:pass@host:port"
         />
-      </label>
-    </div>
+        <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+      </div>
+    </>
   );
 }

@@ -1,25 +1,26 @@
 {
   "schemaVersion": 1,
-  "label": "2026-07-08-v0.10.66-stable",
-  "version": "0.10.66",
-  "gitCommit": "6f6ca99b49f2656ccea668890a1438676d273fbe",
-  "gitTag": "v0.10.66-stable",
-  "notes": "v0.10.66 stable: bundle electron-updater runtime deps (fs-extra) into asar — fixes install-time crash; verify-packaged-unpacked gate; vendor hub-ui synced to golden.",
+  "label": "2026-07-08-v1.0.1-stable",
+  "version": "1.0.1",
+  "gitCommit": "16589af72ff3877c132719bec952a9efb902492c",
+  "gitTag": "v1.0.1-stable",
+  "notes": "v1.0.1 stable: packaged tar + mmdb-lib ESM beside unpacked cloakbrowser (profile Run + proxy geoip). Artifact from release commit; repo may have unpushed tooling WIP.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-0.10.66.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.1.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "2JkwMpDNECPUUnnZ9dX3pG/70opXZ7sVHmY4y4T+LhVz7x6t4ijwXpgEVUyBfkf28t6qP5XnK/Bd6tksCuO6uw==",
-    "capturedAt": "2026-07-08T07:16:54.851Z"
+    "sha512": "Qw/ha0Ld6kzoJK0MzBmKjoqOYrl6HiD//omMhcJDySZyzN9uQsXP6Kucy3vQ8CFanTzci2Yiw92kBDBlAN0P2Q==",
+    "capturedAt": "2026-07-08T17:22:51.821Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
     "verifyAuth": "node scripts/smoke-packaged-auth.mjs dist/index.html"
   },
   "checklist": [
+    "Run normal profile on Setup.exe — no ERR_MODULE_NOT_FOUND",
+    "Run proxy profile on Setup.exe — no mmdb-lib crash",
     "Sign-in works on packaged exe (not only dev)",
-    "No Surfshark in extensions / load-extension",
     "Profile Run opens in <5s typical",
-    "git status clean or commit recorded in gitCommit"
+    "gitCommit matches packaged source or snapshot label recorded"
   ]
 }

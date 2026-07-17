@@ -1,0 +1,18 @@
+/**
+ * Inline emoji SSOT — filter trigger/dropdown, chart title, chart legend.
+ * Resize once: --hub-inline-emoji-size (defined in hub-theme-tokens.css).
+ * Markup: hubFilterOptionEmojiClass() → .hub-filter-option-emoji
+ */
+
+.hub-filter-option-emoji,
+.hub-analytics-caption__emoji {
+  font-size: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Legacy legend glyph class — same token until all rows use hub-filter-option-emoji */
+.hub-chart-legend-label__glyph--emoji {
+  font-size: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
+  line-height: 1;
+}

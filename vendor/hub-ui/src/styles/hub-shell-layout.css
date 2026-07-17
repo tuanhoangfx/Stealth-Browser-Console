@@ -35,6 +35,8 @@
   --hub-table-body-size: 12px;
   --hub-table-body-line-height: 1.45;
   --hub-analytics-caption-size: var(--hub-kpi-label-size);
+  --hub-inline-emoji-size: var(--hub-directory-header-glyph-px, 13px);
+  --hub-analytics-caption-emoji-size: var(--hub-inline-emoji-size);
   --hub-chart-label-size: var(--hub-table-body-size);
   --hub-chart-caption-block: 0.8125rem;
   --hub-kpi-body-gap: 0.3125rem;
@@ -150,17 +152,30 @@
   gap: var(--hub-chrome-content-gap);
 }
 
-/* Reserve analytics band height before KPI/charts hydrate (directory tabs — F5 parity). */
+/* Reserve analytics band height before KPI/charts hydrate (directory tabs — F5 parity).
+   Skeleton pulse (not visibility:hidden) so cold hydrate does not look like a “blank hole”. */
 .hub-tab-kpi-zone--reserved {
   min-height: calc(
     var(--hub-kpi-strip-min-h) + var(--hub-chrome-content-gap) + var(--hub-charts-band-min-h)
   );
 }
 
+@keyframes hub-analytics-reserve-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.48;
+  }
+}
+
 .hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve,
 .hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
-  visibility: hidden;
   pointer-events: none;
+  border-radius: var(--hub-radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--muted-foreground, #8a8a8a) 12%, transparent);
+  animation: hub-analytics-reserve-pulse 1.1s ease-in-out infinite;
 }
 
 .hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve {
@@ -169,6 +184,14 @@
 
 .hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
   min-height: var(--hub-charts-band-min-h);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve,
+  .hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
+    animation: none;
+    opacity: 0.32;
+  }
 }
 
 /* Stacked chrome: flex gap on .hub-tab-chrome-stack handles spacing (incl. System tab panels) */
@@ -477,12 +500,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 1.125rem;
-  height: 1.125rem;
+  width: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
+  height: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
 }
 
 .hub-chart-legend-label__glyph--emoji {
-  font-size: var(--hub-chart-label-size, 12px);
   line-height: 1;
 }
 
@@ -527,15 +549,24 @@
 /* Directory search toolbar — unified Display panel (KPI · charts · filters · columns). */
 
 .hub-directory-display-panel {
+  display: flex;
   width: min(18rem, 92vw);
   max-height: min(70vh, 28rem);
-  overflow-y: auto;
+  flex-direction: column;
+  overflow: hidden;
   overscroll-behavior: contain;
   border-radius: 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: var(--panel, #0f1219);
   padding: 0.5rem;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.hub-directory-display-panel__body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
@@ -568,7 +599,8 @@
 }
 
 .hub-directory-display-panel__footer {
-  margin-top: 0.65rem;
+  flex-shrink: 0;
+  margin-top: 0.55rem;
   padding-top: 0.55rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

@@ -30,4 +30,8 @@ describe("resolveStealthActiveScreenId", () => {
     expect(resolveStealthActiveScreenId("workflow", { workflowTab: "store" })).toBe("workflow-store");
     expect(resolveStealthActiveScreenId("workflow", { workflowTab: "editor" })).toBe("workflow");
   });
+
+  it("maps system extensions sub-tab", () => {
+    expect(resolveStealthActiveScreenId("system", { systemTab: "extensions" })).toBe("system-extensions");
+  });
 });

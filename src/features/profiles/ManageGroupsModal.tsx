@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { FolderTree } from "lucide-react";
+import { FolderPlus, FolderTree, Pencil, Save, Trash2, X } from "lucide-react";
 import {
   HubAlert,
   HubFormFieldLabel,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-  HUB_TOOL_DETAIL_FORM_GRID_CLASS
+  HUB_DETAIL_MODAL_CLOSE_LABEL,
+  HUB_TOOL_DETAIL_FORM_GRID_CLASS,
 } from "@tool-workspace/hub-ui";
 import { StealthHubFormModal } from "../../components/StealthHubFormModal";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
@@ -24,7 +25,14 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
       headerIcon={FolderTree}
       headerIconClassName="text-amber-300"
       onClose={onClose}
-      footer={<HubToolDetailModalSecondaryAction label="Close" onClick={onClose} disabled={busy} />}
+      footer={
+        <HubToolDetailModalSecondaryAction
+          label={HUB_DETAIL_MODAL_CLOSE_LABEL}
+          onClick={onClose}
+          disabled={busy}
+          icon={X}
+        />
+      }
     >
       <div className={HUB_TOOL_DETAIL_FORM_GRID_CLASS}>
         {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
@@ -37,6 +45,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
                   <input className="hub-input flex-1" value={editName} onChange={(e) => setEditName(e.target.value)} />
                   <HubToolDetailModalPrimaryAction
                     label="Save"
+                    icon={Save}
                     onClick={() => {
                       setBusy(true);
                       setError("");
@@ -56,6 +65,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
                     <>
                       <HubToolDetailModalSecondaryAction
                         label="Rename"
+                        icon={Pencil}
                         disabled={busy}
                         onClick={() => {
                           setEditingId(group.id);
@@ -64,6 +74,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
                       />
                       <HubToolDetailModalSecondaryAction
                         label="Delete"
+                        icon={Trash2}
                         disabled={busy}
                         onClick={() => {
                           setBusy(true);
@@ -95,6 +106,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
             <HubToolDetailModalPrimaryAction
               label="New"
               variant="create"
+              icon={FolderPlus}
               disabled={busy || !newName.trim()}
               busy={busy}
               onClick={() => {

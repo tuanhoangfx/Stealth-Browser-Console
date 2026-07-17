@@ -8,10 +8,10 @@ export type HubRuntimeHistoryRow = {
   leading: ReactNode;
   /** Top line — ID, entity name, task label (truncates). */
   primaryRow: ReactNode;
-  /** Top line — trailing status icon/badge. */
+  /** Optional trailing status — omit when leading already shows status. */
   primaryTrailing?: ReactNode;
-  /** Bottom line — timestamp, duration, etc. */
-  metaRow: ReactNode;
+  /** Optional second line — omit for single-line rows. */
+  metaRow?: ReactNode;
 };
 
 export function HubRuntimeHistoryList({
@@ -28,27 +28,32 @@ export function HubRuntimeHistoryList({
       {rows.length === 0 ? (
         <li className="hub-runtime-history-list__empty">{emptyMessage}</li>
       ) : (
-        rows.map((row) => (
-          <li key={row.id}>
-            <button
-              type="button"
-              className={`hub-runtime-history-list__row ${row.active ? "is-active" : ""}`}
-              title={row.titleAttr}
-              onClick={row.onClick}
-            >
-              <span className="hub-runtime-history-list__icon">{row.leading}</span>
-              <div className="hub-runtime-history-list__body">
-                <div className="hub-runtime-history-list__primary">
-                  <span className="hub-runtime-history-list__title">{row.primaryRow}</span>
-                  {row.primaryTrailing ? (
-                    <span className="hub-runtime-history-list__status">{row.primaryTrailing}</span>
-                  ) : null}
+        rows.map((row) => {
+          const hasMeta = row.metaRow != null && row.metaRow !== false && row.metaRow !== "";
+          return (
+            <li key={row.id}>
+              <button
+                type="button"
+                className={`hub-runtime-history-list__row${row.active ? " is-active" : ""}${
+                  hasMeta ? "" : " hub-runtime-history-list__row--single"
+                }`}
+                title={row.titleAttr}
+                onClick={row.onClick}
+              >
+                <span className="hub-runtime-history-list__icon">{row.leading}</span>
+                <div className="hub-runtime-history-list__body">
+                  <div className="hub-runtime-history-list__primary">
+                    <span className="hub-runtime-history-list__title">{row.primaryRow}</span>
+                    {row.primaryTrailing ? (
+                      <span className="hub-runtime-history-list__status">{row.primaryTrailing}</span>
+                    ) : null}
+                  </div>
+                  {hasMeta ? <div className="hub-runtime-history-list__meta">{row.metaRow}</div> : null}
                 </div>
-                <div className="hub-runtime-history-list__meta">{row.metaRow}</div>
-              </div>
-            </button>
-          </li>
-        ))
+              </button>
+            </li>
+          );
+        })
       )}
     </ul>
   );

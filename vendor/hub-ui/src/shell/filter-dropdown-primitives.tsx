@@ -56,13 +56,15 @@ type HubFilterDropdownTriggerProps = {
   count?: number;
   iconColor?: string | null;
   Icon?: LucideIcon;
-  icon?: ReactNode;
+  icon?: ReactNode | false;
   disabled?: boolean;
   onClick: () => void;
   title?: string;
   className?: string;
   /** Override trigger typography — directory toolbar row uses `HUB_DIRECTORY_TOOLBAR_TYPO_CLASS`. */
   typoClass?: string;
+  /** `data-has-value` for account-detail placeholder tone when empty. */
+  hasValue?: boolean;
 };
 
 export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterDropdownTriggerProps>(
@@ -80,6 +82,7 @@ export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterD
       title,
       className = "",
       typoClass,
+      hasValue,
     },
     ref,
   ) {
@@ -90,18 +93,21 @@ export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterD
         disabled={disabled}
         onClick={onClick}
         title={title}
+        data-has-value={hasValue === undefined ? undefined : hasValue ? "true" : "false"}
         className={hubFilterTriggerClass(active, className, typoClass)}
       >
-        {icon ?? (
-          <span className="inline-flex size-[13px] shrink-0 items-center justify-center leading-none">
-            <Icon
-              size={compactIconSize(13)}
-              className={iconColor ? "" : "opacity-75"}
-              style={iconColor ? { color: iconColor } : undefined}
-              aria-hidden
-            />
-          </span>
-        )}
+        {icon !== false ? (
+          icon ?? (
+            <span className="inline-flex size-[13px] shrink-0 items-center justify-center leading-none">
+              <Icon
+                size={compactIconSize(13)}
+                className={iconColor ? "" : "opacity-75"}
+                style={iconColor ? { color: iconColor } : undefined}
+                aria-hidden
+              />
+            </span>
+          )
+        ) : null}
         <span className="min-w-0 max-w-[12rem] truncate leading-none">{label}</span>
 
         <ChevronDown
@@ -167,7 +173,10 @@ export function hubFilterDropdownRowClass(compact = false, directoryValue = fals
   return compact ? HUB_FILTER_DROPDOWN_ROW_COMPACT_CLASS : HUB_FILTER_DROPDOWN_ROW_CLASS;
 }
 
-export const HUB_FILTER_OPTION_EMOJI_CLASS = "shrink-0 text-base leading-none";
+export const HUB_FILTER_OPTION_EMOJI_CLASS = "shrink-0 leading-none";
+
+/** CSS custom property — set on :root or [data-hub-screen] to resize all inline emojis. */
+export const HUB_INLINE_EMOJI_SIZE_CSS_VAR = "--hub-inline-emoji-size";
 
 export function hubFilterOptionEmojiClass(extra = ""): string {
   return `hub-filter-option-emoji ${HUB_FILTER_OPTION_EMOJI_CLASS}${extra ? ` ${extra}` : ""}`;
@@ -192,6 +201,15 @@ export function hubFilterDirectoryTriggerTypoClass(selectedCount: number): strin
 export function hubFilterGlyphPx(opts?: { directoryParity?: boolean; compact?: boolean }): number {
   if (opts?.compact || opts?.directoryParity) return 12;
   return 13;
+}
+
+/**
+ * Brand logo px in filter trigger/rows — directory scopes match table body (`HUB_DIRECTORY_TABLE_BRAND_ICON_PX` = 16).
+ * Non-directory keeps the compact filter glyph size.
+ */
+export function hubFilterBrandGlyphPx(opts?: { directoryParity?: boolean; compact?: boolean }): number {
+  if (opts?.directoryParity) return 16;
+  return hubFilterGlyphPx(opts);
 }
 
 export const HUB_FILTER_BRAND_ICON_CLASS = "hub-filter-brand-icon hub-filter-brand-icon--tile";
@@ -224,6 +242,14 @@ type HubFilterDropdownPanelSearchProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /**
+   * Optional — clear the selected field value (not the search query).
+   * Shown only when provided and `clearSelectionEnabled` is true.
+   * Parity: date picker Clear; single-select optional fields (e.g. Plan Package).
+   */
+  onClearSelection?: () => void;
+  clearSelectionLabel?: string;
+  clearSelectionEnabled?: boolean;
 };
 
 /** Compact search row at top of filter dropdown panels (multi-select + portal). */
@@ -231,18 +257,33 @@ export function HubFilterDropdownPanelSearch({
   value,
   onChange,
   placeholder = "Search…",
+  onClearSelection,
+  clearSelectionLabel = "Clear",
+  clearSelectionEnabled = false,
 }: HubFilterDropdownPanelSearchProps) {
+  const showClear = Boolean(onClearSelection) && clearSelectionEnabled;
   return (
     <div className="border-b border-white/5 p-2">
-      <div className="relative">
-        <input
-          type="search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
-          style={{ paddingLeft: 10, paddingRight: 10 }}
-        />
+      <div className={`flex min-w-0 items-center${showClear ? " gap-2" : ""}`}>
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="search"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
+            style={{ paddingLeft: 10, paddingRight: 10 }}
+          />
+        </div>
+        {showClear ? (
+          <button
+            type="button"
+            onClick={onClearSelection}
+            className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:underline"
+          >
+            {clearSelectionLabel}
+          </button>
+        ) : null}
       </div>
     </div>
   );

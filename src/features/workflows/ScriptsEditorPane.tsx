@@ -1,9 +1,10 @@
 /** Scripts tab — workflow step editor (editor context only). */
-import { GitBranch, ListTree } from "lucide-react";
-import { memo, useEffect } from "react";
+import { GitBranch, ListTree, RotateCcw } from "lucide-react";
+import { memo, useEffect, useMemo } from "react";
 import { useStealthShell } from "../../context/stealth-shell-context";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
 import { workflowDisplayId } from "./workflow-display";
+import { isBuiltinWorkflowLocallyEdited } from "./workflow-defaults";
 import { WORKFLOW_PICKER_SCROLL_STEP_THRESHOLD } from "./workflowScriptDagreLayout";
 import { WorkflowCanvasErrorBoundary } from "../../ui/WorkflowCanvasErrorBoundary";
 import { WorkflowAiStepsPanel } from "./WorkflowAiStepsPanel";
@@ -33,6 +34,7 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
     workflowUndoStack,
     workflowRedoStack,
     applyAiGeneratedWorkflow,
+    resetWorkflow,
     DEFAULT_WORKFLOWS,
   } = useWorkflowEditor();
 
@@ -41,6 +43,10 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
 
   const displayWorkflowId = (id: string) => workflowDisplayId(id, DEFAULT_WORKFLOWS);
   const steps = activeWorkflowConfig.steps;
+  const builtinOverridden = useMemo(
+    () => isBuiltinWorkflowLocallyEdited(activeWorkflowConfig, DEFAULT_WORKFLOWS),
+    [activeWorkflowConfig, DEFAULT_WORKFLOWS],
+  );
 
   useEffect(() => {
     if (canvasActive) prefetchWorkflowScriptFlow();
@@ -60,6 +66,21 @@ export const ScriptsEditorPane = memo(function ScriptsEditorPane() {
                 {displayWorkflowId(activeWorkflowConfig.id)} · {activeWorkflowConfig.name}
               </span>
             </div>
+            {builtinOverridden ? (
+              <div className="script-steps-builtin-banner" role="status">
+                <p className="script-steps-builtin-banner__text">
+                  Local override of built-in workflow — Save keeps your copy; Reset restores the shipped default.
+                </p>
+                <button
+                  type="button"
+                  className="script-steps-builtin-banner__reset"
+                  onClick={() => resetWorkflow(activeWorkflowConfig.id, { persist: true })}
+                >
+                  <RotateCcw size={12} aria-hidden />
+                  Reset to built-in
+                </button>
+              </div>
+            ) : null}
           </header>
           <WorkflowAiStepsPanel
             activeWorkflowConfig={activeWorkflowConfig}

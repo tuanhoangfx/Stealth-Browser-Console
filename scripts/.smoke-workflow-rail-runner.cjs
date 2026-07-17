@@ -74,7 +74,16 @@ app.whenReady().then(async () => {
     probe = { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 
-  const errors = logs.filter((l) => l.level >= 2 || /error|Error|fail/i.test(l.message));
+  const errors = logs.filter((l) => {
+    if (
+      /\[React Flow\]|#004|parent container needs a (?:width and a )?height|It looks like you have not set a (?:width|height)/i.test(
+        String(l.message || ""),
+      )
+    ) {
+      return false;
+    }
+    return l.level >= 2 || /error|Error|fail/i.test(String(l.message || ""));
+  });
   const ok = Boolean(probe.ok);
   fs.writeFileSync(outFile, JSON.stringify({ url, ok, probe, errors: errors.slice(0, 20) }, null, 2));
   app.exit(ok ? 0 : 1);

@@ -17,6 +17,8 @@ export type HubAdmNoteSearchBarProps = {
   placeholder?: string;
   /** `header` — centered modal search (no rail label). */
   variant?: "rail" | "header";
+  /** Tags input for global modal `F` shortcut (`data-hub-modal-search`). */
+  modalSearch?: boolean;
   ariaLabel?: string;
 };
 
@@ -34,6 +36,7 @@ export function HubAdmNoteSearchBar({
   searchLabel = "Search note",
   placeholder = "Filter in note…",
   variant = "rail",
+  modalSearch = false,
   ariaLabel = "Search note",
 }: HubAdmNoteSearchBarProps) {
   const localRef = useRef<HTMLInputElement>(null);
@@ -71,6 +74,7 @@ export function HubAdmNoteSearchBar({
           onChange={onSearchQueryChange}
           placeholder={placeholder}
           showShortcutHint={false}
+          modalSearch={modalSearch}
           inputRef={searchRef}
           className="hub-adm-note-search__field"
         />

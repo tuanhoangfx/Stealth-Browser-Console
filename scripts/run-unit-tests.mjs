@@ -14,7 +14,13 @@ if (!process.env.STEALTH_AGENT_SMOKE) {
 runStep("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
 runStep("sync-stealth-api-surface", "node", ["scripts/sync-stealth-api-surface.mjs"]);
 runStep("agent-smoke-mode", "node", ["--test", "electron/lib/agent-smoke-mode.test.cjs"]);
+runStep("verify-no-implicit-packaged-kill", "node", ["scripts/verify-no-implicit-packaged-kill.mjs"]);
+runStep("agent-smoke-context", "node", ["--test", "electron/lib/agent-smoke-context.test.cjs"]);
+runStep("catalog-backup-recovery", "node", ["--test", "electron/lib/catalog-backup-recovery.test.cjs"]);
+runStep("catalog-persist-guard", "node", ["--test", "electron/lib/catalog-persist-guard.test.cjs"]);
+runStep("verify-agent-smoke-headless", "node", ["scripts/verify-agent-smoke-headless.mjs", "0003"]);
 runStep("cloakbrowser-packaged-resolve", "node", ["--test", "electron/lib/cloakbrowser-packaged-resolve.test.cjs"]);
+runStep("cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.mjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("refresh-hub-ui-node-link", "node", [
@@ -48,10 +54,14 @@ if (fast) {
 
 runStep("profile-backup", "node", ["--test", "electron/lib/profile-backup.test.cjs"]);
 runStep("profile-service", "node", ["electron/db/profile-service.test.cjs"]);
+runStep("last-opened-durability", "node", ["electron/db/last-opened-durability.test.cjs"]);
 runStep("profile-search-regression", "node", ["electron/db/profile-search-regression.test.cjs"]);
 runStep("profile-chrome-columns-migration", "node", ["--test", "electron/db/profile-chrome-columns-migration.test.cjs"]);
 runStep("safe-goto", "node", ["--test", "electron/automation/safe-goto.test.cjs"]);
 runStep("google-session-guard", "node", ["--test", "electron/automation/google-session-guard.test.cjs"]);
+runStep("google-session-detect", "node", ["--test", "electron/lib/google-session-detect.test.cjs"]);
+runStep("stealth-snapshot-types", "node", ["--test", "electron/lib/stealth-snapshot-types.test.cjs"]);
+runStep("stealth-resolve-targets", "node", ["--test", "electron/lib/stealth-resolve-targets.test.cjs"]);
 runStep("profile-identity", "node", ["--test", "electron/profile-identity.test.cjs"]);
 runStep("desktop-app-icon", "node", ["--test", "electron/lib/desktop-app-icon.test.cjs"]);
 runStep("directory-id-search", "node", ["--test", "electron/lib/directory-id-search.test.cjs"]);

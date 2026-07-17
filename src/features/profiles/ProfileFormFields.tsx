@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
 import {
   HubAdmSectionBlock,
-  HubModalFilterField,
+  HUB_ADM_GRID_SLOT_SPACER_CLASS,
+  HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS,
 } from "@tool-workspace/hub-ui";
 import { randomFingerprintSeed } from "../../lib/stealth-profile-utils";
 import {
   LOCALE_OPTIONS,
   TIMEZONE_OPTIONS,
-  applyDevicePreset
+  applyDevicePreset,
 } from "../../lib/device-presets";
 import {
-  BROWSER_DEVICE_FORM_CLASS,
   browserColorSchemeFilterOptions,
   browserPlatformFilterOptions,
   browserTimezoneFilterOptions,
@@ -20,6 +20,14 @@ import {
 } from "../../lib/device-filter-options";
 import type { DeviceConfig, StealthGroup } from "../../types";
 import { ProfileBasicsFields } from "./ProfileBasicsFields";
+import {
+  PROFILE_ADM_CONTROL_CLASS,
+  PROFILE_DETAIL_FORM_ROW_ALIGNED_3,
+  PROFILE_DETAIL_FORM_ROW_DETAIL_LINE,
+  ProfileDetailClickEditField,
+  ProfileDetailClickFilterField,
+  ProfileDetailInlineFieldLabel,
+} from "./ProfileDetailField";
 
 export type ProfileFormFieldsProps = {
   name: string;
@@ -54,7 +62,7 @@ export function ProfileFormFields({
   setStartupUrl,
   groups,
   showFingerprint = true,
-  layout = "flat"
+  layout = "hub-sections",
 }: ProfileFormFieldsProps) {
   const [deviceExpanded, setDeviceExpanded] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -76,147 +84,158 @@ export function ProfileFormFields({
       startupUrl={startupUrl}
       setStartupUrl={setStartupUrl}
       groups={groups}
-      nameAutoFocus
     />
   );
 
   const deviceSection = (
-    <div className={BROWSER_DEVICE_FORM_CLASS}>
-      <HubModalFilterField
-        filterKey="browser-device-preset"
-        label="Device preset"
-        options={devicePresetOptions}
-        value={device.devicePreset}
-        onChange={(presetId) => onDeviceChange(applyDevicePreset(device, presetId))}
-      />
+    <>
+      <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+        <ProfileDetailClickFilterField
+          fieldKey="devicePreset"
+          filterKey="browser-device-preset"
+          options={devicePresetOptions}
+          value={device.devicePreset}
+          onChange={(presetId) => onDeviceChange(applyDevicePreset(device, presetId))}
+        />
+        <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden />
+        <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+      </div>
 
-      <button
-        type="button"
-        className="col-span-full self-start text-xs text-[var(--accent-2)] underline-offset-2 hover:underline"
-        onClick={() => setDeviceExpanded((v) => !v)}
-        aria-expanded={deviceExpanded}
-      >
-        {deviceExpanded ? "Hide advanced device settings" : "Show advanced device settings"}
-      </button>
+      <label className="stealth-settings-form__check self-start">
+        <input
+          type="checkbox"
+          checked={deviceExpanded}
+          onChange={(e) => setDeviceExpanded(e.target.checked)}
+          aria-expanded={deviceExpanded}
+        />
+        Advanced device settings
+      </label>
 
       {deviceExpanded ? (
         <>
-      <HubModalFilterField
-        filterKey="browser-platform"
-        label="Operating system"
-        options={browserPlatformFilterOptions()}
-        value={device.platform}
-        onChange={(value) => editDevice({ platform: value as DeviceConfig["platform"] })}
-      />
-
-      <HubModalFilterField
-        filterKey="browser-color-scheme"
-        label="Color scheme"
-        options={browserColorSchemeFilterOptions()}
-        value={device.colorScheme}
-        onChange={(value) => editDevice({ colorScheme: value as DeviceConfig["colorScheme"] })}
-      />
-
-      <HubModalFilterField
-        filterKey="browser-timezone"
-        label="Timezone"
-        options={browserTimezoneFilterOptions()}
-        value={timezoneValue}
-        onChange={(value) => editDevice({ timezone: value })}
-      />
-
-      <HubModalFilterField
-        filterKey="browser-locale"
-        label="Locale"
-        options={localeOptions}
-        value={localeValue}
-        onChange={(value) => editDevice({ locale: value })}
-      />
-
-      <HubModalFilterField
-        filterKey="browser-window-mode"
-        label="Window mode"
-        options={browserWindowModeFilterOptions()}
-        value={device.windowMode}
-        onChange={(value) => editDevice({ windowMode: value as DeviceConfig["windowMode"] })}
-      />
-
-      <label className="col-span-full block min-w-0 text-xs">
-        <span className="mb-1 block font-semibold text-[var(--muted)]">Viewport (preset-viewport mode)</span>
-        <div className="flex items-center gap-2">
-          <input
-            className="field h-[var(--hub-control-h)] flex-1 text-xs"
-            type="number"
-            min={0}
-            max={7680}
-            value={device.viewportW}
-            onChange={(e) => editDevice({ viewportW: Number(e.target.value) || 0 })}
-          />
-          <span className="text-[var(--muted)]">×</span>
-          <input
-            className="field h-[var(--hub-control-h)] flex-1 text-xs"
-            type="number"
-            min={0}
-            max={4320}
-            value={device.viewportH}
-            onChange={(e) => editDevice({ viewportH: Number(e.target.value) || 0 })}
-          />
-        </div>
-      </label>
-
-      {showFingerprint ? (
-        <label className="col-span-full block min-w-0 text-xs">
-          <span className="mb-1 block font-semibold text-[var(--muted)]">Fingerprint seed</span>
-          <div className="flex gap-2">
-            <input
-              className="field h-[var(--hub-control-h)] flex-1 text-xs"
-              type="number"
-              min={10000}
-              max={99999}
-              value={fingerprintSeed}
-              onChange={(e) => setFingerprintSeed(Number(e.target.value) || randomFingerprintSeed())}
+          <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+            <ProfileDetailClickFilterField
+              fieldKey="platform"
+              filterKey="browser-platform"
+              options={browserPlatformFilterOptions()}
+              value={device.platform}
+              onChange={(value) => editDevice({ platform: value as DeviceConfig["platform"] })}
             />
-            <button type="button" className="hub-btn shrink-0" onClick={() => setFingerprintSeed(randomFingerprintSeed())}>
-              Randomize
-            </button>
+            <ProfileDetailClickFilterField
+              fieldKey="colorScheme"
+              filterKey="browser-color-scheme"
+              options={browserColorSchemeFilterOptions()}
+              value={device.colorScheme}
+              onChange={(value) => editDevice({ colorScheme: value as DeviceConfig["colorScheme"] })}
+            />
+            <ProfileDetailClickFilterField
+              fieldKey="timezone"
+              filterKey="browser-timezone"
+              options={browserTimezoneFilterOptions()}
+              value={timezoneValue}
+              onChange={(value) => editDevice({ timezone: value })}
+            />
           </div>
-        </label>
-      ) : null}
 
-      <div className="col-span-full stealth-settings-form__checks">
-        <label className="stealth-settings-form__check">
-          <input type="checkbox" checked={device.humanize} onChange={(e) => editDevice({ humanize: e.target.checked })} />
-          Humanize
-        </label>
-        <label className="stealth-settings-form__check">
-          <input type="checkbox" checked={device.headless} onChange={(e) => editDevice({ headless: e.target.checked })} />
-          Headless
-          <span className="stealth-settings-form__warn">easier to detect</span>
-        </label>
-      </div>
+          <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+            <ProfileDetailClickFilterField
+              fieldKey="locale"
+              filterKey="browser-locale"
+              options={localeOptions}
+              value={localeValue}
+              onChange={(value) => editDevice({ locale: value })}
+            />
+            <ProfileDetailClickFilterField
+              fieldKey="windowMode"
+              filterKey="browser-window-mode"
+              options={browserWindowModeFilterOptions()}
+              value={device.windowMode}
+              onChange={(value) => editDevice({ windowMode: value as DeviceConfig["windowMode"] })}
+            />
+            <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+          </div>
 
-      <button
-        type="button"
-        className="col-span-full self-start text-xs text-[var(--accent-2)] underline-offset-2 hover:underline"
-        onClick={() => setShowAdvanced((v) => !v)}
-      >
-        {showAdvanced ? "Hide User-Agent override" : "Advanced (User-Agent override)"}
-      </button>
+          <div className={`${PROFILE_DETAIL_FORM_ROW_DETAIL_LINE} hub-adm-inline-field min-w-0`}>
+            <ProfileDetailInlineFieldLabel fieldKey="viewport" />
+            <div className="hub-adm-inline-field__value hub-adm-inline-field__value--editing flex min-w-0 items-center gap-2">
+              <input
+                className={`${PROFILE_ADM_CONTROL_CLASS} flex-1`}
+                type="number"
+                min={0}
+                max={7680}
+                value={device.viewportW}
+                onChange={(e) => editDevice({ viewportW: Number(e.target.value) || 0 })}
+              />
+              <span className="text-[var(--muted)]">×</span>
+              <input
+                className={`${PROFILE_ADM_CONTROL_CLASS} flex-1`}
+                type="number"
+                min={0}
+                max={4320}
+                value={device.viewportH}
+                onChange={(e) => editDevice({ viewportH: Number(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
 
-      {showAdvanced ? (
-        <label className="col-span-full block min-w-0 text-xs">
-          <span className="mb-1 block font-semibold text-[var(--muted)]">User-Agent</span>
-          <input
-            className="field h-[var(--hub-control-h)] w-full text-xs"
-            value={device.userAgent}
-            onChange={(e) => editDevice({ userAgent: e.target.value })}
-            placeholder="Mozilla/5.0 …"
-          />
-        </label>
-      ) : null}
+          {showFingerprint ? (
+            <div className={`${PROFILE_DETAIL_FORM_ROW_DETAIL_LINE} hub-adm-inline-field min-w-0`}>
+              <ProfileDetailInlineFieldLabel fieldKey="fingerprintSeed" />
+              <div className="hub-adm-inline-field__value hub-adm-inline-field__value--editing flex min-w-0 gap-2">
+                <input
+                  className={`${PROFILE_ADM_CONTROL_CLASS} flex-1`}
+                  type="number"
+                  min={10000}
+                  max={99999}
+                  value={fingerprintSeed}
+                  onChange={(e) => setFingerprintSeed(Number(e.target.value) || randomFingerprintSeed())}
+                />
+                <button
+                  type="button"
+                  className="hub-btn shrink-0"
+                  onClick={() => setFingerprintSeed(randomFingerprintSeed())}
+                >
+                  Randomize
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="stealth-settings-form__checks">
+            <label className="stealth-settings-form__check">
+              <input type="checkbox" checked={device.humanize} onChange={(e) => editDevice({ humanize: e.target.checked })} />
+              <ProfileDetailInlineFieldLabel fieldKey="humanize" />
+            </label>
+            <label className="stealth-settings-form__check">
+              <input type="checkbox" checked={device.headless} onChange={(e) => editDevice({ headless: e.target.checked })} />
+              <ProfileDetailInlineFieldLabel fieldKey="headless" />
+              <span className="stealth-settings-form__warn">easier to detect</span>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            className="self-start text-xs text-[var(--accent-2)] underline-offset-2 hover:underline"
+            onClick={() => setShowAdvanced((v) => !v)}
+          >
+            {showAdvanced ? "Hide User-Agent override" : "Advanced (User-Agent override)"}
+          </button>
+
+          {showAdvanced ? (
+            <div className={PROFILE_DETAIL_FORM_ROW_DETAIL_LINE}>
+              <ProfileDetailClickEditField
+                fieldKey="userAgent"
+                value={device.userAgent}
+                onChange={(value) => editDevice({ userAgent: value })}
+                placeholder="Mozilla/5.0 …"
+              />
+              <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden />
+              <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+            </div>
+          ) : null}
         </>
       ) : null}
-    </div>
+    </>
   );
 
   if (layout === "hub-sections") {
@@ -233,7 +252,7 @@ export function ProfileFormFields({
   }
 
   return (
-    <div className="hub-panel-fields flex flex-col gap-3">
+    <div className="twofa-adm-credentials-stack">
       {basics}
       {deviceSection}
     </div>

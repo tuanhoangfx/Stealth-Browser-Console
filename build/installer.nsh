@@ -1,4 +1,4 @@
-﻿; electron-builder NSIS hook — ensure app.asar.unpacked is rebuilt on every install/update.
+﻿; electron-builder NSIS hook - ensure app.asar.unpacked is rebuilt on every install/update.
 
 !macro customInit
   ClearErrors

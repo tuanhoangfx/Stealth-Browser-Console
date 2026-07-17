@@ -43,13 +43,99 @@ function unpackedDirForStoreId(userDataRoot, storeId) {
   return path.join(cacheRootForStoreId(userDataRoot, storeId), "unpacked");
 }
 
+function resolveManifestI18nString(unpackedPath, value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^__MSG_(\w+)__$/);
+  if (!match) return raw;
+  const key = match[1];
+
+  let defaultLocale = "en";
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(unpackedPath, "manifest.json"), "utf8"));
+    if (manifest?.default_locale) defaultLocale = String(manifest.default_locale).trim() || defaultLocale;
+  } catch {
+    /* ignore */
+  }
+
+  const localesRoot = path.join(unpackedPath, "_locales");
+  const tried = new Set();
+  const localePaths = [];
+
+  function queueLocale(locale) {
+    const norm = String(locale || "").trim();
+    if (!norm || tried.has(norm)) return;
+    tried.add(norm);
+    localePaths.push(path.join(localesRoot, norm, "messages.json"));
+  }
+
+  queueLocale(defaultLocale);
+  if (defaultLocale.includes("_")) queueLocale(defaultLocale.split("_")[0]);
+  if (defaultLocale.startsWith("en")) {
+    queueLocale("en");
+    queueLocale("en_US");
+    queueLocale("en_GB");
+  }
+  queueLocale("en");
+  queueLocale("en_US");
+
+  try {
+    if (fs.existsSync(localesRoot)) {
+      for (const entry of fs.readdirSync(localesRoot, { withFileTypes: true })) {
+        if (entry.isDirectory()) queueLocale(entry.name);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  for (const messagesPath of localePaths) {
+    try {
+      if (!fs.existsSync(messagesPath)) continue;
+      const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
+      const msg = messages?.[key]?.message;
+      if (msg) return String(msg).trim();
+    } catch {
+      /* try next locale */
+    }
+  }
+  return raw;
+}
+
 function readManifestName(unpackedPath) {
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(unpackedPath, "manifest.json"), "utf8"));
-    return String(manifest.name || "").trim() || "Extension";
+    const name = resolveManifestI18nString(unpackedPath, manifest.name);
+    return name || "Extension";
   } catch {
     return "Extension";
   }
+}
+
+function readManifestVersion(unpackedPath) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(unpackedPath, "manifest.json"), "utf8"));
+    return String(manifest.version || "").trim() || "";
+  } catch {
+    return "";
+  }
+}
+
+function readManifestUpdatedAt(unpackedPath) {
+  const manifestPath = path.join(unpackedPath, "manifest.json");
+  try {
+    if (!fs.existsSync(manifestPath)) return undefined;
+    return new Date(fs.statSync(manifestPath).mtimeMs).toISOString();
+  } catch {
+    return undefined;
+  }
+}
+
+function clearStoreExtensionCache(userDataRoot, storeId) {
+  const id = parseStoreId(storeId);
+  if (!id) throw new Error("invalid Chrome Web Store extension id");
+  const cacheRoot = cacheRootForStoreId(userDataRoot, id);
+  if (fs.existsSync(cacheRoot)) fs.rmSync(cacheRoot, { recursive: true, force: true });
+  return { storeId: id, cleared: true };
 }
 
 function downloadBuffer(url, redirects = 0) {
@@ -129,9 +215,11 @@ function extractZipBuffer(zipBuffer, destDir, cacheRoot) {
   }
 }
 
-async function ensureStoreExtension(userDataRoot, storeId) {
+async function ensureStoreExtension(userDataRoot, storeId, { force = false } = {}) {
   const id = parseStoreId(storeId);
   if (!id) throw new Error("invalid Chrome Web Store extension id");
+
+  if (force) clearStoreExtensionCache(userDataRoot, id);
 
   const dest = unpackedDirForStoreId(userDataRoot, id);
   const manifestPath = path.join(dest, "manifest.json");
@@ -176,6 +264,8 @@ function listCachedStoreExtensions(userDataRoot = defaultUserDataRoot()) {
       storeId: entry,
       unpackedPath: unpacked,
       name: readManifestName(unpacked),
+      version: readManifestVersion(unpacked),
+      updatedAt: readManifestUpdatedAt(unpacked),
     });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -196,6 +286,8 @@ function listLocalUnpackedExtensions(userDataRoot = defaultUserDataRoot()) {
       localKey: entry.name,
       unpackedPath: unpacked,
       name: readManifestName(unpacked),
+      version: readManifestVersion(unpacked),
+      updatedAt: readManifestUpdatedAt(unpacked),
     });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -315,8 +407,8 @@ function listProfileChromeDirs(userDataRoot) {
     .map((entry) => path.join(profilesDir, entry.name));
 }
 
-async function installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds } = {}) {
-  const { storeId, unpackedPath, cached } = await ensureStoreExtension(userDataRoot, storeIdOrUrl);
+async function installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds, force = false } = {}) {
+  const { storeId, unpackedPath, cached } = await ensureStoreExtension(userDataRoot, storeIdOrUrl, { force });
   const allDirs = listProfileChromeDirs(userDataRoot);
   let targetDirs = allDirs;
   if (Array.isArray(profileIds) && profileIds.length) {
@@ -327,8 +419,10 @@ async function installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds } 
   return {
     storeId,
     name: readManifestName(unpackedPath),
+    version: readManifestVersion(unpackedPath),
     unpackedPath,
     cached,
+    force: Boolean(force),
     profiles: profiles.length,
     installed: profiles.filter((row) => row.extId).length,
     details: profiles,
@@ -382,5 +476,7 @@ module.exports = {
   installStoreExtension,
   listProfileChromeDirs,
   readManifestName,
+  readManifestVersion,
+  clearStoreExtensionCache,
   resolveExtensionIconDataUri,
 };

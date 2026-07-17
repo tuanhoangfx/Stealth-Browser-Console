@@ -93,6 +93,14 @@ app.whenReady().then(async () => {
     if (/Failed to decode downloaded font|OTS parsing error|Electron Security Warning/i.test(l.message)) {
       return false;
     }
+    // React Flow #004 — parent needs width/height; layout settles after first paint (noise only).
+    if (
+      /\[React Flow\]|#004|parent container needs a (?:width and a )?height|It looks like you have not set a (?:width|height)/i.test(
+        l.message,
+      )
+    ) {
+      return false;
+    }
     return l.level >= 2 || /error|Error|fail/i.test(l.message);
   });
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FolderOpen, Globe, Info, Link2, MonitorSmartphone, Palette, Puzzle, Shield } from "lucide-react";
+import { Download, FolderOpen, Globe, Info, Link2, MonitorSmartphone, Palette, Puzzle, Shield } from "lucide-react";
 import {
   HubAlert,
   HubFormFieldLabel,
@@ -33,6 +33,7 @@ import {
   type BrowserDefaults
 } from "../../lib/stealth-app-prefs";
 import { formatStartupUrlOnBlur, normalizeStartupUrl } from "../../lib/startup-url";
+import { stealthFormFieldHintContent } from "../../lib/stealth-directory-column-hints";
 import type { EngineHealth, ExtensionToggles } from "../../types";
 
 const SETTINGS_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_2_CLASS} stealth-settings-form min-w-0`;
@@ -81,6 +82,7 @@ function BrowserDefaultsSectionBody() {
       <HubModalFilterField
         filterKey="browser-device-preset"
         label="Device preset"
+        labelHint={stealthFormFieldHintContent("devicePreset")}
         options={devicePresetOptions}
         value={defaults.devicePreset}
         onChange={(presetId) => {
@@ -112,6 +114,7 @@ function BrowserDefaultsSectionBody() {
       <HubModalFilterField
         filterKey="browser-platform"
         label="Operating system"
+        labelHint={stealthFormFieldHintContent("platform")}
         options={browserPlatformFilterOptions()}
         value={defaults.platform}
         onChange={(value) => editDefaults({ platform: value as BrowserDefaults["platform"] })}
@@ -120,6 +123,7 @@ function BrowserDefaultsSectionBody() {
       <HubModalFilterField
         filterKey="browser-color-scheme"
         label="Color scheme"
+        labelHint={stealthFormFieldHintContent("colorScheme")}
         options={browserColorSchemeFilterOptions()}
         value={defaults.colorScheme}
         onChange={(value) => editDefaults({ colorScheme: value as BrowserDefaults["colorScheme"] })}
@@ -128,6 +132,7 @@ function BrowserDefaultsSectionBody() {
       <HubModalFilterField
         filterKey="browser-timezone"
         label="Timezone"
+        labelHint={stealthFormFieldHintContent("timezone")}
         options={browserTimezoneFilterOptions()}
         value={timezoneValue}
         onChange={(value) => editDefaults({ timezone: value })}
@@ -136,6 +141,7 @@ function BrowserDefaultsSectionBody() {
       <HubModalFilterField
         filterKey="browser-locale"
         label="Locale"
+        labelHint={stealthFormFieldHintContent("locale")}
         options={localeOptions}
         value={localeValue}
         onChange={(value) => editDefaults({ locale: value })}
@@ -144,13 +150,14 @@ function BrowserDefaultsSectionBody() {
       <HubModalFilterField
         filterKey="browser-window-mode"
         label="Window mode"
+        labelHint={stealthFormFieldHintContent("windowMode")}
         options={browserWindowModeFilterOptions()}
         value={defaults.windowMode}
         onChange={(value) => editDefaults({ windowMode: value as BrowserDefaults["windowMode"] })}
       />
 
       <label className="col-span-full block min-w-0">
-        <HubFormFieldLabel icon={Link2} iconClassName="text-violet-300">
+        <HubFormFieldLabel icon={Link2} iconClassName="text-violet-300" labelHint={stealthFormFieldHintContent("defaultStartupUrl")}>
           Default startup URL
         </HubFormFieldLabel>
         <input
@@ -306,6 +313,7 @@ function EngineSectionBody() {
           label="Check / download binary"
           busy={busy}
           disabled={busy}
+          icon={Download}
           onClick={() => {
             setBusy(true);
             setMessage("");
@@ -334,7 +342,11 @@ function DataFolderSectionBody() {
     <div className={SETTINGS_FORM_CLASS}>
       <p className="col-span-full break-all text-xs text-[var(--muted)]">{userDataPath || "—"}</p>
       <div className="col-span-full">
-        <HubToolDetailModalPrimaryAction label="Open data folder" onClick={() => void openDataFolder()} />
+        <HubToolDetailModalPrimaryAction
+          label="Open data folder"
+          onClick={() => void openDataFolder()}
+          icon={FolderOpen}
+        />
       </div>
     </div>
   );

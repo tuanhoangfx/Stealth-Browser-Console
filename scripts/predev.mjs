@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDevPortListening } from "./lib/dev-port-guard.mjs";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
@@ -26,11 +27,20 @@ function runToolScript(name, extraArgs = []) {
   }
 }
 
-runToolScript("sync-hub-ui-vendor.cjs");
+const devActive = await isDevPortListening();
+if (devActive) {
+  console.warn(
+    "[predev] :5175 dev active — skip vendor sync, sync-hub-env write, electron-dev-gate kill " +
+      "(close dev or run sync-hub-ui-vendor after ship)",
+  );
+} else {
+  runToolScript("sync-hub-ui-vendor.cjs");
+  runToolScript("sync-hub-identity-vendor.cjs");
+}
+
 runToolScript("audit-react-hook-imports.cjs", ["--sidebar", "P0003"]);
 runToolScript("sync-hub-brand-icons.mjs", ["--code", "P0003"]);
 runToolScript("sync-hub-tool-icons.mjs", ["--code", "P0003"]);
-runToolScript("sync-hub-identity-vendor.cjs");
 runToolScript("verify-hub-vendor-prereqs.mjs", ["--code", "P0003"]);
 run("sync-hub-env.mjs");
 run("sync-hub-boot-public.mjs");

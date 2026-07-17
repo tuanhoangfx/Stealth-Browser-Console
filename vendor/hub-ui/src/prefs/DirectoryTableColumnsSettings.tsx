@@ -1,4 +1,4 @@
-import { GripVertical } from "lucide-react";
+import { GripVertical, Lock, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { ToggleRow } from "../display-prefs/primitives";
 import { compactIconSize } from "../ui-scale";
@@ -13,6 +13,8 @@ export type DirectoryTableColumnsSettingsProps<K extends string> = {
   prefs: DirectoryTableColumnPrefs<K>;
   /** Optional block above column toggles (e.g. Users password mask). */
   header?: ReactNode;
+  /** Show reset columns control below the list. */
+  showReset?: boolean;
   /** Allow drag-and-drop reorder in the column list. Default true. */
   reorderable?: boolean;
 };
@@ -29,6 +31,7 @@ export function DirectoryTableColumnsSettings<K extends string>({
   items,
   prefs,
   header,
+  showReset = false,
   reorderable = true,
 }: DirectoryTableColumnsSettingsProps<K>) {
   const itemKeys = useMemo(() => items.map((col) => col.key), [items]);
@@ -130,18 +133,37 @@ export function DirectoryTableColumnsSettings<K extends string>({
                     icon={col.icon}
                     iconClassName={col.iconClassName}
                     emoji={col.emoji}
+                    brandIcon={col.brandIcon}
+                    imageSrc={col.imageSrc}
+                    labelHint={col.labelHint}
                     on={on}
                     onChange={() => toggle(col.key)}
                   />
                 </div>
                 {col.required ? (
-                  <span className="shrink-0 pr-2 text-[9px] uppercase text-[var(--muted)]">Required</span>
+                  <span
+                    className="shrink-0 pr-2 text-[var(--muted)]"
+                    title="Required"
+                    aria-label="Required"
+                  >
+                    <Lock size={compactIconSize(12)} aria-hidden />
+                  </span>
                 ) : null}
               </div>
             </li>
           );
         })}
       </ul>
+      {showReset ? (
+        <button
+          type="button"
+          onClick={() => prefs.reset()}
+          className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+        >
+          <RotateCcw size={compactIconSize(10)} aria-hidden />
+          Reset columns
+        </button>
+      ) : null}
     </div>
   );
 }

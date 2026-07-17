@@ -60,6 +60,8 @@ export type HubDirectoryColumnMetaInput = {
   headerIconClassName?: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
+  /** Extension manifest PNG or brand asset — takes precedence over Lucide/brand when set. */
+  headerImageSrc?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
   columnKind?: HubDirectoryColumnKind;
@@ -78,6 +80,8 @@ export type HubDirectoryColumnDef<TKey extends string = string> = {
   headerIconClassName?: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
+  /** Extension manifest PNG or brand asset — takes precedence over Lucide/brand when set. */
+  headerImageSrc?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
 };
@@ -170,6 +174,7 @@ export function buildDirectoryColumns<TKey extends string>(
       headerIconClassName: def.headerIconClassName,
       headerBrandIcon: def.headerBrandIcon,
       headerEmoji: def.headerEmoji,
+      headerImageSrc: def.headerImageSrc,
       headerTooltip: def.headerTooltip,
       headerHint: def.headerHint,
     };
@@ -182,9 +187,52 @@ export function buildDirectoryColumns<TKey extends string>(
 
 type ColgroupCol = { key: string; colClass: string; width?: string };
 
+/**
+ * Fixed lengths (rem/px/ch) lock width+min+max so table-layout cannot stretch
+ * short columns (Browser code, Status, …). Percent stays flexible.
+ */
+function colWidthStyle(width: string | undefined): { width: string; minWidth?: string; maxWidth?: string } | undefined {
+  if (!width) return undefined;
+  const trimmed = width.trim();
+  if (trimmed.endsWith("%")) return { width: trimmed };
+  return { width: trimmed, minWidth: trimmed, maxWidth: trimmed };
+}
+
 /** Bulk select tables: omit inline col widths — CSS colClass SSOT (2FA parity; inline % expands 36px select). */
 function colgroupColsWithoutInlineWidth(columns: readonly ColgroupCol[]): ColgroupCol[] {
   return columns.map(({ key, colClass }) => ({ key, colClass }));
+}
+
+/**
+ * Keep rem/px locks only on chrome keys; strip % / auto / non-chrome widths.
+ * Use when many runtime columns would otherwise rem-lock every `<col>` and stretch the 36px select track.
+ */
+export function applyChromeRemDirectoryColWidths<T extends ColgroupCol>(
+  columns: readonly T[],
+  chromeKeys: ReadonlySet<string> | readonly string[],
+): T[] {
+  const chrome = chromeKeys instanceof Set ? chromeKeys : new Set(chromeKeys);
+  return columns.map((col) => {
+    if (!chrome.has(col.key)) return { ...col, width: undefined };
+    const w = col.width?.trim() ?? "";
+    if (!w || w.endsWith("%") || w === "auto") return { ...col, width: undefined };
+    return col;
+  });
+}
+
+/**
+ * Colgroup for pivot / dynamic grids — rem on chrome only + select 36px.
+ * Golden consumer: P0020 BrowserAccountTable (`browser`, `serviceCount`, `updatedAt`).
+ */
+export function buildChromeRemDirectoryColgroup(
+  columns: readonly ColgroupCol[],
+  chromeKeys: ReadonlySet<string> | readonly string[],
+  options?: DirectoryColgroupOptions,
+): ReactNode {
+  return buildDirectoryColgroup(applyChromeRemDirectoryColWidths(columns, chromeKeys), {
+    includeSelect: true,
+    ...options,
+  });
 }
 
 /** Shared colgroup builder for HubDirectoryTableShell directory tables. */
@@ -199,21 +247,25 @@ export function buildDirectoryColgroup(
     includeSelect
       ? createElement("col", {
           className: "hub-users-col--select",
-          style: { width: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH },
+          style: {
+            width: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH,
+            minWidth: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH,
+            maxWidth: HUB_DIRECTORY_SELECT_COLGROUP_WIDTH,
+          },
         })
       : null,
     ...columns.map((col) =>
       createElement("col", {
         key: col.key,
         className: col.colClass,
-        style: col.width ? { width: col.width } : undefined,
+        style: colWidthStyle(col.width),
       }),
     ),
     ...(options?.trailingCols?.map((col) =>
       createElement("col", {
         key: col.colClass,
         className: col.colClass,
-        style: col.width ? { width: col.width } : undefined,
+        style: colWidthStyle(col.width),
       }),
     ) ?? []),
   );

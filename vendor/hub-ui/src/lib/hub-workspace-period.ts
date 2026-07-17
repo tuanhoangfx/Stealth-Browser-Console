@@ -1,6 +1,9 @@
 import { patchHubListPrefs, subscribeHubListPrefs } from "./hub-url-prefs";
 import { workspacePeriodDotColor } from "./workspace-period-dot-color";
 
+/** Native-tooltip + docs SSOT — workspace period filters by record creation time. */
+export const WORKSPACE_PERIOD_FILTER_HINT = "Filter by creation date";
+
 /** Golden workspace period keys — same order as HubPeriodSelect. */
 export type WorkspacePeriodKey =
   | "all"
@@ -21,6 +24,7 @@ export type WorkspacePeriodScope =
   | "twofa.mail"
   | "twofa.services"
   | "twofa.facebook"
+  | "twofa.tiktok"
   | "twofa.quota"
   | "twofa.browser"
   | "cookie"
@@ -74,6 +78,7 @@ const SCOPE_URL_KEYS: Record<
   "twofa.mail": { range: "fmailrange", month: "fmailperiodMonth", from: "fmailperiodFrom", to: "fmailperiodTo" },
   "twofa.services": { range: "fsvcrange", month: "fsvcperiodMonth", from: "fsvcperiodFrom", to: "fsvcperiodTo" },
   "twofa.facebook": { range: "ffbrange", month: "ffbperiodMonth", from: "ffbperiodFrom", to: "ffbperiodTo" },
+  "twofa.tiktok": { range: "ftkrange", month: "ftkperiodMonth", from: "ftkperiodFrom", to: "ftkperiodTo" },
   "twofa.quota": { range: "fqrange", month: "fqperiodMonth", from: "fqperiodFrom", to: "fqperiodTo" },
   "twofa.browser": { range: "fbrwrange", month: "fbrwperiodMonth", from: "fbrwperiodFrom", to: "fbrwperiodTo" },
   cookie: { range: "crange", month: "cperiodMonth", from: "cperiodFrom", to: "cperiodTo" },
@@ -85,6 +90,7 @@ const TWOFA_VAULT_PERIOD_SCOPES = new Set<WorkspacePeriodScope>([
   "twofa.mail",
   "twofa.services",
   "twofa.facebook",
+  "twofa.tiktok",
   "twofa.quota",
   "twofa.browser",
 ]);
@@ -214,7 +220,7 @@ export function workspacePeriodOptions(): HubPeriodOption[] {
   }));
 }
 
-/** Filter rows by created/updated ISO timestamp. */
+/** Filter rows by creation ISO timestamp (SSOT: created_at / createdAt — not updated_at). */
 export function matchesWorkspacePeriod(
   isoDate: string | undefined,
   period: WorkspacePeriodPrefs | WorkspacePeriodKey | null | undefined,

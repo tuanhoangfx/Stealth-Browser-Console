@@ -340,11 +340,22 @@
 
 .hub-auth-logout-chip__user-icon {
   flex-shrink: 0;
-  color: #60a5fa;
 }
 
-.hub-auth-logout-chip--linked .hub-auth-logout-chip__user-icon {
-  color: #34d399;
+.hub-auth-logout-chip__user-icon.text-indigo-300 {
+  color: var(--hub-role-icon-admin, rgb(165 180 252));
+}
+
+.hub-auth-logout-chip__user-icon.text-purple-300 {
+  color: var(--hub-role-icon-manager, rgb(196 181 253));
+}
+
+.hub-auth-logout-chip__user-icon.text-emerald-300 {
+  color: var(--hub-role-icon-user, rgb(110 231 183));
+}
+
+.hub-auth-logout-chip__user-icon.text-violet-400 {
+  color: var(--hub-role-icon-anonymous, rgb(167 139 250));
 }
 
 .hub-auth-logout-chip__email {
@@ -473,8 +484,27 @@
   color: var(--muted);
 }
 
-.auth-gate-submit--denied {
+.auth-gate-denied__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.auth-gate-submit--denied,
+.auth-gate-submit--recheck {
   margin-top: 0;
+}
+
+.auth-gate-submit--recheck {
+  background: color-mix(in srgb, var(--accent, #3b82f6) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #3b82f6) 45%, transparent);
+  color: var(--text, #e2e8f0);
+}
+
+.auth-gate-submit--recheck:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .auth-gate-root--inline {

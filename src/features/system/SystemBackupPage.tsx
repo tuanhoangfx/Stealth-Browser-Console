@@ -13,7 +13,7 @@ import { useRunLogs } from "../runtime/RunLogsContext";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { ProfileRow, ProfileStorageStat } from "../../types";
 import { useProfileDirectoryPageSize } from "../profiles/useProfileDirectoryPageSize";
-import { useProfilesDirectoryChrome } from "../profiles/useProfilesDirectoryChrome";
+import { useSystemBackupDirectoryChrome } from "./backup/useSystemBackupDirectoryChrome";
 import { SystemBackupDirectoryPanel } from "./backup/SystemBackupDirectoryPanel";
 import {
   backupStatusLabel,
@@ -23,6 +23,8 @@ import {
 } from "./backup/system-backup-types";
 import { useSystemBackupFeedback } from "./backup/useSystemBackupFeedback";
 import { SystemBackupRail } from "./SystemBackupRail";
+import { ProfileDetailModal } from "../profiles/ProfileDetailModal";
+import type { ProfileDetailModalProps } from "../profiles/profile-detail-modal-props";
 
 function backupJobBannerLabel(phase: string, current: number, total: number) {
   if (phase === "zip") return "Compressing archive…";
@@ -38,7 +40,7 @@ export const SystemBackupPage = memo(function SystemBackupPage({
 }) {
   const { refreshProfiles } = useStealthShell();
   const { profiles: catalogProfiles, catalogStats, groups } = useProfilesRuntime();
-  const { kpis, centerStats } = useProfilesDirectoryChrome(catalogStats, catalogProfiles);
+  const { kpis, centerStats } = useSystemBackupDirectoryChrome(catalogStats, catalogProfiles);
   const { notifyInfo, notifyError } = useSystemBackupFeedback();
   const { pushToast } = useAppToast();
   const { addLog } = useRunLogs();
@@ -62,6 +64,7 @@ export const SystemBackupPage = memo(function SystemBackupPage({
   const storageSizesGenRef = useRef(0);
   const jobUiTimerRef = useRef<number | undefined>(undefined);
   const pendingJobUiRef = useRef<{ phase: string; current: number; total: number } | null>(null);
+  const [detailModal, setDetailModal] = useState<ProfileDetailModalProps | null>(null);
 
   const backupJobLabel = useMemo(() => {
     if (!jobBusy) return null;
@@ -327,8 +330,13 @@ export const SystemBackupPage = memo(function SystemBackupPage({
     }
   }, [addLog, loadPage, notifyError, notifyInfo, pushToast, refreshProfiles, selectedRows, setSelectedIds]);
 
+  const openDetail = useCallback((profile: ProfileRow) => {
+    setDetailModal({ mode: "edit", profile, onClose: () => setDetailModal(null) });
+  }, []);
+
   return (
-    <SystemBackupDirectoryPanel
+    <>
+      <SystemBackupDirectoryPanel
       profiles={profiles}
       total={total}
       search={directorySearch.queryInput}
@@ -353,6 +361,25 @@ export const SystemBackupPage = memo(function SystemBackupPage({
       onBackupSelected={() => void onBackupSelected()}
       onBackupAll={() => void onBackupAll()}
       onRestore={() => void onRestore()}
+      onEditSingle={() => {
+        if (selectedRows.length === 1) {
+          setDetailModal({
+            mode: "edit",
+            profile: selectedRows[0]!,
+            onClose: () => setDetailModal(null),
+          });
+        }
+      }}
+      onEditBulk={() => {
+        if (selectedRows.length > 1) {
+          setDetailModal({
+            mode: "bulk",
+            profiles: [...selectedRows],
+            onClose: () => setDetailModal(null),
+          });
+        }
+      }}
+      onOpenDetail={openDetail}
       headerActions={headerActions}
       kpis={kpis}
       centerStats={centerStats}
@@ -360,5 +387,15 @@ export const SystemBackupPage = memo(function SystemBackupPage({
       catalogStats={catalogStats}
       rail={<SystemBackupRail backupJobLabel={backupJobLabel} />}
     />
+      {detailModal ? (
+        <ProfileDetailModal
+          {...detailModal}
+          onProfilesChanged={() => {
+            void loadPage();
+            void refreshProfiles();
+          }}
+        />
+      ) : null}
+    </>
   );
 });

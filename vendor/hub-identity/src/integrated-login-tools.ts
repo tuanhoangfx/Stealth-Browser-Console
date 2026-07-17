@@ -45,7 +45,6 @@ export function integratedToolLevel(
   if (explicit) return explicit;
   const hubRole = user.role;
   if (user.role === "admin") return hubRole;
-  if (isP0004HubLogin(code)) return hubRole;
   if (user.toolCodes.includes(code)) return hubRole;
   return "none";
 }
@@ -55,7 +54,6 @@ export function hasIntegratedLoginToolAccess(
   code: HubIntegratedLoginToolCode,
 ): boolean {
   if (user.role === "admin") return true;
-  if (code === "P0004") return true;
   return isGrantedLevel(integratedToolLevel(user, code));
 }
 

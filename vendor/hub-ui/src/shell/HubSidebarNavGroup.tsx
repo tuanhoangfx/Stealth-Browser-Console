@@ -20,6 +20,7 @@ export type NavGroupSubNavItem<TId extends string = string> = {
   label: string;
   icon: LucideIcon;
   iconTone: NavIconTone;
+  iconSrc?: string;
   badge?: number;
 };
 
@@ -100,7 +101,7 @@ export function NavGroupSubNav<TId extends string>({
 }: NavGroupSubNavProps<TId>) {
   return (
     <div className={className}>
-      {items.map(({ id, label, icon: Icon, iconTone, badge }) => {
+      {items.map(({ id, label, icon: Icon, iconTone, iconSrc, badge }) => {
         const isActive = activeId === id;
         return (
           <button
@@ -122,7 +123,18 @@ export function NavGroupSubNav<TId extends string>({
                   : "text-[var(--muted)] group-hover:bg-white/[.04] group-hover:text-[var(--text)]"
               }`}
             >
-              <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, isActive)}`} aria-hidden />
+              {iconSrc ? (
+                <img
+                  src={iconSrc}
+                  alt=""
+                  width={compactIconSize(HUB_CHROME_ICON_PX)}
+                  height={compactIconSize(HUB_CHROME_ICON_PX)}
+                  className={`shrink-0 ${navIconClass(iconTone, isActive)}`}
+                  aria-hidden
+                />
+              ) : (
+                <Icon size={compactIconSize(HUB_CHROME_ICON_PX)} className={`shrink-0 ${navIconClass(iconTone, isActive)}`} aria-hidden />
+              )}
               <span className="min-w-0 flex-1 truncate text-left">{label}</span>
               {badge != null && badge > 0 ? (
                 <span className="shrink-0 rounded-full bg-amber-500/25 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-amber-200">

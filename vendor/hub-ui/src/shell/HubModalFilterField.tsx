@@ -1,17 +1,22 @@
 import type { LucideIcon } from "lucide-react";
 import { HubFormFieldLabel } from "./HubFormFieldLabel";
 import { HubSingleFilterDropdown, type FilterOption } from "./FilterBar";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 
 export type HubModalFilterFieldProps = {
   filterKey: string;
   label: string;
   icon?: LucideIcon;
   iconClassName?: string;
+  /** Emoji glyph — matches HubFormFieldLabel sticker SSOT. */
+  emoji?: string;
   options: FilterOption[];
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /** Rich label hint — hover popover (directory column hint SSOT). */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 /**
@@ -23,15 +28,17 @@ export function HubModalFilterField({
   label,
   icon,
   iconClassName,
+  emoji,
   options,
   value,
   onChange,
   disabled,
   className = "",
+  labelHint,
 }: HubModalFilterFieldProps) {
   return (
     <label className={`hub-modal-filter-field block min-w-0${className ? ` ${className}` : ""}`}>
-      <HubFormFieldLabel icon={icon} iconClassName={iconClassName}>
+      <HubFormFieldLabel icon={icon} iconClassName={iconClassName} emoji={emoji} labelHint={labelHint}>
         {label}
       </HubFormFieldLabel>
       <HubSingleFilterDropdown

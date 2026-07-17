@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
+import { HubDirectoryColumnHint } from "../table/HubDirectoryColumnHint";
 import { scrollToHubTocSection } from "./hub-toc-scroll";
 import { useHubTocNavActive, useHubTocNavHighlight } from "./HubTocSectionHighlight";
 import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
@@ -9,6 +11,8 @@ export type HubTocNavItem = {
   label: string;
   icon?: ReactNode;
   emoji?: string;
+  /** Directory-style hover hint (P0020 ADM Navigate SSOT). */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 type Props = {
@@ -38,6 +42,18 @@ function HubTocSectionNavItem({
 }) {
   const isHighlighted = useHubTocNavHighlight(sectionId);
   const isActive = useHubTocNavActive(sectionId);
+
+  const labelText = <span className="truncate">{item.label}</span>;
+  const labelWithHint = item.labelHint ? (
+    <HubDirectoryColumnHint
+      content={item.labelHint}
+      titleGlyph={item.emoji ? { emoji: item.emoji } : undefined}
+    >
+      {labelText}
+    </HubDirectoryColumnHint>
+  ) : (
+    labelText
+  );
 
   return (
     <button
@@ -73,7 +89,7 @@ function HubTocSectionNavItem({
             {item.icon}
           </span>
         ) : null}
-        <span className="truncate">{item.label}</span>
+        {labelWithHint}
       </span>
     </button>
   );

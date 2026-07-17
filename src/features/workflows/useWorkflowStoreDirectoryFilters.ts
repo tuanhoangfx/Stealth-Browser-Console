@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { hubDirectoryListResetKey, type FilterValues, type HubViewMode, type TimeRange } from "@tool-workspace/hub-ui";
+import { applyStealthFilterLabelHints } from "../../lib/stealth-filter-hints";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 import {
   buildWorkflowStoreFilters,
@@ -36,7 +37,10 @@ export function useWorkflowStoreDirectoryFilters({
   timeRange,
   viewMode,
 }: UseWorkflowStoreDirectoryFiltersArgs) {
-  const filters = useMemo(() => buildWorkflowStoreFilters(entries), [entries]);
+  const filters = useMemo(
+    () => applyStealthFilterLabelHints(buildWorkflowStoreFilters(entries), "workflow-store"),
+    [entries],
+  );
   const filterValues = useMemo(
     () => workflowStoreStateToFilterValues(groupFilters, platformFilters, sourceFilters),
     [groupFilters, platformFilters, sourceFilters],

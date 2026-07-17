@@ -210,6 +210,15 @@ export async function syncDevCatalogFromProd({ force = false } = {}) {
     console.warn(`[sync-dev-catalog] corrupt Dev DB moved → ${bak}`);
   }
 
+  // Never replace a healthy dev catalog that already has more profiles than the seed cap.
+  if (!force && healthy && limit > 0 && devCount > limit) {
+    console.log(
+      `[sync-dev-catalog] dev catalog ${devCount} profiles > limit ${limit} — skip down-seed`,
+    );
+    ensureProfilesJunction(prodProfiles, devProfiles);
+    return { ok: true, skipped: true, prodCount, devCount, limit, reason: "dev-above-limit" };
+  }
+
   fs.mkdirSync(path.dirname(devDb), { recursive: true });
   const preserveLastOpened = fs.existsSync(devDb) ? await readLastOpenedMap(devDb) : new Map();
   await writeSeededDevDb(prodDb, devDb, limit);

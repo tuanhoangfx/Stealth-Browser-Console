@@ -11,7 +11,7 @@ import {
 } from "./filter-dropdown-primitives";
 import { workspacePeriodDotColor, workspacePeriodTriggerIconColor } from "../lib/workspace-period-dot-color";
 import type { WorkspacePeriodKey } from "../lib/hub-workspace-period";
-import { compactIconSize } from "../ui-scale";
+import { HubFilterDatePicker } from "./HubFilterDatePicker";
 
 export type HubPeriodOption<T extends string = string> = {
   value: T;
@@ -43,6 +43,8 @@ export type HubPeriodSelectProps<T extends string = string> = {
   className?: string;
   /** Directory toolbar row — `text-xs` to match page size / Display (default `text-sm` for FilterBar). */
   triggerTypoClass?: string;
+  /** Native tooltip on period trigger. */
+  title?: string;
 };
 
 type PanelView = "list" | "month" | "range";
@@ -174,6 +176,7 @@ export function HubPeriodSelect<T extends string>({
   endLabel = "End",
   className = "",
   triggerTypoClass,
+  title = "Filter by creation date",
 }: HubPeriodSelectProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -341,22 +344,26 @@ export function HubPeriodSelect<T extends string>({
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   {startLabel}
                 </span>
-                <input
-                  type="date"
+                <HubFilterDatePicker
                   value={customStartDate}
-                  onChange={(e) => onCustomStartDateChange(e.target.value)}
-                  className="field w-full text-xs"
+                  onChange={onCustomStartDateChange}
+                  placeholder={startLabel}
+                  compactTrigger
+                  locale={language}
+                  triggerClassName="w-full justify-between"
                 />
               </label>
               <label className="block space-y-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                   {endLabel}
                 </span>
-                <input
-                  type="date"
+                <HubFilterDatePicker
                   value={customEndDate}
-                  onChange={(e) => onCustomEndDateChange(e.target.value)}
-                  className="field w-full text-xs"
+                  onChange={onCustomEndDateChange}
+                  placeholder={endLabel}
+                  compactTrigger
+                  locale={language}
+                  triggerClassName="w-full justify-between"
                 />
               </label>
               <button
@@ -382,6 +389,7 @@ export function HubPeriodSelect<T extends string>({
         iconColor={triggerIconColor}
         typoClass={triggerTypoClass}
         className="shrink-0"
+        title={title}
         onClick={() => {
           setOpen((v) => {
             const next = !v;

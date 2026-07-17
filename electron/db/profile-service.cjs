@@ -1,5 +1,8 @@
 const { randomInt, randomUUID } = require("node:crypto");
-const { getDb, isDatabaseReady, checkpointDatabase } = require("./init.cjs");
+const fs = require("node:fs");
+const path = require("node:path");
+const { getDb, isDatabaseReady } = require("./init.cjs");
+const { scheduleLastOpenedCheckpoint } = require("./last-opened-durability.cjs");
 
 const VALID_PLATFORMS = new Set(["windows", "macos", "linux"]);
 const VALID_COLOR_SCHEMES = new Set(["", "light", "dark", "no-preference"]);
@@ -589,7 +592,7 @@ function touchLastOpened(id) {
   getDb()
     .prepare("UPDATE profiles SET last_opened_at = ?, updated_at = ? WHERE id = ?")
     .run(ts, now, String(id));
-  checkpointDatabase();
+  scheduleLastOpenedCheckpoint(require("./init.cjs").checkpointDatabase);
   return getProfile(id);
 }
 
@@ -893,6 +896,31 @@ function seedProxyUrl() {
 
 function ensureSeedProfiles() {
   if (listProfiles().length > 0) return listProfiles();
+
+  try {
+    const { listBackupCandidates } = require("../lib/catalog-backup-recovery.cjs");
+    const { getDbFilePath } = require("./init.cjs");
+    const dbFile = typeof getDbFilePath === "function" ? getDbFilePath() : "";
+    const dataDir = dbFile ? path.dirname(dbFile) : "";
+    const hasLargeBackup =
+      dataDir &&
+      listBackupCandidates(dataDir).some((candidate) => {
+        try {
+          return fs.statSync(candidate).size >= 512 * 1024;
+        } catch {
+          return false;
+        }
+      });
+    if (hasLargeBackup) {
+      console.error(
+        "[profile-service] catalog empty but large backup exists — skip Stealth Demo seed; restart Stealth Browser Console",
+      );
+      return listProfiles();
+    }
+  } catch (error) {
+    console.warn("[profile-service] backup probe before seed:", error instanceof Error ? error.message : error);
+  }
+
   createProfile({
     name: "Stealth Demo",
     note: "Auto-seeded MVP profile — edit or delete anytime.",

@@ -11,6 +11,8 @@ export type DirectoryColumnMetaOptions = {
   headerTooltip?: string;
   /** Rich multi-line popover — icon rows for enum / source types. */
   headerHint?: HubDirectoryColumnHintContent;
+  /** Sheet-parity emoji sticker — takes precedence over Lucide in table headers. */
+  headerEmoji?: string;
   /** Predictable cell shape — header left-align via buildDirectoryColumns. */
   columnKind?: "code" | "date";
   headerAlign?: "start" | "center";
@@ -24,6 +26,7 @@ export type DirectoryColumnHeaderMeta = {
   headerIcon: LucideIcon;
   headerIconClassName: string;
   headerBrandIcon?: HubBrandIconId;
+  headerEmoji?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
   columnKind?: "code" | "date";
@@ -49,6 +52,7 @@ export function createDirectoryColumnMetaHelpers() {
       headerIcon: icon.headerIcon as LucideIcon,
       headerIconClassName: icon.headerIconClassName,
       headerBrandIcon: icon.headerBrandIcon,
+      headerEmoji: options?.headerEmoji,
       headerTooltip: options?.headerTooltip,
       headerHint: options?.headerHint,
       columnKind: options?.columnKind,
@@ -70,6 +74,7 @@ export function createDirectoryColumnMetaHelpers() {
           headerIcon: def.headerIcon,
           headerIconClassName: def.headerIconClassName,
           headerBrandIcon: def.headerBrandIcon,
+          headerEmoji: def.headerEmoji,
           headerTooltip: def.headerTooltip,
           headerHint: def.headerHint,
           columnKind: def.columnKind,

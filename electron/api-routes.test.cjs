@@ -216,7 +216,7 @@ function test(name, fn) {
       send: { json: noop, sse: () => ({ send: noop, end: noop }) }
     });
     const ids = routes.map((r) => r.id);
-    for (const want of ["profiles.list", "profiles.patch", "profiles.update", "profiles.cdp", "proxy.check", "jobs.enqueue", "jobs.stats", "jobs.events", "fb.create-pages"]) {
+    for (const want of ["profiles.list", "profiles.patch", "profiles.update", "profiles.cdp", "stealth-sync.status", "proxy.check", "jobs.enqueue", "jobs.stats", "jobs.events", "fb.create-pages"]) {
       assert.ok(ids.includes(want), `thiếu route ${want}`);
     }
     // jobs.stats phải đứng TRƯỚC jobs.get để không bị nuốt pattern.

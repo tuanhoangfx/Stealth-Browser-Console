@@ -98,6 +98,18 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
     "web": "reject"
   },
   {
+    "method": "closeAllProfiles",
+    "channel": "profile:closeAll",
+    "kind": "invoke",
+    "web": "reject"
+  },
+  {
+    "method": "listRunningProfiles",
+    "channel": "profile:listRunning",
+    "kind": "invoke",
+    "web": "reject"
+  },
+  {
     "method": "focusProfile",
     "channel": "profile:focus",
     "kind": "invoke",
@@ -184,6 +196,18 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
   {
     "method": "appInfo",
     "channel": "app:info",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "setVaultUserScope",
+    "channel": "vault:setUserScope",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "getVaultUserScope",
+    "channel": "vault:getUserScope",
     "kind": "invoke",
     "web": "stub"
   },

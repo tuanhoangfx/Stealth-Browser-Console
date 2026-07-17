@@ -79,6 +79,12 @@ async function main() {
   runStep("workflow-tab-console-smoke", "node", ["scripts/smoke-workflow-tab-console.mjs", "dist/index.html"]);
   runStep("benchmark-profile-launch", "electron-node", ["scripts/benchmark-profile-launch.mjs", "3"]);
 
+  runStep("close-running-profiles", "node", ["scripts/close-running-dev-profiles.mjs"]);
+
+  runStep("open-dev-window", "node", ["scripts/open-dev-electron-window.mjs"]);
+  await new Promise((r) => setTimeout(r, 3000));
+  focusStealthWindow();
+
   console.log("\nreload-and-verify-p0003: all checks passed — Stealth Browser Console is running.");
   console.log("(Close orphan PowerShell windows from earlier failed starts if any remain.)");
 }

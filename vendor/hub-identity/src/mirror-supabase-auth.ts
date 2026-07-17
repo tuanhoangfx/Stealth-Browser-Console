@@ -32,7 +32,18 @@ export async function authenticateMirrorSupabase(
 
   if (config.mode === "signup") {
     const { data, error } = await signUp();
-    if (error) return { session: null, error: error.message };
+    if (error) {
+      // Account already exists — fall through to password sign-in (mirror planes share Hub password).
+      if (/already registered|already been registered/i.test(error.message)) {
+        const again = await signIn();
+        if (!again.error && again.data.session) {
+          config.cacheSession(again.data.session);
+          return { session: again.data.session, error: null };
+        }
+        return { session: null, error: again.error?.message ?? error.message };
+      }
+      return { session: null, error: error.message };
+    }
     if (!data.session) return { session: null, error: confirmMsg };
     config.cacheSession(data.session);
     return { session: data.session, error: null };
@@ -49,6 +60,18 @@ export async function authenticateMirrorSupabase(
     if (!mirror.error && mirror.data.session) {
       config.cacheSession(mirror.data.session);
       return { session: mirror.data.session, error: null };
+    }
+    if (mirror.error && /already registered|already been registered/i.test(mirror.error.message)) {
+      // Sign-up collision after invalid-login — retry sign-in once (GoTrue race / mirror drift).
+      const retry = await signIn();
+      if (!retry.error && retry.data.session) {
+        config.cacheSession(retry.data.session);
+        return { session: retry.data.session, error: null };
+      }
+      return {
+        session: null,
+        error: retry.error?.message ?? "Incorrect user ID/email or password.",
+      };
     }
     if (mirror.error) return { session: null, error: mirror.error.message };
   }

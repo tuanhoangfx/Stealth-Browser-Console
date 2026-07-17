@@ -154,15 +154,15 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-07-08T14:41:41.234Z",
+  "manifestUpdatedAt": "2026-07-16T18:34:12.052Z",
   "release": {
-    "version": "1.0.1",
+    "version": "1.0.16",
     "updatedAt": "2026-07-07",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v1.0.0",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.0",
-      "publishedAt": "2026-07-08T14:25:02.984Z"
+      "tag": "v1.0.1",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.1",
+      "publishedAt": "2026-07-08T14:57:21.270Z"
     }
   },
   "ship": {
@@ -180,6 +180,6 @@
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
       "build": "corepack pnpm run build"
     },
-    "syncedAt": "2026-07-07T22:22:37.774Z"
+    "syncedAt": "2026-07-16T19:14:23.633Z"
   }
 }

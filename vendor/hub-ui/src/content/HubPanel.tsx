@@ -8,7 +8,7 @@ export function HubPanel({
   children,
   className = "",
 }: {
-  title?: string;
+  title?: ReactNode;
   titleIcon?: ReactNode;
   desc?: string;
   actions?: ReactNode;

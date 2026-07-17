@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, RefreshCw } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
 
@@ -10,6 +10,10 @@ export type HubAccessDeniedPanelProps = {
   signedInAs?: string;
   onSignOut: () => void;
   signOutLabel?: string;
+  /** Re-run tool grant check without signing out (admin may have granted since). */
+  onRecheck?: () => void;
+  recheckLabel?: string;
+  recheckBusy?: boolean;
   headerLeading?: ReactNode;
   toolInfo?: HubAuthToolInfo;
   /** Portal to document.body with auth-gate backdrop (default true). */
@@ -23,6 +27,9 @@ export function HubAccessDeniedPanel({
   signedInAs,
   onSignOut,
   signOutLabel = "Sign out",
+  onRecheck,
+  recheckLabel = "Check access again",
+  recheckBusy = false,
   headerLeading,
   toolInfo,
   portal = true,
@@ -42,10 +49,23 @@ export function HubAccessDeniedPanel({
         ) : null}
         <p className="auth-gate-denied__message">{message}</p>
       </div>
-      <button type="button" className="auth-gate-submit auth-gate-submit--denied" onClick={onSignOut}>
-        <LogOut size={compactIconSize(16)} aria-hidden />
-        <span>{signOutLabel}</span>
-      </button>
+      <div className="auth-gate-denied__actions">
+        {onRecheck ? (
+          <button
+            type="button"
+            className="auth-gate-submit auth-gate-submit--recheck"
+            onClick={onRecheck}
+            disabled={recheckBusy}
+          >
+            <RefreshCw size={compactIconSize(16)} aria-hidden className={recheckBusy ? "animate-spin" : undefined} />
+            <span>{recheckBusy ? "Checking…" : recheckLabel}</span>
+          </button>
+        ) : null}
+        <button type="button" className="auth-gate-submit auth-gate-submit--denied" onClick={onSignOut}>
+          <LogOut size={compactIconSize(16)} aria-hidden />
+          <span>{signOutLabel}</span>
+        </button>
+      </div>
     </div>
   );
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { FileText } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
@@ -81,6 +81,13 @@ export function HubUsageLogPanel({
 }: HubUsageLogPanelProps) {
   const [open, setOpen] = useState(false);
   const logPanelIcon = FileText;
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("hub-open-usage-log", onOpen);
+    return () => window.removeEventListener("hub-open-usage-log", onOpen);
+  }, []);
+
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat("vi-VN", {

@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
-const { COOKIE_BRIDGE_STORE_ID } = require("./cookie-bridge-store.cjs");
+const { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } = require("./stealth-extension-store-ids.cjs");
 
 /** Legacy E0001 ids pinned when loading from workspace or Web Store path. */
 const COOKIE_BRIDGE_LEGACY_PIN_IDS = new Set([
@@ -10,7 +10,6 @@ const COOKIE_BRIDGE_LEGACY_PIN_IDS = new Set([
 ]);
 
 /** Surfshark VPN — removed from bundled extensions (perf / auto-tab). */
-const SURFSHARK_STORE_ID = "ailoabdmgclmfmhdagmlohpjlbpffblp";
 
 const IDENTITY_TOOLBAR_ROOT = "identity-toolbar";
 const PIN_KEYS = ["pinned_extensions", "toolbar_pinned_extension_ids"];

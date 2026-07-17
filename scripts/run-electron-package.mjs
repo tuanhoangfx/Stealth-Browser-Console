@@ -277,6 +277,7 @@ if (process.platform === "win32") {
 }
 
 runNodeScript("scripts/write-updater-auth.mjs");
+runNodeScript("scripts/verify-cloakbrowser-esm-deps.mjs");
 runNodeScript("scripts/stage-packaged-node-modules.mjs");
 
 const stagingOutput = path.join(os.tmpdir(), `p0003-eb-${Date.now()}`);

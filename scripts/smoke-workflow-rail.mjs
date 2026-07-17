@@ -82,24 +82,6 @@ const probeScript = `
     profilesPagerOk;
   const workflowCanvasAbsent = !document.querySelector(".workflow-script-flow");
 
-  let workflowCanvasOk = true;
-  let workflowBuilderPresent = false;
-  let workflowCanvasPresent = false;
-  if (${isLiveDev}) {
-    const workflowNav = [...document.querySelectorAll("button,a,[role='tab']")].find((el) =>
-      /^workflow$/i.test((el.textContent || "").trim()),
-    );
-    if (workflowNav) workflowNav.click();
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      await new Promise((r) => setTimeout(r, 500));
-      workflowBuilderPresent = Boolean(document.querySelector(".script-builder"));
-      workflowCanvasPresent = Boolean(document.querySelector(".workflow-script-flow"));
-      if (workflowBuilderPresent && workflowCanvasPresent) break;
-    }
-    const needsWorkflowCanvas = Boolean(workflowNav) && workflowBuilderPresent;
-    workflowCanvasOk = !needsWorkflowCanvas || workflowCanvasPresent;
-  }
-
   const pageSize = ${WORKFLOW_RAIL_PAGE_SIZE};
   const rail = document.querySelector(".stealth-workflow-rail");
   const boot = document.getElementById("hub-boot-loader");
@@ -111,7 +93,7 @@ const probeScript = `
     scope.querySelector(".stealth-workflow-rail-table") ||
     [...scope.querySelectorAll("table")].find((el) => /wf\\d+/i.test(el.textContent || ""));
   const historyHeading = [...scope.querySelectorAll("h1,h2,h3,[role='heading']")].find((el) =>
-    /run history/i.test(el.textContent || ""),
+    /\\b(run\\s+)?history\\b/i.test((el.textContent || "").trim()),
   );
   const consoleHeading = [...scope.querySelectorAll("h1,h2,h3,[role='heading']")].find((el) =>
     /^console$/i.test((el.textContent || "").trim()),
@@ -171,6 +153,24 @@ const probeScript = `
   const totalMatch = pagerText.match(/Showing\\s+\\d+-\\d+\\s+of\\s+(\\d+)/i);
   const catalogTotal = totalMatch ? Number(totalMatch[1]) : rowCount;
   const expectedRows = Math.min(pageSize, Math.max(catalogTotal, rowCount));
+
+  let workflowCanvasOk = true;
+  let workflowBuilderPresent = false;
+  let workflowCanvasPresent = false;
+  if (${isLiveDev}) {
+    const workflowNav = [...document.querySelectorAll("button,a,[role='tab']")].find((el) =>
+      /^workflow$/i.test((el.textContent || "").trim()),
+    );
+    if (workflowNav) workflowNav.click();
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      await new Promise((r) => setTimeout(r, 500));
+      workflowBuilderPresent = Boolean(document.querySelector(".script-builder"));
+      workflowCanvasPresent = Boolean(document.querySelector(".workflow-script-flow"));
+      if (workflowBuilderPresent && workflowCanvasPresent) break;
+    }
+    const needsWorkflowCanvas = Boolean(workflowNav) && workflowBuilderPresent;
+    workflowCanvasOk = !needsWorkflowCanvas || workflowCanvasPresent;
+  }
 
   const ok =
     !boot &&

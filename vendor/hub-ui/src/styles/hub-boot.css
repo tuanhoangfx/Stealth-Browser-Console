@@ -191,3 +191,20 @@
   color: rgba(34, 211, 238, 0.9);
   animation: hub-boot-spin 3s linear infinite;
 }
+
+/* Visited-tab SSOT — skip paint/layout for inactive keep-alive directory panels */
+.hub-inactive-tab-content {
+  min-height: 0;
+  min-width: 0;
+}
+
+.hub-inactive-tab-content--hidden {
+  content-visibility: hidden;
+  contain: strict;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hub-inactive-tab-content--active {
+  content-visibility: visible;
+}

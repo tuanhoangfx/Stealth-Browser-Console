@@ -20,17 +20,31 @@ const {
 const { checkProxy, geoConsistency } = require("./lib/proxy-pool.cjs");
 const { extractProfileCode } = require("./lib/profile-identity.cjs");
 const { diagnoseMailCredentials } = require("./lib/twofa-vault-bridge.cjs");
+const { getStealthSyncDiagnostics } = require("./lib/stealth-sync-outbox.cjs");
 
 function stepsNeedMailCredentials(steps) {
-  return Array.isArray(steps) && steps.some((s) => String(s?.value || "").includes("{{gmail"));
+  return (
+    Array.isArray(steps) &&
+    steps.some((s) => /\{\{(gmail|outlook|mail)(Email|Password|Recovery|TotpCode)\}\}/i.test(String(s?.value || "")))
+  );
+}
+
+function resolveMailVaultService(steps) {
+  const blob = Array.isArray(steps) ? steps.map((s) => String(s?.value || "")).join(" ") : "";
+  if (/\{\{outlook/i.test(blob)) return "Outlook";
+  if (/\{\{mail(Email|Password|Recovery|TotpCode)\}\}/i.test(blob) && !/\{\{gmail/i.test(blob)) {
+    return "Outlook";
+  }
+  return "Gmail";
 }
 
 async function preflightMailCredentials(profile, steps) {
   if (!stepsNeedMailCredentials(steps)) return;
   const profileCode = extractProfileCode(profile.name, profile.id);
-  const diagnosis = await diagnoseMailCredentials(profileCode, "Gmail");
+  const vaultService = resolveMailVaultService(steps);
+  const diagnosis = await diagnoseMailCredentials(profileCode, vaultService);
   if (!diagnosis.ok || !diagnosis.credentials) {
-    throw new Error(diagnosis.reason || `No Gmail credentials found for profile ${profileCode}.`);
+    throw new Error(diagnosis.reason || `No ${vaultService} credentials found for profile ${profileCode}.`);
   }
 }
 
@@ -144,6 +158,21 @@ function buildRoutes(services) {
   // ── Core routes ──────────────────────────────────────────────────────────
   const coreRoutes = [
     {
+      id: "catalog.checkpoint",
+      method: "POST",
+      pattern: /^\/api\/catalog\/checkpoint$/,
+      handler(ctx) {
+        try {
+          const { checkpointDatabase } = require("./db/init.cjs");
+          checkpointDatabase({ truncate: true });
+          return send.json(ctx.res, 200, { ok: true, checkpoint: true });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return send.json(ctx.res, 500, { ok: false, error: message });
+        }
+      },
+    },
+    {
       id: "profiles.list",
       method: "GET",
       pattern: /^\/api\/profiles$/,
@@ -217,6 +246,24 @@ function buildRoutes(services) {
       }
     },
     {
+      id: "sessions.closeAll",
+      method: "POST",
+      pattern: /^\/api\/sessions\/close-all$/,
+      async handler(ctx) {
+        const sessions = sessionManager.listRunning();
+        await sessionManager.closeAll();
+        return send.json(ctx.res, 200, { ok: true, count: sessions.length, ids: sessions.map((row) => row.id) });
+      }
+    },
+    {
+      id: "sessions.running",
+      method: "GET",
+      pattern: /^\/api\/sessions\/running$/,
+      handler(ctx) {
+        return send.json(ctx.res, 200, { ok: true, sessions: sessionManager.listRunning() });
+      }
+    },
+    {
       id: "profiles.status",
       method: "GET",
       pattern: /^\/api\/profiles\/([^/]+)\/status$/,
@@ -257,6 +304,18 @@ function buildRoutes(services) {
         return send.json(ctx.res, 200, {
           ok: true,
           events: profileService.listProfileEvents(profileId, limit),
+        });
+      },
+    },
+    {
+      id: "stealth-sync.status",
+      method: "GET",
+      pattern: /^\/api\/stealth-sync\/status$/,
+      handler(ctx) {
+        const limit = Math.min(100, Math.max(1, Number(ctx.query.limit) || 20));
+        return send.json(ctx.res, 200, {
+          ok: true,
+          ...getStealthSyncDiagnostics(limit),
         });
       },
     },
@@ -390,8 +449,9 @@ function buildRoutes(services) {
         const profileIds = Array.isArray(ctx.body.profile_ids ?? ctx.body.profileIds)
           ? (ctx.body.profile_ids ?? ctx.body.profileIds).map((id) => String(id).trim()).filter(Boolean)
           : undefined;
+        const force = Boolean(ctx.body.force);
         try {
-          const result = await installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds });
+          const result = await installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds, force });
           const { getBinaryInfoCached } = require("./engine/cloak-browser-engine.cjs");
           const { ensureCloakbrowserExtensionStages } = require("./lib/cloakbrowser-extension-stage.cjs");
           const binary = await getBinaryInfoCached();

@@ -78,7 +78,8 @@ function validateScriptSteps(steps) {
         selector: row.selector !== undefined ? String(row.selector) : undefined,
         value: row.value !== undefined ? String(row.value) : undefined,
         timeoutMs: row.timeoutMs !== undefined ? Number(row.timeoutMs) : undefined,
-        enabled: row.enabled !== false
+        enabled: row.enabled !== false,
+        pressEnter: row.pressEnter === true || row.press_enter === true,
       };
     });
 }

@@ -16,21 +16,27 @@ function escapePsSingleQuoted(value) {
   return String(value).replace(/'/g, "''");
 }
 
+/**
+ * Find Chrome/Chromium PIDs holding a profile dir.
+ * Prefer simple -like needles (UUID / user-data-dir) — regex Escape of Windows paths
+ * was matching zero processes while WMI clearly showed the profile still open.
+ */
 function listChromeProcessesPs(userDataDir) {
   const dir = path.resolve(String(userDataDir));
   const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
   const backslash = escapePsSingleQuoted(dir);
   const profileId = escapePsSingleQuoted(path.basename(dir));
-  const rootTag = escapePsSingleQuoted(path.basename(path.resolve(dir, "..", "..")).toLowerCase());
+  const rootTag = escapePsSingleQuoted(path.basename(path.resolve(dir, "..", "..")));
   return [
-    `$fwd = [regex]::Escape('${forward}'); $bck = [regex]::Escape('${backslash}')`,
-    `$profileId = [regex]::Escape('--stealth-profile-id=${profileId}')`,
-    `$rootTag = [regex]::Escape('--stealth-user-data-tag=${rootTag}')`,
+    `$needles = @('${backslash}', '${forward}', '${profileId}', '--stealth-profile-id=${profileId}', '--stealth-user-data-tag=${rootTag}')`,
     "Get-CimInstance Win32_Process | Where-Object {",
-    "  $_.CommandLine -and ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'chromium.exe') -and",
-    "  ((($_.CommandLine -match $profileId) -and ($_.CommandLine -match $rootTag)) -or ($_.CommandLine -match $fwd) -or ($_.CommandLine -match $bck))",
+    "  $cmd = $_.CommandLine; $name = $_.Name;",
+    "  if (-not $cmd) { return $false }",
+    "  if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }",
+    "  foreach ($n in $needles) { if ($cmd -like ('*' + $n + '*')) { return $true } }",
+    "  return $false",
     "} | ForEach-Object { $_.ProcessId }",
-  ].join("; ");
+  ].join("\n");
 }
 
 function listLockOwnerPidsPs(files) {
@@ -85,7 +91,7 @@ function listLockOwnerPidsPs(files) {
     "} finally {",
     "  [StealthRestartManager]::RmEndSession($handle) | Out-Null",
     "}",
-  ].join("; ");
+  ].join("\n");
 }
 
 function resolveExistingProfileLockFiles(userDataDir) {
@@ -121,24 +127,24 @@ async function listProfileBrowserPids(userDataDir) {
   const key = path.resolve(String(userDataDir));
   const cached = pidListCache.get(key);
   if (cached && Date.now() - cached.at < PID_LIST_CACHE_MS) return cached.pids;
+  let cliPids = [];
   try {
     const { stdout } = await execFileAsync(
       "powershell",
       ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", listChromeProcessesPs(userDataDir)],
       { timeout: 20_000, windowsHide: true },
     );
-    const cliPids = String(stdout)
+    cliPids = String(stdout)
       .split(/\r?\n/)
       .map((line) => Number.parseInt(line.trim(), 10))
       .filter((pid) => Number.isFinite(pid) && pid > 0);
-    const pids = cliPids.length ? [...new Set(cliPids)] : await listProfileBrowserPidsByLock(userDataDir);
-    pidListCache.set(key, { pids, at: Date.now() });
-    return pids;
   } catch {
-    const pids = await listProfileBrowserPidsByLock(userDataDir);
-    pidListCache.set(key, { pids, at: Date.now() });
-    return pids;
+    cliPids = [];
   }
+  const lockPids = await listProfileBrowserPidsByLock(userDataDir);
+  const pids = [...new Set([...cliPids, ...lockPids])];
+  pidListCache.set(key, { pids, at: Date.now() });
+  return pids;
 }
 
 function invalidateProfileBrowserPidCache(userDataDir) {
@@ -183,6 +189,7 @@ async function killOrphanProfileBrowser(userDataDir) {
       // process may already be gone
     }
   }
+  invalidateProfileBrowserPidCache(userDataDir);
   return { killed };
 }
 
@@ -204,11 +211,15 @@ async function focusProfileBrowserWindow(userDataDir) {
   if (!userDataDir || process.platform !== "win32") return { ok: false, reason: "unsupported" };
   const dir = path.resolve(String(userDataDir));
   const escaped = escapePsSingleQuoted(dir);
+  const profileId = escapePsSingleQuoted(path.basename(dir));
   const script = [
-    `$dir = '${escaped}'`,
+    `$needles = @('${escaped}', '${profileId}')`,
     "$pids = Get-CimInstance Win32_Process | Where-Object {",
-    "  $_.CommandLine -and $_.CommandLine -like ('*' + $dir + '*') -and",
-    "  ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'chromium.exe')",
+    "  $cmd = $_.CommandLine; $name = $_.Name;",
+    "  if (-not $cmd) { return $false }",
+    "  if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }",
+    "  foreach ($n in $needles) { if ($cmd -like ('*' + $n + '*')) { return $true } }",
+    "  return $false",
     "} | Select-Object -ExpandProperty ProcessId",
     "if (-not $pids) { Write-Output 'MISSING'; exit 0 }",
     "Add-Type @'",
@@ -229,7 +240,7 @@ async function focusProfileBrowserWindow(userDataDir) {
     "  break",
     "}",
     "if ($focused) { Write-Output 'OK' } else { Write-Output 'NOHWND' }",
-  ].join("; ");
+  ].join("\n");
 
   try {
     const { stdout } = await execFileAsync(

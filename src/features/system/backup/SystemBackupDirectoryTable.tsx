@@ -5,15 +5,18 @@ import {
   hubDirectoryTableClass,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
 } from "@tool-workspace/hub-ui";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  STEALTH_BACKUP_COLUMN_KEYS,
   STEALTH_BACKUP_COLUMN_META,
   toHubDirectoryColumnMeta,
   type StealthBackupColumnKey,
 } from "../../../lib/directory-column-meta";
 import type { ProfileRow, ProfileStorageStat } from "../../../types";
 import { renderSystemBackupDirectoryBodyCell } from "./system-backup-directory-cells";
+import {
+  backupDirectoryColumnPrefs,
+  readBackupDirectoryColumns,
+} from "./backup-directory-prefs";
 
 function backupRowKey(profile: ProfileRow) {
   return profile.id;
@@ -32,6 +35,7 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
   pageSize,
   serverPagination,
   searchQuery = "",
+  onOpenDetail,
 }: {
   items: ProfileRow[];
   selectedIds: Set<string>;
@@ -49,14 +53,23 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
     onPageChange: (index: number) => void;
   };
   searchQuery?: string;
+  onOpenDetail?: (profile: ProfileRow) => void;
 }) {
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(readBackupDirectoryColumns);
+
+  useEffect(() => {
+    const sync = () => setVisibleColumnKeys(readBackupDirectoryColumns());
+    window.addEventListener(backupDirectoryColumnPrefs.changeEvent, sync);
+    return () => window.removeEventListener(backupDirectoryColumnPrefs.changeEvent, sync);
+  }, []);
+
   const columns = useMemo(
     () =>
       buildDirectoryColumns(
-        [...STEALTH_BACKUP_COLUMN_KEYS],
+        visibleColumnKeys as StealthBackupColumnKey[],
         toHubDirectoryColumnMeta(STEALTH_BACKUP_COLUMN_META),
       ),
-    [],
+    [visibleColumnKeys],
   );
   const colgroup = useMemo(
     () => buildDirectoryColgroupForShell(columns, { showSelect: true }),
@@ -102,7 +115,12 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
         pageIndex: serverPagination.pageIndex,
         onPageChange: serverPagination.onPageChange,
       }}
-      getRowClassName={(profile) => (selectedIds.has(backupRowKey(profile)) ? " is-selected" : "")}
+      getRowClassName={(profile) => {
+        const selected = selectedIds.has(backupRowKey(profile)) ? " is-selected" : "";
+        const clickable = onOpenDetail ? " cursor-pointer" : "";
+        return `${selected}${clickable}`;
+      }}
+      onRowClick={onOpenDetail}
       renderRowCells={(profile) => (
         <>
           {columns.map((col) =>

@@ -1,10 +1,12 @@
 import { Trash2 } from "lucide-react";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import { HubBulkActionButton } from "./HubBulkActionButton";
 
 export type HubDirectoryDeleteBulkActionProps = {
   title: string;
   onClick: () => void;
   disabled?: boolean;
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 /** SSOT directory bulk Delete — rose tone. */
@@ -12,6 +14,7 @@ export function HubDirectoryDeleteBulkAction({
   title,
   onClick,
   disabled = false,
+  labelHint,
 }: HubDirectoryDeleteBulkActionProps) {
   return (
     <HubBulkActionButton
@@ -21,6 +24,7 @@ export function HubDirectoryDeleteBulkAction({
       tone="rose"
       disabled={disabled}
       onClick={onClick}
+      labelHint={labelHint}
     />
   );
 }

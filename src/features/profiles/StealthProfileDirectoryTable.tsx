@@ -4,59 +4,22 @@ import {
   buildDirectoryColumns,
   hubDirectoryTableClass,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
-  resolveHubBrandIcon,
   shouldPadDirectoryBodyToPageSize,
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import type { LucideIcon } from "lucide-react";
-import { Cookie, Shield } from "lucide-react";
 import {
   STEALTH_PROFILE_COLUMN_META as STEALTH_PROFILE_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
-import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import {
   profileDirectoryColumnPrefs,
   readProfileDirectoryColumns,
 } from "./profile-directory-prefs";
 import type { ExtensionToggles, ProfileRow } from "../../types";
+import type { ExtensionIconMap } from "./useExtensionIcons";
 import { renderStealthProfileDirectoryBodyCell } from "./stealth-profile-directory-cells";
 import { sortableProfileValue } from "./stealth-profile-sort";
-import type { ExtensionIconMap } from "./useExtensionIcons";
-
-const SURFSHARK_BRAND_SRC = resolveHubBrandAssetSrc(resolveHubBrandIcon("surfshark")?.src ?? "");
-
-function makeExtIcon(src: string | null, kind: "e0001" | "surfshark") {
-  const Fallback = kind === "e0001" ? Cookie : Shield;
-  const fallbackClass = kind === "e0001" ? "text-orange-300" : "text-cyan-300";
-  const label = kind === "e0001" ? "E0001" : "Surfshark";
-  const brandSrc = kind === "surfshark" ? SURFSHARK_BRAND_SRC : null;
-  const effectiveSrc = src || brandSrc;
-  if (!effectiveSrc) {
-    return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
-      return <Fallback size={size} className={`shrink-0 ${fallbackClass} ${className}`} aria-hidden />;
-    };
-  }
-  return function ExtIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
-    const [broken, setBroken] = useState(false);
-    if (broken && !brandSrc) {
-      return <Fallback size={size} className={`shrink-0 ${fallbackClass} ${className}`} aria-hidden />;
-    }
-    const imgSrc = broken && brandSrc ? brandSrc : effectiveSrc;
-    return (
-      <img
-        src={imgSrc}
-        width={size}
-        height={size}
-        className={`inline-block shrink-0 object-contain ${className}`}
-        alt={label}
-        draggable={false}
-        onError={() => setBroken(true)}
-      />
-    );
-  };
-}
 
 export type StealthProfileSortKey =
   | "profile"
@@ -64,7 +27,7 @@ export type StealthProfileSortKey =
   | "e0001"
   | "surfshark"
   | "status"
-  | "lastOpened"
+  | "updated"
   | "createdAt"
   | "startupUrl"
   | "proxy"
@@ -85,6 +48,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   onOpen,
   onClose,
   onOpenDetail,
+  runningHeadlessIds,
   globalExtensionToggles,
   extensionIcons,
   emptyMessage,
@@ -104,6 +68,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   onOpen: (profile: ProfileRow) => void;
   onClose: (profile: ProfileRow) => void;
   onOpenDetail?: (profile: ProfileRow) => void;
+  runningHeadlessIds?: ReadonlySet<string>;
   globalExtensionToggles: ExtensionToggles;
   extensionIcons?: ExtensionIconMap;
   emptyMessage?: string;
@@ -163,24 +128,30 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
     return () => window.removeEventListener(profileDirectoryColumnPrefs.changeEvent, sync);
   }, []);
 
-  const ExtIconE0001 = useMemo(() => makeExtIcon(extensionIcons?.e0001 ?? null, "e0001"), [extensionIcons?.e0001]);
-  const ExtIconSurfshark = useMemo(() => makeExtIcon(extensionIcons?.surfshark ?? null, "surfshark"), [extensionIcons?.surfshark]);
-
   const columns = useMemo(() => {
     const built = buildDirectoryColumns(
       visibleColumnKeys as StealthProfileSortKey[],
       toHubDirectoryColumnMeta(STEALTH_PROFILE_COLUMN_META),
     );
     return built.map((col) => {
-      if (col.key === "e0001") {
-        return { ...col, sortable: false, headerIcon: ExtIconE0001 as unknown as LucideIcon, headerIconClassName: "" };
-      }
-      if (col.key === "surfshark") {
-        return { ...col, sortable: false, headerIcon: ExtIconSurfshark as unknown as LucideIcon, headerIconClassName: "" };
+      if (col.key === "e0001" || col.key === "surfshark") {
+        const src = extensionIcons?.[col.key];
+        return {
+          ...col,
+          sortable: false,
+          ...(src
+            ? {
+                headerImageSrc: src,
+                headerEmoji: undefined,
+                headerBrandIcon: undefined,
+                headerIcon: undefined,
+              }
+            : {}),
+        };
       }
       return col;
     });
-  }, [ExtIconE0001, ExtIconSurfshark, visibleColumnKeys]);
+  }, [visibleColumnKeys, extensionIcons]);
   const colgroup = useMemo(
     () => buildDirectoryColgroupForShell(columns, { showSelect: true }),
     [columns],
@@ -230,6 +201,7 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
             renderStealthProfileDirectoryBodyCell(col, profile, searchQuery, {
               onOpen,
               onClose,
+              runningHeadlessIds,
               globalExtensionToggles,
             }),
           )}

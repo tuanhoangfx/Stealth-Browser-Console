@@ -1,5 +1,44 @@
 /* Profile New/Edit modal — P0020 Mail Account Detail ADM parity (hub-ui SSOT + create bulk overrides). */
 
+/* Edit profile — fill modal height so main column scrolls (hub-tool-detail-modal--fit breaks flex chain). */
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
+    .stealth-profile-create-modal
+  ),
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal {
+  min-height: min(var(--hub-modal-fill-min-h, 640px), var(--hub-modal-max-vh));
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
+    .stealth-profile-create-modal
+  )
+  .hub-tool-detail-modal__body,
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
+    .stealth-profile-create-modal
+  )
+  .hub-tool-detail-modal__layout,
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
+  .hub-tool-detail-modal__body,
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
+  .hub-tool-detail-modal__layout {
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
+    .stealth-profile-create-modal
+  )
+  .twofa-account-detail__panel.hub-tool-detail-panel--grow
+  .hub-account-detail-modal__main-scroll,
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
+  .twofa-account-detail__panel.hub-tool-detail-panel--grow
+  .hub-account-detail-modal__main-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal.stealth-profile-create-modal {
   --hub-add-modal-body-h: 20rem;
   --hub-add-modal-toc-bulk-slot-h: 7rem;
@@ -24,9 +63,47 @@
   min-height: 0;
 }
 
+/* Detail modal — Run History + Console rails 50/50 (Profiles screen rail parity). */
+.stealth-profile-detail-runtime-rail,
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
+    .stealth-profile-create-modal
+  )
+  .hub-tool-detail-split__rail:has(.stealth-profile-detail-history-rail):has(.stealth-profile-detail-log-rail),
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
+  .hub-tool-detail-split__rail:has(.stealth-profile-detail-history-rail):has(.stealth-profile-detail-log-rail) {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--hub-account-detail-columns-gap, 0.65rem);
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.stealth-profile-detail-history-rail {
+  flex: unset;
+  min-height: 0;
+  height: 100%;
+}
+
+.stealth-profile-detail-history-rail .hub-tool-detail-rail__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.45rem;
+}
+
+.stealth-profile-detail-history-rail .hub-runtime-history-list {
+  min-height: 0;
+}
+
 .stealth-profile-detail-log-rail {
   container-type: inline-size;
   container-name: stealth-profile-console;
+  flex: unset;
+  min-height: 0;
+  height: 100%;
 }
 
 .stealth-profile-detail-log-rail .hub-tool-detail-rail__body {
@@ -52,6 +129,148 @@
 .stealth-profile-detail-log-rail--focused {
   box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.45), 0 0 18px rgba(99, 102, 241, 0.18);
   transition: box-shadow 0.2s ease;
+}
+
+.stealth-profile-extension-section__lead {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.stealth-profile-extension-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background:
+    linear-gradient(180deg, rgba(20, 24, 38, 0.96), rgba(14, 17, 28, 0.94)),
+    rgba(15, 18, 28, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.stealth-profile-extension-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 0.9rem 0.8rem;
+  background: rgba(15, 18, 28, 0.92);
+}
+
+.stealth-profile-extension-row + .stealth-profile-extension-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stealth-profile-extension-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.stealth-profile-extension-row__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0.15rem 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(226, 232, 240);
+}
+
+.stealth-profile-extension-row__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  min-width: 1.1rem;
+  margin-top: 0.05rem;
+}
+
+.stealth-profile-extension-row__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-left: 1.8rem;
+}
+
+.stealth-profile-extension-row__summary {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgba(165, 180, 252, 0.9);
+}
+
+.stealth-profile-extension-row__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-left: 1.8rem;
+  margin-top: 0.05rem;
+}
+
+.stealth-profile-extension-choice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.65rem;
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.stealth-profile-extension-choice:hover {
+  border-color: rgba(129, 140, 248, 0.28);
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.stealth-profile-extension-choice.is-active {
+  border-color: rgba(129, 140, 248, 0.42);
+  background: rgba(79, 70, 229, 0.16);
+  color: rgb(224, 231, 255);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.14);
+}
+
+.stealth-profile-extension-choice.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.stealth-profile-extension-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stealth-profile-extension-choice:focus-within {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.48);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.22);
 }
 
 .stealth-profile-detail-log-rail__filters {
@@ -191,6 +410,13 @@
 .stealth-profile-bulk-preview-kpi .hub-kpi-tile__hint {
   font-size: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@media (max-width: 900px) {
+  .stealth-profile-extension-row__meta,
+  .stealth-profile-extension-row__options {
+    padding-left: 0;
+  }
 }
 
 .twofa-account-detail__panel .stealth-profile-create-tab-panels {

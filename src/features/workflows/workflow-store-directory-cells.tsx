@@ -24,7 +24,7 @@ function renderStoreUpdatedCell(entry: WorkflowStoreEntry) {
   return <HubDirectoryTimestampLabel at={ms} />;
 }
 
-function storeStatusLabel(entry: WorkflowStoreEntry, localIds: Set<string>, installedIds: Set<string>) {
+export function storeStatusLabel(entry: WorkflowStoreEntry, localIds: Set<string>, installedIds: Set<string>) {
   if (localIds.has(entry.id)) return { label: "Local", tone: "online" as const };
   if (installedIds.has(entry.id)) return { label: "Installed", tone: "active" as const };
   return { label: "Available", tone: "idle" as const };

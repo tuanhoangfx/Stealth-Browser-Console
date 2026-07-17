@@ -113,6 +113,8 @@ export function DirectorySearchToolbar({
           type="button"
           onClick={onRefresh}
           disabled={disabled}
+          title={refreshing ? "Refreshing directory data…" : "Refresh directory data from cloud"}
+          aria-label={refreshing ? "Refreshing directory data" : "Refresh directory data"}
           className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />

@@ -58,7 +58,7 @@ export function renderSystemBackupDirectoryBodyCell(
         </DirectoryTableBodyCell>
       );
     }
-    case "lastBackup":
+    case "updated":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           {renderLastBackupCell(ctx.lastBackupAt)}

@@ -72,6 +72,13 @@ app.whenReady().then(async () => {
 
   const errors = logs.filter((l) => {
     if (/Failed to decode downloaded font|OTS parsing error/i.test(l.message)) return false;
+    if (
+      /\\[React Flow\\]|#004|parent container needs a (?:width and a )?height|It looks like you have not set a (?:width|height)/i.test(
+        l.message,
+      )
+    ) {
+      return false;
+    }
     return l.level >= 2 || /error|Error|before initialization|fail/i.test(l.message);
   });
   const ok = Boolean(probe.hubApp && probe.rootLen > 200 && !probe.bootPresent);

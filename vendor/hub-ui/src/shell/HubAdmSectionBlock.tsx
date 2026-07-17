@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import type { HubTableColumnRole } from "../table/hub-table-column-meta";
 import { HubAdmSectionLabel } from "./HubAdmSectionLabel";
 import { hubAdmSectionBlockClass, hubAdmSectionHeader, type HubAdmSectionKey } from "./hubAdmSectionHeaders";
@@ -15,6 +16,8 @@ export type HubAdmSectionBlockProps = {
   label?: string;
   emoji?: string;
   role?: HubTableColumnRole;
+  /** Directory-style hover hint on the section pill (P0020 ADM SSOT). */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 function resolveSectionHeader({
@@ -41,6 +44,7 @@ export function HubAdmSectionBlock({
   label,
   emoji,
   role,
+  labelHint,
 }: HubAdmSectionBlockProps) {
   const resolvedHeader = resolveSectionHeader({ sectionKey, header, label, emoji, role });
   const blockClass = [
@@ -52,7 +56,7 @@ export function HubAdmSectionBlock({
   return (
     <section id={id} className={`hub-adm-section scroll-mt-4${className ? ` ${className}` : ""}`}>
       <div className={blockClass}>
-        <HubAdmSectionLabel header={resolvedHeader} />
+        <HubAdmSectionLabel header={resolvedHeader} labelHint={labelHint} />
         <div className="hub-adm-section-block__rows">{children}</div>
       </div>
     </section>

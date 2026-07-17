@@ -108,7 +108,19 @@ app.whenReady().then(async () => {
   const needsCanvas = probe.clickedWorkflow && probe.builderPresent;
   const canvasOk = !needsCanvas || probe.canvasPresent === true;
   const ok = depthErrors.length === 0 && canvasOk;
-  fs.writeFileSync(outFile, JSON.stringify({ url, ok, probe, depthErrorCount: depthErrors.length, errors: logs.filter((l) => l.level >= 2).slice(0, 15) }, null, 2));
+  const errors = logs
+    .filter((l) => {
+      if (
+        /\\[React Flow\\]|#004|parent container needs a (?:width and a )?height|It looks like you have not set a (?:width|height)/i.test(
+          String(l.message || ""),
+        )
+      ) {
+        return false;
+      }
+      return l.level >= 2;
+    })
+    .slice(0, 15);
+  fs.writeFileSync(outFile, JSON.stringify({ url, ok, probe, depthErrorCount: depthErrors.length, errors }, null, 2));
   app.exit(ok ? 0 : 1);
 });
 `;

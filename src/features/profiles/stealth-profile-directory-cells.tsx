@@ -8,7 +8,7 @@ import {
   HubUsersStatusLabel,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
-import { Loader2, Play, Square } from "lucide-react";
+import { Ghost, Loader2, Play, Square } from "lucide-react";
 import { HubDirectoryTimestampLabel } from "@tool-workspace/hub-ui";
 import { formatStartupUrlDisplay } from "../../lib/startup-url";
 import type { ExtensionToggles, ProfileRow } from "../../types";
@@ -30,6 +30,7 @@ export function renderStealthProfileDirectoryBodyCell(
   handlers?: {
     onOpen?: (profile: ProfileRow) => void;
     onClose?: (profile: ProfileRow) => void;
+    runningHeadlessIds?: ReadonlySet<string>;
     globalExtensionToggles?: ExtensionToggles;
   },
 ) {
@@ -77,6 +78,8 @@ export function renderStealthProfileDirectoryBodyCell(
     case "status": {
       const running = profile.status === "running" || profile.status === "opening";
       const opening = profile.status === "opening";
+      const showHeadlessBadge =
+        running && (profile.headless || Boolean(handlers?.runningHeadlessIds?.has(profile.id)));
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           {!running ? (
@@ -103,7 +106,7 @@ export function renderStealthProfileDirectoryBodyCell(
             <button
               type="button"
               className={`hub-directory-icon-cell ${HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS} rounded-md border-0 bg-transparent transition-opacity hover:opacity-90`}
-              aria-label={`Stop ${profile.name}`}
+              aria-label={`Stop ${profile.name}${showHeadlessBadge ? " (headless)" : ""}`}
               onClick={(event) => {
                 event.stopPropagation();
                 handlers?.onClose?.(profile);
@@ -112,13 +115,18 @@ export function renderStealthProfileDirectoryBodyCell(
               <span className="hub-directory-icon-cell__icon text-rose-400">
                 <Square size={compactIconSize(11)} fill="currentColor" aria-hidden />
               </span>
-              <span className="hub-directory-icon-cell__label text-rose-300">Stop</span>
+              <span className="hub-directory-icon-cell__label inline-flex items-center gap-1 text-rose-300">
+                Stop
+                {showHeadlessBadge ? (
+                  <Ghost size={compactIconSize(10)} className="text-amber-300 opacity-90" aria-hidden />
+                ) : null}
+              </span>
             </button>
           )}
         </DirectoryTableBodyCell>
       );
     }
-    case "lastOpened":
+    case "updated":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           {renderProfileTimestampCell(

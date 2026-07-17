@@ -11,6 +11,8 @@ export type DirectoryTableColumnPreset<K extends string = string> = {
   order: K[];
   /** Random dot color assigned when preset is saved. */
   color?: string;
+  /** Optional glyph shown instead of the color dot (builtin frame presets). */
+  emoji?: string;
 };
 
 type StoredPresetsJson<K extends string> = {
@@ -75,7 +77,7 @@ function defaultState<K extends string>(
 ): { visible: Set<K>; order: K[] } {
   return {
     visible: new Set(defaultVisible),
-    order: mergeDirectoryTableColumnOrder(itemKeys, [...defaultVisible]),
+    order: [...itemKeys],
   };
 }
 

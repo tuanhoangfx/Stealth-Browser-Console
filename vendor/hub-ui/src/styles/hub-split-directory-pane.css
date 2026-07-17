@@ -10,6 +10,11 @@
   overflow: hidden;
 }
 
+/* Pane body is a layout shell — scroll lives on inner .hub-split-scroll--* only (P0020 Notes editor). */
+.hub-split-directory-pane__body:not(.hub-split-scroll) {
+  scrollbar-gutter: auto;
+}
+
 .hub-split-directory-pane__kpi-band {
   position: relative;
   z-index: 1;

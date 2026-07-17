@@ -6,6 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { isDevPortListening } from "./lib/dev-port-guard.mjs";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -83,7 +84,7 @@ function killDevPort() {
   spawnSync(process.execPath, [kill, "5175"], winSpawnOpts({ cwd: root, stdio: "inherit" }));
 }
 
-function main() {
+async function main() {
   const iconPath = path.join(root, "build", "icons", "app.ico");
   if (!fs.existsSync(iconPath)) {
     const syncIcon = path.join(root, "..", "scripts", "sync-app-icon.cjs");
@@ -97,6 +98,16 @@ function main() {
     console.log("electron-dev-gate: unchanged — skip bump/reload");
     return;
   }
+
+  const devActive = await isDevPortListening();
+  if (devActive && !force) {
+    console.warn(
+      "electron-dev-gate: electron sources changed but :5175 active — defer bump/kill until dev stopped " +
+        "(set STEALTH_DEV_FORCE_RELOAD=1 to override)",
+    );
+    return;
+  }
+
   fs.mkdirSync(stampDir, { recursive: true });
   fs.writeFileSync(stampFile, `${nextHash}\n`, "utf8");
   bumpPatchVersion();
@@ -108,4 +119,4 @@ function main() {
   console.log("electron-dev-gate: electron sources changed — version bumped, port 5175 freed");
 }
 
-main();
+await main();

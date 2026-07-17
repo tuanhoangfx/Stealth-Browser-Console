@@ -1,20 +1,19 @@
-import { describe, expect, it } from "vitest";
-import { CHART_OTHERS_LABEL, CHART_TOP_N, prepareChartItems, topChartItems } from "./chart-items";
+﻿import { describe, expect, it } from "vitest";
+import { CHART_OTHERS_LABEL, CHART_TOP_N, prepareChartItems, topChartItems, withChartLegendIcon } from "./chart-items";
 
 describe("topChartItems", () => {
-  it("always appends Others after top N (even when Others is zero)", () => {
+  it("omits Other when every bucket fits in top N", () => {
     const items = [
       { label: "System", value: 6 },
       { label: "Hub", value: 2 },
       { label: "Users", value: 1 },
     ];
     const rows = topChartItems(items);
-    expect(rows).toHaveLength(CHART_TOP_N + 1);
-    expect(rows.slice(0, 3).map((r) => r.label)).toEqual(["System", "Hub", "Users"]);
-    expect(rows[3]).toMatchObject({ label: CHART_OTHERS_LABEL, value: 0 });
+    expect(rows).toHaveLength(CHART_TOP_N);
+    expect(rows.map((r) => r.label)).toEqual(["System", "Hub", "Users"]);
   });
 
-  it("rolls overflow into Others", () => {
+  it("rolls overflow into Other", () => {
     const items = [
       { label: "A", value: 10 },
       { label: "B", value: 8 },
@@ -27,19 +26,28 @@ describe("topChartItems", () => {
     expect(rows[3]).toMatchObject({ label: CHART_OTHERS_LABEL, value: 4 });
   });
 
-  it("prepareChartItems delegates to topChartItems", () => {
-    expect(prepareChartItems([{ label: "Only", value: 1 }])).toHaveLength(2);
+  it("pins an explicit Other bucket to the final row", () => {
+    const rows = topChartItems(
+      [
+        { label: "Other", value: 99 },
+        { label: "A", value: 10 },
+        { label: "B", value: 8 },
+        { label: "C", value: 5 },
+      ],
+      4,
+    );
+    expect(rows.map((row) => row.label)).toEqual(["A", "B", "C", CHART_OTHERS_LABEL]);
   });
 
-  it("does not pre-assign bar colors (MiniBarChart rank mode owns fills)", () => {
-    const items = [
-      { label: "A", value: 10 },
-      { label: "B", value: 8 },
-      { label: "C", value: 5 },
-      { label: "D", value: 3 },
-    ];
-    const rows = prepareChartItems(items);
-    expect(rows.every((r) => r.color === undefined)).toBe(true);
-    expect(rows[3]).toMatchObject({ label: CHART_OTHERS_LABEL, value: 3 });
+  it("prepareChartItems respects topN (slot / price bands)", () => {
+    const items = Array.from({ length: 7 }, (_, i) => ({ label: `B${i}`, value: 10 - i, color: "#f00" }));
+    expect(prepareChartItems(items, { topN: 8 })).toHaveLength(7);
+    expect(prepareChartItems(items, { topN: 3 })).toHaveLength(4);
+  });
+
+  it("keeps heat color rows free of Lucide legend injection", () => {
+    const row = withChartLegendIcon({ label: "Full", value: 57, color: "#f43f5e" });
+    expect(row.color).toBe("#f43f5e");
+    expect(row.iconMeta).toBeNull();
   });
 });

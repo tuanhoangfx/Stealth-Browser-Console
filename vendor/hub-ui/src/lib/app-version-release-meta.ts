@@ -21,6 +21,11 @@ function normalizeVersion(value?: string) {
   return value?.replace(/^v/i, "") ?? "";
 }
 
+function parseStampMs(value: string): number {
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY;
+}
+
 /** Parse `YYYY-MM-DD HH:mm (UTC+7)` changelog timestamps to ISO. */
 export function normalizeChangelogTimestampRaw(raw: string): string | undefined {
   const trimmed = raw.trim();
@@ -42,49 +47,54 @@ export function parseChangelogReleaseTimestamp(version: string, changelog: strin
   return normalizeChangelogTimestampRaw(raw);
 }
 
-/** Resolve build / GitHub release timestamp for Hub tab headers (SSOT). */
+type StampCandidate = { at: string; live: boolean };
+
+/**
+ * Resolve build / GitHub release timestamp for Hub tab headers (SSOT).
+ *
+ * Prefer the **newest** stamp among:
+ * - `builtAtIso` (Vite boot / Vercel build) — can go stale on long-lived `vite serve`
+ * - matching `latestPublished.publishedAt`
+ * - CHANGELOG timestamp for the current version
+ * - `manifestUpdatedAt`
+ *
+ * So local Dev after Deploy/bump shows version activity (minutes ago), not Vite process age (14h ago).
+ */
 export function resolveAppVersionReleaseMeta(input: {
   appVersion: string;
   manifest?: ToolManifestReleaseSlice;
   builtAtIso?: string;
   changelogPublishedAt?: string;
 }): AppVersionReleaseMeta {
+  const candidates: StampCandidate[] = [];
+
   const builtAt = input.builtAtIso?.trim();
-  if (builtAt) {
-    return {
-      shortLabel: formatTabHeaderTimestamp(builtAt),
-      live: true,
-      publishedAt: builtAt,
-    };
-  }
+  if (builtAt) candidates.push({ at: builtAt, live: true });
 
   const currentVersion = normalizeVersion(input.appVersion);
   const latest = input.manifest?.release?.latestPublished;
-
   if (normalizeVersion(latest?.tag) === currentVersion && latest?.publishedAt) {
-    return {
-      shortLabel: formatTabHeaderTimestamp(latest.publishedAt),
-      live: true,
-      publishedAt: latest.publishedAt,
-    };
+    candidates.push({ at: latest.publishedAt, live: true });
   }
 
   if (input.changelogPublishedAt) {
-    return {
-      shortLabel: formatTabHeaderTimestamp(input.changelogPublishedAt),
-      live: false,
-      publishedAt: input.changelogPublishedAt,
-    };
+    candidates.push({ at: input.changelogPublishedAt, live: false });
   }
 
   const manifestUpdatedAt = input.manifest?.manifestUpdatedAt;
   if (manifestUpdatedAt) {
-    return {
-      shortLabel: formatTabHeaderTimestamp(manifestUpdatedAt),
-      live: false,
-      publishedAt: manifestUpdatedAt,
-    };
+    candidates.push({ at: manifestUpdatedAt, live: false });
   }
 
-  return { shortLabel: "—", live: false };
+  if (!candidates.length) return { shortLabel: "—", live: false };
+
+  const best = candidates.reduce((winner, next) =>
+    parseStampMs(next.at) >= parseStampMs(winner.at) ? next : winner,
+  );
+
+  return {
+    shortLabel: formatTabHeaderTimestamp(best.at),
+    live: best.live,
+    publishedAt: best.at,
+  };
 }

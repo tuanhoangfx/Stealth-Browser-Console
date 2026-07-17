@@ -1,12 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Bot } from "lucide-react";
 import {
   DirectorySearchToolbar,
+  HubConfirmDialog,
   HubDirectoryBulkActionBar,
   HubSplitDirectoryFilterBar,
   type FilterValues,
 } from "@tool-workspace/hub-ui";
 import { StealthDisplayBandToolbar } from "../../components/StealthDisplayBandToolbar";
+import { defaultsForPrefItems, isHubPrefVisible } from "../../lib/display-pref-helpers";
+import { PROFILES_DISPLAY_PREFS } from "../../lib/display-prefs-registry";
+import { applyStealthFilterLabelHints } from "../../lib/stealth-filter-hints";
+import { useStealthHubListPrefs } from "../../lib/useStealthHubListPrefs";
 import type { ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
 import { useWorkflowPicker } from "../../context/workflow-picker-context";
@@ -39,9 +44,11 @@ export function useProfileDirectoryChrome(input: {
   syncBusy: boolean;
   selectedProfiles: ProfileRow[];
   closeOne: (profile: ProfileRow) => void;
+  closeAllRunning: () => void;
   deleteSelected: () => void;
   setShowCreate: (value: boolean) => void;
-  onEdit: () => void;
+  onEditSingle: () => void;
+  onEditBulk: () => void;
   onGroups: () => void;
   onExport: () => void;
   onImport: () => void;
@@ -50,6 +57,7 @@ export function useProfileDirectoryChrome(input: {
   extensionBusy?: boolean;
   onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
 }) {
+  const [closeConfirm, setCloseConfirm] = useState<{ mode: "all" | "selected"; count: number } | null>(null);
   const {
     catalogStats,
     groups,
@@ -68,9 +76,11 @@ export function useProfileDirectoryChrome(input: {
     syncBusy,
     selectedProfiles,
     closeOne,
+    closeAllRunning,
     deleteSelected,
     setShowCreate,
-    onEdit,
+    onEditSingle,
+    onEditBulk,
     onGroups,
     onExport,
     onImport,
@@ -82,14 +92,25 @@ export function useProfileDirectoryChrome(input: {
 
   const { runAutomationQueue, automationRunning, runWorkflowLabel } = useWorkflowRuntime();
   const { selectedWorkflowCount, activeWorkflow, workflowConfigs } = useWorkflowPicker();
+  const hubPrefs = useStealthHubListPrefs();
   const activeWorkflowName =
     workflowConfigs.find((workflow) => workflow.id === activeWorkflow)?.name ?? "workflow";
   const canLaunchWorkflow = selectedWorkflowCount > 0 || Boolean(activeWorkflow);
 
-  const filters = useMemo(
-    () => (catalogStats ? buildProfileFiltersFromStats(groups, catalogStats) : []),
-    [groups, catalogStats],
+  const filterDefaults = useMemo(
+    () =>
+      defaultsForPrefItems(PROFILES_DISPLAY_PREFS.filters, PROFILES_DISPLAY_PREFS.defaultFilterKeys),
+    [],
   );
+
+  const filters = useMemo(() => {
+    if (!catalogStats) return [];
+    const all = applyStealthFilterLabelHints(
+      buildProfileFiltersFromStats(groups, catalogStats),
+      "profiles",
+    );
+    return all.filter((f) => isHubPrefVisible(hubPrefs.hubFilters ?? null, filterDefaults, f.key));
+  }, [groups, catalogStats, hubPrefs.hubFilters, filterDefaults]);
 
   const filterValues = useMemo(
     () => profileStateToFilterValues(selectedGroupIds, selectedStatuses),
@@ -140,6 +161,7 @@ export function useProfileDirectoryChrome(input: {
         <HubDirectoryBulkActionBar>
           <StealthProfilesDirectoryBulkActions
             hasSelection={selectedProfiles.length > 0}
+            runningCount={catalogStats?.running ?? 0}
             selectedCount={selectedProfiles.length}
             extensionState={extensionState}
             extensionIcons={extensionIcons}
@@ -154,11 +176,25 @@ export function useProfileDirectoryChrome(input: {
             launchDisabled={!canLaunchWorkflow}
             onLaunch={() => void runAutomationQueue()}
             onClose={() => {
+              const count = selectedProfiles.length;
+              if (count > 5) {
+                setCloseConfirm({ mode: "selected", count });
+                return;
+              }
               for (const profile of selectedProfiles) void closeOne(profile);
+            }}
+            onCloseAllRunning={() => {
+              const count = catalogStats?.running ?? 0;
+              if (count > 5) {
+                setCloseConfirm({ mode: "all", count });
+                return;
+              }
+              void closeAllRunning();
             }}
             onDelete={deleteSelected}
             onCreate={() => setShowCreate(true)}
-            onEdit={onEdit}
+            onEditSingle={onEditSingle}
+            onEditBulk={onEditBulk}
             onGroups={onGroups}
             onExport={onExport}
             onImport={onImport}
@@ -174,5 +210,28 @@ export function useProfileDirectoryChrome(input: {
     filterValues,
     handleFilterValuesChange,
     filterBar,
+    closeAllConfirmDialog: closeConfirm ? (
+      <HubConfirmDialog
+        open
+        title={closeConfirm.mode === "all" ? "Close all running profiles?" : "Close selected profiles?"}
+        message={
+          closeConfirm.mode === "all"
+            ? `This will close ${closeConfirm.count} browser session${closeConfirm.count === 1 ? "" : "s"}.`
+            : `This will close ${closeConfirm.count} selected profile${closeConfirm.count === 1 ? "" : "s"}.`
+        }
+        confirmLabel={closeConfirm.mode === "all" ? "Close all" : "Close selected"}
+        tone="danger"
+        onConfirm={() => {
+          const pending = closeConfirm;
+          setCloseConfirm(null);
+          if (pending.mode === "all") {
+            void closeAllRunning();
+            return;
+          }
+          for (const profile of selectedProfiles) void closeOne(profile);
+        }}
+        onClose={() => setCloseConfirm(null)}
+      />
+    ) : null,
   };
 }

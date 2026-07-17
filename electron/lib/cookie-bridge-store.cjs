@@ -10,8 +10,8 @@ const {
   unpackedDirForStoreId,
   storeUpdateUrl,
 } = require("./webstore-extension.cjs");
+const { COOKIE_BRIDGE_STORE_ID } = require("./stealth-extension-store-ids.cjs");
 
-const COOKIE_BRIDGE_STORE_ID = "kaaadageakdandpobcofplmfbjfjabdk";
 const STORE_UPDATE_URL = storeUpdateUrl(COOKIE_BRIDGE_STORE_ID);
 
 let warmPromise = null;

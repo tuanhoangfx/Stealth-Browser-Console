@@ -6,6 +6,7 @@ import {
   workspacePeriodOptions,
   type WorkspacePeriodKey,
   type WorkspacePeriodScope,
+  WORKSPACE_PERIOD_FILTER_HINT,
 } from "../lib/hub-workspace-period";
 
 export type HubWorkspacePeriodSelectProps = {
@@ -15,6 +16,8 @@ export type HubWorkspacePeriodSelectProps = {
   language?: string;
   labels?: Partial<Record<WorkspacePeriodKey, string>>;
   applyLabel?: string;
+  /** Trigger native tooltip — default creation-date SSOT. */
+  title?: string;
 };
 
 /** Golden Period filter — HubPeriodSelect + per-tab URL prefs. */
@@ -25,6 +28,7 @@ export function HubWorkspacePeriodSelect({
   language = typeof navigator !== "undefined" ? navigator.language : "en",
   labels,
   applyLabel = "Apply",
+  title = WORKSPACE_PERIOD_FILTER_HINT,
 }: HubWorkspacePeriodSelectProps) {
   const period = useWorkspacePeriod(scope, defaultRange);
 
@@ -55,6 +59,7 @@ export function HubWorkspacePeriodSelect({
       startLabel="Start"
       endLabel="End"
       triggerTypoClass={HUB_DIRECTORY_TOOLBAR_TYPO_CLASS}
+      title={title}
     />
   );
 }

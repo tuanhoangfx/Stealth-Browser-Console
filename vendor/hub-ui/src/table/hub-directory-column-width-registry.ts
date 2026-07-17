@@ -38,6 +38,8 @@ export const HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY: Partial<
   actions: { kind: "fixed", token: "8.5rem" },
   code: { kind: "fixed", token: "4.5rem" },
   browser: { kind: "fixed", token: "4.5rem" },
+  /** Directory audit log — one-line summary + ellipsis (P0020 Log column). */
+  log: { kind: "fixed", token: "9rem" },
   bots: { kind: "fixed", token: "3.75rem" },
   members: { kind: "fixed", token: "5rem" },
   active: { kind: "fixed", token: "5rem" },

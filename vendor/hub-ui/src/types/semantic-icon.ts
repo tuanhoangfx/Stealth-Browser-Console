@@ -165,6 +165,7 @@ export type SemanticIconKey =
   | "col.directory.category"
   | "col.directory.username"
   | "col.directory.account"
+  | "col.directory.browser"
   | "col.directory.fbAccount"
   | "col.directory.pages"
   | "col.directory.added"

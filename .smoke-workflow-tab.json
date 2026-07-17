@@ -1,5 +1,5 @@
 {
-  "url": "file:///E:/Dev/Tool/P0003-Stealth-Browser-Console/dist/index.html",
+  "url": "http://127.0.0.1:5175/",
   "ok": true,
   "probe": {
     "clickedWorkflow": true,

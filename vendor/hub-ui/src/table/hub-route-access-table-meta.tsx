@@ -17,8 +17,15 @@ export const HUB_ROUTE_ACCESS_COL = {
   select: "hub-users-col--select",
   user: "hub-route-access-col--user",
   role: "hub-route-access-col--role",
+  profile: "hub-route-access-col--profile",
   syncAt: "hub-route-access-col--sync-at",
   loadAt: "hub-route-access-col--load-at",
+  ownership: "hub-route-access-col--ownership",
+  liveStatus: "hub-route-access-col--live-status",
+  planDate: "hub-route-access-col--plan-date",
+  planDays: "hub-route-access-col--plan-days",
+  planDue: "hub-route-access-col--plan-due",
+  planLeft: "hub-route-access-col--plan-left",
   perm: "hub-route-access-col--perm",
   activity: "hub-route-access-col--activity",
   rights: "hub-route-access-col--rights",
@@ -30,6 +37,23 @@ export const HUB_ROUTE_ACCESS_COL = {
 export type HubRouteAccessModalColumnOptions = {
   layout?: HubRouteAccessColumnLayout;
   showRouteColumn?: boolean;
+  /** Expanded layout only — hide Synced/Linked column (Teams temporary). */
+  showSyncAtColumn?: boolean;
+  /** Teams members — Profile (Service browser / profile code). */
+  showProfileColumn?: boolean;
+  /** Teams members — sheet Ownership column. */
+  showOwnershipColumn?: boolean;
+  /** Teams members — sheet Live Status column. */
+  showLiveStatusColumn?: boolean;
+  /** Teams members — Date / Duration / Due / Left after Tier. */
+  showPlanScheduleColumns?: boolean;
+  /** Hide Expires / remapped Status column (Teams — Role Backup replaces Status). Default true. */
+  showExpiresColumn?: boolean;
+  /**
+   * Stacked card embeds (Teams schema) — `table-layout:fixed` + pinned tracks so
+   * sibling tables share identical column edges regardless of cell content length.
+   */
+  stackAlignColumns?: boolean;
 };
 
 export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
@@ -45,6 +69,13 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     className: HUB_ROUTE_ACCESS_COL.role,
     role: "access" as const,
   },
+  profile: {
+    key: "profile",
+    label: "Profile",
+    className: HUB_ROUTE_ACCESS_COL.profile,
+    role: "browser" as const,
+    headerEmoji: "📡",
+  },
   syncAt: {
     key: "syncAt",
     label: "Synced",
@@ -56,6 +87,48 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     label: "Loaded",
     className: HUB_ROUTE_ACCESS_COL.loadAt,
     role: "load" as const,
+  },
+  ownership: {
+    key: "ownership",
+    label: "Ownership",
+    className: HUB_ROUTE_ACCESS_COL.ownership,
+    role: "user" as const,
+    headerEmoji: "🦸‍♂️",
+  },
+  liveStatus: {
+    key: "liveStatus",
+    label: "Status",
+    className: HUB_ROUTE_ACCESS_COL.liveStatus,
+    role: "status" as const,
+    headerEmoji: "🚦",
+  },
+  planDate: {
+    key: "planDate",
+    label: "Date",
+    className: HUB_ROUTE_ACCESS_COL.planDate,
+    role: "created" as const,
+    headerEmoji: "📅",
+  },
+  planDays: {
+    key: "planDays",
+    label: "Duration",
+    className: HUB_ROUTE_ACCESS_COL.planDays,
+    role: "activity" as const,
+    headerEmoji: "⏱️",
+  },
+  planDue: {
+    key: "planDue",
+    label: "Due",
+    className: HUB_ROUTE_ACCESS_COL.planDue,
+    role: "expires" as const,
+    headerEmoji: "📆",
+  },
+  planLeft: {
+    key: "planLeft",
+    label: "Left",
+    className: HUB_ROUTE_ACCESS_COL.planLeft,
+    role: "activity" as const,
+    headerEmoji: "⏳",
   },
   permLoad: {
     key: "permLoad",
@@ -107,6 +180,12 @@ export function buildHubRouteAccessModalColumns(
 ): HubTableColumn[] {
   const layout = options.layout ?? "expanded";
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
+  const showSyncAtColumn = options.showSyncAtColumn ?? true;
+  const showProfileColumn = options.showProfileColumn ?? false;
+  const showOwnershipColumn = options.showOwnershipColumn ?? false;
+  const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
+  const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
+  const showExpiresColumn = options.showExpiresColumn ?? true;
 
   if (layout === "compact") {
     return [
@@ -116,7 +195,7 @@ export function buildHubRouteAccessModalColumns(
       HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.activity,
       ...(showRouteColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.route] : []),
       HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.addedAt,
-      HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.expires,
+      ...(showExpiresColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.expires] : []),
     ];
   }
 
@@ -124,11 +203,22 @@ export function buildHubRouteAccessModalColumns(
     ...(showSelect ? [{ key: "select", label: "", className: HUB_ROUTE_ACCESS_COL.select }] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.user,
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.role,
-    HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.syncAt,
+    ...(showProfileColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.profile] : []),
+    ...(showOwnershipColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.ownership] : []),
+    ...(showLiveStatusColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.liveStatus] : []),
+    ...(showSyncAtColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.syncAt] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.loadAt,
+    ...(showPlanScheduleColumns
+      ? [
+          HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planDate,
+          HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planDays,
+          HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planDue,
+          HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planLeft,
+        ]
+      : []),
     ...(showRouteColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.route] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.addedAt,
-    HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.expires,
+    ...(showExpiresColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.expires] : []),
   ];
 }
 
@@ -138,22 +228,45 @@ export function hubRouteAccessModalColumnCount(
 ) {
   const layout = options.layout ?? "expanded";
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
+  const showSyncAtColumn = options.showSyncAtColumn ?? true;
+  const showProfileColumn = options.showProfileColumn ?? false;
+  const showOwnershipColumn = options.showOwnershipColumn ?? false;
+  const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
+  const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
+  const showExpiresColumn = options.showExpiresColumn ?? true;
 
   if (layout === "compact") {
-    const dataCols = showRouteColumn ? 6 : 5;
+    let dataCols = showRouteColumn ? 6 : 5;
+    if (!showExpiresColumn) dataCols -= 1;
     return showSelect ? dataCols + 1 : dataCols;
   }
 
-  const dataCols = showRouteColumn ? 7 : 6;
+  let dataCols = showRouteColumn ? 7 : 6;
+  if (!showSyncAtColumn) dataCols -= 1;
+  if (showProfileColumn) dataCols += 1;
+  if (showOwnershipColumn) dataCols += 1;
+  if (showLiveStatusColumn) dataCols += 1;
+  if (showPlanScheduleColumns) dataCols += 4;
+  if (!showExpiresColumn) dataCols -= 1;
   return showSelect ? dataCols + 1 : dataCols;
 }
 
 export function hubRouteAccessModalTableClass(options: HubRouteAccessModalColumnOptions = {}) {
   const layout = options.layout ?? "expanded";
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
+  const showSyncAtColumn = options.showSyncAtColumn ?? true;
+  const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
+  const stackAlignColumns = options.stackAlignColumns ?? false;
   const modifiers = [
     layout === "expanded" ? "hub-users-table--route-access-modal--expanded" : "",
     layout === "compact" && showRouteColumn ? "hub-users-table--route-access-modal--with-route" : "",
+    layout === "expanded" && !showSyncAtColumn ? "hub-users-table--route-access-modal--no-sync" : "",
+    layout === "expanded" && showPlanScheduleColumns
+      ? "hub-users-table--route-access-modal--plan-schedule"
+      : "",
+    layout === "expanded" && stackAlignColumns
+      ? "hub-users-table--route-access-modal--stack-align"
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -168,8 +281,15 @@ export type HubRouteAccessColumnKey = "user" | "role";
 export type HubRouteAccessSortKey =
   | "user"
   | "role"
+  | "profile"
+  | "ownership"
+  | "liveStatus"
   | "syncAt"
   | "loadAt"
+  | "planDate"
+  | "planDays"
+  | "planDue"
+  | "planLeft"
   | "activity"
   | "route"
   | "addedAt"

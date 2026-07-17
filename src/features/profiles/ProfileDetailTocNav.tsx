@@ -21,7 +21,7 @@ export function ProfileDetailTocNav({
         : null;
       if (!button) return;
       const label = button.querySelector(".truncate")?.textContent?.trim().toLowerCase();
-      if (label !== "log") return;
+      if (label !== "console" && label !== "log") return;
       scrollToHubTocSection(PROFILE_DETAIL_SECTION_LOG, HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT);
       onLogFocus?.();
       const railBody = document

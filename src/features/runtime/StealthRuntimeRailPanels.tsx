@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import {
   CheckCircle2,
-  History,
   Loader2,
-  Terminal,
   Timer,
   XCircle,
 } from "lucide-react";
@@ -21,9 +19,11 @@ import { resolveWorkflowRunLabel } from "../workflows/resolve-workflow-run-label
 import { formatDurationMs, shortRunRef } from "../../lib/run-display";
 import type { RunHistoryItem } from "../../types";
 import { StealthConsoleChannelBadge, inferStealthConsoleChannel } from "./StealthConsoleChannelBadge";
-import { useRunLogs } from "./RunLogsContext";
+import { useRunLogs, type ConsoleLog } from "./RunLogsContext";
+import { StealthConsoleRailTitle } from "./stealth-console-hint";
+import { StealthRunHistoryRailTitle } from "./stealth-run-history-hint";
 
-const CONSOLE_RENDER_LIMIT = 200;
+export const STEALTH_CONSOLE_RENDER_LIMIT = 200;
 const ICON_SM = compactIconSize(10);
 
 function RunStatusIcon({ status }: { status: RunHistoryItem["status"] }) {
@@ -36,15 +36,51 @@ function RunStatusIcon({ status }: { status: RunHistoryItem["status"] }) {
   return <Loader2 size={ICON_SM} className="text-amber-300/90 animate-spin" aria-hidden />;
 }
 
+/** Shared console body — Profiles workflow rail + profile detail modal (filter optional). */
+export function StealthConsoleContent({
+  logs,
+  emptyHint = "System output will appear here…",
+}: {
+  logs: ConsoleLog[];
+  emptyHint?: string;
+}) {
+  const visibleLogs = useMemo(() => logs.slice(0, STEALTH_CONSOLE_RENDER_LIMIT), [logs]);
+
+  return (
+    <HubRuntimeConsoleTerm>
+      {visibleLogs.length === 0 ? (
+        <div className="text-hub-muted">{emptyHint}</div>
+      ) : (
+        visibleLogs.map((log) => {
+          const channel = inferStealthConsoleChannel(log.source);
+          return (
+            <HubRuntimeConsoleLine
+              key={log.id}
+              level={log.level}
+              time={log.time}
+              channelBadge={<StealthConsoleChannelBadge channel={channel} compact />}
+              source={log.source}
+              message={log.message}
+            />
+          );
+        })
+      )}
+      {logs.length > STEALTH_CONSOLE_RENDER_LIMIT ? (
+        <div className="text-hub-muted">
+          Showing latest {STEALTH_CONSOLE_RENDER_LIMIT} of {logs.length} lines
+        </div>
+      ) : null}
+    </HubRuntimeConsoleTerm>
+  );
+}
+
 /** System terminal — channel badges parity P0020 TodoHubBadge priority pills. */
 export function StealthSystemConsolePanel() {
   const { logs, clearLogs } = useRunLogs();
-  const visibleLogs = useMemo(() => logs.slice(0, CONSOLE_RENDER_LIMIT), [logs]);
 
   return (
     <HubPanel
-      title="Console"
-      titleIcon={<Terminal size={compactIconSize(14)} className="text-cyan-300/90" aria-hidden />}
+      title={<StealthConsoleRailTitle showIcon />}
       className="stealth-runtime-console h-full min-h-0 overflow-hidden"
       actions={
         <button type="button" className="hub-btn hub-btn--ghost text-xs" onClick={clearLogs}>
@@ -52,45 +88,13 @@ export function StealthSystemConsolePanel() {
         </button>
       }
     >
-      <HubRuntimeConsoleTerm
-        legend={
-          <>
-            <StealthConsoleChannelBadge channel="workflow" />
-            <StealthConsoleChannelBadge channel="profile" />
-            <StealthConsoleChannelBadge channel="backup" />
-            <StealthConsoleChannelBadge channel="system" />
-          </>
-        }
-      >
-        {visibleLogs.length === 0 ? (
-          <div className="text-hub-muted">System output will appear here…</div>
-        ) : (
-          visibleLogs.map((log) => {
-            const channel = inferStealthConsoleChannel(log.source);
-            return (
-              <HubRuntimeConsoleLine
-                key={log.id}
-                level={log.level}
-                time={log.time}
-                channelBadge={<StealthConsoleChannelBadge channel={channel} compact />}
-                source={log.source}
-                message={log.message}
-              />
-            );
-          })
-        )}
-        {logs.length > CONSOLE_RENDER_LIMIT ? (
-          <div className="text-hub-muted">
-            Showing latest {CONSOLE_RENDER_LIMIT} of {logs.length} lines
-          </div>
-        ) : null}
-      </HubRuntimeConsoleTerm>
+      <StealthConsoleContent logs={logs} />
     </HubPanel>
   );
 }
 
-/** Automation run list — chronological (P0027 ReupHistoryPanel parity). */
-export function StealthRunHistoryPanel({
+/** Shared run history list — workflow rail + profile detail History rail. */
+export function StealthRunHistoryContent({
   entries,
   activeRunId,
   onSelectRun,
@@ -108,9 +112,14 @@ export function StealthRunHistoryPanel({
         const stamp = entry.finishedAt ?? entry.startedAt;
         const duration = formatDurationMs(entry.durationMs);
         const taskLabel = resolveWorkflowRunLabel(entry.workflow, workflowConfigs);
+        const profileLabel =
+          entry.profileName.trim() ||
+          (entry.profileId.trim() ? entry.profileId.trim().slice(0, 8) : "Profile");
+        const runRef = entry.id ? shortRunRef(entry.id) : "";
         const runTitle = [
           formatHubTimestampFull(stamp) || undefined,
-          entry.id ? `#${shortRunRef(entry.id)}` : undefined,
+          runRef ? `#${runRef}` : undefined,
+          entry.profileId.trim() || undefined,
         ]
           .filter(Boolean)
           .join(" · ");
@@ -121,25 +130,24 @@ export function StealthRunHistoryPanel({
           onClick: () => onSelectRun(entry),
           leading: <RunStatusIcon status={entry.status} />,
           primaryRow: (
-            <>
-              <span className="hub-runtime-history-profile-chip">{entry.profileId.trim()}</span>
-              <span className="hub-runtime-history-list__task">{taskLabel}</span>
-            </>
-          ),
-          primaryTrailing: <RunStatusIcon status={entry.status} />,
-          metaRow: (
-            <>
-              <span className="hub-runtime-history-list__browser">{entry.profileName.trim()}</span>
-              <span className="hub-runtime-history-list__meta-part">
-                <HubActivityTimestampLabel at={stamp} title={runTitle || undefined} fallback="—" />
+            <span className="hub-runtime-history-list__line">
+              <span
+                className="hub-runtime-history-profile-chip"
+                title={entry.profileId.trim() || undefined}
+              >
+                {profileLabel}
               </span>
-              {duration ? (
-                <span className="hub-runtime-history-list__meta-part hub-runtime-history-list__meta-part--dur">
-                  <Timer size={ICON_SM} aria-hidden />
-                  {duration}
-                </span>
-              ) : null}
-            </>
+              <span className="hub-runtime-history-list__task">{taskLabel}</span>
+              <span className="hub-runtime-history-list__meta-inline">
+                <HubActivityTimestampLabel at={stamp} title={runTitle || undefined} fallback="—" />
+                {duration ? (
+                  <span className="hub-runtime-history-list__meta-part hub-runtime-history-list__meta-part--dur">
+                    <Timer size={ICON_SM} aria-hidden />
+                    {duration}
+                  </span>
+                ) : null}
+              </span>
+            </span>
           ),
         };
       }),
@@ -147,15 +155,38 @@ export function StealthRunHistoryPanel({
   );
 
   return (
-    <HubPanel
-      title="Run History"
-      titleIcon={<History size={compactIconSize(14)} className="text-indigo-300/90" aria-hidden />}
-      className="stealth-runtime-history h-full min-h-0 overflow-hidden"
-    >
+    <>
       {backupJobLabel ? (
         <p className="mb-2 text-xs font-medium text-amber-200/95">{backupJobLabel}</p>
       ) : null}
       <HubRuntimeHistoryList rows={rows} className="hub-runtime-history-list--chip-lanes" />
+    </>
+  );
+}
+
+/** Automation run list — chronological (P0027 ReupHistoryPanel parity). */
+export function StealthRunHistoryPanel({
+  entries,
+  activeRunId,
+  onSelectRun,
+  backupJobLabel = null,
+}: {
+  entries: RunHistoryItem[];
+  activeRunId: string | null;
+  onSelectRun: (run: RunHistoryItem) => void;
+  backupJobLabel?: string | null;
+}) {
+  return (
+    <HubPanel
+      title={<StealthRunHistoryRailTitle showIcon />}
+      className="stealth-runtime-history h-full min-h-0 overflow-hidden"
+    >
+      <StealthRunHistoryContent
+        entries={entries}
+        activeRunId={activeRunId}
+        onSelectRun={onSelectRun}
+        backupJobLabel={backupJobLabel}
+      />
     </HubPanel>
   );
 }

@@ -4,6 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDevPortListening } from "./lib/dev-port-guard.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dst = path.join(root, ".env.local");
 const sources = [
@@ -90,13 +92,21 @@ if (stealthVars.length) {
 
 sections.push("", ...AUTH_COMMENT_BLOCK, "");
 
-fs.writeFileSync(dst, sections.join("\n"));
+const nextContent = sections.join("\n");
+const prevContent = fs.existsSync(dst) ? fs.readFileSync(dst, "utf8") : "";
 
-if (lines.length) {
-  console.log(`sync-hub-env: wrote ${lines.length} Hub key(s) to .env.local`);
+if (nextContent === prevContent) {
+  console.log("sync-hub-env: unchanged — skip write");
+} else if (await isDevPortListening()) {
+  console.warn("sync-hub-env: :5175 dev active — skip .env.local write (would restart Vite)");
 } else {
-  console.log("sync-hub-env: no VITE_HUB_SUPABASE_* found in P0020/P0004 .env.local");
-}
-if (stealthVars.length) {
-  console.log(`sync-hub-env: wrote ${stealthVars.length} VITE_STEALTH_* var(s)`);
+  fs.writeFileSync(dst, nextContent);
+  if (lines.length) {
+    console.log(`sync-hub-env: wrote ${lines.length} Hub key(s) to .env.local`);
+  } else {
+    console.log("sync-hub-env: no VITE_HUB_SUPABASE_* found in P0020/P0004 .env.local");
+  }
+  if (stealthVars.length) {
+    console.log(`sync-hub-env: wrote ${stealthVars.length} VITE_STEALTH_* var(s)`);
+  }
 }

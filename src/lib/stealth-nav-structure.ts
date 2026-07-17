@@ -1,6 +1,6 @@
 import type { NavStructureEntry } from "@tool-workspace/hub-ui";
 import { isNavViewGroup, navBadgeIconClass } from "@tool-workspace/hub-ui";
-import { Archive, ClipboardList, Database, LayoutGrid, Palette, Settings2, Store } from "lucide-react";
+import { Archive, ClipboardList, Database, LayoutGrid, Palette, Puzzle, Settings2, Store } from "lucide-react";
 import type { StealthScreen } from "./stealth-screen";
 import type { StealthSystemTab } from "./stealth-system-tab";
 import type { StealthWorkflowTab } from "./stealth-workflow-tab";
@@ -10,10 +10,11 @@ export const STEALTH_NAV_GROUP_IDS = ["workflow", "system"] as const;
 export const STEALTH_SYSTEM_GROUP_ID = "system";
 export const STEALTH_WORKFLOW_GROUP_ID = "workflow";
 
-/** System subnav items — P0004 SystemTabSubNav parity. */
+/** System subnav items — P0004 SystemTabSubNav parity (Design before Extensions). */
 export const STEALTH_SYSTEM_TAB_ITEMS = [
   { id: "overview" as const, label: "Overview", icon: LayoutGrid, iconTone: "indigo" as const },
   { id: "design" as const, label: "Design", icon: Palette, iconTone: "fuchsia" as const },
+  { id: "extensions" as const, label: "Extensions", icon: Puzzle, iconTone: "cyan" as const },
   { id: "backup" as const, label: "Backup", icon: Archive, iconTone: "amber" as const },
 ];
 
@@ -23,7 +24,7 @@ export const STEALTH_WORKFLOW_TAB_ITEMS = [
   { id: "store" as const, label: "Store", icon: Store, iconTone: "sky" as const },
 ];
 
-/** Main nav — Profiles + Workflow (Scripts / Store) + System (Overview / Backup). */
+/** Main nav — Profiles + Workflow (Scripts / Store) + System (Overview / Extensions / Backup). */
 export const STEALTH_NAV_STRUCTURE: NavStructureEntry<StealthScreen, (typeof STEALTH_NAV_GROUP_IDS)[number], StealthSystemTab | StealthWorkflowTab>[] = [
   { kind: "screen", screen: "profiles", label: "Profiles", icon: Database, iconTone: "emerald" },
   {
@@ -52,6 +53,7 @@ export const STEALTH_NAV_STRUCTURE: NavStructureEntry<StealthScreen, (typeof STE
     children: [
       { view: "overview", label: "Overview", icon: LayoutGrid, iconTone: "indigo" },
       { view: "design", label: "Design", icon: Palette, iconTone: "fuchsia" },
+      { view: "extensions", label: "Extensions", icon: Puzzle, iconTone: "cyan" },
       { view: "backup", label: "Backup", icon: Archive, iconTone: "amber" },
     ],
   },

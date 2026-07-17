@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { HUB_ADM_TYPE_NAV_CLASS } from "./hubAccountDetailModal";
+import { resolveHubToolDetailRailHead } from "./hubToolDetailTitleWithEmoji";
 
 /**
  * Main + right rail grid — generic split (non–account-detail tools).
@@ -67,6 +68,7 @@ export function HubToolDetailPanel({
 export function HubToolDetailRail({
   id,
   title,
+  titleEmoji,
   icon: Icon,
   iconClassName,
   children,
@@ -77,6 +79,8 @@ export function HubToolDetailRail({
 }: {
   id?: string;
   title: ReactNode;
+  /** Sheet sticker — replaces Lucide rail icon when set (📜 Note · 📋 Console). */
+  titleEmoji?: string;
   icon?: LucideIcon;
   iconClassName?: string;
   children: ReactNode;
@@ -85,6 +89,9 @@ export function HubToolDetailRail({
   bodyClassName?: string;
   ariaLabel?: string;
 }) {
+  const head = resolveHubToolDetailRailHead({ title, titleEmoji, icon: Icon, iconClassName });
+  const RailIcon = head.icon;
+
   return (
     <aside
       id={id}
@@ -92,8 +99,8 @@ export function HubToolDetailRail({
       aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
     >
       <div className={`hub-tool-detail-rail__head ${HUB_ADM_TYPE_NAV_CLASS}`}>
-        {Icon ? <Icon size={12} className={iconClassName} aria-hidden /> : null}
-        {title}
+        {RailIcon ? <RailIcon size={12} className={head.iconClassName} aria-hidden /> : null}
+        {head.titleNode}
       </div>
       <div
         className={`hub-tool-detail-rail__body${scroll ? " hub-tool-detail-rail__body--scroll" : ""}${bodyClassName ? ` ${bodyClassName}` : ""}`}

@@ -1,5 +1,7 @@
 import type { ChartRow } from "../chart-items";
+import { CHART_OTHERS_EMOJI } from "../chart-items";
 import type { FilterIconMeta } from "../types/filter-badge";
+import { isChartOthersLabel } from "./chart-palette";
 
 export { DEFAULT_CHART_PALETTE } from "./chart-palette";
 
@@ -15,6 +17,13 @@ function rowsFromCounts(
 ): ChartRow[] {
   return [...map.entries()]
     .map(([label, value]) => {
+      if (isChartOthersLabel(label)) {
+        return {
+          label,
+          value,
+          emojiGlyph: opts?.emojiFor?.(label) ?? CHART_OTHERS_EMOJI,
+        };
+      }
       const emojiGlyph = opts?.emojiFor?.(label);
       if (emojiGlyph) {
         return { label, value, emojiGlyph };

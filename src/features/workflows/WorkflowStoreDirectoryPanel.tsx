@@ -1,5 +1,5 @@
 /** Workflow Store — Hub directory frame (P0004 Hub Tools parity: table/card + time range). */
-import { memo, type ReactNode } from "react";
+import { memo, useEffect, useState, type ReactNode } from "react";
 import {
   HubDirectoryBulkActionBar,
   HubDirectoryToolbarSelection,
@@ -13,6 +13,10 @@ import { WorkflowStoreCard } from "./WorkflowStoreCard";
 import { WorkflowStoreDirectoryTable } from "./WorkflowStoreDirectoryTable";
 import { WorkflowStoreFilterPane } from "./WorkflowStoreFilterPane";
 import { useWorkflowStoreDirectoryFilters } from "./useWorkflowStoreDirectoryFilters";
+import {
+  readWorkflowStoreDirectoryColumns,
+  workflowStoreDirectoryColumnPrefs,
+} from "./workflow-store-directory-prefs";
 
 export type WorkflowStoreDirectoryPanelProps = {
   entries: WorkflowStoreEntry[];
@@ -84,6 +88,14 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
     viewMode,
   });
 
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(readWorkflowStoreDirectoryColumns);
+
+  useEffect(() => {
+    const sync = () => setVisibleColumnKeys(readWorkflowStoreDirectoryColumns());
+    window.addEventListener(workflowStoreDirectoryColumnPrefs.changeEvent, sync);
+    return () => window.removeEventListener(workflowStoreDirectoryColumnPrefs.changeEvent, sync);
+  }, []);
+
   const emptyMessage =
     loading && entries.length === 0
       ? "Loading catalog…"
@@ -150,6 +162,7 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
                   localIds={localIds}
                   installedIds={installedIds}
                   busy={installingId === entry.id}
+                  visibleColumnKeys={visibleColumnKeys}
                   onToggleSelect={toggleBulkSelect}
                   onInstall={onInstall}
                 />

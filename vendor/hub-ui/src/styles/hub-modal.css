@@ -505,6 +505,7 @@ body.hub-modal-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--hub-inline-gap-name, 8px);
   min-width: 190px;
   padding: 0.6rem 0.9rem;
   border-radius: 12px;
@@ -518,10 +519,106 @@ body.hub-modal-open {
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.hub-tool-detail-modal__secondary:hover {
+.hub-tool-detail-modal__secondary:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
   color: var(--text, #e8eaef);
+}
+
+/* Cross-entity footer nav — one accent per target; hover/focus = soft border lift (not gray). */
+.hub-tool-detail-modal__secondary[class*="hub-tool-detail-modal__secondary--"] {
+  --hub-footer-nav-border-idle: 0.34;
+  --hub-footer-nav-border-hover: 0.6;
+  --hub-footer-nav-grad-top: 0.26;
+  --hub-footer-nav-grad-mid: 0.1;
+  --hub-footer-nav-grad-bottom: 0.02;
+  --hub-footer-nav-grad-top-hover: 0.3;
+  --hub-footer-nav-grad-mid-hover: 0.14;
+  --hub-footer-nav-grad-bottom-hover: 0.04;
+  --hub-footer-nav-hover-ring: 0;
+  --hub-footer-nav-hover-shadow-y: 0;
+  --hub-footer-nav-hover-shadow-blur: 0;
+  --hub-footer-nav-hover-shadow-alpha: 0;
+  border-color: rgba(var(--hub-footer-nav-border), var(--hub-footer-nav-border-idle));
+  background: linear-gradient(
+    168deg,
+    rgba(var(--hub-footer-nav-grad-a), var(--hub-footer-nav-grad-top)) 0%,
+    rgba(var(--hub-footer-nav-grad-b), var(--hub-footer-nav-grad-mid)) 52%,
+    rgba(var(--hub-footer-nav-grad-b), var(--hub-footer-nav-grad-bottom)) 100%
+  );
+  color: rgb(var(--hub-footer-nav-text));
+  box-shadow: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.hub-tool-detail-modal__secondary[class*="hub-tool-detail-modal__secondary--"]:is(
+    :hover:not(:disabled),
+    :focus-visible:not(:disabled)
+  ) {
+  border-color: rgba(var(--hub-footer-nav-border-hover), var(--hub-footer-nav-border-hover));
+  background: linear-gradient(
+    168deg,
+    rgba(var(--hub-footer-nav-grad-a), var(--hub-footer-nav-grad-top-hover)) 0%,
+    rgba(var(--hub-footer-nav-grad-b), var(--hub-footer-nav-grad-mid-hover)) 52%,
+    rgba(var(--hub-footer-nav-grad-b), var(--hub-footer-nav-grad-bottom-hover)) 100%
+  );
+  color: rgb(var(--hub-footer-nav-text-hover));
+  /* No glow — border + gradient only */
+  box-shadow: none;
+}
+
+.hub-tool-detail-modal__secondary--emerald {
+  --hub-footer-nav-border: 52, 211, 153;
+  --hub-footer-nav-border-hover: 94, 234, 212;
+  --hub-footer-nav-shadow: 5, 150, 105;
+  --hub-footer-nav-grad-a: 16, 185, 129;
+  --hub-footer-nav-grad-b: 5, 150, 105;
+  --hub-footer-nav-text: 167, 243, 208;
+  --hub-footer-nav-text-hover: 204, 251, 233;
+}
+
+.hub-tool-detail-modal__secondary--sky {
+  --hub-footer-nav-border: 56, 189, 248;
+  --hub-footer-nav-border-hover: 125, 211, 252;
+  --hub-footer-nav-shadow: 2, 132, 199;
+  --hub-footer-nav-grad-a: 14, 165, 233;
+  --hub-footer-nav-grad-b: 2, 132, 199;
+  --hub-footer-nav-text: 186, 230, 253;
+  --hub-footer-nav-text-hover: 219, 234, 254;
+}
+
+.hub-tool-detail-modal__secondary--violet {
+  --hub-footer-nav-border: 167, 139, 250;
+  --hub-footer-nav-border-hover: 196, 181, 253;
+  --hub-footer-nav-shadow: 109, 40, 217;
+  --hub-footer-nav-grad-a: 139, 92, 246;
+  --hub-footer-nav-grad-b: 109, 40, 217;
+  --hub-footer-nav-text: 221, 214, 254;
+  --hub-footer-nav-text-hover: 233, 229, 254;
+}
+
+.hub-tool-detail-modal__secondary--amber {
+  --hub-footer-nav-border: 251, 191, 36;
+  --hub-footer-nav-border-hover: 252, 211, 77;
+  --hub-footer-nav-shadow: 217, 119, 6;
+  --hub-footer-nav-grad-a: 245, 158, 11;
+  --hub-footer-nav-grad-b: 217, 119, 6;
+  --hub-footer-nav-text: 253, 230, 138;
+  --hub-footer-nav-text-hover: 254, 240, 180;
+}
+
+.hub-tool-detail-modal__secondary--rose {
+  --hub-footer-nav-border: 251, 113, 133;
+  --hub-footer-nav-border-hover: 253, 164, 175;
+  --hub-footer-nav-shadow: 225, 29, 72;
+  --hub-footer-nav-grad-a: 244, 63, 94;
+  --hub-footer-nav-grad-b: 225, 29, 72;
+  --hub-footer-nav-text: 254, 205, 211;
+  --hub-footer-nav-text-hover: 255, 228, 230;
 }
 
 @keyframes spin {

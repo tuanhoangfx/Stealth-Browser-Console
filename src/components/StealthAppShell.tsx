@@ -153,6 +153,12 @@ export const StealthAppShell = memo(function StealthAppShell({
         <StealthAccessDeniedScreen />
       </div>
     );
+  } else if (hasRealHubSession && toolAccess !== true) {
+    mainContent = (
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
+        <StealthAuthBootScreen />
+      </div>
+    );
   } else {
     mainContent = consoleScreens;
   }

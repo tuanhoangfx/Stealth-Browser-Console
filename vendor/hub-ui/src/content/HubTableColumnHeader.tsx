@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize, HUB_DIRECTORY_HEADER_GLYPH_PX } from "../ui-scale";
@@ -6,11 +7,15 @@ import {
   type HubTableColumnRole,
   resolveHubTableColumnMeta,
 } from "../table/hub-table-column-meta";
+import { hubTableLabelTextForGlyph, parseHubTableHeaderLabel } from "./hub-table-header-label";
+import { useHubTableColumnHeaderFit } from "./useHubTableColumnHeaderFit";
 
 export type HubTableColumnHeaderProps = {
   label: string;
   /** Native emoji glyph — replaces Lucide/brand header icon when set. */
   headerEmoji?: string;
+  /** Extension or brand PNG (data URI or asset URL). */
+  headerImageSrc?: string;
   /** Semantic role — preferred; pulls icon + color from shared registry. */
   role?: HubTableColumnRole;
   icon?: LucideIcon;
@@ -22,35 +27,136 @@ export type HubTableColumnHeaderProps = {
 export function HubTableColumnHeader({
   label,
   headerEmoji,
+  headerImageSrc,
   role,
   icon: IconProp,
   iconClassName,
   brandIcon,
 }: HubTableColumnHeaderProps) {
+  const headingRef = useRef<HTMLSpanElement>(null);
+  const glyphRef = useRef<HTMLSpanElement>(null);
+  const textMeasureRef = useRef<HTMLSpanElement>(null);
+
+  const parsed = parseHubTableHeaderLabel(label);
+  const hasSeparateGlyph = Boolean(headerEmoji || headerImageSrc || role || IconProp || brandIcon);
+  const embeddedGlyph = !hasSeparateGlyph ? parsed.embeddedGlyph : null;
+  // Separate sticker + "🦸‍♂️Own" used to double-render; always strip leading emoji when a glyph shows.
+  const displayText =
+    hasSeparateGlyph || embeddedGlyph ? hubTableLabelTextForGlyph(label) : label;
+  const showGlyph = Boolean(headerEmoji || headerImageSrc || role || IconProp || brandIcon || embeddedGlyph);
+
+  const iconOnly = useHubTableColumnHeaderFit(
+    { headingRef, glyphRef, textMeasureRef },
+    displayText,
+    showGlyph && Boolean(displayText.trim()),
+  );
+
+  const showText = Boolean(displayText.trim()) && !iconOnly;
+
+  const text = (
+    <span className="hub-users-th-text" title={label} aria-hidden={iconOnly || undefined}>
+      {displayText}
+    </span>
+  );
+
+  const measureText = (
+    <span
+      ref={textMeasureRef}
+      className="hub-users-th-text hub-users-th-text--measure"
+      aria-hidden
+    >
+      {displayText}
+    </span>
+  );
+
   if (headerEmoji) {
     return (
-      <span className="hub-users-th-heading">
-        <span className="hub-users-th-emoji" aria-hidden>
+      <span
+        ref={headingRef}
+        className={`hub-users-th-heading${iconOnly ? " hub-users-th-heading--icon-only" : ""}`}
+        title={label}
+        aria-label={label}
+      >
+        <span ref={glyphRef} className="hub-users-th-emoji" aria-hidden>
           {headerEmoji}
         </span>
-        <span className="hub-users-th-text">{label}</span>
+        {showText ? text : null}
+        {measureText}
       </span>
     );
   }
+
+  if (headerImageSrc) {
+    return (
+      <span
+        ref={headingRef}
+        className={`hub-users-th-heading${iconOnly ? " hub-users-th-heading--icon-only" : ""}`}
+        title={label}
+        aria-label={label}
+      >
+        <span ref={glyphRef} className="inline-flex shrink-0">
+          <img
+            src={headerImageSrc}
+            alt=""
+            width={compactIconSize(HUB_DIRECTORY_HEADER_GLYPH_PX)}
+            height={compactIconSize(HUB_DIRECTORY_HEADER_GLYPH_PX)}
+            className="hub-users-th-icon hub-users-th-icon--image shrink-0"
+            draggable={false}
+            aria-hidden
+          />
+        </span>
+        {showText ? text : null}
+        {measureText}
+      </span>
+    );
+  }
+
   const meta = role ? resolveHubTableColumnMeta(role) : null;
   const Icon = meta?.icon ?? IconProp;
   const iconClass = meta?.iconClassName ?? iconClassName ?? "hub-users-th-icon--name";
-  if (!Icon && !brandIcon) return <span className="hub-users-th-text">{label}</span>;
+
+  if (embeddedGlyph) {
+    return (
+      <span
+        ref={headingRef}
+        className={`hub-users-th-heading${iconOnly ? " hub-users-th-heading--icon-only" : ""}`}
+        title={label}
+        aria-label={label}
+      >
+        <span ref={glyphRef} className="hub-users-th-emoji" aria-hidden>
+          {embeddedGlyph}
+        </span>
+        {showText ? text : null}
+        {measureText}
+      </span>
+    );
+  }
+
+  if (!Icon && !brandIcon) {
+    return (
+      <span className="hub-users-th-text" title={label}>
+        {label}
+      </span>
+    );
+  }
 
   return (
-    <span className="hub-users-th-heading">
-      <HubSemanticGlyph
-        icon={Icon}
-        brandIcon={brandIcon}
-        size={compactIconSize(HUB_DIRECTORY_HEADER_GLYPH_PX)}
-        className={`hub-users-th-icon ${iconClass}`}
-      />
-      <span className="hub-users-th-text">{label}</span>
+    <span
+      ref={headingRef}
+      className={`hub-users-th-heading${iconOnly ? " hub-users-th-heading--icon-only" : ""}`}
+      title={label}
+      aria-label={label}
+    >
+      <span ref={glyphRef} className="inline-flex shrink-0">
+        <HubSemanticGlyph
+          icon={Icon}
+          brandIcon={brandIcon}
+          size={compactIconSize(HUB_DIRECTORY_HEADER_GLYPH_PX)}
+          className={`hub-users-th-icon ${iconClass}`}
+        />
+      </span>
+      {showText ? text : null}
+      {measureText}
     </span>
   );
 }

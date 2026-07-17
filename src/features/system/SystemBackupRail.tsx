@@ -7,5 +7,5 @@ export const SystemBackupRail = memo(function SystemBackupRail({
 }: {
   backupJobLabel?: string | null;
 }) {
-  return <ProfilesWorkflowRail backupJobLabel={backupJobLabel} />;
+  return <ProfilesWorkflowRail backupJobLabel={backupJobLabel} runtimeOnly />;
 });

@@ -35,6 +35,7 @@ node Tool/P0003-Stealth-Browser-Console/scripts/dev-desktop-reload.mjs
 ```
 
 - Chỉ restart dev (`:5175`, userData `-dev`, API `:6004`) — **không** kill packaged `Stealth Browser Console.exe` đang chạy.
+- Agent smokes probe **`:6004` trước** (`STEALTH_BROWSER_API_MODE=dev` hoặc `STEALTH_AGENT_SMOKE=1`). Kill packaged chỉ khi `desktop:close-packaged`, `restore-stealth-catalog`, `repair-stealth-db`, hoặc `--replace-packaged`.
 - Test bản cài: `corepack pnpm desktop:open` (không `--replace` khi chạy song song dev).
 - Chi tiết: `.cursor/rules/p0003-stealth-browser-ssot.mdc` · skill `ship-until-done` (Local dev → P0003).
 

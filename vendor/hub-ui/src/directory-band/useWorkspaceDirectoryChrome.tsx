@@ -11,6 +11,7 @@ export type WorkspaceDirectoryChromeHandlers = {
   setDirectoryViewMode: (mode: HubViewMode | undefined) => void;
   setFilterToolbar: (toolbar: ReactNode) => void;
   setCenterStats: (stats: TabHeaderStatItem[]) => void;
+  setHeaderStatusSlot?: (slot: ReactNode) => void;
 };
 
 export type WorkspaceDirectoryChromeSnapshot = {
@@ -19,13 +20,22 @@ export type WorkspaceDirectoryChromeSnapshot = {
   filterSelectionToolbar?: HubDirectoryToolbarSelectionProps;
   directoryViewMode?: HubViewMode;
   centerStats: TabHeaderStatItem[];
-  /** Stable fingerprint — bump when any chrome slot meaningfully changes (avoids ReactNode dep loops). */
+  /** Sparse Hub header status (vault sync chip) — idle null. */
+  headerStatusSlot?: ReactNode;
+  /** Stable fingerprint — bump when toolbar / filter slots change (avoids ReactNode dep loops). */
   syncKey: string;
+  /** Row-count / stats fingerprint — bumps header stats + selection counts without remounting toolbar. */
+  statsKey?: string;
+  /** Sync/pending fingerprint — lifts statusSlot without remounting toolbar. */
+  statusKey?: string;
 };
 
 /**
  * Lift FilterBar + header stats into workspace shell before paint (P0004 Hub parity).
  * Pair with `useDirectoryBandSync` for KPI/charts band.
+ *
+ * `syncKey` — view mode / structural chrome (exclude row counts + selection *count*).
+ * `statsKey` — row counts, facet counts, **selection count** (when filterToolbar embeds Detail/bulk badges); also refreshes toolbar + bulk row when they embed counts.
  */
 export function useWorkspaceDirectoryChrome(
   snapshot: WorkspaceDirectoryChromeSnapshot,
@@ -35,30 +45,51 @@ export function useWorkspaceDirectoryChrome(
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
 
+  /**
+   * When `enabled` is false: do **not** clear shell chrome.
+   * Dual-mount vaults (e.g. P0020 Teams + Account body) share one WorkspaceSearchProvider;
+   * the inactive sibling used to wipe toolbar / selection chip / bulk / header stats after
+   * the active vault lifted them (layout-effect order). Only the active publisher writes;
+   * unmount cleanup below still clears when the owner leaves the tree.
+   */
   useLayoutEffect(() => {
-    if (!enabled) {
-      handlers.setToolbar(null);
-      handlers.setFilterSelectionToolbar(undefined);
-      handlers.setDirectoryViewMode(undefined);
-      handlers.setFilterToolbar(null);
-      handlers.setCenterStats([]);
-      return;
-    }
+    if (!enabled) return;
     const s = snapshotRef.current;
     handlers.setToolbar(s.toolbar);
-    handlers.setFilterSelectionToolbar(s.filterSelectionToolbar);
     handlers.setDirectoryViewMode(s.directoryViewMode);
     handlers.setFilterToolbar(s.filterToolbar);
-    handlers.setCenterStats(s.centerStats);
   }, [
     enabled,
     snapshot.syncKey,
-    handlers.setCenterStats,
     handlers.setDirectoryViewMode,
-    handlers.setFilterSelectionToolbar,
     handlers.setFilterToolbar,
     handlers.setToolbar,
   ]);
+
+  const statsLiftKey = snapshot.statsKey ?? snapshot.syncKey;
+
+  useLayoutEffect(() => {
+    if (!enabled) return;
+    const s = snapshotRef.current;
+    handlers.setCenterStats(s.centerStats);
+    handlers.setFilterSelectionToolbar(s.filterSelectionToolbar);
+    handlers.setToolbar(s.toolbar);
+    handlers.setFilterToolbar(s.filterToolbar);
+  }, [
+    enabled,
+    statsLiftKey,
+    handlers.setCenterStats,
+    handlers.setFilterSelectionToolbar,
+    handlers.setToolbar,
+    handlers.setFilterToolbar,
+  ]);
+
+  const statusLiftKey = snapshot.statusKey ?? "";
+
+  useLayoutEffect(() => {
+    if (!handlers.setHeaderStatusSlot || !enabled) return;
+    handlers.setHeaderStatusSlot(snapshotRef.current.headerStatusSlot ?? null);
+  }, [enabled, statusLiftKey, handlers.setHeaderStatusSlot]);
 
   useLayoutEffect(
     () => () => {
@@ -67,6 +98,7 @@ export function useWorkspaceDirectoryChrome(
       handlers.setDirectoryViewMode(undefined);
       handlers.setFilterToolbar(null);
       handlers.setCenterStats([]);
+      handlers.setHeaderStatusSlot?.(null);
     },
     [
       handlers.setCenterStats,
@@ -74,6 +106,7 @@ export function useWorkspaceDirectoryChrome(
       handlers.setFilterSelectionToolbar,
       handlers.setFilterToolbar,
       handlers.setToolbar,
+      handlers.setHeaderStatusSlot,
     ],
   );
 }

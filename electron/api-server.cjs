@@ -11,6 +11,7 @@ const http = require("node:http");
 const { checkAuth, getConfiguredToken } = require("./lib/api-auth.cjs");
 const { JobQueue } = require("./lib/job-queue.cjs");
 const { buildRoutes } = require("./api-routes.cjs");
+const { runWithAgentSmokeRequest, parseAgentSmokeFlag } = require("./lib/agent-smoke-context.cjs");
 
 const DEFAULT_API_PORT = 6003;
 const API_HOST = "127.0.0.1";
@@ -70,7 +71,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
       res.writeHead(204, {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PATCH",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Api-Token"
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Api-Token, X-Stealth-Agent-Smoke"
       });
       res.end();
       return;
@@ -109,7 +110,8 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
       const body = req.method === "POST" || req.method === "PATCH" ? await readBody(req) : {};
       const ctx = { req, res, urlPath, params, query, body, send, util, services };
 
-      await route.handler(ctx);
+      const agentSmoke = parseAgentSmokeFlag(req, body);
+      await runWithAgentSmokeRequest(agentSmoke, () => route.handler(ctx));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       try { sendJson(res, 500, { ok: false, error: msg }); }

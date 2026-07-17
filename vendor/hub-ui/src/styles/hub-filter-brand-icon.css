@@ -46,16 +46,6 @@
   user-select: none;
 }
 
-.hub-filter-option-emoji {
-  font-size: var(--hub-filter-option-emoji-size, 1rem);
-  line-height: 1;
-}
-
-/* Filter trigger — emoji fits 13px glyph slot (panel rows may use 1rem). */
-.hub-filter-trigger .hub-filter-option-emoji {
-  font-size: var(--hub-directory-header-glyph-px, 13px);
-}
-
 /* Safety net — any filter dropdown img without explicit brand class */
 .hub-filter-dropdown-list img,
 [data-hub-multi-filter-panel] img,
@@ -63,4 +53,24 @@
 .hub-chart-legend-label img {
   max-width: var(--hub-directory-header-glyph-px, 13px) !important;
   max-height: var(--hub-directory-header-glyph-px, 13px) !important;
+}
+
+/* Directory twofa filters — brand logos match table body 16px SSOT */
+[data-hub-filter-scope="twofa"] img.hub-brand-icon-bare,
+[data-hub-multi-filter-panel][data-hub-filter-scope="twofa"] img.hub-brand-icon-bare,
+[data-hub-single-filter-panel][data-hub-filter-scope="twofa"] img.hub-brand-icon-bare,
+[data-hub-filter-scope="twofa"] img.hub-filter-brand-icon-bare,
+[data-hub-multi-filter-panel][data-hub-filter-scope="twofa"] img.hub-filter-brand-icon-bare,
+[data-hub-single-filter-panel][data-hub-filter-scope="twofa"] img.hub-filter-brand-icon-bare {
+  width: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  height: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  max-width: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  max-height: var(--hub-directory-table-brand-icon-px, 16px) !important;
+}
+
+[data-hub-filter-scope="twofa"] img,
+[data-hub-multi-filter-panel][data-hub-filter-scope="twofa"] img,
+[data-hub-single-filter-panel][data-hub-filter-scope="twofa"] img {
+  max-width: var(--hub-directory-table-brand-icon-px, 16px) !important;
+  max-height: var(--hub-directory-table-brand-icon-px, 16px) !important;
 }

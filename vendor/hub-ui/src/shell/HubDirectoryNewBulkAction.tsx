@@ -1,4 +1,5 @@
 import { Plus, type LucideIcon } from "lucide-react";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import { HubBulkActionButton } from "./HubBulkActionButton";
 import {
   HUB_DIRECTORY_NEW_ACTION_LABEL,
@@ -10,6 +11,7 @@ export type HubDirectoryNewBulkActionProps = {
   onClick: () => void;
   disabled?: boolean;
   icon?: LucideIcon;
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 /** SSOT directory create CTA — emerald `New` matching HubDirectoryCrudBulkActions primary. */
@@ -18,6 +20,7 @@ export function HubDirectoryNewBulkAction({
   onClick,
   disabled = false,
   icon: Icon = Plus,
+  labelHint,
 }: HubDirectoryNewBulkActionProps) {
   return (
     <HubBulkActionButton
@@ -27,6 +30,7 @@ export function HubDirectoryNewBulkAction({
       tone={HUB_DIRECTORY_NEW_ACTION_TONE}
       disabled={disabled}
       onClick={onClick}
+      labelHint={labelHint}
     />
   );
 }

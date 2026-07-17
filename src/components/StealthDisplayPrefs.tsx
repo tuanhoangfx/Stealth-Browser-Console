@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import {
   HubDisplayPrefs,
   HubToolDetailModalSecondaryAction,
@@ -18,10 +19,11 @@ import { StealthSettingsSaveProvider } from "../features/settings/stealth-settin
 import {
   countHiddenProfileDirectoryColumns,
   PROFILE_DIRECTORY_COLUMNS_CHANGE,
-  PROFILE_DIRECTORY_COLUMN_ITEMS,
   profileDirectoryColumnPrefs,
   resetProfileDirectoryColumns,
 } from "../features/profiles/profile-directory-prefs";
+import { profileDirectoryColumnItemsWithExtensionIcons } from "../features/profiles/profile-directory-display-items";
+import { useExtensionIcons } from "../features/profiles/useExtensionIcons";
 
 export type StealthSettingsMode = "general" | "profile" | "tab";
 
@@ -47,6 +49,12 @@ export function StealthDisplayPrefs({
   const profileSections = useStealthProfileSettingsToolSections();
 
   const toolSections = isGeneral ? generalSections : showTabProfilePanels ? profileSections : [];
+
+  const extensionIcons = useExtensionIcons();
+  const profileColumnItems = useMemo(
+    () => (showTabProfilePanels ? profileDirectoryColumnItemsWithExtensionIcons(extensionIcons) : []),
+    [extensionIcons, showTabProfilePanels],
+  );
 
   const [hiddenProfileCols, setHiddenProfileCols] = useState(() =>
     showTabProfilePanels ? countHiddenProfileDirectoryColumns() : 0
@@ -87,7 +95,7 @@ export function StealthDisplayPrefs({
       tablePanel={
         showTabProfilePanels ? (
           <DirectoryTableColumnsSettings
-            items={PROFILE_DIRECTORY_COLUMN_ITEMS}
+            items={profileColumnItems}
             prefs={profileDirectoryColumnPrefs}
           />
         ) : undefined
@@ -95,7 +103,11 @@ export function StealthDisplayPrefs({
       tableActiveCount={showTabProfilePanels ? hiddenProfileCols : 0}
       tableSectionActions={
         showTabProfilePanels ? (
-          <HubToolDetailModalSecondaryAction label="Reset columns" onClick={() => resetProfileDirectoryColumns()} />
+          <HubToolDetailModalSecondaryAction
+            label="Reset columns"
+            onClick={() => resetProfileDirectoryColumns()}
+            icon={RotateCcw}
+          />
         ) : undefined
       }
     />

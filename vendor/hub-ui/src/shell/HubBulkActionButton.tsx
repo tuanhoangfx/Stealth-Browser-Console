@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+} from "../table/HubDirectoryColumnHint";
 import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "./hub-typography";
 
 export type HubBulkActionTone = "indigo" | "amber" | "emerald" | "rose" | "sky" | "neutral";
@@ -53,6 +57,8 @@ export type HubBulkActionButtonProps = {
   selectedCount?: number;
   iconSpinning?: boolean;
   onClick: () => void;
+  /** Popover hint on label — replaces native `title` when set. */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
 /** Golden bulk-action CTA — filter row 2 (Pin, Refresh, Edit, Sync, …). */
@@ -65,13 +71,21 @@ export function HubBulkActionButton({
   selectedCount,
   iconSpinning = false,
   onClick,
+  labelHint,
 }: HubBulkActionButtonProps) {
+  const labelNode = <span>{label}</span>;
+  const labelContent = labelHint ? (
+    <HubDirectoryColumnHint content={labelHint}>{labelNode}</HubDirectoryColumnHint>
+  ) : (
+    labelNode
+  );
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      title={title}
+      title={labelHint ? undefined : title}
       className={`${HUB_BULK_ACTION_BTN_CLASS} ${TONE_CLASS[tone]}`}
     >
       <span
@@ -79,7 +93,7 @@ export function HubBulkActionButton({
       >
         {icon}
       </span>
-      {label}
+      {labelContent}
       {selectedCount != null && selectedCount > 0 ? (
         <HubBulkActionCountBadge count={selectedCount} tone={tone} />
       ) : null}

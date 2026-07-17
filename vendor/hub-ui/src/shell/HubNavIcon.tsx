@@ -9,11 +9,26 @@ export type HubNavIconProps = {
   iconTone: NavIconTone;
   active: boolean;
   brandIcon?: HubBrandIconId;
+  /** Raster/SVG mark — overrides Lucide + brand when set. */
+  iconSrc?: string;
 };
 
-/** Sidebar nav glyph — Lucide tone icon or shared brand mark. */
-export function HubNavIcon({ icon: Icon, iconTone, active, brandIcon }: HubNavIconProps) {
+/** Sidebar nav glyph — Lucide tone icon, shared brand mark, or custom SVG. */
+export function HubNavIcon({ icon: Icon, iconTone, active, brandIcon, iconSrc }: HubNavIconProps) {
   const px = compactIconSize(HUB_CHROME_ICON_PX);
+
+  if (iconSrc) {
+    return (
+      <img
+        src={iconSrc}
+        alt=""
+        width={px}
+        height={px}
+        className={`shrink-0 ${navIconClass(iconTone, active)}`}
+        aria-hidden
+      />
+    );
+  }
 
   if (brandIcon) {
     return <HubBrandIcon brandId={brandIcon} size={px} />;

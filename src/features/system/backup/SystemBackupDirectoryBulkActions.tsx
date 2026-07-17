@@ -1,23 +1,38 @@
 import { Archive, ArchiveRestore, HardDriveDownload } from "lucide-react";
-import { HubBulkActionButton } from "@tool-workspace/hub-ui";
+import { HubBulkActionButton, HubDirectoryAdaptiveEditAction } from "@tool-workspace/hub-ui";
+import { profileAdaptiveEditLabelHint } from "../../profiles/profile-bulk-action-hints";
 
 export function SystemBackupDirectoryBulkActions({
+  selectedCount,
   hasSelection,
   restoreIntoSelected,
   jobBusy,
   onBackupSelected,
   onBackupAll,
   onRestore,
+  onEditSingle,
+  onEditBulk,
 }: {
+  selectedCount: number;
   hasSelection: boolean;
   restoreIntoSelected: boolean;
   jobBusy: boolean;
   onBackupSelected: () => void;
   onBackupAll: () => void;
   onRestore: () => void;
+  onEditSingle: () => void;
+  onEditBulk: () => void;
 }) {
   return (
     <>
+      <HubDirectoryAdaptiveEditAction
+        selectedCount={selectedCount}
+        singleLabel="Detail"
+        bulkLabel="Detail"
+        onEditSingle={onEditSingle}
+        onEditBulk={onEditBulk}
+        labelHint={profileAdaptiveEditLabelHint(selectedCount)}
+      />
       <HubBulkActionButton
         icon={<Archive size={14} aria-hidden />}
         label="Backup selected"

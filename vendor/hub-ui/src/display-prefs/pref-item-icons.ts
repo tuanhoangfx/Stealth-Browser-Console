@@ -1,10 +1,17 @@
 import type { DirectoryColumnHeaderMeta } from "../lib/directory-column-meta-helpers";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { DirectoryTableColumnItem } from "../prefs/directory-table-column-prefs";
 import type { HubDirectoryColumnMetaInput } from "../table/hub-directory-table-meta";
 import { resolveHubTableColumnMeta, type HubTableColumnRole } from "../table/hub-table-column-meta";
 import type { PrefIcon, PrefItem } from "./types";
 
-export type PrefIconMeta = { icon?: PrefIcon; iconClassName?: string; emoji?: string };
+export type PrefIconMeta = {
+  icon?: PrefIcon;
+  iconClassName?: string;
+  emoji?: string;
+  brandIcon?: HubBrandIconId;
+  imageSrc?: string;
+};
 export type PrefIconMap = Record<string, PrefIconMeta>;
 
 /** Attach per-key Lucide icons to KPI / header / filter pref rows (Display panel SSOT). */
@@ -17,6 +24,8 @@ export function withPrefItemIcons<T extends { key: string; label: string }>(
     icon: icons[item.key]?.icon,
     iconClassName: icons[item.key]?.iconClassName,
     emoji: icons[item.key]?.emoji,
+    brandIcon: icons[item.key]?.brandIcon,
+    imageSrc: icons[item.key]?.imageSrc,
   }));
 }
 
@@ -30,6 +39,8 @@ export function withDirectoryColumnIcons<K extends string>(
     icon: icons[item.key]?.icon,
     iconClassName: icons[item.key]?.iconClassName,
     emoji: icons[item.key]?.emoji,
+    brandIcon: icons[item.key]?.brandIcon,
+    imageSrc: icons[item.key]?.imageSrc,
   }));
 }
 
@@ -38,24 +49,25 @@ export function prefIconMapFromDirectoryColumnHeaderMeta(
   meta: Record<string, DirectoryColumnHeaderMeta>,
 ): PrefIconMap {
   return Object.fromEntries(
-    Object.entries(meta).map(([key, def]) => [
-      key,
-      { icon: def.headerIcon, iconClassName: def.headerIconClassName },
-    ]),
+    Object.entries(meta).map(([key, def]) => {
+      if (def.headerEmoji) return [key, { emoji: def.headerEmoji }];
+      if (def.headerBrandIcon) return [key, { brandIcon: def.headerBrandIcon }];
+      return [key, { icon: def.headerIcon, iconClassName: def.headerIconClassName }];
+    }),
   );
 }
 
-/** Display panel icon map from hub directory meta (emoji or Lucide). */
+/** Display panel icon map from hub directory meta (emoji, image, brand, or Lucide). */
 export function prefIconMapFromHubDirectoryColumnMeta(
   meta: Record<string, HubDirectoryColumnMetaInput>,
 ): PrefIconMap {
   return Object.fromEntries(
-    Object.entries(meta).map(([key, def]) => [
-      key,
-      def.headerEmoji
-        ? { emoji: def.headerEmoji }
-        : { icon: def.headerIcon, iconClassName: def.headerIconClassName },
-    ]),
+    Object.entries(meta).map(([key, def]) => {
+      if (def.headerEmoji) return [key, { emoji: def.headerEmoji }];
+      if (def.headerImageSrc) return [key, { imageSrc: def.headerImageSrc }];
+      if (def.headerBrandIcon) return [key, { brandIcon: def.headerBrandIcon }];
+      return [key, { icon: def.headerIcon, iconClassName: def.headerIconClassName }];
+    }),
   );
 }
 

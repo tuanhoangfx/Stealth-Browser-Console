@@ -20,7 +20,7 @@ export function sortableProfileValue(profile: ProfileRow, key: StealthProfileSor
       return 0;
     case "status":
       return STATUS_RANK[profile.status] ?? 0;
-    case "lastOpened":
+    case "updated":
       return profile.lastOpenedAt ?? 0;
     case "createdAt":
       return profile.createdAt ? Date.parse(profile.createdAt) : 0;

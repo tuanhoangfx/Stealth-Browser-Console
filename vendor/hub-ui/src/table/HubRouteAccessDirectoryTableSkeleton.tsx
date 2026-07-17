@@ -22,6 +22,7 @@ export function HubRouteAccessDirectoryTableSkeleton({
 }: HubRouteAccessDirectoryTableSkeletonProps) {
   const layout = columnOptions.layout ?? "expanded";
   const showRoute = columnOptions.showRouteColumn ?? layout === "expanded";
+  const showExpires = columnOptions.showExpiresColumn ?? true;
   const colCount = hubRouteAccessModalColumnCount(showSelect, columnOptions);
 
   return (
@@ -72,9 +73,11 @@ export function HubRouteAccessDirectoryTableSkeleton({
               <td className={HUB_ROUTE_ACCESS_COL.addedAt}>
                 <span className="skeleton mx-auto block h-3.5 w-14" />
               </td>
-              <td className={HUB_ROUTE_ACCESS_COL.expires}>
-                <span className="skeleton mx-auto block h-3.5 w-14" />
-              </td>
+              {showExpires ? (
+                <td className={HUB_ROUTE_ACCESS_COL.expires}>
+                  <span className="skeleton mx-auto block h-3.5 w-14" />
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

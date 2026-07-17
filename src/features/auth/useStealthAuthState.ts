@@ -36,6 +36,8 @@ export type StealthAuthState = {
   authRequired: boolean;
   policyReady: boolean;
   refreshSession: (opts?: { boot?: boolean }) => Promise<void>;
+  /** Re-check Hub tool_access without signing out (after admin grant). */
+  recheckToolAccess: () => Promise<boolean | null>;
   prepareHubSignIn: () => void;
   signIn: (loginInput: string, password: string, mode?: "signin" | "signup") => Promise<void>;
   signOut: () => Promise<void>;
@@ -72,15 +74,34 @@ export function useStealthAuthState(): StealthAuthState {
 
   const checkToolAccess = useCallback(async (_accessToken: string) => {
     const gen = ++toolCheckGen.current;
+    if (gen === toolCheckGen.current) setToolAccess(null);
     const client = getIdentitySupabase();
     if (!client) {
       if (gen === toolCheckGen.current) setToolAccess(true);
       return true;
     }
-    const ok = await verifyHubIntegratedToolAccess(client, "P0003");
-    if (gen === toolCheckGen.current && ok !== null) setToolAccess(ok);
+    let ok = await verifyHubIntegratedToolAccess(client, "P0003");
+    if (ok === null) {
+      ok = await verifyHubIntegratedToolAccess(client, "P0003");
+    }
+    if (gen !== toolCheckGen.current) return ok;
+    // Still uncertain after retry — fail closed; Access Denied offers recheck.
+    if (ok === null) {
+      setToolAccess(false);
+      return null;
+    }
+    setToolAccess(ok);
     return ok;
   }, []);
+
+  const recheckToolAccess = useCallback(async () => {
+    const token = session?.access_token || readCachedHubSession()?.access_token;
+    if (!token) {
+      setToolAccess(false);
+      return false;
+    }
+    return checkToolAccess(token);
+  }, [checkToolAccess, session?.access_token]);
 
   const refreshSession = useCallback(async (opts?: { boot?: boolean }) => {
     if (!isStealthHubAuthEnabled()) {
@@ -243,6 +264,31 @@ export function useStealthAuthState(): StealthAuthState {
     isRealHubWorkspaceSession(session) || isRealHubWorkspaceSession(readCachedHubSession());
   const effectiveLoading = authRequired && (loading || !policyReady) && !hasEstablishedSession;
 
+  // Push Hub login email → main vault scope (packaged). Dev always uses czpgo@outlook.com.
+  useEffect(() => {
+    const api = window.stealthApi;
+    if (!api?.setVaultUserScope) return;
+    void api.setVaultUserScope({ email: hubEmail });
+  }, [hubEmail]);
+
+  // While Access Denied is showing, re-check when the window regains focus
+  // (admin may have just granted P0003 in Tool Hub).
+  useEffect(() => {
+    if (!hubAuthEnabled || toolAccess !== false) return;
+    const onFocus = () => {
+      void recheckToolAccess();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") onFocus();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [hubAuthEnabled, recheckToolAccess, toolAccess]);
+
   return {
     session,
     hubEmail,
@@ -254,6 +300,7 @@ export function useStealthAuthState(): StealthAuthState {
     authRequired,
     policyReady,
     refreshSession,
+    recheckToolAccess,
     prepareHubSignIn,
     signIn,
     signOut,

@@ -59,16 +59,31 @@ export function useHubDirectoryMirror<T>({
   });
   const bootSyncDoneRef = useRef(false);
   const lastFetchAtRef = useRef(0);
+  const tabActiveRef = useRef(tabActive);
+  tabActiveRef.current = tabActive;
+  const pendingRowsApplyRef = useRef(false);
 
-  const applyRows = useCallback(
+  const commitRows = useCallback(
     (next: T[]) => {
-      if (revalidatingRef.current && next.length > 0 && next.length < rowsRef.current.length) return;
-      rowsRef.current = next;
+      pendingRowsApplyRef.current = false;
       setRows(next);
       onRowsLoaded?.(next);
       if (next.length > 0) settleBoot();
     },
     [onRowsLoaded, settleBoot],
+  );
+
+  const applyRows = useCallback(
+    (next: T[]) => {
+      if (revalidatingRef.current && next.length > 0 && next.length < rowsRef.current.length) return;
+      rowsRef.current = next;
+      if (!tabActiveRef.current) {
+        pendingRowsApplyRef.current = true;
+        return;
+      }
+      commitRows(next);
+    },
+    [commitRows],
   );
 
   const syncFromMirror = useCallback(() => {
@@ -85,11 +100,13 @@ export function useHubDirectoryMirror<T>({
       const mirrorCount = readMirrorRef.current().length;
       const needsGate = !silent && mirrorCount === 0 && !bootedRef.current;
 
-      if (silent) {
-        setRevalidating(true);
-      } else {
-        setLoading(true);
-        if (needsGate) beginBootGate();
+      if (tabActiveRef.current) {
+        if (silent) {
+          setRevalidating(true);
+        } else {
+          setLoading(true);
+          if (needsGate) beginBootGate();
+        }
       }
 
       setLastError?.(null);
@@ -105,10 +122,12 @@ export function useHubDirectoryMirror<T>({
           applyRows([]);
         }
       } finally {
-        if (silent) {
-          setRevalidating(false);
-        } else {
-          setLoading(false);
+        if (tabActiveRef.current) {
+          if (silent) {
+            setRevalidating(false);
+          } else {
+            setLoading(false);
+          }
         }
         settleBoot();
       }
@@ -137,14 +156,29 @@ export function useHubDirectoryMirror<T>({
   useEffect(() => {
     if (!tabActive) return;
 
+    if (pendingRowsApplyRef.current) {
+      commitRows(rowsRef.current);
+    }
+
     syncFromMirror();
 
     const hasCache = readMirrorRef.current().length > 0 || rowsRef.current.length > 0 || bootedRef.current;
+    const neverFetched = lastFetchAtRef.current === 0;
     const stale = Date.now() - lastFetchAtRef.current > revalidateCooldownMs;
 
     if (hasCache) {
-      if (stale) void load({ silent: true });
-      return;
+      // Defer silent reconcile so tab-switch paint is not competed by network
+      // (prefetch / hover warm already filled mirror; lastFetchAt stays 0 until load()).
+      const delayMs = neverFetched
+        ? Math.min(2_500, revalidateCooldownMs)
+        : stale
+          ? 350
+          : 0;
+      if (!neverFetched && !stale) return;
+      const timer = window.setTimeout(() => {
+        void load({ silent: true });
+      }, delayMs);
+      return () => window.clearTimeout(timer);
     }
 
     if (!bootSyncDoneRef.current) {
@@ -153,8 +187,13 @@ export function useHubDirectoryMirror<T>({
       return;
     }
 
-    if (stale) void load({ silent: true });
-  }, [bootedRef, load, revalidateCooldownMs, syncFromMirror, tabActive]);
+    if (stale) {
+      const timer = window.setTimeout(() => {
+        void load({ silent: true });
+      }, 350);
+      return () => window.clearTimeout(timer);
+    }
+  }, [bootedRef, commitRows, load, revalidateCooldownMs, syncFromMirror, tabActive]);
 
   return {
     rows,

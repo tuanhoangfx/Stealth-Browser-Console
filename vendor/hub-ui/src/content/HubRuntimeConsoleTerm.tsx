@@ -6,13 +6,13 @@ export function HubRuntimeConsoleTerm({
   children,
   className = "",
 }: {
-  legend: ReactNode;
+  legend?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <div className={`hub-runtime-term ${className}`.trim()}>
-      <div className="hub-runtime-term__legend">{legend}</div>
+      {legend ? <div className="hub-runtime-term__legend">{legend}</div> : null}
       <div className="hub-runtime-term__body">{children}</div>
     </div>
   );

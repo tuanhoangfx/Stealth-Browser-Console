@@ -12,9 +12,11 @@
 @import "./hub-app-tab-header.css";
 @import "./hub-users-table.css";
 @import "./hub-filter-brand-icon.css";
+@import "./hub-inline-emoji.css";
 @import "./hub-chrome-brand-icon.css";
 @import "./hub-brand-icon-bare.css";
 @import "./hub-directory-table.css";
+@import "./hub-flash-border.css";
 @import "./hub-table-controls.css";
 @import "./hub-table-cell.css";
 @import "./hub-split-directory-pane.css";

@@ -57,10 +57,23 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--selec
   vertical-align: middle;
 }
 
+/*
+ * Belt: rem-pinned sibling <col>s under table-layout:fixed can still stretch the select
+ * track (~46–49px) when every content col is rem-locked (Profile pivot). Prefer
+ * chrome-only rem in product colgroups; this keeps the checkbox SSOT rigid.
+ */
+table.hub-users-table[data-hub-directory-select] col.hub-users-col--select {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+}
+
 table.hub-users-table.hub-users-table--directory {
   min-width: 48rem;
   --hub-table-body-size: 12px;
   --hub-table-body-line-height: 1.45;
+  --hub-directory-glyph-label-gap: 5px;
+  --hub-directory-header-glyph-px: 13px;
 }
 
 /* Directory body typography — status / sync / muted match 12px body (frame-table parity). */
@@ -306,14 +319,14 @@ table.hub-users-table[data-hub-directory-select] .hub-users-th-btn {
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-heading,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-heading {
-  gap: 5px;
+  gap: var(--hub-directory-glyph-label-gap, 5px);
   flex: 1 1 auto;
   min-width: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-label {
-  gap: 5px;
+  gap: var(--hub-directory-glyph-label-gap, 5px);
   min-width: 0;
   overflow: hidden;
   /* Sort icon must not steal flex space from the column title. */
@@ -372,13 +385,71 @@ table.hub-users-table.hub-users-table--directory thead .hub-users-th-text,
 table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   color: var(--text);
   font-weight: 600;
-  /* Prefer showing the full title; ellipsis only after emoji+sort flex siblings take their intrinsic size. */
   display: block;
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  /* Never show "A…" / "Brows…" — when cramped, hide label and keep glyph (title/hint still expose name). */
+  text-overflow: clip;
+}
+
+/*
+ * Icon-only collapse is JS-only (`computeHubTableHeaderIconOnly` vs <th> width).
+ * Do NOT hide labels via @container max-width here — fixed cols (e.g. Update 6.25rem)
+ * falsely match loose thresholds and stay icon-only while the column still has room
+ * (TikTok/Mail/Services/Facebook/Partner + every Hub directory table).
+ * Never put container-type on .hub-users-th-heading (flex min-width:0 → width 0 latch).
+ */
+
+/*
+ * Glyph column headers — keep short labels sized to content so flex+ellipsis does not
+ * clip before JS measures the real <th> budget. Long text-only headers stay default flex.
+ */
+table.hub-users-table[data-hub-directory-select] thead th:has(
+  .hub-users-th-emoji,
+  .hub-users-th-icon,
+  .hub-chrome-brand-icon-bare,
+  img.hub-users-th-icon--image
+) .hub-users-th-heading,
+table.hub-users-table[data-hub-directory-select] thead th:has(
+  .hub-users-th-emoji,
+  .hub-users-th-icon,
+  .hub-chrome-brand-icon-bare,
+  img.hub-users-th-icon--image
+) .hub-users-th-label {
+  flex: 0 1 auto;
+  min-width: max-content;
+  overflow: visible;
+  width: auto;
+}
+
+table.hub-users-table[data-hub-directory-select] thead th:has(
+  .hub-users-th-emoji,
+  .hub-users-th-icon,
+  .hub-chrome-brand-icon-bare,
+  img.hub-users-th-icon--image
+) .hub-users-th-text:not(.hub-users-th-text--measure) {
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* JS fit — never clip header labels; icon-only when measured overflow. */
+.hub-users-th-heading--icon-only .hub-users-th-text:not(.hub-users-th-text--measure) {
+  display: none !important;
+}
+
+.hub-users-th-text--measure {
+  position: absolute;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  width: max-content;
+  max-width: none;
 }
 
 /* Split scroll — thead fixed outside scroll; scrollbar only on tbody pane */
@@ -573,4 +644,55 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+/* Route / extension health — icon + label, no pill badge (E0001 Status column parity). */
+.hub-route-status-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hub-inline-gap-meta, 5px);
+  max-width: 100%;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.hub-route-status-label__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.hub-route-status-label__text {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.hub-route-status-label--ready {
+  color: #38bdf8;
+}
+
+.hub-route-status-label--ok {
+  color: #34d399;
+}
+
+.hub-route-status-label--empty {
+  color: #a78bfa;
+}
+
+.hub-route-status-label--error {
+  color: #f87171;
+}
+
+.hub-route-status-label--warn {
+  color: #fcd34d;
+}
+
+.hub-route-status-label--neutral {
+  color: var(--muted);
+}
+
+@import "./hub-flash-border.css";
 

@@ -9,7 +9,14 @@ import {
   useHubTablePagination,
 } from "./hub-table-pagination";
 import { HubSortIndicator } from "./HubSortIndicator";
-import { useDirectoryTableSort } from "./useDirectoryTableSort";
+import {
+  useDirectoryTableSort,
+  type DirectoryTableSortTieBreak,
+} from "./useDirectoryTableSort";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+} from "./HubDirectoryColumnHint";
 import {
   buildHubRouteAccessModalColumns,
   HUB_ROUTE_ACCESS_COL,
@@ -26,10 +33,26 @@ function columnHeaderTitle(key: string): string | undefined {
       return "Last Sync to cloud vault";
     case "loadAt":
       return "Last Load on extension";
+    case "planDate":
+      return "Plan start date";
+    case "planDays":
+      return "Plan duration (days)";
+    case "planDue":
+      return "Plan due date";
+    case "planLeft":
+      return "Days remaining on plan";
     case "addedAt":
       return "When access was granted";
     case "expires":
       return "Access expiry";
+    case "ownership":
+      return "Account ownership";
+    case "liveStatus":
+      return "Account status";
+    case "profile":
+      return "Service profile / browser code";
+    case "role":
+      return "Team role";
     default:
       return undefined;
   }
@@ -43,19 +66,35 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   /** Optional user cell override (e.g. search highlight) — defaults to plain `label`. */
   renderUserCell?: (row: TRow, display: { label: string; title?: string }) => ReactNode;
   renderRoleCell: (row: TRow) => ReactNode;
+  /** Teams — Profile (Service browser code). */
+  renderProfileCell?: (row: TRow) => ReactNode;
   /** Expanded layout — Synced timestamp column. */
   renderSyncAtCell?: (row: TRow) => ReactNode;
   /** Expanded layout — Loaded timestamp column. */
   renderLoadAtCell?: (row: TRow) => ReactNode;
+  /** Teams — Ownership column. */
+  renderOwnershipCell?: (row: TRow) => ReactNode;
+  /** Teams — Live Status column. */
+  renderLiveStatusCell?: (row: TRow) => ReactNode;
+  /** Teams — Plan Date / Duration / Due / Left. */
+  renderPlanDateCell?: (row: TRow) => ReactNode;
+  renderPlanDaysCell?: (row: TRow) => ReactNode;
+  renderPlanDueCell?: (row: TRow) => ReactNode;
+  renderPlanLeftCell?: (row: TRow) => ReactNode;
   /** Compact layout — merged activity column. */
   renderActivityCell?: (row: TRow) => ReactNode;
   renderRouteCell?: (row: TRow) => ReactNode;
   /** When access was granted — before Expires column. */
   renderAddedAtCell: (row: TRow) => ReactNode;
-  renderExpiresCell: (row: TRow) => ReactNode;
+  /** Required when `showExpiresColumn` (Cookie access). Teams members omit. */
+  renderExpiresCell?: (row: TRow) => ReactNode;
   /** Golden directory sort — one value per column key. */
   getSortValue: (row: TRow, key: HubRouteAccessSortKey) => string | number;
   defaultSortKey?: HubRouteAccessSortKey;
+  /** Secondary/tertiary order when primary sort values tie. */
+  sortTieBreak?: DirectoryTableSortTieBreak<TRow>;
+  /** Rich header hints (SSOT popover) — replaces native `title` when set. */
+  columnHeaderHintOverrides?: Partial<Record<HubRouteAccessSortKey, HubDirectoryColumnHintContent>>;
   showSelectColumn?: boolean;
   isSelected?: (row: TRow) => boolean;
   onToggleSelect?: (row: TRow) => void;
@@ -66,8 +105,26 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   rowClassName?: (row: TRow) => string;
   ariaLabel?: string;
   pageSize?: number;
+  /** Hide pager when all rows fit one page (Teams frame embeds). */
+  hidePagerWhenSinglePage?: boolean;
   columnLayout?: HubRouteAccessColumnLayout;
   showRouteColumn?: boolean;
+  /** Expanded layout — hide Synced/Linked column (default true). */
+  showSyncAtColumn?: boolean;
+  /** Teams — Profile (Service browser code). */
+  showProfileColumn?: boolean;
+  showOwnershipColumn?: boolean;
+  showLiveStatusColumn?: boolean;
+  /** Teams — Date / Duration / Due / Left columns. */
+  showPlanScheduleColumns?: boolean;
+  /** Hide Expires column (Teams remapped Status removed — Role Backup). Default true. */
+  showExpiresColumn?: boolean;
+  /** Teams schema cards — lock column tracks across stacked sibling tables. */
+  stackAlignColumns?: boolean;
+  /** Override column header labels (e.g. Synced→Plan, Loaded→Due). */
+  columnLabelOverrides?: Partial<Record<HubRouteAccessSortKey, string>>;
+  /** Sticker emoji overrides for column headers (Teams SSOT). */
+  columnHeaderEmojiOverrides?: Partial<Record<HubRouteAccessSortKey, string>>;
 };
 
 /** Golden route-access modal table — P0004 User Access · P0020 Cookie Route. */
@@ -78,14 +135,23 @@ export function HubRouteAccessDirectoryTable<TRow>({
   getUserDisplay,
   renderUserCell,
   renderRoleCell,
+  renderProfileCell,
   renderSyncAtCell,
   renderLoadAtCell,
+  renderOwnershipCell,
+  renderLiveStatusCell,
+  renderPlanDateCell,
+  renderPlanDaysCell,
+  renderPlanDueCell,
+  renderPlanLeftCell,
   renderActivityCell,
   renderRouteCell,
   renderAddedAtCell,
   renderExpiresCell,
   getSortValue,
   defaultSortKey = "user",
+  sortTieBreak,
+  columnHeaderHintOverrides,
   showSelectColumn = true,
   isSelected,
   onToggleSelect,
@@ -96,17 +162,36 @@ export function HubRouteAccessDirectoryTable<TRow>({
   rowClassName,
   ariaLabel = "Route access table pages",
   pageSize,
+  hidePagerWhenSinglePage = false,
   columnLayout = "expanded",
   showRouteColumn,
+  showSyncAtColumn = true,
+  showProfileColumn = false,
+  showOwnershipColumn = false,
+  showLiveStatusColumn = false,
+  showPlanScheduleColumns = false,
+  showExpiresColumn = true,
+  stackAlignColumns = false,
+  columnLabelOverrides,
+  columnHeaderEmojiOverrides,
 }: HubRouteAccessDirectoryTableProps<TRow>) {
   const columnOptions: HubRouteAccessModalColumnOptions = {
     layout: columnLayout,
     showRouteColumn,
+    showSyncAtColumn,
+    showProfileColumn,
+    showOwnershipColumn,
+    showLiveStatusColumn,
+    showPlanScheduleColumns,
+    showExpiresColumn,
+    stackAlignColumns,
   };
   const { sortKey, sortDir, onSort, sorted } = useDirectoryTableSort(
     [...items],
     defaultSortKey,
     getSortValue,
+    "asc",
+    sortTieBreak,
   );
   const resolvedPageSize = useHubTablePageSize(pageSize);
   const pagination = useHubTablePagination(sorted, { resetKey, pageSize: resolvedPageSize });
@@ -139,17 +224,33 @@ export function HubRouteAccessDirectoryTable<TRow>({
     }
 
     const title = columnHeaderTitle(col.key);
-    const labelNode = (
+    const sortKeyTyped = col.key as HubRouteAccessSortKey;
+    const label = columnLabelOverrides?.[sortKeyTyped] ?? col.label;
+    const headerEmoji =
+      columnHeaderEmojiOverrides?.[sortKeyTyped] ??
+      ("headerEmoji" in col ? (col as { headerEmoji?: string }).headerEmoji : undefined);
+    const headerHint = columnHeaderHintOverrides?.[sortKeyTyped];
+    const labelInner = (
       <span
         className={`hub-users-th-label${col.key === "user" ? " hub-users-th-label--start" : ""}`}
       >
-        {col.role ? (
-          <HubTableColumnHeader label={col.label} role={col.role} />
+        {col.role || headerEmoji ? (
+          <HubTableColumnHeader label={label} role={col.role} headerEmoji={headerEmoji} />
         ) : (
-          <span className="hub-users-th-text">{col.label}</span>
+          <span className="hub-users-th-text">{label}</span>
         )}
         <HubSortIndicator active={sortKey === col.key} dir={sortDir} />
       </span>
+    );
+    const labelNode = headerHint ? (
+      <HubDirectoryColumnHint
+        content={headerHint}
+        titleGlyph={headerEmoji ? { emoji: headerEmoji } : undefined}
+      >
+        {labelInner}
+      </HubDirectoryColumnHint>
+    ) : (
+      labelInner
     );
 
     return {
@@ -158,7 +259,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
         <button
           type="button"
           className={`hub-users-th-btn${col.key === "user" ? " hub-users-th-btn--align-start" : ""}`}
-          title={title}
+          title={headerHint ? undefined : title}
           onClick={() => onSort(col.key as HubRouteAccessSortKey)}
           aria-sort={
             sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : "none"
@@ -214,14 +315,47 @@ export function HubRouteAccessDirectoryTable<TRow>({
               <td className={HUB_ROUTE_ACCESS_COL.role}>
                 <div className="hub-users-role-cell">{renderRoleCell(row)}</div>
               </td>
+              {showProfileColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.profile} hub-users-cell-muted text-center`}>
+                  {renderProfileCell?.(row)}
+                </td>
+              ) : null}
+              {showOwnershipColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.ownership} hub-users-cell-muted text-center`}>
+                  {renderOwnershipCell?.(row)}
+                </td>
+              ) : null}
+              {showLiveStatusColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.liveStatus} hub-users-cell-muted text-center`}>
+                  {renderLiveStatusCell?.(row)}
+                </td>
+              ) : null}
               {columnLayout === "expanded" ? (
                 <>
-                  <td className={`${HUB_ROUTE_ACCESS_COL.syncAt} hub-users-cell-muted text-center`}>
-                    {renderSyncAtCell?.(row)}
-                  </td>
+                  {showSyncAtColumn ? (
+                    <td className={`${HUB_ROUTE_ACCESS_COL.syncAt} hub-users-cell-muted text-center`}>
+                      {renderSyncAtCell?.(row)}
+                    </td>
+                  ) : null}
                   <td className={`${HUB_ROUTE_ACCESS_COL.loadAt} hub-users-cell-muted text-center`}>
                     {renderLoadAtCell?.(row)}
                   </td>
+                  {showPlanScheduleColumns ? (
+                    <>
+                      <td className={`${HUB_ROUTE_ACCESS_COL.planDate} hub-users-cell-muted text-center`}>
+                        {renderPlanDateCell?.(row)}
+                      </td>
+                      <td className={`${HUB_ROUTE_ACCESS_COL.planDays} hub-users-cell-muted text-center`}>
+                        {renderPlanDaysCell?.(row)}
+                      </td>
+                      <td className={`${HUB_ROUTE_ACCESS_COL.planDue} hub-users-cell-muted text-center`}>
+                        {renderPlanDueCell?.(row)}
+                      </td>
+                      <td className={`${HUB_ROUTE_ACCESS_COL.planLeft} hub-users-cell-muted text-center`}>
+                        {renderPlanLeftCell?.(row)}
+                      </td>
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <td className={`${HUB_ROUTE_ACCESS_COL.activity} hub-users-cell-muted text-center`}>
@@ -234,9 +368,11 @@ export function HubRouteAccessDirectoryTable<TRow>({
               <td className={`${HUB_ROUTE_ACCESS_COL.addedAt} hub-users-cell-muted text-center`}>
                 {renderAddedAtCell(row)}
               </td>
-              <td className={`${HUB_ROUTE_ACCESS_COL.expires} hub-users-cell-muted text-center`}>
-                {renderExpiresCell(row)}
-              </td>
+              {showExpiresColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.expires} hub-users-cell-muted text-center`}>
+                  {renderExpiresCell?.(row)}
+                </td>
+              ) : null}
             </tr>
           );
         })}
@@ -250,6 +386,7 @@ export function HubRouteAccessDirectoryTable<TRow>({
         onPrev={pagination.goPrev}
         onNext={pagination.goNext}
         pageSize={resolvedPageSize}
+        hideWhenSinglePage={hidePagerWhenSinglePage}
         ariaLabel={ariaLabel}
       />
     </>

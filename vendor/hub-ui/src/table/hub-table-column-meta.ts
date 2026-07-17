@@ -82,6 +82,7 @@ export type HubTableColumnRole =
   | "channel"
   | "bots"
   | "notes"
+  | "log"
   | "members"
   | "allowlist"
   | "active"
@@ -140,6 +141,7 @@ export const HUB_TABLE_COLUMN_META: Record<HubTableColumnRole, HubTableColumnMet
   channel: { icon: Radio, iconClassName: "hub-users-th-icon--name" },
   bots: { icon: Hash, iconClassName: "hub-users-th-icon--actions" },
   notes: { icon: FileText, iconClassName: "hub-users-th-icon--email" },
+  log: { icon: History, iconClassName: "hub-users-th-icon--activity" },
   members: { icon: Users, iconClassName: "hub-users-th-icon--tools" },
   allowlist: { icon: Check, iconClassName: "hub-users-th-icon--role" },
   active: { icon: Star, iconClassName: "hub-users-th-icon--created" },

@@ -265,6 +265,23 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
       profile.updatedAt = nowIso();
       return { ok: true, profile };
     },
+    closeAllProfiles: async () => {
+      const ids: string[] = [];
+      for (const profile of profiles) {
+        if (profile.status === "running" || profile.status === "opening") {
+          profile.status = "closed";
+          profile.updatedAt = nowIso();
+          ids.push(profile.id);
+        }
+      }
+      return { ok: true, count: ids.length, ids };
+    },
+    listRunningProfiles: async () => ({
+      ok: true,
+      sessions: profiles
+        .filter((profile) => profile.status === "running" || profile.status === "opening")
+        .map((profile) => ({ id: profile.id, name: profile.name, headless: profile.headless })),
+    }),
     focusProfile: async (payload) => {
       const profile = findProfile(String(payload.id));
       if (!profile) throw new Error("Profile not found.");
@@ -393,22 +410,47 @@ export function createStealthWebMockApi(): NonNullable<typeof window.stealthApi>
   const api = {
     ...buildStealthApiStubLayer(),
     ...buildProfileOverrides(),
+    setVaultUserScope: async (payload?: { email?: string | null }) => ({
+      ok: true,
+      hubEmail: payload?.email ?? null,
+      scopeEmail: payload?.email || "czpgo@outlook.com",
+      scopeError: null,
+      devScope: true,
+    }),
+    getVaultUserScope: async () => ({
+      ok: true,
+      hubEmail: null,
+      scopeEmail: "czpgo@outlook.com",
+      scopeError: null,
+      devScope: true,
+    }),
   } as NonNullable<typeof window.stealthApi>;
   assertStealthApiChannelCoverage(api);
   return api;
 }
 
+const STEALTH_BRIDGE_GAP_KEYS = ["closeAllProfiles", "listRunningProfiles"] as const;
+
 export function installStealthWebMock() {
   if (typeof window === "undefined") return;
+  if (typeof window.stealthApi?.closeProfile === "function") {
+    return;
+  }
   const mock = createStealthWebMockApi();
   if (!("stealthApi" in window) || !window.stealthApi) {
     window.stealthApi = mock;
     return;
   }
   const live = window.stealthApi as Record<string, unknown>;
-  for (const [key, value] of Object.entries(mock as Record<string, unknown>)) {
+  const mockRecord = mock as Record<string, unknown>;
+  for (const [key, value] of Object.entries(mockRecord)) {
     if (typeof value === "function" && typeof live[key] !== "function") {
       live[key] = value;
+    }
+  }
+  for (const key of STEALTH_BRIDGE_GAP_KEYS) {
+    if (typeof live[key] !== "function" && typeof mockRecord[key] === "function") {
+      live[key] = mockRecord[key];
     }
   }
 }

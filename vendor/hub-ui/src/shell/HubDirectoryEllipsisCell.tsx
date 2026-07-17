@@ -1,4 +1,5 @@
 import { DIRECTORY_CELL_TRUNCATE } from "../lib/directory-cell-hover";
+import { HubDirectoryValuePopover } from "../table/HubDirectoryValuePopover";
 
 export type HubDirectoryEllipsisCellProps = {
   value: string;
@@ -7,13 +8,18 @@ export type HubDirectoryEllipsisCellProps = {
   normalizeWhitespace?: boolean;
   /** @deprecated Cell tooltips removed — header hints only. */
   richTooltip?: boolean;
+  /** Hover popover with full value (multiline notes / plan fields). */
+  hoverPopover?: boolean;
+  popoverTitle?: string;
 };
 
-/** Read-only truncated directory cell — no hover tooltip (header hints only). */
+/** Read-only truncated directory cell — optional hover popover for long multiline values. */
 export function HubDirectoryEllipsisCell({
   value,
   className = "",
   normalizeWhitespace = false,
+  hoverPopover = false,
+  popoverTitle,
 }: HubDirectoryEllipsisCellProps) {
   const raw = String(value ?? "").trim();
   if (!raw) {
@@ -21,10 +27,17 @@ export function HubDirectoryEllipsisCell({
   }
 
   const text = normalizeWhitespace ? raw.replace(/\s+/g, " ") : raw;
-
-  return (
+  const cell = (
     <span className={`hub-users-name-title ${DIRECTORY_CELL_TRUNCATE} ${className}`.trim()}>
       {text}
     </span>
+  );
+
+  if (!hoverPopover) return cell;
+
+  return (
+    <HubDirectoryValuePopover value={raw} title={popoverTitle}>
+      {cell}
+    </HubDirectoryValuePopover>
   );
 }

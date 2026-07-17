@@ -1,15 +1,13 @@
-import { hubAccountDetailShellClass } from "@tool-workspace/hub-ui";
+import {
+  STEALTH_ADM_DETAIL_CREATE_MODAL_SHELL_CLASS,
+  STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS,
+} from "../shared/stealth-adm-detail-modal";
 
-/** Shared ADM shell — P0020 Mail Account Detail golden pattern. */
-const PROFILE_DETAIL_ADM_SHELL = hubAccountDetailShellClass({
-  extra: "stealth-profile-detail-modal hub-tool-detail-modal--fit",
-});
+/** Legacy alias — prefer CREATE / EDIT constants below. */
+export const PROFILE_FORM_MODAL_SHELL_CLASS = STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS;
 
-/** New profile — split main + note/log rail. */
-export const PROFILE_FORM_MODAL_SHELL_CLASS = PROFILE_DETAIL_ADM_SHELL;
+/** New profile — compact fit + split main + log rail (bulk create activity). */
+export const PROFILE_CREATE_MODAL_SHELL_CLASS = STEALTH_ADM_DETAIL_CREATE_MODAL_SHELL_CLASS;
 
-/** New profile — split main + log rail (bulk create activity). */
-export const PROFILE_CREATE_MODAL_SHELL_CLASS = `${PROFILE_DETAIL_ADM_SHELL} hub-tool-detail-modal--split`;
-
-/** Edit profile — ADM scaffold main + note/log rail. */
-export const PROFILE_EDIT_MODAL_SHELL_CLASS = `${PROFILE_DETAIL_ADM_SHELL} hub-tool-detail-modal--split`;
+/** Edit profile — fill height + scrollable main (no --fit; avoids section overlap). */
+export const PROFILE_EDIT_MODAL_SHELL_CLASS = STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS;

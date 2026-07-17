@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mail, StickyNote } from "lucide-react";
+import { Mail, Save, StickyNote } from "lucide-react";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
@@ -83,6 +83,7 @@ export function HubUserChangeEmailModal({
           onClick={handleSubmit}
           disabled={busy || !email.trim()}
           busy={busy}
+          icon={Save}
         />
       }
     >

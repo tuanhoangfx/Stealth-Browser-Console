@@ -10,9 +10,17 @@ export type HubTableColumn = {
   role?: HubTableColumnRole;
   icon?: LucideIcon;
   iconClassName?: string;
+  /** Sticker emoji — preferred over Lucide role icon in headers. */
+  headerEmoji?: string;
   /** Custom header cell (sort buttons, select-all, etc.) */
   header?: ReactNode;
 };
+
+/** First layout class on a column — used for `<col>` so select stays 36px under table-layout:fixed. */
+function hubDataTableColClass(className: string | undefined): string | undefined {
+  if (!className) return undefined;
+  return className.split(/\s+/).find(Boolean);
+}
 
 export function HubDataTable({
   columns,
@@ -33,18 +41,26 @@ export function HubDataTable({
   return (
     <div className={wrapClassName}>
       <table className={tableClassName} data-hub-directory-select={directorySelect ? "" : undefined}>
+        {directorySelect ? (
+          <colgroup>
+            {columns.map((col) => (
+              <col key={col.key} className={hubDataTableColClass(col.className)} />
+            ))}
+          </colgroup>
+        ) : null}
         <thead>
           <tr>
             {columns.map((col) => (
               <th key={col.key} className={col.className} scope="col">
                 {col.header ??
-                  (col.role || col.icon ? (
+                  (col.role || col.icon || col.headerEmoji ? (
                     <span className="hub-users-th-label">
                       <HubTableColumnHeader
                         label={col.label}
                         role={col.role}
                         icon={col.icon}
                         iconClassName={col.iconClassName}
+                        headerEmoji={col.headerEmoji}
                       />
                     </span>
                   ) : (

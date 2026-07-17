@@ -1,4 +1,4 @@
-import type { FilterDef, FilterValues } from "../shell/FilterBar";
+import type { FilterDef, FilterOption, FilterValues } from "../shell/FilterBar";
 
 /** Faceted counts: apply query + all filters except the current filter key, then count per option. */
 export function enrichFilterDefs<T>(
@@ -47,4 +47,28 @@ export function enrichFilterDefs<T>(
       count: counts.get(opt.value) ?? 0,
     })),
   }));
+}
+
+/**
+ * Drop zero-count facet options while keeping currently selected values.
+ * Remaining options sort by descending frequency, then value.
+ */
+export function refineSparseFacetOptions(
+  def: FilterDef,
+  counts: Map<string, number>,
+  selectedValues: readonly string[] = [],
+): FilterOption[] {
+  const selected = new Set(selectedValues);
+  return def.options
+    .filter((opt) => (counts.get(opt.value) ?? 0) > 0 || selected.has(opt.value))
+    .map((opt) => ({
+      ...opt,
+      count: counts.get(opt.value) ?? 0,
+    }))
+    .sort((a, b) => {
+      const ca = a.count ?? 0;
+      const cb = b.count ?? 0;
+      if (cb !== ca) return cb - ca;
+      return a.value.localeCompare(b.value);
+    });
 }

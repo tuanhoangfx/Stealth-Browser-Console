@@ -4,6 +4,7 @@ import type {
   HubDirectoryColumnHintLine,
 } from "../table/HubDirectoryColumnHint";
 import type { DirectoryColumnHeaderMeta } from "./directory-column-meta-helpers";
+import type { FilterDef } from "../shell/FilterBar";
 
 /** Standard column hint — title case; default Option section from HubDirectoryColumnHint. */
 export function colHint(
@@ -18,20 +19,43 @@ export function colHint(
   };
 }
 
+/**
+ * Prefix OPTION rows with `Sort priority N` — shared legend contract for every tool/tooltip.
+ * Skips lines that already include a sort-priority prefix.
+ */
+export function withSortPriorityHintLines(
+  lines: readonly HubDirectoryColumnHintLine[],
+): HubDirectoryColumnHintLine[] {
+  return lines.map((line, index) => {
+    const rank = `Sort priority ${index + 1}`;
+    const detail = line.detail?.trim() ?? "";
+    if (/^sort priority\s+\d+/i.test(detail)) return line;
+    return {
+      ...line,
+      detail: detail ? `${rank} — ${detail}` : rank,
+    };
+  });
+}
+
 /** Activity-age dot legend — SSOT `hubActivityAgeTone` (Created, Last update, activity columns). */
-export const HUB_ACTIVITY_AGE_HINT_LINES: HubDirectoryColumnHintLine[] = [
+export const HUB_ACTIVITY_AGE_HINT_LINES: HubDirectoryColumnHintLine[] = withSortPriorityHintLines([
   { statusDot: "age-recent", label: "Fresh", detail: "≤ 1 hour — e.g. just now, 45m ago" },
   { statusDot: "age-aging", label: "Recent", detail: "≤ 24 hours — e.g. 5h ago" },
-  { statusDot: "age-stale", label: "Stale", detail: "> 24 hours — dd/mm/yy date" },
-];
+  { statusDot: "age-days", label: "1–3 days", detail: "≤ 3 days — dd/mm/yy date" },
+  { statusDot: "age-week", label: "4–7 days", detail: "≤ 7 days — dd/mm/yy date" },
+  { statusDot: "age-stale", label: "Stale", detail: "> 7 days — dd/mm/yy date" },
+]);
 
 const ACTIVITY_AGE_KEY_RE = /(^|_)(created|updated|last|sync|activity|modified|seen)(_|$)/i;
+/** CamelCase / compound keys: createdAt, lastActiveAt, updatedAt, … */
+const ACTIVITY_AGE_CAMEL_RE = /(created|updated|lastactive|lastopened|modified|synctime|activityat|seenat)/i;
 
 export function isActivityAgeDirectoryColumn(key: string, label?: string): boolean {
   const k = key.toLowerCase();
   const l = (label ?? "").toLowerCase();
   if (ACTIVITY_AGE_KEY_RE.test(k) || ACTIVITY_AGE_KEY_RE.test(l)) return true;
-  return /last |created|updated|sync|ago/.test(l);
+  if (ACTIVITY_AGE_CAMEL_RE.test(k.replace(/_/g, ""))) return true;
+  return /last |created|updated|sync|ago|activit/.test(l);
 }
 
 export function inferDirectoryColumnHintLines(
@@ -137,4 +161,44 @@ export function applyStandardDirectoryColumnHintsToDefs<TKey extends string>(
     const headerHint: HubDirectoryColumnHintContent = colHint(col.label, description, lines);
     return { ...col, headerHint };
   });
+}
+
+/** Attach `labelHint` to directory column preset items (Display → Table columns). */
+export function withDirectoryColumnLabelHints<
+  K extends string,
+  T extends { key: K; label: string; labelHint?: HubDirectoryColumnHintContent },
+>(
+  items: readonly T[],
+  resolveHint: (key: K, label: string) => HubDirectoryColumnHintContent,
+): Array<T & { labelHint: HubDirectoryColumnHintContent }> {
+  return items.map((item) => ({
+    ...item,
+    labelHint: item.labelHint ?? resolveHint(item.key, item.label),
+  }));
+}
+
+/** Attach `labelHint` to FilterBar facet defs — parity Display panel filter toggles. */
+export function withFilterLabelHints(
+  filters: readonly FilterDef[],
+  resolveHint: (key: string, label: string) => HubDirectoryColumnHintContent | undefined,
+): FilterDef[] {
+  return filters.map((filter) => {
+    const labelHint = filter.labelHint ?? resolveHint(filter.key, filter.label);
+    return labelHint ? { ...filter, labelHint } : filter;
+  });
+}
+
+/** Attach sheet-parity emoji stickers to directory column meta (table header SSOT). */
+export function withDirectoryColumnStickers<M extends Record<string, DirectoryColumnHeaderMeta>>(
+  meta: M,
+  stickers: Partial<Record<keyof M & string, string>>,
+): M {
+  const out = { ...meta } as M;
+  for (const key of Object.keys(stickers) as (keyof M & string)[]) {
+    const emoji = stickers[key];
+    if (emoji && out[key]) {
+      out[key] = { ...out[key], headerEmoji: emoji };
+    }
+  }
+  return out;
 }

@@ -3,27 +3,41 @@ import {
   countHiddenDirectoryTableColumns,
   createDirectoryTableColumnPrefs,
   createDirectoryTableColumnPresetManager,
+  prefIconMapFromHubDirectoryColumnMeta,
   withDirectoryColumnIcons,
+  withDirectoryColumnLabelHints,
   type DirectoryTableColumnItem,
 } from "@tool-workspace/hub-ui";
-import { STEALTH_WORKFLOW_PANEL_COLUMN_KEYS, type StealthWorkflowPanelColumnKey } from "../../lib/directory-column-meta";
-import { WORKFLOW_COLUMN_PREF_ICONS } from "../../lib/profile-display-pref-icons";
+import {
+  STEALTH_WORKFLOW_PANEL_COLUMN_KEYS,
+  STEALTH_WORKFLOW_PANEL_COLUMN_META,
+  toHubDirectoryColumnMeta,
+  type StealthWorkflowPanelColumnKey,
+} from "../../lib/directory-column-meta";
+import { stealthWorkflowColumnHintContent } from "../../lib/stealth-directory-column-hints";
+
+const WORKFLOW_COLUMN_PREF_ICONS = prefIconMapFromHubDirectoryColumnMeta(
+  toHubDirectoryColumnMeta(STEALTH_WORKFLOW_PANEL_COLUMN_META),
+);
 
 export const WORKFLOW_DIRECTORY_GOLDEN_ORDER = [...STEALTH_WORKFLOW_PANEL_COLUMN_KEYS] as const;
 
 /** Shared column defs — rail + Scripts tab (Display toggles identical). */
 export const WORKFLOW_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<StealthWorkflowPanelColumnKey>[] =
-  withDirectoryColumnIcons(
-    [
-      { key: "platform", label: "Platform" },
-      { key: "name", label: "Name", required: true },
-      { key: "id", label: "ID" },
-      { key: "steps", label: "Steps" },
-      { key: "created", label: "Created" },
-      { key: "updated", label: "Updated" },
-      { key: "lastRun", label: "Last Run" },
-    ],
-    WORKFLOW_COLUMN_PREF_ICONS,
+  withDirectoryColumnLabelHints(
+    withDirectoryColumnIcons(
+      [
+        { key: "platform", label: "Platform" },
+        { key: "name", label: "Name", required: true },
+        { key: "id", label: "ID" },
+        { key: "steps", label: "Steps" },
+        { key: "created", label: "Created" },
+        { key: "updated", label: "Update" },
+        { key: "lastRun", label: "Last Run" },
+      ],
+      WORKFLOW_COLUMN_PREF_ICONS,
+    ),
+    stealthWorkflowColumnHintContent,
   );
 
 /** Rail default — base 3 cols + Steps only (Created/Updated off). */

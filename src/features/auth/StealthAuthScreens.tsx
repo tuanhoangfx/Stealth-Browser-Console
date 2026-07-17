@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { hubSessionLabels } from "@tool-workspace/hub-identity";
 import { HubAccessDeniedPanel, HubAuthBootPanel, HubAuthBrandIcon } from "@tool-workspace/hub-ui";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "../../lib/stealth-product";
@@ -17,8 +18,9 @@ export function StealthAuthBootScreen() {
 }
 
 export function StealthAccessDeniedScreen() {
-  const { session, signOut } = useStealthAuth();
+  const { session, signOut, recheckToolAccess } = useStealthAuth();
   const labels = hubSessionLabels(session);
+  const [recheckBusy, setRecheckBusy] = useState(false);
 
   return (
     <HubAccessDeniedPanel
@@ -26,7 +28,12 @@ export function StealthAccessDeniedScreen() {
       toolInfo={TOOL_INFO}
       headerLeading={<HubAuthBrandIcon src={STEALTH_BRAND_ICON} />}
       signedInAs={labels.email || labels.loginId || session?.user?.email || undefined}
-      message="Ask a workspace admin to grant P0003 access in Tool Hub → Users, then sign in again."
+      message="Ask a workspace admin to grant P0003 access in Tool Hub → Users, then check access again (or sign out and sign in)."
+      onRecheck={() => {
+        setRecheckBusy(true);
+        void recheckToolAccess().finally(() => setRecheckBusy(false));
+      }}
+      recheckBusy={recheckBusy}
       onSignOut={() => void signOut()}
     />
   );

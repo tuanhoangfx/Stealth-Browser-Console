@@ -269,6 +269,8 @@ function installDesktopUpdate() {
     message: "Restarting Stealth Browser Console to install update...",
     progress: null,
   });
+  const { flushCatalogForUpdate } = require("./db/last-opened-durability.cjs");
+  flushCatalogForUpdate();
   setImmediate(() => autoUpdater.quitAndInstall(false, true));
   return updateStatus;
 }

@@ -15,7 +15,9 @@ export type WorkspaceTabHeaderProps = {
   titleIcon: HubGlyphComponent;
   titleIconClass?: string;
   titleBrandIcon?: HubBrandIconId;
-  /** Sheet-parity emoji sticker — takes precedence over `titleIcon` when set. */
+  /** Custom SVG/raster tab mark — takes precedence over Lucide/brand when set. */
+  titleIconSrc?: string;
+  /** Sheet-parity emoji sticker — takes precedence over `titleIconSrc` / Lucide when set. */
   titleEmojiGlyph?: string;
   title: string;
   titleMenu?: TabTitleMenuItem[];
@@ -28,6 +30,8 @@ export type WorkspaceTabHeaderProps = {
   versionLive?: boolean;
   extraMetaItems?: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
+  /** Sparse vault/sync status before center stats — idle null. */
+  statusSlot?: ReactNode;
   pinSticky?: boolean;
   dividerBelow?: boolean;
   embedded?: boolean;
@@ -36,7 +40,7 @@ export type WorkspaceTabHeaderProps = {
 
 /**
  * Shared workspace tab header (P0004 Hub layout):
- * title · session · version/release · center stats · actions.
+ * title · session · version/release · status · center stats · actions.
  */
 export function WorkspaceTabHeader({
   versionLine,
@@ -44,6 +48,7 @@ export function WorkspaceTabHeader({
   versionLive,
   extraMetaItems = [],
   centerStats,
+  statusSlot,
   ...header
 }: WorkspaceTabHeaderProps) {
   const metaItems = useMemo(() => {
@@ -61,7 +66,9 @@ export function WorkspaceTabHeader({
     ];
   }, [extraMetaItems, publishedAt, versionLine, versionLive]);
 
-  return <AppTabHeader {...header} metaItems={metaItems} centerStats={centerStats} />;
+  return (
+    <AppTabHeader {...header} metaItems={metaItems} centerStats={centerStats} statusSlot={statusSlot} />
+  );
 }
 
 export type { TabHeaderMetaItem, TabHeaderStatItem, TabTitleMenuItem };

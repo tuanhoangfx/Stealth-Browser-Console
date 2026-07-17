@@ -1,5 +1,5 @@
 /** Workflow Store directory table — P0004 UserDirectoryTable / StealthWorkflowDirectoryTable parity. */
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   HubDirectoryTableShell,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
@@ -9,10 +9,13 @@ import {
   useDirectoryTableSort,
 } from "@tool-workspace/hub-ui";
 import {
-  STEALTH_WORKFLOW_STORE_COLUMN_KEYS,
   STEALTH_WORKFLOW_STORE_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
+import {
+  readWorkflowStoreDirectoryColumns,
+  workflowStoreDirectoryColumnPrefs,
+} from "./workflow-store-directory-prefs";
 import { renderWorkflowStoreDirectoryBodyCell } from "./workflow-store-directory-cells";
 import { workflowStoreUpdatedMs } from "./workflow-store-meta";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
@@ -69,6 +72,14 @@ export const WorkflowStoreDirectoryTable = memo(function WorkflowStoreDirectoryT
   emptyMessage = "No workflows match the current filters.",
   installingId,
 }: WorkflowStoreDirectoryTableProps) {
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(readWorkflowStoreDirectoryColumns);
+
+  useEffect(() => {
+    const sync = () => setVisibleColumnKeys(readWorkflowStoreDirectoryColumns());
+    window.addEventListener(workflowStoreDirectoryColumnPrefs.changeEvent, sync);
+    return () => window.removeEventListener(workflowStoreDirectoryColumnPrefs.changeEvent, sync);
+  }, []);
+
   const sortableValue = useMemo(
     () => (entry: WorkflowStoreEntry, key: WorkflowStoreSortKey) =>
       sortableStoreValue(entry, key, localIds),
@@ -85,10 +96,10 @@ export const WorkflowStoreDirectoryTable = memo(function WorkflowStoreDirectoryT
   const columns = useMemo(
     () =>
       buildDirectoryColumns(
-        [...STEALTH_WORKFLOW_STORE_COLUMN_KEYS],
+        visibleColumnKeys as WorkflowStoreSortKey[],
         toHubDirectoryColumnMeta(STEALTH_WORKFLOW_STORE_COLUMN_META),
       ),
-    [],
+    [visibleColumnKeys],
   );
 
   const colgroup = useMemo(() => buildDirectoryColgroupForShell(columns, { showSelect: true }), [columns]);

@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { useHubAccountDetailSearchShortcuts } from "../keyboard/useHubAccountDetailSearchShortcuts";
 import { HubAdmNoteSearchBar } from "./HubAdmNoteSearchBar";
 import { useHubAccountDetailSearch } from "./hubAccountDetailSearch";
 
@@ -37,9 +38,17 @@ export function HubAccountDetailHeaderSearch({
     [stepMatch],
   );
 
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    inputRef.current?.focus();
+  }, [setSearchQuery]);
+
+  useHubAccountDetailSearchShortcuts({ inputRef, onClear: clearSearch });
+
   return (
     <HubAdmNoteSearchBar
       variant="header"
+      modalSearch
       searchQuery={searchQuery}
       onSearchQueryChange={setSearchQuery}
       hasSearch={hasSearch}

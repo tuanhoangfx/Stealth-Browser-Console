@@ -28,6 +28,7 @@ export type SignInHubIdentityConfig = {
   recoverHubSession?: (
     loginInput: string,
     password: string,
+    mode?: "signin" | "signup",
   ) => Promise<HubSessionRecoveryResult | null>;
 };
 
@@ -78,12 +79,21 @@ export async function signInHubIdentityPlane(
       mode === "signin" &&
       identityResult.error &&
       isHubAuthRateLimitError(identityResult.error.message);
-    if (rateLimited && config.recoverHubSession) {
+    const needsSignupConfirm = mode === "signup" && !identityResult.error;
+    const signupAlreadyRegistered =
+      mode === "signup" &&
+      Boolean(identityResult.error?.message?.match(/already registered|already been registered/i));
+
+    if ((rateLimited || needsSignupConfirm || signupAlreadyRegistered) && config.recoverHubSession) {
       try {
-        const recovered = await config.recoverHubSession(loginInput, password);
+        const recovered = await config.recoverHubSession(
+          loginInput,
+          password,
+          needsSignupConfirm || signupAlreadyRegistered ? "signup" : "signin",
+        );
         if (recovered?.identitySession) identitySession = recovered.identitySession;
       } catch {
-        /* worker offline — fall through to rate-limit message */
+        /* worker offline — fall through */
       }
     }
     if (!identitySession) {
@@ -137,8 +147,8 @@ export async function runWorkspaceDualSignIn(
   const wrappedConfig: SignInHubIdentityConfig = {
     ...config,
     recoverHubSession: config.recoverHubSession
-      ? async (login, pwd) => {
-          const recovered = await config.recoverHubSession!(login, pwd);
+      ? async (login, pwd, recoverMode) => {
+          const recovered = await config.recoverHubSession!(login, pwd, recoverMode);
           if (recovered?.chatcenterSession) recoveredPlaneSession = recovered.chatcenterSession;
           return recovered;
         }

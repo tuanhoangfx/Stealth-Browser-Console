@@ -181,15 +181,39 @@ function resolveStepValue(value, context) {
 
   if (context.mailCredentials) {
     const mc = context.mailCredentials;
+    const email = mc.email || "";
+    const password = mc.password || "";
+    const recovery = mc.mailRecover || "";
+    const proofCode = mc.outlookProofCode || "";
     resolved = resolved
-      .replaceAll("{{gmailEmail}}", mc.email || "")
-      .replaceAll("{{gmailPassword}}", mc.password || "")
-      .replaceAll("{{gmailRecovery}}", mc.mailRecover || "");
+      .replaceAll("{{gmailEmail}}", email)
+      .replaceAll("{{gmailPassword}}", password)
+      .replaceAll("{{gmailRecovery}}", recovery)
+      .replaceAll("{{outlookEmail}}", email)
+      .replaceAll("{{outlookPassword}}", password)
+      .replaceAll("{{outlookRecovery}}", recovery)
+      .replaceAll("{{mailEmail}}", email)
+      .replaceAll("{{mailPassword}}", password)
+      .replaceAll("{{mailRecovery}}", recovery);
+    if (proofCode) {
+      resolved = resolved
+        .replaceAll("{{outlookTotpCode}}", proofCode)
+        .replaceAll("{{mailTotpCode}}", proofCode)
+        .replaceAll("{{gmailTotpCode}}", proofCode);
+    }
   }
 
-  if (resolved.includes("{{gmailTotpCode}}") && context.generateTotp && context.mailCredentials?.secret) {
+  const needsTotp =
+    resolved.includes("{{gmailTotpCode}}") ||
+    resolved.includes("{{outlookTotpCode}}") ||
+    resolved.includes("{{mailTotpCode}}");
+  if (needsTotp && context.generateTotp && context.mailCredentials?.secret) {
     const { generateTotp } = require("../lib/totp-generate.cjs");
-    resolved = resolved.replaceAll("{{gmailTotpCode}}", generateTotp(context.mailCredentials.secret));
+    const code = generateTotp(context.mailCredentials.secret);
+    resolved = resolved
+      .replaceAll("{{gmailTotpCode}}", code)
+      .replaceAll("{{outlookTotpCode}}", code)
+      .replaceAll("{{mailTotpCode}}", code);
   }
 
   return resolved;
@@ -213,6 +237,345 @@ function isGoogleEmailStep(step) {
   return sel.includes("identifierid") || sel.includes('type="email"') || val.includes("{{gmailEmail}}");
 }
 
+function isOutlookEmailStep(step) {
+  const sel = stepSelector(step).toLowerCase();
+  const val = String(step.value || "");
+  return (
+    val.includes("{{outlookEmail}}") ||
+    val.includes("{{mailEmail}}") ||
+    sel.includes("loginfmt") ||
+    sel.includes("#i0116") ||
+    (sel.includes('type="email"') && /outlook|microsoft|hotmail/i.test(String(step.name || "")))
+  );
+}
+
+function isMicrosoftInboxUrl(url) {
+  const href = String(url || "");
+  return /outlook\.(live|office|office365)\.com\/mail/i.test(href) && !/signin|login\.live/i.test(href);
+}
+
+function isMicrosoftAlreadySignedInUrl(url) {
+  const href = String(url || "");
+  if (isMicrosoftInboxUrl(href)) return true;
+  // After successful login, login.live.com often redirects to account hub.
+  if (/account\.microsoft\.com/i.test(href) && !/login|signin|oauth20|signout|logout/i.test(href)) return true;
+  if (/account\.live\.com\/(proofs|consent)/i.test(href)) return false;
+  if (/account\.live\.com/i.test(href) && !/login|signin|logout/i.test(href)) return true;
+  return false;
+}
+
+function isMicrosoftCookieDomain(domain) {
+  const d = String(domain || "").replace(/^\./, "").toLowerCase();
+  return (
+    /(^|\.)live\.com$|(^|\.)microsoft\.com$|(^|\.)microsoftonline\.com$|(^|\.)hotmail\.com$|(^|\.)outlook\.com$|(^|\.)msn\.com$|(^|\.)office\.com$|(^|\.)office365\.com$/i.test(
+      d,
+    )
+  );
+}
+
+/** Drop Microsoft auth cookies only — keep Google/other services on the same profile. */
+async function clearMicrosoftCookies(context, logger) {
+  if (!context?.cookies || !context?.clearCookies) return 0;
+  const all = await context.cookies().catch(() => []);
+  const ms = all.filter((c) => isMicrosoftCookieDomain(c.domain));
+  if (!ms.length) return 0;
+  const keep = all.filter((c) => !isMicrosoftCookieDomain(c.domain));
+  await context.clearCookies();
+  if (keep.length) {
+    const restored = keep
+      .map((c) => {
+        if (!c.name) return null;
+        return {
+          name: c.name,
+          value: c.value || "",
+          domain: c.domain,
+          path: c.path || "/",
+          expires: c.expires,
+          httpOnly: c.httpOnly,
+          secure: c.secure,
+          sameSite: c.sameSite,
+        };
+      })
+      .filter(Boolean);
+    if (restored.length) {
+      await context.addCookies(restored).catch(() => undefined);
+    }
+  }
+  logger.push("info", `Cleared ${ms.length} Microsoft cookies (kept ${keep.length} other)`);
+  return ms.length;
+}
+
+function isMicrosoftLoginUrl(url) {
+  const href = String(url || "").toLowerCase();
+  return (
+    /login\.live\.com|login\.microsoftonline\.com|account\.live\.com|account\.microsoft\.com/i.test(href) ||
+    /microsoftonline\.com\/.*login|live\.com\/.*login/i.test(href)
+  );
+}
+
+function isMicrosoftPasswordStep(step) {
+  const sel = stepSelector(step).toLowerCase();
+  return sel.includes("passwd") || sel.includes("#i0118") || (sel.includes("password") && /outlook|microsoft|passwd/i.test(`${sel} ${step.name || ""}`));
+}
+
+function isMicrosoftEmailNextClick(step) {
+  const label = String(step.name || "").toLowerCase();
+  const sel = stepSelector(step).toLowerCase();
+  return /next.*email|email.*next/i.test(label) || (/idsibutton9|type="submit"|next/i.test(sel) && /email/i.test(label));
+}
+
+async function isMicrosoftPasswordVisible(page) {
+  return page
+    .locator('input[name="passwd"], #i0118, input[type="password"]:visible')
+    .first()
+    .isVisible({ timeout: 800 })
+    .catch(() => false);
+}
+
+async function isMicrosoftEmailVisible(page) {
+  return page
+    .locator('input[name="loginfmt"], #i0116, input[type="email"]:visible')
+    .first()
+    .isVisible({ timeout: 800 })
+    .catch(() => false);
+}
+
+async function captureMicrosoftAuthDiag(page, logger, tag = "ms-auth") {
+  const url = page.url?.() || "(unknown)";
+  const title = await page.title().catch(() => "");
+  const snippet = await page
+    .evaluate(() => {
+      const text = String(document.body?.innerText || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 420);
+      const buttons = Array.from(document.querySelectorAll("button, a, [role='button']"))
+        .map((el) => String(el.textContent || "").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .slice(0, 12);
+      return { text, buttons };
+    })
+    .catch(() => ({ text: "", buttons: [] }));
+  logger.push(
+    "info",
+    `Microsoft diag [${tag}]: url=${url} title=${title || "(none)"} buttons=${JSON.stringify(snippet.buttons || [])} text=${snippet.text || "(empty)"}`,
+  );
+}
+
+async function isMicrosoftVerifyEmailVisible(page) {
+  const locators = [
+    page.getByRole("heading", { name: /verify your email|xác minh email/i }),
+    page.locator("h1, h2, [role='heading']").filter({ hasText: /verify your email/i }),
+    page.locator("text=/Verify your email/i"),
+    page.locator("text=/We'll send a code to|We will send a code to/i"),
+    page.getByRole("button", { name: /send code|gửi mã|gui ma/i }),
+    page.locator('button:has-text("Send code"), input[type="submit"][value*="Send" i]'),
+  ];
+  for (const locator of locators) {
+    const visible = await locator
+      .first()
+      .isVisible({ timeout: 700 })
+      .catch(() => false);
+    if (visible) return true;
+  }
+  return false;
+}
+
+async function isMicrosoftOtcVisible(page) {
+  return page
+    .locator('input[name="otc"], input[placeholder*="code" i], input[aria-label*="code" i], input[autocomplete="one-time-code"]')
+    .first()
+    .isVisible({ timeout: 800 })
+    .catch(() => false);
+}
+
+async function dismissMicrosoftPasskeyEnroll(page, logger) {
+  const skipped = await clickFirst(
+    page,
+    "Skip passkey enroll",
+    [
+      page.getByRole("button", { name: /skip|not now|no thanks|bỏ qua|de sau|để sau/i }),
+      page.getByRole("link", { name: /skip|not now|no thanks/i }),
+      page.locator('text=/Skip for now|Not now|No thanks/i'),
+      page.locator("#idBtn_Back, #iShowSkip, [data-testid='secondaryButton']"),
+    ],
+    logger,
+    { optional: true, verb: "clicked" },
+  );
+  if (skipped) await settlePage(page, 2500);
+  return skipped;
+}
+
+async function isMicrosoftEnterPasswordPage(page) {
+  if (await isMicrosoftPasswordVisible(page)) return true;
+  const title = await page.title().catch(() => "");
+  if (/enter your password|nhập mật khẩu|nhap mat khau/i.test(title)) return true;
+  const heading = await page
+    .getByRole("heading", { name: /enter your password|nhập mật khẩu/i })
+    .first()
+    .isVisible({ timeout: 500 })
+    .catch(() => false);
+  if (heading) return true;
+  return page
+    .locator("text=/Enter your password/i")
+    .first()
+    .isVisible({ timeout: 500 })
+    .catch(() => false);
+}
+
+/**
+ * Advance Microsoft interrupt screens toward password or OTC.
+ * @returns {Promise<"password"|"otc"|"unknown">}
+ */
+async function ensureMicrosoftPasswordScreen(page, logger, context = {}) {
+  if (await isMicrosoftPasswordVisible(page)) {
+    logger.push("info", "Microsoft password input already visible");
+    return "password";
+  }
+  if (await isMicrosoftEnterPasswordPage(page)) {
+    // Already on password UI — wait for field; do not click "Other ways" (leaves this page).
+    logger.push("info", "Microsoft Enter your password page — waiting for field (skip Other ways)");
+    const readyDeadline = Date.now() + 8_000;
+    while (Date.now() < readyDeadline) {
+      if (await isMicrosoftPasswordVisible(page)) return "password";
+      await clickFirst(
+        page,
+        "Use your password",
+        [
+          page.getByRole("button", { name: /use your password|dùng mật khẩu|^password$/i }),
+          page.getByRole("link", { name: /use your password|dùng mật khẩu/i }),
+          page.locator('#idA_PWD_SwitchToPassword'),
+        ],
+        logger,
+        { optional: true, verb: "clicked" },
+      );
+      await settlePage(page, 600);
+    }
+    if (await isMicrosoftPasswordVisible(page)) return "password";
+  }
+
+  const deadline = Date.now() + 28_000;
+  let loops = 0;
+  let sentRecoveryCode = false;
+  const recovery = String(context.mailCredentials?.mailRecover || "").trim();
+
+  while (Date.now() < deadline) {
+    loops += 1;
+    if (await isMicrosoftPasswordVisible(page)) return "password";
+    if (await isMicrosoftEnterPasswordPage(page)) {
+      logger.push("info", "Reached Enter your password — stop interrupt loop");
+      const fieldDeadline = Date.now() + 6_000;
+      while (Date.now() < fieldDeadline) {
+        if (await isMicrosoftPasswordVisible(page)) return "password";
+        await settlePage(page, 500);
+      }
+      return (await isMicrosoftPasswordVisible(page)) ? "password" : "unknown";
+    }
+    if (await isMicrosoftOtcVisible(page) && sentRecoveryCode) return "otc";
+
+    // Prefer classic password over email proof when available.
+    await clickFirst(
+      page,
+      "Other ways to sign in",
+      [
+        page.getByRole("button", { name: /other ways to sign in|sign in another way|cách khác|cach khac/i }),
+        page.getByRole("link", { name: /other ways to sign in|sign in another way|cách khác/i }),
+        page.locator('text=/Other ways to sign in|Sign in another way|Cách khác/i'),
+      ],
+      logger,
+      { optional: true, verb: "clicked" },
+    );
+
+    await clickFirst(
+      page,
+      "Use your password",
+      [
+        page.getByRole("button", { name: /use your password|dùng mật khẩu|dung mat khau|^password$/i }),
+        page.getByRole("link", { name: /use your password|dùng mật khẩu|dung mat khau/i }),
+        page.locator('text=/Use your password|Dùng mật khẩu/i'),
+        page.locator('#idA_PWD_SwitchToPassword, #idA_PWD_SwitchToCredPicker'),
+        page.locator('[data-testid="primaryButton"]:has-text("Password")'),
+        page.locator('div[role="listitem"]:has-text("Password")'),
+      ],
+      logger,
+      { optional: true, verb: "clicked" },
+    );
+
+    if (await isMicrosoftPasswordVisible(page) || (await isMicrosoftEnterPasswordPage(page))) {
+      if (await isMicrosoftPasswordVisible(page)) return "password";
+      continue;
+    }
+
+    if ((await isMicrosoftVerifyEmailVisible(page)) && recovery && !sentRecoveryCode) {
+      logger.push("info", `Microsoft Verify your email — filling recovery ${recovery}`);
+      const filled = await page
+        .locator('input[type="email"]:visible, input[name="iProofEmail"], input[aria-label*="Email" i], input[placeholder*="Email" i]')
+        .first()
+        .fill(recovery, { timeout: 8000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!filled) {
+        await captureMicrosoftAuthDiag(page, logger, "verify-email-fill-fail");
+      } else {
+        const sent = await clickFirst(
+          page,
+          "Send code",
+          [
+            page.getByRole("button", { name: /send code|gửi mã|gui ma/i }),
+            page.locator("#iSelectProofAction, #idSIButton9"),
+            page.locator('input[type="submit"]'),
+          ],
+          logger,
+          { optional: false, verb: "clicked" },
+        );
+        if (sent) {
+          sentRecoveryCode = true;
+          await settlePage(page, 4000);
+          if (await isMicrosoftOtcVisible(page)) return "otc";
+        }
+      }
+    }
+
+    // Account tile on login.live.com picker
+    await clickFirst(
+      page,
+      "Account tile",
+      [
+        page.locator('[data-testid="tile"]'),
+        page.locator('#tileList [role="listitem"]').first(),
+        page.locator('.table[role="button"], .tile').first(),
+      ],
+      logger,
+      { optional: true, verb: "selected" },
+    );
+
+    // Still on email? click Next once to advance.
+    if (await isMicrosoftEmailVisible(page) && !(await isMicrosoftVerifyEmailVisible(page))) {
+      await clickFirst(
+        page,
+        "Microsoft Next",
+        [
+          page.locator("#idSIButton9"),
+          page.getByRole("button", { name: /^(next|tiếp theo|tiep theo|sign in)$/i }),
+          page.locator('input[type="submit"]'),
+        ],
+        logger,
+        { optional: true, verb: "clicked" },
+      );
+    }
+
+    await settlePage(page, 1200);
+    if (loops === 1 || loops % 4 === 0) {
+      await captureMicrosoftAuthDiag(page, logger, `ensure-pwd-${loops}`);
+    }
+  }
+
+  await captureMicrosoftAuthDiag(page, logger, "ensure-pwd-timeout");
+  if (await isMicrosoftPasswordVisible(page)) return "password";
+  if (await isMicrosoftOtcVisible(page)) return "otc";
+  return "unknown";
+}
+
 async function isGooglePasswordStepReady(page) {
   return page
     .locator('input[name="Passwd"]')
@@ -230,10 +593,32 @@ async function isGoogleVisibleEmailInput(page) {
 }
 
 function isTotpRelated(step) {
+  const kind = String(step.kind || "");
+  // Delay / navigate must never be treated as 2FA — e.g. "Wait for 2FA or redirect" delay.
+  if (kind === "delay" || kind === "navigate" || kind === "screenshot" || kind === "scroll") return false;
   const val = String(step.value || "");
   const sel = String(step.selector || "");
   const name = String(step.name || "").toLowerCase();
-  return val.includes("{{gmailTotpCode}}") || sel.includes("totpPin") || sel.includes("totp") || name.includes("2fa");
+  return (
+    val.includes("{{gmailTotpCode}}") ||
+    val.includes("{{outlookTotpCode}}") ||
+    val.includes("{{mailTotpCode}}") ||
+    sel.includes("totpPin") ||
+    sel.includes("totp") ||
+    /otc/i.test(sel) ||
+    name.includes("2fa") ||
+    /totp|otc|authenticator/i.test(name)
+  );
+}
+
+function isMicrosoftAuthProgressUrl(url) {
+  const href = String(url || "");
+  return (
+    /account\.microsoft\.com\/auth\/complete/i.test(href) ||
+    /account\.live\.com\/interrupt\/passkey/i.test(href) ||
+    /login\.live\.com\/oauth20_/i.test(href) ||
+    isMicrosoftInboxUrl(href)
+  );
 }
 
 function isGoogleAuthenticatorTotpVisible(page) {
@@ -377,6 +762,7 @@ async function runScriptSteps(page, steps, logger, context) {
   let activePage = page;
   let skip2fa = false;
   let skipLogin = false;
+  let skipMicrosoftPassword = false;
   const enabledSteps = steps.filter((step) => step && step.enabled !== false);
 
   if (context.mailCredentials && !context.mailCredentials.secret) {
@@ -390,8 +776,20 @@ async function runScriptSteps(page, steps, logger, context) {
     const timeout = Number.isFinite(Number(step.timeoutMs)) ? Math.max(0, Number(step.timeoutMs)) : 10000;
     logger.push("info", `Step ${index + 1}/${enabledSteps.length}: ${label}`);
 
-    if (skipLogin && step.kind !== "screenshot") {
-      logger.push("info", `Skipped (session active): ${label}`);
+    if (skipLogin) {
+      const navTarget = String(step.value || "");
+      const keep =
+        step.kind === "screenshot" ||
+        (step.kind === "navigate" && /outlook\.(live|office)/i.test(navTarget)) ||
+        (step.kind === "delay" && /login complete|inbox/i.test(label));
+      if (!keep) {
+        logger.push("info", `Skipped (session active): ${label}`);
+        continue;
+      }
+    }
+
+    if (skipMicrosoftPassword && (isMicrosoftPasswordStep(step) || /next \(password\)|type password|password input/i.test(label))) {
+      logger.push("info", `Skipped (Microsoft proof/OTC path): ${label}`);
       continue;
     }
 
@@ -402,8 +800,36 @@ async function runScriptSteps(page, steps, logger, context) {
 
     if (step.kind === "navigate") {
       const url = assertResolvedStepValue(resolveStepValue(step.value || context.targetUrl, context), label);
-      await safePageGoto(activePage, url, { waitUntil: "commit", timeout: timeout || 60000 });
-      await settlePage(activePage, Math.min(8000, timeout || 8000));
+      const isOutlookInbox = /outlook\.(live|office|office365)\.com\/mail/i.test(url);
+      const inboxCapMs = Number(process.env.STEALTH_OUTLOOK_INBOX_TIMEOUT_MS) || 45_000;
+      const navTimeout = isOutlookInbox
+        ? Math.min(timeout || inboxCapMs, inboxCapMs)
+        : timeout || 60000;
+      const settledMs = isOutlookInbox ? Math.min(3000, navTimeout) : Math.min(8000, timeout || 8000);
+      try {
+        await safePageGoto(activePage, url, { waitUntil: "commit", timeout: navTimeout });
+      } catch (navError) {
+        if (isOutlookInbox) {
+          const here = activePage.url?.() || "";
+          throw new Error(
+            `Outlook inbox navigate fail-fast (${navTimeout}ms): ${cleanMessage(navError.message)} @ ${here}`,
+          );
+        }
+        throw navError;
+      }
+      await settlePage(activePage, settledMs);
+      if (isOutlookInbox) {
+        const here = activePage.url?.() || "";
+        if (/login\.live\.com|login\.microsoftonline\.com|account\.live\.com\/.*login/i.test(here)) {
+          throw new Error(`Outlook inbox navigate landed on login (session lost): ${here}`);
+        }
+        logger.push("info", `Outlook inbox settle ${settledMs}ms (cap ${navTimeout}ms)`);
+      }
+      if (/logout\.srf|auth\/signout|wsignout/i.test(url)) {
+        await clearMicrosoftCookies(activePage.context(), logger);
+        // Logout navigations must never flip skipLogin — cold path needs a real password fill.
+        skipLogin = false;
+      }
       if (isGoogleWorkflowUrl(url)) {
         await assertGoogleSession(activePage, logger, {
           targetUrl: url,
@@ -411,12 +837,87 @@ async function runScriptSteps(page, steps, logger, context) {
         });
       }
       logger.push("success", `Navigated: ${url}`);
+      if (/login\.live\.com|login\.microsoftonline\.com/i.test(url) && !/logout|signout/i.test(url)) {
+        // Redirect to account hub can lag; poll briefly instead of burning email-wait timeout.
+        const signedInDeadline = Date.now() + 8_000;
+        while (Date.now() < signedInDeadline) {
+          const after = activePage.url?.() || "";
+          if (isMicrosoftAlreadySignedInUrl(after)) {
+            skipLogin = true;
+            logger.push(
+              "info",
+              `Microsoft session already active after login navigate (${after}) — skip Outlook login steps`,
+            );
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
       continue;
     }
 
     if (step.kind === "wait") {
       const selector = stepSelector(step);
       if (selector) {
+        if (isOutlookEmailStep(step)) {
+          const msUrl = activePage.url?.() || "";
+          if (isMicrosoftAlreadySignedInUrl(msUrl) || isMicrosoftInboxUrl(msUrl)) {
+            skipLogin = true;
+            logger.push("info", "Microsoft session already active — skip Outlook login steps");
+            continue;
+          }
+          // Poll short window for login→account redirect before hard-waiting on email field.
+          const redirectDeadline = Date.now() + 6_000;
+          while (Date.now() < redirectDeadline) {
+            const live = activePage.url?.() || "";
+            if (isMicrosoftAlreadySignedInUrl(live) || isMicrosoftInboxUrl(live)) {
+              skipLogin = true;
+              logger.push("info", "Microsoft session already active — skip Outlook login steps");
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 400));
+          }
+          if (skipLogin) continue;
+        }
+        if (isMicrosoftPasswordStep(step) || /passwd|#i0118|password input/i.test(`${stepSelector(step)} ${label}`)) {
+          logger.push("info", "Ensuring Microsoft password screen…");
+          const gate = await ensureMicrosoftPasswordScreen(activePage, logger, context);
+          if (gate === "password") {
+            // continue to wait for password
+          } else if (gate === "otc") {
+            skipMicrosoftPassword = true;
+            skip2fa = false;
+            logger.push("info", "Microsoft recovery OTC path — skip password steps");
+            const recovery = String(context.mailCredentials?.mailRecover || "").trim();
+            if (/@getnada\.com$/i.test(recovery) && !context.mailCredentials?.outlookProofCode) {
+              try {
+                const { pollGetnadaSecurityCode } = require("../lib/getnada-inbox.cjs");
+                logger.push("info", `Polling getnada for Microsoft security code (${recovery})…`);
+                const got = await pollGetnadaSecurityCode(recovery, {
+                  timeoutMs: 90_000,
+                  sinceMs: Date.now() - 20_000,
+                });
+                if (got.ok && got.code) {
+                  context.mailCredentials = {
+                    ...context.mailCredentials,
+                    outlookProofCode: got.code,
+                  };
+                  logger.push("success", `Microsoft security code received from getnada`);
+                } else {
+                  logger.push("error", got.error || "getnada did not return a security code");
+                }
+              } catch (pollError) {
+                logger.push(
+                  "error",
+                  `getnada poll failed: ${pollError instanceof Error ? pollError.message : String(pollError)}`,
+                );
+              }
+            }
+            continue;
+          } else {
+            logger.push("warn", `Microsoft password field not ready at ${activePage.url?.() || "(unknown)"}`);
+          }
+        }
         if (isGoogleEmailStep(step)) {
           const signinUrl = activePage.url?.() || "";
           if (/myaccount\.google\.com|mail\.google\.com/i.test(signinUrl) && !/signin/i.test(signinUrl)) {
@@ -471,12 +972,39 @@ async function runScriptSteps(page, steps, logger, context) {
         try {
           await waitForVisibleSelector(activePage, selector, timeout || 15000, logger, context);
         } catch (waitError) {
+          if (isOutlookEmailStep(step) && (isMicrosoftAlreadySignedInUrl(activePage.url?.() || "") || isMicrosoftInboxUrl(activePage.url?.() || ""))) {
+            skipLogin = true;
+            logger.push("info", "Microsoft session already active — skip Outlook login steps");
+            continue;
+          }
+          if (isMicrosoftPasswordStep(step) || /passwd|#i0118|password input/i.test(`${selector} ${label}`)) {
+            await captureMicrosoftAuthDiag(activePage, logger, "password-wait-fail");
+            if (context.screenshotsRoot) {
+              await saveStepScreenshot(
+                activePage,
+                context.profileName,
+                "ms_password_missing",
+                logger,
+                true,
+                context.screenshotsRoot,
+              );
+            }
+          }
           if (isGoogleEmailStep(step) && /myaccount\.google\.com|mail\.google\.com/i.test(activePage.url?.() || "")) {
             skipLogin = true;
             logger.push("info", "Google session already active — skip login steps");
             continue;
           }
           if (isTotpRelated(step)) {
+            const pageUrl = activePage.url?.() || "";
+            if (isMicrosoftAuthProgressUrl(pageUrl) || isMicrosoftLoginUrl(pageUrl)) {
+              await dismissMicrosoftPasskeyEnroll(activePage, logger);
+              if (isMicrosoftAuthProgressUrl(activePage.url?.() || "") || !(await isMicrosoftOtcVisible(activePage))) {
+                logger.push("info", `2FA selector not found after Microsoft auth progress — skipping TOTP: ${selector}`);
+                skip2fa = true;
+                continue;
+              }
+            }
             const navigated = await ensureGoogleAuthenticatorTotpScreen(activePage, logger);
             if (navigated) {
               try {
@@ -485,6 +1013,12 @@ async function runScriptSteps(page, steps, logger, context) {
               } catch {
                 // fall through
               }
+            }
+            // Outlook / Microsoft OTC often absent when password-only — soft skip.
+            if (isMicrosoftLoginUrl(activePage.url?.() || "") || isMicrosoftAuthProgressUrl(activePage.url?.() || "") || !context.mailCredentials?.secret) {
+              logger.push("info", `2FA selector not found — skipping remaining TOTP steps: ${selector}`);
+              skip2fa = true;
+              continue;
             }
             if (!context.mailCredentials?.secret) {
               logger.push("info", `2FA selector not found — skipping remaining TOTP steps: ${selector}`);
@@ -514,6 +1048,31 @@ async function runScriptSteps(page, steps, logger, context) {
         logger.push("info", "Skipped email Next — already on password step");
         continue;
       }
+      if (isMicrosoftEmailNextClick(step) || (/next \(email\)/i.test(label) && isMicrosoftLoginUrl(activePage.url?.() || ""))) {
+        if (await isMicrosoftPasswordVisible(activePage)) {
+          logger.push("info", "Skipped Microsoft email Next — password already visible");
+          continue;
+        }
+        if (await isMicrosoftVerifyEmailVisible(activePage)) {
+          logger.push("info", "Skipped Microsoft email Next — Verify your email screen");
+          continue;
+        }
+        if (await isMicrosoftOtcVisible(activePage)) {
+          logger.push("info", "Skipped Microsoft email Next — OTC already visible");
+          continue;
+        }
+        if (!(await isMicrosoftEmailVisible(activePage))) {
+          await settlePage(activePage, 2500);
+          if (
+            (await isMicrosoftPasswordVisible(activePage)) ||
+            (await isMicrosoftVerifyEmailVisible(activePage)) ||
+            !(await isMicrosoftEmailVisible(activePage))
+          ) {
+            logger.push("info", "Skipped Microsoft email Next — already past email step");
+            continue;
+          }
+        }
+      }
       try {
         const target = activePage.locator(selector).first();
         await target.waitFor({ state: "visible", timeout: timeout || 10000 });
@@ -529,6 +1088,29 @@ async function runScriptSteps(page, steps, logger, context) {
         await settlePage(activePage, Math.min(8000, timeout || 8000));
         logger.push("success", `Clicked: ${selector}`);
       } catch (clickError) {
+        if (/stay signed in/i.test(label)) {
+          logger.push("info", "Stay signed in prompt not shown — continue");
+          continue;
+        }
+        if (
+          isMicrosoftEmailNextClick(step) ||
+          (/next \(email\)/i.test(label) && isMicrosoftLoginUrl(activePage.url?.() || ""))
+        ) {
+          if (
+            (await isMicrosoftVerifyEmailVisible(activePage)) ||
+            (await isMicrosoftPasswordVisible(activePage)) ||
+            (await isMicrosoftOtcVisible(activePage)) ||
+            !(await isMicrosoftEmailVisible(activePage))
+          ) {
+            logger.push("info", "Microsoft email Next soft-skip — already past email form");
+            continue;
+          }
+        }
+        if (/next \(password\)|sign in/i.test(label) && isMicrosoftAuthProgressUrl(activePage.url?.() || "")) {
+          logger.push("info", "Microsoft password Next soft-skip — auth already progressing");
+          await dismissMicrosoftPasskeyEnroll(activePage, logger);
+          continue;
+        }
         if (isTotpRelated(step)) {
           logger.push("info", `2FA button not found — skipping: ${selector}`);
           skip2fa = true;
@@ -556,6 +1138,14 @@ async function runScriptSteps(page, steps, logger, context) {
       if (step.pressEnter) {
         await target.press("Enter", { timeout: timeout || 10000 });
         logger.push("success", `Pressed Enter on: ${selector}`);
+        if (isOutlookEmailStep(step)) {
+          await settlePage(activePage, 4500);
+          // After email submit Microsoft often lands on Verify / password — soft-advance here
+          // so the following "Click Next (email)" does not hard-fail.
+          if (await isMicrosoftVerifyEmailVisible(activePage) || await isMicrosoftPasswordVisible(activePage)) {
+            logger.push("info", "Microsoft advanced past email after Enter");
+          }
+        }
       }
       logger.push("success", `Typed into: ${selector}`);
       } catch (typeError) {

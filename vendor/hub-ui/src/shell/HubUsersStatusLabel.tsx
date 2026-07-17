@@ -6,6 +6,8 @@ export type HubUsersStatusTone =
   | "age-fresh"
   | "age-recent"
   | "age-aging"
+  | "age-days"
+  | "age-week"
   | "age-stale";
 
 export type HubUsersStatusLabelProps = {

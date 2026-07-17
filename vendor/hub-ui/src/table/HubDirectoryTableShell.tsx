@@ -25,6 +25,7 @@ export type HubDirectoryTableColumn<TKey extends string> = {
   headerIconClassName?: string;
   headerBrandIcon?: HubTableColumnHeaderProps["brandIcon"];
   headerEmoji?: string;
+  headerImageSrc?: string;
   /** Native title fallback when rich hint is absent. */
   headerTooltip?: string;
   /** Rich multi-line popover with icon rows. */
@@ -151,14 +152,16 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
   const columnHeaderProps = (col: (typeof columns)[number]) =>
     col.headerEmoji
       ? { label: col.label, headerEmoji: col.headerEmoji }
-      : col.headerIcon || col.headerBrandIcon
-        ? {
-            label: col.label,
-            icon: col.headerIcon,
-            iconClassName: col.headerIconClassName,
-            brandIcon: col.headerBrandIcon,
-          }
-        : { label: col.label, role: col.role };
+      : col.headerImageSrc
+        ? { label: col.label, headerImageSrc: col.headerImageSrc }
+        : col.headerIcon || col.headerBrandIcon
+          ? {
+              label: col.label,
+              icon: col.headerIcon,
+              iconClassName: col.headerIconClassName,
+              brandIcon: col.headerBrandIcon,
+            }
+          : { label: col.label, role: col.role };
 
   const renderThLabel = (
     col: (typeof columns)[number],
@@ -179,11 +182,13 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
           titleGlyph={
             col.headerEmoji
               ? { emoji: col.headerEmoji }
-              : {
-                  icon: col.headerIcon ?? roleMeta?.icon,
-                  brandIcon: col.headerBrandIcon,
-                  toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
-                }
+              : col.headerImageSrc
+                ? { brandIcon: col.headerBrandIcon }
+                : {
+                    icon: col.headerIcon ?? roleMeta?.icon,
+                    brandIcon: col.headerBrandIcon,
+                    toneClass: col.headerIconClassName ?? roleMeta?.iconClassName ?? "hub-users-th-icon--name",
+                  }
           }
         >
           {label}

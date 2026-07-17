@@ -19,10 +19,12 @@ import type {
   ProfileBackupMeta,
 } from "./types";
 import { installStealthWebMock } from "./lib/stealth-web-mock";
+import { patchStealthElectronBridgeGaps } from "./lib/stealth-bridge-patch";
 
 if (import.meta.env.DEV) {
   installStealthWebMock();
 }
+patchStealthElectronBridgeGaps();
 
 function api() {
   if (typeof window === "undefined" || !window.stealthApi) {
@@ -169,14 +171,97 @@ export async function fetchProfileBackupMeta(profileIds: string[]): Promise<Prof
   return data.meta;
 }
 
-export async function launchProfile(id: string, name?: string) {
+export type LaunchProfileResult = {
+  profile: StealthProfile;
+  headless?: boolean;
+  agentSmoke?: boolean;
+  focused?: boolean;
+};
+
+export async function launchProfile(id: string, name?: string): Promise<LaunchProfileResult> {
   const data = await api().launchProfile({ id, name });
-  return data.profile;
+  return {
+    profile: data.profile,
+    headless: data.headless,
+    agentSmoke: data.agentSmoke,
+    focused: data.focused,
+  };
 }
 
 export async function closeProfile(id: string, name?: string) {
   const data = await api().closeProfile({ id, name });
   return data.profile;
+}
+
+export async function closeAllRunningProfiles() {
+  const viaHttp = await closeAllRunningViaHttp();
+  if (viaHttp) return viaHttp;
+
+  const bridge = api();
+  const closeAll = bridge.closeAllProfiles;
+  if (typeof closeAll === "function") {
+    try {
+      const data = await closeAll.call(bridge);
+      return { count: data.count, ids: data.ids ?? [] };
+    } catch {
+      // fall through to per-profile close
+    }
+  }
+
+  const listRunning = bridge.listRunningProfiles;
+  if (typeof listRunning === "function") {
+    const data = await listRunning.call(bridge);
+    const sessions = data.sessions ?? [];
+    for (const session of sessions) {
+      await closeProfile(session.id, session.name);
+    }
+    return { count: sessions.length, ids: sessions.map((row) => row.id) };
+  }
+
+  throw new Error("Unable to close running profiles. Restart Stealth Browser Console (Ctrl+Shift+R).");
+}
+
+async function closeAllRunningViaHttp(): Promise<{ count: number; ids: string[] } | null> {
+  for (const base of ["http://127.0.0.1:6004", "http://127.0.0.1:6003"]) {
+    try {
+      const res = await fetch(`${base}/api/sessions/close-all`, { method: "POST" });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { ok?: boolean; count?: number; ids?: string[] };
+      if (data.ok) return { count: data.count ?? 0, ids: data.ids ?? [] };
+    } catch {
+      // try next port
+    }
+  }
+
+  for (const base of ["http://127.0.0.1:6004", "http://127.0.0.1:6003"]) {
+    try {
+      const listRes = await fetch(`${base}/api/sessions/running`);
+      if (!listRes.ok) continue;
+      const listed = (await listRes.json()) as {
+        ok?: boolean;
+        sessions?: Array<{ id: string; name?: string }>;
+      };
+      const sessions = listed.sessions ?? [];
+      if (!sessions.length) return { count: 0, ids: [] };
+      for (const session of sessions) {
+        await fetch(`${base}/api/profiles/${encodeURIComponent(session.id)}/close`, { method: "POST" });
+      }
+      return { count: sessions.length, ids: sessions.map((row) => row.id) };
+    } catch {
+      // try next port
+    }
+  }
+
+  return null;
+}
+
+export async function fetchRunningProfileSessions() {
+  const bridge = api();
+  if (typeof bridge.listRunningProfiles === "function") {
+    const data = await bridge.listRunningProfiles();
+    return data.sessions ?? [];
+  }
+  return [];
 }
 
 export async function runOpenUrl(input: {
@@ -303,10 +388,12 @@ export async function installStoreExtension(payload: {
   storeId?: string;
   url?: string;
   profileIds?: string[];
+  force?: boolean;
 }): Promise<InstallStoreExtensionResult> {
   const data = await api().installStoreExtension({
     storeIdOrUrl: payload.storeId ?? payload.url,
     profileIds: payload.profileIds,
+    force: payload.force,
   });
   if (!data.ok || !data.result) throw new Error(data.error || "Install failed");
   return data.result;

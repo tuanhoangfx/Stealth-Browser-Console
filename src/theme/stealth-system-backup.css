@@ -6,6 +6,7 @@
 }
 
 .stealth-hub-main > .stealth-system-backup-workspace__body,
+.stealth-hub-main > .stealth-system-extensions-workspace__body,
 .stealth-hub-main > .system-overview-page {
   flex: 1;
   min-height: 0;
@@ -16,8 +17,24 @@
 }
 
 .stealth-system-backup-layout,
-.stealth-system-backup-directory-frame {
+.stealth-system-backup-directory-frame,
+.stealth-system-extensions-directory-frame {
   min-height: 0;
+}
+
+.stealth-system-extensions-directory-frame .hub-split-directory-pane__body .hub-users-table-wrap {
+  min-height: 0;
+}
+
+.stealth-extension-row--active {
+  background: rgba(34, 211, 238, 0.06);
+}
+
+.stealth-system-extensions-rail {
+  width: var(--hub-split-rail-width, 20rem);
+  max-width: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .stealth-system-backup-directory-frame .hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split) {

@@ -52,6 +52,10 @@ try {
     }
   }
 
+  Invoke-Step "Verify cloakbrowser engine pin" {
+    node scripts/check-cloakbrowser-pin.mjs
+  }
+
   if ($Version.Trim()) {
     Invoke-Step "Set desktop version to $Version" {
       pnpm version $Version --no-git-tag-version
@@ -131,6 +135,14 @@ try {
       )
       if ($WithPortable) { $verifyArgs += "--require-portable" }
       node @verifyArgs
+    }
+
+    Invoke-Step "Snapshot known-good (installer backup)" {
+      node scripts/snapshot-known-good.mjs --label "v$version-stable"
+    }
+
+    Invoke-Step "Ship smoke checklist (manual gate)" {
+      node scripts/print-ship-smoke-checklist.mjs
     }
   }
 }

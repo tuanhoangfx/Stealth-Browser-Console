@@ -7,6 +7,11 @@ const { configureElectronUserData, resolveStealthApiPort, isDevIsolated } = requ
 
 configureElectronUserData(app);
 
+/** Interactive UI must not inherit Cursor/agent smoke env (headless profiles with no window). API smokes use X-Stealth-Agent-Smoke per request. */
+for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGENT"]) {
+  delete process.env[key];
+}
+
 /** One desktop process per userData root — prevents agent/dev double-launch DB lock + login churn. */
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -213,6 +218,12 @@ function bindIpc() {
     );
   });
 
+  ipcMain.handle("profile:closeAll", async () => {
+    const sessions = sessionManager.listRunning();
+    await sessionManager.closeAll();
+    return { ok: true, count: sessions.length, ids: sessions.map((row) => row.id) };
+  });
+
   ipcMain.handle("profile:focus", async (_event, payload = {}) => {
     const profile = profileService.resolveProfileForLaunch({
       id: validateProfileId(payload.id),
@@ -389,6 +400,50 @@ function bindIpc() {
     extensionToggles: getExtensionToggles(),
   }));
 
+  ipcMain.handle("vault:setUserScope", (_event, payload = {}) => {
+    const vaultUserScope = require("./lib/vault-user-scope.cjs");
+    const { clearCredentialsCache } = require("./lib/twofa-vault-bridge.cjs");
+    const email = payload?.email ?? null;
+    vaultUserScope.setVaultHubLoginEmail(email);
+    vaultUserScope.clearVaultUserIdCache();
+    clearCredentialsCache();
+    let scopeEmail = null;
+    let scopeError = null;
+    try {
+      scopeEmail = vaultUserScope.resolveVaultScopeEmail();
+    } catch (error) {
+      scopeError = error instanceof Error ? error.message : String(error);
+    }
+    return {
+      ok: true,
+      hubEmail: vaultUserScope.getVaultHubLoginEmail(),
+      scopeEmail,
+      scopeError,
+      devScope: vaultUserScope.isVaultDevScope(),
+    };
+  });
+
+  ipcMain.handle("vault:getUserScope", () => {
+    const vaultUserScope = require("./lib/vault-user-scope.cjs");
+    try {
+      return {
+        ok: true,
+        hubEmail: vaultUserScope.getVaultHubLoginEmail(),
+        scopeEmail: vaultUserScope.resolveVaultScopeEmail(),
+        scopeError: null,
+        devScope: vaultUserScope.isVaultDevScope(),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        hubEmail: vaultUserScope.getVaultHubLoginEmail(),
+        scopeEmail: null,
+        scopeError: error instanceof Error ? error.message : String(error),
+        devScope: vaultUserScope.isVaultDevScope(),
+      };
+    }
+  });
+
   ipcMain.handle("app:getExtensionToggles", () => ({
     ok: true,
     toggles: getExtensionToggles(),
@@ -464,8 +519,9 @@ function bindIpc() {
     const profileIds = Array.isArray(payload.profileIds)
       ? payload.profileIds.map((id) => String(id).trim()).filter(Boolean)
       : undefined;
+    const force = Boolean(payload.force);
     try {
-      const result = await installStoreExtension(userDataRoot(), storeIdOrUrl, { profileIds });
+      const result = await installStoreExtension(userDataRoot(), storeIdOrUrl, { profileIds, force });
       const binary = await getBinaryInfoCached();
       const { prepareProfileExtensions } = require("./lib/native-extension-load.cjs");
       const profilesDir = path.join(userDataRoot(), "profiles");
@@ -825,8 +881,37 @@ app.whenReady().then(async () => {
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
   await openDatabase(userDataRoot());
+  const catalogCount = profileService.listProfilesLite().length;
+  const { tryAutoRestoreCatalogIfEmpty } = require("./lib/catalog-backup-recovery.cjs");
+  const { closeDatabase } = require("./db/init.cjs");
+  const recovery = await tryAutoRestoreCatalogIfEmpty(userDataRoot(), { currentProfiles: catalogCount });
+  if (recovery.restored) {
+    closeDatabase();
+    await openDatabase(userDataRoot());
+  }
+  require("./lib/stealth-sync-outbox.cjs").startStealthSyncWorker();
   profileService.backfillProfileEvents();
   profileService.ensureSeedProfiles();
+  try {
+    require("./lib/twofa-vault-bridge.cjs").logVaultBridgeStartup();
+  } catch {
+    /* optional */
+  }
+  const {
+    getDb,
+    getDbBackend,
+    getNativeDb,
+    isDatabaseReady,
+    checkpointDatabase,
+  } = require("./db/init.cjs");
+  const { scheduleStartupLastOpenedMaintenance, flushScheduledLastOpenedCheckpoint } = require("./db/last-opened-durability.cjs");
+  scheduleStartupLastOpenedMaintenance({
+    userDataPath: userDataRoot(),
+    getDb,
+    getDbBackend,
+    getNativeDb,
+    isDatabaseReady,
+  });
   sessionManager.setUserDataRoot(userDataRoot());
   setImmediate(() => {
     void sessionManager.reconcileOrphansOnStartup().catch(() => undefined);
@@ -973,6 +1058,8 @@ app.on("before-quit", (event) => {
     } catch (error) {
       console.warn("[shutdown] close sessions:", error instanceof Error ? error.message : error);
     } finally {
+      const { flushScheduledLastOpenedCheckpoint } = require("./db/last-opened-durability.cjs");
+      flushScheduledLastOpenedCheckpoint(require("./db/init.cjs").checkpointDatabase);
       closeDatabase();
       appShutdownDone = true;
       app.quit();

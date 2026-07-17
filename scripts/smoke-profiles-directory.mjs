@@ -35,7 +35,7 @@ while ((m = colClassRe.exec(metaSrc))) {
 }
 
 const profileBlock = metaSrc.match(
-  /export const STEALTH_PROFILE_COLUMN_META = applyStandardDirectoryColumnHints\(\{([\s\S]*?)\n\}\);/,
+  /STEALTH_PROFILE_COLUMN_META[\s\S]*?applyStandardDirectoryColumnHints\(\s*\{([\s\S]*?)\n\s*\},\s*\n\s*STEALTH_PROFILE_DIRECTORY_HINT/,
 );
 if (!profileBlock) fail("STEALTH_PROFILE_COLUMN_META not found");
 const profileClasses = [...profileBlock[1].matchAll(/"(hub-users-col--[^"]+)"/g)].map((x) => x[1]);
@@ -47,6 +47,14 @@ for (const c of profileClasses) {
 if (!profileClasses.includes("hub-users-col--metric-a")) fail("E0001 colClass missing");
 if (!profileClasses.includes("hub-users-col--metric-b")) fail("Surfshark colClass missing");
 if (!profileClasses.includes("hub-users-col--metric-c")) fail("Proxy colClass missing");
+
+const stickers = fs.readFileSync(path.join(root, "src/lib/stealth-column-stickers.ts"), "utf8");
+if (stickers.includes('e0001:') || stickers.includes('surfshark:')) {
+  fail("extension columns must not use emoji stickers — use extension/brand icons");
+}
+if (!metaSrc.includes("withExtensionColumnHeaderIcons")) {
+  fail("directory-column-meta must wire extension column header icons");
+}
 
 const cells = fs.readFileSync(path.join(root, "src/features/profiles/stealth-profile-directory-cells.tsx"), "utf8");
 if (!cells.includes("HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS")) {
@@ -73,12 +81,163 @@ if (!bulk.includes("selectedCount={selectedCount}") && !bulk.includes("HubBulkAc
   fail("Extension bulk button missing selected count badge");
 }
 
-const webStore = fs.readFileSync(
-  path.join(root, "src/features/system/SystemWebStoreExtensionsPanel.tsx"),
+const extensionsPage = fs.readFileSync(
+  path.join(root, "src/features/system/SystemExtensionsPage.tsx"),
   "utf8",
 );
-if (webStore.includes("<Glass") && !webStore.includes('from "../../theme/p0008"')) {
-  fail("SystemWebStoreExtensionsPanel uses Glass without import");
+if (!extensionsPage.includes("Force update") && !extensionsPage.includes("force: true")) {
+  fail("SystemExtensionsPage missing Force update from Web Store");
+}
+if (!extensionsPage.includes("SystemExtensionsDirectoryPanel")) {
+  fail("SystemExtensionsPage must use Backup-like directory panel");
+}
+if (!extensionsPage.includes("ExtensionDetailModal")) {
+  fail("SystemExtensionsPage must open ExtensionDetailModal (metadata not in right rail)");
+}
+
+const extensionsRail = fs.readFileSync(path.join(root, "src/features/system/SystemExtensionsRail.tsx"), "utf8");
+const backupRail = fs.readFileSync(path.join(root, "src/features/system/SystemBackupRail.tsx"), "utf8");
+if (extensionsRail.includes("Cookie Bridge") || extensionsRail.includes("fetchCookieBridgeStatus")) {
+  fail("SystemExtensionsRail must not embed Cookie Bridge panel — use ExtensionDetailModal");
+}
+if (!extensionsRail.includes("runtimeOnly") || !backupRail.includes("runtimeOnly")) {
+  fail("System Backup/Extensions rails must use ProfilesWorkflowRail runtimeOnly (History + Console only)");
+}
+
+const extFilter = fs.readFileSync(
+  path.join(root, "src/features/system/extensions/SystemExtensionsFilterPane.tsx"),
+  "utf8",
+);
+if (!extFilter.includes("filterSelectionToolbar")) {
+  fail("SystemExtensionsFilterPane missing filterSelectionToolbar (selection counter SSOT)");
+}
+if (!extFilter.includes('systemTab="extensions"')) {
+  fail("SystemExtensionsFilterPane must pass systemTab=extensions to Display toolbar");
+}
+if (extFilter.includes("Install from Web Store") && extFilter.includes("Load unpacked")) {
+  fail("Install controls must live in ExtensionDetailModal, not filter pane");
+}
+
+if (!extFilter.includes('showRefresh={false}')) {
+  fail("SystemExtensionsFilterPane must hide Refresh (Profiles SSOT)");
+}
+if (!extFilter.includes("buildExtensionFilters")) {
+  fail("SystemExtensionsFilterPane must wire Kind filter SSOT");
+}
+
+const extTable = fs.readFileSync(
+  path.join(root, "src/features/system/extensions/SystemExtensionsDirectoryTable.tsx"),
+  "utf8",
+);
+if (!extTable.includes("HubDirectoryTableShell")) {
+  fail("SystemExtensionsDirectoryTable must use HubDirectoryTableShell SSOT");
+}
+if (!extTable.includes("shouldPadDirectoryBodyToPageSize")) {
+  fail("SystemExtensionsDirectoryTable missing partial-page row pad SSOT");
+}
+
+const extModal = fs.readFileSync(
+  path.join(root, "src/features/system/extensions/ExtensionDetailModal.tsx"),
+  "utf8",
+);
+if (!extModal.includes("HubAccountDetailAdmScaffold")) {
+  fail("ExtensionDetailModal must use Layout 3 HubAccountDetailAdmScaffold");
+}
+if (!extModal.includes("ExtensionDetailTocNav")) {
+  fail("ExtensionDetailModal must use ExtensionDetailTocNav SSOT");
+}
+
+if (!extModal.includes("stealth-profile-detail-runtime-rail")) {
+  fail("ExtensionDetailModal must use History + Console 50/50 runtime rail");
+}
+
+const extDetailToc = fs.readFileSync(
+  path.join(root, "src/features/system/extensions/extension-detail-toc.ts"),
+  "utf8",
+);
+const admShellTs = fs.readFileSync(
+  path.join(root, "src/features/shared/stealth-adm-detail-modal.ts"),
+  "utf8",
+);
+if (!extDetailToc.includes("STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS")) {
+  fail("Extension detail modal shell must reuse STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS SSOT");
+}
+if (!admShellTs.includes("hub-tool-detail-modal--split")) {
+  fail("stealth-adm-detail-modal must include hub-tool-detail-modal--split for Layout 3");
+}
+if (extDetailToc.includes("hub-header-panel-modal")) {
+  fail("Extension detail modal must not use hub-header-panel-modal — breaks Layout 3 fill height");
+}
+if (!admShellTs.includes("hubAccountDetailShellClass")) {
+  fail("stealth-adm-detail-modal must use hubAccountDetailShellClass SSOT");
+}
+
+const extDisplayNameTs = fs.readFileSync(
+  path.join(root, "src/lib/extension-display-name.ts"),
+  "utf8",
+);
+if (!extDisplayNameTs.includes("resolveExtensionDisplayName") || !extDisplayNameTs.includes("__MSG_")) {
+  fail("extension-display-name must resolve __MSG_* keys for UI");
+}
+if (!extModal.includes("resolveExtensionDisplayName")) {
+  fail("ExtensionDetailModal must resolve extension display name");
+}
+
+const backupPanel = fs.readFileSync(
+  path.join(root, "src/features/system/backup/SystemBackupDirectoryPanel.tsx"),
+  "utf8",
+);
+if (!backupPanel.includes("HubSplitDirectoryPane")) {
+  fail("SystemBackupDirectoryPanel must use HubSplitDirectoryPane SSOT");
+}
+if (!backupPanel.includes('partialPagePad="invisible"')) {
+  fail("SystemBackupDirectoryPanel missing partialPagePad invisible");
+}
+
+const backupFilter = fs.readFileSync(
+  path.join(root, "src/features/system/backup/SystemBackupFilterPane.tsx"),
+  "utf8",
+);
+if (!backupFilter.includes("filterSelectionToolbar")) {
+  fail("SystemBackupFilterPane missing filterSelectionToolbar");
+}
+if (!backupFilter.includes('systemTab="backup"')) {
+  fail("SystemBackupFilterPane must pass systemTab=backup to Display toolbar");
+}
+
+const backupTable = fs.readFileSync(
+  path.join(root, "src/features/system/backup/SystemBackupDirectoryTable.tsx"),
+  "utf8",
+);
+if (!backupTable.includes("readBackupDirectoryColumns")) {
+  fail("SystemBackupDirectoryTable must respect column prefs / Preset");
+}
+
+const displayPanel = fs.readFileSync(path.join(root, "src/lib/stealth-display-panel-config.tsx"), "utf8");
+if (!displayPanel.includes("subTabDisplay")) {
+  fail("stealth-display-panel-config must wire subTabDisplay for system tabs");
+}
+if (!displayPanel.includes("extensionDirectoryColumnPresetsProp")) {
+  fail("stealth-display-panel-config must wire extension column presets");
+}
+
+const nav = fs.readFileSync(path.join(root, "src/lib/stealth-nav-structure.ts"), "utf8");
+if (!nav.includes('view: "extensions"') || !nav.includes("Extensions")) {
+  fail("stealth-nav-structure missing System → Extensions tab");
+}
+const designIdx = nav.indexOf('view: "design"');
+const extensionsIdx = nav.indexOf('view: "extensions"');
+if (designIdx < 0 || extensionsIdx < 0 || designIdx > extensionsIdx) {
+  fail("System nav must place Design above Extensions");
+}
+
+if (!extFilter.includes("isHubPrefVisible") || !extFilter.includes("readSystemTabDisplay")) {
+  fail("SystemExtensionsFilterPane must gate Kind filter via Display hubFilters");
+}
+
+const overview = fs.readFileSync(path.join(root, "src/features/system/SystemOverviewPage.tsx"), "utf8");
+if (overview.includes("SystemWebStoreExtensionsPanel") || overview.includes("SystemCookieBridgePanel")) {
+  fail("SystemOverviewPage must not host extension panels anymore");
 }
 
 const table = fs.readFileSync(
@@ -87,6 +246,9 @@ const table = fs.readFileSync(
 );
 if (!table.includes("shouldPadDirectoryBodyToPageSize")) {
   fail("StealthProfileDirectoryTable missing shouldPadDirectoryBodyToPageSize");
+}
+if (!table.includes("extensionIcons")) {
+  fail("StealthProfileDirectoryTable must wire extensionIcons to column headers");
 }
 
 const layoutCss = fs.readFileSync(path.join(root, "src/theme/stealth-profile-layout.css"), "utf8");
@@ -100,6 +262,21 @@ if (panel.includes("compactDirectory")) {
 }
 if (!panel.includes('partialPagePad="invisible"')) {
   fail("ProfileDirectoryPanel missing partialPagePad invisible SSOT");
+}
+
+const displayItems = fs.readFileSync(
+  path.join(root, "src/features/profiles/profile-directory-display-items.ts"),
+  "utf8",
+);
+if (!displayItems.includes("profileDirectoryColumnItemsWithExtensionIcons")) {
+  fail("profile-directory-display-items must merge extension icons for Display prefs");
+}
+if (!displayPanel.includes("profileDirectoryColumnItemsWithExtensionIcons")) {
+  fail("stealth-display-panel-config must use extension-aware column items");
+}
+const storeIdsTs = fs.readFileSync(path.join(root, "src/lib/stealth-extension-store-ids.ts"), "utf8");
+if (!storeIdsTs.includes("stealth-extension-store-ids.json")) {
+  fail("stealth-extension-store-ids.ts must import shared JSON SSOT");
 }
 
 const workflowPanel = fs.readFileSync(path.join(root, "src/features/workflows/WorkflowDirectoryPanel.tsx"), "utf8");

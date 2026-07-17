@@ -14,7 +14,7 @@ export type HubDirectoryMetricBadgeProps = {
   className?: string;
 };
 
-/** Unified numeric metric chip — one Number component with tier palette. */
+/** Unified numeric metric chip — Design V1 Heat sequential palette. */
 export function HubDirectoryMetricBadge({
   count,
   icon: Icon = Layers,
@@ -32,7 +32,6 @@ export function HubDirectoryMetricBadge({
         tierClass,
         display === "card" ? "hub-users-tool-badge--card" : "",
         tier === "empty" ? "hub-users-tool-badge--empty" : "",
-        tier === "high" ? "hub-users-tool-badge--admin" : "",
         className,
       ]
         .filter(Boolean)

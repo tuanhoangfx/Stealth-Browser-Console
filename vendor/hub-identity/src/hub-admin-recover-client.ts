@@ -24,6 +24,8 @@ export type RecoverHubSessionViaApiOptions = {
   loginInput: string;
   password: string;
   recoverToken?: string;
+  /** Worker sign-in mode — signup confirms Hub user when GoTrue Confirm email is on. */
+  mode?: "signin" | "signup";
 };
 
 function toSession(raw: NonNullable<HubRecoverApiResponse["session"]>): Session {
@@ -57,9 +59,16 @@ function adoptRecoverPayload(data: HubRecoverApiResponse, mirrorSessionKey: "cha
 export async function recoverHubSessionViaApi(
   options: RecoverHubSessionViaApiOptions & { mirrorSessionKey?: "chatcenterSession" | "dataSession" },
 ): Promise<{ identitySession: Session; mirrorSession: Session | null } | null> {
-  const { apiUrl, loginInput, password, recoverToken, mirrorSessionKey = "chatcenterSession" } = options;
+  const {
+    apiUrl,
+    loginInput,
+    password,
+    recoverToken,
+    mirrorSessionKey = "chatcenterSession",
+    mode = "signin",
+  } = options;
   const headers = recoverHeaders(recoverToken);
-  const body = JSON.stringify({ login: loginInput, password, mode: "signin" });
+  const body = JSON.stringify({ login: loginInput, password, mode });
 
   let signInRes: Response;
   try {
@@ -72,6 +81,9 @@ export async function recoverHubSessionViaApi(
   if (signInRes.ok && signInData.ok && adopted) {
     return { identitySession: adopted.identitySession, mirrorSession: adopted.mirrorSession };
   }
+
+  // Signup assist already used service role — do not fall through to admin-only magic link.
+  if (mode === "signup") return null;
 
   const shouldRecover =
     signInData.adminRecovery ||

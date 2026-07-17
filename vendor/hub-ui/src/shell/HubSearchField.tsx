@@ -1,5 +1,6 @@
 import { Search, X } from "lucide-react";
 import { startTransition, useEffect, useRef, useState, type Ref } from "react";
+import { HUB_MODAL_SEARCH_ATTR } from "../keyboard/hub-modal-search";
 import { compactIconSize } from "../ui-scale";
 
 export type HubSearchFieldProps = {
@@ -16,6 +17,8 @@ export type HubSearchFieldProps = {
   shortcutScope?: string;
   /** Debounce parent onChange — keeps draft local so directory chrome does not re-render per keystroke. */
   debounceMs?: number;
+  /** When true, tags input for global modal `F` shortcut (`data-hub-modal-search`). */
+  modalSearch?: boolean;
 };
 
 /** Golden directory search input — P0004 FilterBar row-1 (shared across tools). */
@@ -27,6 +30,7 @@ export function HubSearchField({
   inputRef,
   showShortcutHint = true,
   debounceMs = 0,
+  modalSearch = false,
 }: HubSearchFieldProps) {
   const debounced = debounceMs > 0;
   const [draft, setDraft] = useState(value);
@@ -81,6 +85,7 @@ export function HubSearchField({
         style={{ paddingLeft: 31, paddingRight: displayValue ? 25 : 36 }}
         aria-label={placeholder}
         role="searchbox"
+        {...(modalSearch ? { [HUB_MODAL_SEARCH_ATTR]: "" } : {})}
       />
       {showShortcutHint && !displayValue ? (
         <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:flex">

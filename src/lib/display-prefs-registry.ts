@@ -2,13 +2,18 @@ import type { PrefItem } from "@tool-workspace/hub-ui";
 import { withPrefItemIcons } from "@tool-workspace/hub-ui";
 import type { StealthScreen } from "./stealth-screen";
 import {
-  PROFILE_FILTER_PREF_ICONS,
-  PROFILE_HEADER_PREF_ICONS,
-  PROFILE_KPI_PREF_ICONS,
-  WORKFLOW_FILTER_PREF_ICONS,
-  WORKFLOW_HEADER_PREF_ICONS,
-  WORKFLOW_KPI_PREF_ICONS,
-} from "./profile-display-pref-icons";
+  STEALTH_PROFILE_FILTER_STICKER,
+  STEALTH_PROFILE_HEADER_STAT_STICKER,
+  STEALTH_PROFILE_KPI_STICKER,
+  STEALTH_WORKFLOW_FILTER_STICKER,
+  STEALTH_WORKFLOW_HEADER_STAT_STICKER,
+  STEALTH_WORKFLOW_KPI_STICKER,
+  stealthPrefIconMap,
+} from "./stealth-column-stickers";
+import {
+  stealthProfilesDisplayPrefItems,
+  stealthWorkflowDisplayPrefItems,
+} from "./stealth-display-pref-hints";
 
 const RESOLVED_DISPLAY_PREFS_CACHE = new Map<StealthScreen, ScreenDisplayPrefsConfig>();
 
@@ -46,6 +51,33 @@ export const PROFILES_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   defaultChartKeys: new Set(),
   defaultFilterKeys: new Set(["group", "status"]),
   defaultHeaderStatKeys: new Set(["running", "failed", "ready", "total"]),
+};
+
+/** System → Backup — profile KPIs available; default off until enabled in Display. */
+export const SYSTEM_BACKUP_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
+  ...PROFILES_DISPLAY_PREFS,
+  defaultKpiKeys: new Set<string>(),
+  defaultChartKeys: new Set<string>(),
+};
+
+/** System → Extensions — extension cache KPIs; default off. */
+export const SYSTEM_EXTENSIONS_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
+  kpis: [
+    { key: "cached", label: "Cached" },
+    { key: "store", label: "Store" },
+    { key: "local", label: "Local" },
+  ],
+  charts: [],
+  filters: [{ key: "kind", label: "Kind" }],
+  headerStats: [
+    { key: "cached", label: "Cached" },
+    { key: "store", label: "Store" },
+    { key: "local", label: "Local" },
+  ],
+  defaultKpiKeys: new Set<string>(),
+  defaultChartKeys: new Set<string>(),
+  defaultFilterKeys: new Set<string>(["kind"]),
+  defaultHeaderStatKeys: new Set(["cached", "store", "local"]),
 };
 
 export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
@@ -86,16 +118,28 @@ export function resolveScreenDisplayPrefs(screen: StealthScreen): ScreenDisplayP
   if (screen === "profiles") {
     resolved = {
       ...cfg,
-      kpis: withPrefItemIcons(cfg.kpis, PROFILE_KPI_PREF_ICONS),
-      filters: withPrefItemIcons(cfg.filters, PROFILE_FILTER_PREF_ICONS),
-      headerStats: withPrefItemIcons(cfg.headerStats, PROFILE_HEADER_PREF_ICONS),
+      kpis: stealthProfilesDisplayPrefItems(
+        withPrefItemIcons(cfg.kpis, stealthPrefIconMap(STEALTH_PROFILE_KPI_STICKER)),
+      ),
+      filters: stealthProfilesDisplayPrefItems(
+        withPrefItemIcons(cfg.filters, stealthPrefIconMap(STEALTH_PROFILE_FILTER_STICKER)),
+      ),
+      headerStats: stealthProfilesDisplayPrefItems(
+        withPrefItemIcons(cfg.headerStats, stealthPrefIconMap(STEALTH_PROFILE_HEADER_STAT_STICKER)),
+      ),
     };
   } else if (screen === "workflow") {
     resolved = {
       ...cfg,
-      kpis: withPrefItemIcons(cfg.kpis, WORKFLOW_KPI_PREF_ICONS),
-      filters: withPrefItemIcons(cfg.filters, WORKFLOW_FILTER_PREF_ICONS),
-      headerStats: withPrefItemIcons(cfg.headerStats, WORKFLOW_HEADER_PREF_ICONS),
+      kpis: stealthWorkflowDisplayPrefItems(
+        withPrefItemIcons(cfg.kpis, stealthPrefIconMap(STEALTH_WORKFLOW_KPI_STICKER)),
+      ),
+      filters: stealthWorkflowDisplayPrefItems(
+        withPrefItemIcons(cfg.filters, stealthPrefIconMap(STEALTH_WORKFLOW_FILTER_STICKER)),
+      ),
+      headerStats: stealthWorkflowDisplayPrefItems(
+        withPrefItemIcons(cfg.headerStats, stealthPrefIconMap(STEALTH_WORKFLOW_HEADER_STAT_STICKER)),
+      ),
     };
   } else {
     resolved = cfg;

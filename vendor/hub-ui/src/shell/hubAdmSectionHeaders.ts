@@ -1,6 +1,7 @@
 import {
   Archive,
   BarChart3,
+  Blocks,
   CreditCard,
   Fingerprint,
   Gauge,
@@ -8,6 +9,7 @@ import {
   MonitorSmartphone,
   Package,
   Radar,
+  ShoppingBag,
   UserRound,
 } from "lucide-react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
@@ -21,6 +23,8 @@ export type HubAdmSectionKey =
   | "device"
   | "plan"
   | "subscription"
+  | "exchange"
+  | "service"
   | "probe"
   | "browser"
   | "usage";
@@ -34,6 +38,8 @@ const HUB_ADM_SECTION_HEADERS: Record<HubAdmSectionKey, HubTableColumnHeaderProp
   device: { label: "Device", icon: MonitorSmartphone, iconClassName: "hub-adm-section-icon--teal" },
   plan: { label: "Plan", icon: Package, iconClassName: "hub-adm-section-icon--violet" },
   subscription: { label: "Subscription", icon: CreditCard, iconClassName: "hub-adm-section-icon--indigo" },
+  exchange: { label: "Exchange", icon: ShoppingBag, iconClassName: "hub-adm-section-icon--amber" },
+  service: { label: "Service", icon: Blocks, iconClassName: "hub-adm-section-icon--sky" },
   probe: { label: "Probe", icon: Radar, iconClassName: "hub-adm-section-icon--sky" },
   browser: { label: "Browser", icon: Monitor, iconClassName: "hub-adm-section-icon--teal" },
   usage: { label: "Quota usage", icon: BarChart3, iconClassName: "hub-adm-section-icon--lime" },

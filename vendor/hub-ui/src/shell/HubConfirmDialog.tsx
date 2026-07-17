@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Check, Trash2, X, type LucideIcon } from "lucide-react";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
@@ -52,13 +52,19 @@ export function HubConfirmDialog({
       ariaLabelledBy="hub-confirm-title"
       footer={
         <>
-          <HubToolDetailModalSecondaryAction label={cancelLabel} onClick={onClose} disabled={confirmBusy} />
+          <HubToolDetailModalSecondaryAction
+            label={cancelLabel}
+            onClick={onClose}
+            disabled={confirmBusy}
+            icon={X}
+          />
           <HubToolDetailModalPrimaryAction
             label={confirmLabel}
             onClick={onConfirm}
             disabled={confirmBusy}
             busy={confirmBusy}
             danger={tone === "danger"}
+            icon={tone === "danger" ? Trash2 : Check}
           />
         </>
       }

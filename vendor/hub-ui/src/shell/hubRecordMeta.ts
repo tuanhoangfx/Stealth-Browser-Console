@@ -4,7 +4,7 @@ import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader"
 export const HUB_RECORD_META_LABELS = {
   vaultId: "Vault ID",
   created: "Created",
-  updated: "Last Updated",
+  updated: "Update",
 } as const;
 
 export const HUB_RECORD_META_FIELD_HEADERS: Record<

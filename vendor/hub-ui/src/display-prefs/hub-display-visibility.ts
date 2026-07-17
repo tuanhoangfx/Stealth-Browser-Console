@@ -1,7 +1,8 @@
 import type { PrefItem } from "./types";
 
-export function defaultsForPrefItems(allItems: PrefItem[], defaults?: Set<string>) {
-  return defaults ?? new Set(allItems.map((item) => item.key));
+export function defaultsForPrefItems(allItems: PrefItem[], defaults?: Set<string> | readonly string[]) {
+  if (defaults == null) return new Set(allItems.map((item) => item.key));
+  return defaults instanceof Set ? defaults : new Set(defaults);
 }
 
 export function isHubPrefVisible(set: Set<string> | null, defaults: Set<string>, key: string) {

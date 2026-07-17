@@ -1,8 +1,11 @@
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
+import { resolveWorkspaceRoleIcon } from "./hub-workspace-role-icon";
 
 export type HubAuthLogoutChipProps = {
   email: string;
+  /** Workspace role — crown/shield/userRound parity HubSidebarUserFooter + E0001 extension. */
+  roleKey?: string;
   onOpenUser?: () => void;
   onLogout: () => void;
   disabled?: boolean;
@@ -11,9 +14,10 @@ export type HubAuthLogoutChipProps = {
   className?: string;
 };
 
-/** Header User chip — email + LogOut icon (golden auth panel styling). */
+/** Header User chip — role icon + email + LogOut (golden auth panel styling). */
 export function HubAuthLogoutChip({
   email,
+  roleKey = "user",
   onOpenUser,
   onLogout,
   disabled = false,
@@ -23,6 +27,8 @@ export function HubAuthLogoutChip({
 }: HubAuthLogoutChipProps) {
   const label = email.trim() || "User";
   const busy = disabled || signingOut;
+  const roleMeta = resolveWorkspaceRoleIcon(linked ? roleKey : "anonymous");
+  const RoleIcon = roleMeta.icon;
 
   return (
     <div
@@ -36,7 +42,11 @@ export function HubAuthLogoutChip({
         title={onOpenUser ? `${label} — User details` : label}
         aria-label={onOpenUser ? `Open user details for ${label}` : label}
       >
-        <User size={compactIconSize(14)} className="hub-auth-logout-chip__user-icon" aria-hidden />
+        <RoleIcon
+          size={compactIconSize(14)}
+          className={`hub-auth-logout-chip__user-icon ${roleMeta.className}`}
+          aria-hidden
+        />
         <span className="hub-auth-logout-chip__email">{label}</span>
       </button>
       <button

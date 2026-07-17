@@ -3,11 +3,11 @@ import { Archive } from "lucide-react";
 import {
   DirectorySearchToolbar,
   HubDirectoryBulkActionBar,
-  HubDirectoryToolbarSelection,
   HubSplitDirectoryFilterBar,
   type FilterValues,
 } from "@tool-workspace/hub-ui";
 import { StealthDisplayBandToolbar } from "../../../components/StealthDisplayBandToolbar";
+import { applyStealthFilterLabelHints } from "../../../lib/stealth-filter-hints";
 import type { ProfileCatalogStats, ProfileRow, StealthGroup } from "../../../types";
 import {
   buildProfileFiltersFromStats,
@@ -33,6 +33,8 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   onBackupSelected,
   onBackupAll,
   onRestore,
+  onEditSingle,
+  onEditBulk,
 }: {
   search: string;
   setSearch: (value: string) => void;
@@ -50,9 +52,14 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   onBackupSelected: () => void;
   onBackupAll: () => void;
   onRestore: () => void;
+  onEditSingle: () => void;
+  onEditBulk: () => void;
 }) {
   const filters = useMemo(
-    () => (catalogStats ? buildProfileFiltersFromStats(groups, catalogStats) : []),
+    () =>
+      catalogStats
+        ? applyStealthFilterLabelHints(buildProfileFiltersFromStats(groups, catalogStats), "profiles")
+        : [],
     [catalogStats, groups],
   );
   const filterValues = useMemo(
@@ -79,13 +86,11 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
       queryPending={queryPending}
       values={filterValues}
       onValuesChange={handleFilterValuesChange}
-      searchTrailing={
-        <HubDirectoryToolbarSelection
-          visibleCount={shownProfiles}
-          selectedCount={selectedCount}
-          noun="profiles"
-        />
-      }
+      filterSelectionToolbar={{
+        visibleCount: shownProfiles,
+        selectedCount,
+        noun: "profiles",
+      }}
       toolbar={
         <DirectorySearchToolbar
           countIcon={Archive}
@@ -96,18 +101,21 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
           showTimeRange={false}
           showRefresh={false}
           showResultCount={false}
-          displayBand={<StealthDisplayBandToolbar screen="system" />}
+          displayBand={<StealthDisplayBandToolbar screen="system" systemTab="backup" />}
         />
       }
       row2Actions={
         <HubDirectoryBulkActionBar>
           <SystemBackupDirectoryBulkActions
+            selectedCount={selectedCount}
             hasSelection={selectedCount > 0}
             restoreIntoSelected={selectedCount === 1}
             jobBusy={jobBusy}
             onBackupSelected={onBackupSelected}
             onBackupAll={onBackupAll}
             onRestore={onRestore}
+            onEditSingle={onEditSingle}
+            onEditBulk={onEditBulk}
           />
         </HubDirectoryBulkActionBar>
       }

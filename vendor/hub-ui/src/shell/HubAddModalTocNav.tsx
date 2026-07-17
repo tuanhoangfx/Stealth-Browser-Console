@@ -15,6 +15,9 @@ export type HubAddModalTocNavProps<TTab extends string = string> = {
   tabs: readonly HubAddModalTabItem[];
   activeTab: TTab;
   onTabChange: (tab: TTab) => void;
+  /** Sub-TOC items shown when `activeTab === singleTabId`. */
+  singleSectionItems?: readonly HubTocNavItem[];
+  singleTabId?: string;
   /** Sub-TOC items shown when `activeTab === bulkTabId`. */
   bulkSectionItems?: readonly HubTocNavItem[];
   bulkTabId?: string;
@@ -29,6 +32,8 @@ export function HubAddModalTocNav<TTab extends string = string>({
   tabs,
   activeTab,
   onTabChange,
+  singleSectionItems = [],
+  singleTabId = "single",
   bulkSectionItems = [],
   bulkTabId = "bulk",
   sectionIdPrefix = "",
@@ -37,6 +42,10 @@ export function HubAddModalTocNav<TTab extends string = string>({
   sectionsSlotClassName = "hub-add-modal__toc-sections",
 }: HubAddModalTocNavProps<TTab>) {
   const bulkNavItems = useMemo(() => bulkSectionItems, [bulkSectionItems]);
+  const singleNavItems = useMemo(() => singleSectionItems, [singleSectionItems]);
+  const sectionNavItems =
+    activeTab === singleTabId ? singleNavItems : activeTab === bulkTabId ? bulkNavItems : [];
+  const showSectionNav = sectionNavItems.length > 0;
 
   return (
     <nav className={`hub-toc-nav hub-add-modal__toc${className ? ` ${className}` : ""}`} aria-label="Add mode">
@@ -71,10 +80,10 @@ export function HubAddModalTocNav<TTab extends string = string>({
           );
         })}
       </ul>
-      {activeTab === bulkTabId && bulkNavItems.length ? (
+      {showSectionNav ? (
         <div className={`${sectionsSlotClassName} mt-3 border-t border-white/5 pt-3`}>
           <HubTocSectionNav
-            items={bulkNavItems}
+            items={sectionNavItems}
             sectionIdPrefix={sectionIdPrefix}
             scrollRootSelector={scrollRootSelector}
           />

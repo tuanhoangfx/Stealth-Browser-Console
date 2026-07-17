@@ -143,6 +143,14 @@ async function performOpenUrl(deps, safe, { profileName, emit } = {}) {
 
   if (!safe.closeWhenDone && result.ok) {
     deps.profileService.updateProfile(profile.id, { status: "running" });
+    try {
+      await deps.sessionManager.forceStealthCapture?.(profile, { source: "workflow_done" });
+    } catch (error) {
+      console.warn(
+        "[stealth-sync] post-workflow capture:",
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   return result;

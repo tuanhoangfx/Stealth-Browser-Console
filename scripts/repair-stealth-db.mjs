@@ -11,7 +11,9 @@ import { closeStealthProdOnly } from "./lib/close-stealth-prod-only.mjs";
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const closeProd = process.argv.includes("--keep-running") ? null : closeStealthProdOnly();
+const closeProd = process.argv.includes("--keep-running")
+  ? null
+  : closeStealthProdOnly({ allowKill: true });
 if (closeProd?.killed) {
   console.log(`repair-stealth-db: closed ${closeProd.killed} packaged instance(s) (dev Electron untouched)`);
 }

@@ -1,11 +1,11 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ListChecks } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubUsersStatusTone } from "../shell/HubUsersStatusLabel";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
-import { hubDirectoryPopoverPosition } from "../lib/hub-directory-popover";
+import { measureHubDirectoryPopoverPosition } from "../lib/hub-directory-popover";
 import { compactIconSize } from "../ui-scale";
 import "../styles/hub-directory-popover.css";
 
@@ -15,6 +15,8 @@ export type HubDirectoryColumnHintGlyph = {
   toneClass?: string;
   /** Native emoji — matches sheet-parity column headers (e.g. 🪪 Buyer ID). */
   emoji?: string;
+  /** Extension manifest PNG or brand asset. */
+  imageSrc?: string;
 };
 
 export type HubDirectoryColumnHintLine = {
@@ -68,6 +70,15 @@ function HintSectionHeading({
       <span className="hub-directory-popover__icon" aria-hidden>
         {glyph.emoji ? (
           <span className="hub-directory-popover__emoji">{glyph.emoji}</span>
+        ) : glyph.imageSrc ? (
+          <img
+            src={glyph.imageSrc}
+            alt=""
+            width={compactIconSize(variant === "title" ? 12 : 11)}
+            height={compactIconSize(variant === "title" ? 12 : 11)}
+            className="hub-directory-popover__image shrink-0"
+            draggable={false}
+          />
         ) : (
           <HubSemanticGlyph
             icon={glyph.icon}
@@ -107,17 +118,25 @@ function HintLineGlyph({ line }: { line: HubDirectoryColumnHintLine }) {
 /** Rich multi-line column header hint — hub-directory-popover SSOT (below anchor). */
 export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props) {
   const anchorRef = useRef<HTMLSpanElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
+  const updatePosition = useCallback(() => {
+    const next = measureHubDirectoryPopoverPosition(anchorRef.current, popoverRef.current);
+    if (next) setPos(next);
+  }, []);
+
   const show = useCallback(() => {
-    const el = anchorRef.current;
-    if (!el) return;
-    setPos(hubDirectoryPopoverPosition(el.getBoundingClientRect()));
     setOpen(true);
   }, []);
 
   const hide = useCallback(() => setOpen(false), []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+  }, [open, updatePosition, content]);
 
   const resolvedTitleGlyph = content.titleGlyph ?? titleGlyph;
   const resolvedOptionsGlyph = content.optionsLabelGlyph ?? DEFAULT_OPTIONS_GLYPH;
@@ -126,6 +145,7 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
     open && typeof document !== "undefined"
       ? createPortal(
           <div
+            ref={popoverRef}
             className="hub-directory-popover"
             style={{ top: pos.top, left: pos.left }}
             role="tooltip"

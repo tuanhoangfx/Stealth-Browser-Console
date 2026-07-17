@@ -1,6 +1,15 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize } from "../ui-scale";
+import type { HubGlyphComponent } from "../types/filter-badge";
+import { HubBrandIcon } from "../shell/HubBrandIcon";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+  type HubDirectoryColumnHintGlyph,
+} from "../table/HubDirectoryColumnHint";
+import { hubTableLabelTextForGlyph } from "../content/hub-table-header-label";
 
 export function TabButton({
   active,
@@ -44,12 +53,34 @@ export function SectionIcon({
   return <Icon size={compactIconSize(12)} className={className} aria-hidden />;
 }
 
-export function Section({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode }) {
+function SettingsSubsectionLabel({
+  label,
+  labelHint,
+}: {
+  label: string;
+  labelHint?: HubDirectoryColumnHintContent;
+}) {
+  const labelNode = <span className="truncate">{label}</span>;
+  if (!labelHint) return labelNode;
+  return <HubDirectoryColumnHint content={labelHint}>{labelNode}</HubDirectoryColumnHint>;
+}
+
+export function Section({
+  label,
+  icon,
+  labelHint,
+  children,
+}: {
+  label: string;
+  icon?: ReactNode;
+  labelHint?: HubDirectoryColumnHintContent;
+  children: ReactNode;
+}) {
   return (
     <div className="hub-settings-subsection mb-3 last:mb-0">
       <div className="hub-settings-subsection__label mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
         {icon}
-        <span>{label}</span>
+        <SettingsSubsectionLabel label={label} labelHint={labelHint} />
       </div>
       {children}
     </div>
@@ -60,12 +91,14 @@ export function Section({ label, icon, children }: { label: string; icon?: React
 export function SettingsSubsection({
   label,
   icon,
+  labelHint,
   headerActions,
   children,
   className = "",
 }: {
   label: string;
   icon?: ReactNode;
+  labelHint?: HubDirectoryColumnHintContent;
   headerActions?: ReactNode;
   children?: ReactNode;
   className?: string;
@@ -75,7 +108,7 @@ export function SettingsSubsection({
       <div className="hub-settings-subsection__header mb-1.5 flex items-center justify-between gap-2">
         <div className="hub-settings-subsection__label flex min-w-0 items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
           {icon}
-          <span className="truncate">{label}</span>
+          <SettingsSubsectionLabel label={label} labelHint={labelHint} />
         </div>
         {headerActions ? <div className="hub-settings-subsection__actions shrink-0">{headerActions}</div> : null}
       </div>
@@ -84,20 +117,123 @@ export function SettingsSubsection({
   );
 }
 
+function resolveToggleLabelGlyph({
+  icon,
+  iconClassName,
+  emoji,
+  brandIcon,
+  imageSrc,
+}: {
+  icon?: HubGlyphComponent;
+  iconClassName?: string;
+  emoji?: string;
+  brandIcon?: HubBrandIconId;
+  imageSrc?: string;
+}): HubDirectoryColumnHintGlyph | undefined {
+  if (emoji) return { emoji };
+  if (imageSrc) return { imageSrc };
+  if (brandIcon) return { brandIcon };
+  if (icon) return { icon, toneClass: iconClassName };
+  return undefined;
+}
+
+function PrefToggleGlyph({
+  icon: Icon,
+  iconClassName = "text-indigo-300/90",
+  emoji,
+  brandIcon,
+  imageSrc,
+}: {
+  icon?: HubGlyphComponent;
+  iconClassName?: string;
+  emoji?: string;
+  brandIcon?: HubBrandIconId;
+  imageSrc?: string;
+}) {
+  const size = compactIconSize(11);
+  if (emoji) {
+    return (
+      <span className="hub-users-th-emoji shrink-0 leading-none" aria-hidden>
+        {emoji}
+      </span>
+    );
+  }
+  if (imageSrc) {
+    return (
+      <img
+        src={imageSrc}
+        alt=""
+        width={size}
+        height={size}
+        className="hub-users-th-icon hub-users-th-icon--image shrink-0"
+        draggable={false}
+        aria-hidden
+      />
+    );
+  }
+  if (brandIcon) {
+    return <HubBrandIcon brandId={brandIcon} size={size} className="shrink-0" />;
+  }
+  if (Icon) {
+    return <Icon size={size} className={`shrink-0 ${iconClassName}`} aria-hidden />;
+  }
+  return null;
+}
+
+function ToggleRowLabel({
+  label,
+  on,
+  labelHint,
+  icon,
+  iconClassName,
+  emoji,
+  brandIcon,
+  imageSrc,
+}: {
+  label: string;
+  on: boolean;
+  labelHint?: HubDirectoryColumnHintContent;
+  icon?: HubGlyphComponent;
+  iconClassName?: string;
+  emoji?: string;
+  brandIcon?: HubBrandIconId;
+  imageSrc?: string;
+}) {
+  const hasGlyph = Boolean(emoji || brandIcon || imageSrc || icon);
+  const visibleLabel = hasGlyph ? hubTableLabelTextForGlyph(label) : label;
+  const labelNode = <span className={on ? "text-[var(--text)]" : "text-[var(--muted)]"}>{visibleLabel}</span>;
+  if (!labelHint) return labelNode;
+  return (
+    <HubDirectoryColumnHint
+      content={labelHint}
+      titleGlyph={resolveToggleLabelGlyph({ icon, iconClassName, emoji, brandIcon, imageSrc })}
+    >
+      {labelNode}
+    </HubDirectoryColumnHint>
+  );
+}
+
 export function ToggleRow({
   label,
   icon: Icon,
   iconClassName = "text-indigo-300/90",
   emoji,
+  brandIcon,
+  imageSrc,
+  labelHint,
   on,
   onChange,
   disabled = false,
   onDisabledClick,
 }: {
   label: string;
-  icon?: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>;
+  icon?: HubGlyphComponent;
   iconClassName?: string;
   emoji?: string;
+  brandIcon?: HubBrandIconId;
+  imageSrc?: string;
+  /** Rich label hint — hover label text (same SSOT as directory column headers). */
+  labelHint?: HubDirectoryColumnHintContent;
   on: boolean;
   onChange: () => void;
   /** Gray out when cap reached (e.g. KPI max visible). */
@@ -124,14 +260,23 @@ export function ToggleRow({
       <span className={`hub-check-indicator${on ? " is-on" : ""}`} aria-hidden>
         {on ? <Check size={compactIconSize(9)} strokeWidth={2.75} /> : null}
       </span>
-      {Icon ? (
-        <Icon size={compactIconSize(11)} className={`shrink-0 ${iconClassName}`} aria-hidden />
-      ) : emoji ? (
-        <span className="hub-users-th-emoji shrink-0 leading-none" aria-hidden>
-          {emoji}
-        </span>
-      ) : null}
-      <span className={on ? "text-[var(--text)]" : "text-[var(--muted)]"}>{label}</span>
+      <PrefToggleGlyph
+        icon={Icon}
+        iconClassName={iconClassName}
+        emoji={emoji}
+        brandIcon={brandIcon}
+        imageSrc={imageSrc}
+      />
+      <ToggleRowLabel
+        label={label}
+        on={on}
+        labelHint={labelHint}
+        icon={Icon}
+        iconClassName={iconClassName}
+        emoji={emoji}
+        brandIcon={brandIcon}
+        imageSrc={imageSrc}
+      />
     </button>
   );
 }

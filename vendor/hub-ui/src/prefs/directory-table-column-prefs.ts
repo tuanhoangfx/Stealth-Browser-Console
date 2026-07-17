@@ -1,4 +1,6 @@
 import type { PrefIcon } from "../display-prefs/types";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 
 export type DirectoryTableColumnItem<K extends string = string> = {
   key: K;
@@ -7,6 +9,10 @@ export type DirectoryTableColumnItem<K extends string = string> = {
   iconClassName?: string;
   /** Native emoji — sheet-parity headers when Lucide icon is absent. */
   emoji?: string;
+  brandIcon?: HubBrandIconId;
+  imageSrc?: string;
+  /** Rich label hint — hover label text (same SSOT as directory column headers). */
+  labelHint?: HubDirectoryColumnHintContent;
   /** Cannot be hidden in Settings. */
   required?: boolean;
 };
@@ -47,8 +53,9 @@ export function parseDirectoryTableColumnPrefsStorage<K extends string>(
   defaultVisible: ReadonlySet<K>,
 ): { visible: Set<K>; order: K[] } {
   if (!raw) {
-    const order = mergeDirectoryTableColumnOrder(itemKeys, [...defaultVisible]);
-    return { visible: new Set(defaultVisible), order };
+    // Order SSOT = itemKeys (canonical defs). Never use Set(defaultVisible) insertion order —
+    // that put Mail Sub before Profile in Display when storage was empty.
+    return { visible: new Set(defaultVisible), order: [...itemKeys] };
   }
   try {
     const parsed = JSON.parse(raw) as string[] | StoredColumnPrefsJson;
@@ -65,8 +72,7 @@ export function parseDirectoryTableColumnPrefsStorage<K extends string>(
   } catch {
     /* fall through */
   }
-  const order = mergeDirectoryTableColumnOrder(itemKeys, [...defaultVisible]);
-  return { visible: new Set(defaultVisible), order };
+  return { visible: new Set(defaultVisible), order: [...itemKeys] };
 }
 
 export function serializeDirectoryTableColumnPrefsStorage<K extends string>(

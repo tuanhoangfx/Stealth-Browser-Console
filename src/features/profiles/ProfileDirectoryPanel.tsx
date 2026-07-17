@@ -8,6 +8,7 @@ import {
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
 import type { ExtensionToggles, ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
+import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
 import { ProfilesHubChrome } from "./ProfilesHubChrome";
 import type { ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
 import { useExtensionIcons } from "./useExtensionIcons";
@@ -48,6 +49,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected,
   openOne,
   closeOne,
+  closeAllRunning,
+  runningHeadlessIds,
   onOpenDetail,
   globalExtensionToggles,
   extensionState,
@@ -55,7 +58,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   onExtensionSet,
   deleteSelected,
   setShowCreate,
-  onEdit,
+  onEditSingle,
+  onEditBulk,
   onGroups,
   onExport,
   onImport,
@@ -94,6 +98,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected: boolean;
   openOne: (profile: ProfileRow) => void;
   closeOne: (profile: ProfileRow) => void;
+  closeAllRunning: () => void;
+  runningHeadlessIds: ReadonlySet<string>;
   onOpenDetail?: (profile: ProfileRow) => void;
   globalExtensionToggles: ExtensionToggles;
   extensionState: Record<"e0001" | "surfshark", ExtensionSelectionState>;
@@ -101,7 +107,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
   deleteSelected: () => void;
   setShowCreate: (value: boolean) => void;
-  onEdit: () => void;
+  onEditSingle: () => void;
+  onEditBulk: () => void;
   onGroups: () => void;
   onExport: () => void;
   onImport: () => void;
@@ -111,6 +118,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   centerStats: TabHeaderStatItem[];
   rail: ReactNode;
 }) {
+  const { launchProgress } = useWorkflowRuntime();
   const extensionIcons = useExtensionIcons();
   const filterSearch = filterSearchProp ?? search;
   const directoryQuery = useMemo(
@@ -144,9 +152,11 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     syncBusy,
     selectedProfiles,
     closeOne,
+    closeAllRunning,
     deleteSelected,
     setShowCreate,
-    onEdit,
+    onEditSingle,
+    onEditBulk,
     onGroups,
     onExport,
     onImport,
@@ -172,7 +182,11 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
         : undefined;
 
   return (
-    <ProfilesHubChrome centerStats={centerStats} headerActions={headerActions}>
+    <ProfilesHubChrome
+      centerStats={centerStats}
+      launchProgress={launchProgress}
+      headerActions={headerActions}
+    >
       <div className="stealth-profile-layout flex min-h-0 flex-1 overflow-hidden">
         <div className="stealth-profile-directory-pane min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
           <HubSplitDirectoryPane
@@ -203,6 +217,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 onToggleSelect={onToggleSelect}
                 onToggleSelectAll={onToggleSelectAll}
                 allVisibleSelected={allVisibleSelected}
+                runningHeadlessIds={runningHeadlessIds}
                 onOpen={openOne}
                 onClose={closeOne}
                 onOpenDetail={onOpenDetail}
@@ -216,6 +231,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
         </div>
         {rail}
       </div>
+      {chrome.closeAllConfirmDialog}
     </ProfilesHubChrome>
   );
 });

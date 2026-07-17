@@ -91,7 +91,9 @@ function startElectron() {
     VITE_DEV_SERVER_URL: "",
     STEALTH_LOAD_DIST: "1",
     STEALTH_DIST_WATCH: watch ? "1" : "0",
+    STEALTH_DEV_ISOLATED: "1",
   });
+  console.log(`[dev-desktop-only] isolated apiPort=${env.STEALTH_API_PORT} userData=${env.STEALTH_USER_DATA || "(default)"}`);
   const child = spawn(node, [electronCli, "."], winSpawnOpts({
     cwd: root,
     detached: true,
@@ -117,6 +119,9 @@ function isWatchRunning() {
 
 const devAlreadyRunning = keepDev && isStealthDevRunning();
 
+const killPackaged =
+  process.argv.includes("--replace-packaged") || process.env.STEALTH_KILL_PACKAGED === "1";
+
 if (devAlreadyRunning) {
   console.log("[dev-desktop-only] --keep-dev: Electron dev still running — skip kill/restart");
 } else {
@@ -125,8 +130,12 @@ if (devAlreadyRunning) {
   killWatch();
 }
 
-const { killed } = closePackagedStealth();
-if (killed) console.log(`[dev-desktop-only] closed ${killed} packaged instance(s)`);
+if (killPackaged) {
+  const { killed } = closePackagedStealth();
+  if (killed) console.log(`[dev-desktop-only] closed ${killed} packaged instance(s) (--replace-packaged)`);
+} else {
+  console.log("[dev-desktop-only] packaged Stealth Browser Console.exe left running (dev isolated :6004)");
+}
 
 if (!skipBuild || !fs.existsSync(path.join(root, "dist", "index.html"))) {
   runBuildOnce();

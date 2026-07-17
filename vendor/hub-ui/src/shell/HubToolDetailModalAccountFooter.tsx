@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import {
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
@@ -14,75 +15,61 @@ export type HubToolDetailModalAccountFooterProps = {
   onClose: () => void;
   closeLabel?: string;
   closeDisabled?: boolean;
+  /** Close button icon — Layout-3 SSOT defaults to X. */
+  closeIcon?: LucideIcon;
   onSave?: () => void;
   saveLabel?: string;
+  /** Busy label for Save/Apply — defaults to Saving…. */
+  saveBusyLabel?: string;
   saveDisabled?: boolean;
   saveIcon?: LucideIcon;
   saveVariant?: "default" | "create";
   busy?: boolean;
-  /** Destructive CTA — uses primary danger chrome (not secondary). */
+  /** Destructive CTA — primary danger, after Close (never left-split). */
   onDelete?: () => void;
   deleteLabel?: string;
-  /** Extra secondary actions before Close (View orders, Refresh subscription, …). */
+  deleteIcon?: LucideIcon;
+  /**
+   * Extra secondary actions after Close/Delete (View customer, View orders, …).
+   * Rendered in the same centered cluster — do not use left/right split.
+   */
   leading?: ReactNode;
   /** Replaces default Save (Edit toggle, readonly Close-only, …). */
   saveSlot?: ReactNode;
 };
 
 /**
- * Golden account-detail footer — optional delete (danger) · leading secondaries · Close · Save.
- * Reference: P0020 TwofaAccountDetailModal.
+ * Golden account-detail footer — single centered cluster:
+ * **Save → Close → Delete? → trailing secondaries (`leading`)**.
+ *
+ * Reference: P0020 TwofaAccountDetailModal · P0005 Order/Customer Detail.
  */
 export function HubToolDetailModalAccountFooter({
   onClose,
   closeLabel = HUB_DETAIL_MODAL_CLOSE_LABEL,
   closeDisabled,
+  closeIcon = X,
   onSave,
   saveLabel = HUB_DETAIL_MODAL_SAVE_LABEL,
+  saveBusyLabel = HUB_DETAIL_MODAL_SAVING_LABEL,
   saveDisabled,
   saveIcon,
   saveVariant = "default",
   busy,
   onDelete,
   deleteLabel = "Delete",
+  deleteIcon = Trash2,
   leading,
   saveSlot,
 }: HubToolDetailModalAccountFooterProps) {
-  const hasLeading = Boolean(onDelete || leading);
-
   return (
-    <div
-      className={[
-        "hub-tool-detail-modal__footer-bar",
-        hasLeading ? "hub-tool-detail-modal__footer-bar--split" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {hasLeading ? (
-        <div className="hub-tool-detail-modal__footer-leading">
-          {onDelete ? (
-            <HubToolDetailModalPrimaryAction
-              label={deleteLabel}
-              onClick={onDelete}
-              danger
-              disabled={busy}
-            />
-          ) : null}
-          {leading}
-        </div>
-      ) : null}
+    <div className="hub-tool-detail-modal__footer-bar">
       <div className="hub-tool-detail-modal__footer-main">
-        <HubToolDetailModalSecondaryAction
-          label={closeLabel}
-          onClick={onClose}
-          disabled={closeDisabled ?? busy}
-        />
         {saveSlot ??
           (onSave ? (
             <HubToolDetailModalPrimaryAction
               label={saveLabel}
-              busyLabel={HUB_DETAIL_MODAL_SAVING_LABEL}
+              busyLabel={saveBusyLabel}
               onClick={onSave}
               disabled={saveDisabled}
               busy={busy}
@@ -90,6 +77,22 @@ export function HubToolDetailModalAccountFooter({
               variant={saveVariant}
             />
           ) : null)}
+        <HubToolDetailModalSecondaryAction
+          label={closeLabel}
+          onClick={onClose}
+          disabled={closeDisabled ?? busy}
+          icon={closeIcon}
+        />
+        {onDelete ? (
+          <HubToolDetailModalPrimaryAction
+            label={deleteLabel}
+            onClick={onDelete}
+            danger
+            disabled={busy}
+            icon={deleteIcon}
+          />
+        ) : null}
+        {leading}
       </div>
     </div>
   );

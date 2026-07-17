@@ -254,6 +254,7 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "col.directory.category": { icon: Layers, className: "text-indigo-400", tone: "indigo" },
   "col.directory.username": { icon: Globe2, className: "text-cyan-300", tone: "cyan" },
   "col.directory.account": { icon: UserRound, className: "text-sky-300", tone: "sky" },
+  "col.directory.browser": { icon: Globe2, className: "text-cyan-300", tone: "cyan" },
   "col.directory.fbAccount": {
     icon: UserRound,
     className: "text-blue-300",
@@ -310,6 +311,7 @@ const DIRECTORY_COLUMN_TH_ICON: Partial<Record<SemanticIconKey, string>> = {
   "col.directory.category": "hub-users-th-icon--tools",
   "col.directory.username": "hub-users-th-icon--id",
   "col.directory.account": "hub-users-th-icon--name",
+  "col.directory.browser": "hub-users-th-icon--id",
   "col.directory.fbAccount": "hub-users-th-icon--name",
   "col.directory.pages": "hub-users-th-icon--name",
   "col.directory.added": "hub-users-th-icon--created",

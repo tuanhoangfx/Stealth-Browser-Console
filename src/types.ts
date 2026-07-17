@@ -250,6 +250,7 @@ export type CookieBridgeStatus = {
   source: "workspace" | "store-cache" | "custom" | "missing";
   manifestOk: boolean;
   manifestName: string;
+  manifestVersion?: string | null;
   workspacePath: string | null;
   cachePath: string;
   env: { STEALTH_COOKIE_BRIDGE: string; STEALTH_COOKIE_BRIDGE_LOCAL: string };
@@ -261,7 +262,10 @@ export type CachedStoreExtension = {
   localKey?: string;
   unpackedPath: string;
   name: string;
+  version?: string;
   iconDataUri?: string;
+  /** ISO timestamp — manifest mtime on disk. */
+  updatedAt?: string;
 };
 
 export type ExtensionsStatus = {
@@ -274,8 +278,10 @@ export type ExtensionsStatus = {
 export type InstallStoreExtensionResult = {
   storeId: string;
   name: string;
+  version?: string;
   unpackedPath: string;
   cached: boolean;
+  force?: boolean;
   profiles: number;
   installed: number;
   details: Array<{ profileDir: string; extId?: string; error?: string }>;
@@ -344,8 +350,19 @@ declare global {
         names?: string[];
         storagePurged?: number;
       }>;
-      launchProfile: (payload: { id: string; name?: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
+      launchProfile: (payload: { id: string; name?: string }) => Promise<{
+        ok: boolean;
+        profile: StealthProfile;
+        headless?: boolean;
+        agentSmoke?: boolean;
+        focused?: boolean;
+      }>;
       closeProfile: (payload: { id: string; name?: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
+      closeAllProfiles: () => Promise<{ ok: boolean; count: number; ids: string[] }>;
+      listRunningProfiles: () => Promise<{
+        ok: boolean;
+        sessions: Array<{ id: string; name: string; headless?: boolean }>;
+      }>;
       focusProfile: (payload: { id: string }) => Promise<{ ok: boolean; reason?: string }>;
       createGroup: (payload: { name: string }) => Promise<{ ok: boolean; group: StealthGroup }>;
       updateGroup: (payload: { id: string; name: string }) => Promise<{ ok: boolean; group: StealthGroup }>;
@@ -407,6 +424,22 @@ declare global {
         workflowId?: string;
       }) => Promise<OpenUrlResult>;
       appInfo: () => Promise<{ name: string; version: string; isPackaged: boolean; userDataPath: string; profileExtensionsEnabled?: boolean; extensionToggles?: ExtensionToggles }>;
+      setVaultUserScope: (payload: {
+        email?: string | null;
+      }) => Promise<{
+        ok: boolean;
+        hubEmail: string | null;
+        scopeEmail: string | null;
+        scopeError: string | null;
+        devScope: boolean;
+      }>;
+      getVaultUserScope: () => Promise<{
+        ok: boolean;
+        hubEmail: string | null;
+        scopeEmail: string | null;
+        scopeError: string | null;
+        devScope: boolean;
+      }>;
       openDataFolder: () => Promise<{ ok: boolean; path: string }>;
       getProfileExtensionsEnabled: () => Promise<{ ok: boolean; enabled: boolean }>;
       setProfileExtensionsEnabled: (payload: { enabled: boolean }) => Promise<{ ok: boolean; enabled: boolean }>;
@@ -425,6 +458,7 @@ declare global {
         storeIdOrUrl?: string;
         url?: string;
         profileIds?: string[];
+        force?: boolean;
       }) => Promise<{ ok: boolean; result?: InstallStoreExtensionResult; error?: string }>;
       pickUnpackedExtensionFolder: () => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
       installUnpackedExtension: (payload: {

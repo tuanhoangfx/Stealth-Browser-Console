@@ -66,8 +66,18 @@ export function createHubIdentitySupabaseClient(config: HubIdentitySupabaseClien
 
   function getIdentitySupabase(snapshot?: HubIdentitySnapshot | null): SupabaseClient | null {
     const snap = snapshot ?? readHubIdentity();
-    const url = snap?.supabase_url?.trim() || config.defaultUrl;
-    const anon = snap?.supabase_anon_key?.trim() || config.defaultAnonKey;
+    const snapUrl = snap?.supabase_url?.trim() || "";
+    const snapAnon = snap?.supabase_anon_key?.trim() || "";
+    const defaultUrl = config.defaultUrl.trim();
+    const defaultAnon = config.defaultAnonKey.trim();
+    // After Lenovo cutover, stale cache may still point at cloud (*.supabase.co).
+    // Never prefer a mismatched snap URL — that makes password login hit the wrong GoTrue.
+    const urlMismatch = Boolean(snapUrl && defaultUrl && snapUrl.replace(/\/$/, "") !== defaultUrl.replace(/\/$/, ""));
+    if (urlMismatch) {
+      clearHubIdentity("hub_url_mismatch");
+    }
+    const url = urlMismatch ? defaultUrl : snapUrl || defaultUrl;
+    const anon = urlMismatch ? defaultAnon : snapAnon || defaultAnon;
     if (!url || !anon) return null;
     const key = `${url}|${anon}`;
     if (!cachedClient || cachedClientKey !== key) {

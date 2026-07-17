@@ -46,13 +46,13 @@ fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 run("pnpm install", "pnpm", ["install"]);
 run("check-cloakbrowser-pin", "node", ["scripts/check-cloakbrowser-pin.mjs"]);
+run("verify-cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.mjs"]);
 run("unit-tests", "node", ["scripts/run-unit-tests.mjs"]);
 
 console.log(`
 bump-cloakbrowser: ladder passed for cloakbrowser@${next}
 
-Next (manual — see docs/ENGINE-CLOAKBROWSER.md#bump-policy):
-  1. Launch 2–3 profiles on your target sites (Google, Meta, etc.)
-  2. Confirm fingerprint / login still clean
-  3. Bump P0003 patch version + CHANGELOG if shipping to ops
+Before shipping to users: pnpm desktop:dist (or desktop:release) then Run profile + Run proxy profile on Setup.exe.
+
+Manual site QA still required — see tool.manifest engine.bumpPolicy.
 `);

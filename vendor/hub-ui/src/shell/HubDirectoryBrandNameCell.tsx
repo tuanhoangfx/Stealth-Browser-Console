@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { compactIconSize } from "../ui-scale";
-import { resolveHubBrandIcon, type HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { resolveHubBrandIcon, HUB_DIRECTORY_BRAND_EMPTY_GLYPH, type HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { hubDirectoryTableBrandImgClass, type HubBrandIconShell } from "./filter-dropdown-primitives";
+import { HubDirectorySearchHighlightText } from "../content/HubDirectorySearchHighlightText";
 import type { HubGlyphComponent } from "../types/filter-badge";
 
 /** P0020 Services table — brand glyph in name column (16px). */
@@ -16,13 +17,15 @@ export type HubDirectoryBrandNameCellProps = {
   fallbackIcon?: HubGlyphComponent;
   /** @deprecated Body cells use no hover tooltip — header hints only. */
   title?: string;
+  searchHighlightTerms?: readonly string[];
 };
 
 function DirectoryBrandGlyph({ px, glyph }: { px: number; glyph: string }) {
+  const glyphPx = Math.max(10, Math.round(px * 0.875));
   return (
     <span
       className="hub-directory-brand-glyph inline-flex shrink-0 items-center justify-center"
-      style={{ width: px, height: px }}
+      style={{ width: px, height: px, fontSize: glyphPx }}
       aria-hidden
     >
       {glyph}
@@ -74,11 +77,20 @@ export function HubDirectoryBrandNameCell({
   imageShell = "bare",
   fallbackGlyph,
   fallbackIcon: Fallback,
+  title,
+  searchHighlightTerms,
 }: HubDirectoryBrandNameCellProps) {
   const brand = brandId ? resolveHubBrandIcon(brandId) : null;
   const resolvedSrc = brand?.src ?? imageSrc;
   const resolvedShell = brand?.shell ?? imageShell;
   const px = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
+
+  const titleContent: ReactNode =
+    searchHighlightTerms && searchHighlightTerms.length > 0 ? (
+      <HubDirectorySearchHighlightText text={label} terms={[...searchHighlightTerms]} />
+    ) : (
+      label
+    );
 
   return (
     <span className="hub-users-cell-name">
@@ -105,7 +117,9 @@ export function HubDirectoryBrandNameCell({
       ) : Fallback ? (
         <Fallback size={px} strokeWidth={2.25} aria-hidden />
       ) : null}
-      <span className="hub-users-name-title truncate">{label}</span>
+      <span className="hub-users-name-title truncate" title={title ?? label}>
+        {titleContent}
+      </span>
     </span>
   );
 }

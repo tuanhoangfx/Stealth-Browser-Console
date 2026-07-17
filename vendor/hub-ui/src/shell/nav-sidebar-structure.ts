@@ -7,6 +7,8 @@ export type NavGroupChildBase = {
   label: string;
   icon: LucideIcon;
   iconTone: NavIconTone;
+  /** Optional SVG/raster — overrides Lucide in subnav when set. */
+  iconSrc?: string;
   /** Optional numeric badge (e.g. unread count). */
   badge?: number;
 };
@@ -149,5 +151,6 @@ export function navViewGroupSubNavItems<TView extends string>(children: NavViewG
     label: c.label,
     icon: c.icon,
     iconTone: c.iconTone,
+    iconSrc: c.iconSrc,
   }));
 }

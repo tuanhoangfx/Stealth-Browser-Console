@@ -176,7 +176,7 @@ export function startDevDetached() {
     cwd: root,
     detached: true,
     stdio: ["ignore", logFd, logFd],
-    env: stealthElectronEnv(),
+    env: stealthElectronEnv({ STEALTH_DEV_LOG: "1" }),
   }));
   child.unref();
   fs.writeFileSync(PID_FILE, String(child.pid));

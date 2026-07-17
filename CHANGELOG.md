@@ -1,11 +1,191 @@
 # Changelog
 
+## 2026-07-16 — v1.0.16 — Electron dev reload
+
+- Version: `1.0.16`
+- Timestamp: 2026-07-16 01:34 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-16 — v1.0.15 — Electron dev reload
+
+- Version: `1.0.15`
+- Timestamp: 2026-07-16 23:36 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-16 — v1.0.14 — Electron dev reload
+
+- Version: `1.0.14`
+- Timestamp: 2026-07-16 16:32 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-16 — v1.0.13 — Electron dev reload
+
+- Version: `1.0.13`
+- Timestamp: 2026-07-16 15:53 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-16 — v1.0.12 — Electron dev reload
+
+- Version: `1.0.12`
+- Timestamp: 2026-07-16 15:05 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-13 — v1.0.11 — Hub API identity (fix packaged No access)
+
+- Version: `1.0.11`
+- Timestamp: 2026-07-13 (UTC+7)
+- Type: Patch
+- Status: Stable
+
+### Changes
+
+- **Fix** — packaged Hub login uses `https://hub-api.infi.io.vn` (retired `*.supabase.co` JWT host caused false “No access” after grant).
+- **CSP** — `connect-src` allows `hub-api.infi.io.vn` / `*.infi.io.vn` for identity.
+- **Gate** — `smoke-packaged-auth.mjs` + `run-build` fail if dist embeds legacy Hub host or omits hub-api / CSP.
+- **Auth UX** — Access Denied recheck + RPC `hub_user_has_tool_access` verify path.
+
+## 2026-07-09 — v1.0.10 — Packaged headed launch + exe resolution
+
+- Version: `1.0.10`
+- Timestamp: 2026-07-09 (UTC+7)
+- Type: Patch
+- Status: Stable
+
+### Changes
+
+- **Headed launch** — packaged app ignores `CURSOR_AGENT` / agent smoke env; profiles show visible Chrome (not headless-invisible).
+- **desktop:open** — picks highest-version exe (pending → NSIS install → win-unpacked); strips smoke env on spawn.
+- **Startup** — main process purges agent smoke env when `app.isPackaged`.
+
+## 2026-07-09 — v1.0.9 — Packaged extension store IDs fix
+
+- Version: `1.0.9`
+- Timestamp: 2026-07-09 (UTC+7)
+- Type: Patch
+- Status: Stable
+
+### Changes
+
+- **Fix** — include `shared/stealth-extension-store-ids.json` in NSIS asar (`build.files`); fixes `Cannot find module …stealth-extension-store-ids.json` on profile launch in packaged app.
+- **Gate** — `verify-packaged-unpacked.mjs` asserts shared JSON present in asar.
+- **Fallback** — electron loader uses embedded IDs if JSON absent (safety net).
+
+## 2026-07-09 — v1.0.8 — Dev stability + shutdown fix
+
+- Version: `1.0.8`
+- Timestamp: 2026-07-09 (UTC+7)
+- Type: Patch
+- Status: Stable
+
+### Changes
+
+- **Dev guards** — `predev` skips vendor sync / `.env.local` write / `electron-dev-gate` kill when `:5175` is active; `dev-node` retries Vite up to 3× on transient exit.
+- **Shutdown** — fix `flushScheduledLastOpenedCheckpoint` scope in `before-quit` (no ReferenceError on quit).
+- **Build** — `run-build` syncs `hub-ui` + `hub-identity` vendor before `tsc`/vite.
+- **UI** — `profile-form-field-meta` uses `headerIconClassName` SSOT from hub-ui column meta.
+
+## 2026-07-08 — v1.0.7 — Electron dev reload
+
+- Version: `1.0.7`
+- Timestamp: 2026-07-08 06:54 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v1.0.6 — Electron dev reload
+
+- Version: `1.0.6`
+- Timestamp: 2026-07-08 06:49 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-09 — v1.0.5 — Last opened durability (prod catalog)
+
+- Version: `1.0.5`
+- Timestamp: 2026-07-09 (UTC+7)
+- Type: Patch
+- Status: Stable
+
+### Changes
+
+- **Last opened** — WAL debounced checkpoint after profile open; startup repair from `profile_events` + merge newer dev isolated DB into prod; pre-update in-app checkpoint before `quitAndInstall`.
+- **Guards** — never downgrade `last_opened_at`; skip same-db merge; ATTACH sibling read-only; reconcile rejects future timestamps.
+- **Repair script** — `node scripts/repair-last-opened-catalog.mjs` (prod DB, app closed).
+- **Monitor** — every boot logs `[last-opened] startup maintenance reconciled=N siblingMerged=M` (healthy steady-state: `0 0`).
+- **Not added** — no sidecar JSON; no NSIS API checkpoint (installer hook stays `app.asar.unpacked` cleanup only).
+
+## 2026-07-08 — v1.0.4 — Electron dev reload
+
+- Version: `1.0.4`
+- Timestamp: 2026-07-08 04:17 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v1.0.3 — Electron dev reload
+
+- Version: `1.0.3`
+- Timestamp: 2026-07-08 03:14 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-08 — v1.0.2 — Electron dev reload
+
+- Version: `1.0.2`
+- Timestamp: 2026-07-08 03:09 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-08 — v1.0.1 — Fix proxy geoip (mmdb-lib) on packaged build
 
 - Version: `1.0.1`
 - Timestamp: 2026-07-08 21:40 (UTC+7)
 - Type: Patch
-- Status: Release
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.1
 
 ### Changes
 

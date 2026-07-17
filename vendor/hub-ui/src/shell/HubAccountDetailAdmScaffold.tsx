@@ -6,15 +6,21 @@ import {
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_CLASS,
 } from "./hubAccountDetailModal";
 import { HUB_ACCOUNT_DETAIL_ADM_FRAME_CLASS } from "./HubAccountDetailAdmBody";
+import { hubAdmSectionHeader, type HubAdmSectionKey } from "./hubAdmSectionHeaders";
 import {
   hubAccountDetailSectionIcon,
   hubAccountDetailSectionIconClass,
   type HubAccountDetailSectionKind,
 } from "./hubAccountDetailSectionIcons";
+import { hubToolDetailTitleWithEmoji } from "./hubToolDetailTitleWithEmoji";
 
 export type HubAccountDetailAdmScaffoldProps = {
   panelId: string;
   panelTitle?: string;
+  /** Panel header emoji — sheet sticker parity (📡 Profile directory, 📜 Order Details). */
+  panelTitleEmoji?: string;
+  /** ADM subsection Lucide header — overrides `panelSectionKey` icon when set. */
+  panelAdmSectionKey?: HubAdmSectionKey;
   /** Panel header icon tone — defaults to credentials (P0020 Mail golden). */
   panelSectionKey?: HubAccountDetailSectionKind;
   main: ReactNode;
@@ -31,6 +37,8 @@ export type HubAccountDetailAdmScaffoldProps = {
 export function HubAccountDetailAdmScaffold({
   panelId,
   panelTitle = "Credentials",
+  panelTitleEmoji,
+  panelAdmSectionKey,
   panelSectionKey = "credentials",
   main,
   rail,
@@ -38,7 +46,14 @@ export function HubAccountDetailAdmScaffold({
   panelClassName = "",
   panelBodyClassName = "",
 }: HubAccountDetailAdmScaffoldProps) {
-  const PanelIcon = hubAccountDetailSectionIcon(panelSectionKey);
+  const admHeader = panelAdmSectionKey ? hubAdmSectionHeader(panelAdmSectionKey) : null;
+  const PanelIcon = panelTitleEmoji
+    ? undefined
+    : admHeader?.icon ?? hubAccountDetailSectionIcon(panelSectionKey);
+  const panelIconClassName = panelTitleEmoji
+    ? undefined
+    : admHeader?.iconClassName ?? hubAccountDetailSectionIconClass(panelSectionKey);
+  const panelTitleNode = panelTitleEmoji ? hubToolDetailTitleWithEmoji(panelTitle, panelTitleEmoji) : panelTitle;
   const frameClass = [
     HUB_ACCOUNT_DETAIL_CONTENT_ROOT_CLASS,
     HUB_ACCOUNT_DETAIL_ADM_FRAME_CLASS,
@@ -61,9 +76,9 @@ export function HubAccountDetailAdmScaffold({
       main={
         <HubToolDetailPanel
           id={panelId}
-          title={panelTitle}
+          title={panelTitleNode}
           icon={PanelIcon ?? undefined}
-          iconClassName={hubAccountDetailSectionIconClass(panelSectionKey)}
+          iconClassName={panelIconClassName}
           className={`hub-tool-detail-panel--grow${panelClassName ? ` ${panelClassName}` : ""}`}
           bodyClassName={bodyClass}
           ariaLabel={panelTitle}

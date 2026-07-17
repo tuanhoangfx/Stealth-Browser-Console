@@ -3,9 +3,8 @@ import { fetchExtensionIcon } from "../../api";
 import { isStealthDesktop } from "../../api";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import { resolveHubBrandIcon } from "@tool-workspace/hub-ui";
+import { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } from "../../lib/stealth-extension-store-ids";
 
-const COOKIE_BRIDGE_STORE_ID = "kaaadageakdandpobcofplmfbjfjabdk";
-const SURFSHARK_STORE_ID = "ailoabdmgclmfmhdagmlohpjlbpffblp";
 const SURFSHARK_BRAND_SRC = resolveHubBrandAssetSrc(resolveHubBrandIcon("surfshark")?.src ?? "");
 
 export type ExtensionIconMap = Record<"e0001" | "surfshark", string | null>;

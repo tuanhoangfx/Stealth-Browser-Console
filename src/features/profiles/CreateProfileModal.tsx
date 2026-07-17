@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Copy, Hash, ListOrdered, User, UserPlus } from "lucide-react";
+import { ClipboardList, Copy, Hash, ListOrdered, UserPlus, X } from "lucide-react";
 import {
   HubAccountDetailAdmScaffold,
   HubAccountDetailHeaderSearch,
@@ -12,9 +12,12 @@ import {
   HubToolDetailModalSecondaryAction,
   HubToolDetailSection,
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
+  HUB_DETAIL_MODAL_CLOSE_LABEL,
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
   HUB_TOOL_DETAIL_FORM_GRID_3_CLASS,
   KpiStrip,
+  compactIconSize,
+  hubAdmSectionHeader,
   type KpiTileData,
 } from "@tool-workspace/hub-ui";
 import { deviceConfigFromDefaults, defaultStartupUrlFromPrefs } from "../../lib/stealth-app-prefs";
@@ -30,6 +33,7 @@ import { ProfileActivityLogRail } from "./ProfileActivityLogRail";
 import { profileFormTocItems } from "./profile-form-toc";
 import { PROFILE_CREATE_MODAL_SHELL_CLASS } from "./profile-form-modal";
 import { PROFILE_DETAIL_NOTE_LABEL, PROFILE_DETAIL_SECTION_CREDENTIALS } from "./profile-detail-toc";
+import { PROFILE_MODAL_SECTION_STICKER } from "../../lib/profile-form-stickers";
 import { extractProfileCode } from "./profile-directory-search";
 import { bulkActivityToConsoleLines, type ProfileActivityLogEntry } from "./profile-run-log";
 
@@ -500,7 +504,15 @@ export function CreateProfileModal({
             <KpiStrip items={bulkPreviewKpis} className="stealth-profile-bulk-preview-kpi" />
           </HubToolDetailSection>
 
-          <HubToolDetailSection id="bulk-profile" title="Profile" icon={<User size={14} className="text-indigo-300" aria-hidden />}>
+          <HubToolDetailSection
+            id="bulk-profile"
+            title="Profile"
+            icon={(() => {
+              const header = hubAdmSectionHeader("profile");
+              const Icon = header.icon;
+              return Icon ? <Icon size={compactIconSize(14)} className={header.iconClassName} aria-hidden /> : null;
+            })()}
+          >
             <ProfileBasicsFields
               showName={false}
               groupId={groupId}
@@ -538,15 +550,27 @@ export function CreateProfileModal({
       }
       footer={
         <>
-          <HubToolDetailModalSecondaryAction label="Cancel" onClick={onClose} disabled={busy} />
+          <HubToolDetailModalSecondaryAction
+            label={HUB_DETAIL_MODAL_CLOSE_LABEL}
+            onClick={onClose}
+            disabled={busy}
+            icon={X}
+          />
           {tab === "single" ? (
-            <HubToolDetailModalPrimaryAction label="Create profile" onClick={save} disabled={busy || !name.trim()} busy={busy} />
+            <HubToolDetailModalPrimaryAction
+              label="Create profile"
+              onClick={save}
+              disabled={busy || !name.trim()}
+              busy={busy}
+              icon={UserPlus}
+            />
           ) : (
             <HubToolDetailModalPrimaryAction
               label={bulkPreview.createNames.length ? `Create missing (${bulkPreview.createNames.length})` : "Create missing"}
               onClick={saveBulk}
               disabled={busy || Boolean(bulkPreview.error) || !bulkPreview.createNames.length}
               busy={busy}
+              icon={UserPlus}
             />
           )}
         </>
@@ -556,6 +580,7 @@ export function CreateProfileModal({
       <HubAccountDetailAdmScaffold
         panelId={PROFILE_DETAIL_SECTION_CREDENTIALS}
         panelTitle="Profile"
+        panelAdmSectionKey="profile"
         frameClassName="twofa-account-detail-modal__frame"
         panelClassName="twofa-account-detail__panel"
         main={
@@ -594,6 +619,7 @@ export function CreateProfileModal({
             <HubAdmNoteRail
               mode="editor"
               title={PROFILE_DETAIL_NOTE_LABEL}
+              titleEmoji={PROFILE_MODAL_SECTION_STICKER.note}
               className="stealth-profile-adm-rail--note"
               value={note}
               onChange={setNote}
@@ -606,13 +632,12 @@ export function CreateProfileModal({
             />
             <ProfileActivityLogRail
               lines={tab === "bulk" ? bulkLogLines : []}
-              filterStorageKey="__create__"
               emptyHint={
                 tab === "single"
-                  ? "Activity log appears after the profile is created."
+                  ? "System output will appear here after the profile is created."
                   : busy
                     ? "Creating profiles…"
-                    : "Activity log appears as each profile is created."
+                    : "System output will appear here as each profile is created."
               }
               focused={false}
             />

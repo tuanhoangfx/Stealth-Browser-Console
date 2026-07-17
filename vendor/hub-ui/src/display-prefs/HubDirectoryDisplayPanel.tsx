@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { TABLE_PAGE_SIZE_OPTIONS } from "./constants";
 import { buildSemanticTocIcon, resolveSemanticIcon } from "../lib/semantic-icon-registry";
-import { patchHubListPrefs } from "../lib/hub-url-prefs";
+import { patchHubListPrefs, readHubListPrefsCore } from "../lib/hub-url-prefs";
 import { compactIconSize } from "../ui-scale";
 import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "../shell/hub-typography";
 import {
@@ -13,6 +13,10 @@ import {
 import { MAX_VISIBLE_CHART } from "./chart-visible";
 import { MAX_VISIBLE_KPI } from "./kpi-visible";
 import { Section, ToggleRow } from "./primitives";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+} from "../table/HubDirectoryColumnHint";
 import {
   countVisiblePrefs,
   defaultsForPrefItems,
@@ -47,7 +51,9 @@ export type HubDirectoryDisplayPanelProps = Pick<
   | "tableColumnPresets"
   | "tableSectionLabel"
   | "tableSectionActions"
+  | "tableSectionFirst"
   | "tableActiveCount"
+  | "sectionHints"
 >;
 
 function parseSet(raw: string | null): Set<string> | null {
@@ -64,20 +70,27 @@ function searchParam(key: string): string | null {
 function PanelSection({
   label,
   icon,
+  labelHint,
   headerActions,
   children,
 }: {
   label: string;
   icon?: ReactNode;
+  labelHint?: HubDirectoryColumnHintContent;
   headerActions?: ReactNode;
   children: ReactNode;
 }) {
+  const labelNode = <span>{label}</span>;
   return (
     <div className="hub-directory-display-panel__section">
       <div className="hub-directory-display-panel__section-head">
         <div className="hub-directory-display-panel__section-title">
           {icon}
-          <span>{label}</span>
+          {labelHint ? (
+            <HubDirectoryColumnHint content={labelHint}>{labelNode}</HubDirectoryColumnHint>
+          ) : (
+            labelNode
+          )}
         </div>
         {headerActions ? <div className="shrink-0">{headerActions}</div> : null}
       </div>
@@ -87,6 +100,12 @@ function PanelSection({
 }
 
 /** Single search-bar control — KPI · Charts · header · filters · table columns. */
+const DEFAULT_READ_PREFS = () => readHubListPrefsCore();
+const DEFAULT_PATCH_PREFS = (patch: Record<string, string | null>) => {
+  patchHubListPrefs(patch);
+};
+const DEFAULT_GET_SCREEN = () => "hub";
+
 export function HubDirectoryDisplayPanel({
   kpis = [],
   charts = [],
@@ -99,9 +118,9 @@ export function HubDirectoryDisplayPanel({
   headerStatLabel = (isSystem) => (isSystem ? "System header" : "Hub header"),
   filterParam = "hfilt",
   filtersFromUrl = false,
-  readPrefs,
-  patchPrefs,
-  getScreen,
+  readPrefs = DEFAULT_READ_PREFS,
+  patchPrefs = DEFAULT_PATCH_PREFS,
+  getScreen = DEFAULT_GET_SCREEN,
   getSystemTab,
   systemDisplay,
   getSubTab,
@@ -111,7 +130,9 @@ export function HubDirectoryDisplayPanel({
   tableColumnPresets,
   tableSectionLabel = "Table columns",
   tableSectionActions,
+  tableSectionFirst,
   showPageSize = true,
+  sectionHints,
 }: HubDirectoryDisplayPanelProps & { showPageSize?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -183,7 +204,11 @@ export function HubDirectoryDisplayPanel({
     : usesLegacySystemDisplay
       ? (systemSlice?.charts ?? null)
       : prefs.charts;
-  const visHubFilters = filtersFromUrl ? parseSet(rawFilters) : (prefs.hubFilters ?? null);
+  const visHubFilters = usesSubTabDisplay
+    ? (subTabSlice?.filters ?? null)
+    : filtersFromUrl
+      ? parseSet(rawFilters)
+      : (prefs.hubFilters ?? null);
   const visHeaderStats = isSystem ? prefs.systemHeaderStats : prefs.headerStats;
   const headerStatParam = isSystem ? "sstat" : "hstat";
 
@@ -248,8 +273,13 @@ export function HubDirectoryDisplayPanel({
       return;
     }
 
-    if (usesSubTabDisplay && subTabDisplay && (param === "kpi" || param === "charts")) {
-      subTabDisplay.adapter.patch(effectiveSubTab, { [param]: allDefault ? null : [...next] });
+    if (
+      usesSubTabDisplay &&
+      subTabDisplay &&
+      (param === "kpi" || param === "charts" || param === filterParam)
+    ) {
+      const subKey = param === filterParam ? "filters" : param;
+      subTabDisplay.adapter.patch(effectiveSubTab, { [subKey]: allDefault ? null : [...next] });
       setDisplayTick((tick) => tick + 1);
       const evt = subTabDisplay.changeEvent ?? "subtab-display-change";
       window.dispatchEvent(new CustomEvent(evt));
@@ -302,6 +332,147 @@ export function HubDirectoryDisplayPanel({
 
   if (!hasBody) return null;
 
+  const showTableFirst = tableSectionFirst ?? Boolean(tablePanel);
+
+  const tableSection = tablePanel ? (
+    <PanelSection
+      label={tableSectionLabel}
+      icon={buildSemanticTocIcon("settings.table")}
+      headerActions={tableSectionActions}
+      labelHint={sectionHints?.table}
+    >
+      {tablePanel}
+    </PanelSection>
+  ) : null;
+
+  const kpiSection =
+    kpis.length > 0 ? (
+      <PanelSection
+        label={`KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`}
+        icon={buildSemanticTocIcon("settings.kpi")}
+        labelHint={sectionHints?.kpi}
+      >
+        <div className="space-y-0.5">
+          {kpis.map((item) => {
+            const selected = isHubPrefVisible(visKpiEffective, kpiDefaults, item.key);
+            return (
+              <ToggleRow
+                key={item.key}
+                label={item.label}
+                icon={item.icon}
+                iconClassName={item.iconClassName}
+                emoji={item.emoji}
+                brandIcon={item.brandIcon}
+                imageSrc={item.imageSrc}
+                labelHint={item.labelHint}
+                on={selected}
+                disabled={kpiAtMax && !selected}
+                onDisabledClick={() =>
+                  emitLog(`KPI limit: maximum ${MAX_VISIBLE_KPI} — turn one off to add another`)
+                }
+                onChange={() => toggle("kpi", kpis, kpiDefaults, item.key, MAX_VISIBLE_KPI)}
+              />
+            );
+          })}
+        </div>
+      </PanelSection>
+    ) : null;
+
+  const chartsSection =
+    charts.length > 0 ? (
+      <PanelSection
+        label={`Charts (${visChartsCount}/${MAX_VISIBLE_CHART})`}
+        icon={buildSemanticTocIcon("settings.charts")}
+        labelHint={sectionHints?.charts}
+      >
+        <div className="space-y-0.5">
+          {charts.map((item) => {
+            const selected = isHubPrefVisible(visChartsEffective, chartsDefaults, item.key);
+            return (
+              <ToggleRow
+                key={item.key}
+                label={item.label}
+                icon={item.icon}
+                iconClassName={item.iconClassName}
+                emoji={item.emoji}
+                brandIcon={item.brandIcon}
+                imageSrc={item.imageSrc}
+                labelHint={item.labelHint}
+                on={selected}
+                disabled={chartAtMax && !selected}
+                onDisabledClick={() =>
+                  emitLog(`Charts limit: maximum ${MAX_VISIBLE_CHART} — turn one off to add another`)
+                }
+                onChange={() => toggle("charts", charts, chartsDefaults, item.key, MAX_VISIBLE_CHART)}
+              />
+            );
+          })}
+        </div>
+      </PanelSection>
+    ) : null;
+
+  const headerStatsSection =
+    headerStatsProp.length > 0 ? (
+      <PanelSection
+        label={`${headerLabel} (${countVisiblePrefs(headerStatsProp, visHeaderStats, headerStatDefaults)}/${headerStatsProp.length})`}
+        icon={buildSemanticTocIcon("settings.headerStats")}
+        labelHint={sectionHints?.headerStats}
+      >
+        <div className="space-y-0.5">
+          {headerStatsProp.map((item) => (
+            <ToggleRow
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              iconClassName={item.iconClassName}
+              emoji={item.emoji}
+              brandIcon={item.brandIcon}
+              imageSrc={item.imageSrc}
+              labelHint={item.labelHint}
+              on={isHubPrefVisible(visHeaderStats, headerStatDefaults, item.key)}
+              onChange={() => toggle(headerStatParam, headerStatsProp, headerStatDefaults, item.key)}
+            />
+          ))}
+        </div>
+      </PanelSection>
+    ) : null;
+
+  const filtersSection =
+    tabFilters.length > 0 ? (
+      <PanelSection
+        label={`Filters (${countVisiblePrefs(tabFilters, visHubFilters, filterDefaults)}/${tabFilters.length})`}
+        icon={buildSemanticTocIcon("settings.filters")}
+        labelHint={sectionHints?.filters}
+      >
+        <div className="space-y-0.5">
+          {tabFilters.map((item) => (
+            <ToggleRow
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              iconClassName={item.iconClassName}
+              emoji={item.emoji}
+              brandIcon={item.brandIcon}
+              imageSrc={item.imageSrc}
+              labelHint={item.labelHint}
+              on={isHubPrefVisible(visHubFilters, filterDefaults, item.key)}
+              onChange={() => toggle(filterParam, tabFilters, filterDefaults, item.key)}
+            />
+          ))}
+        </div>
+      </PanelSection>
+    ) : null;
+
+  const pageSizeSection = showPageSize ? (
+    <PanelSection label="Rows per page" icon={buildSemanticTocIcon("settings.pageSize")} labelHint={sectionHints?.pageSize}>
+      <div className="space-y-0.5">
+        {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
+          <ToggleRow key={n} label={`${n} rows`} on={pageSize === n} onChange={() => pickPageSize(n)} />
+        ))}
+      </div>
+    </PanelSection>
+  ) : null;
+
   return (
     <div ref={ref} className="relative flex shrink-0 items-center gap-1.5">
       <button
@@ -324,123 +495,15 @@ export function HubDirectoryDisplayPanel({
       ) : null}
       {open ? (
         <div className="hub-directory-display-panel anim-pop absolute right-0 top-full z-30 mt-1">
-          {kpis.length > 0 ? (
-            <PanelSection
-              label={`KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`}
-              icon={buildSemanticTocIcon("settings.kpi")}
-            >
-              <div className="space-y-0.5">
-                {kpis.map((item) => {
-                  const selected = isHubPrefVisible(visKpiEffective, kpiDefaults, item.key);
-                  return (
-                    <ToggleRow
-                      key={item.key}
-                      label={item.label}
-                      icon={item.icon}
-                      iconClassName={item.iconClassName}
-                      emoji={item.emoji}
-                      on={selected}
-                      disabled={kpiAtMax && !selected}
-                      onDisabledClick={() =>
-                        emitLog(`KPI limit: maximum ${MAX_VISIBLE_KPI} — turn one off to add another`)
-                      }
-                      onChange={() => toggle("kpi", kpis, kpiDefaults, item.key, MAX_VISIBLE_KPI)}
-                    />
-                  );
-                })}
-              </div>
-            </PanelSection>
-          ) : null}
-          {charts.length > 0 ? (
-            <PanelSection
-              label={`Charts (${visChartsCount}/${MAX_VISIBLE_CHART})`}
-              icon={buildSemanticTocIcon("settings.charts")}
-            >
-              <div className="space-y-0.5">
-                {charts.map((item) => {
-                  const selected = isHubPrefVisible(visChartsEffective, chartsDefaults, item.key);
-                  return (
-                    <ToggleRow
-                      key={item.key}
-                      label={item.label}
-                      icon={item.icon}
-                      iconClassName={item.iconClassName}
-                      emoji={item.emoji}
-                      on={selected}
-                      disabled={chartAtMax && !selected}
-                      onDisabledClick={() =>
-                        emitLog(`Charts limit: maximum ${MAX_VISIBLE_CHART} — turn one off to add another`)
-                      }
-                      onChange={() => toggle("charts", charts, chartsDefaults, item.key, MAX_VISIBLE_CHART)}
-                    />
-                  );
-                })}
-              </div>
-            </PanelSection>
-          ) : null}
-          {headerStatsProp.length > 0 ? (
-            <PanelSection
-              label={`${headerLabel} (${countVisiblePrefs(headerStatsProp, visHeaderStats, headerStatDefaults)}/${headerStatsProp.length})`}
-              icon={buildSemanticTocIcon("settings.headerStats")}
-            >
-              <div className="space-y-0.5">
-                {headerStatsProp.map((item) => (
-                  <ToggleRow
-                    key={item.key}
-                    label={item.label}
-                    icon={item.icon}
-                    iconClassName={item.iconClassName}
-                    emoji={item.emoji}
-                    on={isHubPrefVisible(visHeaderStats, headerStatDefaults, item.key)}
-                    onChange={() => toggle(headerStatParam, headerStatsProp, headerStatDefaults, item.key)}
-                  />
-                ))}
-              </div>
-            </PanelSection>
-          ) : null}
-          {tabFilters.length > 0 ? (
-            <PanelSection
-              label={`Filters (${countVisiblePrefs(tabFilters, visHubFilters, filterDefaults)}/${tabFilters.length})`}
-              icon={buildSemanticTocIcon("settings.filters")}
-            >
-              <div className="space-y-0.5">
-                {tabFilters.map((item) => (
-                  <ToggleRow
-                    key={item.key}
-                    label={item.label}
-                    icon={item.icon}
-                    iconClassName={item.iconClassName}
-                    emoji={item.emoji}
-                    on={isHubPrefVisible(visHubFilters, filterDefaults, item.key)}
-                    onChange={() => toggle(filterParam, tabFilters, filterDefaults, item.key)}
-                  />
-                ))}
-              </div>
-            </PanelSection>
-          ) : null}
-          {tablePanel ? (
-            <PanelSection
-              label={tableSectionLabel}
-              icon={buildSemanticTocIcon("settings.table")}
-              headerActions={tableSectionActions}
-            >
-              {tablePanel}
-            </PanelSection>
-          ) : null}
-          {showPageSize ? (
-            <PanelSection label="Rows per page" icon={buildSemanticTocIcon("settings.pageSize")}>
-              <div className="space-y-0.5">
-                {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
-                  <ToggleRow
-                    key={n}
-                    label={`${n} rows`}
-                    on={pageSize === n}
-                    onChange={() => pickPageSize(n)}
-                  />
-                ))}
-              </div>
-            </PanelSection>
-          ) : null}
+          <div className="hub-directory-display-panel__body">
+            {showTableFirst ? tableSection : null}
+            {kpiSection}
+            {chartsSection}
+            {headerStatsSection}
+            {filtersSection}
+            {!showTableFirst ? tableSection : null}
+            {pageSizeSection}
+          </div>
           <div className="hub-directory-display-panel__footer">
             <button type="button" className="hub-directory-display-panel__reset" onClick={resetDisplay}>
               Reset display

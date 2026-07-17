@@ -76,6 +76,10 @@ export function HubDisplayVisibilityMenu({
                 label={item.label}
                 icon={item.icon}
                 iconClassName={item.iconClassName}
+                emoji={item.emoji}
+                brandIcon={item.brandIcon}
+                imageSrc={item.imageSrc}
+                labelHint={item.labelHint}
                 on={selected}
                 disabled={atMax && !selected}
                 onDisabledClick={onCapReached}

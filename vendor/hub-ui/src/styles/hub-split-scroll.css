@@ -2,6 +2,16 @@
 /* Scrollbar chrome: hub-scrollbar.css — tokens: hub-theme-tokens --hub-split-scroll-* */
 @import "./hub-scrollbar.css";
 
+/*
+ * SSOT — HubSplitDirectoryPane scroll layers (P0020 Notes/Sheet split workspace)
+ *
+ * 1. `hub-split-directory-pane__body` — overflow:hidden, scrollbar-gutter:auto (no pane scroll).
+ * 2. `HubSplitDirectoryPane` — do NOT pass `scroll` when children use `.hub-split-scroll--panel`.
+ *    Pane-level `scroll` adds `.hub-split-scroll` + scrollbar-gutter:stable → filter row wider than body frame.
+ * 3. Inner scroll only — `.hub-split-scroll` / `.hub-split-scroll--panel` on editor body, TOC rails, etc.
+ * Gate: hub-scroll-layer-gate.mjs (pane-scroll + inner-panel-scroll rule).
+ */
+
 .hub-split-scroll {
   flex: 1 1 0;
   min-height: 0;

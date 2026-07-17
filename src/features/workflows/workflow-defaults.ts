@@ -10,6 +10,7 @@ export const ACTIVE_WORKFLOW_KEY = "stealth-console-active-workflow";
 export const PENDING_EDITOR_WORKFLOW_KEY = "stealth-pending-editor-workflow";
 export const WORKFLOW_LAST_RUN_CHANGE = "stealth-workflow-last-run-change";
 export const WORKFLOW_TIMESTAMP_MIGRATION_KEY = "stealth-workflow-timestamp-catalog-v3";
+export const OUTLOOK_LOGIN_DEFAULT_REFRESH_KEY = "stealth-workflow-outlook-login-default-refresh-v2";
 export const PURGED_BUILTIN_WORKFLOW_IDS = new Set<string>(["screen-resolution-real"]);
 
 export type ScriptStepCategoryKey = "page" | "interact" | "capture" | "logic";
@@ -75,6 +76,41 @@ const OBSOLETE_SCRIPT_STEP_VALUES = new Set<string>(["set-screen-resolution-real
 
 export function stripObsoleteScriptSteps(steps: ScriptStep[]): ScriptStep[] {
   return steps.filter((step) => !OBSOLETE_SCRIPT_STEP_VALUES.has(String(step.value ?? "").trim()));
+}
+
+/** Compare editor definition only — ignore step ids + catalog timestamps. */
+export function sameWorkflowDefinition(a: WorkflowConfig, b: WorkflowConfig): boolean {
+  if (a.name !== b.name) return false;
+  if (String(a.description ?? "") !== String(b.description ?? "")) return false;
+  if (String(a.targetUrl ?? "") !== String(b.targetUrl ?? "")) return false;
+  if (String(a.icon ?? "") !== String(b.icon ?? "")) return false;
+  if (String(a.group ?? "") !== String(b.group ?? "")) return false;
+  if (Number(a.concurrency ?? 0) !== Number(b.concurrency ?? 0)) return false;
+  if (Boolean(a.takeScreenshot) !== Boolean(b.takeScreenshot)) return false;
+  if (Boolean(a.closeWhenDone) !== Boolean(b.closeWhenDone)) return false;
+  if (a.steps.length !== b.steps.length) return false;
+  return a.steps.every((step, index) => {
+    const other = b.steps[index];
+    if (!other) return false;
+    return (
+      step.kind === other.kind &&
+      String(step.name ?? "") === String(other.name ?? "") &&
+      String(step.value ?? "") === String(other.value ?? "") &&
+      Boolean(step.enabled ?? true) === Boolean(other.enabled ?? true) &&
+      Number(step.timeoutMs ?? 0) === Number(other.timeoutMs ?? 0)
+    );
+  });
+}
+
+/** True when active workflow is a built-in whose local draft diverged from DEFAULT_WORKFLOWS. */
+export function isBuiltinWorkflowLocallyEdited(
+  current: WorkflowConfig | undefined | null,
+  builtins: readonly WorkflowConfig[] = DEFAULT_WORKFLOWS,
+): boolean {
+  if (!current?.id) return false;
+  const builtin = builtins.find((workflow) => workflow.id === current.id);
+  if (!builtin) return false;
+  return !sameWorkflowDefinition(current, builtin);
 }
 
 /** Drop deprecated steps, remap ids & timeouts; refill from preset if nothing left */
@@ -206,18 +242,89 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
   },
   {
     id: "microsoft-hotmail-login",
-    name: "Login Microsoft Hotmail",
-    description: "Open Microsoft account login for Hotmail/Outlook accounts.",
+    name: "Outlook Login",
+    description:
+      "Auto-login Outlook/Hotmail via login.live.com using credentials from P0020 Data Box (Outlook/Hotmail row). Optional TOTP when secret is set.",
     icon: "play",
     group: "Account Check",
     platform: "Microsoft",
     action: "open-url",
     targetUrl: "https://login.live.com/",
-    takeScreenshot: false,
+    takeScreenshot: true,
     closeWhenDone: false,
     inspectMode: false,
     concurrency: 1,
-    steps: [createStep("navigate", { value: "https://login.live.com/" })]
+    steps: [
+      createStep("navigate", { name: "Open Microsoft login", value: "https://login.live.com/" }),
+      createStep("wait", {
+        name: "Wait for email input",
+        selector: 'input[type="email"], input[name="loginfmt"], #i0116',
+        timeoutMs: 20000,
+      }),
+      createStep("type", {
+        name: "Type email",
+        selector: 'input[type="email"], input[name="loginfmt"], #i0116',
+        value: "{{outlookEmail}}",
+        timeoutMs: 10000,
+        pressEnter: true,
+      }),
+      createStep("click", {
+        name: "Click Next (email)",
+        selector: '#idSIButton9, input[type="submit"], button:has-text("Next")',
+        timeoutMs: 10000,
+      }),
+      createStep("delay", { name: "Wait for password page", value: "2000", timeoutMs: 5000 }),
+      createStep("wait", {
+        name: "Wait for password input",
+        selector: 'input[type="password"], input[name="passwd"], #i0118',
+        timeoutMs: 30000,
+      }),
+      createStep("type", {
+        name: "Type password",
+        selector: 'input[type="password"], input[name="passwd"], #i0118',
+        value: "{{outlookPassword}}",
+        timeoutMs: 10000,
+      }),
+      createStep("click", {
+        name: "Click Next (password)",
+        selector: '#idSIButton9, input[type="submit"], button:has-text("Next"), button:has-text("Sign in")',
+        timeoutMs: 10000,
+      }),
+      createStep("delay", { name: "Wait for 2FA or redirect", value: "4000", timeoutMs: 8000 }),
+      createStep("wait", {
+        name: "Wait for TOTP input (optional)",
+        selector: 'input[name="otc"], input[placeholder*="code"], input[aria-label*="code"]',
+        timeoutMs: 15000,
+        enabled: true,
+      }),
+      createStep("type", {
+        name: "Type TOTP code",
+        selector: 'input[name="otc"], input[placeholder*="code"], input[aria-label*="code"]',
+        value: "{{outlookTotpCode}}",
+        timeoutMs: 5000,
+        enabled: true,
+      }),
+      createStep("click", {
+        name: "Click Verify (2FA)",
+        selector: '#idSIButton9, input[type="submit"], button:has-text("Verify"), button:has-text("Next")',
+        timeoutMs: 5000,
+        enabled: true,
+      }),
+      createStep("delay", { name: "Wait after auth", value: "2000", timeoutMs: 4000 }),
+      createStep("click", {
+        name: "Stay signed in (Yes)",
+        selector: '#idSIButton9, input[type="submit"][value="Yes"], button:has-text("Yes"), input[value="Yes"]',
+        timeoutMs: 8000,
+        enabled: true,
+      }),
+      createStep("navigate", {
+        name: "Open Outlook inbox",
+        value: "https://outlook.live.com/mail/0/",
+        timeoutMs: 45000,
+      }),
+      createStep("delay", { name: "Wait for login complete", value: "2500", timeoutMs: 4000 }),
+      createStep("screenshot", { name: "Capture Outlook login result" }),
+    ],
   },
   {
     id: "microsoft-hotmail-mail",
@@ -404,6 +511,54 @@ function migrateLegacyCatalogTimestamps(items: WorkflowConfig[]): WorkflowConfig
   });
 }
 
+function isStaleOutlookLoginOverride(item: Partial<WorkflowConfig>): boolean {
+  if (item.id !== "microsoft-hotmail-login") return false;
+  const steps = Array.isArray(item.steps) ? item.steps : [];
+  if (!steps.length) return true;
+  const hasOutlookPassword = steps.some((step) =>
+    /\{\{(outlook|mail)Password\}\}/i.test(String(step?.value || "")),
+  );
+  const hasOutlookEmail = steps.some((step) =>
+    /\{\{(outlook|mail)Email\}\}/i.test(String(step?.value || "")),
+  );
+  // Old local overrides were 1-step "Login Microsoft" navigators; refresh only
+  // incomplete built-in overrides, preserving any complete custom Outlook script.
+  return steps.length <= 3 || !hasOutlookEmail || !hasOutlookPassword;
+}
+
+function refreshStaleOutlookLoginOverride(stored: Partial<WorkflowConfig>[]): Partial<WorkflowConfig>[] {
+  try {
+    if (localStorage.getItem(OUTLOOK_LOGIN_DEFAULT_REFRESH_KEY)) return stored;
+  } catch {
+    return stored;
+  }
+
+  let changed = false;
+  const next = stored.map((item) => {
+    if (!isStaleOutlookLoginOverride(item)) return item;
+    changed = true;
+    const fallback = DEFAULT_WORKFLOWS.find((workflow) => workflow.id === "microsoft-hotmail-login");
+    if (fallback) {
+      return {
+        ...fallback,
+        lastRunAt: item.lastRunAt,
+      };
+    }
+    return {
+      id: "microsoft-hotmail-login",
+      lastRunAt: item.lastRunAt,
+    } as Partial<WorkflowConfig>;
+  });
+
+  try {
+    localStorage.setItem(OUTLOOK_LOGIN_DEFAULT_REFRESH_KEY, "v2");
+    if (changed) localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
 /** Persist lastRunAt to localStorage — works outside React (Profiles Launch, automation). */
 export function persistWorkflowLastRun(workflowId: WorkflowId): string | null {
   if (!workflowId) return null;
@@ -425,7 +580,9 @@ export function persistWorkflowLastRun(workflowId: WorkflowId): string | null {
 
 export function readStoredWorkflows(): WorkflowConfig[] {
   try {
-    const stored = JSON.parse(localStorage.getItem(WORKFLOWS_KEY) || "[]") as Partial<WorkflowConfig>[];
+    const stored = refreshStaleOutlookLoginOverride(
+      JSON.parse(localStorage.getItem(WORKFLOWS_KEY) || "[]") as Partial<WorkflowConfig>[],
+    );
     const storedCustom = stored.filter(
       (item) =>
         item.id &&

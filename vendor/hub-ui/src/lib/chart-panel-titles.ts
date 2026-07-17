@@ -28,6 +28,7 @@ export const GOLDEN_CHART_PANEL_TITLES: Record<string, string> = {
   priority_bar: "Tasks by priority",
   service_bar: "Top services",
   identity_bar: "Account identity",
+  ownership_bar: "Ownership",
   usage_bar: "Usage",
   password_bar: "Password saved",
   runtime_bar: "By runtime",

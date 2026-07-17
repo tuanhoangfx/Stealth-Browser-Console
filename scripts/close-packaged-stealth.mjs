@@ -7,9 +7,11 @@ import { fileURLToPath } from "node:url";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const EXE = "Stealth Browser Console.exe";
+const CHECKPOINT = path.join(path.dirname(fileURLToPath(import.meta.url)), "lib", "graceful-stealth-checkpoint.cjs");
 
 export function closePackagedStealth() {
   if (process.platform !== "win32") return { killed: 0 };
+  spawnSync(process.execPath, [CHECKPOINT], winSpawnOpts({ stdio: "ignore", timeout: 5000 }));
   const ps = spawnSync(
     "powershell",
     [
@@ -17,12 +19,12 @@ export function closePackagedStealth() {
       "-Command",
       [
         "$dev = Get-CimInstance Win32_Process -Filter \"Name='electron.exe'\" -ErrorAction SilentlyContinue",
-        "| Where-Object { $_.CommandLine -match 'P0003-Stealth-Browser-Console' }",
+        "| Where-Object { $_.CommandLine -match 'P0003-Stealth-Browser-Console|stealth-browser-console-dev' }",
         "$devPids = @($dev | ForEach-Object { $_.ProcessId })",
-        "$procs = Get-Process -Name 'Stealth Browser Console' -ErrorAction SilentlyContinue",
-        "| Where-Object { $devPids -notcontains $_.Id }",
+        "$procs = Get-CimInstance Win32_Process -Filter \"Name='Stealth Browser Console.exe'\" -ErrorAction SilentlyContinue",
+        "| Where-Object { $devPids -notcontains $_.ProcessId }",
         "$count = @($procs).Count",
-        "if ($count -gt 0) { $procs | Stop-Process -Force }",
+        "if ($count -gt 0) { $procs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }",
         "Write-Output $count",
       ].join(" "),
     ],

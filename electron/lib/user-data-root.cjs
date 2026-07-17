@@ -1,6 +1,6 @@
 /**
- * Dev userData: production folder by default (parity with Setup.exe).
- * Set STEALTH_DEV_ISOLATED=1 for parallel dev + exe (separate -dev folder, API :6004).
+ * Dev userData: isolated `-dev` folder + API :6004 by default (`STEALTH_DEV_ISOLATED=1`).
+ * Packaged / `--prod-data` uses production `stealth-browser-console` + :6003.
  */
 const os = require("node:os");
 const path = require("node:path");

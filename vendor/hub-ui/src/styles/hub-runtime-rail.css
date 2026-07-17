@@ -207,6 +207,16 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.hub-runtime-history-list__row--single {
+  align-items: center;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+
+.hub-runtime-history-list__row--single .hub-runtime-history-list__icon {
+  margin-top: 0;
+}
+
 .hub-runtime-history-list__icon {
   display: grid;
   place-items: center;
@@ -251,6 +261,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/** Single-line primary: profile · task · time · duration */
+.hub-runtime-history-list__line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.hub-runtime-history-profile-chip {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text, rgb(226, 232, 240));
+}
+
+.hub-runtime-history-list__task {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text, rgb(226, 232, 240));
+}
+
+.hub-runtime-history-list__meta-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+  color: var(--muted, rgb(100, 116, 139));
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--hub-runtime-muted-size, var(--hub-table-muted-size, 11px));
 }
 
 .hub-runtime-history-list__status {

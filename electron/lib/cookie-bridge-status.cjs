@@ -30,12 +30,15 @@ function getCookieBridgeStatus(userDataRoot) {
   const workspacePath = workspaceExtensionDir();
   const cachePath = unpackedDir(userDataRoot);
   let manifestName = "";
+  let manifestVersion = "";
   if (manifestOk) {
     try {
       const manifest = JSON.parse(fs.readFileSync(path.join(resolvedPath, "manifest.json"), "utf8"));
       manifestName = String(manifest.name || "");
+      manifestVersion = String(manifest.version || "").trim();
     } catch {
       manifestName = "";
+      manifestVersion = "";
     }
   }
 
@@ -53,6 +56,7 @@ function getCookieBridgeStatus(userDataRoot) {
     source: resolveExtensionSource(resolvedPath, userDataRoot),
     manifestOk,
     manifestName: manifestName || "E0001 Cookie Bridge",
+    manifestVersion: manifestVersion || null,
     workspacePath: workspacePath || null,
     cachePath,
     env: {

@@ -6,8 +6,70 @@ const { stabilizePrimaryPage } = require("./navigate-startup.cjs");
 const { safePageGoto } = require("./safe-goto.cjs");
 const { extractProfileCode } = require("../lib/profile-identity.cjs");
 const { diagnoseMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
+const { detectGoogleSession } = require("../lib/google-session-detect.cjs");
+const { detectMicrosoftSession } = require("../lib/microsoft-session-detect.cjs");
 
 const APP_VERSION = require("../../package.json").version;
+
+function stepsNeedMailCredentials(steps) {
+  return (
+    Array.isArray(steps) &&
+    steps.some((s) => /\{\{(gmail|outlook|mail)(Email|Password|Recovery|TotpCode)\}\}/i.test(String(s?.value || "")))
+  );
+}
+
+function resolveMailVaultService(steps) {
+  const blob = Array.isArray(steps) ? steps.map((s) => String(s?.value || "")).join(" ") : "";
+  if (/\{\{outlook/i.test(blob)) return "Outlook";
+  if (/\{\{mail(Email|Password|Recovery|TotpCode)\}\}/i.test(blob) && !/\{\{gmail/i.test(blob)) {
+    return "Outlook";
+  }
+  return "Gmail";
+}
+
+async function detectPreferredMailEmail(context, vaultService, logger) {
+  try {
+    if (vaultService === "Outlook") {
+      const detected = await detectMicrosoftSession(context);
+      const email = String(detected.email || "").trim().toLowerCase();
+      // Ignore non-Microsoft addresses scraped from unrelated tabs (e.g. Gmail aria-label).
+      const looksMicrosoft =
+        /@(outlook|hotmail|live|msn)\./i.test(email) ||
+        (/microsoft/i.test(detected.evidence || "") && Boolean(email));
+      if (email && !looksMicrosoft && /@gmail\.|@googlemail\./i.test(email)) {
+        logger.push("info", `Email detect (Microsoft): ignored non-MS address ${email}`);
+        return "";
+      }
+      if (email && looksMicrosoft) {
+        logger.push(
+          "info",
+          `Email detect (Microsoft): ${email} [${detected.status}/${detected.result_code}]`,
+        );
+        return email;
+      }
+      if (email) {
+        logger.push(
+          "info",
+          `Email detect (Microsoft): ${email} [${detected.status}/${detected.result_code}]`,
+        );
+        return email;
+      }
+      return "";
+    }
+    const detected = await detectGoogleSession(context);
+    const email = String(detected.email || "").trim().toLowerCase();
+    if (email) {
+      logger.push("info", `Email detect (Google): ${email} [${detected.status}/${detected.result_code}]`);
+    }
+    return email;
+  } catch (error) {
+    logger.push(
+      "warn",
+      `Email detect skipped: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return "";
+  }
+}
 
 function cleanMessage(message) {
   return String(message || "Automation failed.").replace(/\u001b\[[0-9;]*m/g, "");
@@ -65,22 +127,23 @@ async function runOpenUrl({
       generateTotp: false,
     };
 
-    const hasMailPlaceholder = Array.isArray(steps) && steps.some((s) => {
-      const v = String(s?.value || "");
-      return v.includes("{{gmail");
-    });
+    const hasMailPlaceholder = stepsNeedMailCredentials(steps);
     if (hasMailPlaceholder) {
       const profileCode = extractProfileCode(profile.name, profile.id);
-      const diagnosis = await diagnoseMailCredentials(profileCode, "Gmail");
+      const vaultService = resolveMailVaultService(steps);
+      const preferredEmail = await detectPreferredMailEmail(context, vaultService, logger);
+      const diagnosis = await diagnoseMailCredentials(profileCode, vaultService, { preferredEmail });
       if (diagnosis.ok && diagnosis.credentials) {
         stepContext.mailCredentials = diagnosis.credentials;
         stepContext.generateTotp = Boolean(diagnosis.credentials.secret);
+        const tenant = diagnosis.scopeEmail ? ` [tenant ${diagnosis.scopeEmail}]` : "";
+        const mode = diagnosis.matchMode ? ` via ${diagnosis.matchMode}` : "";
         logger.push(
           "info",
-          `Mail credentials loaded for profile ${diagnosis.browserCode}: ${diagnosis.credentials.email}`,
+          `Mail credentials loaded (${vaultService}) for profile ${diagnosis.browserCode}: ${diagnosis.credentials.email}${mode}${tenant}`,
         );
       } else {
-        const reason = diagnosis.reason || `No Gmail credentials found for profile ${profileCode}.`;
+        const reason = diagnosis.reason || `No ${vaultService} credentials found for profile ${profileCode}.`;
         logger.push("error", reason);
         throw new Error(reason);
       }
@@ -134,6 +197,18 @@ async function runOpenUrl({
   } catch (error) {
     const message = cleanMessage(error instanceof Error ? error.message : String(error));
     logger.push("error", message);
+    try {
+      const page = await stabilizePrimaryPage(context).catch(() => null);
+      if (page && screenshotsRoot) {
+        const screenshotDir = path.join(screenshotsRoot, "screenshots", "inspect");
+        await fs.mkdir(screenshotDir, { recursive: true });
+        screenshotPath = path.join(screenshotDir, `${Date.now()}_${safeFileName(profile.name)}_open_url_fail.png`);
+        await page.screenshot({ path: screenshotPath, fullPage: true });
+        logger.push("info", `Failure screenshot: ${screenshotPath}`);
+      }
+    } catch {
+      // ignore screenshot failures on error path
+    }
     if (closeWhenDone) {
       await onCloseProfile().catch((closeError) => {
         logger.push("error", `Unable to close profile: ${cleanMessage(closeError.message)}`);

@@ -8,6 +8,9 @@ import {
   HubFilterDropdownTrigger,
 } from "./filter-dropdown-primitives";
 
+/** Account detail + vault date fields — muted placeholder tone (not column label). */
+export const HUB_DATE_PICKER_PLACEHOLDER = "dd/mm/yy";
+
 export type HubFilterDatePickerProps = {
   value: string;
   onChange: (date: string) => void;
@@ -19,7 +22,11 @@ export type HubFilterDatePickerProps = {
   triggerEmoji?: string;
   compactTrigger?: boolean;
   todayLabel?: string;
+  clearLabel?: string;
   locale?: string;
+  /** Account detail — label column already shows emoji; value cell is text-only. */
+  hideTriggerIcon?: boolean;
+  disabled?: boolean;
 };
 
 function formatDateFull(dateString: string) {
@@ -44,7 +51,10 @@ export function HubFilterDatePicker({
   triggerEmoji,
   compactTrigger = false,
   todayLabel = "Today",
+  clearLabel = "Clear",
   locale = "en",
+  hideTriggerIcon = false,
+  disabled = false,
 }: HubFilterDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +100,10 @@ export function HubFilterDatePicker({
   }, [isOpen]);
 
   useEffect(() => {
+    if (disabled) setIsOpen(false);
+  }, [disabled]);
+
+  useEffect(() => {
     if (value) {
       const d = new Date(value);
       if (!Number.isNaN(d.getTime())) setViewDate(d);
@@ -119,6 +133,11 @@ export function HubFilterDatePicker({
     const offset = date.getTimezoneOffset();
     const localDate = new Date(date.getTime() - offset * 60 * 1000);
     onChange(localDate.toISOString().split("T")[0]!);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange("");
     setIsOpen(false);
   };
 
@@ -204,7 +223,16 @@ export function HubFilterDatePicker({
               );
             })}
           </div>
-          <div className="mt-2 flex justify-center border-t border-white/5 pt-2">
+          <div className="mt-2 flex items-center justify-center gap-3 border-t border-white/5 pt-2">
+            {value && clearLabel ? (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:underline"
+              >
+                {clearLabel}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => handleDayClick(new Date())}
@@ -221,19 +249,28 @@ export function HubFilterDatePicker({
     <div className={`relative min-w-0${className ? ` ${className}` : ""}`} ref={containerRef}>
       <HubFilterDropdownTrigger
         active={Boolean(value)}
+        hasValue={Boolean(value)}
         open={isOpen}
         label={triggerLabel}
         title={triggerTitle}
         icon={
-          triggerEmoji ? (
-            <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
-              {triggerEmoji}
-            </span>
-          ) : (
-            <Calendar size={compactIconSize(12)} className="shrink-0 text-sky-300" aria-hidden />
-          )
+          hideTriggerIcon
+            ? false
+            : triggerEmoji
+              ? (
+                  <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
+                    {triggerEmoji}
+                  </span>
+                )
+              : (
+                  <Calendar size={compactIconSize(12)} className="shrink-0 text-sky-300" aria-hidden />
+                )
         }
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
+        disabled={disabled}
         className={triggerClassName}
       />
       {panel ? createPortal(panel, document.body) : null}

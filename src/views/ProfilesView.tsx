@@ -6,7 +6,8 @@ import type { ProfileRow } from "../types";
 import { ProfileDirectoryPanel } from "../features/profiles/ProfileDirectoryPanel";
 import { ProfilesWorkflowRail } from "../features/profiles/ProfilesWorkflowRail";
 import { CreateProfileModal } from "../features/profiles/CreateProfileModal";
-import { EditProfileModal } from "../features/profiles/EditProfileModal";
+import { ProfileDetailModal } from "../features/profiles/ProfileDetailModal";
+import type { ProfileDetailModalProps } from "../features/profiles/profile-detail-modal-props";
 import { ManageGroupsModal } from "../features/profiles/ManageGroupsModal";
 import { useProfileDirectoryResults } from "../features/profiles/useProfileDirectoryResults";
 import {
@@ -34,7 +35,7 @@ export const ProfilesView = memo(function ProfilesView({
   useEffect(() => {
     prefetchWorkflowChunks();
   }, []);
-  const { profiles, groups, catalogStats, openOne, closeOne, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
+  const { profiles, groups, catalogStats, openOne, closeOne, closeAllRunning, runningHeadlessIds, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
     useProfilesRuntime();
   const directorySearch = useDirectorySearchQuery({ debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS });
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
@@ -44,7 +45,7 @@ export const ProfilesView = memo(function ProfilesView({
   const [sortKey, setSortKey] = useState<StealthProfileSortKey>("profile");
   const [sortDir, setSortDir] = useState<StealthProfileSortDirection>("asc");
   const [showCreate, setShowCreate] = useState(false);
-  const [editProfile, setEditProfile] = useState<ProfileRow | null>(null);
+  const [detailModal, setDetailModal] = useState<ProfileDetailModalProps | null>(null);
   const [showGroups, setShowGroups] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -241,14 +242,31 @@ export const ProfilesView = memo(function ProfilesView({
         allVisibleSelected={allVisibleSelected}
         openOne={handleOpenOne}
         closeOne={handleCloseOne}
-        onOpenDetail={setEditProfile}
+        closeAllRunning={() => void closeAllRunning()}
+        runningHeadlessIds={runningHeadlessIds}
+        onOpenDetail={(profile) => setDetailModal({ mode: "edit", profile, onClose: () => setDetailModal(null) })}
         globalExtensionToggles={globalToggles}
         extensionBusy={extensionBusy}
         onExtensionSet={handleExtensionSet}
         deleteSelected={handleDeleteSelected}
         setShowCreate={setShowCreate}
-        onEdit={() => {
-          if (selectedProfiles.length === 1) setEditProfile(selectedProfiles[0]!);
+        onEditSingle={() => {
+          if (selectedProfiles.length === 1) {
+            setDetailModal({
+              mode: "edit",
+              profile: selectedProfiles[0]!,
+              onClose: () => setDetailModal(null),
+            });
+          }
+        }}
+        onEditBulk={() => {
+          if (selectedProfiles.length > 1) {
+            setDetailModal({
+              mode: "bulk",
+              profiles: [...selectedProfiles],
+              onClose: () => setDetailModal(null),
+            });
+          }
         }}
         onGroups={() => setShowGroups(true)}
         onExport={() => void exportProfiles(selectedProfiles)}
@@ -265,10 +283,9 @@ export const ProfilesView = memo(function ProfilesView({
           onProfilesChanged={() => setDirectoryRefreshKey((key) => key + 1)}
         />
       ) : null}
-      {editProfile ? (
-        <EditProfileModal
-          profile={editProfile}
-          onClose={() => setEditProfile(null)}
+      {detailModal ? (
+        <ProfileDetailModal
+          {...detailModal}
           onProfilesChanged={() => setDirectoryRefreshKey((key) => key + 1)}
         />
       ) : null}

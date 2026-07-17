@@ -124,6 +124,8 @@ function flushSqlJsDatabase() {
     persistTimer = null;
   }
   if (!sqlDb || !dbFilePath) return;
+  const { shouldBlockCatalogShrinkFlush } = require("../lib/catalog-persist-guard.cjs");
+  if (shouldBlockCatalogShrinkFlush(sqlDb, dbFilePath)) return;
   const data = sqlDb.export();
   fs.writeFileSync(dbFilePath, Buffer.from(data));
 }
@@ -247,8 +249,16 @@ function removeWalSidecars(filePath) {
  * Rename a broken DB out of the way so the next open creates a clean catalog.
  * Prefer this over opening the same corrupt bytes with sql.js (which still fails on writes).
  */
-function rotateCorruptDatabaseFile(filePath) {
+function rotateCorruptDatabaseFile(filePath, { userDataPath = "" } = {}) {
   if (!filePath || !fs.existsSync(filePath)) return { ok: false, reason: "missing" };
+
+  const root = userDataPath || path.dirname(path.dirname(filePath));
+  const { trySyncRestoreCatalogIfEmpty } = require("../lib/catalog-backup-recovery.cjs");
+  const restored = trySyncRestoreCatalogIfEmpty(root, { currentProfiles: 0 });
+  if (restored.restored) {
+    return { ok: true, backup: restored.backup, restored: true };
+  }
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const dest = `${filePath}.corrupt.${stamp}.bak`;
   try {
@@ -315,6 +325,19 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
 /** Re-export corrupt file via sql.js — fixes SQLITE_CORRUPT for better-sqlite3 open. */
 async function repairDatabaseFile(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return { ok: false, reason: "missing" };
+  const BetterSqlite = loadBetterSqliteCtor();
+  if (BetterSqlite) {
+    try {
+      const preRepair = new BetterSqlite(filePath, { readonly: false });
+      preRepair.pragma("wal_checkpoint(TRUNCATE)");
+      preRepair.close();
+    } catch (error) {
+      console.warn(
+        "[db] pre-repair WAL checkpoint:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
   const initSqlJs = require("sql.js/dist/sql-wasm.js");
   const SQL = await initSqlJs({ locateFile: () => wasmPath() });
   const backup = `${filePath}.corrupt.bak`;
@@ -347,14 +370,22 @@ async function openSqlJsDatabase(userDataPath) {
   fs.mkdirSync(dbDir, { recursive: true });
   dbFilePath = path.join(dbDir, "stealth-console.db");
 
+  const loadFreshOrRestored = () => {
+    if (fs.existsSync(dbFilePath)) {
+      sqlDb = new SQL.Database(fs.readFileSync(dbFilePath));
+      return;
+    }
+    sqlDb = new SQL.Database();
+  };
+
   if (fs.existsSync(dbFilePath)) {
     try {
       sqlDb = new SQL.Database(fs.readFileSync(dbFilePath));
       if (!verifySqlJsIntegrity(sqlDb)) {
         sqlDb.close();
         sqlDb = null;
-        rotateCorruptDatabaseFile(dbFilePath);
-        sqlDb = new SQL.Database();
+        rotateCorruptDatabaseFile(dbFilePath, { userDataPath });
+        loadFreshOrRestored();
       }
     } catch (error) {
       if (sqlDb) {
@@ -366,12 +397,12 @@ async function openSqlJsDatabase(userDataPath) {
         sqlDb = null;
       }
       if (isCorruptSqliteError(error) || /malformed|corrupt/i.test(String(error))) {
-        rotateCorruptDatabaseFile(dbFilePath);
+        rotateCorruptDatabaseFile(dbFilePath, { userDataPath });
       } else {
         console.warn("[db] sql.js open failed — starting empty", error);
-        rotateCorruptDatabaseFile(dbFilePath);
+        rotateCorruptDatabaseFile(dbFilePath, { userDataPath });
       }
-      sqlDb = new SQL.Database();
+      loadFreshOrRestored();
     }
   } else {
     sqlDb = new SQL.Database();
@@ -415,11 +446,11 @@ async function openDatabase(userDataPath) {
                 return dbInstance;
               } catch (retryError) {
                 console.warn("[db] better-sqlite3 retry after repair failed — rotating corrupt DB", retryError);
-                rotateCorruptDatabaseFile(file);
+                rotateCorruptDatabaseFile(file, { userDataPath });
               }
             } else {
               console.warn("[db] sql.js repair failed — rotating corrupt DB");
-              rotateCorruptDatabaseFile(file);
+              rotateCorruptDatabaseFile(file, { userDataPath });
             }
           } else {
             console.warn("[db] better-sqlite3 open failed — falling back to sql.js", error);
@@ -431,7 +462,30 @@ async function openDatabase(userDataPath) {
       return dbInstance;
     })();
   }
-  return initPromise;
+  const instance = await initPromise;
+  try {
+    const row = instance.prepare("SELECT COUNT(*) AS c FROM profiles").get();
+    const currentProfiles = Number(row?.c) || 0;
+    const { setCatalogProfileBaseline } = require("../lib/catalog-persist-guard.cjs");
+    const { pinKnownGoodCatalogCopy } = require("../lib/catalog-known-good.cjs");
+    if (currentProfiles <= 1) {
+      const { tryAutoRestoreCatalogIfEmpty } = require("../lib/catalog-backup-recovery.cjs");
+      const recovery = await tryAutoRestoreCatalogIfEmpty(userDataPath, { currentProfiles });
+      if (recovery.restored) {
+        closeDatabase();
+        return openDatabase(userDataPath);
+      }
+    } else {
+      setCatalogProfileBaseline(currentProfiles);
+      if (dbBackend === "better-sqlite3" && nativeDb) {
+        nativeDb.pragma("wal_checkpoint(TRUNCATE)");
+      }
+      pinKnownGoodCatalogCopy(userDataPath, currentProfiles);
+    }
+  } catch (error) {
+    console.warn("[db] catalog recovery probe failed:", error instanceof Error ? error.message : error);
+  }
+  return instance;
 }
 
 function getDb() {
@@ -441,6 +495,14 @@ function getDb() {
 
 function isDatabaseReady() {
   return Boolean(dbInstance);
+}
+
+function getDbBackend() {
+  return dbBackend;
+}
+
+function getNativeDb() {
+  return nativeDb;
 }
 
 function flushDatabase() {
@@ -491,7 +553,17 @@ async function recoverCorruptDatabase(userDataPath) {
       console.warn("[db] reopen after repair still corrupt — rotating");
     }
   }
-  const rotated = rotateCorruptDatabaseFile(file);
+  const { tryAutoRestoreCatalogIfEmpty } = require("../lib/catalog-backup-recovery.cjs");
+  const restored = await tryAutoRestoreCatalogIfEmpty(root, { currentProfiles: 0 });
+  if (restored.restored) {
+    try {
+      await openDatabase(root);
+      return { ok: true, backup: restored.backup, rotated: false, restored: true };
+    } catch (error) {
+      console.warn("[db] reopen after catalog restore failed", error);
+    }
+  }
+  const rotated = rotateCorruptDatabaseFile(file, { userDataPath: root });
   if (!rotated.ok) {
     return { ok: false, reason: repaired.reason || rotated.reason || "recover-failed" };
   }
@@ -499,13 +571,20 @@ async function recoverCorruptDatabase(userDataPath) {
   return { ok: true, backup: rotated.backup, rotated: true };
 }
 
+function getDbFilePath() {
+  return dbFilePath;
+}
+
 module.exports = {
   openDatabase,
   getDb,
+  getDbFilePath,
   isDatabaseReady,
   closeDatabase,
   flushDatabase,
   checkpointDatabase,
+  getDbBackend,
+  getNativeDb,
   isCorruptSqliteError,
   recoverCorruptDatabase,
   rotateCorruptDatabaseFile,

@@ -10,6 +10,7 @@ export function MetaChip({
   tone,
   className = "",
   labelClassName = "",
+  onClick,
 }: {
   icon: ReactNode;
   label: string;
@@ -18,6 +19,8 @@ export function MetaChip({
   title?: string;
   className?: string;
   labelClassName?: string;
+  /** When set, chip is a button (e.g. Sync error → open Log). */
+  onClick?: () => void;
 }) {
   const toneClass = {
     amber: "border-amber-400/30 bg-amber-500/12 text-amber-100 [&_svg]:text-amber-300",
@@ -29,14 +32,23 @@ export function MetaChip({
     violet: "border-violet-400/30 bg-violet-500/12 text-violet-100 [&_svg]:text-violet-300",
   }[tone];
 
-  return (
-    <span
-      className={`inline-flex max-w-[11rem] items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium leading-4 ${toneClass} ${className}`}
-    >
+  const body = (
+    <>
       <span className="shrink-0">{icon}</span>
       <span className={labelClassName || "truncate"}>{label}</span>
-    </span>
+    </>
   );
+  const chipClass = `inline-flex max-w-[11rem] items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium leading-4 ${toneClass} ${className}`;
+
+  if (onClick) {
+    return (
+      <button type="button" className={chipClass} onClick={onClick}>
+        {body}
+      </button>
+    );
+  }
+
+  return <span className={chipClass}>{body}</span>;
 }
 
 export function CopyMetaChip({

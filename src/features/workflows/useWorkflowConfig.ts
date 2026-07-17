@@ -322,11 +322,31 @@ export function useWorkflowConfig(options: { setError: (message: string) => void
     setSelectedWorkflowIds([draft.id]);
   }, []);
 
-  const resetWorkflow = useCallback((workflowId: string) => {
+  const resetWorkflow = useCallback((workflowId: string, options?: { persist?: boolean }) => {
     const fallback = DEFAULT_WORKFLOWS.find((workflow) => workflow.id === workflowId);
     if (!fallback) return;
-    updateWorkflowConfigsWithHistory((items) => items.map((workflow) => (workflow.id === workflowId ? fallback : workflow)));
-  }, [updateWorkflowConfigsWithHistory]);
+    setDraftWorkflowConfigs((items) => {
+      setWorkflowUndoStack((stack) => [...stack.slice(-19), items]);
+      setWorkflowRedoStack([]);
+      const next = items.map((workflow) =>
+        workflow.id === workflowId ? touchWorkflowUpdated({ ...fallback }) : workflow,
+      );
+      if (options?.persist) {
+        try {
+          localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        setSavedWorkflowConfigs(next);
+        setSavePulse(true);
+        window.setTimeout(() => setSavePulse(false), 1200);
+      }
+      return next;
+    });
+    if (options?.persist) {
+      addLog("success", "Workflows", "Reset to built-in and saved");
+    }
+  }, [addLog]);
 
   const undoWorkflowChange = useCallback(() => {
     setWorkflowUndoStack((stack) => {

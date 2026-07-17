@@ -1,5 +1,6 @@
 import { CopyMinus, Plus } from "lucide-react";
 import type { ReactNode } from "react";
+import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import { HubBulkActionButton, type HubBulkActionTone } from "./HubBulkActionButton";
 import { HubDirectoryBulkActionRail } from "./HubDirectoryBulkActionRail";
 import { HubDirectoryDeleteBulkAction } from "./HubDirectoryDeleteBulkAction";
@@ -31,12 +32,19 @@ export type HubDirectoryCrudBulkActionsProps = {
   editTitleWhenNone?: string;
   deleteTitle?: string;
   deleteTitleWhenNone?: string;
+  primaryLabelHint?: HubDirectoryColumnHintContent;
+  editLabelHint?: HubDirectoryColumnHintContent;
+  deleteLabelHint?: HubDirectoryColumnHintContent;
+  /** Hide default Edit button (for tools using adaptive Detail CTA). */
+  hideEdit?: boolean;
+  /** Insert between New/Edit and Delete — e.g. `HubDirectoryAdaptiveEditAction` Detail CTA. */
+  beforeDelete?: ReactNode;
   extra?: HubDirectoryCrudBulkExtraAction;
   /** Render buttons only — compose multiple groups in one `HubDirectoryBulkActionRail`. */
   embedded?: boolean;
 };
 
-/** Golden New / Edit / Delete bulk rail — Notes folders, 2FA, Cookie access modals. */
+/** Golden New / Detail / Delete bulk rail — Notes folders, 2FA, Cookie access modals. */
 export function HubDirectoryCrudBulkActions({
   hasSelection,
   selectedCount,
@@ -53,6 +61,11 @@ export function HubDirectoryCrudBulkActions({
   editTitleWhenNone = "Select items to edit",
   deleteTitle = "Delete selected",
   deleteTitleWhenNone = "Select items to delete",
+  primaryLabelHint,
+  editLabelHint,
+  deleteLabelHint,
+  hideEdit = false,
+  beforeDelete,
   extra,
   embedded = false,
 }: HubDirectoryCrudBulkActionsProps) {
@@ -74,6 +87,7 @@ export function HubDirectoryCrudBulkActions({
           title={primaryTitle ?? primaryLabel}
           disabled={primaryDisabled}
           onClick={onPrimary}
+          labelHint={primaryLabelHint}
         />
       ) : (
         <HubBulkActionButton
@@ -85,16 +99,21 @@ export function HubDirectoryCrudBulkActions({
           onClick={onPrimary}
         />
       )}
-      <HubDirectoryEditBulkAction
-        title={resolvedEditTitle}
-        disabled={!editEnabled}
-        selectedCount={hasSelection ? selectedCount : undefined}
-        onClick={onEdit}
-      />
+      {!hideEdit ? (
+        <HubDirectoryEditBulkAction
+          title={resolvedEditTitle}
+          disabled={!editEnabled}
+          selectedCount={hasSelection ? selectedCount : undefined}
+          onClick={onEdit}
+          labelHint={editLabelHint}
+        />
+      ) : null}
+      {beforeDelete}
       <HubDirectoryDeleteBulkAction
         title={resolvedDeleteTitle}
         disabled={!deleteEnabled}
         onClick={onDelete}
+        labelHint={deleteLabelHint}
       />
       {extra ? (
         <HubBulkActionButton

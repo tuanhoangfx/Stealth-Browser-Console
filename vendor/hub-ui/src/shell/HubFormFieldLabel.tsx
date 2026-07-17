@@ -1,5 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import {
+  HubDirectoryColumnHint,
+  type HubDirectoryColumnHintContent,
+  type HubDirectoryColumnHintGlyph,
+} from "../table/HubDirectoryColumnHint";
 import { compactIconSize } from "../ui-scale";
 
 export type HubFormFieldLabelProps = {
@@ -9,7 +14,19 @@ export type HubFormFieldLabelProps = {
   emoji?: string;
   children: ReactNode;
   className?: string;
+  /** Rich label hint — hover popover (directory column hint SSOT). */
+  labelHint?: HubDirectoryColumnHintContent;
 };
+
+function resolveFormFieldLabelGlyph({
+  icon,
+  iconClassName,
+  emoji,
+}: Pick<HubFormFieldLabelProps, "icon" | "iconClassName" | "emoji">): HubDirectoryColumnHintGlyph | undefined {
+  if (emoji) return { emoji };
+  if (icon) return { icon, toneClass: iconClassName };
+  return undefined;
+}
 
 /** Icon + label row above modal form controls — golden detail modal fields. */
 export function HubFormFieldLabel({
@@ -18,8 +35,9 @@ export function HubFormFieldLabel({
   emoji,
   children,
   className = "",
+  labelHint,
 }: HubFormFieldLabelProps) {
-  return (
+  const labelNode = (
     <span className={`hub-form-field-label${className ? ` ${className}` : ""}`}>
       {emoji ? (
         <span className="hub-form-field-label__emoji" aria-hidden>
@@ -30,5 +48,16 @@ export function HubFormFieldLabel({
       ) : null}
       {children}
     </span>
+  );
+
+  if (!labelHint) return labelNode;
+
+  return (
+    <HubDirectoryColumnHint
+      content={labelHint}
+      titleGlyph={resolveFormFieldLabelGlyph({ icon: Icon, iconClassName, emoji })}
+    >
+      {labelNode}
+    </HubDirectoryColumnHint>
   );
 }

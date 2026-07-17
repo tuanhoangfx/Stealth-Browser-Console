@@ -106,15 +106,14 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
 
   const activePresetName = label === "Default" || label === "Current" ? null : label;
 
+  const activePreset = presets.find((preset) => preset.name === label);
+  const activeEmoji = label === "Default" ? "📌" : activePreset?.emoji;
   const triggerDotColor =
     label === "Current"
       ? PRESET_CURRENT_DOT_COLOR
       : label === "Default"
         ? PRESET_DEFAULT_DOT_COLOR
-        : presetDotColorFromId(
-            presets.find((preset) => preset.name === label)?.id ?? "default",
-            presets.find((preset) => preset.name === label)?.color,
-          );
+        : presetDotColorFromId(activePreset?.id ?? "default", activePreset?.color);
 
   const filteredPresets = presets.filter(
     (preset) => !search || preset.name.toLowerCase().includes(search.toLowerCase()),
@@ -163,11 +162,9 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
         {showDefaultRow ? (
           <button type="button" onClick={pickDefault} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
             <HubFilterDropdownCircle checked={label === "Default"} />
-            <span
-              className="h-2 w-2 shrink-0 rounded-full ring-1 ring-white/15"
-              style={{ background: PRESET_DEFAULT_DOT_COLOR }}
-              aria-hidden
-            />
+            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center text-[11px] leading-none" aria-hidden>
+              📌
+            </span>
             <span className="min-w-0 flex-1 truncate text-left">Default</span>
           </button>
         ) : null}
@@ -179,11 +176,17 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
               className={`${HUB_FILTER_DROPDOWN_ROW_CLASS} min-w-0 flex-1`}
             >
               <HubFilterDropdownCircle checked={activePresetName === preset.name} />
-              <span
-                className="h-2 w-2 shrink-0 rounded-full ring-1 ring-white/10"
-                style={{ background: presetDotColorFromId(preset.id, preset.color) }}
-                aria-hidden
-              />
+              {preset.emoji ? (
+                <span className="grid h-3.5 w-3.5 shrink-0 place-items-center text-[11px] leading-none" aria-hidden>
+                  {preset.emoji}
+                </span>
+              ) : (
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full ring-1 ring-white/10"
+                  style={{ background: presetDotColorFromId(preset.id, preset.color) }}
+                  aria-hidden
+                />
+              )}
               <span className="min-w-0 flex-1 truncate text-left" title={preset.name}>
                 {preset.name}
               </span>
@@ -250,7 +253,14 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
           }}
           title="Column presets"
           Icon={LayoutTemplate}
-          iconColor={triggerDotColor}
+          icon={
+            activeEmoji ? (
+              <span className="inline-flex size-[13px] shrink-0 items-center justify-center text-[12px] leading-none" aria-hidden>
+                {activeEmoji}
+              </span>
+            ) : undefined
+          }
+          iconColor={activeEmoji ? undefined : triggerDotColor}
           typoClass={compact ? HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS : HUB_DIRECTORY_TOOLBAR_TYPO_CLASS}
           className={compact ? "h-7 px-2" : ""}
         />

@@ -17,9 +17,6 @@ import { StealthAppProviders } from "./providers/StealthAppProviders";
 import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "./lib/stealth-product";
 
-prefetchWorkflowChunks();
-prefetchSystemChunks();
-
 export function App() {
   return (
     <HubToolLoadingProvider
@@ -48,6 +45,8 @@ function StealthAppRoot() {
 
   useLayoutEffect(() => {
     hideBootLoader();
+    prefetchWorkflowChunks();
+    prefetchSystemChunks();
   }, []);
 
   useLayoutEffect(() => {

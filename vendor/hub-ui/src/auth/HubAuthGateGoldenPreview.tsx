@@ -110,11 +110,12 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
         <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/8 bg-white/[.02] px-4 py-5">
           <HubAuthLogoutChip
             email="user@infix1.io.vn"
+            roleKey="admin"
             linked
             onOpenUser={() => undefined}
             onLogout={() => undefined}
           />
-          <HubAuthLogoutChip email="guest" onLogout={() => undefined} />
+          <HubAuthLogoutChip email="guest" roleKey="anonymous" onLogout={() => undefined} />
         </div>
         <p className="text-center text-[10px] text-[var(--muted)]">
           Sidebar User row uses classic trailing email — chip is for extension header only.

@@ -40,7 +40,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 0.55rem 0.7rem;
+  padding: 0.45rem;
 }
 
 /* Credentials main scroll inset — SSOT in hub-account-detail-modal.css */
@@ -49,8 +49,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: auto;
 }
 
 .twofa-account-detail__panel .hub-adm-section-stack {
@@ -69,6 +69,11 @@
 
 .twofa-account-detail-modal .twofa-adm-control {
   width: 100%;
+}
+
+.twofa-account-detail-modal .hub-account-detail-modal__split > .hub-tool-detail-panel.hub-tool-detail-panel--grow {
+  width: 100%;
+  min-width: 0;
 }
 
 .twofa-adm-rail,
@@ -176,6 +181,7 @@
 }
 
 .twofa-adm-muted,
+.hub-adm-muted,
 .twofa-adm-hero__period-label {
   font-size: var(--hub-adm-type-size, 12px);
   font-weight: var(--hub-adm-type-label-weight, 500);
@@ -232,13 +238,13 @@
   gap: var(--hub-inline-gap-name, 8px);
   min-width: 0;
   flex: 1 1 auto;
-  font-weight: 500;
-  color: rgb(203, 213, 225);
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .twofa-adm-log-row__action .twofa-adm-log-row__msg {
-  color: rgb(203, 213, 225);
-  font-weight: 500;
+  color: inherit;
+  font-weight: inherit;
 }
 
 .twofa-adm-log-row__values {
@@ -334,8 +340,8 @@
 }
 
 .twofa-adm-log-row__icon {
-  width: 11px;
-  height: 11px;
+  width: var(--hub-directory-header-glyph-px, 13px);
+  height: var(--hub-directory-header-glyph-px, 13px);
   flex-shrink: 0;
 }
 
@@ -405,9 +411,10 @@
   border-radius: 0.2rem;
   background: var(--hub-modal-panel-surface, var(--panel));
   padding: 0 0.22rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.3;
+  font-family: inherit;
+  font-size: var(--hub-adm-type-size, 12px);
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  line-height: var(--hub-adm-type-line, 1.45);
   color: rgb(203, 213, 225);
 }
 
@@ -430,16 +437,37 @@
   height: auto;
   white-space: normal;
   text-align: left;
+  border: 0;
+  border-radius: 0.28rem;
+  background: transparent;
+  padding: 0 0.15rem;
+}
+
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn--old,
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn--new,
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn--single {
+  border: 0;
+  background: transparent;
+}
+
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val__wrap:hover .twofa-adm-log-inline-val__btn {
+  border: 0;
+  background: var(--hub-adm-glow-hover-bg, rgb(255 255 255 / 0.04));
+  box-shadow: var(--hub-adm-glow-hover-ring, none);
+}
+
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn.hub-adm-detail-value-text {
+  flex: unset;
 }
 
 .twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn .twofa-copy-control__value {
-  min-width: 0;
-  max-width: none;
-  overflow: visible;
-  text-overflow: unset;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+.twofa-adm-log-row--detail .twofa-adm-log-row__arrow {
+  font: inherit;
 }
 
 .twofa-adm-log-inline-val__btn .twofa-copy-control__value {

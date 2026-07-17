@@ -1,8 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { fetchAppInfo } from "../../api";
-import { SystemCookieBridgePanel } from "./SystemCookieBridgePanel";
 import { SystemLaunchPerfPanel } from "./SystemLaunchPerfPanel";
-import { SystemWebStoreExtensionsPanel } from "./SystemWebStoreExtensionsPanel";
 
 export const SystemOverviewPage = memo(function SystemOverviewPage() {
   const [userDataPath, setUserDataPath] = useState("");
@@ -25,10 +23,12 @@ export const SystemOverviewPage = memo(function SystemOverviewPage() {
         <p className="font-semibold text-cyan-200">User data</p>
         <p className="mt-1 break-all font-mono text-xs text-cyan-100/90">{userDataPath || "—"}</p>
         <p className="mt-2 text-[var(--muted)]">{dataHint}</p>
+        <p className="mt-2 text-[var(--muted)]">
+          Extensions moved to <span className="text-cyan-200">System → Extensions</span> (install, force update, Cookie
+          Bridge repair).
+        </p>
       </div>
       <SystemLaunchPerfPanel />
-      <SystemWebStoreExtensionsPanel />
-      <SystemCookieBridgePanel />
     </div>
   );
 });
