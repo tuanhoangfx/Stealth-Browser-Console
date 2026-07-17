@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-07-17 — v1.0.22 — Electron dev reload
+## 2026-07-17 — v1.0.22 — Lean extension staging (fix slow profile opens)
 
 - Version: `1.0.22`
 - Timestamp: 2026-07-17 15:45 (UTC+7)
@@ -9,7 +9,20 @@
 
 ### Changes
 
-- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- Perf: extension staging (`ensureCloakbrowserExtensionStage`) now copies only
+  runtime files — dev/publish dirs (`.chrome-store-profile`, `docs`, `.github`,
+  `.cursor`, `.vscode`, `.dev`, `coverage`, `.turbo`) are excluded, and any stale
+  copies from older builds are pruned from the stage. E0001 shipped a 988-file /
+  ~98MB `.chrome-store-profile` dev folder that was copied into the CloakBrowser
+  cache and re-validated by Chromium on every new profile's first open — the main
+  cause of the multi-second cold opens vs the lean 1.0.11-era extension.
+- Test: `cloakbrowser-extension-stage` covers the runtime/dev split + stale prune.
+
+### Diagnosis (measured)
+
+- Warm, provisioned root: E0001 adds only ~300ms to a new-profile open — the
+  extension itself is not the bottleneck. The big spikes came from staging/
+  re-validating the bloated 98MB extension folder; this change removes that.
 
 ## 2026-07-17 — v1.0.21 — Faster repeat profile opens (E0001 native prefs-load)
 
