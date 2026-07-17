@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.25-stable",
-  "version": "1.0.25",
+  "label": "v1.0.31-stable",
+  "version": "1.0.31",
   "gitCommit": null,
   "gitTag": "v1.0.1-stable",
   "notes": "v1.0.1 stable: packaged tar + mmdb-lib ESM beside unpacked cloakbrowser (profile Run + proxy geoip). Artifact from release commit; repo may have unpushed tooling WIP.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.25.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.31.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "KHOMbJJdKDkvoG8lJgJzWpFsAHdZWf50mAYTOhCDMX7u4PYDpY5gegEiP6GBdaWJsPeDDB3RDbBiKlEze7yVCA==",
-    "capturedAt": "2026-07-17T09:46:31.926Z"
+    "sha512": "vN2N/ml3FKIrumibOAWXD59tyATuPS7x1HFRQ8YxgzH3Uzp78JXl5aS4y8HPOF+CZBHerMeGEL1zRIaN2Gx4qQ==",
+    "capturedAt": "2026-07-17T11:02:42.210Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

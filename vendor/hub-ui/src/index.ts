@@ -192,6 +192,11 @@ export {
   type DirectoryFetchOptions,
   type HubDirectoryMirrorOptions,
 } from "./loading/useHubDirectoryMirror";
+export {
+  applyDirectoryOrderFreeze,
+  buildDirectoryOrderFreezeKey,
+  clearDirectoryOrderFreeze,
+} from "./loading/directory-order-freeze";
 export { useTabFrozenRows } from "./loading/useTabFrozenRows";
 export { useHubDirectoryChromeReady } from "./loading/useHubDirectoryChromeReady";
 export {

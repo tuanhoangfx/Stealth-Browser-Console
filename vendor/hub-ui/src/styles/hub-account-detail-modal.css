@@ -817,6 +817,10 @@
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--readonly > .hub-adm-inline-field__value {
   grid-column: 2 / -1;
   min-width: 0;
+  /* Match the multiline detail-line: top-align so the value's first line lines up with the
+     col-1 label (align-self: start). Without this the value inherits the row's `align-items: center`
+     and drifts below the label for tall/multi-line readonly values. */
+  align-self: start;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline.hub-adm-inline-field--readonly .hub-adm-readonly-value--static {

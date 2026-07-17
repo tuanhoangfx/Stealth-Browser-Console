@@ -9,7 +9,9 @@
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
-  letter-spacing: 0.02em;
+  /* No extra tracking — matches body text (`letter-spacing: normal`) so money columns don't read
+     visually larger than neighbours like Product. tabular-nums still keeps digit columns aligned. */
+  letter-spacing: normal;
   white-space: nowrap;
 }
 
@@ -23,9 +25,10 @@
   color: #a7f3d0;
 }
 
-/* C3 — amber gold (money accent) */
+/* C3 — amber gold (money accent), softened so it reads as an accent without over-popping
+   next to neutral body text. Was #fcd34d (neon amber-300); now a calmer gold. Lock: C3-amber-soft. */
 .hub-order-price-text--amber {
-  color: #fcd34d;
+  color: #e6c069;
 }
 
 /* C4 — indigo (revenue / high-tier) */

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { resolveHubTableColumnMeta } from "./hub-table-column-meta";
 import { HubPaginatedTableShell } from "../content/HubPaginatedTableShell";
 import { HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS } from "./directory-table-scroll";
@@ -149,6 +149,79 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
   const splitScroll = useSplitDirectoryScroll(wrapClassName);
   const resolvedPageSize = useHubTablePageSize(pageSize);
 
+  // Drag-to-select — hold left button on a row's checkbox and sweep over adjacent
+  // rows to toggle them all to one target state (P0004 directory parity, shared SSOT).
+  const dragRef = useRef<{
+    active: boolean;
+    target: boolean;
+    startId: string;
+    startSelected: boolean;
+    processed: Set<string>;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const onToggleSelectRef = useRef(onToggleSelect);
+  onToggleSelectRef.current = onToggleSelect;
+
+  const endDragSelect = useCallback(() => {
+    if (dragRef.current) dragRef.current = null;
+    setDragging(false);
+  }, []);
+
+  const applyDragToRow = useCallback((id: string) => {
+    const state = dragRef.current;
+    if (!state || state.processed.has(id)) return;
+    state.processed.add(id);
+    const isSelected = selectedIdsRef.current?.has(id) ?? false;
+    if (isSelected !== state.target) onToggleSelectRef.current?.(id);
+  }, []);
+
+  const beginDragSelect = useCallback((id: string, selected: boolean) => {
+    dragRef.current = {
+      active: false,
+      target: !selected,
+      startId: id,
+      startSelected: selected,
+      processed: new Set(),
+    };
+  }, []);
+
+  const extendDragSelect = useCallback(
+    (id: string, canSelect: boolean) => {
+      const state = dragRef.current;
+      if (!state) return;
+      if (!state.active) {
+        // Second row entered while button held → this is a sweep, not a plain click.
+        state.active = true;
+        setDragging(true);
+        applyDragToRow(state.startId);
+      }
+      if (canSelect) applyDragToRow(id);
+    },
+    [applyDragToRow],
+  );
+
+  useEffect(() => {
+    if (!showSelect) return;
+    const onUp = () => endDragSelect();
+    window.addEventListener("mouseup", onUp);
+    return () => window.removeEventListener("mouseup", onUp);
+  }, [showSelect, endDragSelect]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (dragging) {
+      const prev = document.body.style.userSelect;
+      document.body.style.userSelect = "none";
+      window.getSelection?.()?.removeAllRanges();
+      return () => {
+        document.body.style.userSelect = prev;
+      };
+    }
+    return undefined;
+  }, [dragging]);
+
   const columnHeaderProps = (col: (typeof columns)[number]) =>
     col.headerEmoji
       ? { label: col.label, headerEmoji: col.headerEmoji }
@@ -273,17 +346,35 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
         const bodyRows = pageItems.map((item) => {
           const rowKey = getRowKey(item);
           const selected = selectedIds?.has(rowKey) ?? false;
+          const rowCanSelect = canSelectRow?.(item) !== false;
           return (
             <tr
               key={rowKey}
               className={`hub-users-row${selected ? " is-selected" : ""}${getRowClassName?.(item) ?? ""}`}
               onClick={onRowClick ? () => onRowClick(item) : undefined}
               onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(item) : undefined}
-              onMouseEnter={onRowMouseEnter ? () => onRowMouseEnter(item) : undefined}
+              onMouseEnter={
+                showSelect || onRowMouseEnter
+                  ? () => {
+                      if (showSelect) extendDragSelect(rowKey, rowCanSelect);
+                      onRowMouseEnter?.(item);
+                    }
+                  : undefined
+              }
             >
               {showSelect ? (
-                <td className="hub-users-col--select" onClick={(e) => e.stopPropagation()}>
-                  {canSelectRow?.(item) !== false ? (
+                <td
+                  className="hub-users-col--select"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={
+                    rowCanSelect
+                      ? (e) => {
+                          if (e.button === 0) beginDragSelect(rowKey, selected);
+                        }
+                      : undefined
+                  }
+                >
+                  {rowCanSelect ? (
                     <label className="hub-users-select-row">
                       <input
                         type="checkbox"
