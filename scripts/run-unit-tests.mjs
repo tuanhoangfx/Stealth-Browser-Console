@@ -44,6 +44,7 @@ const liveE2e = [
   ["workflow-on-open-smoke", "node", ["electron/e2e/workflow-on-open-smoke.cjs"]],
   ["launch-vs-run-smoke", "node", ["electron/e2e/launch-vs-run-smoke.cjs"]],
   ["no-sandbox-flag-smoke", "node", ["electron/e2e/no-sandbox-flag-smoke.cjs"]],
+  ["extension-e0001-relaunch-smoke", "node", ["electron/e2e/extension-e0001-relaunch-smoke.cjs"]],
 ];
 
 if (fast) {

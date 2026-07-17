@@ -154,9 +154,9 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-07-17T04:26:07.463Z",
+  "manifestUpdatedAt": "2026-07-17T07:49:27.952Z",
   "release": {
-    "version": "1.0.20",
+    "version": "1.0.21",
     "updatedAt": "2026-07-07",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -180,6 +180,6 @@
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
       "build": "corepack pnpm run build"
     },
-    "syncedAt": "2026-07-17T03:06:44.939Z"
+    "syncedAt": "2026-07-17T04:35:11.177Z"
   }
 }

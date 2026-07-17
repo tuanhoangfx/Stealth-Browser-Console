@@ -23,11 +23,42 @@ const { getExtensionToggles } = require("./app-settings.cjs");
 
 const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
 
+// Load E0001 natively from prefs once Chromium has installed it (drop the
+// redundant per-launch --load-extension). Set STEALTH_E0001_NATIVE_PREFS=0 to
+// force the always-CLI-load behavior.
+const NATIVE_PREFS_LOAD = String(process.env.STEALTH_E0001_NATIVE_PREFS ?? "1").toLowerCase() !== "0";
+
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     return {};
+  }
+}
+
+/**
+ * True only when Chromium itself has already installed + loaded E0001 in this
+ * profile: the settings entry is enabled, points at a still-present folder, and
+ * carries a Chromium-parsed `manifest` object that our pin writer never sets
+ * (Chromium adds it only after successfully loading the unpacked extension).
+ * Once this holds, Chromium reloads the pinned unpacked extension (location 4)
+ * from prefs on startup, so the per-launch `--load-extension` re-validation is
+ * redundant and can be dropped for a faster open.
+ */
+function isCookieBridgeProvisionedInPrefs(userDataDir) {
+  const entry = readJson(path.join(userDataDir, "Default", "Preferences"))?.extensions?.settings?.[
+    COOKIE_BRIDGE_STORE_ID
+  ];
+  if (!entry || Number(entry.state) !== 1) return false;
+  const manifest = entry.manifest;
+  const chromiumLoaded = Boolean(manifest && typeof manifest === "object" && manifest.name);
+  if (!chromiumLoaded) return false;
+  const extPath = String(entry.path || "").trim();
+  if (!extPath) return false;
+  try {
+    return fs.existsSync(path.join(path.resolve(extPath), "manifest.json"));
+  } catch {
+    return false;
   }
 }
 
@@ -172,6 +203,13 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
   if (!FAST_PREP) {
     purgeDuplicateUnpackedStoreExtensions(userDataDir);
   }
+
+  // Snapshot BEFORE re-pinning: was E0001 already Chromium-installed in this
+  // profile? If so we can load it natively from prefs and skip the redundant
+  // per-launch --load-extension re-validation (faster opens, 1.0.11-like).
+  const cookieBridgePrefsLoad =
+    NATIVE_PREFS_LOAD && isCookieBridgeProvisionedInPrefs(userDataDir);
+
   migrateUnpackedCookieBridgePins(userDataDir, userDataRoot);
 
   const sources = readProfileExtensionSources(userDataDir, userDataRoot, toggles);
@@ -204,7 +242,12 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
       pinStoreOrUnpackedExtension(userDataDir, entry.storeId, pinPath, entry.sourceDir);
       prefStoreIds.push(entry.storeId);
       if (entry.storeId === COOKIE_BRIDGE_STORE_ID && cookieBridgeEnabled()) {
-        cliStoreLoads.push({ storeId: entry.storeId, dir: pinPath });
+        // First open (not yet Chromium-installed) forces a --load-extension so
+        // Chromium registers E0001. After that it loads from prefs and we skip
+        // the CLI load to speed up every later open.
+        if (!cookieBridgePrefsLoad) {
+          cliStoreLoads.push({ storeId: entry.storeId, dir: pinPath });
+        }
       }
       continue;
     }
@@ -309,5 +352,6 @@ module.exports = {
   repairAllProfileExtensionPaths,
   ensureCookieBridgeOnAllProfiles,
   profileHasCookieBridge,
+  isCookieBridgeProvisionedInPrefs,
   pinStoreOrUnpackedExtension,
 };

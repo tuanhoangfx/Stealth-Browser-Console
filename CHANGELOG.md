@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-07-17 — v1.0.21 — Faster repeat profile opens (E0001 native prefs-load)
+
+- Version: `1.0.21`
+- Timestamp: 2026-07-17 14:49 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Perf: the E0001 Cookie Bridge now loads **once** via `--load-extension` on a
+  profile's first open, then on every later open Chromium loads it natively from
+  prefs (location 4) — the redundant per-launch `--load-extension` re-validation
+  is dropped. Gated on a Chromium-authored `manifest` marker so the flag stays on
+  until Chromium has actually installed the extension; `STEALTH_E0001_NATIVE_PREFS=0`
+  forces the old always-CLI-load behavior. Launch benchmark avg 2770ms → 2151ms.
+- Tests: new live e2e `extension-e0001-relaunch-smoke` verifies first-open uses
+  the CLI load, Chromium caches the manifest, the second open skips the CLI load,
+  and the extension stays loaded + enabled after the flag-less relaunch.
+
+Note: warm/repeat opens were already ~1.0.11 speed; the only way to make *every*
+open as fast as pre-extension 1.0.11 is to disable E0001 (Settings → Extensions,
+global or per-profile), since any extension pays a one-time first-open load cost.
+
 ## 2026-07-17 - P0003 version sync
 
 - Version: `1.0.20`
