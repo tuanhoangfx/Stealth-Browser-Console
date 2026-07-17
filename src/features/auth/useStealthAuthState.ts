@@ -70,14 +70,32 @@ export function useStealthAuthState(): StealthAuthState {
   const [offline, setOffline] = useState(initial.offline);
   const [toolAccess, setToolAccess] = useState<boolean | null>(initial.session ? null : false);
   const toolCheckGen = useRef(0);
+  const toolAccessRef = useRef<boolean | null>(initial.session ? null : false);
+  const toolAccessConfirmedRef = useRef(false);
   const signoutRecoveryRef = useRef(false);
+
+  const commitToolAccess = useCallback((value: boolean | null) => {
+    toolAccessRef.current = value;
+    if (value !== null) toolAccessConfirmedRef.current = true;
+    setToolAccess(value);
+  }, []);
+
+  const resetToolAccess = useCallback(() => {
+    toolAccessConfirmedRef.current = false;
+    toolAccessRef.current = false;
+    setToolAccess(false);
+  }, []);
 
   const checkToolAccess = useCallback(async (_accessToken: string) => {
     const gen = ++toolCheckGen.current;
-    if (gen === toolCheckGen.current) setToolAccess(null);
+    // Only surface the full-screen boot loader ("Checking workspace session…")
+    // on the first-ever verification. Re-checks (tab switch, window refocus,
+    // cross-tab identity sync, token refresh) keep the last confirmed value so
+    // the console never flashes back to the loading screen for a signed-in user.
+    if (!toolAccessConfirmedRef.current) setToolAccess(null);
     const client = getIdentitySupabase();
     if (!client) {
-      if (gen === toolCheckGen.current) setToolAccess(true);
+      if (gen === toolCheckGen.current) commitToolAccess(true);
       return true;
     }
     let ok = await verifyHubIntegratedToolAccess(client, "P0003");
@@ -85,29 +103,32 @@ export function useStealthAuthState(): StealthAuthState {
       ok = await verifyHubIntegratedToolAccess(client, "P0003");
     }
     if (gen !== toolCheckGen.current) return ok;
-    // Still uncertain after retry — fail closed; Access Denied offers recheck.
     if (ok === null) {
-      setToolAccess(false);
+      // Uncertain after retry: keep a previously confirmed grant instead of
+      // flashing Access Denied on a transient network blip. Only fail closed
+      // on a cold check that never succeeded before.
+      if (toolAccessConfirmedRef.current && toolAccessRef.current === true) return true;
+      commitToolAccess(false);
       return null;
     }
-    setToolAccess(ok);
+    commitToolAccess(ok);
     return ok;
-  }, []);
+  }, [commitToolAccess]);
 
   const recheckToolAccess = useCallback(async () => {
     const token = session?.access_token || readCachedHubSession()?.access_token;
     if (!token) {
-      setToolAccess(false);
+      commitToolAccess(false);
       return false;
     }
     return checkToolAccess(token);
-  }, [checkToolAccess, session?.access_token]);
+  }, [checkToolAccess, commitToolAccess, session?.access_token]);
 
   const refreshSession = useCallback(async (opts?: { boot?: boolean }) => {
     if (!isStealthHubAuthEnabled()) {
       setSession(null);
       setOffline(false);
-      setToolAccess(true);
+      commitToolAccess(true);
       setLoading(false);
       return;
     }
@@ -121,7 +142,7 @@ export function useStealthAuthState(): StealthAuthState {
 
     if (!isHubSupabaseConfigured) {
       setSession(null);
-      setToolAccess(true);
+      commitToolAccess(true);
       setLoading(false);
       return;
     }
@@ -143,12 +164,12 @@ export function useStealthAuthState(): StealthAuthState {
       }
       if (!readCachedHubSession()) {
         setSession(null);
-        setToolAccess(false);
+        commitToolAccess(false);
       }
     } finally {
       setLoading(false);
     }
-  }, [checkToolAccess]);
+  }, [checkToolAccess, commitToolAccess]);
 
   const prepareHubSignIn = useCallback(() => {
     setOfflineMode(false);
@@ -173,9 +194,9 @@ export function useStealthAuthState(): StealthAuthState {
     const client = getIdentitySupabase();
     if (client) await client.auth.signOut();
     setSession(null);
-    setToolAccess(false);
+    resetToolAccess();
     setLoading(false);
-  }, []);
+  }, [resetToolAccess]);
 
   const handleOfflineChange = useCallback(() => {
     void refreshSession();
@@ -230,7 +251,7 @@ export function useStealthAuthState(): StealthAuthState {
         return;
       }
       setSession(null);
-      setToolAccess(false);
+      resetToolAccess();
     },
     onHubSignedIn: (next) => {
       setOfflineMode(false);
@@ -240,7 +261,7 @@ export function useStealthAuthState(): StealthAuthState {
     },
     onAuthNotRequired: () => {
       setLoading(false);
-      setToolAccess(true);
+      commitToolAccess(true);
     },
     onBootStart: () => setLoading(true),
     apiUnauthorizedEvent: API_UNAUTHORIZED_EVENT,

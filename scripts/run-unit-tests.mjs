@@ -71,6 +71,8 @@ runStep("packaged-csp", "node", ["--test", "electron/lib/packaged-csp.test.cjs"]
 runStep("profile-chrome-session", "node", ["--test", "electron/lib/profile-chrome-session.test.cjs"]);
 runStep("omnibox-search-guard", "node", ["--test", "electron/lib/omnibox-search-guard.test.cjs"]);
 runStep("cookie-bridge-store", "node", ["--test", "electron/lib/cookie-bridge-store.test.cjs"]);
+runStep("profile-browser-orphan", "node", ["--test", "electron/lib/profile-browser-orphan.test.cjs"]);
+runStep("profile-extension-pins", "node", ["--test", "electron/lib/profile-extension-pins.test.cjs"]);
 runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
 runStep("profile-ops", "node", ["electron/services/profile-ops.test.cjs"]);
 runStep("api-routes", "node", ["electron/api-routes.test.cjs"]);

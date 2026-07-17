@@ -26,9 +26,11 @@ function listChromeProcessesPs(userDataDir) {
   const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
   const backslash = escapePsSingleQuoted(dir);
   const profileId = escapePsSingleQuoted(path.basename(dir));
-  const rootTag = escapePsSingleQuoted(path.basename(path.resolve(dir, "..", "..")));
+  // Only profile-scoped needles. `--stealth-user-data-tag=<root>` is shared by
+  // every profile (same user-data root), so including it made launching one
+  // profile match — and kill — all other running profiles.
   return [
-    `$needles = @('${backslash}', '${forward}', '${profileId}', '--stealth-profile-id=${profileId}', '--stealth-user-data-tag=${rootTag}')`,
+    `$needles = @('${backslash}', '${forward}', '${profileId}', '--stealth-profile-id=${profileId}')`,
     "Get-CimInstance Win32_Process | Where-Object {",
     "  $cmd = $_.CommandLine; $name = $_.Name;",
     "  if (-not $cmd) { return $false }",
@@ -260,6 +262,7 @@ async function focusProfileBrowserWindow(userDataDir) {
 module.exports = {
   CHROME_NAMES,
   PROFILE_LOCK_FILES,
+  listChromeProcessesPs,
   listProfileBrowserPids,
   hasProfileBrowserProcess,
   killOrphanProfileBrowser,

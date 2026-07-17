@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-07-17 — v1.0.19 — Electron dev reload
+
+- Version: `1.0.19`
+- Timestamp: 2026-07-17 10:45 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-17 — v1.0.19 — Auth flash + multi-profile kill + faster launch
+
+- Version: `1.0.19`
+- Timestamp: 2026-07-17 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- **Fix (multi-profile)** — opening a new profile no longer closes other running profiles. Orphan/lock process matching dropped the shared `--stealth-user-data-tag=<root>` needle (identical for every profile), which made `killOrphanProfileBrowser` for a new profile match and kill all others. Matching is now profile-scoped (path + `--stealth-profile-id`).
+- **Fix (auth UX)** — no more "Checking workspace session…" flash when switching tabs / refocusing the console. Tool-access re-verification is optimistic: only the first check shows the boot loader; later re-checks keep the last confirmed grant. An uncertain re-check keeps a prior grant instead of flashing Access Denied.
+- **Perf (launch)** — profile launch ran `prepareProfileExtensions` twice per open (once inside `ensureProfileExtensionPins`, once after). The plan is now prepared once and reused, halving per-launch prefs read/write + extension-staging work.
+
 ## 2026-07-17 — v1.0.17 — Electron dev reload
 
 - Version: `1.0.17`

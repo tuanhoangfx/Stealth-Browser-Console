@@ -10,7 +10,7 @@ function profileChromeDir(userDataRoot, profileId) {
 
 /** Pin store extensions when a profile override enables them while global default is off. */
 async function ensureProfileExtensionPins(profile, userDataRoot, cloakCacheDir) {
-  if (!profile?.id || !userDataRoot) return { installed: [] };
+  if (!profile?.id || !userDataRoot) return { installed: [], plan: null };
   const global = getExtensionToggles();
   const effective = resolveEffectiveExtensionToggles(global, profile.extensionOverrides);
   const userDataDir = profileChromeDir(userDataRoot, profile.id);
@@ -28,9 +28,12 @@ async function ensureProfileExtensionPins(profile, userDataRoot, cloakCacheDir) 
     }
   }
 
+  // Prepare once and return the plan so the launch path can reuse it instead of
+  // re-running prepareProfileExtensions (prefs read/write + staging) a second time.
+  let plan = null;
   if (cloakCacheDir) {
     try {
-      prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, { effectiveToggles: effective });
+      plan = prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, { effectiveToggles: effective });
     } catch (error) {
       console.warn(
         "[extension-profile] prepare:",
@@ -39,7 +42,7 @@ async function ensureProfileExtensionPins(profile, userDataRoot, cloakCacheDir) 
     }
   }
 
-  return { installed, effective };
+  return { installed, effective, plan };
 }
 
 module.exports = {

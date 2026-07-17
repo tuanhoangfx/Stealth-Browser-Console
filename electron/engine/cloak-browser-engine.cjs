@@ -340,7 +340,10 @@ async function prepareNativeExtensionsForLaunch(userDataDir, userDataRoot, profi
 
   const binary = await getBinaryInfoCached();
   if (profile?.id) {
-    await ensureProfileExtensionPins(profile, userDataRoot, binary.cacheDir);
+    // ensureProfileExtensionPins already runs prepareProfileExtensions and returns
+    // the launch plan — reuse it to avoid a redundant second prep pass per launch.
+    const pins = await ensureProfileExtensionPins(profile, userDataRoot, binary.cacheDir);
+    if (pins?.plan) return pins.plan;
   }
   return prepareProfileExtensions(userDataDir, userDataRoot, binary.cacheDir, { effectiveToggles });
 }
