@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.32-stable",
-  "version": "1.0.32",
-  "gitCommit": "daf5688c4150005e741d3fa09663d7d9e05214d1",
-  "gitTag": "v1.0.32-stable",
-  "notes": "v1.0.32 stable: bundled E0001 offline first-open; packaged tar + mmdb-lib ESM beside unpacked cloakbrowser (profile Run + proxy geoip). Artifact SHA512 verified against dist-desktop/known-good/Stealth-Browser-Console-Setup-1.0.32.exe (matches GitHub release v1.0.32).",
+  "label": "v1.0.40-stable",
+  "version": "1.0.40",
+  "gitCommit": "625c2fdd52d0444f5a22ab857c7556fc32688989",
+  "gitTag": "v1.0.40-stable",
+  "notes": "v1.0.40 stable: WF00011 gmail-login Microsoft soft-skip gated to MS URLs; inactive vault status surfaced; vite-build-ui-smoke isolated outDir. Packaged Setup-1.0.40.exe + win-unpacked SHA512 verified.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.32.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.40.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "0M9uslvv7z8u4CKISI9X80gfgQcvpCzY+Xk5woHZQV2nLmZ36f6GxirClWGYAM6slNi76Hni/Pn85sXNxPtTfw==",
-    "capturedAt": "2026-07-17T13:45:34.124Z"
+    "sha512": "WPe7BCsGJW7uajrlmbxcV2KyHU0nSHrosCUAiqc/UmTjd2a46A4LK/JT8daxgSYffGDOrcK2r+uB6noieMzk2w==",
+    "capturedAt": "2026-07-19T16:35:18.521Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
