@@ -100,7 +100,9 @@ const next = {
   label: labelArg || cfg.label || `stable-${version}`,
   version,
   gitCommit: dirty ? null : head,
-  gitTag: cfg.gitTag || `v${version}-stable`,
+  gitTag: labelArg
+    ? (String(labelArg).startsWith("v") ? String(labelArg) : `v${version}-stable`)
+    : `v${version}-stable`,
   backup: {
     dir: "dist-desktop/known-good",
     installer: installerName,
