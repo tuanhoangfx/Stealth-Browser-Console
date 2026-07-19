@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "label": "v1.0.59-stable",
   "version": "1.0.59",
-  "gitCommit": "421a1fb2560fd31d17addea4bbc80a29443f4810",
+  "gitCommit": "feb0ccb0ca8357bdaf0f4291c8c27f20e4782533",
   "gitTag": "v1.0.59-stable",
   "packagedFrom": "c521e336fe88579c6b3a6d9f0be3cb55e9471f18",
   "notes": "v1.0.59 stable: Design V2 taskbar profile badge (v2m-bottom-huge), Google/MS challenge detect, WF00011 captcha stop, electron-node DB tests, hub-ui/identity vendor sync. Packaged Setup-1.0.59.exe from packagedFrom + win-unpacked SHA512 verified.",
