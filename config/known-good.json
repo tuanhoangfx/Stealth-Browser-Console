@@ -1,27 +1,28 @@
 ﻿{
-    "schemaVersion":  1,
-    "label":  "v1.0.59-stable",
-    "version":  "1.0.59",
-    "gitCommit":  "636b70d2849bb121c537181d07f4b66b081a24eb",
-    "gitTag":  "v1.0.59-stable",
-    "notes":  "v1.0.59 stable: Design V2 taskbar profile badge (v2m-bottom-huge), Google/MS challenge detect, WF00011 captcha stop, electron-node DB tests, hub-ui/identity vendor sync. Packaged Setup-1.0.59.exe + win-unpacked SHA512 verified.",
-    "backup":  {
-                   "dir":  "dist-desktop/known-good",
-                   "installer":  "Stealth-Browser-Console-Setup-1.0.59.exe",
-                   "winUnpacked":  "win-unpacked",
-                   "sha512":  "bVLgk0ZI3gxpwuHnTaKFnVCm4ei2zBxMz7dEiWUOOo7Ywdux6GVtIb5RkCNBXJcxh9yhZdLcfL4RpELQtb0HBA==",
-                   "capturedAt":  "2026-07-19T21:40:12.323Z"
-               },
-    "restore":  {
-                    "purgeSurfshark":  "node scripts/purge-surfshark-runtime.mjs",
-                    "verifyAuth":  "node scripts/smoke-packaged-auth.mjs dist/index.html"
-                },
-    "checklist":  [
-                      "Run normal profile on Setup.exe â€” no ERR_MODULE_NOT_FOUND",
-                      "Run proxy profile on Setup.exe â€” no mmdb-lib crash",
-                      "Sign-in works on packaged exe (not only dev)",
-                      "Profile Run opens in \u003c5s typical",
-                      "Taskbar shows profile code digits on Chromium icon (OK_ICON)",
-                      "gitCommit matches packaged source or snapshot label recorded"
-                  ]
+  "schemaVersion": 1,
+  "label": "v1.0.59-stable",
+  "version": "1.0.59",
+  "gitCommit": "421a1fb2560fd31d17addea4bbc80a29443f4810",
+  "gitTag": "v1.0.59-stable",
+  "packagedFrom": "c521e336fe88579c6b3a6d9f0be3cb55e9471f18",
+  "notes": "v1.0.59 stable: Design V2 taskbar profile badge (v2m-bottom-huge), Google/MS challenge detect, WF00011 captcha stop, electron-node DB tests, hub-ui/identity vendor sync. Packaged Setup-1.0.59.exe from packagedFrom + win-unpacked SHA512 verified.",
+  "backup": {
+    "dir": "dist-desktop/known-good",
+    "installer": "Stealth-Browser-Console-Setup-1.0.59.exe",
+    "winUnpacked": "win-unpacked",
+    "sha512": "bVLgk0ZI3gxpwuHnTaKFnVCm4ei2zBxMz7dEiWUOOo7Ywdux6GVtIb5RkCNBXJcxh9yhZdLcfL4RpELQtb0HBA==",
+    "capturedAt": "2026-07-19T21:40:12.323Z"
+  },
+  "restore": {
+    "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
+    "verifyAuth": "node scripts/smoke-packaged-auth.mjs dist/index.html"
+  },
+  "checklist": [
+    "Run normal profile on Setup.exe — no ERR_MODULE_NOT_FOUND",
+    "Run proxy profile on Setup.exe — no mmdb-lib crash",
+    "Sign-in works on packaged exe (not only dev)",
+    "Profile Run opens in <5s typical",
+    "Taskbar shows profile code digits on Chromium icon (OK_ICON)",
+    "gitCommit matches packaged source or snapshot label recorded"
+  ]
 }
