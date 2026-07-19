@@ -114,6 +114,12 @@
   backdrop-filter: blur(2px);
 }
 
+/* Detail modal Save/busy — block form clicks while orb spins */
+.hub-tab-loader-inline--blocking {
+  pointer-events: auto;
+  cursor: wait;
+}
+
 /* Collapse chrome stack when all banner slots render null — no ResizeObserver flicker */
 .hub-main-chrome-stack:empty {
   display: none;

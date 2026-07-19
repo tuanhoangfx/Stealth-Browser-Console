@@ -3,6 +3,7 @@
 process.env.STEALTH_AGENT_SMOKE = "1";
 
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   focusStealthWindow,
@@ -69,7 +70,21 @@ async function main() {
   }
 
   runStep("relaunch-smoke", "node", ["electron/e2e/relaunch-smoke.cjs"]);
-  runStep("vite-build-ui-smoke", "pnpm", ["exec", "vite", "build"]);
+  // Isolate outDir so Vite build does not collide with the live `vite` HTML
+  // proxy graph on :5175 (html-inline-proxy "No matching HTML proxy module").
+  runStep("vite-build-ui-smoke", "pnpm", [
+    "exec",
+    "vite",
+    "build",
+    "--outDir",
+    "dist-ui-smoke",
+    "--emptyOutDir",
+  ]);
+  try {
+    fs.rmSync(path.join(root, "dist-ui-smoke"), { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
   runStep("seed-smoke-profiles-pager", "electron-node", ["scripts/lib/seed-smoke-profiles-pager.cjs"]);
   runStep(
     "workflow-rail-smoke",

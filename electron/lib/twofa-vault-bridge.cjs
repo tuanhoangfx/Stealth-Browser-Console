@@ -386,7 +386,7 @@ async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}
 
     const { data: byBrowser } = await client
       .from("twofa_accounts")
-      .select("service, browser, stealth_snapshot")
+      .select("service, browser, status, account, stealth_snapshot")
       .eq("user_id", userId)
       .in("browser", variants)
       .is("deleted_at", null);
@@ -397,7 +397,7 @@ async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}
         for (const field of ["assigned_browser", "actual_browser"]) {
           const { data } = await client
             .from("twofa_accounts")
-            .select("service, browser, stealth_snapshot")
+            .select("service, browser, status, account, stealth_snapshot")
             .eq("user_id", userId)
             .filter(`stealth_snapshot->>${field}`, "eq", code)
             .is("deleted_at", null)
@@ -408,6 +408,16 @@ async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}
     }
 
     const serviceRe = new RegExp(`^${String(service).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+    const inactiveMail = siblingRows.filter((row) => {
+      if (!rowMatchesBrowserCode(row, variants)) return false;
+      const svc = String(row.service || "").trim();
+      const isMail =
+        serviceRe.test(svc) ||
+        (isGmailVaultService(service) && isGmailVaultService(svc)) ||
+        (isOutlookVaultService(service) && isOutlookVaultService(svc));
+      const status = String(row.status || "").trim().toLowerCase();
+      return isMail && status && status !== "active";
+    });
     const otherServices = [
       ...new Set(
         siblingRows
@@ -420,10 +430,22 @@ async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}
     let reason = preferredEmail
       ? `No ${service} row for browser ${browserCodeLabel} matching email ${preferredEmail} (tenant ${scopeEmail}).`
       : `No ${service} row in P0020 vault for browser ${browserCodeLabel} (tenant ${scopeEmail}).`;
-    if (otherServices.length) {
+    if (inactiveMail.length) {
+      const detail = inactiveMail
+        .slice(0, 3)
+        .map((row) => {
+          const acct = String(row.account || "").trim() || "(no email)";
+          const st = String(row.status || "").trim() || "unknown";
+          return `${acct} [status=${st}]`;
+        })
+        .join("; ");
+      reason = `${service} row exists for browser ${browserCodeLabel} but is not active (${detail}). Set status=active in Data Box (Incorrect Pass / incorrect_info blocks WF login), then sync vault.`;
+    } else if (otherServices.length) {
       reason += ` Found on this browser: ${otherServices.join(", ")}.`;
+      reason += " Open Data Box → Account → Mail, assign browser code, then sync vault.";
+    } else {
+      reason += " Open Data Box → Account → Mail, assign browser code, then sync vault.";
     }
-    reason += " Open Data Box → Account → Mail, assign browser code, then sync vault.";
 
     const diagnosis = {
       ok: false,

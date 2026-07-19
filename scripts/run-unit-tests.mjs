@@ -23,6 +23,7 @@ runStep("cloakbrowser-packaged-resolve", "node", ["--test", "electron/lib/cloakb
 runStep("cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.mjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("stealth-electron-env", "node", ["scripts/lib/stealth-electron-env.test.mjs"]);
+runStep("microsoft-gate-gmail", "node", ["--test", "electron/automation/script-steps.microsoft-gate.test.cjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("refresh-hub-ui-node-link", "node", [
   path.join(root, "..", "scripts", "refresh-hub-ui-node-link.cjs"),

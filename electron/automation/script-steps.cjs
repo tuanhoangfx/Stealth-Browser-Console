@@ -318,10 +318,24 @@ function isMicrosoftPasswordStep(step) {
   return sel.includes("passwd") || sel.includes("#i0118") || (sel.includes("password") && /outlook|microsoft|passwd/i.test(`${sel} ${step.name || ""}`));
 }
 
-function isMicrosoftEmailNextClick(step) {
+function isMicrosoftEmailNextClick(step, pageUrl = "") {
+  // Gate on Microsoft login URL — Gmail WF00011 step is also named "Click Next (email)"
+  // and must never soft-skip on accounts.google.com.
+  if (!isMicrosoftLoginUrl(pageUrl)) return false;
   const label = String(step.name || "").toLowerCase();
   const sel = stepSelector(step).toLowerCase();
   return /next.*email|email.*next/i.test(label) || (/idsibutton9|type="submit"|next/i.test(sel) && /email/i.test(label));
+}
+
+function isMicrosoftPasswordGateStep(step, pageUrl = "") {
+  if (!isMicrosoftLoginUrl(pageUrl)) return false;
+  const label = String(step.name || "").toLowerCase();
+  const sel = stepSelector(step).toLowerCase();
+  return (
+    isMicrosoftPasswordStep(step) ||
+    /#i0118/i.test(sel) ||
+    (/password input/i.test(label) && /passwd|password/i.test(sel))
+  );
 }
 
 async function isMicrosoftPasswordVisible(page) {
@@ -879,7 +893,7 @@ async function runScriptSteps(page, steps, logger, context) {
           }
           if (skipLogin) continue;
         }
-        if (isMicrosoftPasswordStep(step) || /passwd|#i0118|password input/i.test(`${stepSelector(step)} ${label}`)) {
+        if (isMicrosoftPasswordGateStep(step, activePage.url?.() || "")) {
           logger.push("info", "Ensuring Microsoft password screen…");
           const gate = await ensureMicrosoftPasswordScreen(activePage, logger, context);
           if (gate === "password") {
@@ -977,7 +991,7 @@ async function runScriptSteps(page, steps, logger, context) {
             logger.push("info", "Microsoft session already active — skip Outlook login steps");
             continue;
           }
-          if (isMicrosoftPasswordStep(step) || /passwd|#i0118|password input/i.test(`${selector} ${label}`)) {
+          if (isMicrosoftPasswordGateStep(step, activePage.url?.() || "")) {
             await captureMicrosoftAuthDiag(activePage, logger, "password-wait-fail");
             if (context.screenshotsRoot) {
               await saveStepScreenshot(
@@ -1048,7 +1062,7 @@ async function runScriptSteps(page, steps, logger, context) {
         logger.push("info", "Skipped email Next — already on password step");
         continue;
       }
-      if (isMicrosoftEmailNextClick(step) || (/next \(email\)/i.test(label) && isMicrosoftLoginUrl(activePage.url?.() || ""))) {
+      if (isMicrosoftEmailNextClick(step, activePage.url?.() || "")) {
         if (await isMicrosoftPasswordVisible(activePage)) {
           logger.push("info", "Skipped Microsoft email Next — password already visible");
           continue;
@@ -1092,10 +1106,7 @@ async function runScriptSteps(page, steps, logger, context) {
           logger.push("info", "Stay signed in prompt not shown — continue");
           continue;
         }
-        if (
-          isMicrosoftEmailNextClick(step) ||
-          (/next \(email\)/i.test(label) && isMicrosoftLoginUrl(activePage.url?.() || ""))
-        ) {
+        if (isMicrosoftEmailNextClick(step, activePage.url?.() || "")) {
           if (
             (await isMicrosoftVerifyEmailVisible(activePage)) ||
             (await isMicrosoftPasswordVisible(activePage)) ||
@@ -1214,5 +1225,9 @@ async function runScriptSteps(page, steps, logger, context) {
 module.exports = {
   runScriptSteps,
   runGoogleFormAgAppeal,
-  settlePage
+  settlePage,
+  // Exported for unit tests — Microsoft soft-skip must stay URL-gated
+  isMicrosoftLoginUrl,
+  isMicrosoftEmailNextClick,
+  isMicrosoftPasswordGateStep,
 };

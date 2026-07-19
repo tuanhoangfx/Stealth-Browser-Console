@@ -4,6 +4,7 @@ node_modules/
 
 # Build outputs (regenerate: pnpm build / desktop:dist)
 dist/
+dist-ui-smoke/
 dist-desktop/
 out/
 *.tgz

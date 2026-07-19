@@ -1,5 +1,104 @@
 # Changelog
 
+## 2026-07-19 — v1.0.40 — Electron dev reload
+
+- Version: `1.0.40`
+- Timestamp: 2026-07-19 23:06 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- **WF00011 gmail-login:** gate Microsoft email-Next soft-skip + password ensure to Microsoft login URLs only — Google "Click Next (email)" was skipped so profiles filled email and stalled.
+- Vault miss reason: when a Gmail/Outlook row exists but `status != active` (e.g. Incorrect Pass / `incorrect_info`), surface that explicitly (fixes blank `about:blank` confusion for profiles like 0385).
+- Reload `vite-build-ui-smoke`: build to `dist-ui-smoke` so it no longer races the live Vite HTML proxy on :5175.
+
+## 2026-07-19 — v1.0.39 — Electron dev reload
+
+- Version: `1.0.39`
+- Timestamp: 2026-07-19 23:01 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-19 — v1.0.38 — Electron dev reload
+
+- Version: `1.0.38`
+- Timestamp: 2026-07-19 22:38 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- Repair known-good pin metadata: `gitCommit` → `daf5688c` (tag `v1.0.32`), `gitTag` → `v1.0.32-stable` (was stale `v1.0.1-stable`); local tag created; Setup-1.0.32.exe SHA512 verified on disk.
+
+## 2026-07-18 — v1.0.37 — Cross-origin Hub identity bridge
+
+- Version: `1.0.37`
+- Timestamp: 2026-07-18 00:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Start `startHubIdentityCrossOriginBridge` from Stealth auth boot so Hub JWT refresh rotations on sibling tools (P0004/P0005/P0020) are pulled via the Hub iframe bridge — prevents invalidated refresh_token from forcing repeated Login.
+- Verified: `dev-desktop-reload.mjs` all checks passed after wiring.
+
+## 2026-07-17 — v1.0.36 — Electron dev reload
+
+- Version: `1.0.36`
+- Timestamp: 2026-07-17 00:36 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-18 — v1.0.35 — Proactive Hub JWT refresh (fix repeated login)
+
+- Version: `1.0.35`
+- Timestamp: 2026-07-18 00:30 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Wired a real Hub token-refresh scheduler** (`src/lib/hub-token-refresh-scheduler.ts`), replacing the previous no-op `tokenScheduler` passed to `useWorkspaceHubAuthBoot`. The desktop console stays focused for hours so `visibilitychange` never fires — without a proactive timer the shared identity client (`persistSession:false, autoRefreshToken:false`) silently rode an expired JWT until the next 401, forcing a repeated Login prompt. Now the cached refresh_token is rotated via `refreshSession()` when within 15 min of expiry, polled every 5 min.
+- Verified: `dev-desktop-reload.mjs` → workflow-tab console smoke + all checks passed; typecheck clean for changed files.
+
+## 2026-07-17 — v1.0.34 — Electron dev reload
+
+- Version: `1.0.34`
+- Timestamp: 2026-07-17 00:24 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-17 - hub-ui SSOT hook-stability vendor sync
+
+- Version: `1.0.33`
+- Timestamp: 2026-07-17 22:26 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Sync hub-ui SSOT hook-stability patch into vendor/hub-ui: `useHubDirectorySelection`, `useDirectoryHaystackFilter`, and `useDirectoryTableSort` now self-stabilize their row-projection callbacks (idOf/keyOf/sortableValue) via refs, so inline `(row) => row.id` no longer rebuilds the selection/haystack/sort memos every render — snappier checkbox click, drag-sweep, search, and sort with no consumer code changes.
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-17 — v1.0.32 — Bundle E0001 in installer (fast, offline first open)
 
 - Version: `1.0.32`

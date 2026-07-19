@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "label": "v1.0.32-stable",
   "version": "1.0.32",
-  "gitCommit": null,
-  "gitTag": "v1.0.1-stable",
-  "notes": "v1.0.1 stable: packaged tar + mmdb-lib ESM beside unpacked cloakbrowser (profile Run + proxy geoip). Artifact from release commit; repo may have unpushed tooling WIP.",
+  "gitCommit": "daf5688c4150005e741d3fa09663d7d9e05214d1",
+  "gitTag": "v1.0.32-stable",
+  "notes": "v1.0.32 stable: bundled E0001 offline first-open; packaged tar + mmdb-lib ESM beside unpacked cloakbrowser (profile Run + proxy geoip). Artifact SHA512 verified against dist-desktop/known-good/Stealth-Browser-Console-Setup-1.0.32.exe (matches GitHub release v1.0.32).",
   "backup": {
     "dir": "dist-desktop/known-good",
     "installer": "Stealth-Browser-Console-Setup-1.0.32.exe",
