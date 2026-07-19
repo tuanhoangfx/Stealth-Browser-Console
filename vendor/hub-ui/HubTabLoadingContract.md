@@ -127,6 +127,41 @@ Implement `?lite=1` on worker routes that today return heavy health JSON. Front-
 2. **Directory overlay** — only when `loading && rows.length === 0` (no stale cache painted).
 3. **Revalidate** — use `useStaleWhileRevalidateDirectory` / `@dev/hub-load`; do not show full overlay when stale data is visible.
 4. **Tab switch** — reset `.hub-main` scroll only (`resetHubMainPane`); never `replaceChildren()` on `#hub-tab-loader-root` while Suspense fallbacks are mounted (React `removeChild` crash). Use `enabled={activeTab}` on fallbacks instead.
+5. **Inactive pipeline freeze** — visited keep-alive tabs must not recompute O(n) filter/KPI/chart work on every parent re-render. Use hub-ui `useTabFrozenRows(tabActive, compute, deps)` (P0005 golden) or short-circuit like P0020 `analyticsBandActive`.
+6. **Defer directory chrome** — first paint after activate = table/shell; facet counts + KPI/charts via `useHubDirectoryChromeReady(tabActive)` (see `Tool/docs/ssot/hub-visited-tab-perf.md`).
+
+---
+
+## Workspace directory chrome lift (`syncKey` vs `statsKey`)
+
+P0020 / P0004 workspace shells lift FilterBar + header stats into the app chrome via `useWorkspaceDirectoryChrome`.
+
+**Inactive publisher:** When `enabled` is false, the hook must **not** clear toolbar / bulk / selection / header stats (same rule as `useDirectoryBandSync`). Dual-mount vaults (Teams + Account body) share one provider — a wiping inactive sibling would blank Display, `0/n`, and New/Detail/Delete after the active vault lifts them. Clear only on unmount.
+
+| Key | Bump when | Lifts |
+|-----|-----------|--------|
+| **`syncKey`** | Toolbar slots, view mode, selection *presence* (optional boolean) | `toolbar`, `filterToolbar`, `directoryViewMode` — keep **stable** (no row counts) so Display dropdown / filter chrome do not remount |
+| **`statsKey`** | Row totals, filter result counts, async pivot ready, facet option counts, **and selection count when bulk/Detail badges embed counts** | `centerStats`, `filterSelectionToolbar`, and toolbar/bulk row when they embed counts |
+
+**Rule:** Never put row counts in `syncKey` if toolbar ReactNodes must stay mounted. Use optional `statsKey` when header shows `0 shown` while the table body already has rows (chrome lift ran before async pivot finished), or when facet counts / bulk actions must refresh without clearing FilterBar chips.
+
+**Selection count (required for bulk CTA badges):** If `filterToolbar` embeds `HubDirectoryAdaptiveEditAction` / Detail badge with `selectedCount`, **`statsKey` must include that count** (or `selectedRows.length`). Bumping only a boolean `sel` / empty in `syncKey` freezes the badge after the first selected row (table checkboxes update; Detail stays at `(1)`).
+
+```tsx
+useP0020DirectoryChrome({
+  syncKey: `${vaultScope}|${viewMode}`,
+  // Include selection count — not only row totals — when bulk bar shows Detail (N).
+  statsKey: `${allRows.length}|${sortedRows.length}|${pivotReady ? 1 : 0}|${selectedCount}`,
+  centerStats,
+  // ...
+});
+```
+
+Verify:
+
+```bash
+node Tool/scripts/verify-p0020-workspace-chrome.mjs --code P0020
+```
 
 ---
 
@@ -139,6 +174,9 @@ Implement `?lite=1` on worker routes that today return heavy health JSON. Front-
 - [ ] Banners wrapped in `HubMainChromeStack` if present
 - [ ] `HubLoaderRoot mainRef={mainRef}` on `.hub-main`
 - [ ] Smoke: hidden inactive tabs must not show `[role="status"]` overlay on active tab
+- [ ] Heavy filter/KPI/chart pipelines gated with `useTabFrozenRows` / `tabActive` short-circuit
+- [ ] Large directories: `useHubDirectoryChromeReady` before facet counts + KPI/charts; `{tabActive ? <HubDirectoryScreen/> : null}`
+- [ ] **Clone bulk chrome:** if `filterToolbar` embeds Detail/bulk badges with `selectedCount`, set `statsKey: \`${rows}|${filtered}|${selectedCount}\`` (never only a boolean `sel` in `syncKey`) — see section above
 
 ---
 
@@ -148,5 +186,10 @@ Implement `?lite=1` on worker routes that today return heavy health JSON. Front-
 - `packages/hub-ui/src/shell/HubLoadingView.tsx`
 - `packages/hub-ui/src/shell/HubScreenChunkFallback.tsx`
 - `packages/hub-ui/src/shell/HubLoaderRoot.tsx`
+- `packages/hub-ui/src/loading/useTabFrozenRows.ts`
+- `packages/hub-ui/src/loading/useHubDirectoryChromeReady.ts`
+- `packages/hub-ui/src/directory-band/useWorkspaceDirectoryChrome.tsx` — `syncKey` / `statsKey`
+- `Tool/docs/ssot/hub-visited-tab-perf.md`
 - `packages/hub-ui/src/styles/hub-boot.css`
 - P0016: `scripts/smoke-tab-loading.mjs`
+- P0005: `Tool/scripts/smoke-p0005-tab-switch-timing.mjs`

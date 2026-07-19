@@ -107,21 +107,15 @@ async function detectGoogleSession(context) {
     const email = page ? await extractGoogleEmail(page) : "";
 
     if (urlKind === "challenge") {
-      // Auth cookies prove a live Google session — don't stamp Challenge just because a
-      // sign-in/challenge tab is still open after a successful Gmail Login script.
-      if (authCount >= 2) {
-        return {
-          status: "logged_in",
-          result_code: "google_cookies",
-          email,
-          evidence: "challenge_url+auth_cookies",
-        };
-      }
+      // pickPage already prefers inbox/account over challenge. Reaching here means the
+      // best Google tab is still a sign-in/challenge/error page (e.g. wrong password /
+      // "Couldn't verify your information"). Stale SID/HSID/SSID must NOT stamp Logged in
+      // into Data Box — that caused Profile 0001 false positives (challenge_url+auth_cookies).
       return {
         status: "challenged",
         result_code: /2fa|authenticator|totp/i.test(page.url()) ? "2fa_pending" : "google_challenge",
         email,
-        evidence: "challenge_url",
+        evidence: authCount >= 2 ? "challenge_url+stale_auth_cookies" : "challenge_url",
       };
     }
 

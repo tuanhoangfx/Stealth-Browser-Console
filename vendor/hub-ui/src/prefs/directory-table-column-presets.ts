@@ -13,6 +13,8 @@ export type DirectoryTableColumnPreset<K extends string = string> = {
   color?: string;
   /** Optional glyph shown instead of the color dot (builtin frame presets). */
   emoji?: string;
+  /** System/frame preset — Hide Delete in menu; tools also no-op deletePreset. */
+  builtin?: boolean;
 };
 
 type StoredPresetsJson<K extends string> = {

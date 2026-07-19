@@ -5,6 +5,7 @@ const profileService = require("../db/profile-service.cjs");
 const { navigateStartupUrl, awaitBrowserReady, stabilizePrimaryPage } = require("../automation/navigate-startup.cjs");
 const { getFreePort, waitForCdp } = require("../lib/net-port.cjs");
 const { extractProfileCode } = require("../lib/profile-identity.cjs");
+const { applyProfileWindowTitle } = require("../lib/profile-window-title.cjs");
 const {
   focusProfileBrowserWindow,
   hasProfileBrowserProcess,
@@ -204,20 +205,31 @@ class SessionManager {
     bindOmniboxSearchGuard(opened.context);
     const profileCode = extractProfileCode(profile.name, profile.id);
     const launchUrl = profileService.resolveProfileLaunchUrl(profile.startupUrl);
-    const startupNavigation = skipStartupUrl
-      ? awaitBrowserReady(opened.context)
-      : navigateStartupUrl(opened.context, launchUrl)
-    .catch(() => undefined);
-
     let browserPid = 0;
     try {
       browserPid = opened.context.browser()?.process()?.pid || 0;
     } catch { /* persistent context may not expose process */ }
 
+    // Sidecar before title/badge so apply script can skip WMI via stealth-pid.json.
     writeSidecarPid(opened.userDataDir, {
       pid: browserPid,
       debugPort: opened.debugPort || 0,
     });
+
+    // Title install before startup nav so about:blank / first paint show code · name
+    // (taskbar hover / Alt-Tab). Cheap: one init script + evaluate existing pages.
+    // Pass browserPid so taskbar badge skips Get-CimInstance (~2–3s).
+    const titleReady = applyProfileWindowTitle(opened.context, profile, {
+      userDataDir: opened.userDataDir,
+      browserPid,
+    }).catch(() => undefined);
+    const startupNavigation = Promise.resolve(titleReady)
+      .then(() =>
+        skipStartupUrl
+          ? awaitBrowserReady(opened.context)
+          : navigateStartupUrl(opened.context, launchUrl),
+      )
+      .catch(() => undefined);
 
     const launchedAt = Date.now();
     this.#sessions.set(id, {

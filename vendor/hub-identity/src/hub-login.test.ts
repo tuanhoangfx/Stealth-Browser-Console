@@ -18,6 +18,13 @@ describe("hub-login", () => {
     expect(r.isEmailLogin).toBe(false);
   });
 
+  it("aliases enzyadmin → enzy.admin auth email", () => {
+    const r = resolveHubLogin("enzyadmin");
+    expect(r.authEmail).toBe("enzy.admin@infix1.io.vn");
+    expect(r.loginId).toBe("enzy.admin");
+    expect(hubAuthEmailsForSignIn("enzyadmin")[0]).toBe("enzy.admin@infix1.io.vn");
+  });
+
   it("keeps real email logins unchanged", () => {
     const r = resolveHubLogin("a@corp.com");
     expect(r.authEmail).toBe("a@corp.com");

@@ -73,6 +73,14 @@
   --hub-search-highlight-bg: rgba(99, 102, 241, 0.38);
   --hub-search-highlight-fg: rgb(224, 231, 255);
   --hub-search-highlight-ring: rgba(99, 102, 241, 0.45);
+  /* Workspace role icon colors — HubSidebarUserFooter + HubAuthLogoutChip + E0001 extension */
+  --hub-role-icon-admin: rgb(165 180 252);
+  --hub-role-icon-manager: rgb(196 181 253);
+  --hub-role-icon-user: rgb(110 231 183);
+  --hub-role-icon-anonymous: rgb(167 139 250);
+  /* Post-edit flash border — directory rows + card surfaces (hub-flash-border.css) */
+  --hub-flash-border-accent: rgb(129, 140, 248);
+  --hub-flash-border-duration: 2s;
   /* Account detail modal — Navigate · Credentials · Note frame gutters (SSOT) */
   --hub-account-detail-columns-gap: 0.65rem;
   --bg: #0b1020;

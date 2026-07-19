@@ -21,23 +21,40 @@ export function resolveElectronCli() {
   }
 }
 
-/** @param {string} scriptRelPath path relative to product root */
+/**
+ * @param {string} scriptRelPath path relative to product root, or `"--test"` for node:test
+ * @param {string[]} [args]
+ */
 export function spawnElectronNode(scriptRelPath, args = [], options = {}) {
   const electronCli = resolveElectronCli();
   if (!electronCli) {
     return { status: 1, error: new Error("electron cli.js not found") };
   }
-  const scriptAbs = path.isAbsolute(scriptRelPath)
-    ? scriptRelPath
-    : path.join(root, scriptRelPath);
-  if (!fs.existsSync(scriptAbs)) {
-    return { status: 1, error: new Error(`script not found: ${scriptAbs}`) };
+
+  const cwd = options.cwd ?? root;
+  /** @type {string[]} */
+  let electronArgs;
+  if (scriptRelPath === "--test") {
+    // `electron-node --test path/to/*.test.cjs` — same ABI as packaged Electron DB.
+    electronArgs = [
+      "--test",
+      ...args.map((a) => (path.isAbsolute(a) ? a : path.join(cwd, a))),
+    ];
+  } else {
+    const scriptAbs = path.isAbsolute(scriptRelPath)
+      ? scriptRelPath
+      : path.join(cwd, scriptRelPath);
+    if (!fs.existsSync(scriptAbs)) {
+      return { status: 1, error: new Error(`script not found: ${scriptAbs}`) };
+    }
+    electronArgs = [scriptAbs, ...args];
   }
+
   return spawnSync(
     process.execPath,
-    [electronCli, scriptAbs, ...args],
+    [electronCli, ...electronArgs],
     winSpawnOpts({
-      cwd: options.cwd ?? root,
+      cwd,
       stdio: options.stdio ?? "inherit",
       env: {
         ...process.env,

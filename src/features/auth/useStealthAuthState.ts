@@ -4,6 +4,7 @@ import {
   isRealHubWorkspaceSession,
   resolveWithBootTimeout,
   sessionsEqual,
+  startHubIdentityCrossOriginBridge,
   useDevHubAutoSignInBoot,
   useHubIdentityRelayRequest,
   useWorkspaceHubAuthBoot,
@@ -12,9 +13,13 @@ import {
 } from "@tool-workspace/hub-identity";
 import { API_UNAUTHORIZED_EVENT } from "../../lib/api-auth-token";
 import { ensureHubAuth, signInHubIdentity } from "../../lib/hub-auth-client";
-import { isToolHubOrigin } from "../../lib/hub-identity-urls";
+import { isToolHubOrigin, resolveToolHubOrigin } from "../../lib/hub-identity-urls";
 import { isHubSupabaseConfigured } from "../../lib/hub-supabase-env";
 import { cacheHubIdentity, clearHubIdentity } from "../../lib/hub-identity-session";
+import {
+  startHubTokenRefreshScheduler,
+  stopHubTokenRefreshScheduler,
+} from "../../lib/hub-token-refresh-scheduler";
 import {
   getOfflineMode,
   isOfflineWorkspaceSession,
@@ -207,6 +212,11 @@ export function useStealthAuthState(): StealthAuthState {
     return () => window.removeEventListener(STEALTH_OFFLINE_MODE_EVENT, handleOfflineChange);
   }, [handleOfflineChange]);
 
+  useEffect(() => {
+    const bridge = startHubIdentityCrossOriginBridge({ hubOrigin: resolveToolHubOrigin() });
+    return () => bridge.stop();
+  }, []);
+
   const hubAuthEnabled = isStealthHubAuthEnabled();
   const authOptional = isStealthHubAuthOptional();
   const hasHubSession = !isOfflineWorkspaceSession(session, offline);
@@ -273,8 +283,8 @@ export function useStealthAuthState(): StealthAuthState {
       void refreshSession();
     },
     tokenScheduler: {
-      start: () => {},
-      stop: () => {},
+      start: startHubTokenRefreshScheduler,
+      stop: stopHubTokenRefreshScheduler,
     },
     hubAccessToken: session?.access_token,
   });

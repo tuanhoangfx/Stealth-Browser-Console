@@ -1,6 +1,7 @@
 export type HubUsersStatusTone =
   | "online"
   | "offline"
+  | "off"
   | "idle"
   | "active"
   | "age-fresh"
@@ -34,12 +35,12 @@ export function HubUsersStatusLabel({
   );
 }
 
-/** Boolean On/Off — directory RAG, toggles, allowlist-style labels when label is On/Off. */
+/** Boolean On/Off — green On · red Off (directory RAG, toggles, allowlist-style labels). */
 export function HubUsersOnOffLabel({ on }: { on: boolean; title?: string }) {
   return (
     <HubUsersStatusLabel
       label={on ? "On" : "Off"}
-      tone={on ? "online" : "offline"}
+      tone={on ? "online" : "off"}
     />
   );
 }

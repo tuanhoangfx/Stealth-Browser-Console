@@ -54,6 +54,12 @@ async function launchProfileOnce(deps, { id, name, skipStartupUrl = false } = {}
   }
   const profile = deps.profileService.resolveProfileForLaunch({ id, name });
   if (!profile) throw new Error("Profile not found.");
+  try {
+    const { warmBadgeIcosForProfiles } = require("../lib/profile-taskbar-native.cjs");
+    warmBadgeIcosForProfiles([profile], { limit: 1 });
+  } catch {
+    /* ignore warm errors */
+  }
   return deps.sessionManager.launch(profile, { skipStartupUrl });
 }
 

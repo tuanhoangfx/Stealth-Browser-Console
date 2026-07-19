@@ -199,6 +199,12 @@ function buildRoutes(services) {
             sort: q.get("sort") ?? "updated_at",
             dir: q.get("dir") ?? "desc"
           });
+          try {
+            const { warmBadgeIcosForProfiles } = require("./lib/profile-taskbar-native.cjs");
+            warmBadgeIcosForProfiles(page.profiles, { limit: 40 });
+          } catch {
+            /* ignore */
+          }
           return send.json(ctx.res, 200, {
             ok: true,
             profiles: page.profiles.map(enrich),

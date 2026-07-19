@@ -1,8 +1,11 @@
+import type { HubDirectoryColumnHintLine } from "../table/HubDirectoryColumnHint";
+
 /** Semantic count tiers for directory metric badges (linked services, tool counts, …). */
 
 /**
- * Design lock V1 Heat sequential (2026-07-14) — Mail SL / Service count / CRM Usage.
+ * Design lock V1 Heat sequential (2026-07-18) — Mail SL / Service count / CRM Qty.
  * Bands: 0 · 1 · 2–5 · 6–9 · 10–20 · >20
+ * Count `1` = green · `6–9` = yellow · `10–20` = orange.
  */
 export type HubDirectoryMetricTier = "empty" | "one" | "few" | "mid" | "high" | "hot";
 
@@ -13,9 +16,24 @@ export const HUB_DIRECTORY_METRIC_TIER_THRESHOLDS = {
   highMax: 20,
 } as const;
 
-/** Short legend for column hints (Mail Sub / Usage). */
+/** Short legend for cell hover / description strings (Mail Sub / Usage). */
 export const HUB_DIRECTORY_METRIC_HEAT_LEGEND =
-  "Heat: 0 muted · 1 slate · 2–5 sky · 6–9 emerald · 10–20 amber · >20 rose";
+  "Heat: 0 Muted · 1 Green · 2–5 Sky · 6–9 Yellow · 10–20 Orange · >20 Rose";
+
+const HEAT_DOT = "hub-directory-metric-heat-dot";
+
+/**
+ * Rich Option lines for column-header tooltips (Qty / Orders / Usage).
+ * Label style matches Update activity-age legend — capitalized colour name.
+ */
+export const HUB_DIRECTORY_METRIC_HEAT_LEGEND_LINES: HubDirectoryColumnHintLine[] = [
+  { label: "0", detail: "Muted", dotClassName: `${HEAT_DOT} ${HEAT_DOT}--empty` },
+  { label: "1", detail: "Green", dotClassName: `${HEAT_DOT} ${HEAT_DOT}--one` },
+  { label: "2–5", detail: "Sky", dotClassName: `${HEAT_DOT} ${HEAT_DOT}--few` },
+  { label: "6–9", detail: "Yellow", dotClassName: `${HEAT_DOT} ${HEAT_DOT}--mid` },
+  { label: "10–20", detail: "Orange", dotClassName: `${HEAT_DOT} ${HEAT_DOT}--high` },
+  { label: ">20", detail: "Rose", dotClassName: `${HEAT_DOT} ${HEAT_DOT}--hot` },
+];
 
 export function resolveHubDirectoryMetricTier(count: number): HubDirectoryMetricTier {
   if (count <= 0) return "empty";

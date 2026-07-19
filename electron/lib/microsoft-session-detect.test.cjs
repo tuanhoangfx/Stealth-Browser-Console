@@ -43,6 +43,28 @@ test("detectMicrosoftSession returns logged_in for outlook inbox + cookies", asy
   assert.equal(result.email, "user@outlook.com");
 });
 
+test("detectMicrosoftSession keeps challenged when only login tab has stale auth cookies", async () => {
+  const page = {
+    url: () => "https://login.live.com/",
+    isClosed: () => false,
+    evaluate: async () => "user@outlook.com",
+    context() {
+      return context;
+    },
+  };
+  const context = {
+    cookies: async () => [
+      { name: "MSPAuth", value: "1" },
+      { name: "MSPProf", value: "2" },
+    ],
+    pages: () => [page],
+  };
+  const result = await detectMicrosoftSession(context);
+  assert.equal(result.status, "challenged");
+  assert.equal(result.result_code, "microsoft_challenge");
+  assert.equal(result.evidence, "ms_challenge_url+stale_auth_cookies");
+});
+
 test("detectMicrosoftSession returns challenged on login.live without cookies", async () => {
   const page = {
     url: () => "https://login.live.com/",

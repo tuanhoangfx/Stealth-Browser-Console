@@ -1,11 +1,12 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
-const { runScriptSteps, runGoogleFormAgAppeal, settlePage } = require("./script-steps.cjs");
+const { runScriptSteps, runGoogleFormAgAppeal, settlePage, GoogleCaptchaStopError } = require("./script-steps.cjs");
 const { stabilizePrimaryPage } = require("./navigate-startup.cjs");
 const { safePageGoto } = require("./safe-goto.cjs");
 const { extractProfileCode } = require("../lib/profile-identity.cjs");
-const { diagnoseMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
+const { diagnoseMailCredentials, patchMailAccountOutcome } = require("../lib/twofa-vault-bridge.cjs");
+const { buildStealthSnapshot } = require("../lib/stealth-snapshot-types.cjs");
 const { detectGoogleSession } = require("../lib/google-session-detect.cjs");
 const { detectMicrosoftSession } = require("../lib/microsoft-session-detect.cjs");
 
@@ -71,6 +72,47 @@ async function detectPreferredMailEmail(context, vaultService, logger) {
   }
 }
 
+function isGoogleCaptchaStop(error) {
+  if (!error) return false;
+  if (error instanceof GoogleCaptchaStopError || error?.code === "GOOGLE_CAPTCHA") return true;
+  return /GOOGLE_CAPTCHA|reCAPTCHA.*stopped|Verify it.?s you/i.test(String(error?.message || error || ""));
+}
+
+async function markVaultCaptchaOutcome(profile, stepContext, logger) {
+  try {
+    const profileCode = extractProfileCode(profile.name, profile.id);
+    const email = String(stepContext?.mailCredentials?.email || "").trim();
+    const vaultService = resolveMailVaultService(stepContext?._steps || []);
+    const snapshot = buildStealthSnapshot({
+      status: "challenged",
+      result_code: "google_challenge",
+      source: "wf_captcha_stop",
+      actual_browser: profileCode,
+      profile_id: profile.id,
+      evidence: "challenge/recaptcha",
+      note: "Google reCAPTCHA Verify it's you — workflow stopped",
+    });
+    const result = await patchMailAccountOutcome({
+      browserCode: profileCode,
+      email,
+      service: vaultService || "Gmail",
+      status: "error",
+      snapshot,
+      logMessage: "Google reCAPTCHA — WF stopped, browser closed",
+    });
+    if (result.ok) {
+      logger.push("info", `Vault status → error (captcha) for ${result.patched} row(s)`);
+    } else {
+      logger.push("warn", `Vault status update skipped: ${result.reason || "unknown"}`);
+    }
+  } catch (error) {
+    logger.push(
+      "warn",
+      `Vault status update failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 function cleanMessage(message) {
   return String(message || "Automation failed.").replace(/\u001b\[[0-9;]*m/g, "");
 }
@@ -113,6 +155,7 @@ async function runOpenUrl({
   const logger = createRunLogger({ runId, profileId: profile.id, workflow: workflowKey });
 
   let screenshotPath = "";
+  let lastMailCredentials = null;
 
   try {
     logger.push("info", `Stealth v${APP_VERSION} — automation start`);
@@ -125,6 +168,7 @@ async function runOpenUrl({
       screenshotsRoot,
       mailCredentials: null,
       generateTotp: false,
+      _steps: steps,
     };
 
     const hasMailPlaceholder = stepsNeedMailCredentials(steps);
@@ -135,6 +179,7 @@ async function runOpenUrl({
       const diagnosis = await diagnoseMailCredentials(profileCode, vaultService, { preferredEmail });
       if (diagnosis.ok && diagnosis.credentials) {
         stepContext.mailCredentials = diagnosis.credentials;
+        lastMailCredentials = diagnosis.credentials;
         stepContext.generateTotp = Boolean(diagnosis.credentials.secret);
         const tenant = diagnosis.scopeEmail ? ` [tenant ${diagnosis.scopeEmail}]` : "";
         const mode = diagnosis.matchMode ? ` via ${diagnosis.matchMode}` : "";
@@ -197,6 +242,7 @@ async function runOpenUrl({
   } catch (error) {
     const message = cleanMessage(error instanceof Error ? error.message : String(error));
     logger.push("error", message);
+    const captchaStop = isGoogleCaptchaStop(error);
     try {
       const page = await stabilizePrimaryPage(context).catch(() => null);
       if (page && screenshotsRoot) {
@@ -209,22 +255,32 @@ async function runOpenUrl({
     } catch {
       // ignore screenshot failures on error path
     }
-    if (closeWhenDone) {
+    if (captchaStop) {
+      await markVaultCaptchaOutcome(
+        profile,
+        { mailCredentials: lastMailCredentials, _steps: steps },
+        logger,
+      );
+    }
+    if (closeWhenDone || captchaStop) {
+      logger.push("info", captchaStop ? "Closing profile after reCAPTCHA stop" : "Closing profile after run");
       await onCloseProfile().catch((closeError) => {
         logger.push("error", `Unable to close profile: ${cleanMessage(closeError.message)}`);
       });
+      if (captchaStop) logger.push("success", "Profile closed (captcha stop)");
     }
     const finishedAtMs = Date.now();
     return {
       runId,
       ok: false,
-      status: "failed",
+      status: captchaStop ? "captcha_stopped" : "failed",
       startedAt: new Date(startedAtMs).toISOString(),
       finishedAt: new Date(finishedAtMs).toISOString(),
       durationMs: finishedAtMs - startedAtMs,
       screenshotPath,
       logs: logger.logs,
-      error: message
+      error: message,
+      captchaStop,
     };
   }
 }

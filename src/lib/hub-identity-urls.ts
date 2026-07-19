@@ -4,4 +4,4 @@ const urls = createHubIdentityUrls({
   dev: import.meta.env.DEV,
 });
 
-export const { isToolHubOrigin } = urls;
+export const { resolveToolHubOrigin, isToolHubOrigin } = urls;

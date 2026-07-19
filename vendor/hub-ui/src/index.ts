@@ -9,6 +9,7 @@ export {
 } from "./display-prefs/hub-display-visibility";
 export { HubSettingsExtras, type HubSettingsExtrasProps } from "./display-prefs/HubSettingsExtras";
 export { Section, SectionIcon, SettingsSubsection, TabButton, ToggleRow } from "./display-prefs/primitives";
+export { SettingsAdmSection } from "./display-prefs/SettingsAdmSection";
 export {
   DirectoryDefaultSortHint,
   type DirectoryDefaultSortHintProps,
@@ -85,6 +86,22 @@ export {
 export { buildStickerPrefItems, stickerPrefIconMap } from "./display-prefs/sticker-pref-items";
 export { createDynamicDirectoryTableColumnPrefs } from "./prefs/create-dynamic-directory-table-column-prefs";
 export {
+  createDirectoryFreezePrefs,
+  createScopedDirectoryFreezePrefs,
+  useDirectoryFreezeCount,
+  type DirectoryFreezePrefs,
+} from "./prefs/directory-freeze-prefs";
+export {
+  HubDirectoryFreezeColumnsSetting,
+  type HubDirectoryFreezeColumnsSettingProps,
+} from "./display-prefs/HubDirectoryFreezeColumnsSetting";
+export {
+  useHubScopedFreeze,
+  HUB_DIRECTORY_FREEZE_SCROLL_WRAP_CLASS,
+  type UseHubScopedFreezeOptions,
+  type UseHubScopedFreezeResult,
+} from "./table/useHubScopedFreeze";
+export {
   countHiddenDirectoryTableColumns,
   createDirectoryTableColumnPrefs,
   mergeDirectoryTableColumnOrder,
@@ -102,6 +119,10 @@ export {
   type DirectoryTableColumnPresetManagerProp,
 } from "./prefs/directory-table-column-presets";
 export {
+  upsertDirectoryBuiltinFramePresets,
+  type DirectoryBuiltinFrameSpec,
+} from "./prefs/upsert-directory-builtin-frame-presets";
+export {
   HubDirectoryTableColumnPresetMenu,
   type HubDirectoryTableColumnPresetMenuProps,
 } from "./prefs/HubDirectoryTableColumnPresetMenu";
@@ -112,6 +133,7 @@ export {
 export { DirectoryTableColumnsResetAction } from "./prefs/DirectoryTableColumnsResetAction";
 export { compactIconSize, HUB_CHROME_ICON_PX, HUB_COMPACT_SCALE, HUB_DIRECTORY_HEADER_GLYPH_PX } from "./ui-scale";
 export { deployLabel } from "./lib/deploy-label";
+export { HUB_NO_SPELLCHECK_PROPS } from "./lib/no-spellcheck";
 export { formatTabHeaderTimestamp } from "./lib/tab-header-timestamp";
 export {
   resolveAppVersionReleaseMeta,
@@ -444,10 +466,12 @@ export {
 export {
   HUB_DIRECTORY_METRIC_TIER_THRESHOLDS,
   HUB_DIRECTORY_METRIC_HEAT_LEGEND,
+  HUB_DIRECTORY_METRIC_HEAT_LEGEND_LINES,
   hubDirectoryMetricTierClass,
   resolveHubDirectoryMetricTier,
   type HubDirectoryMetricTier,
 } from "./lib/directory-metric-tier";
+export { HUB_DIRECTORY_ID_EMOJI } from "./lib/directory-id-emoji";
 export {
   HubDirectoryMetricStrip,
   type HubDirectoryMetricItem,
@@ -483,9 +507,31 @@ export {
 export {
   formatHubOrderPriceParts,
   formatHubOrderPricePillLabel,
+  formatHubOrderPriceLabel,
+  HUB_ORDER_PRICE_DEFAULT_VND_USD_RATE,
   type HubOrderPriceCurrency,
   type HubOrderPriceParts,
+  type HubOrderPriceFormat,
+  type HubOrderPriceLabelOptions,
 } from "./lib/format-order-price";
+export {
+  createHubPriceFormatStore,
+  coerceHubOrderPriceFormat,
+  type HubPriceFormatSettings,
+  type HubResolvedPriceFormat,
+  type HubPriceFormatStore,
+  type HubPriceFormatStoreConfig,
+} from "./lib/hub-price-format";
+export {
+  HubPriceFormatField,
+  HUB_PRICE_FORMAT_PREVIEW_AMOUNT_CENTS,
+  type HubPriceFormatFieldProps,
+} from "./shell/HubPriceFormatField";
+export { HubPriceFormatSettingsSection } from "./shell/HubPriceFormatSettingsSection";
+export {
+  HubDetailFieldsGroup,
+  HubDetailFieldRow,
+} from "./shell/HubDetailFieldsScope";
 export {
   HubOrderPriceBadge,
   HubOrderPriceText,
@@ -568,6 +614,7 @@ export {
   type HubSegmentToggleProps,
 } from "./shell/HubSegmentToggle";
 export { DirectorySearchToolbar, type DirectorySearchToolbarProps } from "./shell/DirectorySearchToolbar";
+export { resolveDirectoryToolbarShowTablePageSize } from "./shell/directory-search-toolbar-page-size";
 export { HubDirectoryToolbarSlots, type HubDirectoryToolbarSlotsProps } from "./shell/HubDirectoryToolbarSlots";
 export { ViewToggle, type HubViewMode } from "./shell/ViewToggle";
 export {
@@ -616,7 +663,7 @@ export {
   HubDirectoryLogLabel,
   type HubDirectoryLogLabelProps,
 } from "./content/HubDirectoryLogLabel";
-export { HubChangeLogList, type HubChangeLogListProps } from "./content/HubChangeLogList";
+export { HubChangeLogList, formatHubChangeLogRowTooltip, type HubChangeLogListProps, type HubChangeLogRowDecoration } from "./content/HubChangeLogList";
 export {
   HUB_ENTITY_ACTIVITY_LOG_META_KEY,
   MAX_HUB_ENTITY_LOG_ENTRIES,
@@ -732,6 +779,22 @@ export {
 } from "./table/HubDirectoryTableShell";
 export { DirectorySplitScrollTable } from "./table/DirectorySplitScrollTable";
 export { DirectoryInlineTable } from "./table/DirectoryInlineTable";
+export {
+  buildDirectoryStickyColumnsCss,
+  measureDirectoryStickyLeadWidthPx,
+  directoryStickyLeadExceedsViewport,
+  DIRECTORY_STICKY_VIEWPORT_WARN_PX,
+  DIRECTORY_STICKY_LEFT_VAR_PREFIX,
+  type DirectoryStickyLeadEntry,
+  type BuildDirectoryStickyColumnsCssOptions,
+  type StickyLeftMode,
+} from "./table/directory-sticky-columns";
+export {
+  useHubDirectoryStickyColumns,
+  type HubDirectoryStickyColumn,
+  type UseHubDirectoryStickyColumnsOptions,
+  type UseHubDirectoryStickyColumnsResult,
+} from "./table/useHubDirectoryStickyColumns";
 export {
   DirectoryTableBodyCell,
   type DirectoryTableBodyCellProps,
@@ -925,6 +988,15 @@ export {
   type HubMainShellMode,
   type ToolManifestUiShell,
 } from "./shell/hub-main-shell-class";
+export { applyHubEmbedDocumentClass, isHubEmbedMode } from "./shell/hub-embed-mode";
+export {
+  setHubHostVersionOverride,
+  getHubHostVersionOverride,
+  readHubEmbedHostVersion,
+  readHubEmbedHostCode,
+  readHubEmbedHostZoom,
+  resolveHubDisplayAppVersion,
+} from "./shell/hub-embed-mode";
 export { useNavGroupOpenState } from "./shell/useNavGroupOpenState";
 export {
   applyFirstVisitNavGroupDefaults,

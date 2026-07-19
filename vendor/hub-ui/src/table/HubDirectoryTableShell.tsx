@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+} from "react";
 import { resolveHubTableColumnMeta } from "./hub-table-column-meta";
 import { HubPaginatedTableShell } from "../content/HubPaginatedTableShell";
 import { HUB_DIRECTORY_TABLE_INLINE_WRAP_CLASS } from "./directory-table-scroll";
@@ -108,6 +116,94 @@ function buildDirectoryPadBodyRows<TSortKey extends string>(
   ));
 }
 
+/** Row event callbacks live in a ref so they never bust DirectoryBodyRow memo. */
+type DirectoryRowCallbacks<TItem> = {
+  onRowClick?: (item: TItem) => void;
+  onRowDoubleClick?: (item: TItem) => void;
+  onRowMouseEnter?: (item: TItem) => void;
+};
+
+type DirectoryBodyRowProps<TItem> = {
+  item: TItem;
+  rowKey: string;
+  selected: boolean;
+  rowCanSelect: boolean;
+  showSelect: boolean;
+  /** Pre-computed class string (getRowClassName result) so memo compares a primitive. */
+  extraClassName: string;
+  renderRowCells: (item: TItem) => ReactNode;
+  renderStaticCells?: (item: TItem) => ReactNode;
+  onToggleSelect?: (id: string) => void;
+  beginDragSelect: (id: string, selected: boolean) => void;
+  extendDragSelect: (id: string, canSelect: boolean) => void;
+  callbacksRef: MutableRefObject<DirectoryRowCallbacks<TItem>>;
+};
+
+/**
+ * Memoized body row — only re-renders when its own item/selected/class change.
+ * Keeps a checkbox toggle (or drag-sweep) from re-rendering every other row's
+ * (expensive) cells, so click + multi-select feel instant. Row event callbacks
+ * are read through `callbacksRef` so unstable parent closures don't bust memo;
+ * `renderRowCells` must stay referentially stable across selection changes
+ * (wrap it in useCallback keyed to columns/search — not selection).
+ */
+function DirectoryBodyRowInner<TItem>({
+  item,
+  rowKey,
+  selected,
+  rowCanSelect,
+  showSelect,
+  extraClassName,
+  renderRowCells,
+  renderStaticCells,
+  onToggleSelect,
+  beginDragSelect,
+  extendDragSelect,
+  callbacksRef,
+}: DirectoryBodyRowProps<TItem>) {
+  return (
+    <tr
+      className={`hub-users-row${selected ? " is-selected" : ""}${extraClassName}`}
+      onClick={() => callbacksRef.current.onRowClick?.(item)}
+      onDoubleClick={() => callbacksRef.current.onRowDoubleClick?.(item)}
+      onMouseEnter={() => {
+        if (showSelect) extendDragSelect(rowKey, rowCanSelect);
+        callbacksRef.current.onRowMouseEnter?.(item);
+      }}
+    >
+      {showSelect ? (
+        <td
+          className="hub-users-col--select"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={
+            rowCanSelect
+              ? (e) => {
+                  if (e.button === 0) beginDragSelect(rowKey, selected);
+                }
+              : undefined
+          }
+        >
+          {rowCanSelect ? (
+            <label className="hub-users-select-row">
+              <input
+                type="checkbox"
+                className="hub-checkbox"
+                checked={selected}
+                onChange={() => onToggleSelect?.(rowKey)}
+                aria-label={`Select row ${rowKey}`}
+              />
+            </label>
+          ) : null}
+        </td>
+      ) : null}
+      {renderRowCells(item)}
+      {renderStaticCells?.(item)}
+    </tr>
+  );
+}
+
+const DirectoryBodyRow = memo(DirectoryBodyRowInner) as typeof DirectoryBodyRowInner;
+
 /**
  * Golden directory table chrome — select column, sortable headers, pager shell.
  * Golden: P0004 HubToolsDirectoryTable · UserDirectoryTable · DashboardScreensTable.
@@ -163,6 +259,11 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
   selectedIdsRef.current = selectedIds;
   const onToggleSelectRef = useRef(onToggleSelect);
   onToggleSelectRef.current = onToggleSelect;
+
+  // Row event handlers live in a ref → stable identity keeps DirectoryBodyRow memo
+  // intact even when a parent recreates these closures on every selection toggle.
+  const rowCallbacksRef = useRef<DirectoryRowCallbacks<TItem>>({});
+  rowCallbacksRef.current = { onRowClick, onRowDoubleClick, onRowMouseEnter };
 
   const endDragSelect = useCallback(() => {
     if (dragRef.current) dragRef.current = null;
@@ -348,48 +449,21 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
           const selected = selectedIds?.has(rowKey) ?? false;
           const rowCanSelect = canSelectRow?.(item) !== false;
           return (
-            <tr
+            <DirectoryBodyRow
               key={rowKey}
-              className={`hub-users-row${selected ? " is-selected" : ""}${getRowClassName?.(item) ?? ""}`}
-              onClick={onRowClick ? () => onRowClick(item) : undefined}
-              onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(item) : undefined}
-              onMouseEnter={
-                showSelect || onRowMouseEnter
-                  ? () => {
-                      if (showSelect) extendDragSelect(rowKey, rowCanSelect);
-                      onRowMouseEnter?.(item);
-                    }
-                  : undefined
-              }
-            >
-              {showSelect ? (
-                <td
-                  className="hub-users-col--select"
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={
-                    rowCanSelect
-                      ? (e) => {
-                          if (e.button === 0) beginDragSelect(rowKey, selected);
-                        }
-                      : undefined
-                  }
-                >
-                  {rowCanSelect ? (
-                    <label className="hub-users-select-row">
-                      <input
-                        type="checkbox"
-                        className="hub-checkbox"
-                        checked={selected}
-                        onChange={() => onToggleSelect?.(rowKey)}
-                        aria-label={`Select row ${rowKey}`}
-                      />
-                    </label>
-                  ) : null}
-                </td>
-              ) : null}
-              {renderRowCells(item)}
-              {renderStaticCells?.(item)}
-            </tr>
+              item={item}
+              rowKey={rowKey}
+              selected={selected}
+              rowCanSelect={rowCanSelect}
+              showSelect={showSelect}
+              extraClassName={getRowClassName?.(item) ?? ""}
+              renderRowCells={renderRowCells}
+              renderStaticCells={renderStaticCells}
+              onToggleSelect={onToggleSelect}
+              beginDragSelect={beginDragSelect}
+              extendDragSelect={extendDragSelect}
+              callbacksRef={rowCallbacksRef}
+            />
           );
         });
 

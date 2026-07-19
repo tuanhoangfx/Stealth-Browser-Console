@@ -5,6 +5,7 @@ import { LIMIT_OPTIONS, TIME_RANGES } from "./constants";
 import { MAX_VISIBLE_CHART } from "./chart-visible";
 import { MAX_VISIBLE_KPI } from "./kpi-visible";
 import { Section, ToggleRow } from "./primitives";
+import { SettingsAdmSection } from "./SettingsAdmSection";
 import type { HubDisplayPrefsProps, PrefItem } from "./types";
 import {
   countVisiblePrefs,
@@ -63,6 +64,7 @@ export function HubDisplayPrefs({
   getSubTab,
   subTabDisplay,
   generalExtras,
+  headerExtras,
   displayExtras,
   footerActions,
   tablePanel,
@@ -375,29 +377,37 @@ export function HubDisplayPrefs({
     );
   }
 
-  if (showHeaderPin) {
+  if (showHeaderPin || headerExtras) {
+    const showSearchPin = !(hideSearchPinOnSystem && isSystem);
     displayParts.push(
-      <Section key="header" label="Header" icon={buildSemanticTocIcon("settings.header")}>
-        <ToggleRow
-          label="Pin header (sticky)"
-          on={prefs.headerPin}
-          onChange={() => update({ hpin: prefs.headerPin ? "0" : null })}
-        />
-        {!(hideSearchPinOnSystem && isSystem) ? (
-          <ToggleRow
-            label="Pin search bar (sticky)"
-            on={prefs.searchPin}
-            onChange={() => update({ spin: prefs.searchPin ? "0" : null })}
-          />
+      <SettingsAdmSection key="header" label="Header" emoji="🗂️">
+        {showHeaderPin ? (
+          <>
+            <div className={showSearchPin ? "hub-settings-pin-row" : undefined}>
+              <ToggleRow
+                label="Pin header (sticky)"
+                on={prefs.headerPin}
+                onChange={() => update({ hpin: prefs.headerPin ? "0" : null })}
+              />
+              {showSearchPin ? (
+                <ToggleRow
+                  label="Pin search bar (sticky)"
+                  on={prefs.searchPin}
+                  onChange={() => update({ spin: prefs.searchPin ? "0" : null })}
+                />
+              ) : null}
+            </div>
+            {showNavToggle && prefs.navToggleIcon !== undefined ? (
+              <ToggleRow
+                label="Show submenu +/- icon"
+                on={prefs.navToggleIcon}
+                onChange={() => update({ navicon: prefs.navToggleIcon ? "0" : null })}
+              />
+            ) : null}
+          </>
         ) : null}
-        {showNavToggle && prefs.navToggleIcon !== undefined ? (
-          <ToggleRow
-            label="Show submenu +/- icon"
-            on={prefs.navToggleIcon}
-            onChange={() => update({ navicon: prefs.navToggleIcon ? "0" : null })}
-          />
-        ) : null}
-      </Section>,
+        {headerExtras}
+      </SettingsAdmSection>,
     );
   }
 

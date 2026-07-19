@@ -11,6 +11,7 @@ import {
 } from "../table/HubDirectoryColumnHint";
 import { HubDirectoryValuePopover } from "../table/HubDirectoryValuePopover";
 import { compactIconSize } from "../ui-scale";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { HubSingleFilterDropdown, type FilterOption, type HubSingleFilterDropdownProps } from "./FilterBar";
 import { HUB_DIRECTORY_TABLE_BRAND_ICON_PX } from "./HubDirectoryBrandNameCell";
 import { hubDirectoryTableBrandImgClass, hubFilterOptionEmojiClass } from "./filter-dropdown-primitives";
@@ -198,6 +199,7 @@ export function HubAdmClickEditField({
               className={inputClass}
               name={`hub-adm-edit-${fieldLabel.replace(/\s+/g, "-").toLowerCase()}`}
               autoComplete="off"
+              {...HUB_NO_SPELLCHECK_PROPS}
               inputMode={inputMode}
               maxLength={maxLength}
               placeholder={placeholder}
@@ -283,6 +285,7 @@ export function HubAdmClickMultilineEditField({
           className={inputClass}
           rows={lines}
           autoFocus
+          {...HUB_NO_SPELLCHECK_PROPS}
           value={editValue}
           placeholder={placeholder}
           onChange={(e) => onEditChange(e.target.value)}
@@ -332,8 +335,13 @@ export type HubAdmClickFilterFieldProps = {
   /** Reset selection to empty — Clear beside panel search (no fake “None” option). */
   allowClear?: boolean;
   clearLabel?: string;
+  /** Allow creating a brand-new value from the panel search (free-text combobox). */
+  allowCustom?: boolean;
+  customOptionLabel?: (query: string) => string;
   /** Optional control rendered after the value (e.g. copy icon). Does not shrink. */
   trailingAction?: ReactNode;
+  /** Custom value body (e.g. On/Off status dot). Chevron still appended. */
+  renderValue?: (value: string, displayLabel: string) => ReactNode;
 };
 
 /** Account-detail modal — plain label + emoji/value; chevron always visible; opens filter panel. */
@@ -350,7 +358,10 @@ export function HubAdmClickFilterField({
   panelSearchAsync,
   allowClear = false,
   clearLabel,
+  allowCustom = false,
+  customOptionLabel,
   trailingAction,
+  renderValue,
 }: HubAdmClickFilterFieldProps) {
   const opt = options.find((o) => o.value === value);
   /** Parity with directory table brand glyphs (`HubDirectoryBrandNameCell` 16px). */
@@ -375,31 +386,41 @@ export function HubAdmClickFilterField({
         triggerFormat="value"
         className="hub-adm-click-filter w-full min-w-0"
         triggerClassName="hub-adm-click-filter__trigger"
+        /** Mail Modal / Layout 3 SSOT — ADM CSS owns type; strip FilterBar `text-sm font-medium`. */
+        triggerTypoClass=""
         ariaLabel={fieldLabel}
         panelSearchAsync={panelSearchAsync}
         allowClear={allowClear}
         clearLabel={clearLabel}
+        allowCustom={allowCustom}
+        customOptionLabel={customOptionLabel}
         triggerContent={
           <>
             <span className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate" title={displayLabel}>
-              {opt?.iconSrc ? (
-                <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
-                  <img
-                    src={opt.iconSrc}
-                    alt=""
-                    width={glyphPx}
-                    height={glyphPx}
-                    className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
-                    decoding="async"
-                    draggable={false}
-                  />
-                </span>
-              ) : opt?.emoji ? (
-                <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
-                  <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
-                </span>
-              ) : null}
-              <HubAdmSearchHighlightText text={displayLabel} />
+              {renderValue ? (
+                renderValue(value, displayLabel)
+              ) : (
+                <>
+                  {opt?.iconSrc ? (
+                    <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
+                      <img
+                        src={opt.iconSrc}
+                        alt=""
+                        width={glyphPx}
+                        height={glyphPx}
+                        className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
+                        decoding="async"
+                        draggable={false}
+                      />
+                    </span>
+                  ) : opt?.emoji ? (
+                    <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+                      <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
+                    </span>
+                  ) : null}
+                  <HubAdmSearchHighlightText text={displayLabel} />
+                </>
+              )}
             </span>
             <ChevronDown size={compactIconSize(10)} className="hub-adm-click-filter__chevron shrink-0" aria-hidden />
           </>

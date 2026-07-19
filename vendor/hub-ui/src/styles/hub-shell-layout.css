@@ -76,13 +76,19 @@
   color: var(--text);
 }
 
-.hub-app > aside {
-  position: relative;
-  z-index: 50;
-  width: var(--hub-sidebar-width);
-  flex-shrink: 0;
-  min-height: 0;
-  overflow: visible;
+html.hub-embed .hub-app--embed,
+html.hub-embed.hub-app,
+html.hub-embed .hub-app {
+  width: 100%;
+  max-width: none;
+}
+
+html.hub-embed .hub-app > main,
+html.hub-embed .hub-main {
+  width: 100%;
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .hub-app > main,

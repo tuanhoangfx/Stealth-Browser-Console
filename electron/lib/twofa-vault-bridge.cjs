@@ -567,6 +567,80 @@ async function patchStealthSnapshotByAccountId(accountId, snapshot) {
   }
 }
 
+/**
+ * Mark a mail vault row after a workflow outcome (e.g. Google reCAPTCHA stop).
+ * Updates account `status` + stealth_snapshot so Data Box refreshes immediately.
+ * @returns {Promise<{ ok: boolean, patched: number, reason?: string }>}
+ */
+async function patchMailAccountOutcome({
+  browserCode,
+  email = "",
+  service = "Gmail",
+  status = "error",
+  snapshot = null,
+  logMessage = "",
+} = {}) {
+  const variants = browserCodeVariants(browserCode);
+  if (!variants.length) return { ok: false, patched: 0, reason: "missing browser code" };
+  try {
+    const { userId } = await resolveScopedVaultUserId();
+    const client = getClient();
+    const preferred = String(email || "")
+      .trim()
+      .toLowerCase();
+    const aliases = vaultServiceAliases(service);
+
+    let query = client
+      .from("twofa_accounts")
+      .select("id, account, service, browser, status, log")
+      .eq("user_id", userId)
+      .in("browser", variants)
+      .is("deleted_at", null)
+      .limit(20);
+    const { data, error } = await query;
+    if (error) return { ok: false, patched: 0, reason: error.message };
+
+    const rows = (data || []).filter((row) => {
+      const svc = String(row.service || "").trim();
+      const isMail =
+        aliases.some((a) => new RegExp(`^${a}$`, "i").test(svc)) ||
+        (isGmailVaultService(service) && isGmailVaultService(svc)) ||
+        (isOutlookVaultService(service) && isOutlookVaultService(svc));
+      if (!isMail) return false;
+      if (!preferred) return true;
+      return String(row.account || "").trim().toLowerCase() === preferred;
+    });
+    if (!rows.length) return { ok: false, patched: 0, reason: "no matching mail vault row" };
+
+    const checkedAt = snapshot?.checked_at || new Date().toISOString();
+    const tip = String(logMessage || "").trim().slice(0, 240);
+    let patched = 0;
+    for (const row of rows) {
+      const patch = {
+        status: String(status || "error").trim() || "error",
+        updated_at: checkedAt,
+        stealth_checked_at: checkedAt,
+      };
+      if (snapshot) patch.stealth_snapshot = snapshot;
+      if (tip) {
+        patch.log = tip;
+        patch.log_tip_at = checkedAt;
+        patch.log_tip_message = tip;
+      }
+      const { error: upErr } = await client
+        .from("twofa_accounts")
+        .update(patch)
+        .eq("id", row.id)
+        .eq("user_id", userId);
+      if (!upErr) patched += 1;
+    }
+    clearCredentialsCache();
+    return { ok: patched > 0, patched };
+  } catch (error) {
+    return { ok: false, patched: 0, reason: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 function logVaultBridgeStartup() {
   try {
     const config = resolveVaultConfig();
@@ -595,4 +669,5 @@ module.exports = {
   findGmailAccountsByEmail,
   findGmailAccountsByBrowser,
   patchStealthSnapshotByAccountId,
+  patchMailAccountOutcome,
 };

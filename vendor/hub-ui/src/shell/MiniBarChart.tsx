@@ -45,6 +45,7 @@ export function MiniBarChart({
   formatter,
   colorMode = "rank",
   topN,
+  preserveOrder,
 }: {
   title: string;
   titleEmoji?: string;
@@ -56,8 +57,13 @@ export function MiniBarChart({
   colorMode?: MiniBarChartColorMode;
   /** Override Hub `CHART_TOP_N` (rare). Default → 3 + Other = 4 legend rows. */
   topN?: number;
+  /** Keep input legend order (fixed-bucket charts). */
+  preserveOrder?: boolean;
 }) {
-  const rows = prepareChartItems(items, topN != null ? { topN } : undefined);
+  const rows = prepareChartItems(
+    items,
+    topN != null || preserveOrder ? { topN, preserveOrder } : undefined,
+  );
   const m = max ?? Math.max(1, ...rows.map((i) => i.value));
   const fmt = formatter ?? fmtInt;
 

@@ -25,6 +25,8 @@ type HubToastContextValue = {
   pushToast: (message: string, type?: HubToastType, durationMs?: number) => void;
   pushCopyToast: (copied: string, label?: string, durationMs?: number) => void;
   dismissToast: (id: number) => void;
+  /** Clear visible toasts (e.g. before Save so completion toast is the only one). */
+  clearToasts: () => void;
 };
 
 const HubToastContext = createContext<HubToastContextValue | null>(null);
@@ -34,6 +36,10 @@ export function HubToastProvider({ children }: { children: ReactNode }) {
 
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const clearToasts = useCallback(() => {
+    setToasts([]);
   }, []);
 
   const pushToast = useCallback(
@@ -73,8 +79,8 @@ export function HubToastProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ toasts, pushToast, pushCopyToast, dismissToast }),
-    [toasts, pushToast, pushCopyToast, dismissToast],
+    () => ({ toasts, pushToast, pushCopyToast, dismissToast, clearToasts }),
+    [toasts, pushToast, pushCopyToast, dismissToast, clearToasts],
   );
 
   return <HubToastContext.Provider value={value}>{children}</HubToastContext.Provider>;

@@ -191,6 +191,7 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
                 {preset.name}
               </span>
             </button>
+            {preset.builtin || preset.id.startsWith("builtin-") ? null : (
             <button
               type="button"
               className="mr-1 rounded p-1 text-[var(--muted)] opacity-0 transition-opacity hover:bg-white/10 hover:text-rose-300 group-hover:opacity-100"
@@ -203,6 +204,7 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
             >
               <Trash2 size={compactIconSize(11)} aria-hidden />
             </button>
+            )}
           </div>
         ))}
         {filteredPresets.length === 0 && !showDefaultRow ? (

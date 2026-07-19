@@ -18,8 +18,6 @@ export type WorkflowStoreFilterPaneProps = {
   setSearch: (value: string) => void;
   filteredCount: number;
   totalCount: number;
-  tablePageSize: number;
-  onTablePageSizeChange?: (size: number) => void;
   row2Actions?: ReactNode;
   searchTrailing?: ReactNode;
   viewMode: HubViewMode;
@@ -36,8 +34,6 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
   setSearch,
   filteredCount,
   totalCount,
-  tablePageSize,
-  onTablePageSizeChange,
   row2Actions,
   searchTrailing,
   viewMode,
@@ -45,8 +41,6 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
   timeRange,
   loading = false,
 }: WorkflowStoreFilterPaneProps) {
-  const isTable = viewMode === "table";
-
   return (
     <HubSplitDirectoryFilterBar
       shortcutScope="workflow-store"
@@ -65,9 +59,6 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
           showTimeRange
           timeRange={timeRange}
           showRefresh={false}
-          showTablePageSize={isTable}
-          tablePageSize={tablePageSize}
-          onTablePageSizeChange={onTablePageSizeChange}
           showResultCount={false}
           countIcon={Store}
           shown={filteredCount}

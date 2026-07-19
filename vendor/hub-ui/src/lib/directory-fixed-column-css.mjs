@@ -3,14 +3,17 @@
  * Import from P00xx scripts: `packages/hub-ui/src/lib/directory-fixed-column-css.mjs`
  */
 
-/** @typedef {'code' | 'date'} DirectoryFixedColumnKind */
+/**
+ * @typedef {'code' | 'date' | 'compact'} DirectoryFixedColumnKind
+ * `compact` = fixed-width center label chip (durations, enum labels) — no copy/timestamp inner.
+ */
 
 /**
  * @typedef {Object} DirectoryFixedColumnEntry
  * @property {string} colClass
  * @property {string} width
  * @property {DirectoryFixedColumnKind} kind
- * @property {'left' | 'center'} [align] Body text-align override (defaults: date=center, code=left).
+ * @property {'left' | 'center'} [align] Body text-align override (defaults: date/compact=center, code=left).
  * @property {readonly string[]} [keys] Tool meta keys — verify gate only, not used in CSS.
  */
 
@@ -79,9 +82,10 @@ export function generateDirectoryFixedColumnCss(options) {
 }`;
   }
 
-  // Date payloads are fixed-width — center under the (centered) column header; code stays left.
+  // Date/compact payloads are fixed-width — center under the (centered) column header; code stays left.
   // Per-entry `align` overrides the kind default (e.g. an ID code column that should center).
-  const alignOf = (entry) => entry.align ?? (entry.kind === "date" ? "center" : "left");
+  const alignOf = (entry) =>
+    entry.align ?? (entry.kind === "date" || entry.kind === "compact" ? "center" : "left");
   const leftEntries = entries.filter((entry) => alignOf(entry) === "left");
   const centerEntries = entries.filter((entry) => alignOf(entry) === "center");
 
@@ -148,7 +152,17 @@ export function verifyDirectoryColumnMetaKeys(metaSource, entries, options = {})
   for (const entry of entries) {
     const keys = entry.keys ?? [];
     for (const key of keys) {
-      const keyBlock = metaSource.split(`${key}:`)[1]?.split(/\n  \w+:/)[0] ?? "";
+      // Whole meta key only (`notify:` must not hit `sample_notify:`).
+      const keyRe = new RegExp(
+        `(?:^|\\n)(\\s*)${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:`,
+      );
+      const m = keyRe.exec(metaSource);
+      if (!m) {
+        errors.push(`${metaLabel} ${key} missing for ${entry.colClass}`);
+        continue;
+      }
+      const afterKey = metaSource.slice(m.index + m[0].length);
+      const keyBlock = afterKey.split(/\n  \w+:/)[0] ?? "";
       if (!keyBlock.includes(entry.width)) {
         errors.push(`${metaLabel} ${key} width != manifest ${entry.width} for ${entry.colClass}`);
       }

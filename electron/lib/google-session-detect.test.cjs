@@ -79,7 +79,7 @@ test("detectGoogleSession returns challenged on sign-in URL", async () => {
   assert.equal(result.result_code, "2fa_pending");
 });
 
-test("detectGoogleSession prefers logged_in when challenge URL still has auth cookies", async () => {
+test("detectGoogleSession keeps challenged when only challenge tab has stale auth cookies", async () => {
   const page = {
     url: () => "https://accounts.google.com/v3/signin/challenge/totp",
     isClosed: () => false,
@@ -98,9 +98,41 @@ test("detectGoogleSession prefers logged_in when challenge URL still has auth co
   };
 
   const result = await detectGoogleSession(context);
+  assert.equal(result.status, "challenged");
+  assert.equal(result.result_code, "2fa_pending");
+  assert.equal(result.evidence, "challenge_url+stale_auth_cookies");
+});
+
+test("detectGoogleSession prefers inbox over challenge when both tabs exist", async () => {
+  const challenge = {
+    url: () => "https://accounts.google.com/v3/signin/identifier",
+    isClosed: () => false,
+    evaluate: async () => "",
+    context() {
+      return context;
+    },
+  };
+  const inbox = {
+    url: () => "https://mail.google.com/mail/u/0/#inbox",
+    isClosed: () => false,
+    evaluate: async () => "user@gmail.com",
+    context() {
+      return context;
+    },
+  };
+  const context = {
+    cookies: async () => [
+      { name: "SID", value: "1" },
+      { name: "HSID", value: "2" },
+      { name: "SSID", value: "3" },
+    ],
+    pages: () => [challenge, inbox],
+  };
+
+  const result = await detectGoogleSession(context);
   assert.equal(result.status, "logged_in");
-  assert.equal(result.result_code, "google_cookies");
-  assert.equal(result.evidence, "challenge_url+auth_cookies");
+  assert.equal(result.result_code, "inbox_ok");
+  assert.equal(result.email, "user@gmail.com");
 });
 
 test("detectGoogleSession does not mark partial cookies as Challenge", async () => {

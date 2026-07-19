@@ -522,8 +522,10 @@
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__label .hub-users-th-text,
 :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-inline-field__label .hub-users-th-text {
+  font-family: inherit;
   font-size: var(--hub-adm-type-size, var(--hub-table-header-size, 12px));
   font-weight: var(--hub-adm-type-label-weight, 500);
+  line-height: var(--hub-adm-type-line, 1.45);
   letter-spacing: 0.01em;
   color: var(--hub-adm-type-label-color, rgb(148, 163, 184));
   /* Fit fixed ADM label column — long labels (e.g. API Youtube v3) ellipsize; full text via title/hover hint. */
@@ -551,6 +553,12 @@
   column-gap: var(--hub-adm-field-gap);
   row-gap: 0.35rem;
   align-items: center;
+}
+
+/* Settings / System — one field full-width (Tier kit, no 3-col squeeze). */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned.hub-adm-form-row--single,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned.hub-adm-form-row--single {
+  grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-adm-inline-field,
@@ -956,28 +964,32 @@
   color: var(--muted);
 }
 
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger {
+/* Strip FilterBar chip chrome — Mail Modal / Layout 3 HubAdm value SSOT. */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger.hub-filter-trigger {
   display: flex !important;
   align-items: center;
   justify-content: flex-start !important;
-  gap: 0.2rem;
+  gap: 0.2rem !important;
   width: 100% !important;
   max-width: 100%;
   min-width: 0;
   height: var(--hub-adm-value-h) !important;
   min-height: var(--hub-adm-value-h) !important;
+  max-height: var(--hub-adm-value-h) !important;
   padding: 0 0.15rem !important;
   border: 0 !important;
+  border-radius: 0.2rem !important;
   background: transparent !important;
-  color: rgb(203, 213, 225) !important;
+  color: var(--hub-adm-type-value-color, rgb(203, 213, 225)) !important;
   box-shadow: none !important;
-  font-size: var(--hub-table-body-size, 12px) !important;
-  font-weight: 400 !important;
-  line-height: var(--hub-table-body-line-height, 1.45) !important;
+  font-family: inherit !important;
+  font-size: var(--hub-adm-type-size, var(--hub-table-body-size, 12px)) !important;
+  font-weight: var(--hub-adm-type-value-weight, 400) !important;
+  line-height: var(--hub-adm-type-line, var(--hub-table-body-line-height, 1.45)) !important;
   letter-spacing: normal !important;
   text-align: left;
   cursor: pointer;
-  border-radius: 0.2rem;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger .hub-adm-click-edit__text {
@@ -985,6 +997,9 @@
   min-width: 0;
   max-width: 100%;
   text-align: left;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
 }
 
 /* Plan Package / filter trigger — same 16px brand glyph as directory table. */
@@ -1177,11 +1192,17 @@
     --hub-tool-detail-rail-w: min(18rem, 36%);
   }
 
-  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2),
-  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2) {
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2):not(.hub-adm-form-row--single),
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2):not(.hub-adm-form-row--single) {
     grid-template-columns:
       var(--hub-adm-label-w) minmax(0, 1fr)
       var(--hub-adm-label-w) minmax(0, 1fr);
+  }
+
+  /* Settings single-field row — keep full-width label|value (do not collapse to 2-slot). */
+  :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned.hub-adm-form-row--single,
+  :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned.hub-adm-form-row--single {
+    grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
   }
 }
 

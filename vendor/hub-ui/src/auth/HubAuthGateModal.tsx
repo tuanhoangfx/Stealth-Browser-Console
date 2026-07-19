@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { LogIn, UserPlus, UserRound } from "lucide-react";
 import { HubModalCloseButton } from "../shell/HubModalCloseButton";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
 import { formatHubAuthErrorMessage, normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
@@ -190,6 +191,7 @@ export function HubAuthGateModal({
               name="login"
               placeholder="User ID or email"
               autoComplete="username"
+              {...HUB_NO_SPELLCHECK_PROPS}
               value={login}
               onChange={(e) => setLogin(e.target.value)}
               required
@@ -201,6 +203,7 @@ export function HubAuthGateModal({
                 name="password"
                 placeholder="Password"
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                {...HUB_NO_SPELLCHECK_PROPS}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

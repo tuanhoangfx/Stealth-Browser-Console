@@ -17,6 +17,8 @@ describe("HubToolDetailModalAccountFooter", () => {
       <HubToolDetailModalAccountFooter onClose={() => {}} onSave={() => {}} busy saveIcon={Save} />,
     );
     expect(screen.getByRole("button", { name: "Saving…" })).toBeTruthy();
+    expect(document.querySelector(".hub-tool-detail-modal__confirm-icon--busy")).toBeTruthy();
+    expect(document.querySelector(".hub-tool-detail-modal__confirm--busy")).toBeTruthy();
   });
 
   it("calls onSave and onClose", () => {

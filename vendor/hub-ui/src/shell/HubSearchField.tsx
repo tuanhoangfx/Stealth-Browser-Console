@@ -1,6 +1,7 @@
 import { Search, X } from "lucide-react";
 import { startTransition, useEffect, useRef, useState, type Ref } from "react";
 import { HUB_MODAL_SEARCH_ATTR } from "../keyboard/hub-modal-search";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
 
 export type HubSearchFieldProps = {
@@ -74,9 +75,7 @@ export function HubSearchField({
         inputMode="search"
         enterKeyHint="search"
         autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
+        {...HUB_NO_SPELLCHECK_PROPS}
         name="hub-directory-search"
         value={displayValue}
         onChange={(e) => setDisplayValue(e.target.value)}

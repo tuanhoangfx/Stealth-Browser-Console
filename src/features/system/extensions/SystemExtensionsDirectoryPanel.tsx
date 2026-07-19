@@ -3,13 +3,11 @@ import {
   HubSplitDirectoryPane,
   KpiStrip,
   hubDirectoryListResetKey,
-  patchHubListPrefs,
-  patchHubTablePageSizeValue,
   resolveDirectoryPanelFillRows,
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
 import type { CachedStoreExtension } from "../../../types";
-import { normalizeProfileDirectoryPageSize, useProfileDirectoryPageSize } from "../../profiles/useProfileDirectoryPageSize";
+import { useProfileDirectoryPageSize } from "../../profiles/useProfileDirectoryPageSize";
 import { SystemExtensionsHubChrome } from "../SystemExtensionsHubChrome";
 import { SystemExtensionsDirectoryTable, extensionRowId } from "./SystemExtensionsDirectoryTable";
 import { SystemExtensionsFilterPane } from "./SystemExtensionsFilterPane";
@@ -92,11 +90,6 @@ export const SystemExtensionsDirectoryPanel = memo(function SystemExtensionsDire
         filteredCount={filteredCount}
         catalogCount={catalogCount}
         selectedCount={selectedCount}
-        pageSize={pageSize}
-        onTablePageSizeChange={(size) => {
-          patchHubListPrefs({ tpage: patchHubTablePageSizeValue(normalizeProfileDirectoryPageSize(size)) });
-          onPageChange(0);
-        }}
         busy={busy}
         onForceUpdateSelected={onForceUpdateSelected}
         onOpenDetailSingle={onOpenDetailSingle}
@@ -106,12 +99,9 @@ export const SystemExtensionsDirectoryPanel = memo(function SystemExtensionsDire
     [
       busy,
       cached,
-      items.length,
       onForceUpdateSelected,
       onOpenDetailSingle,
       onOpenInstall,
-      onPageChange,
-      pageSize,
       search,
       selectedCount,
       selectedKinds,

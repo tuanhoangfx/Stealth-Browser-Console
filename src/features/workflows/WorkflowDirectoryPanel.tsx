@@ -76,8 +76,6 @@ export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
           setWorkflowSearch={setWorkflowSearch}
           filteredCount={filteredWorkflows.length}
           totalCount={workflowConfigs.length}
-          tablePageSize={workflowTablePageSize}
-          onTablePageSizeChange={onWorkflowTablePageSizeChange}
           searchTrailing={
             <HubDirectoryToolbarSelection
               visibleCount={filteredWorkflows.length}

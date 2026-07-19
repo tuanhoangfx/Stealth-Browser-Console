@@ -104,6 +104,9 @@ table.hub-users-table {
 .hub-users-th-icon--created { color: #38bdf8; }
 .hub-users-th-icon--activity { color: #f472b6; }
 .hub-users-th-icon--actions { color: #fbbf24; }
+.hub-users-th-icon--qty { color: #34d399; }
+.hub-users-th-icon--number { color: #a78bfa; }
+.hub-users-th-icon--path { color: #60a5fa; }
 
 .hub-users-sort {
   display: inline-flex;
@@ -1066,11 +1069,11 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   font-size: 13px;
 }
 
-/** Tiered metric badge — Design V1 Heat (Mail SL). Bands: 0 · 1 · 2–5 · 6–10 · 11–20 · >20 */
+/** Tiered metric badge — Design V1 Heat. Bands: 0 · 1 green · 2–5 sky · 6–9 yellow · 10–20 orange · >20 rose */
 .hub-directory-metric-badge--one:not(.hub-users-tool-badge--empty) {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(100, 116, 139, 0.22);
-  color: #e2e8f0;
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(16, 185, 129, 0.22);
+  color: #a7f3d0;
 }
 
 .hub-directory-metric-badge--few:not(.hub-users-tool-badge--empty) {
@@ -1080,15 +1083,15 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 }
 
 .hub-directory-metric-badge--mid:not(.hub-users-tool-badge--empty) {
-  border-color: rgba(52, 211, 153, 0.55);
-  background: rgba(16, 185, 129, 0.22);
-  color: #a7f3d0;
+  border-color: rgba(250, 204, 21, 0.55);
+  background: rgba(234, 179, 8, 0.22);
+  color: #fde047;
 }
 
 .hub-directory-metric-badge--high:not(.hub-users-tool-badge--empty) {
-  border-color: rgba(251, 191, 36, 0.55);
-  background: rgba(245, 158, 11, 0.22);
-  color: #fde68a;
+  border-color: rgba(249, 115, 22, 0.55);
+  background: rgba(234, 88, 12, 0.22);
+  color: #fdba74;
 }
 
 .hub-directory-metric-badge--hot:not(.hub-users-tool-badge--empty) {
@@ -1103,6 +1106,38 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   border-color: rgba(56, 189, 248, 0.5);
   background: rgba(14, 165, 233, 0.2);
   color: #bae6fd;
+}
+
+/** Heat legend dots — column-header Option list (Qty / Orders / Usage). */
+.hub-directory-metric-heat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.hub-directory-metric-heat-dot--empty {
+  background: rgba(148, 163, 184, 0.55);
+}
+
+.hub-directory-metric-heat-dot--one {
+  background: #34d399;
+}
+
+.hub-directory-metric-heat-dot--few {
+  background: #38bdf8;
+}
+
+.hub-directory-metric-heat-dot--mid {
+  background: #eab308;
+}
+
+.hub-directory-metric-heat-dot--high {
+  background: #f97316;
+}
+
+.hub-directory-metric-heat-dot--hot {
+  background: #fb7185;
 }
 
 .hub-users-role-select {
@@ -1164,6 +1199,7 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 .hub-users-status-dot--active { background: #06b6d4; }
 .hub-users-status-dot--idle { background: #f59e0b; }
 .hub-users-status-dot--offline { background: #64748b; }
+.hub-users-status-dot--off { background: #f43f5e; }
 .hub-users-status-dot--age-fresh { background: var(--hub-activity-age-fresh); }
 .hub-users-status-dot--age-recent { background: var(--hub-activity-age-recent); }
 .hub-users-status-dot--age-aging { background: var(--hub-activity-age-aging); }
@@ -1535,7 +1571,9 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--sou
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--live-status {
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--live-status,
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--usage {
   width: 5.5rem;
   min-width: 5.5rem;
   max-width: 5.5rem;
@@ -1544,6 +1582,42 @@ table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--liv
   font-size: 10px;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+/* Teams Identity — Password / Recovery Mail / Full Info from linked Account. */
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--password,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--password {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  max-width: 9rem;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--mail-recover,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--mail-recover {
+  width: 9rem;
+  min-width: 9rem;
+  max-width: 12rem;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+table.hub-users-table--route-access-modal--expanded th.hub-route-access-col--full-info,
+table.hub-users-table--route-access-modal--expanded td.hub-route-access-col--full-info {
+  min-width: 10rem;
+  max-width: 16rem;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.25;
   vertical-align: middle;
 }
 
@@ -1701,10 +1775,37 @@ table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--
 table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--ownership,
 table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--live-status,
 table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--live-status,
-table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--live-status {
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--live-status,
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--usage,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--usage {
   width: 5.5rem !important;
   min-width: 5.5rem !important;
   max-width: 5.5rem !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--password,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--password,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--password {
+  width: 7.5rem !important;
+  min-width: 7.5rem !important;
+  max-width: 7.5rem !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--mail-recover,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--mail-recover,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--mail-recover {
+  width: 9rem !important;
+  min-width: 9rem !important;
+  max-width: 9rem !important;
+}
+
+table.hub-users-table--route-access-modal--stack-align col.hub-route-access-col--full-info,
+table.hub-users-table--route-access-modal--stack-align th.hub-route-access-col--full-info,
+table.hub-users-table--route-access-modal--stack-align td.hub-route-access-col--full-info {
+  width: 10rem !important;
+  min-width: 10rem !important;
+  max-width: 10rem !important;
 }
 
 /* Plan Package absorbs freed Account width */
@@ -1916,6 +2017,9 @@ table.hub-users-table--folders {
 table.hub-users-table--cookie-routes {
   font-size: var(--hub-table-body-size, 12px);
 }
+
+
+
 
 
 

@@ -147,8 +147,6 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     setSelectedGroupIds,
     selectedStatuses,
     setSelectedStatuses,
-    pageSize,
-    onTablePageSizeChange,
     syncBusy,
     selectedProfiles,
     closeOne,

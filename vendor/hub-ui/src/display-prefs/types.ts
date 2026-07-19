@@ -126,6 +126,11 @@ export type HubDisplayPrefsProps = {
   subTabDisplay?: SubTabDisplayConfig;
   /** @deprecated Prefer `displayExtras`. */
   generalExtras?: ReactNode;
+  /**
+   * Extra rows rendered inside the Header section (after Pin header / Pin search),
+   * e.g. tool-wide Price format — same ToggleRow indent / `text-xs` as pin toggles.
+   */
+  headerExtras?: ReactNode;
   /** Extra toggles rendered inside App mode (e.g. 2FA mask password). */
   displayExtras?: ReactNode;
   /** Extra footer actions before “Reset to defaults” (e.g. tab-specific Save). */

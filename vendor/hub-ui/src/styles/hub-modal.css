@@ -95,6 +95,7 @@
 }
 
 .modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) .hub-tool-detail-modal__body,
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) .hub-tool-detail-modal__body-frame,
 .modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) .hub-tool-detail-modal__layout {
   flex: 1;
   min-height: 0;
@@ -372,6 +373,30 @@ body.hub-modal-open {
   min-width: 0;
 }
 
+/* Settings ADM section — Mail Modal section pill + rows. */
+.hub-settings-adm-section__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  margin-top: 0.35rem;
+}
+
+/* Pin header + Pin search — Layout 2 one line (Order Detail slot pair). */
+.hub-settings-pin-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--hub-adm-field-gap, 0.7rem);
+  row-gap: 0.35rem;
+  align-items: center;
+}
+
+@media (max-width: 520px) {
+  .hub-settings-pin-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .hub-settings-option-section--compact .hub-settings-subsection__header {
   margin-bottom: 0;
 }
@@ -499,6 +524,33 @@ body.hub-modal-open {
 .hub-tool-detail-modal__confirm-icon--busy,
 .cookie-dl-modal__confirm-icon--busy {
   animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.hub-tool-detail-modal__confirm--busy {
+  cursor: wait;
+  opacity: 0.95;
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.35), 0 8px 22px rgba(79, 70, 229, 0.28);
+}
+
+/* Relative frame so Save busy HubLoaderOrb can cover TOC + content (not footer). */
+.hub-tool-detail-modal__body-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hub-tool-detail-modal__body-frame > :not(.hub-tab-loader-inline) {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.hub-tool-detail-modal--busy {
+  cursor: wait;
 }
 
 .hub-tool-detail-modal__secondary {
@@ -528,7 +580,7 @@ body.hub-modal-open {
 /* Cross-entity footer nav — one accent per target; hover/focus = soft border lift (not gray). */
 .hub-tool-detail-modal__secondary[class*="hub-tool-detail-modal__secondary--"] {
   --hub-footer-nav-border-idle: 0.34;
-  --hub-footer-nav-border-hover: 0.6;
+  --hub-footer-nav-border-hover-alpha: 0.6;
   --hub-footer-nav-grad-top: 0.26;
   --hub-footer-nav-grad-mid: 0.1;
   --hub-footer-nav-grad-bottom: 0.02;
@@ -559,7 +611,7 @@ body.hub-modal-open {
     :hover:not(:disabled),
     :focus-visible:not(:disabled)
   ) {
-  border-color: rgba(var(--hub-footer-nav-border-hover), var(--hub-footer-nav-border-hover));
+  border-color: rgba(var(--hub-footer-nav-border-hover), var(--hub-footer-nav-border-hover-alpha));
   background: linear-gradient(
     168deg,
     rgba(var(--hub-footer-nav-grad-a), var(--hub-footer-nav-grad-top-hover)) 0%,

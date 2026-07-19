@@ -171,6 +171,9 @@ export function HubDirectoryDisplayPanel({
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      // Keep the panel open when interacting with a portaled child dropdown (e.g. Frozen columns).
+      if (target?.closest?.("[data-hub-single-filter-panel]")) return;
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onClick);

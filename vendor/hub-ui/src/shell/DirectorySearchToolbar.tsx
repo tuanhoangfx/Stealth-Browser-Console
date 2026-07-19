@@ -14,6 +14,7 @@ import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
 import { HubTimeRangeSelect } from "./HubTimeRangeSelect";
 import { HubWorkspacePeriodSelect, type HubWorkspacePeriodSelectProps } from "./HubWorkspacePeriodSelect";
 import { ViewToggle, type HubViewMode } from "./ViewToggle";
+import { resolveDirectoryToolbarShowTablePageSize } from "./directory-search-toolbar-page-size";
 
 export type DirectorySearchToolbarProps = {
   /** Workspace period filter — P0020 vault tabs (replaces manual `leading` + `HubWorkspacePeriodSelect`). */
@@ -34,7 +35,7 @@ export type DirectorySearchToolbarProps = {
   /** Filter by `updatedAt` / activity — Hub catalog, System Overview, … */
   showTimeRange?: boolean;
   timeRange?: TimeRange;
-  /** Pager rows (`tpage`) — golden on all paginated directory tables. */
+  /** Pager rows (`tpage`). Auto-off when `displayBand` is set (page size lives in Display). */
   showTablePageSize?: boolean;
   /** Shell SSOT — when set, passed to `HubTablePageSizeSelect` (table + toolbar stay in sync). */
   tablePageSize?: number;
@@ -77,7 +78,10 @@ export function DirectorySearchToolbar({
   trailing,
 }: DirectorySearchToolbarProps) {
   const period = useDirectoryTimeRange(timeRange);
-  const resolvedShowTablePageSize = showTablePageSize ?? !displayBand;
+  const resolvedShowTablePageSize = resolveDirectoryToolbarShowTablePageSize({
+    displayBand,
+    showTablePageSize,
+  });
   const filterSelectionToolbarActive = useHubDirectorySelectionChrome();
   const resultCountGuard = resolveDirectorySearchResultCountGuard({
     showResultCount,

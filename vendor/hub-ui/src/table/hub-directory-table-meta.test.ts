@@ -31,12 +31,23 @@ describe("buildDirectoryColumns headerAlign", () => {
       headerAlign: "center" as const,
       columnKind: "code" as const,
     },
+    processing_time: {
+      label: "Process",
+      colClass: "hub-users-col--od-processing-time",
+      role: "name" as const,
+      width: "6.5rem",
+      columnKind: "compact" as const,
+    },
   };
 
-  it("sets headerAlign start for columnKind code and date", () => {
-    const columns = buildDirectoryColumns(["order_date", "external_order_id"], meta);
-    expect(columns[0]?.headerAlign).toBe("start");
-    expect(columns[1]?.headerAlign).toBe("start");
+  it("sets headerAlign center for date/compact, start for code", () => {
+    const columns = buildDirectoryColumns(
+      ["order_date", "external_order_id", "processing_time"],
+      meta,
+    );
+    expect(columns[0]?.headerAlign).toBe("center"); // date
+    expect(columns[1]?.headerAlign).toBe("start"); // code
+    expect(columns[2]?.headerAlign).toBe("center"); // compact
   });
 
   it("leaves headerAlign undefined for text columns without columnKind", () => {

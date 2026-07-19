@@ -49,6 +49,8 @@ function columnHeaderTitle(key: string): string | undefined {
       return "Account ownership";
     case "liveStatus":
       return "Account status";
+    case "usage":
+      return "Completed CRM orders for this account (same service)";
     case "profile":
       return "Service profile / browser code";
     case "role":
@@ -68,6 +70,12 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   renderRoleCell: (row: TRow) => ReactNode;
   /** Teams — Profile (Service browser code). */
   renderProfileCell?: (row: TRow) => ReactNode;
+  /** Teams — Password from linked Services/Mail account. */
+  renderPasswordCell?: (row: TRow) => ReactNode;
+  /** Teams — Recovery Mail from linked account. */
+  renderMailRecoverCell?: (row: TRow) => ReactNode;
+  /** Teams — Full Info from linked account. */
+  renderFullInfoCell?: (row: TRow) => ReactNode;
   /** Teams — Ownership/Status/Profile source (Service · Mail · Manual). */
   renderSourceCell?: (row: TRow) => ReactNode;
   /** Expanded layout — Synced timestamp column. */
@@ -78,6 +86,8 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   renderOwnershipCell?: (row: TRow) => ReactNode;
   /** Teams — Live Status column. */
   renderLiveStatusCell?: (row: TRow) => ReactNode;
+  /** Teams — CRM Usage column (P0005 Order Detail). */
+  renderUsageCell?: (row: TRow) => ReactNode;
   /** Teams — Plan Date / Duration / Due / Left. */
   renderPlanDateCell?: (row: TRow) => ReactNode;
   renderPlanDaysCell?: (row: TRow) => ReactNode;
@@ -117,10 +127,18 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   showSyncAtColumn?: boolean;
   /** Teams — Profile (Service browser code). */
   showProfileColumn?: boolean;
+  /** Teams — Password from linked Services/Mail account. */
+  showPasswordColumn?: boolean;
+  /** Teams — Recovery Mail from linked account. */
+  showMailRecoverColumn?: boolean;
+  /** Teams — Full Info from linked account. */
+  showFullInfoColumn?: boolean;
   /** Teams — Source column (Service · Mail · Manual). */
   showSourceColumn?: boolean;
   showOwnershipColumn?: boolean;
   showLiveStatusColumn?: boolean;
+  /** Teams — CRM Usage after Live Status. */
+  showUsageColumn?: boolean;
   /** Teams — Date / Duration / Due / Left columns. */
   showPlanScheduleColumns?: boolean;
   /** Hide Expires column (Teams remapped Status removed — Role Backup). Default true. */
@@ -142,11 +160,15 @@ export function HubRouteAccessDirectoryTable<TRow>({
   renderUserCell,
   renderRoleCell,
   renderProfileCell,
+  renderPasswordCell,
+  renderMailRecoverCell,
+  renderFullInfoCell,
   renderSourceCell,
   renderSyncAtCell,
   renderLoadAtCell,
   renderOwnershipCell,
   renderLiveStatusCell,
+  renderUsageCell,
   renderPlanDateCell,
   renderPlanDaysCell,
   renderPlanDueCell,
@@ -175,9 +197,13 @@ export function HubRouteAccessDirectoryTable<TRow>({
   showRouteColumn,
   showSyncAtColumn = true,
   showProfileColumn = false,
+  showPasswordColumn = false,
+  showMailRecoverColumn = false,
+  showFullInfoColumn = false,
   showSourceColumn = false,
   showOwnershipColumn = false,
   showLiveStatusColumn = false,
+  showUsageColumn = false,
   showPlanScheduleColumns = false,
   showExpiresColumn = true,
   stackAlignColumns = false,
@@ -189,9 +215,13 @@ export function HubRouteAccessDirectoryTable<TRow>({
     showRouteColumn,
     showSyncAtColumn,
     showProfileColumn,
+    showPasswordColumn,
+    showMailRecoverColumn,
+    showFullInfoColumn,
     showSourceColumn,
     showOwnershipColumn,
     showLiveStatusColumn,
+    showUsageColumn,
     showPlanScheduleColumns,
     showExpiresColumn,
     stackAlignColumns,
@@ -331,6 +361,21 @@ export function HubRouteAccessDirectoryTable<TRow>({
                   {renderProfileCell?.(row)}
                 </td>
               ) : null}
+              {showPasswordColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.password} hub-users-cell-muted text-center`}>
+                  {renderPasswordCell?.(row)}
+                </td>
+              ) : null}
+              {showMailRecoverColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.mailRecover} hub-users-cell-muted text-center`}>
+                  {renderMailRecoverCell?.(row)}
+                </td>
+              ) : null}
+              {showFullInfoColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.fullInfo} hub-users-cell-muted text-center`}>
+                  {renderFullInfoCell?.(row)}
+                </td>
+              ) : null}
               {showSourceColumn ? (
                 <td className={`${HUB_ROUTE_ACCESS_COL.source} hub-users-cell-muted text-center`}>
                   {renderSourceCell?.(row)}
@@ -344,6 +389,11 @@ export function HubRouteAccessDirectoryTable<TRow>({
               {showLiveStatusColumn ? (
                 <td className={`${HUB_ROUTE_ACCESS_COL.liveStatus} hub-users-cell-muted text-center`}>
                   {renderLiveStatusCell?.(row)}
+                </td>
+              ) : null}
+              {showUsageColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.usage} hub-users-cell-muted text-center`}>
+                  {renderUsageCell?.(row)}
                 </td>
               ) : null}
               {columnLayout === "expanded" ? (

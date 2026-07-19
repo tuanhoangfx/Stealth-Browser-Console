@@ -1,5 +1,6 @@
 import { Check, ChevronDown, FolderOpen, type LucideIcon } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
 import {
   HUB_SHELL_LABEL_TYPO_CLASS,
@@ -273,6 +274,7 @@ export function HubFilterDropdownPanelSearch({
             placeholder={placeholder}
             className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
             style={{ paddingLeft: 10, paddingRight: 10 }}
+            {...HUB_NO_SPELLCHECK_PROPS}
           />
         </div>
         {showClear ? (

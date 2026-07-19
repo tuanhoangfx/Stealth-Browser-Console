@@ -33,8 +33,6 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
   filteredCount,
   catalogCount,
   selectedCount,
-  pageSize,
-  onTablePageSizeChange,
   busy,
   onForceUpdateSelected,
   onOpenDetailSingle,
@@ -48,8 +46,6 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
   filteredCount: number;
   catalogCount: number;
   selectedCount: number;
-  pageSize: number;
-  onTablePageSizeChange?: (size: number) => void;
   busy: boolean;
   onForceUpdateSelected: () => void;
   onOpenDetailSingle: () => void;
@@ -116,9 +112,6 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
           showTimeRange={false}
           showRefresh={false}
           showResultCount={false}
-          showTablePageSize
-          tablePageSize={pageSize}
-          onTablePageSizeChange={onTablePageSizeChange}
           displayBand={<StealthDisplayBandToolbar screen="system" systemTab="extensions" />}
         />
       }

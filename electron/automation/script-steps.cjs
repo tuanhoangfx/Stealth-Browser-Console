@@ -718,12 +718,45 @@ async function ensureGoogleAuthenticatorTotpScreen(page, logger) {
 async function detectGoogleCaptcha(page) {
   try {
     const url = String(page.url?.() || "");
-    if (/\/challenge\/recaptcha|\/recaptcha|\/signin\/challenge/i.test(url)) return true;
-    const count = await page.locator('iframe[src*="recaptcha"], #recaptcha, .g-recaptcha, text="I\'m not a robot", text="Verify it\'s you"').count();
-    return count > 0;
+    // Only hard reCAPTCHA challenge — do NOT match generic /signin/challenge (password/TOTP).
+    if (/\/challenge\/recaptcha|\/recaptcha\/enterprise|\/recaptcha\/v3/i.test(url)) return true;
+    const hasVerifyCopy = await page
+      .locator('text=/Verify it.?s you/i, text=/Confirm you.?re not a robot/i')
+      .first()
+      .isVisible({ timeout: 400 })
+      .catch(() => false);
+    if (!hasVerifyCopy) return false;
+    const captchaUi = await page
+      .locator('iframe[src*="recaptcha"], #recaptcha, .g-recaptcha, iframe[title*="reCAPTCHA" i]')
+      .count()
+      .catch(() => 0);
+    return captchaUi > 0;
   } catch {
     return false;
   }
+}
+
+/** Stop WF immediately — do not wait for manual captcha solve. */
+class GoogleCaptchaStopError extends Error {
+  constructor(url = "") {
+    super(`Google reCAPTCHA ("Verify it's you") — stopped${url ? ` at ${url}` : ""}`);
+    this.name = "GoogleCaptchaStopError";
+    this.code = "GOOGLE_CAPTCHA";
+    this.closeProfile = true;
+    this.vaultStatus = "error";
+    this.vaultResultCode = "google_challenge";
+    this.url = String(url || "");
+  }
+}
+
+async function assertNotGoogleCaptcha(page, logger, context) {
+  if (!(await detectGoogleCaptcha(page))) return;
+  const url = page.url?.() || "";
+  logger.push("error", `Google reCAPTCHA challenge detected — stopping workflow (${url})`);
+  if (context?.screenshotsRoot) {
+    await saveStepScreenshot(page, context.profileName, "captcha_stop", logger, true, context.screenshotsRoot);
+  }
+  throw new GoogleCaptchaStopError(url);
 }
 
 async function tryClickRecaptchaCheckbox(page, logger) {
@@ -746,28 +779,10 @@ async function waitForVisibleSelector(page, selector, timeout, logger, context) 
   } catch (waitError) {
     const pageUrl = page.url?.() || "(unknown)";
     logger.push("error", `Wait failed at ${pageUrl}: ${cleanMessage(waitError.message)}`);
-    if (!(await detectGoogleCaptcha(page))) throw waitError;
-
-    await saveStepScreenshot(page, context.profileName, "captcha_detected", logger, true, context.screenshotsRoot);
-    await tryClickRecaptchaCheckbox(page, logger);
-    try {
-      await page.locator(selector).first().waitFor({ state: "visible", timeout: 15000 });
-      logger.push("success", `Visible after CAPTCHA click: ${selector}`);
-      return;
-    } catch { /* fall through to manual wait */ }
-
-    logger.push("warning", "Google CAPTCHA — waiting up to 120s for verification in the open browser...");
-    const deadline = Date.now() + 120_000;
-    while (Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      try {
-        await page.locator(selector).first().waitFor({ state: "visible", timeout: 2000 });
-        logger.push("success", `Visible after CAPTCHA wait: ${selector}`);
-        return;
-      } catch { /* keep polling */ }
+    if (await detectGoogleCaptcha(page)) {
+      await assertNotGoogleCaptcha(page, logger, context);
     }
-    await saveStepScreenshot(page, context.profileName, "captcha_timeout", logger, true, context.screenshotsRoot);
-    throw new Error("Google CAPTCHA — complete verification in the browser within 120s, then re-run.");
+    throw waitError;
   }
 }
 
@@ -789,6 +804,8 @@ async function runScriptSteps(page, steps, logger, context) {
     const label = step.name || `${step.kind} ${index + 1}`;
     const timeout = Number.isFinite(Number(step.timeoutMs)) ? Math.max(0, Number(step.timeoutMs)) : 10000;
     logger.push("info", `Step ${index + 1}/${enabledSteps.length}: ${label}`);
+
+    await assertNotGoogleCaptcha(activePage, logger, context);
 
     if (skipLogin) {
       const navTarget = String(step.value || "");
@@ -1226,6 +1243,8 @@ module.exports = {
   runScriptSteps,
   runGoogleFormAgAppeal,
   settlePage,
+  detectGoogleCaptcha,
+  GoogleCaptchaStopError,
   // Exported for unit tests — Microsoft soft-skip must stay URL-gated
   isMicrosoftLoginUrl,
   isMicrosoftEmailNextClick,

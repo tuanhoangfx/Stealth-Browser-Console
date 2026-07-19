@@ -18,7 +18,19 @@ function isDonutChartKey(key: string): boolean {
 const BAR_CHART_TOP_N: Record<string, number> = {
   contact_bar: 4,
   customers_bar: 4,
+  day_bar: 4,
+  notify_bar: 4,
+  order_status_bar: 4,
+  pay_status_bar: 4,
 };
+
+/** Fixed-bucket facets — keep aggregate row order (not value-rank). */
+const BAR_CHART_PRESERVE_ORDER = new Set([
+  "day_bar",
+  "notify_bar",
+  "order_status_bar",
+  "pay_status_bar",
+]);
 
 export type DirectoryChartBandProps = {
   visCharts: Set<string>;
@@ -54,6 +66,7 @@ export function DirectoryChartBand({ visCharts, defs, data }: DirectoryChartBand
         const titleEmoji = def?.emoji;
         const titleHint = def?.labelHint;
         const topN = BAR_CHART_TOP_N[key] ?? CHART_TOP_N;
+        const preserveOrder = BAR_CHART_PRESERVE_ORDER.has(key);
         return isDonutChartKey(key) ? (
           <MiniDonut key={key} title={title} titleEmoji={titleEmoji} titleHint={titleHint} items={items} />
         ) : (
@@ -64,6 +77,7 @@ export function DirectoryChartBand({ visCharts, defs, data }: DirectoryChartBand
             titleHint={titleHint}
             items={items}
             topN={topN}
+            preserveOrder={preserveOrder}
           />
         );
       })}

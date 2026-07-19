@@ -5,6 +5,7 @@ import {
   X,
   SlidersHorizontal,
   ChevronDown,
+  Plus,
   Check,
   Activity,
   Clock,
@@ -47,6 +48,7 @@ import {
   type HubBrandIconShell,
   filterDropdownPanelSearchPlaceholder,
   hubFilterTriggerClass,
+  HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
   HUB_FILTER_DROPDOWN_TRIGGER_COMPACT_TYPO_CLASS,
   multiFilterTriggerTitle,
 } from "./filter-dropdown-primitives";
@@ -823,6 +825,11 @@ export type HubSingleFilterDropdownProps = {
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;
+  /**
+   * Typography classes for the trigger. Default = FilterBar shell (`text-sm font-medium`).
+   * Pass `""` for HubAdm / Mail Modal value triggers (ADM CSS `--hub-adm-type-*` owns type).
+   */
+  triggerTypoClass?: string;
   usePortal?: boolean;
   /** `label-value` (default): `Label: value`. `value`: selected option label only — pair with external `HubFormFieldLabel`. */
   triggerFormat?: "label-value" | "value";
@@ -842,6 +849,13 @@ export type HubSingleFilterDropdownProps = {
    */
   allowClear?: boolean;
   clearLabel?: string;
+  /**
+   * Allow creating a brand-new value from the panel search text (free-text combobox).
+   * When the search does not exactly match an option, a "Create …" row selects the typed text.
+   */
+  allowCustom?: boolean;
+  /** Custom "create" row label builder — defaults to `Create “<query>”`. */
+  customOptionLabel?: (query: string) => string;
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -854,6 +868,7 @@ export function HubSingleFilterDropdown({
   disabled = false,
   className = "",
   triggerClassName = "",
+  triggerTypoClass = HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
   usePortal = true,
   triggerFormat = "label-value",
   triggerContent,
@@ -862,6 +877,8 @@ export function HubSingleFilterDropdown({
   panelSearchAsync,
   allowClear = false,
   clearLabel = "Clear",
+  allowCustom = false,
+  customOptionLabel,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
@@ -907,12 +924,27 @@ export function HubSingleFilterDropdown({
     ? options
     : options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()));
 
+  const trimmedSearch = search.trim();
+  const hasExactMatch = options.some(
+    (o) =>
+      o.label.toLowerCase() === trimmedSearch.toLowerCase() ||
+      o.value.toLowerCase() === trimmedSearch.toLowerCase(),
+  );
+  const showCreate = allowCustom && trimmedSearch.length > 0 && !hasExactMatch;
+
+  const handleCreateCustom = () => {
+    onChange(trimmedSearch);
+    setOpen(false);
+  };
+
   const opt = options.find((o) => o.value === value);
   const triggerIcon = resolveFilterTriggerIcon(filter, selected);
   const triggerIconNode = opt?.emoji ? (
     <span className={HUB_FILTER_OPTION_EMOJI_CLASS} aria-hidden>
       {opt.emoji}
     </span>
+  ) : opt?.color ? (
+    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: opt.color }} aria-hidden />
   ) : triggerIcon ? (
     <FilterIconGlyph meta={triggerIcon} size={compactIconSize(12)} />
   ) : undefined;
@@ -951,7 +983,19 @@ export function HubSingleFilterDropdown({
             <FilterOptionCount value={o.count} />
           </button>
         ))}
-        {filtered.length === 0 ? (
+        {showCreate ? (
+          <button
+            type="button"
+            onClick={handleCreateCustom}
+            className={HUB_FILTER_DROPDOWN_ROW_CLASS}
+          >
+            <Plus size={compactIconSize(12)} className="shrink-0 text-[var(--muted)]" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {customOptionLabel ? customOptionLabel(trimmedSearch) : `Create “${trimmedSearch}”`}
+            </span>
+          </button>
+        ) : null}
+        {filtered.length === 0 && !showCreate ? (
           <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
         ) : null}
       </div>
@@ -988,7 +1032,7 @@ export function HubSingleFilterDropdown({
         aria-expanded={open}
         aria-label={ariaLabel ?? label}
         onClick={() => !disabled && setOpen((v) => !v)}
-        className={`${hubFilterTriggerClass(selected.length > 0)}${triggerClassName ? ` ${triggerClassName}` : ""}`}
+        className={hubFilterTriggerClass(selected.length > 0, triggerClassName, triggerTypoClass)}
       >
         {triggerContent ? (
           <>

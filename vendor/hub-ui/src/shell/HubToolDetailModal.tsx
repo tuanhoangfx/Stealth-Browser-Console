@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { HubDetailModal, type HubDetailModalSize } from "./HubDetailModal";
 import { HubAccountDetailAdmBody } from "./HubAccountDetailAdmBody";
+import { HUB_DETAIL_MODAL_SAVING_LABEL } from "./hubToolDetailModalFooter";
 
 export const HUB_TOOL_DETAIL_TITLE_ID = "hub-tool-detail-modal-title";
 /** Scroll container when modal has TOC — content column only. */
@@ -61,12 +62,14 @@ export function HubToolDetailModalPrimaryAction({
         "hub-tool-detail-modal__confirm",
         danger ? "hub-tool-detail-modal__confirm--danger" : "",
         variant === "create" ? "hub-tool-detail-modal__confirm--create" : "",
+        busy ? "hub-tool-detail-modal__confirm--busy" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       disabled={disabled || busy}
       onClick={onClick}
       aria-label={busy ? busyLabel : label}
+      aria-busy={busy || undefined}
     >
       {busy ? (
         <Loader2 size={16} className="hub-tool-detail-modal__confirm-icon--busy animate-spin" aria-hidden />
@@ -146,6 +149,13 @@ export type HubToolDetailModalProps = {
   children: ReactNode;
   /** Inline tab/page — same chrome as modal, no overlay (P0004 System Overview). */
   embedded?: boolean;
+  /**
+   * Save / cloud sync in flight — footer primary shows spinner + busyLabel (Delete parity).
+   * No body HubLoaderOrb — button busy is the SSOT signal.
+   */
+  busy?: boolean;
+  /** Reserved for callers / aria; footer uses its own saveBusyLabel. */
+  busyLabel?: string;
 };
 
 /**
@@ -175,6 +185,8 @@ export function HubToolDetailModal({
   ariaLabelledBy,
   children,
   embedded = false,
+  busy = false,
+  busyLabel: _busyLabel = HUB_DETAIL_MODAL_SAVING_LABEL,
 }: HubToolDetailModalProps) {
   const resolvedHeader =
     header ??
@@ -218,7 +230,7 @@ export function HubToolDetailModal({
     </footer>
   ) : undefined;
 
-  const body = toc ? (
+  const bodyInner = toc ? (
     <HubAccountDetailAdmBody
       toc={toc}
       content={children}
@@ -231,6 +243,8 @@ export function HubToolDetailModal({
     <div className={`${HUB_TOOL_DETAIL_BODY_SCROLL_CLASS}${bodyClassName ? ` ${bodyClassName}` : ""}`}>{children}</div>
   );
 
+  const body = <div className="hub-tool-detail-modal__body-frame">{bodyInner}</div>;
+
   return (
     <HubDetailModal
       open={open}
@@ -238,7 +252,7 @@ export function HubToolDetailModal({
       embedded={embedded}
       ariaLabelledBy={ariaLabelledBy ?? (title ? titleId : undefined)}
       size={size}
-      shellClassName={`hub-tool-detail-modal${shellClassName ? ` ${shellClassName}` : ""}`}
+      shellClassName={`hub-tool-detail-modal${busy ? " hub-tool-detail-modal--busy" : ""}${shellClassName ? ` ${shellClassName}` : ""}`}
       shellStyle={shellStyle}
       header={resolvedHeader}
       footer={resolvedFooter}

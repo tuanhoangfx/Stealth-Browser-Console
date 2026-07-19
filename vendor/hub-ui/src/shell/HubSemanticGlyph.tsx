@@ -12,9 +12,11 @@ type Props = {
 
 /** Lucide glyph or shared Hub brand mark — KPI tiles, header stats, TOC. */
 export function HubSemanticGlyph({ icon: Icon, className = "", size = 14, brandIcon }: Props) {
+  const lucide = Icon ? <Icon size={compactIconSize(size)} className={className} aria-hidden /> : null;
   if (brandIcon) {
-    return <HubBrandIcon brandId={brandIcon} size={size} className={className} />;
+    // Prefer the brand logo; degrade to the Lucide glyph when the image is missing/fails
+    // (e.g. cached 404) so channel fields like Zalo/Telegram never render icon-less.
+    return <HubBrandIcon brandId={brandIcon} size={size} className={className} fallback={lucide} />;
   }
-  if (!Icon) return null;
-  return <Icon size={compactIconSize(size)} className={className} aria-hidden />;
+  return lucide;
 }

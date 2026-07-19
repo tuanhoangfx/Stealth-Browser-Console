@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import { resolveHubBrandIcon, type HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { hubBrandIconImgClass, HUB_BRAND_ICON_BARE_CLASS, type HubBrandIconShell } from "./filter-dropdown-primitives";
@@ -10,6 +10,8 @@ export type HubBrandIconProps = {
   /** `chrome` — sidebar/tab header (14px). `filter` — dropdown rows (14px + filter classes). */
   context?: "chrome" | "filter";
   title?: string;
+  /** Rendered when the brand id is unknown or the image fails to load (e.g. cached 404). */
+  fallback?: ReactNode;
 };
 
 function chromeImgClass(shell: HubBrandIconShell): string {
@@ -25,12 +27,13 @@ export function HubBrandIcon({
   className = "",
   context = "chrome",
   title,
+  fallback,
 }: HubBrandIconProps) {
   const hit = resolveHubBrandIcon(brandId);
   const [imgFailed, setImgFailed] = useState(false);
   const px = compactIconSize(size);
 
-  if (!hit || imgFailed) return null;
+  if (!hit || imgFailed) return <>{fallback ?? null}</>;
 
   const imgClass =
     context === "filter" ? hubBrandIconImgClass(hit.shell) : chromeImgClass(hit.shell);

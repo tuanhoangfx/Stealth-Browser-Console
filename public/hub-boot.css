@@ -6,6 +6,15 @@
 :root {
   --hub-sidebar-width: 15rem;
   --hub-main-chrome-top: 0px;
+  --hub-boot-bg: #0b1020;
+  --hub-boot-sidebar-bg: #0f1219;
+}
+
+/* Pane boot leaves a 15rem gutter for the React sidebar — without this, that strip is
+   browser-default white until hub-app paints (visible flash on slow/dynamic module load). */
+html,
+body {
+  background: var(--hub-boot-bg);
 }
 
 /* --- index.html boot overlay (before React) --- */
@@ -16,7 +25,7 @@
   display: grid;
   place-items: center;
   pointer-events: none;
-  background: #0b1020;
+  background: var(--hub-boot-bg);
 }
 
 #hub-boot-loader.hub-boot-loader--pane {
@@ -25,6 +34,20 @@
   width: auto;
   right: 0;
   bottom: 0;
+}
+
+/* Dark sidebar placeholder under the pane-scoped orb (matches HubSidebarShell --panel). */
+#hub-boot-loader.hub-boot-loader--pane::before {
+  content: "";
+  position: fixed;
+  z-index: 9998;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--hub-sidebar-width);
+  background: var(--hub-boot-sidebar-bg);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  pointer-events: none;
 }
 
 .hub-boot-orb {

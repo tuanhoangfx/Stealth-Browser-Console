@@ -39,8 +39,6 @@ export function useProfileDirectoryChrome(input: {
   setSelectedGroupIds: (values: string[]) => void;
   selectedStatuses: ProfileRow["status"][];
   setSelectedStatuses: (values: ProfileRow["status"][]) => void;
-  pageSize: number;
-  onTablePageSizeChange?: (size: number) => void;
   syncBusy: boolean;
   selectedProfiles: ProfileRow[];
   closeOne: (profile: ProfileRow) => void;
@@ -71,8 +69,6 @@ export function useProfileDirectoryChrome(input: {
     setSelectedStatuses,
     setSelectedGroupIds,
     selectedStatuses,
-    pageSize,
-    onTablePageSizeChange,
     syncBusy,
     selectedProfiles,
     closeOne,
@@ -151,9 +147,6 @@ export function useProfileDirectoryChrome(input: {
           showTimeRange={false}
           showRefresh={false}
           showResultCount={false}
-          showTablePageSize
-          tablePageSize={pageSize}
-          onTablePageSizeChange={onTablePageSizeChange}
           displayBand={<StealthDisplayBandToolbar screen="profiles" />}
         />
       }

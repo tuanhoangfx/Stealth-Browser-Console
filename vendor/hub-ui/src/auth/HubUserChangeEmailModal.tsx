@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Mail, Save, StickyNote } from "lucide-react";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
@@ -102,6 +103,7 @@ export function HubUserChangeEmailModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                {...HUB_NO_SPELLCHECK_PROPS}
               />
             </HubUserModalFieldRow>
           </HubUserModalFieldTable>

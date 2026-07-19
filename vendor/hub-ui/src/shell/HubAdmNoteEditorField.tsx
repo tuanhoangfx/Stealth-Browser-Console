@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { HubAdmNoteHighlightText } from "./HubAdmNoteHighlightText";
 import { HubAdmNoteSearchBar } from "./HubAdmNoteSearchBar";
 import { useHubAdmNoteSearch } from "./hubAdmNoteSearch";
@@ -180,6 +181,7 @@ export function HubAdmNoteEditorField({
           className={`${controlClassName}${useNoteSearchMirror ? " hub-adm-note-textarea--searching" : ""}${fillHeight ? " hub-adm-note-textarea--fill" : ""}`}
           name={name}
           autoComplete="off"
+          {...HUB_NO_SPELLCHECK_PROPS}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}

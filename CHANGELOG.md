@@ -1,5 +1,243 @@
 # Changelog
 
+## 2026-07-20 — v1.0.59 — Freeze: taskbar badge + session detect + electron-node DB tests
+
+- Version: `1.0.59`
+- Timestamp: 2026-07-20 04:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Known-good freeze** of WIP since `v1.0.40-stable`: taskbar profile badge Design V2 (`v2m-bottom-huge`), Google/MS challenge detect, WF00011 captcha stop, toolbar page-size SSOT, hub-ui/identity vendor sync.
+- **Unit tests:** DB-touching steps (`profile-service`, `api-routes`, …) run via `electron-node` so host uses `better-sqlite3` (no plain-Node sql.js fallback).
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-20 — v1.0.58 — Taskbar badge: huge digits + skip WMI
+
+- Version: `1.0.58`
+- Timestamp: 2026-07-20 03:25 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Visual:** `v2m-bottom-huge` — 256px canvas, bottom plate ~55% height, **92px** Bold digits (readable after Windows scales to ~24–32px taskbar).
+- **Perf:** pass Playwright `browserPid` / `stealth-pid.json` into apply script — **skip Get-CimInstance** on hot path; sequential retries (no parallel PowerShell pile-up). Write sidecar PID before title/badge.
+
+## 2026-07-19 — v1.0.57 — Electron dev reload
+
+- Version: `1.0.57`
+- Timestamp: 2026-07-19 03:17 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-20 — v1.0.56 — Taskbar badge: bottom XL digits + ICO warm
+
+- Version: `1.0.56`
+- Timestamp: 2026-07-20 03:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Visual:** plate back to **bottom**; 128px PNG-in-ICO; Bold **28pt** digits (`v2l-bottom-xl`) for taskbar readability.
+- **Perf (ok 1–3):** warm ICO on launch + directory page list; keep fast retries; reload Electron for new timing.
+
+## 2026-07-20 — v1.0.55 — Taskbar badge: larger center digits + faster apply
+
+- Version: `1.0.55`
+- Timestamp: 2026-07-20 03:15 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Visual:** V2 center band on Chromium — Bold **17pt** digits mid-icon (`v2k-center-xl`); easier to read on taskbar.
+- **Perf:** badge is fire-and-forget (does not block profile open); warm ICO cache early; retries `0/120/350/700/1400ms` and **stop after OK_ICON** (was always firing 4 PowerShell runs incl. 2s+4s).
+
+## 2026-07-20 — v1.0.54 — Stealth: no false Logged in on Google challenge
+
+- Version: `1.0.54`
+- Timestamp: 2026-07-20 03:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Root cause (Profile 0001 / `tuanhase03423@gmail.com`):** `detectGoogleSession` stamped `logged_in` when the only Google tab was a sign-in/challenge/error page (`evidence: challenge_url+auth_cookies`) — leftover SID/HSID/SSID overrode the real Gmail “information” / verify error. Data Box Stealth column showed Logged in incorrectly.
+- **Fix:** challenge/error tab → always `challenged` (`challenge_url+stale_auth_cookies` when cookies remain). Inbox still wins when both tabs exist. Same rule for Microsoft detect.
+- Corrected vault snapshot for browser `0001` → `challenged` / `google_challenge`.
+
+## 2026-07-20 — v1.0.53 — Stealth: no false Logged in on Google challenge
+
+- Version: `1.0.53`
+- Timestamp: 2026-07-20 03:10 (UTC+7)
+- Type: Patch
+- Status: Superseded by 1.0.54 (Electron reload gate)
+
+### Changes
+
+- Same detect fix as 1.0.54 (gate auto-bumped during `dev-desktop-reload`).
+
+## 2026-07-19 — v1.0.52 — Electron dev reload
+
+- Version: `1.0.52`
+- Timestamp: 2026-07-19 03:02 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- **Taskbar:** purge legacy `v2c-lg` orb caches; HWND via EnumWindows; `apply-all-taskbar-badges.mjs` — prevents blue-orb regression on profiles like 0073/0074.
+
+## 2026-07-20 — v1.0.51 — Taskbar: keep Chromium icon, label only
+
+- Version: `1.0.51`
+- Timestamp: 2026-07-20 02:50 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Root cause:** redrawing badge via `Icon.FromHandle(GetHicon)` flattened alpha → dark orb; TaskbarList overlay COM not registered on this host.
+- **Fix:** draw Chromium + bottom navy digits on transparent PNG → pack PNG-in-ICO (`v2i-pngico`); apply live `OK_ICON` for 0001/1731/0010.
+
+## 2026-07-20 — v1.0.50 — Taskbar badge: default Chromium + real codes
+
+- Version: `1.0.50`
+- Timestamp: 2026-07-20 02:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Badge ICO:** base = default Chromium icon from `~/.cloakbrowser/.../chrome.exe` (ExtractAssociatedIcon); V2 navy center band; Segoe UI Regular **21pt**.
+- **Apply batch:** map running profiles via API (`status=running`) → real codes (`0001`, `1731`, …) not fake 380x.
+- Cache key `v2e-chr21`.
+
+## 2026-07-19 — v1.0.49 — Electron dev reload
+
+- Version: `1.0.49`
+- Timestamp: 2026-07-19 02:32 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- Includes **Design V2** taskbar badge ship from 1.0.48 (center band + larger digits).
+
+## 2026-07-20 — v1.0.48 — Lock Design V2 taskbar badge (larger digits)
+
+- Version: `1.0.48`
+- Timestamp: 2026-07-20 02:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Design lock:** Taskbar profile badge → **V2 Center band** (`TASKBAR_PROFILE_BADGE_DESIGN_LOCK`).
+- **Native ICO:** Cloak blue + navy mid-band overlay; Segoe UI Regular **18pt** (was Bold 13 on solid fill); cache key `v2c-lg`.
+- **Cleanup:** removed `design-preview/taskbar-profile-badge/`; Design Template empty again.
+
+## 2026-07-20 — v1.0.47 — Design preview: overlay thin text on icon
+
+- Version: `1.0.47`
+- Timestamp: 2026-07-20 02:25 (UTC+7)
+- Type: Patch
+- Status: Review
+
+### Changes
+
+- **taskbar-profile-badge preview:** all V1–V5 overlay text ON the Cloak icon (not beside); thin light type + letter-spacing. Placements: bottom hairline · center band · top caption · corner micro · edge ribbon.
+
+## 2026-07-19 — v1.0.46 — Electron dev reload
+
+- Version: `1.0.46`
+- Timestamp: 2026-07-19 02:18 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-20 — v1.0.46 — Electron dev reload
+
+- Version: `1.0.46`
+- Timestamp: 2026-07-20 02:30 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate.
+
+## 2026-07-20 — v1.0.45 — Design preview: taskbar profile badge
+
+- Version: `1.0.45`
+- Timestamp: 2026-07-20 02:20 (UTC+7)
+- Type: Patch
+- Status: Review
+
+### Changes
+
+- **System → Design Template:** active review `taskbar-profile-badge` — 5 layout variants (V1 Adjacent chip · V2 Dual-zone bar · V3 Caption stack · V4 Taskbar rail · V5 Overlay ribbon). Shared navy/white palette; no production taskbar change until `Design: Vn` lock.
+
+## 2026-07-20 — v1.0.44 — Toolbar page-size SSOT (Display only)
+
+- Version: `1.0.44`
+- Timestamp: 2026-07-20 02:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- **Directory toolbar:** when Display band is present, do not also show the “N rows” select (Profiles · Extensions · Workflows). Page size is owned by Display / hub `tpage` prefs.
+
+## 2026-07-19 — v1.0.43 — Electron dev reload
+
+- Version: `1.0.43`
+- Timestamp: 2026-07-19 02:04 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- **Taskbar badge fix:** PowerShell `$pid` reserved + `-bor` parse bug blocked WM_SETICON forever — fixed; AppUserModel_RelaunchIconResource; smoke `scripts/smoke-taskbar-badge.mjs` → `OK_ICON` verified live.
+
+## 2026-07-19 — v1.0.42 — Electron dev reload
+
+- Version: `1.0.42`
+- Timestamp: 2026-07-19 01:42 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- **WF00011:** on Google reCAPTCHA / "Verify it's you" (`/challenge/recaptcha`) — stop immediately, close browser, set Data Box mail `status=error` + stealth snapshot `challenged/google_challenge` (no more 120s wait).
+- **Taskbar:** Win32 `SetWindowText` + cached digit badge icon (`WM_SETICON`) so combined taskbar buttons show profile code (not only hover title).
+
+## 2026-07-19 — v1.0.41 — Electron dev reload
+
+- Version: `1.0.41`
+- Timestamp: 2026-07-19 01:31 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+- **Profile window title (taskbar A):** set OS/window title to `code · name` on open via one `addInitScript` + in-page `document.title` setter patch — no timers/CDP polls; survives navigations for Alt-Tab / taskbar hover.
+
 ## 2026-07-19 — v1.0.40 — Electron dev reload
 
 - Version: `1.0.40`

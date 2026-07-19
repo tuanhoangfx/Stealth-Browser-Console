@@ -62,13 +62,16 @@ export function topChartItems<T extends ChartRow>(
   items: T[],
   topN = CHART_TOP_N,
   othersLabel = CHART_OTHERS_LABEL,
+  preserveOrder = false,
 ): T[] {
-  const sorted = [...items].sort((a, b) => {
-    const aOther = isChartOthersLabel(a.label);
-    const bOther = isChartOthersLabel(b.label);
-    if (aOther !== bOther) return aOther ? 1 : -1;
-    return b.value - a.value;
-  });
+  const sorted = preserveOrder
+    ? [...items]
+    : [...items].sort((a, b) => {
+        const aOther = isChartOthersLabel(a.label);
+        const bOther = isChartOthersLabel(b.label);
+        if (aOther !== bOther) return aOther ? 1 : -1;
+        return b.value - a.value;
+      });
   if (sorted.length === 0) return [];
   const head = sorted.slice(0, topN).map((row) => withChartLegendIcon(row));
   const rest = sorted.slice(topN);
@@ -85,11 +88,18 @@ export function topChartItems<T extends ChartRow>(
 export type PrepareChartItemsOptions = {
   /** Visible buckets before Remaining → Other (default `CHART_TOP_N`). */
   topN?: number;
+  /** Keep input order (fixed-bucket day/notify charts). */
+  preserveOrder?: boolean;
 };
 
 export function prepareChartItems<T extends ChartRow>(
   items: T[],
   opts?: PrepareChartItemsOptions,
 ): T[] {
-  return topChartItems(items, opts?.topN ?? CHART_TOP_N);
+  return topChartItems(
+    items,
+    opts?.topN ?? CHART_TOP_N,
+    CHART_OTHERS_LABEL,
+    Boolean(opts?.preserveOrder),
+  );
 }

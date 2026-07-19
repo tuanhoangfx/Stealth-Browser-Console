@@ -45,6 +45,21 @@ describe("topChartItems", () => {
     expect(prepareChartItems(items, { topN: 3 })).toHaveLength(4);
   });
 
+  it("preserveOrder keeps fixed-bucket sequence", () => {
+    const items = [
+      { label: "Need notify", value: 1 },
+      { label: "Notified today", value: 0 },
+      { label: "Action", value: 9 },
+      { label: "Waiting", value: 3 },
+    ];
+    expect(prepareChartItems(items, { topN: 4, preserveOrder: true }).map((r) => r.label)).toEqual([
+      "Need notify",
+      "Notified today",
+      "Action",
+      "Waiting",
+    ]);
+  });
+
   it("keeps heat color rows free of Lucide legend injection", () => {
     const row = withChartLegendIcon({ label: "Full", value: 57, color: "#f43f5e" });
     expect(row.color).toBe("#f43f5e");

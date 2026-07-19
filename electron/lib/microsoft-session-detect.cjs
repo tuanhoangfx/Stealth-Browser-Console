@@ -129,21 +129,15 @@ async function detectMicrosoftSession(context) {
     const email = page ? await extractMicrosoftEmail(page) : "";
 
     if (urlKind === "challenge") {
-      if (authCount >= 2) {
-        return {
-          status: "logged_in",
-          result_code: "microsoft_cookies",
-          email,
-          evidence: "challenge_url+ms_auth_cookies",
-        };
-      }
+      // Same rule as Google: challenge/error tab wins over leftover auth cookies.
+      // pickMicrosoftPage prefers inbox — cookie override here caused false Logged in.
       return {
         status: "challenged",
         result_code: /proofs|otc|twofactor|mfa|authenticator/i.test(page.url())
           ? "2fa_pending"
           : "microsoft_challenge",
         email,
-        evidence: "ms_challenge_url",
+        evidence: authCount >= 2 ? "ms_challenge_url+stale_auth_cookies" : "ms_challenge_url",
       };
     }
 

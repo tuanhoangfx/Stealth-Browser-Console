@@ -16,6 +16,11 @@ export type HubLoadingViewProps = {
   enabled?: boolean;
   /** When false, render inline in the parent (modals / nested panels). Default: portaled main-pane center. */
   portaled?: boolean;
+  /**
+   * Inline overlay only — capture pointer events (Save/busy on detail modal).
+   * Default inline loaders stay `pointer-events: none`.
+   */
+  blocking?: boolean;
 };
 
 export function HubLoaderOrb({
@@ -60,6 +65,7 @@ export function HubLoadingView({
   variant = "full",
   enabled = true,
   portaled = true,
+  blocking = false,
 }: HubLoadingViewProps) {
   const toolLoading = useHubToolLoadingOptional();
   const resolvedIconSrc = iconSrc ?? toolLoading?.iconSrc;
@@ -68,16 +74,24 @@ export function HubLoadingView({
 
   if (!enabled) return null;
   const dim = variant === "overlay" || variant === "skeleton";
+  const inlineClass = [
+    "hub-tab-loader-inline",
+    dim ? "hub-tab-loader-inline--dim" : "",
+    blocking ? "hub-tab-loader-inline--blocking" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const node = (
     <div
       className={
         portaled
           ? `hub-tab-loader-fill${dim ? " hub-tab-loader-fill--dim" : ""}`
-          : `hub-tab-loader-inline${dim ? " hub-tab-loader-inline--dim" : ""}`
+          : inlineClass
       }
       role="status"
       aria-label={resolvedAria}
       aria-live="polite"
+      aria-busy={blocking || undefined}
     >
       <HubLoaderOrb Icon={resolvedIcon} iconSrc={resolvedIconSrc} />
     </div>

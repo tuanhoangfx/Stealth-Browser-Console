@@ -2,15 +2,45 @@
  * Boot loader safety — runs before main.tsx.
  * - Hides loader when app signals hub-boot-ready
  * - Surfaces module/runtime errors instead of infinite spinner / blank screen
+ * - Cold Vite prebundle: probe deps + early server-offline / hung-prebundle hints
  */
 (function () {
   var BOOT_ID = "hub-boot-loader";
-  var TIMEOUT_MS = 28000;
+  var SERVER_PROBE_MS = 2000;
+  var PREBUNDLE_HINT_MS = 28000;
+  var FINAL_TIMEOUT_MS = 120000;
+  var DEP_PROBE_INTERVAL_MS = 15000;
+  var DEP_PROBE_TIMEOUT_MS = 10000;
+  var DEP_PROBE_FAIL_LIMIT = 2;
 
   window.__hubBootReady = false;
+  var depProbeFails = 0;
+  var hungShown = false;
+
+  function getLoaderEl() {
+    return document.getElementById(BOOT_ID);
+  }
+
+  function showBootWaiting(message, submessage) {
+    var el = getLoaderEl();
+    if (!el || window.__hubBootReady) return;
+    el.classList.add("hub-boot-loader--pane");
+    el.style.pointerEvents = "none";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-label", message || "Loading");
+    var existing = el.querySelector(".hub-boot-wait-text");
+    if (!existing) {
+      existing = document.createElement("p");
+      existing.className = "hub-boot-wait-text";
+      existing.style.cssText =
+        "margin:0.75rem 0 0;font-size:0.75rem;line-height:1.5;color:#94a3b8;font-family:Inter,system-ui,sans-serif;text-align:center;max-width:20rem";
+      el.appendChild(existing);
+    }
+    existing.textContent = submessage || message;
+  }
 
   function showBootError(message, detail) {
-    var el = document.getElementById(BOOT_ID);
+    var el = getLoaderEl();
     if (!el) return;
     el.classList.remove("hub-boot-loader--pane");
     el.style.pointerEvents = "auto";
@@ -23,7 +53,7 @@
       (message || "JavaScript did not start.") +
       "</p>" +
       (detail
-        ? '<pre style="margin:0 0 1rem;padding:0.75rem;border-radius:0.5rem;background:rgba(15,23,42,0.85);color:#fca5a5;font:11px/1.45 ui-monospace,Consolas,monospace;text-align:left;white-space:pre-wrap;word-break:break-word;max-height:8rem;overflow:auto">' +
+        ? '<pre style="margin:0 0 1rem;padding:0.75rem;border-radius:0.5rem;background:rgba(15,23,42,0.85);color:#fca5a5;font:11px/1.45 ui-monospace,Consolas,monospace;text-align:left;white-space:pre-wrap;word-break:break-word;max-height:10rem;overflow:auto">' +
           detail +
           "</pre>"
         : "") +
@@ -32,9 +62,70 @@
       "</div>";
   }
 
+  function fetchProbe(url, timeoutMs) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = window.setTimeout(function () {
+        if (done) return;
+        done = true;
+        resolve({ ok: false, reason: "timeout" });
+      }, timeoutMs);
+      fetch(url, { cache: "no-store" })
+        .then(function (r) {
+          if (done) return;
+          done = true;
+          window.clearTimeout(timer);
+          resolve({ ok: r.ok, status: r.status });
+        })
+        .catch(function (e) {
+          if (done) return;
+          done = true;
+          window.clearTimeout(timer);
+          resolve({ ok: false, reason: e && e.message ? e.message : "network" });
+        });
+    });
+  }
+
+  function showHungPrebundleError() {
+    if (window.__hubBootReady || hungShown) return;
+    hungShown = true;
+    var port = window.location.port || "PORT";
+    showBootError(
+      "Vite prebundle is hung or stale.",
+      "react.js did not load in time. In the tool folder run:\n" +
+        "  pnpm dev:recover\n" +
+        "Or keep Vite alive with:\n" +
+        "  pnpm daemon:start\n" +
+        "If recover fails (Access Denied), in PowerShell:\n" +
+        "  tskill <PID> /A\n" +
+        "  (find PID: netstat -ano | findstr :" +
+        port +
+        ")",
+    );
+  }
+
+  function probeViteDeps() {
+    if (window.__hubBootReady || hungShown) return;
+    fetchProbe("/node_modules/.vite/deps/react.js", DEP_PROBE_TIMEOUT_MS).then(function (r) {
+      if (window.__hubBootReady || hungShown) return;
+      if (!r.ok) {
+        depProbeFails += 1;
+        if (depProbeFails >= DEP_PROBE_FAIL_LIMIT) {
+          showHungPrebundleError();
+          return;
+        }
+      } else {
+        depProbeFails = 0;
+      }
+      if (!window.__hubBootReady && !hungShown) {
+        window.setTimeout(probeViteDeps, DEP_PROBE_INTERVAL_MS);
+      }
+    });
+  }
+
   window.addEventListener("hub-boot-ready", function () {
     window.__hubBootReady = true;
-    var el = document.getElementById(BOOT_ID);
+    var el = getLoaderEl();
     if (el) el.remove();
   });
 
@@ -53,14 +144,45 @@
   });
 
   window.setTimeout(function () {
-    if (window.__hubBootReady) return;
+    if (window.__hubBootReady || hungShown) return;
+    fetchProbe("/@vite/client", 5000).then(function (r) {
+      if (window.__hubBootReady || hungShown || r.ok) return;
+      var port = window.location.port || "PORT";
+      var reason = String(r.reason || "");
+      if (reason === "timeout" || /failed|refused|network/i.test(reason)) {
+        hungShown = true;
+        showBootError(
+          "Dev server is not responding.",
+          "Nothing is serving http://127.0.0.1:" +
+            port +
+            "\nIn Tool/P0020-Data-Box run:\n  pnpm daemon:start\n  or pnpm dev:vite",
+        );
+      }
+    });
+  }, SERVER_PROBE_MS);
+
+  window.setTimeout(function () {
+    if (window.__hubBootReady || hungShown) return;
+    showBootWaiting(
+      "Prebundling dependencies…",
+      "Vite is preparing modules after a cold start — this may take 1–2 minutes.",
+    );
+    probeViteDeps();
+  }, PREBUNDLE_HINT_MS);
+
+  window.setTimeout(function () {
+    if (window.__hubBootReady || hungShown) return;
     var port = window.location.port || "PORT";
     var hungHint =
       "Hung Vite zombie or stale cache. In the tool folder run:\n" +
       "  pnpm dev:recover\n" +
+      "Or keep Vite alive with:\n" +
+      "  pnpm daemon:start\n" +
       "If recover fails (Access Denied), in PowerShell:\n" +
       "  tskill <PID> /A\n" +
-      "  (find PID: netstat -ano | findstr :" + port + ")";
+      "  (find PID: netstat -ano | findstr :" +
+      port +
+      ")";
     showBootError("JavaScript did not start in time.", hungHint);
-  }, TIMEOUT_MS);
+  }, FINAL_TIMEOUT_MS);
 })();

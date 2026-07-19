@@ -18,11 +18,15 @@ export const HUB_ROUTE_ACCESS_COL = {
   user: "hub-route-access-col--user",
   role: "hub-route-access-col--role",
   profile: "hub-route-access-col--profile",
+  password: "hub-route-access-col--password",
+  mailRecover: "hub-route-access-col--mail-recover",
+  fullInfo: "hub-route-access-col--full-info",
   source: "hub-route-access-col--source",
   syncAt: "hub-route-access-col--sync-at",
   loadAt: "hub-route-access-col--load-at",
   ownership: "hub-route-access-col--ownership",
   liveStatus: "hub-route-access-col--live-status",
+  usage: "hub-route-access-col--usage",
   planDate: "hub-route-access-col--plan-date",
   planDays: "hub-route-access-col--plan-days",
   planDue: "hub-route-access-col--plan-due",
@@ -42,12 +46,20 @@ export type HubRouteAccessModalColumnOptions = {
   showSyncAtColumn?: boolean;
   /** Teams members — Profile (Service browser / profile code). */
   showProfileColumn?: boolean;
+  /** Teams members — Password from linked Services/Mail account. */
+  showPasswordColumn?: boolean;
+  /** Teams members — Recovery Mail from linked account. */
+  showMailRecoverColumn?: boolean;
+  /** Teams members — Full Info from linked account. */
+  showFullInfoColumn?: boolean;
   /** Teams members — Ownership/Status/Profile source (Service · Mail · Manual). */
   showSourceColumn?: boolean;
   /** Teams members — sheet Ownership column. */
   showOwnershipColumn?: boolean;
   /** Teams members — sheet Live Status column. */
   showLiveStatusColumn?: boolean;
+  /** Teams members — CRM Usage (P0005 Order Detail mentions, same service). */
+  showUsageColumn?: boolean;
   /** Teams members — Date / Duration / Due / Left after Tier. */
   showPlanScheduleColumns?: boolean;
   /** Hide Expires / remapped Status column (Teams — Role Backup replaces Status). Default true. */
@@ -78,6 +90,27 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     className: HUB_ROUTE_ACCESS_COL.profile,
     role: "browser" as const,
     headerEmoji: "📡",
+  },
+  password: {
+    key: "password",
+    label: "Password",
+    className: HUB_ROUTE_ACCESS_COL.password,
+    role: "password" as const,
+    headerEmoji: "🔑",
+  },
+  mailRecover: {
+    key: "mailRecover",
+    label: "Recovery Mail",
+    className: HUB_ROUTE_ACCESS_COL.mailRecover,
+    role: "email" as const,
+    headerEmoji: "📨",
+  },
+  fullInfo: {
+    key: "fullInfo",
+    label: "Full Info",
+    className: HUB_ROUTE_ACCESS_COL.fullInfo,
+    role: "notes" as const,
+    headerEmoji: "📋",
   },
   syncAt: {
     key: "syncAt",
@@ -111,6 +144,13 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     className: HUB_ROUTE_ACCESS_COL.liveStatus,
     role: "status" as const,
     headerEmoji: "🚦",
+  },
+  usage: {
+    key: "usage",
+    label: "Usage",
+    className: HUB_ROUTE_ACCESS_COL.usage,
+    role: "activity" as const,
+    headerEmoji: "🧮",
   },
   planDate: {
     key: "planDate",
@@ -192,9 +232,13 @@ export function buildHubRouteAccessModalColumns(
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
   const showSyncAtColumn = options.showSyncAtColumn ?? true;
   const showProfileColumn = options.showProfileColumn ?? false;
+  const showPasswordColumn = options.showPasswordColumn ?? false;
+  const showMailRecoverColumn = options.showMailRecoverColumn ?? false;
+  const showFullInfoColumn = options.showFullInfoColumn ?? false;
   const showSourceColumn = options.showSourceColumn ?? false;
   const showOwnershipColumn = options.showOwnershipColumn ?? false;
   const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
+  const showUsageColumn = options.showUsageColumn ?? false;
   const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
   const showExpiresColumn = options.showExpiresColumn ?? true;
 
@@ -215,9 +259,13 @@ export function buildHubRouteAccessModalColumns(
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.user,
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.role,
     ...(showProfileColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.profile] : []),
+    ...(showPasswordColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.password] : []),
+    ...(showMailRecoverColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.mailRecover] : []),
+    ...(showFullInfoColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.fullInfo] : []),
     ...(showSourceColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.source] : []),
     ...(showOwnershipColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.ownership] : []),
     ...(showLiveStatusColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.liveStatus] : []),
+    ...(showUsageColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.usage] : []),
     ...(showSyncAtColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.syncAt] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.loadAt,
     ...(showPlanScheduleColumns
@@ -242,9 +290,13 @@ export function hubRouteAccessModalColumnCount(
   const showRouteColumn = options.showRouteColumn ?? layout === "expanded";
   const showSyncAtColumn = options.showSyncAtColumn ?? true;
   const showProfileColumn = options.showProfileColumn ?? false;
+  const showPasswordColumn = options.showPasswordColumn ?? false;
+  const showMailRecoverColumn = options.showMailRecoverColumn ?? false;
+  const showFullInfoColumn = options.showFullInfoColumn ?? false;
   const showSourceColumn = options.showSourceColumn ?? false;
   const showOwnershipColumn = options.showOwnershipColumn ?? false;
   const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
+  const showUsageColumn = options.showUsageColumn ?? false;
   const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
   const showExpiresColumn = options.showExpiresColumn ?? true;
 
@@ -257,9 +309,13 @@ export function hubRouteAccessModalColumnCount(
   let dataCols = showRouteColumn ? 7 : 6;
   if (!showSyncAtColumn) dataCols -= 1;
   if (showProfileColumn) dataCols += 1;
+  if (showPasswordColumn) dataCols += 1;
+  if (showMailRecoverColumn) dataCols += 1;
+  if (showFullInfoColumn) dataCols += 1;
   if (showSourceColumn) dataCols += 1;
   if (showOwnershipColumn) dataCols += 1;
   if (showLiveStatusColumn) dataCols += 1;
+  if (showUsageColumn) dataCols += 1;
   if (showPlanScheduleColumns) dataCols += 4;
   if (!showExpiresColumn) dataCols -= 1;
   return showSelect ? dataCols + 1 : dataCols;
@@ -296,9 +352,13 @@ export type HubRouteAccessSortKey =
   | "user"
   | "role"
   | "profile"
+  | "password"
+  | "mailRecover"
+  | "fullInfo"
   | "source"
   | "ownership"
   | "liveStatus"
+  | "usage"
   | "syncAt"
   | "loadAt"
   | "planDate"

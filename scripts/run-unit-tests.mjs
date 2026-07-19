@@ -24,6 +24,8 @@ runStep("cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("stealth-electron-env", "node", ["scripts/lib/stealth-electron-env.test.mjs"]);
 runStep("microsoft-gate-gmail", "node", ["--test", "electron/automation/script-steps.microsoft-gate.test.cjs"]);
+runStep("captcha-stop-gmail", "node", ["--test", "electron/automation/script-steps.captcha-stop.test.cjs"]);
+runStep("profile-window-title", "node", ["--test", "electron/lib/profile-window-title.test.cjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("refresh-hub-ui-node-link", "node", [
   path.join(root, "..", "scripts", "refresh-hub-ui-node-link.cjs"),
@@ -56,10 +58,14 @@ if (fast) {
 }
 
 runStep("profile-backup", "node", ["--test", "electron/lib/profile-backup.test.cjs"]);
-runStep("profile-service", "node", ["electron/db/profile-service.test.cjs"]);
-runStep("last-opened-durability", "node", ["electron/db/last-opened-durability.test.cjs"]);
-runStep("profile-search-regression", "node", ["electron/db/profile-search-regression.test.cjs"]);
-runStep("profile-chrome-columns-migration", "node", ["--test", "electron/db/profile-chrome-columns-migration.test.cjs"]);
+// DB tests → Electron Node ABI (better-sqlite3). Plain `node` falls back to sql.js.
+runStep("profile-service", "electron-node", ["electron/db/profile-service.test.cjs"]);
+runStep("last-opened-durability", "electron-node", ["electron/db/last-opened-durability.test.cjs"]);
+runStep("profile-search-regression", "electron-node", ["electron/db/profile-search-regression.test.cjs"]);
+runStep("profile-chrome-columns-migration", "electron-node", [
+  "--test",
+  "electron/db/profile-chrome-columns-migration.test.cjs",
+]);
 runStep("safe-goto", "node", ["--test", "electron/automation/safe-goto.test.cjs"]);
 runStep("google-session-guard", "node", ["--test", "electron/automation/google-session-guard.test.cjs"]);
 runStep("google-session-detect", "node", ["--test", "electron/lib/google-session-detect.test.cjs"]);
@@ -80,5 +86,5 @@ runStep("profile-extension-pins", "node", ["--test", "electron/lib/profile-exten
 runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
 runStep("prepare-profile-launch", "node", ["--test", "electron/engine/prepare-profile-launch.test.cjs"]);
 runStep("check-launch-speed", "node", ["scripts/check-launch-speed.mjs"]);
-runStep("profile-ops", "node", ["electron/services/profile-ops.test.cjs"]);
-runStep("api-routes", "node", ["electron/api-routes.test.cjs"]);
+runStep("profile-ops", "electron-node", ["electron/services/profile-ops.test.cjs"]);
+runStep("api-routes", "electron-node", ["electron/api-routes.test.cjs"]);

@@ -36,9 +36,24 @@ export function normalizeLoginId(raw: string): string | null {
   return id;
 }
 
+/**
+ * Known User ID aliases → canonical login_id (auth email local-part).
+ * Keeps short bookmarks like `enzyadmin` working for `enzy.admin@infix1.io.vn`.
+ */
+export const HUB_LOGIN_ID_ALIASES: Readonly<Record<string, string>> = {
+  enzyadmin: "enzy.admin",
+};
+
+/** Apply alias then normalize — null if invalid. */
+export function canonicalLoginId(raw: string): string | null {
+  const id = normalizeLoginId(raw);
+  if (!id) return null;
+  return HUB_LOGIN_ID_ALIASES[id] ?? id;
+}
+
 /** Canonical @infix1.io.vn inbox for a normalized User ID. */
 export function hubSyntheticEmailFromLoginId(loginId: string): string {
-  const id = normalizeLoginId(loginId);
+  const id = canonicalLoginId(loginId);
   if (!id) throw new Error("Invalid user ID");
   return `${id}${HUB_ID_EMAIL_DOMAIN}`;
 }
@@ -53,7 +68,7 @@ export function hubAuthEmailsFromLogin(input: string): string[] {
   const trimmed = sanitizeHubLoginInput(input).toLowerCase();
   if (!trimmed) throw new Error("Enter your user ID or email");
   if (looksLikeEmail(trimmed)) return hubAuthEmailsForSignIn(trimmed);
-  const loginId = normalizeLoginId(trimmed);
+  const loginId = canonicalLoginId(trimmed);
   if (!loginId) throw new Error("Invalid user ID (use 3–32 letters, numbers, . _ -)");
   return [`${loginId}${HUB_ID_EMAIL_DOMAIN}`, `${loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
 }
@@ -63,13 +78,14 @@ export function hubAuthEmailsForSignIn(input: string): string[] {
   const trimmed = sanitizeHubLoginInput(input).toLowerCase();
   if (!trimmed) return [];
   if (!looksLikeEmail(trimmed)) {
-    const loginId = normalizeLoginId(trimmed);
+    const loginId = canonicalLoginId(trimmed);
     if (!loginId) return [];
     return [`${loginId}${HUB_ID_EMAIL_DOMAIN}`, `${loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
   }
   const loginId = loginIdFromSyntheticEmail(trimmed);
   if (loginId) {
-    return [`${loginId}${HUB_ID_EMAIL_DOMAIN}`, `${loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
+    const canonical = canonicalLoginId(loginId) ?? loginId;
+    return [`${canonical}${HUB_ID_EMAIL_DOMAIN}`, `${canonical}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
   }
   return [trimmed];
 }
@@ -86,7 +102,7 @@ export function resolveHubLogin(input: string): ResolvedLogin {
   if (looksLikeEmail(trimmed)) {
     return { authEmail: trimmed, loginId: null, isEmailLogin: true };
   }
-  const loginId = normalizeLoginId(trimmed);
+  const loginId = canonicalLoginId(trimmed);
   if (!loginId) throw new Error("Invalid user ID (use 3–32 letters, numbers, . _ -)");
   return {
     authEmail: `${loginId}${HUB_ID_EMAIL_DOMAIN}`,

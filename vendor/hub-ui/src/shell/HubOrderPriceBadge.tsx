@@ -1,4 +1,4 @@
-import { formatHubOrderPricePillLabel } from "../lib/format-order-price";
+import { formatHubOrderPriceLabel, type HubOrderPriceFormat } from "../lib/format-order-price";
 import {
   HUB_ORDER_PRICE_TEXT_CLASS,
   HUB_ORDER_PRICE_TEXT_DEFAULT_TONE,
@@ -10,6 +10,10 @@ export type HubOrderPriceBadgeProps = {
   currency?: string;
   tone?: HubOrderPriceTextTone;
   className?: string;
+  /** Display format — defaults to `full` (locked pill label). */
+  format?: HubOrderPriceFormat;
+  /** VND per 1 USD, used only when `format="usd"`. */
+  vndUsdRate?: number;
 };
 
 /** @deprecated use HubOrderPriceTextTone */
@@ -24,8 +28,10 @@ export function HubOrderPriceBadge({
   currency = "VND",
   tone = HUB_ORDER_PRICE_TEXT_DEFAULT_TONE,
   className = "",
+  format,
+  vndUsdRate,
 }: HubOrderPriceBadgeProps) {
-  const label = formatHubOrderPricePillLabel(amountCents, currency);
+  const label = formatHubOrderPriceLabel(amountCents, currency, { format, vndUsdRate });
   if (!label) return null;
 
   return (

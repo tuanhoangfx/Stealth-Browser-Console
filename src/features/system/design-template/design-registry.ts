@@ -27,3 +27,9 @@ export const WORKFLOW_CANVAS_LAYOUT_DESIGN_LOCK = "V5" as const;
 
 /** Locked 2026-06 — GroupCreatorPanel toolbar selection chip Design V5 Quiet bloom. */
 export const DIRECTORY_TOOLBAR_SELECTION_DESIGN_LOCK = "V5" as const;
+
+/**
+ * Locked 2026-07-20 — Design V2 (bottom plate variant for readability).
+ * Default Chromium icon + navy bottom plate + large Bold white digits (128px PNG-in-ICO).
+ */
+export const TASKBAR_PROFILE_BADGE_DESIGN_LOCK = "V2" as const;

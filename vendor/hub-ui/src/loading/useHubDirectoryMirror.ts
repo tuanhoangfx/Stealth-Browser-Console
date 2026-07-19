@@ -44,8 +44,11 @@ export function useHubDirectoryMirror<T>({
     [mapMirror],
   );
 
-  const initialMirror = normalize(readMirror());
-  const [rows, setRows] = useState<T[]>(initialMirror);
+  // Lazy init — mapping the full mirror is O(n) (normalizeCustomerRow × all rows).
+  // Computing it inline every render re-maps the entire directory on unrelated
+  // re-renders (checkbox toggle, hover), adding input lag on large tables. The
+  // initializer runs once; boot readiness is a mount-time snapshot.
+  const [rows, setRows] = useState<T[]>(() => normalize(readMirror()));
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
@@ -54,8 +57,9 @@ export function useHubDirectoryMirror<T>({
   const revalidatingRef = useRef(false);
   revalidatingRef.current = revalidating;
   const [fetchSettled, setFetchSettled] = useState(() => readMirror().length > 0);
+  const initialReadyRef = useRef(rows.length > 0);
   const { directoryBootReady, settleBoot, beginBootGate, bootedRef } = useHubDirectoryBoot({
-    initialReady: initialMirror.length > 0,
+    initialReady: initialReadyRef.current,
   });
   const bootSyncDoneRef = useRef(false);
   const lastFetchAtRef = useRef(0);
