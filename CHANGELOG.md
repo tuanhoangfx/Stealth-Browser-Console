@@ -1,21 +1,5 @@
 # Changelog
 
-## 2026-07-20 - hub-ui SSOT hook-stability vendor sync
-
-- Version: `1.0.60`
-- Timestamp: 2026-07-20 04:41 (UTC+7)
-- Type: Patch
-- Status: Draft
-
-### Changes
-
-- Patch bump for uncommitted code changes (P0003).
-
-### Verification
-
-- pending
-
----
 ## 2026-07-20 — v1.0.59 — Freeze: taskbar badge + session detect + electron-node DB tests
 
 - Version: `1.0.59`
