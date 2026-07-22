@@ -1,17 +1,17 @@
-﻿{
+{
   "schemaVersion": 1,
-  "label": "v1.0.59-stable",
-  "version": "1.0.59",
-  "gitCommit": "feb0ccb0ca8357bdaf0f4291c8c27f20e4782533",
-  "gitTag": "v1.0.59-stable",
-  "packagedFrom": "c521e336fe88579c6b3a6d9f0be3cb55e9471f18",
-  "notes": "v1.0.59 stable: Design V2 taskbar profile badge (v2m-bottom-huge), Google/MS challenge detect, WF00011 captcha stop, electron-node DB tests, hub-ui/identity vendor sync. Packaged Setup-1.0.59.exe from packagedFrom + win-unpacked SHA512 verified.",
+  "label": "v1.0.138-stable",
+  "version": "1.0.138",
+  "gitCommit": "5c3c3df5923851040d24732ee6ebbbe55c5a8f21",
+  "gitTag": "v1.0.138-stable",
+  "packagedFrom": "5c3c3df5923851040d24732ee6ebbbe55c5a8f21",
+  "notes": "v1.0.138 stable: taskbar badge stick (spaced5 + reinforce SETICON on nav), dev/prod junction attach fix, HTTP launch userDataRoot fix. Setup-1.0.138.exe + win-unpacked SHA512 verified.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.59.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.138.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "bVLgk0ZI3gxpwuHnTaKFnVCm4ei2zBxMz7dEiWUOOo7Ywdux6GVtIb5RkCNBXJcxh9yhZdLcfL4RpELQtb0HBA==",
-    "capturedAt": "2026-07-19T21:40:12.323Z"
+    "sha512": "CwOd3CHk30YJsuHwXeRSD4Y0xP+gDs1mu/tYaYQ5cvHQap5UHJrjA/Jqx2l4fXpW8RE0vqHIF5x4tkyseuHfbw==",
+    "capturedAt": "2026-07-22T07:09:20.977Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

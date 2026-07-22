@@ -1,8 +1,25 @@
 # Changelog
 
+## 2026-07-22 - hub-ui SSOT hook-stability vendor sync
+
+- Version: `1.0.139`
+- Timestamp: 2026-07-22 14:10 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-22 — v1.0.138 — Release: taskbar badge stick + API launch fix
 
 - Version: `1.0.138`
+- Timestamp: 2026-07-22 14:01 (UTC+7)
 - Fix HTTP `/api/profiles/:id/launch` when `userDataRoot` is a string (was masked as "not a function" on any launch error).
 - Includes v1.0.136 taskbar badge reinforce (MainWindowHandle, double SETICON, nav re-stamp) and v1.0.135 dev/prod junction attach fix.
 - Gitignore `.dev-vite.env.json` (blocks push secret scan).
