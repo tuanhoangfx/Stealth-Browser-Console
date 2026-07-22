@@ -80,6 +80,11 @@ export function inferProductCategory(productName: string): { groupKey: string; g
   const name = productName.trim();
   if (!name) return { groupKey: "", groupLabel: "" };
 
+  // Acc Gmail is its own storefront Service — not grouped under Google / Google One.
+  if (/^acc gmail\b/i.test(name) || /^acc gmail\b/i.test(stripProductPlanSuffix(name))) {
+    return { groupKey: "acc gmail", groupLabel: "Acc Gmail" };
+  }
+
   const brandFull = resolveHubBrandIconByMatch(name);
   if (brandFull && brandFull.label.toLowerCase() !== name.toLowerCase()) {
     return { groupKey: brandFull.id, groupLabel: brandFull.label };

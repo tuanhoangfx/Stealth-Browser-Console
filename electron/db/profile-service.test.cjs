@@ -8,7 +8,7 @@ async function main() {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-db-test-"));
   try {
     await openDatabase(tmpRoot);
-    const created = profileService.createProfile({ name: "Smoke Profile", note: "test" });
+    const created = profileService.createProfile({ name: "8802", note: "test" });
     if (!created?.id) throw new Error("createProfile failed");
     const listed = profileService.listProfiles();
     if (listed.length !== 1) throw new Error(`expected 1 profile, got ${listed.length}`);
@@ -92,14 +92,14 @@ async function main() {
     }
 
     const bulkByNames = profileService.createProfilesBulkByNames({
-      names: ["0009", "0011", "0009", "Profile 1477", "notes-main"],
+      names: ["0009", "0011", "0009", "2211", "0022"],
       defaults: { note: "bulk" },
     });
     if (bulkByNames.created !== 4 || bulkByNames.skippedExisting !== 0 || bulkByNames.duplicateInput !== 1) {
       throw new Error(`bulk create by names unexpected summary: ${JSON.stringify(bulkByNames)}`);
     }
 
-    profileService.createProfile({ name: "Profile 0015", note: "existing-code" });
+    profileService.createProfile({ name: "0015", note: "existing-code" });
     const bulkByRange = profileService.createProfilesBulkByRange({
       start: 9,
       end: 16,

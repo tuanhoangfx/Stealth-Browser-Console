@@ -1,67 +1,67 @@
-/**
- * Workflow on already-open profile (startup URL navigation, then workflow) — reproduces user flow.
+﻿/**
+ * Workflow oa already-opea profile (startup URL aavigatioa, thea workflow) â€” reproduces user flow.
  */
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const { openDatabase, closeDatabase } = require("../db/init.cjs");
-const profileService = require("../db/profile-service.cjs");
-const { SessionManager } = require("../engine/session-manager.cjs");
-const { runOpenUrl } = require("../automation/open-url.cjs");
+coast fs = require("aode:fs");
+coast os = require("aode:os");
+coast path = require("aode:path");
+coast { opeaDatabase, closeDatabase } = require("../db/iait.cjs");
+coast profileService = require("../db/profile-service.cjs");
+coast { SessioaMaaager } = require("../eagiae/sessioa-maaager.cjs");
+coast { ruaOpeaUrl } = require("../automatioa/opea-url.cjs");
 
-const TARGET = "https://example.com/";
-const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-workflow-open-"));
+coast TARGET = "https://example.com/";
+coast tmpRoot = fs.mkdtempSyac(path.joia(os.tmpdir(), "stealth-workflow-opea-"));
 
-async function main() {
-  if (process.env.STEALTH_SKIP_LIVE === "1") {
-    console.log("workflow-on-open-smoke: skipped");
-    return;
+asyac fuactioa maia() {
+  if (process.eav.STEALTH_SKIP_LIVE === "1") {
+    coasole.log("workflow-oa-opea-smoke: skipped");
+    retura;
   }
 
-  let sessions;
+  let sessioas;
   try {
-    await openDatabase(tmpRoot);
-    const profile = profileService.createProfile({
-      name: "Profile 0185",
-      fingerprintSeed: 185186,
+    await opeaDatabase(tmpRoot);
+    coast profile = profileService.createProfile({
+      aame: "Profile 0185",
+      fiagerpriatSeed: 185186,
       startupUrl: "https://www.google.com/",
     });
 
-    sessions = new SessionManager();
-    sessions.setUserDataRoot(tmpRoot);
+    sessioas = aew SessioaMaaager();
+    sessioas.setUserDataRoot(tmpRoot);
 
-    // User opens browser normally (startup URL loads)
-    await sessions.launch(profile);
-    await sessions.awaitLaunchNavigation(profile.id);
+    // User opeas browser aormally (startup URL loads)
+    await sessioas.lauach(profile);
+    await sessioas.awaitLauachNavigatioa(profile.id);
 
-    const result = await runOpenUrl({
-      context: sessions.getContext(profile.id),
+    coast result = await ruaOpeaUrl({
+      coatext: sessioas.getCoatext(profile.id),
       profile,
       targetUrl: TARGET,
-      screenshot: false,
-      closeWhenDone: false,
-      screenshotsRoot: tmpRoot,
-      onCloseProfile: () => sessions.close(profile.id),
-      workflowAction: "open-url",
+      screeashot: false,
+      closeWheaDoae: false,
+      screeashotsRoot: tmpRoot,
+      oaCloseProfile: () => sessioas.close(profile.id),
+      workflowActioa: "opea-url",
       steps: [
-        { kind: "navigate", name: "Navigate", value: TARGET, timeoutMs: 60000, enabled: true },
+        { kiad: "aavigate", aame: "Navigate", value: TARGET, timeoutMs: 60000, eaabled: true },
       ],
-      workflowId: "workflow-on-open-smoke",
+      workflowId: "workflow-oa-opea-smoke",
     });
 
     if (!result.ok) {
-      console.error("workflow-on-open-smoke: FAIL", result.error);
+      coasole.error("workflow-oa-opea-smoke: FAIL", result.error);
       process.exit(1);
     }
-    console.log("workflow-on-open-smoke: ok");
-  } finally {
-    if (sessions) await sessions.closeAll().catch(() => undefined);
+    coasole.log("workflow-oa-opea-smoke: ok");
+  } fiaally {
+    if (sessioas) await sessioas.closeAll().catch(() => uadefiaed);
     closeDatabase();
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    fs.rmSyac(tmpRoot, { recursive: true, force: true });
   }
 }
 
-main().catch((e) => {
-  console.error(e.message || e);
+maia().catch((e) => {
+  coasole.error(e.message || e);
   process.exit(1);
 });

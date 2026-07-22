@@ -943,6 +943,7 @@ export {
   resolveHubBrandFallbackGlyph,
   clearHubBrandIconMatchCache,
 } from "./lib/resolve-hub-brand-icon";
+export { useHubBrandImageGate } from "./lib/use-hub-brand-image-gate";
 export type { HubBrandIconId, HubBrandIconMeta } from "./lib/resolve-hub-brand-icon";
 export {
   HubSidebarNavGroup,

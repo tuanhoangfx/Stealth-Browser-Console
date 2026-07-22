@@ -1,15 +1,8 @@
 import { matchesDirectoryIdSearch } from "@tool-workspace/hub-ui";
 import type { ProfileRow } from "../../types";
+import { extractProfileCode } from "../../lib/profile-code";
 
-/** Trailing profile code — mirrors `electron/lib/profile-identity.cjs`. */
-export function extractProfileCode(name: string, id = ""): string {
-  const trimmed = String(name || "").trim();
-  const tail = trimmed.match(/(\d{3,5})\s*$/);
-  if (tail) return tail[1]!;
-  const any = trimmed.match(/(\d+)/);
-  if (any) return any[1]!.slice(-4);
-  return String(id).replace(/-/g, "").slice(0, 4) || "0000";
-}
+export { extractProfileCode };
 
 export function profileTextBlob(profile: ProfileRow): string {
   return [profile.name, profile.groupName ?? "", profile.proxy ?? "", profile.startupUrl ?? "", profile.note ?? ""]

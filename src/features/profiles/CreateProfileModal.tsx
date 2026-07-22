@@ -34,7 +34,8 @@ import { profileFormTocItems } from "./profile-form-toc";
 import { PROFILE_CREATE_MODAL_SHELL_CLASS } from "./profile-form-modal";
 import { PROFILE_DETAIL_NOTE_LABEL, PROFILE_DETAIL_SECTION_CREDENTIALS } from "./profile-detail-toc";
 import { PROFILE_MODAL_SECTION_STICKER } from "../../lib/profile-form-stickers";
-import { extractProfileCode } from "./profile-directory-search";
+import { extractProfileCode } from "../../lib/profile-code";
+import { parseProfileCode } from "../../lib/profile-code";
 import { bulkActivityToConsoleLines, type ProfileActivityLogEntry } from "./profile-run-log";
 
 type CreateProfileTab = "single" | "bulk";
@@ -187,15 +188,19 @@ function previewBulkNames(text: string, profiles: ProfileRow[]): BulkPreview {
   const seen = new Set<string>();
   const parsed = parseBulkNameLines(text);
 
-  for (const name of parsed) {
+  for (const raw of parsed) {
+    const parsedCode = parseProfileCode(raw);
+    if (!parsedCode.ok) {
+      skippedNames.push(raw);
+      continue;
+    }
+    const name = parsedCode.code;
     if (seen.has(name)) {
       duplicateNames.push(name);
       continue;
     }
     seen.add(name);
-    const numericOnly = /^\d{1,8}$/.test(name);
-    const numericCode = numericOnly ? String(name).padStart(4, "0") : null;
-    if (exactNames.has(name) || (numericCode && numericCodes.has(numericCode))) {
+    if (exactNames.has(name) || numericCodes.has(name)) {
       skippedNames.push(name);
       continue;
     }
@@ -221,6 +226,9 @@ function previewBulkRange(startText: string, endText: string, profiles: ProfileR
   if (!Number.isInteger(end) || end < 0) {
     return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range end must be a non-negative integer." };
   }
+  if (end > 9999) {
+    return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range end must be <= 9999." };
+  }
   if (start > end) {
     return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range start must be less than or equal to range end." };
   }
@@ -234,8 +242,7 @@ function previewBulkRange(startText: string, endText: string, profiles: ProfileR
   const skippedNames: string[] = [];
   for (let value = start; value <= end; value += 1) {
     const name = String(value).padStart(pad, "0");
-    const numericCode = String(value).padStart(4, "0");
-    if (exactNames.has(name) || numericCodes.has(numericCode)) {
+    if (exactNames.has(name) || numericCodes.has(name)) {
       skippedNames.push(name);
       continue;
     }
@@ -342,10 +349,15 @@ export function CreateProfileModal({
       setError(urlError);
       return;
     }
+    const parsed = parseProfileCode(name);
+    if (!parsed.ok) {
+      setError(parsed.error);
+      return;
+    }
     setBusy(true);
     setError("");
     void createProfile({
-      name: name.trim(),
+      name: parsed.code,
       groupId,
       proxy: proxy.trim(),
       note: note.trim(),
@@ -470,7 +482,7 @@ export function CreateProfileModal({
             {bulkMode === "names" ? (
               <textarea
                 className="field stealth-profile-bulk-names-input w-full resize-y font-mono text-[12px]"
-                placeholder={`0000\n0001\nfacebook-main`}
+                placeholder={`0000\n0001\n0385`}
                 value={bulkNamesText}
                 onChange={(event) => setBulkNamesText(event.target.value)}
               />

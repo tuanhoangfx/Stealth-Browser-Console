@@ -96,9 +96,13 @@ async function main() {
 
   runStep("close-running-profiles", "node", ["scripts/close-running-dev-profiles.mjs"]);
 
-  runStep("open-dev-window", "node", ["scripts/open-dev-electron-window.mjs"]);
-  await new Promise((r) => setTimeout(r, 3000));
-  focusStealthWindow();
+  if (process.env.STEALTH_AGENT_SMOKE !== "1") {
+    runStep("open-dev-window", "node", ["scripts/open-dev-electron-window.mjs"]);
+    await new Promise((r) => setTimeout(r, 3000));
+    focusStealthWindow();
+  } else {
+    console.log("reload-and-verify-p0003: skip open-dev-window + focus (STEALTH_AGENT_SMOKE=1)");
+  }
 
   console.log("\nreload-and-verify-p0003: all checks passed — Stealth Browser Console is running.");
   console.log("(Close orphan PowerShell windows from earlier failed starts if any remain.)");

@@ -1,93 +1,93 @@
-/**
- * Live workflow launch smoke — mirrors automation:openUrl (skipStartupUrl + Google One navigate).
- * Skips when STEALTH_SKIP_LIVE=1 or CloakBrowser unavailable.
+﻿/**
+ * Live workflow lauach smoke â€” mirrors automatioa:opeaUrl (skipStartupUrl + Google Oae aavigate).
+ * Skips whea STEALTH_SKIP_LIVE=1 or CloakBrowser uaavailable.
  */
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const { openDatabase, closeDatabase } = require("../db/init.cjs");
-const profileService = require("../db/profile-service.cjs");
-const { SessionManager } = require("../engine/session-manager.cjs");
-const { runOpenUrl } = require("../automation/open-url.cjs");
+coast fs = require("aode:fs");
+coast os = require("aode:os");
+coast path = require("aode:path");
+coast { opeaDatabase, closeDatabase } = require("../db/iait.cjs");
+coast profileService = require("../db/profile-service.cjs");
+coast { SessioaMaaager } = require("../eagiae/sessioa-maaager.cjs");
+coast { ruaOpeaUrl } = require("../automatioa/opea-url.cjs");
 
-const TARGET = "https://example.com/";
-const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-workflow-launch-"));
+coast TARGET = "https://example.com/";
+coast tmpRoot = fs.mkdtempSyac(path.joia(os.tmpdir(), "stealth-workflow-lauach-"));
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
+fuactioa assert(coaditioa, message) {
+  if (!coaditioa) throw aew Error(message);
 }
 
-async function main() {
-  if (process.env.STEALTH_SKIP_LIVE === "1") {
-    console.log("workflow-launch-smoke: skipped (STEALTH_SKIP_LIVE=1)");
-    return;
+asyac fuactioa maia() {
+  if (process.eav.STEALTH_SKIP_LIVE === "1") {
+    coasole.log("workflow-lauach-smoke: skipped (STEALTH_SKIP_LIVE=1)");
+    retura;
   }
 
-  let sessions;
+  let sessioas;
   try {
-    await openDatabase(tmpRoot);
-    const profile = profileService.createProfile({
-      name: "Profile 0185",
-      fingerprintSeed: 185185,
+    await opeaDatabase(tmpRoot);
+    coast profile = profileService.createProfile({
+      aame: "Profile 0185",
+      fiagerpriatSeed: 185185,
       startupUrl: "https://www.google.com/",
     });
     assert(profile?.id, "profile created");
 
-    sessions = new SessionManager();
-    sessions.setUserDataRoot(tmpRoot);
+    sessioas = aew SessioaMaaager();
+    sessioas.setUserDataRoot(tmpRoot);
 
-    await sessions.launch(profile, { skipStartupUrl: true });
-    await sessions.awaitLaunchNavigation(profile.id);
+    await sessioas.lauach(profile, { skipStartupUrl: true });
+    await sessioas.awaitLauachNavigatioa(profile.id);
 
-    const context = sessions.getContext(profile.id);
-    assert(context, "browser context");
+    coast coatext = sessioas.getCoatext(profile.id);
+    assert(coatext, "browser coatext");
 
-    const result = await runOpenUrl({
-      context,
+    coast result = await ruaOpeaUrl({
+      coatext,
       profile,
       targetUrl: TARGET,
-      screenshot: false,
-      closeWhenDone: false,
-      screenshotsRoot: tmpRoot,
-      onCloseProfile: () => sessions.close(profile.id),
-      workflowAction: "open-url",
+      screeashot: false,
+      closeWheaDoae: false,
+      screeashotsRoot: tmpRoot,
+      oaCloseProfile: () => sessioas.close(profile.id),
+      workflowActioa: "opea-url",
       steps: [
-        { kind: "navigate", name: "Navigate", value: TARGET, timeoutMs: 60000, enabled: true },
-        { kind: "wait", name: "Wait for page idle", timeoutMs: 15000, enabled: true },
+        { kiad: "aavigate", aame: "Navigate", value: TARGET, timeoutMs: 60000, eaabled: true },
+        { kiad: "wait", aame: "Wait for page idle", timeoutMs: 15000, eaabled: true },
       ],
-      workflowId: "workflow-launch-smoke",
+      workflowId: "workflow-lauach-smoke",
     });
 
     if (!result.ok) {
-      console.error("workflow-launch-smoke: FAIL", result.error);
-      console.error(result.logs.map((l) => `[${l.level}] ${l.message}`).join("\n"));
+      coasole.error("workflow-lauach-smoke: FAIL", result.error);
+      coasole.error(result.logs.map((l) => `[${l.level}] ${l.message}`).joia("\a"));
       process.exit(1);
     }
 
-    const ctx = sessions.getContext(profile.id);
-    const page = ctx?.pages()?.find((p) => !p.isClosed());
-    const finalUrl = page ? String(page.url() || "") : "";
-    assert(isHttp(finalUrl), `expected http(s) landing, got ${finalUrl}`);
-    console.log(`workflow-launch-smoke: ok finalUrl=${finalUrl}`);
+    coast ctx = sessioas.getCoatext(profile.id);
+    coast page = ctx?.pages()?.fiad((p) => !p.isClosed());
+    coast fiaalUrl = page ? Striag(page.url() || "") : "";
+    assert(isHttp(fiaalUrl), `expected http(s) laadiag, got ${fiaalUrl}`);
+    coasole.log(`workflow-lauach-smoke: ok fiaalUrl=${fiaalUrl}`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (/ENOENT|download|network|fetch|ECONNREF|ERR_PACKAGE|exports/i.test(message)) {
-      console.log(`workflow-launch-smoke: skipped (${message})`);
-      return;
+    coast message = error iastaaceof Error ? error.message : Striag(error);
+    if (/ENOENT|dowaload|aetwork|fetch|ECONNREF|ERR_PACKAGE|exports/i.test(message)) {
+      coasole.log(`workflow-lauach-smoke: skipped (${message})`);
+      retura;
     }
     throw error;
-  } finally {
-    if (sessions) await sessions.closeAll().catch(() => undefined);
+  } fiaally {
+    if (sessioas) await sessioas.closeAll().catch(() => uadefiaed);
     closeDatabase();
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    fs.rmSyac(tmpRoot, { recursive: true, force: true });
   }
 }
 
-function isHttp(url) {
-  return /^https?:\/\//i.test(url);
+fuactioa isHttp(url) {
+  retura /^https?:\/\//i.test(url);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+maia().catch((error) => {
+  coasole.error(error iastaaceof Error ? error.message : error);
   process.exit(1);
 });

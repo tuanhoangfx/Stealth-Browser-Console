@@ -18,7 +18,7 @@ const {
   resolveProfileId: resolveProfileIdOp,
 } = require("./services/profile-ops.cjs");
 const { checkProxy, geoConsistency } = require("./lib/proxy-pool.cjs");
-const { extractProfileCode } = require("./lib/profile-identity.cjs");
+const { extractProfileCode } = require("./lib/profile-code.cjs");
 const { diagnoseMailCredentials } = require("./lib/twofa-vault-bridge.cjs");
 const { getStealthSyncDiagnostics } = require("./lib/stealth-sync-outbox.cjs");
 
@@ -173,6 +173,34 @@ function buildRoutes(services) {
       },
     },
     {
+      id: "profiles.ensure-agent-pool",
+      method: "POST",
+      pattern: /^\/api\/profiles\/ensure-agent-pool$/,
+      handler(ctx) {
+        const names = Array.isArray(ctx.body?.names) && ctx.body.names.length
+          ? ctx.body.names.map((n) => String(n || "").trim()).filter(Boolean)
+          : ["9990", "9991", "9992", "9993", "9994", "9995", "9996", "9997", "9998", "9999"];
+        const result = profileService.createProfilesBulkByNames({
+          names,
+          defaults: {
+            note:
+              String(ctx.body?.note || "").trim() ||
+              "Agent pool — parallel headless smoke (9990–9999); do not use for personal browse",
+          },
+        });
+        const lite = profileService.listProfilesLite();
+        const present = names.filter((n) => lite.some((p) => String(p.name || "").trim() === n));
+        const missing = names.filter((n) => !present.includes(n));
+        return send.json(ctx.res, 200, {
+          ok: missing.length === 0,
+          ...result,
+          present,
+          missing,
+          pool: names,
+        });
+      },
+    },
+    {
       id: "profiles.list",
       method: "GET",
       pattern: /^\/api\/profiles$/,
@@ -201,7 +229,7 @@ function buildRoutes(services) {
           });
           try {
             const { warmBadgeIcosForProfiles } = require("./lib/profile-taskbar-native.cjs");
-            warmBadgeIcosForProfiles(page.profiles, { limit: 40 });
+            warmBadgeIcosForProfiles(page.profiles, { limit: 12 });
           } catch {
             /* ignore */
           }

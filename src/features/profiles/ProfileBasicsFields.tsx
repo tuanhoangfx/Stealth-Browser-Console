@@ -47,7 +47,15 @@ export function ProfileBasicsFields({
     <>
       <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
         {showName ? (
-          <ProfileDetailClickEditField fieldKey="name" value={name} onChange={(value) => setName?.(value)} />
+          <ProfileDetailClickEditField
+            fieldKey="name"
+            value={name}
+            onChange={(value) => {
+              const digits = String(value || "").replace(/\D/g, "").slice(0, 4);
+              setName?.(digits);
+            }}
+            placeholder="0000–9999"
+          />
         ) : null}
         <ProfileDetailClickFilterField
           fieldKey="group"

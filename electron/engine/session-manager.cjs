@@ -4,12 +4,13 @@ const { closeContext, profileDataDir, openProfile } = require("./cloak-browser-e
 const profileService = require("../db/profile-service.cjs");
 const { navigateStartupUrl, awaitBrowserReady, stabilizePrimaryPage } = require("../automation/navigate-startup.cjs");
 const { getFreePort, waitForCdp } = require("../lib/net-port.cjs");
-const { extractProfileCode } = require("../lib/profile-identity.cjs");
-const { applyProfileWindowTitle } = require("../lib/profile-window-title.cjs");
+const { extractProfileCode } = require("../lib/profile-code.cjs");
+const { applyProfileWindowTitle, formatProfileWindowLabel, scheduleProfileTaskbarBadgeApply } = require("../lib/profile-window-title.cjs");
 const {
   focusProfileBrowserWindow,
   hasProfileBrowserProcess,
   killOrphanProfileBrowser,
+  listProfileBrowserPids,
   PROFILE_LOCK_FILES,
   readDevToolsActivePort,
 } = require("../lib/profile-browser-orphan.cjs");
@@ -56,7 +57,12 @@ function profileDirHasLock(userDataDir) {
 async function prepareProfileForLaunch(userDataDir, { aggressive = false } = {}) {
   // Always probe for live Chrome when lock files exist — stale lock + missed orphan
   // was the ProcessSingleton Error 32 failure mode (profile already in use).
+  // When a live browser already holds the dir (common: prod cmdline vs -dev junction),
+  // do NOT kill — session-manager will attach/focus instead.
   if (aggressive || profileDirHasLock(userDataDir)) {
+    if (await hasProfileBrowserProcess(userDataDir)) {
+      return { repaired: false, live: true };
+    }
     return repairProfileUserDataDir(userDataDir);
   }
   // No lock file → Chromium is not holding this profile (it writes SingletonLock
@@ -73,6 +79,9 @@ async function prepareProfileForLaunch(userDataDir, { aggressive = false } = {})
       // sidecar pid is dead — profile dir is clean, no repair needed
     }
     if (sidecarAlive && (await hasProfileBrowserProcess(userDataDir))) {
+      return { repaired: false, live: true };
+    }
+    if (sidecarAlive) {
       return repairProfileUserDataDir(userDataDir);
     }
   }
@@ -211,10 +220,25 @@ class SessionManager {
     } catch { /* persistent context may not expose process */ }
 
     // Sidecar before title/badge so apply script can skip WMI via stealth-pid.json.
-    writeSidecarPid(opened.userDataDir, {
-      pid: browserPid,
-      debugPort: opened.debugPort || 0,
-    });
+    if (browserPid > 0) {
+      writeSidecarPid(opened.userDataDir, {
+        pid: browserPid,
+        debugPort: opened.debugPort || 0,
+      });
+    } else {
+      const { startBrowserPidSidecarPoll } = require("../lib/profile-taskbar-native.cjs");
+      startBrowserPidSidecarPoll(
+        opened.userDataDir,
+        () => {
+          try {
+            return opened.context.browser()?.process()?.pid || 0;
+          } catch {
+            return 0;
+          }
+        },
+        { debugPort: opened.debugPort || 0 },
+      );
+    }
 
     // Title install before startup nav so about:blank / first paint show code · name
     // (taskbar hover / Alt-Tab). Cheap: one init script + evaluate existing pages.
@@ -222,6 +246,7 @@ class SessionManager {
     const titleReady = applyProfileWindowTitle(opened.context, profile, {
       userDataDir: opened.userDataDir,
       browserPid,
+      headless: launchMeta(profile).headless,
     }).catch(() => undefined);
     const startupNavigation = Promise.resolve(titleReady)
       .then(() =>
@@ -246,9 +271,36 @@ class SessionManager {
     });
     this.#bindSessionLifecycle(id, opened.context, profile);
 
+    const profileLabel = formatProfileWindowLabel(profile);
+    const badgeHeadless = launchMeta(profile).headless;
+    const { ensureBadgeIcoFast } = require("../lib/profile-taskbar-native.cjs");
+    void ensureBadgeIcoFast(profileCode).catch(() => undefined);
+
+    const scheduleOpenBadge = (pidHint = 0) => {
+      scheduleProfileTaskbarBadgeApply(opened.userDataDir, profileLabel, profileCode, {
+        browserPid: pidHint,
+        headless: badgeHeadless,
+      });
+    };
+
+    // Early apply — do not block on startup URL. Post-nav reinforce updates PID only
+    // (same-code in-flight is not cancelled — cancel race caused missing badges).
+    scheduleOpenBadge(browserPid || readSidecarPid(opened.userDataDir)?.pid || 0);
+
     void (async () => {
       try {
         if (startupNavigation) await startupNavigation;
+        let latePid = 0;
+        try {
+          if (isContextAlive(opened.context)) {
+            latePid = opened.context.browser()?.process()?.pid || 0;
+          }
+        } catch {
+          latePid = 0;
+        }
+        const sidecarPid = readSidecarPid(opened.userDataDir)?.pid || 0;
+        // Reinforce: feed better PID / retry only if early apply already finished without OK.
+        scheduleOpenBadge(latePid || sidecarPid || browserPid);
         await new Promise((resolve) => setTimeout(resolve, 1500));
         if (isContextAlive(opened.context)) {
           await captureAndQueueStealthSnapshotSafe(opened.context, profile, { source: "profile_open" });
@@ -333,7 +385,21 @@ class SessionManager {
     if (!focused.ok) return null;
 
     const focusDebugPort = sidecar?.debugPort || port || 0;
-    writeSidecarPid(userDataDir, { pid: sidecar?.pid || 0, debugPort: focusDebugPort });
+    let focusPid = sidecar?.pid || 0;
+    if (!focusPid) {
+      const pids = await listProfileBrowserPids(userDataDir);
+      focusPid = pids[0] || 0;
+    }
+    if (focusPid > 0) {
+      writeSidecarPid(userDataDir, { pid: focusPid, debugPort: focusDebugPort });
+    }
+
+    scheduleProfileTaskbarBadgeApply(
+      userDataDir,
+      formatProfileWindowLabel(profile),
+      profileCode,
+      { browserPid: focusPid, headless: launchMeta(profile).headless },
+    );
 
     this.#sessions.set(id, {
       context: null,
@@ -455,8 +521,35 @@ class SessionManager {
           // page may already be closing
         }
       };
+      // Chromium resets WM_SETICON on title/nav — re-stamp badge (debounced).
+      let badgeNavTimer = null;
+      const maybeRestampBadge = () => {
+        try {
+          const session = this.#sessions.get(id);
+          if (!session?.alive || session.focusOnly) return;
+          if (badgeNavTimer) clearTimeout(badgeNavTimer);
+          badgeNavTimer = setTimeout(() => {
+            scheduleProfileTaskbarBadgeApply(
+              session.userDataDir,
+              formatProfileWindowLabel(profile),
+              session.profileCode || extractProfileCode(profile.name, profile.id),
+              {
+                browserPid: readSidecarPid(session.userDataDir)?.pid || 0,
+                headless: session.headless,
+                force: true,
+                isReinforce: true,
+              },
+            );
+          }, 700);
+        } catch {
+          /* ignore */
+        }
+      };
       page.on("framenavigated", maybeCapture);
       page.on("load", () => maybeCapture());
+      page.on("framenavigated", maybeRestampBadge);
+      page.on("load", maybeRestampBadge);
+      page.on("domcontentloaded", maybeRestampBadge);
     };
 
     context.on("close", () => finalize("context-closed"));
@@ -592,6 +685,15 @@ class SessionManager {
     if (existing?.alive) {
       if (existing.context) {
         await this.focusProfile(id);
+        scheduleProfileTaskbarBadgeApply(
+          existing.userDataDir,
+          formatProfileWindowLabel(profile),
+          extractProfileCode(profile.name, profile.id),
+          {
+            browserPid: readSidecarPid(existing.userDataDir)?.pid || 0,
+            headless: existing.headless ?? launchMeta(profile).headless,
+          },
+        );
         profileService.touchLastOpened(id);
         const next = profileService.setProfileStatus(id, "running");
         return { ok: true, status: "running", profile: next, focused: true, ...launchMeta(profile) };
@@ -600,6 +702,15 @@ class SessionManager {
         if (!isAgentSmokeLaunch()) {
           await focusProfileBrowserWindow(existing.userDataDir);
         }
+        scheduleProfileTaskbarBadgeApply(
+          existing.userDataDir,
+          formatProfileWindowLabel(profile),
+          extractProfileCode(profile.name, profile.id),
+          {
+            browserPid: readSidecarPid(existing.userDataDir)?.pid || 0,
+            headless: existing.headless ?? launchMeta(profile).headless,
+          },
+        );
         profileService.touchLastOpened(id);
         const next = profileService.setProfileStatus(id, "running");
         return { ok: true, status: "running", profile: next, focused: true, ...launchMeta(profile) };
@@ -619,11 +730,12 @@ class SessionManager {
     let attached = null;
 
     // Repair stale locks/orphans before WMI attach probe — dead lockfile used to cost 20s+.
-    await prepareProfileForLaunch(userDataDir, {
+    // Live browser (incl. prod cmdline while Dev uses -dev junction) → attach/focus, do not kill.
+    const prep = await prepareProfileForLaunch(userDataDir, {
       aggressive: needsAggressivePrep || profileDirHasLock(userDataDir),
     });
 
-    if (!shouldSkipOrphanProbe(userDataDir, priorStatus)) {
+    if (prep?.live || !shouldSkipOrphanProbe(userDataDir, priorStatus)) {
       attached = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
     }
     if (attached) return attached;

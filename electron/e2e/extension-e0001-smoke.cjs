@@ -1,5 +1,5 @@
-/**
- * Live smoke — launch profile with Surfshark + E0001 prefs; verify extension loads.
+﻿/**
+ * Live smoke â€” launch profile with Surfshark + E0001 prefs; verify extension loads.
  */
 const fs = require("node:fs");
 const os = require("node:os");
@@ -47,7 +47,7 @@ async function main() {
   try {
     await openDatabase(userDataRoot);
     const profile = profileService.createProfile({
-      name: `extension-e0001-smoke-${Date.now()}`,
+      name: String(9100 + (Date.now() % 899)).padStart(4, "0"),
       fingerprintSeed: 99001 + Math.floor(Math.random() * 1000),
       startupUrl: "https://example.com/",
     });
@@ -128,11 +128,11 @@ async function main() {
     }
 
     if (!popupOk) {
-      console.error("extension-e0001-smoke: FAIL — E0001 popup did not load");
+      console.error("extension-e0001-smoke: FAIL â€” E0001 popup did not load");
       process.exit(1);
     }
     if (!hasStorePin && !profileHasCookieBridge(after.settings)) {
-      console.error("extension-e0001-smoke: FAIL — Chrome removed E0001 from prefs");
+      console.error("extension-e0001-smoke: FAIL â€” Chrome removed E0001 from prefs");
       process.exit(1);
     }
 

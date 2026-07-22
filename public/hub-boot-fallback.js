@@ -86,16 +86,30 @@
     });
   }
 
+  function devRecoverHint(fallbackPort) {
+    var metaPort = document.querySelector('meta[name="hub-dev-port"]');
+    var metaFolder = document.querySelector('meta[name="hub-dev-folder"]');
+    var port = (metaPort && metaPort.content) || fallbackPort || "5175";
+    var folder = (metaFolder && metaFolder.content) || "the tool folder";
+    return (
+      "Nothing is serving http://127.0.0.1:" +
+      port +
+      "\nIn " +
+      folder +
+      " run:\n  pnpm dev:node\n  or pnpm dev:recover"
+    );
+  }
+
   function showHungPrebundleError() {
     if (window.__hubBootReady || hungShown) return;
     hungShown = true;
-    var port = window.location.port || "PORT";
+    var port = window.location.port || "5175";
     showBootError(
       "Vite prebundle is hung or stale.",
       "react.js did not load in time. In the tool folder run:\n" +
         "  pnpm dev:recover\n" +
         "Or keep Vite alive with:\n" +
-        "  pnpm daemon:start\n" +
+        "  pnpm dev:node\n" +
         "If recover fails (Access Denied), in PowerShell:\n" +
         "  tskill <PID> /A\n" +
         "  (find PID: netstat -ano | findstr :" +
@@ -153,9 +167,7 @@
         hungShown = true;
         showBootError(
           "Dev server is not responding.",
-          "Nothing is serving http://127.0.0.1:" +
-            port +
-            "\nIn Tool/P0020-Data-Box run:\n  pnpm daemon:start\n  or pnpm dev:vite",
+          devRecoverHint(window.location.port),
         );
       }
     });
@@ -174,11 +186,8 @@
     if (window.__hubBootReady || hungShown) return;
     var port = window.location.port || "PORT";
     var hungHint =
-      "Hung Vite zombie or stale cache. In the tool folder run:\n" +
-      "  pnpm dev:recover\n" +
-      "Or keep Vite alive with:\n" +
-      "  pnpm daemon:start\n" +
-      "If recover fails (Access Denied), in PowerShell:\n" +
+      devRecoverHint(port) +
+      "\nIf recover fails (Access Denied), in PowerShell:\n" +
       "  tskill <PID> /A\n" +
       "  (find PID: netstat -ano | findstr :" +
       port +

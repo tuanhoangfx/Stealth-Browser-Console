@@ -9,7 +9,7 @@ const VALID_COLOR_SCHEMES = new Set(["", "light", "dark", "no-preference"]);
 const VALID_WINDOW_MODES = new Set(["host-maximized", "preset-viewport", "engine-default"]);
 
 const { normalizeStartupUrl, coerceStartupUrlInput, resolveProfileLaunchUrl, resolveStartupUrlSave } = require("../lib/startup-url.cjs");
-const { extractProfileCode } = require("../lib/profile-identity.cjs");
+const { extractProfileCode } = require("../lib/profile-code.cjs");
 const { normalizeProfileExtensionOverrides } = require("../lib/extension-toggles.cjs");
 
 function parseExtensionOverridesJson(raw) {
@@ -296,8 +296,8 @@ function resolveProfileForLaunch(payload = {}) {
 function createProfile(input) {
   const id = randomUUID();
   const now = new Date().toISOString();
-  const name = String(input.name || "").trim();
-  if (!name) throw new Error("Profile name is required.");
+  const { normalizeProfileNameOrThrow } = require("../lib/profile-code.cjs");
+  const name = normalizeProfileNameOrThrow(input.name);
   const fingerprintSeed = Number.isFinite(Number(input.fingerprintSeed))
     ? Math.floor(Number(input.fingerprintSeed))
     : generateFingerprintSeed();
@@ -390,7 +390,7 @@ function normalizeBulkNames(names) {
 }
 
 function shouldTreatAsNumericProfileName(name) {
-  return /^\d{1,8}$/.test(String(name || "").trim());
+  return /^\d{1,4}$/.test(String(name || "").trim());
 }
 
 function createProfilesBulkByNames({ names, defaults = {} } = {}) {
@@ -398,17 +398,24 @@ function createProfilesBulkByNames({ names, defaults = {} } = {}) {
   const { exactNames, numericCodes } = buildExistingProfileIndex();
   const createdNames = [];
   const skippedNames = [];
+  const { normalizeProfileNameOrThrow } = require("../lib/profile-code.cjs");
 
-  for (const name of unique) {
-    const numericCode = shouldTreatAsNumericProfileName(name) ? String(name).padStart(4, "0") : null;
-    if (exactNames.has(name) || (numericCode && numericCodes.has(numericCode))) {
+  for (const raw of unique) {
+    let name;
+    try {
+      name = normalizeProfileNameOrThrow(raw);
+    } catch {
+      skippedNames.push(String(raw || "").trim() || "(empty)");
+      continue;
+    }
+    if (exactNames.has(name) || numericCodes.has(name)) {
       skippedNames.push(name);
       continue;
     }
     createProfile({ ...defaults, name });
     createdNames.push(name);
     exactNames.add(name);
-    numericCodes.add(extractProfileCode(name));
+    numericCodes.add(name);
   }
 
   return {
@@ -423,10 +430,15 @@ function createProfilesBulkByNames({ names, defaults = {} } = {}) {
 }
 
 function createProfilesBulkByRange({ start, end, pad = 4, defaults = {} } = {}) {
-  const resolvedPad = normalizeBulkPad(pad);
+  const { PROFILE_CODE_MAX } = require("../lib/profile-code.cjs");
+  const resolvedPad = 4; // Profile codes are always 0000–9999
+  void pad;
   const resolvedStart = normalizeBulkRangeValue(start, "Range start");
   const resolvedEnd = normalizeBulkRangeValue(end, "Range end");
   if (resolvedStart > resolvedEnd) throw new Error("Range start must be less than or equal to range end.");
+  if (resolvedEnd > PROFILE_CODE_MAX) {
+    throw new Error(`Range end must be <= ${PROFILE_CODE_MAX}.`);
+  }
   const requested = resolvedEnd - resolvedStart + 1;
   if (requested > 50_000) throw new Error("Range is too large. Maximum 50,000 profiles per bulk create.");
 
@@ -436,7 +448,7 @@ function createProfilesBulkByRange({ start, end, pad = 4, defaults = {} } = {}) 
 
   for (let value = resolvedStart; value <= resolvedEnd; value += 1) {
     const name = String(value).padStart(resolvedPad, "0");
-    const code = String(value).padStart(4, "0");
+    const code = name;
     if (exactNames.has(name) || numericCodes.has(code)) {
       skippedNames.push(name);
       continue;
@@ -444,7 +456,7 @@ function createProfilesBulkByRange({ start, end, pad = 4, defaults = {} } = {}) 
     createProfile({ ...defaults, name });
     createdNames.push(name);
     exactNames.add(name);
-    numericCodes.add(extractProfileCode(name));
+    numericCodes.add(code);
   }
 
   return {
@@ -601,7 +613,10 @@ function updateProfile(id, patch) {
   if (!existing) throw new Error("Profile not found.");
 
   const next = {
-    name: patch.name !== undefined ? String(patch.name).trim() : existing.name,
+    name:
+      patch.name !== undefined
+        ? require("../lib/profile-code.cjs").normalizeProfileNameOrThrow(patch.name)
+        : existing.name,
     groupId: patch.groupId !== undefined ? String(patch.groupId).trim() : existing.groupId,
     proxy: patch.proxy !== undefined ? String(patch.proxy).trim() : existing.proxy,
     note: patch.note !== undefined ? String(patch.note).trim() : existing.note,
@@ -620,6 +635,7 @@ function updateProfile(id, patch) {
   };
 
   if (!next.name) throw new Error("Profile name is required.");
+  // name already normalized when patched; existing legacy names kept until rename
 
   const device = normalizeDeviceFields(patch, existing);
   const now = new Date().toISOString();
@@ -922,14 +938,14 @@ function ensureSeedProfiles() {
   }
 
   createProfile({
-    name: "Stealth Demo",
-    note: "Auto-seeded MVP profile — edit or delete anytime.",
+    name: "0000",
+    note: "Auto-seeded MVP profile (code 0000) — edit or delete anytime.",
     fingerprintSeed: DEMO_PROFILE_SEED
   });
   const proxyUrl = seedProxyUrl();
   if (proxyUrl) {
     createProfile({
-      name: "Proxy Test",
+      name: "0001",
       note: "Auto-seeded connectivity profile from STEALTH_SEED_PROXY_URL.",
       proxy: proxyUrl,
       fingerprintSeed: 517351
@@ -981,8 +997,26 @@ function getCatalogStats() {
   return stats;
 }
 
+function listRecentlyOpenedProfiles(limit = 16) {
+  const lim = Math.min(48, Math.max(1, Math.floor(Number(limit) || 16)));
+  const rows = getDb()
+    .prepare(
+      `SELECT p.*, g.name AS group_name
+       FROM profiles p
+       LEFT JOIN profile_groups g ON g.id = p.group_id
+       WHERE p.last_opened_at IS NOT NULL
+         AND p.last_opened_at > 0
+         AND (p.name < '9990' OR p.name > '9999')
+       ORDER BY p.last_opened_at DESC
+       LIMIT ?`,
+    )
+    .all(lim);
+  return rows.map(rowToProfile);
+}
+
 module.exports = {
   listProfiles,
+  listRecentlyOpenedProfiles,
   listProfilesLite,
   listProfilesPage,
   listActiveProfileIds,

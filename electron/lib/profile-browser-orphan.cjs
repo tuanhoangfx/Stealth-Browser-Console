@@ -1,10 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { execFile } = require("node:child_process");
-const { promisify } = require("node:util");
 
-const execFileAsync = promisify(execFile);
 const { markProfileChromeCleanExit } = require("./profile-chrome-session.cjs");
+const {
+  buildProfileBrowserPidsPs,
+  buildFocusProfileWindowPs,
+  escapePsSingleQuoted,
+} = require("./chrome-process-query.cjs");
+const { runPowerShellCommandAsync } = require("./powershell-exec.cjs");
 
 const CHROME_NAMES = new Set(["chrome.exe", "chromium.exe"]);
 const PROFILE_LOCK_FILES = ["SingletonLock", "SingletonCookie", "lockfile", "SingletonSocket", "SingletonBadge"];
@@ -12,37 +15,8 @@ const PID_LIST_CACHE_MS = 2000;
 /** @type {Map<string, { pids: number[], at: number }>} */
 const pidListCache = new Map();
 
-function escapePsSingleQuoted(value) {
-  return String(value).replace(/'/g, "''");
-}
-
-/**
- * Find Chrome/Chromium PIDs holding a profile dir.
- * Prefer simple -like needles (UUID / user-data-dir) — regex Escape of Windows paths
- * was matching zero processes while WMI clearly showed the profile still open.
- */
 function listChromeProcessesPs(userDataDir) {
-  const dir = path.resolve(String(userDataDir));
-  const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
-  const backslash = escapePsSingleQuoted(dir);
-  // ROOT-SCOPED only: match strictly on the full `--user-data-dir` path (the
-  // browser process always carries it; `taskkill /T` then kills the whole tree,
-  // and lock-owner detection is a second root-scoped source). We deliberately do
-  // NOT match on the bare profile UUID or `--stealth-profile-id=<uuid>`: those are
-  // identical across user-data roots, so a *dev*-root reconcile would otherwise
-  // match — and kill — the *prod* app's Chrome for the same profile id. The full
-  // path is a strict subset of the old needles (a same-root Chrome always contains
-  // the path), so this only removes cross-root false positives.
-  return [
-    `$needles = @('${backslash}', '${forward}')`,
-    "Get-CimInstance Win32_Process | Where-Object {",
-    "  $cmd = $_.CommandLine; $name = $_.Name;",
-    "  if (-not $cmd) { return $false }",
-    "  if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }",
-    "  foreach ($n in $needles) { if ($cmd -like ('*' + $n + '*')) { return $true } }",
-    "  return $false",
-    "} | ForEach-Object { $_.ProcessId }",
-  ].join("\n");
+  return buildProfileBrowserPidsPs(userDataDir);
 }
 
 function listLockOwnerPidsPs(files) {
@@ -101,10 +75,25 @@ function listLockOwnerPidsPs(files) {
 }
 
 function resolveExistingProfileLockFiles(userDataDir) {
-  const root = path.resolve(String(userDataDir || ""));
-  return PROFILE_LOCK_FILES
-    .map((name) => path.join(root, name))
-    .filter((file) => fs.existsSync(file));
+  const { expandProfileDirAliases } = require("./chrome-process-query.cjs");
+  const roots = expandProfileDirAliases(userDataDir);
+  const files = [];
+  for (const root of roots) {
+    for (const name of PROFILE_LOCK_FILES) {
+      const file = path.join(root, name);
+      if (!fs.existsSync(file)) continue;
+      try {
+        files.push(fs.realpathSync.native(file));
+      } catch {
+        try {
+          files.push(fs.realpathSync(file));
+        } catch {
+          files.push(path.resolve(file));
+        }
+      }
+    }
+  }
+  return [...new Set(files)];
 }
 
 async function listProfileBrowserPidsByLock(userDataDir) {
@@ -112,11 +101,7 @@ async function listProfileBrowserPidsByLock(userDataDir) {
   const files = resolveExistingProfileLockFiles(userDataDir);
   if (!files.length) return [];
   try {
-    const { stdout } = await execFileAsync(
-      "powershell",
-      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", listLockOwnerPidsPs(files)],
-      { timeout: 20_000, windowsHide: true },
-    );
+    const stdout = await runPowerShellCommandAsync(listLockOwnerPidsPs(files));
     return [...new Set(
       String(stdout)
         .split(/\r?\n/)
@@ -135,11 +120,7 @@ async function listProfileBrowserPids(userDataDir) {
   if (cached && Date.now() - cached.at < PID_LIST_CACHE_MS) return cached.pids;
   let cliPids = [];
   try {
-    const { stdout } = await execFileAsync(
-      "powershell",
-      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", listChromeProcessesPs(userDataDir)],
-      { timeout: 20_000, windowsHide: true },
-    );
+    const stdout = await runPowerShellCommandAsync(listChromeProcessesPs(userDataDir));
     cliPids = String(stdout)
       .split(/\r?\n/)
       .map((line) => Number.parseInt(line.trim(), 10))
@@ -215,47 +196,10 @@ function readDevToolsActivePort(userDataDir) {
 /** Bring an orphan profile browser window to foreground (no Playwright context). */
 async function focusProfileBrowserWindow(userDataDir) {
   if (!userDataDir || process.platform !== "win32") return { ok: false, reason: "unsupported" };
-  const dir = path.resolve(String(userDataDir));
-  const escaped = escapePsSingleQuoted(dir);
-  const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
-  // Root-scoped path needles only — the bare UUID is identical across user-data
-  // roots, so a dev instance must not focus (or later act on) the prod app's window.
-  const script = [
-    `$needles = @('${escaped}', '${forward}')`,
-    "$pids = Get-CimInstance Win32_Process | Where-Object {",
-    "  $cmd = $_.CommandLine; $name = $_.Name;",
-    "  if (-not $cmd) { return $false }",
-    "  if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }",
-    "  foreach ($n in $needles) { if ($cmd -like ('*' + $n + '*')) { return $true } }",
-    "  return $false",
-    "} | Select-Object -ExpandProperty ProcessId",
-    "if (-not $pids) { Write-Output 'MISSING'; exit 0 }",
-    "Add-Type @'",
-    "using System;",
-    "using System.Runtime.InteropServices;",
-    "public class StealthWin32 {",
-    "  [DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd);",
-    "  [DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);",
-    "}",
-    "'@",
-    "$focused = $false",
-    "foreach ($pid in $pids) {",
-    "  $p = Get-Process -Id $pid -ErrorAction SilentlyContinue",
-    "  if (-not $p -or $p.MainWindowHandle -eq 0) { continue }",
-    "  [StealthWin32]::ShowWindow($p.MainWindowHandle, 9) | Out-Null",
-    "  [StealthWin32]::SetForegroundWindow($p.MainWindowHandle) | Out-Null",
-    "  $focused = $true",
-    "  break",
-    "}",
-    "if ($focused) { Write-Output 'OK' } else { Write-Output 'NOHWND' }",
-  ].join("\n");
+  const script = buildFocusProfileWindowPs(userDataDir);
 
   try {
-    const { stdout } = await execFileAsync(
-      "powershell",
-      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-      { timeout: 20_000, windowsHide: true },
-    );
+    const stdout = await runPowerShellCommandAsync(script);
     const result = String(stdout).trim().split(/\r?\n/).pop()?.trim();
     if (result === "OK") return { ok: true };
     if (result === "MISSING") return { ok: false, reason: "not-running" };

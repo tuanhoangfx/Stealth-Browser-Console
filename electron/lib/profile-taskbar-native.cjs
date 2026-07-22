@@ -1,25 +1,48 @@
 /**
  * Win32 taskbar chrome for Cloak/Chrome profile windows.
  *
- * Design lock: TASKBAR_PROFILE_BADGE V2 (2026-07-20)
- * — Base = exact Chromium icon from chrome.exe.
- * — Label = slim navy plate + digits drawn on a transparent PNG, packed into ICO
- *   (PNG-in-ICO keeps alpha — avoids dark orb from Icon.FromHandle/GetHicon).
+ * Design V4 (locked 2026-07-21): Chromium icon + colored last3 only (no scrim/plate).
  */
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { execFile } = require("node:child_process");
-const { promisify } = require("node:util");
+const { runPowerShellFile } = require("./powershell-exec.cjs");
+const { runTaskbarApplyWorker, waitWorkerReady } = require("./taskbar-apply-worker.cjs");
+const {
+  extractFourDigitCode,
+  badgeLast3,
+  digitArgbForCode,
+  digitGapsCsvForSizes,
+} = require("./profile-code.cjs");
 
-const execFileAsync = promisify(execFile);
+/** Design V4 — digits only on native Chromium icon; thousands → digit color (0=white, 1–9 vivid). */
+const BADGE_STYLE = "v4-digits-only-spaced5";
+/** Hot path for taskbar apply — 48/32/16 only (Win11 ~40–48; 16 small). Fewer sizes = faster cold ICO. */
+const HOT_ICO_SIZES = Object.freeze([48, 32, 16]);
+/** Prefer 48 first — Win11 taskbar often uses ~40–48px icons. */
+const BADGE_ICO_SIZES = Object.freeze([48, 32, 24, 20, 16, 40, 64, 128, 256]);
+/** Dedupe concurrent ICO renders for the same code (launch + scheduler + apply). */
+const badgeIcoInflight = new Map();
+/** Cap parallel PowerShell ICO renders — opening many profiles at once thrash otherwise. */
+const ICO_RENDER_MAX = 2;
+let icoRenderActive = 0;
+/** @type {Array<() => void>} */
+const icoRenderWaiters = [];
 
-/** Bottom plate + oversized digits (readable when Windows scales taskbar to ~24–32px). */
-const BADGE_STYLE = "v2m-bottom-huge";
-const BADGE_CANVAS = 256;
-
-function escapePsSingleQuoted(value) {
-  return String(value).replace(/'/g, "''");
+async function withIcoRenderSlot(work) {
+  while (icoRenderActive >= ICO_RENDER_MAX) {
+    await new Promise((resolve) => {
+      icoRenderWaiters.push(resolve);
+    });
+  }
+  icoRenderActive += 1;
+  try {
+    return await work();
+  } finally {
+    icoRenderActive -= 1;
+    const next = icoRenderWaiters.shift();
+    if (next) next();
+  }
 }
 
 function resolveChromiumExe() {
@@ -41,121 +64,293 @@ function resolveChromiumExe() {
   return "";
 }
 
+/** Agent pool 9990–9999 — headless smoke, no taskbar HWND. */
+function isAgentPoolProfileCode(code) {
+  const n = Number(extractFourDigitCode(code));
+  return Number.isInteger(n) && n >= 9990 && n <= 9999;
+}
+
+function shouldSkipTaskbarBadge(code, opts = {}) {
+  if (opts.headless === true) return true;
+  return isAgentPoolProfileCode(code);
+}
+
+/** Resolve Win32 HintPid — opts hint → sidecar (sync, no WMI). */
+function readTaskbarHintPid(userDataDir, hinted = 0) {
+  const fromHint = Number(hinted);
+  if (fromHint > 0) return fromHint;
+  try {
+    const { readSidecarPid } = require("./profile-user-data-repair.cjs");
+    const sidecar = readSidecarPid(userDataDir);
+    if (sidecar?.pid > 0) return sidecar.pid;
+  } catch {
+    /* ignore */
+  }
+  return 0;
+}
+
+/** Poll sidecar/hint until PID ready — keeps apply script off Get-CimInstance. */
+async function waitForTaskbarHintPid(userDataDir, hinted = 0, { timeoutMs = 1200, intervalMs = 50 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const pid = readTaskbarHintPid(userDataDir, hinted);
+    if (pid > 0) return pid;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return readTaskbarHintPid(userDataDir, hinted);
+}
+
+/** Fire-and-forget: poll Playwright/context PID and write stealth-pid.json early. */
+function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, timeoutMs = 3000, intervalMs = 50 } = {}) {
+  if (!userDataDir || process.platform !== "win32") return;
+  const { writeSidecarPid } = require("./profile-user-data-repair.cjs");
+  void (async () => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      let pid = 0;
+      try {
+        pid = Number(typeof getPidFn === "function" ? getPidFn() : 0) || 0;
+      } catch {
+        pid = 0;
+      }
+      if (pid > 0) {
+        writeSidecarPid(userDataDir, { pid, debugPort });
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    try {
+      const { listProfileBrowserPids } = require("./profile-browser-orphan.cjs");
+      const pids = await listProfileBrowserPids(userDataDir);
+      const pid = pids[0] || 0;
+      if (pid > 0) writeSidecarPid(userDataDir, { pid, debugPort });
+    } catch {
+      /* ignore */
+    }
+  })();
+}
+
 function badgeCacheDir() {
   const dir = path.join(os.tmpdir(), "stealth-taskbar-badges");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
-function badgeCachePath(code) {
+function badgeCachePath(code, { hot = false } = {}) {
   const digits = String(code || "0000").replace(/[^\w.-]+/g, "").slice(0, 8) || "0000";
-  return path.join(badgeCacheDir(), `${BADGE_STYLE}-${digits}.ico`);
+  const suffix = hot ? "-hot" : "";
+  return path.join(badgeCacheDir(), `${BADGE_STYLE}-${digits}${suffix}.ico`);
 }
 
-/** Pack a PNG into a Vista+ ICO container (preserves alpha). */
-function pngBufferToIco(pngBuffer, width = 64, height = 64) {
-  const header = Buffer.alloc(6);
-  header.writeUInt16LE(0, 0);
-  header.writeUInt16LE(1, 2);
-  header.writeUInt16LE(1, 4);
-  const entry = Buffer.alloc(16);
-  entry.writeUInt8(width >= 256 ? 0 : width, 0);
-  entry.writeUInt8(height >= 256 ? 0 : height, 1);
-  entry.writeUInt8(0, 2);
-  entry.writeUInt8(0, 3);
-  entry.writeUInt16LE(1, 4);
-  entry.writeUInt16LE(32, 6);
-  entry.writeUInt32LE(pngBuffer.length, 8);
-  entry.writeUInt32LE(22, 12);
-  return Buffer.concat([header, entry, pngBuffer]);
-}
-
-function resolvePowerShell() {
-  const root = process.env.SystemRoot || "C:\\Windows";
-  const sysnative = path.join(root, "Sysnative", "WindowsPowerShell", "v1.0", "powershell.exe");
-  if (fs.existsSync(sysnative)) return sysnative;
-  return path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
-}
-
-async function runPowerShell(args, opts = {}) {
-  return execFileAsync(resolvePowerShell(), ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", ...args], {
-    timeout: 15_000,
-    windowsHide: true,
-    ...opts,
-  });
-}
-
-/**
- * Render Chromium + bottom plate + huge digits to PNG → ICO (256px; stays readable at ~24–32px taskbar).
- */
-async function ensureBadgeIco(code) {
-  const digits = String(code || "").replace(/\D/g, "").slice(-4) || "0000";
-  const ico = badgeCachePath(digits);
-  if (fs.existsSync(ico) && fs.statSync(ico).size > 200) return ico;
-
-  const chromeExe = resolveChromiumExe();
-  if (!chromeExe) throw new Error("chromium exe not found");
-
-  const pngPath = path.join(badgeCacheDir(), `${BADGE_STYLE}-${digits}.png`);
-  const size = BADGE_CANVAS;
-  const script = [
-    "Add-Type -AssemblyName System.Drawing",
-    `$digits = '${escapePsSingleQuoted(digits)}'`,
-    `$png = '${escapePsSingleQuoted(pngPath)}'`,
-    `$chrome = '${escapePsSingleQuoted(chromeExe)}'`,
-    `$size = ${size}`,
-    "$bmp = New-Object System.Drawing.Bitmap $size, $size, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)",
-    "$g = [System.Drawing.Graphics]::FromImage($bmp)",
-    "$g.SmoothingMode = 'AntiAlias'",
-    "$g.InterpolationMode = 'HighQualityBicubic'",
-    "$g.PixelOffsetMode = 'HighQuality'",
-    "$g.TextRenderingHint = 'AntiAliasGridFit'",
-    "$g.CompositingMode = 'SourceOver'",
-    "$g.Clear([System.Drawing.Color]::Transparent)",
-    "$srcIcon = [System.Drawing.Icon]::ExtractAssociatedIcon($chrome)",
-    "if (-not $srcIcon) { 'FAIL'; exit 0 }",
-    "$srcBmp = $srcIcon.ToBitmap()",
-    "$g.DrawImage($srcBmp, 0, 0, $size, $size)",
-    "$srcBmp.Dispose(); $srcIcon.Dispose()",
-    // ~55% of icon height — digits dominate after Windows downscales to taskbar size
-    "$bandH = [int]([Math]::Round($size * 0.55))",
-    "$bandY = $size - $bandH",
-    "$band = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(245, 6, 16, 32))",
-    "$g.FillRectangle($band, 0, $bandY, $size, $bandH)",
-    "$fontSize = if ($digits.Length -ge 4) { 92 } elseif ($digits.Length -eq 3) { 104 } else { 118 }",
-    "$font = New-Object System.Drawing.Font 'Segoe UI', $fontSize, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)",
-    "$brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)",
-    "$sf = New-Object System.Drawing.StringFormat",
-    "$sf.Alignment = 'Center'",
-    "$sf.LineAlignment = 'Center'",
-    "$g.DrawString($digits, $font, $brush, (New-Object System.Drawing.RectangleF 0, $bandY, $size, $bandH), $sf)",
-    "$bmp.Save($png, [System.Drawing.Imaging.ImageFormat]::Png)",
-    "$g.Dispose(); $bmp.Dispose(); $font.Dispose(); $brush.Dispose(); $band.Dispose()",
-    "if ((Test-Path -LiteralPath $png) -and ((Get-Item -LiteralPath $png).Length -gt 200)) { 'OK' } else { 'FAIL' }",
-  ].join("; ");
-
-  const { stdout } = await runPowerShell(["-Command", script]);
-  if (!String(stdout).includes("OK") || !fs.existsSync(pngPath)) {
-    throw new Error(`badge png failed: ${String(stdout).trim()}`);
+/** Remove ICO/PNG from prior badge styles (v3-digit-halo-*, v4-digits-only-*, etc.). */
+function pruneStaleBadgeCache() {
+  if (process.platform !== "win32") return { removed: 0 };
+  const dir = badgeCacheDir();
+  if (!fs.existsSync(dir)) return { removed: 0 };
+  let removed = 0;
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (name.startsWith("apply-") && name.endsWith(".ps1")) {
+      try {
+        fs.unlinkSync(full);
+        removed += 1;
+      } catch {
+        /* ignore */
+      }
+      continue;
+    }
+    if (!name.endsWith(".ico") && !name.endsWith(".png")) continue;
+    if (name.startsWith(`${BADGE_STYLE}-`)) continue;
+    try {
+      fs.unlinkSync(full);
+      removed += 1;
+    } catch {
+      /* ignore */
+    }
   }
+  return { removed };
+}
 
-  const pngBuf = fs.readFileSync(pngPath);
-  fs.writeFileSync(ico, pngBufferToIco(pngBuf, size, size));
+let pruneRan = false;
+function pruneStaleBadgeCacheOnce() {
+  if (pruneRan) return;
+  pruneRan = true;
   try {
-    fs.unlinkSync(pngPath);
+    pruneStaleBadgeCache();
   } catch {
     /* ignore */
   }
-  if (!fs.existsSync(ico) || fs.statSync(ico).size < 200) {
-    throw new Error("badge ico write failed");
-  }
-  return ico;
 }
 
-/** Fire-and-forget: pre-build ICO for profile codes (launch / directory list). */
-function warmBadgeIcosForProfiles(profiles, { limit = 48 } = {}) {
+/** Pack one or more PNG frames into a Vista+ ICO (preserves alpha). */
+function pngBuffersToIco(frames) {
+  const list = (Array.isArray(frames) ? frames : [{ width: 64, height: 64, buffer: frames }]).filter(
+    (f) => f && Buffer.isBuffer(f.buffer) && f.buffer.length > 0,
+  );
+  if (!list.length) throw new Error("pngBuffersToIco: no frames");
+  const count = list.length;
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(count, 4);
+  const dirs = [];
+  let offset = 6 + 16 * count;
+  for (const f of list) {
+    const w = Number(f.width) || 0;
+    const h = Number(f.height) || 0;
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(w >= 256 ? 0 : w, 0);
+    entry.writeUInt8(h >= 256 ? 0 : h, 1);
+    entry.writeUInt8(0, 2);
+    entry.writeUInt8(0, 3);
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(f.buffer.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    offset += f.buffer.length;
+    dirs.push(entry);
+  }
+  return Buffer.concat([header, ...dirs, ...list.map((f) => f.buffer)]);
+}
+
+/**
+ * Design V4 — native Chromium icon + colored last3 + digit gap + thin halo.
+ * @param {string} code
+ * @param {{ hot?: boolean }} [opts] hot=true → hot ICO sizes only for fast taskbar apply
+ */
+async function ensureBadgeIco(code, opts = {}) {
+  pruneStaleBadgeCacheOnce();
+  const full = extractFourDigitCode(code);
+  const digits = badgeLast3(full);
+  const hot = Boolean(opts.hot);
+  const fullIco = badgeCachePath(full);
+  const hotIco = badgeCachePath(full, { hot: true });
+
+  if (!hot && fs.existsSync(fullIco) && fs.statSync(fullIco).size > 200) return fullIco;
+  if (hot) {
+    if (fs.existsSync(hotIco) && fs.statSync(hotIco).size > 200) return hotIco;
+    if (fs.existsSync(fullIco) && fs.statSync(fullIco).size > 200) return fullIco;
+  }
+
+  const inflightKey = `${full}:${hot ? "hot" : "full"}`;
+  const pending = badgeIcoInflight.get(inflightKey);
+  if (pending) return pending;
+
+  const work = (async () => {
+    const [, dR, dG, dB] = digitArgbForCode(full);
+    const chromeExe = resolveChromiumExe();
+    if (!chromeExe) throw new Error("chromium exe not found");
+
+    const sizes = hot ? HOT_ICO_SIZES.slice() : BADGE_ICO_SIZES.slice();
+    const outDir = badgeCacheDir();
+    const prefix = `${BADGE_STYLE}-${full}${hot ? "-hot" : ""}`;
+    const ico = hot ? hotIco : fullIco;
+    const ps1 = path.join(__dirname, "render-taskbar-badge.ps1");
+    await withIcoRenderSlot(async () => {
+      const { stdout } = await runPowerShellFile(
+        ps1,
+        [
+          "-Digits",
+          digits,
+          "-OutDir",
+          outDir,
+          "-Prefix",
+          prefix,
+          "-ChromeExe",
+          chromeExe,
+          "-DigitR",
+          String(dR),
+          "-DigitG",
+          String(dG),
+          "-DigitB",
+          String(dB),
+          "-SizesCsv",
+          sizes.join(","),
+          "-DigitGapsCsv",
+          digitGapsCsvForSizes(sizes),
+        ],
+        { timeout: hot ? 15_000 : 60_000 },
+      );
+      if (!String(stdout).includes("OK")) {
+        throw new Error(`badge png failed: ${String(stdout).trim()} (code=${full} d=${digits})`);
+      }
+
+      const frames = [];
+      for (const size of sizes) {
+        const pngPath = path.join(outDir, `${prefix}-${size}.png`);
+        if (!fs.existsSync(pngPath)) {
+          throw new Error(`badge png missing size ${size}`);
+        }
+        frames.push({ width: size, height: size, buffer: fs.readFileSync(pngPath) });
+        try {
+          fs.unlinkSync(pngPath);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      fs.writeFileSync(ico, pngBuffersToIco(frames));
+      if (!fs.existsSync(ico) || fs.statSync(ico).size < 200) {
+        throw new Error("badge ico write failed");
+      }
+    });
+    if (hot) {
+      void ensureBadgeIco(full).catch(() => undefined);
+    }
+    return ico;
+  })();
+
+  badgeIcoInflight.set(inflightKey, work);
+  try {
+    return await work;
+  } finally {
+    badgeIcoInflight.delete(inflightKey);
+  }
+}
+
+/** Fast path for taskbar apply — 48/32/16 only (~0.5–2s cold). */
+async function ensureBadgeIcoFast(code) {
+  return ensureBadgeIco(code, { hot: true });
+}
+
+/** Fire-and-forget: pre-build hot ICO for recently opened profiles (app boot). */
+function warmRecentBadgeIcosOnStartup(getProfiles, { limit = 16 } = {}) {
+  if (process.platform !== "win32") return;
+  pruneStaleBadgeCacheOnce();
+  let profiles = [];
+  try {
+    profiles = typeof getProfiles === "function" ? getProfiles(limit) : [];
+  } catch {
+    profiles = [];
+  }
+  warmBadgeIcosForProfiles(profiles, { limit });
+}
+
+/** Pre-compile Win32 interop DLL + start persistent apply worker (~once per boot). */
+async function warmTaskbarApplyRuntime() {
+  if (process.platform !== "win32") return;
+  try {
+    await waitWorkerReady();
+    await runTaskbarApplyWorker({ warm: true }, { timeoutMs: 20_000 });
+  } catch {
+    const applyPs1 = path.join(__dirname, "stealth-taskbar-apply.ps1");
+    try {
+      await runPowerShellFile(
+        applyPs1,
+        ["-UserDataDir", ".", "-Title", "warm", "-Ico", ".", "-AppId", "warm", "-WarmOnly"],
+        { timeout: 20_000 },
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Fire-and-forget: pre-build hot ICO for profile codes (launch / directory list). */
+function warmBadgeIcosForProfiles(profiles, { limit = 12 } = {}) {
   if (!Array.isArray(profiles) || !profiles.length || process.platform !== "win32") return;
-  const { extractProfileCode } = require("./profile-identity.cjs");
+  pruneStaleBadgeCacheOnce();
+  const { extractProfileCode } = require("./profile-code.cjs");
   const seen = new Set();
   const codes = [];
   for (const p of profiles) {
@@ -166,255 +361,174 @@ function warmBadgeIcosForProfiles(profiles, { limit = 48 } = {}) {
     if (codes.length >= limit) break;
   }
   for (const code of codes) {
-    void ensureBadgeIco(code).catch(() => undefined);
+    void ensureBadgeIcoFast(code).catch(() => undefined);
   }
-}
-
-function buildApplyScript({ dir, title, icoPath, appId, browserPid = 0 }) {
-  const escaped = escapePsSingleQuoted(dir);
-  const forward = escapePsSingleQuoted(dir.replace(/\\/g, "/"));
-  const uuid = escapePsSingleQuoted(path.basename(dir));
-  const titleEsc = escapePsSingleQuoted(title);
-  const icoEsc = escapePsSingleQuoted(icoPath);
-  const appIdEsc = escapePsSingleQuoted(appId);
-  const pidHint = Number(browserPid) > 0 ? Number(browserPid) : 0;
-
-  return `
-$ErrorActionPreference = 'Stop'
-$needles = @('${escaped}', '${forward}', '${uuid}')
-$title = '${titleEsc}'
-$ico = '${icoEsc}'
-$appId = '${appIdEsc}'
-$hintPid = ${pidHint}
-
-# Fast path: known browser PID (from Playwright) or stealth-pid.json — never WMI on hot path.
-$pids = @()
-if ($hintPid -gt 0) {
-  $pids = @($hintPid)
-} else {
-  $sidecar = Join-Path '${escaped}' 'stealth-pid.json'
-  if (Test-Path -LiteralPath $sidecar) {
-    try {
-      $sp = Get-Content -LiteralPath $sidecar -Raw | ConvertFrom-Json
-      if ($sp.pid -gt 0) { $pids = @([int]$sp.pid) }
-    } catch { }
-  }
-}
-# Last resort only (slow ~2–3s) — batch scripts / missing sidecar
-if (-not $pids -or $pids.Count -eq 0) {
-  $pids = @(Get-CimInstance Win32_Process | Where-Object {
-    $cmd = $_.CommandLine; $name = $_.Name
-    if (-not $cmd) { return $false }
-    if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }
-    if ($cmd -notmatch 'stealth-browser-console') { return $false }
-    foreach ($n in $needles) { if ($n -and ($cmd -like ('*' + $n + '*'))) { return $true } }
-    return $false
-  } | Sort-Object { if ($_.CommandLine -match '--type=') { 1 } else { 0 } } |
-    Select-Object -ExpandProperty ProcessId)
-}
-
-if (-not $pids -or $pids.Count -eq 0) { Write-Output 'MISSING'; exit 0 }
-
-Add-Type -TypeDefinition @"
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
-using System.Text;
-
-public static class StealthTaskbarWin {
-  public const int WM_SETICON = 0x0080;
-  public const int ICON_SMALL = 0;
-  public const int ICON_BIG = 1;
-  public const uint IMAGE_ICON = 1;
-  public const uint LR_LOADFROMFILE = 0x0010;
-  public const uint LR_DEFAULTSIZE = 0x0040;
-
-  public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-  public static extern bool SetWindowText(IntPtr hWnd, string lpString);
-
-  [DllImport("user32.dll")]
-  public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
-
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-  public static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
-
-  [DllImport("user32.dll")]
-  public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-  [DllImport("user32.dll")]
-  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-  [DllImport("user32.dll")]
-  public static extern bool IsWindowVisible(IntPtr hWnd);
-
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-  public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-  [DllImport("user32.dll")]
-  public static extern bool IsIconic(IntPtr hWnd);
-
-  [DllImport("shell32.dll")]
-  public static extern int SHGetPropertyStoreForWindow(IntPtr hwnd, ref Guid iid, out IPropertyStore propertyStore);
-
-  [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF58"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-  public interface IPropertyStore {
-    int GetCount(out uint cProps);
-    int GetAt(uint iProp, out PropertyKey pkey);
-    int GetValue(ref PropertyKey key, out PropVariant pv);
-    int SetValue(ref PropertyKey key, ref PropVariant pv);
-    int Commit();
-  }
-
-  [StructLayout(LayoutKind.Sequential, Pack = 4)]
-  public struct PropertyKey { public Guid fmtid; public uint pid; }
-
-  [StructLayout(LayoutKind.Sequential)]
-  public struct PropVariant {
-    public ushort vt; public ushort wReserved1; public ushort wReserved2; public ushort wReserved3;
-    public IntPtr p; public int p2;
-  }
-
-  public static readonly Guid IID_IPropertyStore = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF58");
-  public static readonly PropertyKey PKEY_AppUserModel_ID = new PropertyKey {
-    fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 5
-  };
-  public static readonly PropertyKey PKEY_AppUserModel_RelaunchIconResource = new PropertyKey {
-    fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 3
-  };
-  public static readonly PropertyKey PKEY_AppUserModel_RelaunchDisplayNameResource = new PropertyKey {
-    fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 4
-  };
-
-  public static PropVariant MakeString(string value) {
-    return new PropVariant { vt = 31, p = Marshal.StringToCoTaskMemUni(value) };
-  }
-
-  public static void ApplyAppUserModel(IntPtr hwnd, string id, string iconPath, string displayName) {
-    IPropertyStore store;
-    Guid iid = IID_IPropertyStore;
-    if (SHGetPropertyStoreForWindow(hwnd, ref iid, out store) != 0 || store == null) return;
-    try {
-      var vId = MakeString(id); var keyId = PKEY_AppUserModel_ID; store.SetValue(ref keyId, ref vId);
-      if (!string.IsNullOrEmpty(iconPath)) {
-        var vIcon = MakeString(iconPath); var keyIcon = PKEY_AppUserModel_RelaunchIconResource;
-        store.SetValue(ref keyIcon, ref vIcon);
-      }
-      if (!string.IsNullOrEmpty(displayName)) {
-        var vName = MakeString(displayName); var keyName = PKEY_AppUserModel_RelaunchDisplayNameResource;
-        store.SetValue(ref keyName, ref vName);
-      }
-      store.Commit();
-    } catch { }
-  }
-
-  public static IntPtr FindVisibleHwnd(uint[] pids) {
-    var set = new HashSet<uint>(pids);
-    IntPtr found = IntPtr.Zero;
-    EnumWindows((h, l) => {
-      if (!IsWindowVisible(h) && !IsIconic(h)) return true;
-      uint pid;
-      GetWindowThreadProcessId(h, out pid);
-      if (!set.Contains(pid)) return true;
-      var sb = new StringBuilder(512);
-      GetWindowText(h, sb, sb.Capacity);
-      // Prefer real browser windows (skip empty tool windows)
-      if (sb.Length == 0) return true;
-      found = h;
-      return false;
-    }, IntPtr.Zero);
-    return found;
-  }
-}
-"@
-
-$loadFlags = [uint32]([StealthTaskbarWin]::LR_LOADFROMFILE -bor [StealthTaskbarWin]::LR_DEFAULTSIZE)
-$hi = [IntPtr]::Zero
-if ($ico -and (Test-Path -LiteralPath $ico)) {
-  $hi = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $ico, [StealthTaskbarWin]::IMAGE_ICON, 0, 0, $loadFlags)
-}
-
-$ok = $false
-$iconOk = $false
-$pidArr = [uint32[]]@($pids | ForEach-Object { [uint32]$_ })
-$h = [StealthTaskbarWin]::FindVisibleHwnd($pidArr)
-if ($h -eq [IntPtr]::Zero) {
-  foreach ($procId in $pids) {
-    $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
-    if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) {
-      $h = $p.MainWindowHandle
-      break
-    }
-  }
-}
-if ($h -ne [IntPtr]::Zero) {
-  [StealthTaskbarWin]::SetWindowText($h, $title) | Out-Null
-  if ($hi -ne [IntPtr]::Zero) {
-    [StealthTaskbarWin]::SendMessage($h, [StealthTaskbarWin]::WM_SETICON, [IntPtr][StealthTaskbarWin]::ICON_SMALL, $hi) | Out-Null
-    [StealthTaskbarWin]::SendMessage($h, [StealthTaskbarWin]::WM_SETICON, [IntPtr][StealthTaskbarWin]::ICON_BIG, $hi) | Out-Null
-    $iconOk = $true
-  }
-  [StealthTaskbarWin]::ApplyAppUserModel($h, $appId, $ico, $title)
-  $ok = $true
-}
-
-if ($ok -and $iconOk) { Write-Output 'OK_ICON' }
-elseif ($ok) { Write-Output 'OK_TITLE' }
-else { Write-Output 'NOHWND' }
-`.trim();
 }
 
 async function applyNativeProfileTaskbarChrome(userDataDir, title, code, opts = {}) {
   if (process.platform !== "win32" || !userDataDir) {
     return { ok: false, reason: "unsupported" };
   }
+  if (shouldSkipTaskbarBadge(code || title, opts)) {
+    return { ok: false, reason: "skipped-headless" };
+  }
   const label = String(title || "").trim().slice(0, 120);
   if (!label) return { ok: false, reason: "empty-title" };
 
-  const digits = String(code || label).replace(/\D/g, "").slice(-4) || "0000";
+  const digits = extractFourDigitCode(code || label);
   let icoPath = "";
   try {
-    icoPath = await ensureBadgeIco(digits);
+    if (opts.icoWarm) {
+      icoPath = await opts.icoWarm;
+    }
+    if (!icoPath) {
+      icoPath = await ensureBadgeIcoFast(digits);
+    }
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    try {
+      icoPath = await ensureBadgeIco(digits);
+    } catch (fallbackError) {
+      return {
+        ok: false,
+        reason: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+      };
+    }
   }
 
   const dir = path.resolve(String(userDataDir));
   const appId = `StealthBrowser.Profile.${digits}`;
-  const browserPid = Number(opts.browserPid) > 0 ? Number(opts.browserPid) : 0;
-  const scriptBody = buildApplyScript({ dir, title: label, icoPath, appId, browserPid });
-  const scriptFile = path.join(badgeCacheDir(), `apply-${digits}-${Date.now()}.ps1`);
-  fs.writeFileSync(scriptFile, scriptBody, "utf8");
+  let browserPid = readTaskbarHintPid(dir, opts.browserPid);
+  if (!browserPid) {
+    browserPid = await waitForTaskbarHintPid(dir, 0, {
+      timeoutMs: Number(opts.pidWaitMs) > 0 ? Number(opts.pidWaitMs) : 800,
+      intervalMs: 50,
+    });
+  }
+  const applyPs1 = path.join(__dirname, "stealth-taskbar-apply.ps1");
+  const workerPayload = {
+    UserDataDir: dir,
+    Title: label,
+    Ico: icoPath,
+    AppId: appId,
+    HintPid: browserPid,
+  };
 
   try {
-    const { stdout, stderr } = await runPowerShell(["-File", scriptFile], { timeout: 25_000 });
-    const result = String(stdout).trim().split(/\r?\n/).pop()?.trim();
+    const tWorker = Date.now();
+    const workerResp = await runTaskbarApplyWorker(workerPayload, { timeoutMs: 20_000 });
+    const workerMs = Date.now() - tWorker;
+    const result = String(workerResp?.result || "").trim();
+    const wmiSkipped = workerResp?.wmiSkipped === true;
     if (result === "OK_ICON" || result === "OK_TITLE") {
-      return { ok: true, detail: result };
+      return { ok: true, detail: result, wmiSkipped, workerMs, via: "worker" };
     }
-    if (result === "MISSING") return { ok: false, reason: "not-running" };
-    return { ok: false, reason: result || "no-window", detail: String(stderr || "").slice(0, 200) };
+    if (result === "MISSING") return { ok: false, reason: "not-running", wmiSkipped, workerMs, via: "worker" };
+    return { ok: false, reason: result || "no-window", wmiSkipped, workerMs, via: "worker" };
+  } catch {
+    /* fallback one-shot PS */
+  }
+
+  try {
+    const tSpawn = Date.now();
+    const { stdout, stderr } = await runPowerShellFile(
+      applyPs1,
+      [
+        "-UserDataDir",
+        dir,
+        "-Title",
+        label,
+        "-Ico",
+        icoPath,
+        "-AppId",
+        appId,
+        "-HintPid",
+        String(browserPid),
+      ],
+      { timeout: 20_000 },
+    );
+    const psSpawnMs = Date.now() - tSpawn;
+    const result = String(stdout).trim().split(/\r?\n/).pop()?.trim();
+    const wmiSkipped = browserPid > 0;
+    if (result === "OK_ICON" || result === "OK_TITLE") {
+      return { ok: true, detail: result, wmiSkipped, psSpawnMs, via: "spawn" };
+    }
+    if (result === "MISSING") return { ok: false, reason: "not-running", wmiSkipped, psSpawnMs, via: "spawn" };
+    return { ok: false, reason: result || "no-window", detail: String(stderr || "").slice(0, 200), wmiSkipped, psSpawnMs, via: "spawn" };
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };
-  } finally {
-    try {
-      fs.unlinkSync(scriptFile);
-    } catch {
-      /* ignore */
-    }
   }
+}
+
+const { focusProfileBrowserWindow } = require("./profile-browser-orphan.cjs");
+
+function isOkTaskbarIcon(result) {
+  return Boolean(result?.ok && result.detail === "OK_ICON");
+}
+
+function isNoHwndTaskbar(result) {
+  const reason = String(result?.reason || result?.detail || "").toUpperCase();
+  return reason === "NOHWND" || reason === "NO-WINDOW";
+}
+
+function isRetryableTaskbarFailure(result) {
+  if (isOkTaskbarIcon(result)) return false;
+  const reason = String(result?.reason || result?.detail || "").toLowerCase();
+  if (!reason || reason === "no-attempt") return true;
+  if (reason.includes("timeout")) return true;
+  return (
+    reason === "nohwnd" ||
+    reason === "no-window" ||
+    reason === "not-running" ||
+    reason === "missing"
+  );
+}
+
+/**
+ * Retry apply when HWND/PID not ready yet (profile open hot path).
+ * Focus only on NOHWND — focus-steal on every retry breaks multi-profile open.
+ */
+async function applyNativeProfileTaskbarChromeWithRetry(userDataDir, title, code, opts = {}) {
+  const retryDelaysMs = opts.retryDelaysMs || [0, 300, 700, 1500, 3000, 6000, 12_000];
+  const focusRetry = opts.focusRetry !== false;
+  let last = null;
+
+  for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+    if (retryDelaysMs[attempt]) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
+    }
+    if (attempt > 0 && focusRetry && last && isNoHwndTaskbar(last)) {
+      await focusProfileBrowserWindow(userDataDir);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+    last = await applyNativeProfileTaskbarChrome(userDataDir, title, code, {
+      browserPid: opts.browserPid,
+      pidWaitMs: opts.pidWaitMs,
+      icoWarm: attempt === 0 ? opts.icoWarm : undefined,
+    });
+    if (isOkTaskbarIcon(last)) return last;
+    if (!isRetryableTaskbarFailure(last)) break;
+  }
+
+  return last || { ok: false, reason: "no-attempt" };
 }
 
 module.exports = {
   BADGE_STYLE,
-  BADGE_CANVAS,
+  HOT_ICO_SIZES,
   resolveChromiumExe,
   ensureBadgeIco,
+  ensureBadgeIcoFast,
   warmBadgeIcosForProfiles,
+  warmRecentBadgeIcosOnStartup,
+  warmTaskbarApplyRuntime,
+  pruneStaleBadgeCache,
+  isAgentPoolProfileCode,
+  shouldSkipTaskbarBadge,
+  readTaskbarHintPid,
+  waitForTaskbarHintPid,
+  startBrowserPidSidecarPoll,
   applyNativeProfileTaskbarChrome,
+  applyNativeProfileTaskbarChromeWithRetry,
+  isRetryableTaskbarFailure,
   badgeCachePath,
-  pngBufferToIco,
-  buildApplyScript,
 };

@@ -35,4 +35,11 @@ assert.strictEqual(prod.STEALTH_API_PORT, String(DEFAULT_PROD_API_PORT));
 const custom = stealthElectronEnv({ STEALTH_USER_DATA: "X:\\custom-root" });
 assert.strictEqual(custom.STEALTH_USER_DATA, "X:\\custom-root");
 
+// Stale workspace VITE_DEV_SERVER_URL (:5173) must not leak into Electron unless dev-node sets it.
+process.env.VITE_DEV_SERVER_URL = "http://127.0.0.1:5173/";
+const noStaleVite = stealthElectronEnv();
+assert.strictEqual(noStaleVite.VITE_DEV_SERVER_URL, undefined);
+const withVite = stealthElectronEnv({ VITE_DEV_SERVER_URL: "http://127.0.0.1:5175/" });
+assert.strictEqual(withVite.VITE_DEV_SERVER_URL, "http://127.0.0.1:5175/");
+
 console.log("stealth-electron-env.test: ok");

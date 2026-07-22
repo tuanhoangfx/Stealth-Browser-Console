@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { extractProfileCode } = require("./lib/profile-identity.cjs");
+const { extractProfileCode } = require("./lib/profile-code.cjs");
 
 describe("profile-identity", () => {
   it("extracts trailing digits from profile name", () => {

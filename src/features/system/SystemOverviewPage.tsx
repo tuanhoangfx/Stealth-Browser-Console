@@ -12,7 +12,7 @@ export const SystemOverviewPage = memo(function SystemOverviewPage() {
   const dataHint = useMemo(() => {
     if (!userDataPath) return "Loading data path…";
     if (userDataPath.includes("-dev")) {
-      return "Isolated dev data — unset STEALTH_DEV_ISOLATED or set to 0, then restart dev to use production profiles (same as Setup.exe).";
+      return "Isolated dev data (subset by default). Full prod catalog: node scripts/sync-dev-catalog-now.mjs --full — then restart dev.";
     }
     return "Production AppData — dev catalog matches installed Stealth Browser Console.";
   }, [userDataPath]);

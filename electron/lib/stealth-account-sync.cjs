@@ -5,7 +5,7 @@ const { detectGoogleSession } = require("./google-session-detect.cjs");
 const { detectMicrosoftSession } = require("./microsoft-session-detect.cjs");
 const { buildStealthSnapshot } = require("./stealth-snapshot-types.cjs");
 const { resolveVaultTargetsSync } = require("./stealth-resolve-targets.cjs");
-const { extractProfileCode } = require("./profile-identity.cjs");
+const { extractProfileCode } = require("./profile-code.cjs");
 const {
   findGmailAccountsByEmail,
   findGmailAccountsByBrowser,

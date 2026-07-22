@@ -13,7 +13,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const { diagnoseMailCredentials, normalizeBrowserCode } = require("../electron/lib/twofa-vault-bridge.cjs");
-const { extractProfileCode } = require("../electron/lib/profile-identity.cjs");
+const { extractProfileCode } = require("../electron/lib/profile-code.cjs");
 
 function argNum(name, fallback) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));

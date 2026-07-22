@@ -24,8 +24,8 @@ function validateProfileId(id) {
 
 function validateCreateProfilePayload(payload = {}) {
   const next = asObject(payload);
-  next.name = String(next.name || "").trim();
-  if (!next.name) throw new Error("Profile name is required.");
+  const { normalizeProfileNameOrThrow } = require("./lib/profile-code.cjs");
+  next.name = normalizeProfileNameOrThrow(next.name);
   return validateProfileDefaultsPayload(next);
 }
 

@@ -1,10 +1,10 @@
-/**
- * Live smoke — E0001 native prefs-load across relaunch.
+﻿/**
+ * Live smoke â€” E0001 native prefs-load across relaunch.
  *
  * Launch 1 registers E0001 via --load-extension (first open). After Chromium
  * loads it, prefs gain a Chromium-authored permission marker. Launch 2 must then
  * load E0001 natively from prefs (no --load-extension) and its service worker
- * must still be present — this is the "install once, open fast" path that keeps
+ * must still be present â€” this is the "install once, open fast" path that keeps
  * profile opens as quick as the pre-extension 1.0.11 builds.
  */
 const fs = require("node:fs");
@@ -68,7 +68,7 @@ async function main() {
   try {
     await openDatabase(userDataRoot);
     const profile = profileService.createProfile({
-      name: `e0001-relaunch-${Date.now()}`,
+      name: String(9000 + (Date.now() % 999)).padStart(4, "0"),
       fingerprintSeed: 91000 + Math.floor(Math.random() * 1000),
       startupUrl: "https://example.com/",
     });
@@ -80,13 +80,13 @@ async function main() {
     sessions = new SessionManager();
     sessions.setUserDataRoot(userDataRoot);
 
-    // Launch 1 — first open, provisions E0001 via --load-extension.
+    // Launch 1 â€” first open, provisions E0001 via --load-extension.
     const plan1 = prepareProfileExtensions(userDataDir, userDataRoot, binary.cacheDir);
     const cliLoad1 = (plan1.cliStoreLoads || []).some((r) => r.storeId === COOKIE_BRIDGE_STORE_ID);
     const worker1 = await launchAndProbe(sessions, profile);
     const provisionedAfter1 = isCookieBridgeProvisionedInPrefs(userDataDir);
 
-    // Launch 2 — Chromium already installed E0001, should load from prefs.
+    // Launch 2 â€” Chromium already installed E0001, should load from prefs.
     const plan2 = prepareProfileExtensions(userDataDir, userDataRoot, binary.cacheDir);
     const cliLoad2 = (plan2.cliStoreLoads || []).some((r) => r.storeId === COOKIE_BRIDGE_STORE_ID);
     const worker2 = await launchAndProbe(sessions, profile);
@@ -102,9 +102,9 @@ async function main() {
 
     // Load-bearing invariants (deterministic, not observability-dependent):
     assert(cliLoad1, "launch 1 must force --load-extension (first open)");
-    assert(provisionedAfter1, "after launch 1 — Chromium must load E0001 and cache its manifest in prefs");
+    assert(provisionedAfter1, "after launch 1 â€” Chromium must load E0001 and cache its manifest in prefs");
     assert(!cliLoad2, "launch 2 must skip --load-extension (native prefs load)");
-    assert(retainedAfter2, "after flag-less launch 2 — Chromium must keep E0001 loaded + enabled");
+    assert(retainedAfter2, "after flag-less launch 2 â€” Chromium must keep E0001 loaded + enabled");
 
     console.log(`extension-e0001-relaunch-smoke: ok (worker seen: launch1=${worker1} launch2=${worker2})`);
   } catch (error) {

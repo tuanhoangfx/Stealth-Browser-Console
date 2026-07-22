@@ -1,23 +1,5 @@
-export type DesignFeatureId = never;
-
-export type ActiveDesignFeature = {
-  id: DesignFeatureId;
-  title: string;
-  subtitle: string;
-  project: string;
-};
-
-const FEATURES: ActiveDesignFeature[] = [];
-
-export function listActiveDesignFeatures(): ActiveDesignFeature[] {
-  return FEATURES;
-}
-
-export function getActiveDesignFeature(_id: string): ActiveDesignFeature | null {
-  return null;
-}
-
-export const ACTIVE_DESIGN_COUNT = FEATURES.length;
+/** Active design reviews in System → Design Template (empty when all features are locked). */
+export const ACTIVE_DESIGN_COUNT = 0;
 
 /** Locked 2026-07-06 — Run History Design V1 Chip lanes. */
 export const RUN_HISTORY_DESIGN_LOCK = "V1" as const;
@@ -25,11 +7,8 @@ export const RUN_HISTORY_DESIGN_LOCK = "V1" as const;
 /** Locked 2026-07-06 — Workflow canvas Design V5 Spaced bezier flow. */
 export const WORKFLOW_CANVAS_LAYOUT_DESIGN_LOCK = "V5" as const;
 
-/** Locked 2026-06 — GroupCreatorPanel toolbar selection chip Design V5 Quiet bloom. */
-export const DIRECTORY_TOOLBAR_SELECTION_DESIGN_LOCK = "V5" as const;
-
 /**
- * Locked 2026-07-20 — Design V2 (bottom plate variant for readability).
- * Default Chromium icon + navy bottom plate + large Bold white digits (128px PNG-in-ICO).
+ * Locked 2026-07-21 — Design V4 Digits only.
+ * Native Chromium icon + Bold colored last3; 0xxx white, 1–9 vivid (`v4-digits-only-spaced5`).
  */
-export const TASKBAR_PROFILE_BADGE_DESIGN_LOCK = "V2" as const;
+export const TASKBAR_PROFILE_BADGE_DESIGN_LOCK = "V4" as const;

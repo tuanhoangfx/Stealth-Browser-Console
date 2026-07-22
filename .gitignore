@@ -20,6 +20,7 @@ vendor/hub-ui/P0005-CRM/
 # Env & secrets (hub keys, tokens)
 .env.local
 .env*.local
+.dev-vite.env.json
 config/router.local.json
 build/updater-gh-token
 electron/packaged-node_modules/

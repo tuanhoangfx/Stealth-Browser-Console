@@ -1,7 +1,7 @@
-import { useState } from "react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { resolveHubBrandIcon } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize } from "../ui-scale";
+import { useHubBrandImageGate } from "../lib/use-hub-brand-image-gate";
 import type { HubBrandIconShell } from "./filter-dropdown-primitives";
 import type { HubGlyphComponent } from "../types/filter-badge";
 
@@ -34,20 +34,20 @@ function DirectoryBrandImg({
   alt: string;
   fallbackIcon?: HubGlyphComponent;
 }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
+  const { failed, imgSrc, onError } = useHubBrandImageGate(src);
+  if (failed || !imgSrc) {
     return Fallback ? <Fallback size={compactIconSize(14)} strokeWidth={2.25} /> : null;
   }
   return (
     <img
-      src={src}
+      src={imgSrc}
       alt={alt}
       className={directoryBrandImgClass(shell)}
       loading="lazy"
       decoding="async"
       draggable={false}
       referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
+      onError={onError}
     />
   );
 }

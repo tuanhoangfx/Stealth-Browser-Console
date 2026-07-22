@@ -21,12 +21,12 @@ async function main() {
 
   // IPC contracts
   assert(validateTargetUrl("https://example.com") === "https://example.com/", "validateTargetUrl");
-  assert(validateCreateProfilePayload({ name: "E2E" }).name === "E2E", "validateCreateProfilePayload");
+  assert(validateCreateProfilePayload({ name: "8803" }).name === "8803", "validateCreateProfilePayload");
   const openPayload = validateOpenUrlPayload({ profileId: "p1", targetUrl: "https://example.com" });
   assert(openPayload.profileId === "p1" && openPayload.screenshot === true, "validateOpenUrlPayload");
 
   // Profile CRUD
-  const created = profileService.createProfile({ name: "E2E Profile", note: "smoke" });
+  const created = profileService.createProfile({ name: "8803", note: "smoke" });
   assert(created?.id, "createProfile");
   profileService.updateProfile(created.id, { status: "running", fingerprintSeed: 424242 });
   const updated = profileService.getProfile(created.id);
@@ -63,7 +63,7 @@ async function main() {
   const imported = profileService.importProfilesBundle(bundle, { merge: true });
   assert(imported.imported >= 1 && profileService.listProfiles().length >= 1, "importProfilesBundle");
 
-  // Cleanup group (must be empty of profiles first — move to default)
+  // Cleanup group (must be empty of profiles first â€” move to default)
   const reimported = profileService.getProfile(created.id);
   if (reimported) profileService.updateProfile(reimported.id, { groupId: "default" });
   profileService.deleteGroup(group.id);

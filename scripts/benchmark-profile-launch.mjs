@@ -1,6 +1,6 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
- * Measure profile launch timing (openProfile) — prints min/avg/max from launch-perf ring buffer.
+ * Measure profile launch timing (openProfile) â€” prints min/avg/max from launch-perf ring buffer.
  * Usage: node scripts/run-electron-node.mjs scripts/benchmark-profile-launch.mjs [rounds]
  */
 import fs from "node:fs";
@@ -45,7 +45,7 @@ async function main() {
   try {
     await openDatabase(tmpRoot);
     const profile = profileService.createProfile({
-      name: "Launch Bench",
+      name: "8899",
       groupId: "default",
       startupUrl: "https://www.google.com/",
     });
@@ -55,16 +55,16 @@ async function main() {
 
     // Pre-warm E0001 like production does at startup (warmCookieBridgeStoreCache).
     // Otherwise the first sessions.launch() on this FRESH temp root pays an ~8s
-    // GitHub download of the extension inline, which no real (warm) root ever does —
+    // GitHub download of the extension inline, which no real (warm) root ever does â€”
     // it made the benchmark's cold max look like a per-open regression when it is not.
     try {
       const { warmCookieBridgeStoreCache } = require("../electron/lib/cookie-bridge-store.cjs");
       await warmCookieBridgeStoreCache(tmpRoot);
     } catch {
-      // best-effort — offline runs just measure the (still valid) launch path
+      // best-effort â€” offline runs just measure the (still valid) launch path
     }
 
-    // Full launch() wall-clock per round — captures the whole open path
+    // Full launch() wall-clock per round â€” captures the whole open path
     // (prepare/orphan probe + spawn), unlike the launch-perf ring buffer which
     // times openProfile only. This is what the sub-500ms guard enforces, since
     // the WMI regression lived in prepareProfileForLaunch, outside spawn.
@@ -101,7 +101,7 @@ async function main() {
     const latest = entries[0];
     if (latest?.marks?.length) {
       console.log(
-        `  latest phases: ${latest.marks.map((m) => `${m.phase}=${m.ms}ms`).join(" · ")}`,
+        `  latest phases: ${latest.marks.map((m) => `${m.phase}=${m.ms}ms`).join(" Â· ")}`,
       );
     }
 

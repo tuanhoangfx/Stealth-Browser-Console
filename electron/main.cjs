@@ -674,16 +674,6 @@ function normalizeDevServerUrl(url) {
   return trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
 }
 
-async function isDevServerReachable(url) {
-  try {
-    const response = await fetch(url, { method: "GET" });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-/** Reject foreign Vite instances (e.g. workspace default :5173) — must serve this app. */
 async function isStealthDevServer(url) {
   try {
     const response = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
@@ -730,11 +720,7 @@ async function resolveDevServerUrl() {
     if (await isStealthDevServer(url)) return url;
   }
 
-  for (const url of candidates) {
-    if (await isDevServerReachable(url)) return url;
-  }
-
-  // Unpackaged dev must not silently load stale dist/ — breaks /assets brand icons (file://).
+  // Never fall back to a foreign Vite (e.g. workspace :5173) — wrong app / boot errors.
   if (!app.isPackaged && fs.existsSync(distIndexPath())) {
     console.warn("[load] Vite :5175 not running — start pnpm dev:node (dist fallback disabled in dev)");
   }
@@ -751,6 +737,16 @@ async function loadApplication(win) {
     const ready = await waitForStealthDevServer(devServerUrl);
     if (!ready) {
       console.error(`[load] dev server not ready: ${devServerUrl} — run pnpm dev:recover`);
+      const html = [
+        "<!doctype html><html><body style=\"margin:0;background:#0b1020;color:#e6e8ef;font:14px/1.5 system-ui,sans-serif\">",
+        "<div style=\"padding:2rem;max-width:40rem\">",
+        "<h1 style=\"margin:0 0 .75rem;font-size:1.125rem\">Stealth Browser Console</h1>",
+        "<p>Vite on <code>http://127.0.0.1:5175</code> is not ready yet.</p>",
+        "<p>Run <code>pnpm dev:node</code> or <code>pnpm dev:recover</code> from Tool/P0003-Stealth-Browser-Console.</p>",
+        "</div></body></html>",
+      ].join("");
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      return;
     }
     await win.loadURL(devServerUrl);
     return;
@@ -830,9 +826,10 @@ async function createWindow() {
   const showWindow = () => {
     if (win.isDestroyed()) return;
     if (!win.isVisible()) {
-      win.maximize();
+      const noFocus = String(process.env.STEALTH_DEV_NO_FOCUS || "") === "1";
+      if (!noFocus) win.maximize();
       win.show();
-      win.focus();
+      if (!noFocus) win.focus();
     }
   };
 
@@ -915,6 +912,15 @@ app.whenReady().then(async () => {
   sessionManager.setUserDataRoot(userDataRoot());
   setImmediate(() => {
     void sessionManager.reconcileOrphansOnStartup().catch(() => undefined);
+    if (process.platform === "win32") {
+      try {
+        const { warmRecentBadgeIcosOnStartup, warmTaskbarApplyRuntime } = require("./lib/profile-taskbar-native.cjs");
+        void warmTaskbarApplyRuntime();
+        warmRecentBadgeIcosOnStartup((limit) => profileService.listRecentlyOpenedProfiles(limit), { limit: 16 });
+      } catch (error) {
+        console.warn("[taskbar-badge] warm recent:", error instanceof Error ? error.message : error);
+      }
+    }
     if (typeof warmCookieBridgeStoreCache === "function") {
       void (async () => {
         try {

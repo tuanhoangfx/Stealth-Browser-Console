@@ -67,7 +67,7 @@
     "id": "adobe",
     "label": "Adobe",
     "match": "adobe",
-    "src": "/assets/brand-icons/adobe.ico",
+    "src": "/assets/brand-icons/adobe.png",
     "shell": "bare",
     "faviconDomain": "adobe.com"
   },
@@ -829,6 +829,14 @@
     "src": "/assets/brand-icons/gmail-edu.png",
     "shell": "bare",
     "faviconDomain": "edu.google.com"
+  },
+  {
+    "id": "acc-gmail",
+    "label": "Acc Gmail",
+    "match": "acc\\s*gmail",
+    "src": "/icons/google.svg",
+    "shell": "bare",
+    "faviconDomain": "gmail.com"
   },
   {
     "id": "google",

@@ -25,8 +25,8 @@ export function DesignTemplatePage() {
             (2026-07-06).
           </p>
           <p className="mt-1 text-[11px] text-emerald-200/90">
-            Taskbar profile badge locked <strong>Design {TASKBAR_PROFILE_BADGE_DESIGN_LOCK}</strong> — Chromium icon +
-            center band + larger digits (2026-07-20).
+            Taskbar profile badge locked <strong>Design {TASKBAR_PROFILE_BADGE_DESIGN_LOCK}</strong> — colored last3
+            only (`v4-digits-only-spaced5`, +30% digit gap vs spaced4). 0xxx white; 1xxx sky cyan (#00c8ff); 2–9 vivid hues.
           </p>
         </div>
       </Glass>
@@ -34,8 +34,8 @@ export function DesignTemplatePage() {
         description={
           <>
             <strong className="text-cyan-200/90">Taskbar profile badge</strong> locked as{" "}
-            <span className="font-mono text-cyan-200">Design {TASKBAR_PROFILE_BADGE_DESIGN_LOCK}</span> — default
-            Chromium icon with navy center band and larger Regular white digits (native taskbar ICO).
+            <span className="font-mono text-cyan-200">Design {TASKBAR_PROFILE_BADGE_DESIGN_LOCK}</span> — Bold colored
+            last3 on native Chromium icon (no background) — 0xxx white; 1–9 vivid hues.
           </>
         }
       />

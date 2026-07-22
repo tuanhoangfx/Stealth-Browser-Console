@@ -185,6 +185,7 @@ export function startDevDetached() {
 
 export function focusStealthWindow() {
   if (process.platform !== "win32") return;
+  if (process.env.STEALTH_AGENT_SMOKE === "1" || process.env.STEALTH_DEV_NO_FOCUS === "1") return;
   spawnSync(
     "powershell",
     [

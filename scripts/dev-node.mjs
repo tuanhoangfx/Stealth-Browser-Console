@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 import { stealthElectronEnv } from "./lib/stealth-electron-env.mjs";
 import { syncDevCatalogFromProd } from "./lib/sync-dev-catalog-from-prod.mjs";
-import { waitForDevPort } from "./lib/dev-port-guard.mjs";
+import { isDevPortListening, waitForDevPort } from "./lib/dev-port-guard.mjs";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -47,6 +47,8 @@ let electron;
 let shuttingDown = false;
 let viteRestartAttempts = 0;
 let viteRestartTimer = null;
+/** Only one Electron spawn per dev-node orchestrator — never respawn on Vite port attach/retry. */
+let electronLaunched = false;
 
 function shutdown(code) {
   if (shuttingDown) return;
@@ -75,20 +77,25 @@ function scheduleViteRestart() {
   viteRestartTimer = setTimeout(() => {
     viteRestartTimer = null;
     if (shuttingDown) return;
-    spawnVite();
-    void waitForDevPort(PORT)
-      .then(() => {
+    void (async () => {
+      if (await isDevPortListening(PORT)) {
+        console.log(`[dev-node] :${PORT} already listening — skip vite respawn (no new Electron)`);
+        viteRestartAttempts = 0;
+        return;
+      }
+      spawnVite();
+      try {
+        await waitForDevPort(PORT);
         viteRestartAttempts = 0;
         console.log(`[dev-node] Vite recovered on :${PORT}`);
-        if (!electron || electron.killed) spawnElectron();
-      })
-      .catch(() => {
+      } catch {
         if (viteRestartAttempts < MAX_VITE_RESTARTS) scheduleViteRestart();
         else {
           console.error("[dev-node] Vite restart exhausted — shutting down");
           shutdown(1);
         }
-      });
+      }
+    })();
   }, VITE_RESTART_DELAY_MS);
 }
 
@@ -102,22 +109,13 @@ function onViteExit(code, signal) {
   shutdown(code ?? 1);
 }
 
-process.on("SIGINT", () => shutdown(0));
-process.on("SIGTERM", () => shutdown(0));
-
-spawnVite();
-
-if (!useProdData) {
-  await syncDevCatalogFromProd().catch((err) => {
-    console.warn("[dev-node] sync-prod-catalog:", err instanceof Error ? err.message : err);
-  });
-}
-
 function spawnElectron() {
+  if (electronLaunched && electron && !electron.killed) return;
+  electronLaunched = true;
   const electronEnv = stealthElectronEnv({
     VITE_DEV_SERVER_URL: `http://127.0.0.1:${PORT}/`,
-    // Force isolated unless --prod-data (do not inherit STEALTH_DEV_ISOLATED=0 from shell).
     STEALTH_DEV_ISOLATED: useProdData ? "0" : "1",
+    STEALTH_DEV_NO_FOCUS: process.env.STEALTH_DEV_LOG === "1" ? "1" : process.env.STEALTH_DEV_NO_FOCUS,
   });
   if (useProdData) {
     console.warn("[dev-node] --prod-data: using production userData (close Setup.exe to avoid DB lock).");
@@ -141,8 +139,26 @@ function spawnElectron() {
   });
 }
 
-try {
+async function ensureViteUp() {
+  if (await isDevPortListening(PORT)) {
+    console.log(`[dev-node] :${PORT} already listening — attach (skip duplicate vite spawn)`);
+    return;
+  }
+  spawnVite();
   await waitForDevPort(PORT);
+}
+
+process.on("SIGINT", () => shutdown(0));
+process.on("SIGTERM", () => shutdown(0));
+
+if (!useProdData) {
+  await syncDevCatalogFromProd().catch((err) => {
+    console.warn("[dev-node] sync-prod-catalog:", err instanceof Error ? err.message : err);
+  });
+}
+
+try {
+  await ensureViteUp();
   if (!interactive) {
     console.log(`[dev-node] DEV_READY web=http://127.0.0.1:${PORT}/ log=${path.relative(root, LOG_FILE)}`);
   } else {

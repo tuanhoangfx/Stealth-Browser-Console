@@ -1,6 +1,6 @@
 /** Directory ID search — aligned with P0020 `matchesTodoTaskSearch` / `extractNumericSearchTerm`. */
 
-const { extractProfileCode } = require("./profile-identity.cjs");
+const { extractProfileCode } = require("./profile-code.cjs");
 
 // SSOT: vendor/hub-ui/src/lib/directory-id-search.node.cjs (inlined — vendor/ not in electron asar)
 function extractNumericSearchTerm(term) {

@@ -1,60 +1,25 @@
 /**
- * Apply v2i PNG-in-ICO badges to every live Stealth Cloak window.
- * Resolves profile code from API by folder UUID (not fake 380x).
+ * Apply locked taskbar badges to every live Stealth Cloak window.
+ * Resolves profile code from API by folder UUID.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { execFileSync } from "node:child_process";
+
+import { applyTaskbarBadgeWithRetry } from "./lib/taskbar-badge-apply-retry.mjs";
 
 const require = createRequire(import.meta.url);
 const {
-  applyNativeProfileTaskbarChrome,
   BADGE_STYLE,
+  pruneStaleBadgeCache,
   resolveChromiumExe,
+  shouldSkipTaskbarBadge,
 } = require("../electron/lib/profile-taskbar-native.cjs");
-const { extractProfileCode } = require("../electron/lib/profile-identity.cjs");
+const { listLiveCloakWindows } = require("../electron/lib/list-live-cloak-windows.cjs");
+const { extractProfileCode } = require("../electron/lib/profile-code.cjs");
 const { formatProfileWindowLabel } = require("../electron/lib/profile-window-title.cjs");
 
 const apiBase = String(process.argv[2] || process.env.STEALTH_API || "http://127.0.0.1:6003").replace(/\/$/, "");
-
-function listLiveUserDataDirs() {
-  const ps = [
-    "$rows = @()",
-    "Get-CimInstance Win32_Process | Where-Object {",
-    "  $_.Name -eq 'chrome.exe' -and $_.CommandLine -match 'stealth-browser-console' -and $_.CommandLine -notmatch '--type='",
-    "} | ForEach-Object {",
-    "  $dir = $null",
-    "  if ($_.CommandLine -match '--user-data-dir=\"([^\"]+)\"') { $dir = $Matches[1] }",
-    "  elseif ($_.CommandLine -match '--user-data-dir=(\\S+)') { $dir = $Matches[1] }",
-    "  if ($dir) { $rows += [pscustomobject]@{ dir = $dir; pid = $_.ProcessId } }",
-    "}",
-    "$rows | ConvertTo-Json -Compress",
-  ].join("\n");
-  const out = execFileSync(
-    path.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
-    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
-    { encoding: "utf8", timeout: 20_000, windowsHide: true },
-  );
-  const raw = String(out).trim();
-  if (!raw) return [];
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  const rows = Array.isArray(parsed) ? parsed : [parsed];
-  const byDir = new Map();
-  for (const row of rows) {
-    const dir = String(row?.dir || "").trim();
-    const pid = Number(row?.pid) || 0;
-    if (!dir) continue;
-    if (!byDir.has(dir)) byDir.set(dir, { dir, browserPid: pid });
-  }
-  return [...byDir.values()];
-}
 
 async function fetchProfileMap() {
   const map = new Map();
@@ -75,34 +40,35 @@ async function fetchProfileMap() {
   return map;
 }
 
-// Drop legacy orb caches so Electron cannot reuse them
-const cacheDir = path.join(os.tmpdir(), "stealth-taskbar-badges");
-if (fs.existsSync(cacheDir)) {
-  for (const name of fs.readdirSync(cacheDir)) {
-    if (name.endsWith(".ico") && !name.startsWith(`${BADGE_STYLE}-`)) {
-      try {
-        fs.unlinkSync(path.join(cacheDir, name));
-      } catch {
-        /* ignore */
-      }
-    }
-  }
+function isOkIcon(result) {
+  return Boolean(result?.ok && (result.detail === "OK_ICON" || result.detail === "OK_TITLE"));
 }
 
+const pruned = pruneStaleBadgeCache();
+console.log(JSON.stringify({ phase: "prune", removed: pruned.removed }));
 console.log(JSON.stringify({ phase: "style", BADGE_STYLE, chrome: resolveChromiumExe() || null }));
 
-const live = listLiveUserDataDirs();
+const live = listLiveCloakWindows();
 const byId = await fetchProfileMap();
 if (!live.length) {
   console.error("apply-all-taskbar-badges: no live Cloak windows");
   process.exit(2);
 }
 
+let okIcon = 0;
+let skipped = 0;
+let failed = 0;
+
 for (const { dir, browserPid: listedPid } of live) {
   const id = path.basename(dir);
   const profile = byId.get(id) || { id, name: id.slice(0, 4) };
   const code = extractProfileCode(profile.name, profile.id);
   const label = formatProfileWindowLabel(profile);
+  if (shouldSkipTaskbarBadge(code)) {
+    skipped += 1;
+    console.log(JSON.stringify({ id, name: profile.name, code, skipped: true, reason: "agent-pool-or-headless" }));
+    continue;
+  }
   let browserPid = Number(listedPid) || 0;
   if (!browserPid) {
     try {
@@ -115,7 +81,9 @@ for (const { dir, browserPid: listedPid } of live) {
     }
   }
   const t0 = Date.now();
-  const result = await applyNativeProfileTaskbarChrome(dir, label, code, { browserPid });
+  const result = await applyTaskbarBadgeWithRetry(dir, label, code, { browserPid, focusRetry: true });
+  if (isOkIcon(result)) okIcon += 1;
+  else failed += 1;
   console.log(
     JSON.stringify({
       id,
@@ -129,4 +97,13 @@ for (const { dir, browserPid: listedPid } of live) {
     }),
   );
 }
-console.log(`apply-all-taskbar-badges: done (${live.length})`);
+
+console.log(
+  JSON.stringify({ phase: "summary", total: live.length, okIcon, skipped, failed }),
+);
+console.log(`apply-all-taskbar-badges: done (${live.length}) okIcon=${okIcon} skipped=${skipped} failed=${failed}`);
+
+if (okIcon === 0 && live.length > skipped) {
+  process.exit(1);
+}
+process.exit(0);

@@ -27,6 +27,10 @@ export function stealthElectronEnv(extra = {}) {
     STEALTH_DEV_ISOLATED:
       extra.STEALTH_DEV_ISOLATED !== undefined ? String(extra.STEALTH_DEV_ISOLATED) : "1",
   };
+  // Ignore inherited workspace VITE_DEV_SERVER_URL (e.g. :5173) unless dev-node sets it.
+  if (!Object.prototype.hasOwnProperty.call(extra, "VITE_DEV_SERVER_URL")) {
+    delete env.VITE_DEV_SERVER_URL;
+  }
   const isolated = env.STEALTH_DEV_ISOLATED === "1";
   // Interactive dev must stay headed — agent smokes use X-Stealth-Agent-Smoke per API request.
   delete env.STEALTH_AGENT_SMOKE;
