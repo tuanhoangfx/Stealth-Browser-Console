@@ -45,6 +45,12 @@ async function ensureProfileExtensionPins(profile, userDataRoot) {
   }
 }
 
+function resolveUserDataRoot(deps) {
+  const root = deps.userDataRoot;
+  if (typeof root === "function") return root();
+  return typeof root === "string" ? root : "";
+}
+
 async function launchProfileOnce(deps, { id, name, skipStartupUrl = false } = {}) {
   if (deps.verifyRuntime) {
     const runtime = deps.verifyRuntime();
@@ -64,7 +70,7 @@ async function launchProfile(deps, { id, name, skipStartupUrl = false } = {}) {
   try {
     return await launchProfileOnce(deps, { id, name, skipStartupUrl });
   } catch (error) {
-    const userDataRoot = deps.userDataRoot?.();
+    const userDataRoot = resolveUserDataRoot(deps);
     if (!userDataRoot || !isCorruptSqliteError(error)) throw error;
     const recovered = await recoverCorruptDatabase(userDataRoot);
     if (!recovered.ok) throw error;
@@ -117,7 +123,7 @@ async function performOpenUrl(deps, safe, { profileName, emit } = {}) {
     targetUrl: safe.targetUrl,
     screenshot: safe.screenshot,
     closeWhenDone: safe.closeWhenDone,
-    screenshotsRoot: deps.userDataRoot,
+    screenshotsRoot: resolveUserDataRoot(deps),
     onCloseProfile: () => deps.sessionManager.close(profile.id),
     workflowAction: safe.workflowAction,
     steps: safe.steps,

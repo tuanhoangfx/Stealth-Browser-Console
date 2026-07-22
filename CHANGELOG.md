@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-07-22 — v1.0.138 — Release: taskbar badge stick + API launch fix
+
+- Version: `1.0.138`
+- Fix HTTP `/api/profiles/:id/launch` when `userDataRoot` is a string (was masked as "not a function" on any launch error).
+- Includes v1.0.136 taskbar badge reinforce (MainWindowHandle, double SETICON, nav re-stamp) and v1.0.135 dev/prod junction attach fix.
+- Gitignore `.dev-vite.env.json` (blocks push secret scan).
+
+## 2026-07-22 — v1.0.138 — Electron dev reload
+
+- Version: `1.0.138`
+- Timestamp: 2026-07-22 13:54 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-07-22 - hub-ui SSOT hook-stability vendor sync
 
 - Version: `1.0.137`
