@@ -20,6 +20,8 @@ runStep("catalog-backup-recovery", "node", ["--test", "electron/lib/catalog-back
 runStep("catalog-persist-guard", "node", ["--test", "electron/lib/catalog-persist-guard.test.cjs"]);
 runStep("verify-agent-smoke-headless", "node", ["scripts/verify-agent-smoke-headless.mjs", "0003"]);
 runStep("cloakbrowser-packaged-resolve", "node", ["--test", "electron/lib/cloakbrowser-packaged-resolve.test.cjs"]);
+runStep("powershell-exec-asar-resolve", "node", ["--test", "electron/lib/powershell-exec.test.cjs"]);
+runStep("smoke-asar-ps1-resolve", "node", ["scripts/smoke-asar-ps1-resolve.mjs"]);
 runStep("cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.mjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("stealth-electron-env", "node", ["scripts/lib/stealth-electron-env.test.mjs"]);

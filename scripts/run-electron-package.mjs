@@ -349,6 +349,7 @@ rmDir(stagingOutput);
 
 runNodeScript("scripts/verify-packaged-unpacked.mjs");
 runNodeScript("scripts/smoke-packaged-cloakbrowser-import.cjs");
+runNodeScript("scripts/smoke-asar-ps1-resolve.mjs");
 
 const tag = `v${version}`;
 

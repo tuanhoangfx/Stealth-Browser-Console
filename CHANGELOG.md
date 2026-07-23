@@ -1,11 +1,21 @@
 # Changelog
 
+## 2026-07-23 — v1.0.149 — Fix prod taskbar badge (asar PS1 path)
+
+- Version: `1.0.149`
+- Timestamp: 2026-07-23 12:45 (UTC+7)
+- Root cause: packaged `resolveElectronLibScript` returned `app.asar\…\*.ps1` because Electron `existsSync` is true for asar; PowerShell `-File` cannot read asar → badge never applied on prod (dev OK).
+- Fix: prefer `app.asar.unpacked` for PS1; gate `verify-packaged-unpacked` requires taskbar PS1 on disk.
+- Verified: unit `powershell-exec.test.cjs`; repro on installed 1.0.148 resolved asar path; user confirmed prod badge OK after Setup 1.0.149.
+- Regression: `scripts/smoke-asar-ps1-resolve.mjs` (ELECTRON_RUN_AS_NODE) + wired into `test:fast` / pack.
+
 ## 2026-07-23 - hub-ui SSOT hook-stability vendor sync
 
 - Version: `1.0.148`
 - Timestamp: 2026-07-23 11:01 (UTC+7)
 - Type: Patch
-- Status: Draft
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.148
 
 ### Changes
 

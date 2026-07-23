@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.138-stable",
-  "version": "1.0.138",
-  "gitCommit": "5c3c3df5923851040d24732ee6ebbbe55c5a8f21",
-  "gitTag": "v1.0.138-stable",
+  "label": "v1.0.149-stable",
+  "version": "1.0.149",
+  "gitCommit": null,
+  "gitTag": "v1.0.149-stable",
   "packagedFrom": "5c3c3df5923851040d24732ee6ebbbe55c5a8f21",
-  "notes": "v1.0.138 stable: taskbar badge stick (spaced5 + reinforce SETICON on nav), dev/prod junction attach fix, HTTP launch userDataRoot fix. Setup-1.0.138.exe + win-unpacked SHA512 verified.",
+  "notes": "v1.0.149: fix prod taskbar badge — resolveElectronLibScript prefers app.asar.unpacked (PowerShell cannot read asar). Includes badge NOHWND/AUMID fixes from 1.0.147–148. Setup-1.0.149.exe + win-unpacked SHA512 verified.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.138.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.149.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "CwOd3CHk30YJsuHwXeRSD4Y0xP+gDs1mu/tYaYQ5cvHQap5UHJrjA/Jqx2l4fXpW8RE0vqHIF5x4tkyseuHfbw==",
-    "capturedAt": "2026-07-22T07:09:20.977Z"
+    "sha512": "v6eBry6fa64UKw4vHgUZT7CRIHHZFeR7Uj4vAGQJ+548Oj8T5vi7pZxAYj3mkoVhavn3EeP929OhRZgsPeFmRA==",
+    "capturedAt": "2026-07-23T05:51:01.612Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

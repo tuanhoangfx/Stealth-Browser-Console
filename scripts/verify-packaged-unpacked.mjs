@@ -26,6 +26,11 @@ const UNPACKED_REQUIRED = [
   "node_modules/cloakbrowser/package.json",
   "node_modules/tar/package.json",
   "node_modules/mmdb-lib/package.json",
+  // PowerShell -File cannot read app.asar — taskbar badge scripts must be on disk
+  "electron/lib/stealth-taskbar-apply.ps1",
+  "electron/lib/stealth-taskbar-apply-lib.ps1",
+  "electron/lib/stealth-taskbar-apply-worker.ps1",
+  "electron/lib/render-taskbar-badge.ps1",
 ];
 
 const ASAR_REQUIRED = [
