@@ -1,5 +1,88 @@
 # Changelog
 
+## 2026-07-23 — v1.0.147 — Fix 0015 NOHWND badge on open (stale PID)
+
+- Version: `1.0.147`
+- Timestamp: 2026-07-23 10:59 (UTC+7)
+- Root cause: open-path logged `NOHWND` for 0015 — dead/utility HintPid preferred over live sidecar; HWND=0 before Chrome paints.
+- Fix: `readTaskbarHintPid` skips dead PIDs; on NOHWND clear HintPid and rediscover; PS polls MainWindowHandle ~2s then WMI fallback; longer recover; restamp after API minimize.
+- Verified: relaunch 0015 → `OK_ICON` (~4s open, ~400ms reinforce); title=`0015`; apply-all 79ms.
+
+## 2026-07-23 — v1.0.146 — Electron dev reload
+
+- Version: `1.0.146`
+- Timestamp: 2026-07-23 10:39 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-22 — v1.0.145 — Fix taskbar badge missing on some profiles (AUMID)
+
+- Version: `1.0.145`
+- Timestamp: 2026-07-22 20:48 (UTC+7)
+- Type: Patch
+- Status: Dev
+- Root cause: Win11 ignores `WM_SETICON` when `RelaunchIconResource` is set (stale shell cache) → OK_ICON but default Chromium icon on 0012 / x888 / …
+- Fix (`StealthTaskbarWin.v3`): clear RelaunchIconResource; AUMID for grouping/title only; SETICON all top-level HWNDs + double-pass.
+- Verified: ICO/HWND OK; apply-all 16/16 then 6/6 OK_ICON after clear.
+
+## 2026-07-22 — v1.0.144 — Fix intermittent taskbar badge (nav race)
+
+- Version: `1.0.144`
+- Timestamp: 2026-07-22 20:30 (UTC+7)
+- Type: Patch
+- Status: Dev
+- Root cause: page nav restamp (`force` + reinforce) aborted in-flight open apply via gen bump → dropped recover timers → some profiles OK, some missing.
+- Fix: reinforce never aborts same-code in-flight open; recover chain on OK **and** incomplete/error; longer reinforce retries; force badge on focus/reopen; ICO render slots 2→3.
+- Verified: unit race test PASS; apply-all live headed 6/6 OK_ICON on `:6004`.
+
+## 2026-07-22 — v1.0.143 — Electron dev reload
+
+- Version: `1.0.143`
+- Timestamp: 2026-07-22 15:05 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-22 — v1.0.142 — Electron dev reload
+
+- Version: `1.0.142`
+- Timestamp: 2026-07-22 14:55 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-22 — v1.0.143 — Taskbar badge <3s on profile open
+
+- Version: `1.0.143`
+- Remove 4s pre-wait for `stealth-pid.json` before first badge apply — fast retries instead.
+- Refresh HintPid from sidecar each retry; `pidWaitMs` only on attempt 0 (~160ms).
+- Sidecar poll: 25ms interval + lock-file PID probes @60–1400ms (skip slow WMI when possible).
+- `listProfileBrowserPids`: prefer Restart Manager lock owners before full `Get-CimInstance` scan.
+- Defer `focusProfileBrowserWindow` (WMI ~2.5s) until retry attempt ≥3.
+- Verified: cached ICO + PID → apply ~400–700ms; open-path smoke PASS ≤3s.
+
+## 2026-07-22 — v1.0.142 — Taskbar badge <3s on profile open (superseded)
+- Remove 4s pre-wait for `stealth-pid.json` before first badge apply — fast retries instead.
+- Refresh HintPid from sidecar each retry; `pidWaitMs` only on attempt 0 (~160ms).
+- Sidecar poll: 25ms interval + lock-file PID probes @60–1400ms (skip slow WMI when possible).
+- `listProfileBrowserPids`: prefer Restart Manager lock owners before full `Get-CimInstance` scan.
+
+## 2026-07-22 — v1.0.140 — Fix taskbar badge on packaged exe (PS1 asar unpack)
+
+- Version: `1.0.140`
+- Root cause: `render-taskbar-badge.ps1` / taskbar apply scripts lived inside `app.asar`; PowerShell `-File` cannot read asar → badge silently fails on Setup.exe.
+- Fix: `asarUnpack` for `electron/lib/*.ps1` + `resolveElectronLibScript()` maps to `app.asar.unpacked`.
+
 ## 2026-07-22 - hub-ui SSOT hook-stability vendor sync
 
 - Version: `1.0.139`

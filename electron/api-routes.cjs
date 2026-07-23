@@ -259,7 +259,31 @@ function buildRoutes(services) {
             { sessionManager, profileService, userDataRoot },
             { id: profileId },
           );
-          if (result.ok) await sessionManager.minimizeProfile(profileId).catch(() => undefined);
+          if (result.ok) {
+            await sessionManager.minimizeProfile(profileId).catch(() => undefined);
+            // CDP minimize can race the first badge stamp — force re-apply after.
+            try {
+              const { scheduleProfileTaskbarBadgeApply, formatProfileWindowLabel } = require("./lib/profile-window-title.cjs");
+              const { extractProfileCode } = require("./lib/profile-code.cjs");
+              const { readSidecarPid } = require("./lib/profile-user-data-repair.cjs");
+              const profile = profileService.getProfile(profileId);
+              if (profile) {
+                const dir = result.userDataDir || "";
+                scheduleProfileTaskbarBadgeApply(
+                  dir,
+                  formatProfileWindowLabel(profile),
+                  extractProfileCode(profile.name, profile.id),
+                  {
+                    browserPid: readSidecarPid(dir)?.pid || 0,
+                    headless: Boolean(profile.headless),
+                    force: true,
+                  },
+                );
+              }
+            } catch {
+              /* ignore */
+            }
+          }
           return send.json(ctx.res, 200, result);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

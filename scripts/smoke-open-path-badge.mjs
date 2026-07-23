@@ -42,9 +42,10 @@ console.log(JSON.stringify({ phase: "start", id, code, label, api: hit?.port || 
 const t0 = Date.now();
 const result = await applyNativeProfileTaskbarChromeWithRetry(live.dir, label, code, {
   browserPid,
-  pidWaitMs: 800,
-  focusRetry: true,
-  retryDelaysMs: [0, 400, 800, 1600, 3200, 6400, 10_000],
+  pidWaitMs: 160,
+  hwndWaitMs: 0,
+  focusRetry: false,
+  retryDelaysMs: [0, 60, 120, 220, 380, 600, 950, 1500, 2300],
 });
 const ms = Date.now() - t0;
 

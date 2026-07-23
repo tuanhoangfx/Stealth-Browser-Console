@@ -91,10 +91,30 @@ function installProfileTitlePrefix(label) {
   }
 }
 
+/** Chromium wipes WM_SETICON on title/nav — keep re-stamping after open. */
+const BADGE_RECOVER_DELAYS_MS = Object.freeze([800, 1800, 3500, 6000, 10_000, 16_000]);
+
+function queueBadgeRecoverPasses(dir, title, digits, browserPid, headless) {
+  for (const ms of BADGE_RECOVER_DELAYS_MS) {
+    const timer = setTimeout(() => {
+      scheduleProfileTaskbarBadgeApply(dir, title, digits, {
+        browserPid: readTaskbarHintPid(dir, browserPid) || browserPid,
+        force: true,
+        isReinforce: true,
+        headless,
+      });
+    }, ms);
+    if (typeof timer.unref === "function") timer.unref();
+  }
+}
+
 /**
  * Fire-and-forget Win32 taskbar badge — target OK_ICON within ~3s when ICO cached.
  * Same-code in-flight / recent OK is not cancelled by a second schedule (post-nav).
  * Chromium resets WM_SETICON on title/nav — reinforce passes re-apply after OK.
+ *
+ * Critical: nav restamp must NOT abort an in-flight open apply (gen bump used to
+ * kill the open path mid-flight and drop its recover timers → intermittent miss).
  */
 function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
   const dir = String(userDataDir || "").trim();
@@ -109,11 +129,18 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
   const isReinforce = opts.isReinforce === true;
   const prev = badgeApplyState.get(dir);
 
+  // Soft schedule: merge PID only; never start a parallel apply for same code.
   if (!force && prev?.digits === digits) {
     if (browserPid > 0) prev.browserPid = browserPid;
     if (prev.inFlight) return;
-    // Allow soft re-apply after 8s — Chrome often wipes icon on first navigations.
+    // Soft re-apply after 8s — Chrome often wipes icon on first navigations.
     if (prev.okAt && Date.now() - prev.okAt < 8_000) return;
+  }
+
+  // Reinforce / nav restamp: never abort open-path mid-flight (drops recover chain).
+  if (isReinforce && prev?.digits === digits && prev.inFlight) {
+    if (browserPid > 0) prev.browserPid = browserPid;
+    return;
   }
 
   const gen = (prev?.gen || 0) + 1;
@@ -138,10 +165,11 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
     const state = () => badgeApplyState.get(dir);
     if (state()?.gen !== gen) return;
 
+    // Wait for sidecar/Playwright PID before first apply — avoids WMI miss + NOHWND on cold open.
     let resolvedPid = readTaskbarHintPid(dir, state()?.browserPid || browserPid);
-    if (!resolvedPid) {
+    if (!resolvedPid && !isReinforce) {
       resolvedPid = await waitForTaskbarHintPid(dir, state()?.browserPid || browserPid, {
-        timeoutMs: 4000,
+        timeoutMs: 2500,
         intervalMs: 40,
       });
     }
@@ -150,50 +178,46 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
     try {
       const r = await applyNativeProfileTaskbarChromeWithRetry(dir, title, digits, {
         browserPid: resolvedPid || state()?.browserPid || browserPid,
-        pidWaitMs: 1000,
+        pidWaitMs: isReinforce ? 0 : 200,
+        hwndWaitMs: 0, // PS apply now polls MainWindowHandle when HintPid set
         focusRetry: !isReinforce,
         icoWarm,
         retryDelaysMs: isReinforce
-          ? [0, 400, 1200]
-          : [0, 250, 600, 1200, 2500, 5000, 10_000],
+          ? [0, 250, 600, 1200, 2500]
+          : [0, 80, 160, 280, 450, 700, 1100, 1800, 2800],
       });
       if (state()?.gen !== gen) return;
+      const cur = state();
+      if (cur && cur.gen === gen) cur.inFlight = false;
+
       if (r?.ok && r.detail === "OK_ICON") {
-        const cur = state();
-        if (cur && cur.gen === gen) {
-          cur.inFlight = false;
-          cur.okAt = Date.now();
-        }
+        if (cur && cur.gen === gen) cur.okAt = Date.now();
         console.log(
           "[taskbar-badge] OK_ICON",
           path.basename(dir),
           `${Date.now() - t0}ms`,
           r.via || "",
           isReinforce ? "reinforce" : "open",
+          `pid=${resolvedPid || 0}`,
         );
-        // Chromium wipes custom icons after title/nav — re-stamp a few times.
         if (!isReinforce) {
-          for (const ms of [1500, 4000, 9000]) {
-            setTimeout(() => {
-              scheduleProfileTaskbarBadgeApply(dir, title, digits, {
-                browserPid: readTaskbarHintPid(dir, resolvedPid || browserPid) || resolvedPid || browserPid,
-                force: true,
-                isReinforce: true,
-                headless: opts.headless,
-              });
-            }, ms);
-          }
+          queueBadgeRecoverPasses(dir, title, digits, resolvedPid || browserPid, opts.headless);
         }
         return;
       }
-      const cur = state();
-      if (cur && cur.gen === gen) cur.inFlight = false;
+
       console.warn(
         "[taskbar-badge] apply incomplete",
         path.basename(dir),
         r?.reason || r?.detail || "unknown",
         `${Date.now() - t0}ms`,
+        `pid=${resolvedPid || 0}`,
+        `wmiSkipped=${r?.wmiSkipped === true}`,
       );
+      // Incomplete open must still recover — HWND/ICO often arrive after first wave.
+      if (!isReinforce) {
+        queueBadgeRecoverPasses(dir, title, digits, resolvedPid || browserPid, opts.headless);
+      }
     } catch (error) {
       const cur = state();
       if (cur && cur.gen === gen) cur.inFlight = false;
@@ -202,6 +226,9 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
         path.basename(dir),
         error instanceof Error ? error.message : error,
       );
+      if (!isReinforce) {
+        queueBadgeRecoverPasses(dir, title, digits, resolvedPid || browserPid, opts.headless);
+      }
     }
   })();
 }

@@ -29,8 +29,10 @@ export function useHubVaultBoot<T>({
   onHydrated,
   bootTimeoutMs = 2_000,
 }: HubVaultBootOptions<T>) {
-  // Never sync-read vault in useState — paint directory chrome first, then readFast in effect.
-  const [bootReady, setBootReady] = useState(() => typeof window !== "undefined");
+  const [bootReady, setBootReady] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !needsBootGate(readFast());
+  });
   /** True only after hydrate finished or boot timeout — never set on start (avoids stuck gate). */
   const settledRef = useRef(false);
   const [vaultHydrating, setVaultHydrating] = useState(false);
@@ -43,6 +45,10 @@ export function useHubVaultBoot<T>({
     if (once && settledRef.current) return;
 
     let cancelled = false;
+    const fast = readFast();
+    onFastPaint(fast);
+    const gate = needsBootGate(fast);
+    setBootReady(!gate);
     setVaultHydrating(true);
 
     const markSettled = () => {
@@ -51,38 +57,19 @@ export function useHubVaultBoot<T>({
       if (once) settledRef.current = true;
     };
 
-    const runBoot = () => {
-      if (cancelled) return;
-      const fast = readFast();
-      onFastPaint(fast);
-      const gate = needsBootGate(fast);
-      setBootReady(!gate);
-
-      void hydrate()
-        .then((hydrated) => {
-          if (cancelled || !hydrated.length) return;
-          onHydrated?.(hydrated, fast);
-        })
-        .finally(() => {
-          if (!cancelled) setVaultHydrating(false);
-          if (gate) markSettled();
-          else if (once && !cancelled) settledRef.current = true;
-        });
-    };
-
-    let deferUsedRaf = false;
-    let deferHandle = 0;
-    if (typeof window.requestAnimationFrame === "function") {
-      deferUsedRaf = true;
-      deferHandle = window.requestAnimationFrame(runBoot);
-    } else {
-      deferHandle = window.setTimeout(runBoot, 0);
-    }
+    void hydrate()
+      .then((hydrated) => {
+        if (cancelled || !hydrated.length) return;
+        onHydrated?.(hydrated, fast);
+      })
+      .finally(() => {
+        if (!cancelled) setVaultHydrating(false);
+        if (gate) markSettled();
+        else if (once && !cancelled) settledRef.current = true;
+      });
 
     return () => {
       cancelled = true;
-      if (deferUsedRaf) window.cancelAnimationFrame(deferHandle);
-      else window.clearTimeout(deferHandle);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once retries only on tabActive until settled
   }, once ? [tabActive] : [tabActive, readFast, needsBootGate, onFastPaint, hydrate, onHydrated, bootTimeoutMs]);

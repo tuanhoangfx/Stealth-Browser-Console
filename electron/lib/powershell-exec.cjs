@@ -15,6 +15,18 @@ function resolvePowerShell() {
   return path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
 }
 
+/** PS1 must live on a real disk path — not inside app.asar (PowerShell -File cannot read asar). */
+function resolveElectronLibScript(fileName) {
+  const local = path.join(__dirname, fileName);
+  if (fs.existsSync(local)) return local;
+  const unpacked = local.replace(
+    `${path.sep}app.asar${path.sep}`,
+    `${path.sep}app.asar.unpacked${path.sep}`,
+  );
+  if (unpacked !== local && fs.existsSync(unpacked)) return unpacked;
+  return local;
+}
+
 function runPowerShellCommand(command, opts = {}) {
   return execFileSync(
     resolvePowerShell(),
@@ -42,6 +54,7 @@ async function runPowerShellCommandAsync(command, opts = {}) {
 
 module.exports = {
   resolvePowerShell,
+  resolveElectronLibScript,
   runPowerShellCommand,
   runPowerShellCommandAsync,
   runPowerShellFile,

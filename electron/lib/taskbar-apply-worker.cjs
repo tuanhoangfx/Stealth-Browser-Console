@@ -6,9 +6,9 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const readline = require("node:readline");
 
-const { resolvePowerShell } = require("./powershell-exec.cjs");
+const { resolvePowerShell, resolveElectronLibScript } = require("./powershell-exec.cjs");
 
-const WORKER_PS1 = path.join(__dirname, "stealth-taskbar-apply-worker.ps1");
+const WORKER_PS1 = resolveElectronLibScript("stealth-taskbar-apply-worker.ps1");
 
 /** @type {import('node:child_process').ChildProcessWithoutNullStreams | null} */
 let worker = null;

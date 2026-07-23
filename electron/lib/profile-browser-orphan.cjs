@@ -118,6 +118,11 @@ async function listProfileBrowserPids(userDataDir) {
   const key = path.resolve(String(userDataDir));
   const cached = pidListCache.get(key);
   if (cached && Date.now() - cached.at < PID_LIST_CACHE_MS) return cached.pids;
+  const lockPids = await listProfileBrowserPidsByLock(userDataDir);
+  if (lockPids.length) {
+    pidListCache.set(key, { pids: lockPids, at: Date.now() });
+    return lockPids;
+  }
   let cliPids = [];
   try {
     const stdout = await runPowerShellCommandAsync(listChromeProcessesPs(userDataDir));
@@ -128,8 +133,7 @@ async function listProfileBrowserPids(userDataDir) {
   } catch {
     cliPids = [];
   }
-  const lockPids = await listProfileBrowserPidsByLock(userDataDir);
-  const pids = [...new Set([...cliPids, ...lockPids])];
+  const pids = [...new Set(cliPids)];
   pidListCache.set(key, { pids, at: Date.now() });
   return pids;
 }
@@ -214,6 +218,7 @@ module.exports = {
   PROFILE_LOCK_FILES,
   listChromeProcessesPs,
   listProfileBrowserPids,
+  listProfileBrowserPidsByLock,
   hasProfileBrowserProcess,
   killOrphanProfileBrowser,
   readDevToolsActivePort,

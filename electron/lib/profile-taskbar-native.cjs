@@ -6,7 +6,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { runPowerShellFile } = require("./powershell-exec.cjs");
+const { runPowerShellFile, resolveElectronLibScript } = require("./powershell-exec.cjs");
 const { runTaskbarApplyWorker, waitWorkerReady } = require("./taskbar-apply-worker.cjs");
 const {
   extractFourDigitCode,
@@ -24,7 +24,7 @@ const BADGE_ICO_SIZES = Object.freeze([48, 32, 24, 20, 16, 40, 64, 128, 256]);
 /** Dedupe concurrent ICO renders for the same code (launch + scheduler + apply). */
 const badgeIcoInflight = new Map();
 /** Cap parallel PowerShell ICO renders — opening many profiles at once thrash otherwise. */
-const ICO_RENDER_MAX = 2;
+const ICO_RENDER_MAX = 3;
 let icoRenderActive = 0;
 /** @type {Array<() => void>} */
 const icoRenderWaiters = [];
@@ -75,14 +75,28 @@ function shouldSkipTaskbarBadge(code, opts = {}) {
   return isAgentPoolProfileCode(code);
 }
 
-/** Resolve Win32 HintPid — opts hint → sidecar (sync, no WMI). */
+/** Resolve Win32 HintPid — opts hint → sidecar (sync, no WMI). Skip dead PIDs. */
 function readTaskbarHintPid(userDataDir, hinted = 0) {
   const fromHint = Number(hinted);
-  if (fromHint > 0) return fromHint;
+  if (fromHint > 0) {
+    try {
+      process.kill(fromHint, 0);
+      return fromHint;
+    } catch {
+      /* hinted PID gone — fall through to sidecar */
+    }
+  }
   try {
     const { readSidecarPid } = require("./profile-user-data-repair.cjs");
     const sidecar = readSidecarPid(userDataDir);
-    if (sidecar?.pid > 0) return sidecar.pid;
+    if (sidecar?.pid > 0) {
+      try {
+        process.kill(sidecar.pid, 0);
+        return sidecar.pid;
+      } catch {
+        /* stale sidecar */
+      }
+    }
   } catch {
     /* ignore */
   }
@@ -100,12 +114,42 @@ async function waitForTaskbarHintPid(userDataDir, hinted = 0, { timeoutMs = 1200
   return readTaskbarHintPid(userDataDir, hinted);
 }
 
+/** Poll MainWindowHandle for a browser PID — single PS spawn (not per-tick). */
+async function waitForBrowserMainWindow(pid, { timeoutMs = 2400, intervalMs = 30 } = {}) {
+  const id = Number(pid);
+  if (!id || process.platform !== "win32") return false;
+  const { runPowerShellCommandAsync } = require("./powershell-exec.cjs");
+  const budgetMs = Number(timeoutMs) > 0 ? Number(timeoutMs) : 2400;
+  const stepMs = Number(intervalMs) > 0 ? Number(intervalMs) : 30;
+  const loops = Math.max(1, Math.ceil(budgetMs / stepMs));
+  const script = [
+    `$id = ${id}`,
+    `$loops = ${loops}`,
+    `$step = ${stepMs}`,
+    "for ($i = 0; $i -lt $loops; $i++) {",
+    "  $p = Get-Process -Id $id -ErrorAction SilentlyContinue",
+    "  if ($p -and $p.MainWindowHandle -ne 0) { Write-Output '1'; exit 0 }",
+    "  Start-Sleep -Milliseconds $step",
+    "}",
+    "Write-Output '0'",
+  ].join("\n");
+  try {
+    const out = await runPowerShellCommandAsync(script);
+    return String(out).trim() === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** Fire-and-forget: poll Playwright/context PID and write stealth-pid.json early. */
-function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, timeoutMs = 3000, intervalMs = 50 } = {}) {
+function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, timeoutMs = 4500, intervalMs = 25 } = {}) {
   if (!userDataDir || process.platform !== "win32") return;
   const { writeSidecarPid } = require("./profile-user-data-repair.cjs");
   void (async () => {
-    const deadline = Date.now() + timeoutMs;
+    const startedAt = Date.now();
+    const deadline = startedAt + timeoutMs;
+    const lockProbeMs = [60, 150, 300, 550, 900, 1400];
+    let lockProbeIdx = 0;
     while (Date.now() < deadline) {
       let pid = 0;
       try {
@@ -116,6 +160,21 @@ function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, time
       if (pid > 0) {
         writeSidecarPid(userDataDir, { pid, debugPort });
         return;
+      }
+      const elapsed = Date.now() - startedAt;
+      if (lockProbeIdx < lockProbeMs.length && elapsed >= lockProbeMs[lockProbeIdx]) {
+        lockProbeIdx += 1;
+        try {
+          const { listProfileBrowserPidsByLock } = require("./profile-browser-orphan.cjs");
+          const lockPids = await listProfileBrowserPidsByLock(userDataDir);
+          const lockPid = lockPids[0] || 0;
+          if (lockPid > 0) {
+            writeSidecarPid(userDataDir, { pid: lockPid, debugPort });
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
@@ -245,7 +304,7 @@ async function ensureBadgeIco(code, opts = {}) {
     const outDir = badgeCacheDir();
     const prefix = `${BADGE_STYLE}-${full}${hot ? "-hot" : ""}`;
     const ico = hot ? hotIco : fullIco;
-    const ps1 = path.join(__dirname, "render-taskbar-badge.ps1");
+    const ps1 = resolveElectronLibScript("render-taskbar-badge.ps1");
     await withIcoRenderSlot(async () => {
       const { stdout } = await runPowerShellFile(
         ps1,
@@ -333,7 +392,7 @@ async function warmTaskbarApplyRuntime() {
     await waitWorkerReady();
     await runTaskbarApplyWorker({ warm: true }, { timeoutMs: 20_000 });
   } catch {
-    const applyPs1 = path.join(__dirname, "stealth-taskbar-apply.ps1");
+    const applyPs1 = resolveElectronLibScript("stealth-taskbar-apply.ps1");
     try {
       await runPowerShellFile(
         applyPs1,
@@ -398,13 +457,21 @@ async function applyNativeProfileTaskbarChrome(userDataDir, title, code, opts = 
   const dir = path.resolve(String(userDataDir));
   const appId = `StealthBrowser.Profile.${digits}`;
   let browserPid = readTaskbarHintPid(dir, opts.browserPid);
-  if (!browserPid) {
-    browserPid = await waitForTaskbarHintPid(dir, 0, {
-      timeoutMs: Number(opts.pidWaitMs) > 0 ? Number(opts.pidWaitMs) : 800,
-      intervalMs: 50,
+  const pidWaitMs = Number(opts.pidWaitMs);
+  if (!browserPid && pidWaitMs > 0) {
+    browserPid = await waitForTaskbarHintPid(dir, opts.browserPid, {
+      timeoutMs: pidWaitMs,
+      intervalMs: 25,
     });
   }
-  const applyPs1 = path.join(__dirname, "stealth-taskbar-apply.ps1");
+  const hwndWaitMs = Number(opts.hwndWaitMs);
+  if (browserPid > 0 && hwndWaitMs > 0) {
+    await waitForBrowserMainWindow(browserPid, {
+      timeoutMs: hwndWaitMs,
+      intervalMs: 30,
+    });
+  }
+  const applyPs1 = resolveElectronLibScript("stealth-taskbar-apply.ps1");
   const workerPayload = {
     UserDataDir: dir,
     Title: label,
@@ -490,23 +557,30 @@ function isRetryableTaskbarFailure(result) {
 async function applyNativeProfileTaskbarChromeWithRetry(userDataDir, title, code, opts = {}) {
   const retryDelaysMs = opts.retryDelaysMs || [0, 300, 700, 1500, 3000, 6000, 12_000];
   const focusRetry = opts.focusRetry !== false;
+  const firstPidWaitMs = Number(opts.pidWaitMs) > 0 ? Number(opts.pidWaitMs) : 160;
   let last = null;
 
   for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
     if (retryDelaysMs[attempt]) {
       await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
     }
-    if (attempt > 0 && focusRetry && last && isNoHwndTaskbar(last)) {
+    if (attempt >= 3 && focusRetry && last && isNoHwndTaskbar(last)) {
       await focusProfileBrowserWindow(userDataDir);
       await new Promise((resolve) => setTimeout(resolve, 80));
     }
+    const freshPid = readTaskbarHintPid(userDataDir, opts.browserPid);
     last = await applyNativeProfileTaskbarChrome(userDataDir, title, code, {
-      browserPid: opts.browserPid,
-      pidWaitMs: opts.pidWaitMs,
+      browserPid: freshPid,
+      pidWaitMs: attempt === 0 ? firstPidWaitMs : 0,
+      hwndWaitMs: attempt === 0 && Number(opts.hwndWaitMs) > 0 ? Number(opts.hwndWaitMs) : 0,
       icoWarm: attempt === 0 ? opts.icoWarm : undefined,
     });
     if (isOkTaskbarIcon(last)) return last;
     if (!isRetryableTaskbarFailure(last)) break;
+    // Alive HintPid with no HWND (utility/zygote) — clear so next attempt rediscovers via sidecar/WMI.
+    if (isNoHwndTaskbar(last) && attempt < retryDelaysMs.length - 1) {
+      opts = { ...opts, browserPid: 0 };
+    }
   }
 
   return last || { ok: false, reason: "no-attempt" };
@@ -526,6 +600,7 @@ module.exports = {
   shouldSkipTaskbarBadge,
   readTaskbarHintPid,
   waitForTaskbarHintPid,
+  waitForBrowserMainWindow,
   startBrowserPidSidecarPoll,
   applyNativeProfileTaskbarChrome,
   applyNativeProfileTaskbarChromeWithRetry,

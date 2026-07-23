@@ -299,8 +299,13 @@ class SessionManager {
           latePid = 0;
         }
         const sidecarPid = readSidecarPid(opened.userDataDir)?.pid || 0;
-        // Reinforce: feed better PID / retry only if early apply already finished without OK.
-        scheduleOpenBadge(latePid || sidecarPid || browserPid);
+        // After nav: re-stamp with best PID. isReinforce avoids aborting in-flight open.
+        scheduleProfileTaskbarBadgeApply(opened.userDataDir, profileLabel, profileCode, {
+          browserPid: latePid || sidecarPid || browserPid,
+          headless: badgeHeadless,
+          force: true,
+          isReinforce: true,
+        });
         await new Promise((resolve) => setTimeout(resolve, 1500));
         if (isContextAlive(opened.context)) {
           await captureAndQueueStealthSnapshotSafe(opened.context, profile, { source: "profile_open" });
@@ -398,7 +403,7 @@ class SessionManager {
       userDataDir,
       formatProfileWindowLabel(profile),
       profileCode,
-      { browserPid: focusPid, headless: launchMeta(profile).headless },
+      { browserPid: focusPid, headless: launchMeta(profile).headless, force: true },
     );
 
     this.#sessions.set(id, {
@@ -692,6 +697,7 @@ class SessionManager {
           {
             browserPid: readSidecarPid(existing.userDataDir)?.pid || 0,
             headless: existing.headless ?? launchMeta(profile).headless,
+            force: true,
           },
         );
         profileService.touchLastOpened(id);
@@ -709,6 +715,7 @@ class SessionManager {
           {
             browserPid: readSidecarPid(existing.userDataDir)?.pid || 0,
             headless: existing.headless ?? launchMeta(profile).headless,
+            force: true,
           },
         );
         profileService.touchLastOpened(id);

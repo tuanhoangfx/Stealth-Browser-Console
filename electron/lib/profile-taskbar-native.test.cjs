@@ -27,22 +27,33 @@ describe("profile-taskbar-native skip rules", () => {
 });
 
 describe("readTaskbarHintPid", () => {
-  it("prefers hinted pid over sidecar", () => {
+  it("prefers live hinted pid over sidecar", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-hint-"));
     try {
       writeSidecarPid(dir, { pid: 2222, debugPort: 0 });
-      assert.equal(readTaskbarHintPid(dir, 1111), 1111);
+      assert.equal(readTaskbarHintPid(dir, process.pid), process.pid);
     } finally {
       removeSidecarPid(dir);
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it("reads sidecar when hint missing", () => {
+  it("reads live sidecar when hint missing", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-hint-"));
     try {
-      writeSidecarPid(dir, { pid: 3333, debugPort: 0 });
-      assert.equal(readTaskbarHintPid(dir, 0), 3333);
+      writeSidecarPid(dir, { pid: process.pid, debugPort: 0 });
+      assert.equal(readTaskbarHintPid(dir, 0), process.pid);
+    } finally {
+      removeSidecarPid(dir);
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips dead hinted pid and reads live sidecar", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-hint-"));
+    try {
+      writeSidecarPid(dir, { pid: process.pid, debugPort: 0 });
+      assert.equal(readTaskbarHintPid(dir, 2_147_000_000), process.pid);
     } finally {
       removeSidecarPid(dir);
       fs.rmSync(dir, { recursive: true, force: true });

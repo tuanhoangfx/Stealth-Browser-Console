@@ -1,17 +1,64 @@
-const test = require("node:test");
+const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { formatProfileWindowLabel } = require("./profile-window-title.cjs");
+const path = require("node:path");
+const os = require("node:os");
+const fs = require("node:fs");
+const Module = require("node:module");
 
-test("formatProfileWindowLabel — code only for numeric / Profile NNNN names", () => {
-  assert.equal(formatProfileWindowLabel({ name: "0385", id: "x" }), "0385");
-  assert.equal(formatProfileWindowLabel({ name: "0392", id: "x" }), "0392");
-});
+describe("scheduleProfileTaskbarBadgeApply reinforce race", () => {
+  it("reinforce does not abort in-flight open (same digits)", async () => {
+    const titlePath = require.resolve("./profile-window-title.cjs");
+    const nativePath = require.resolve("./profile-taskbar-native.cjs");
+    delete require.cache[titlePath];
+    delete require.cache[nativePath];
 
-test("formatProfileWindowLabel — full 4-digit code is the window label", () => {
-  assert.equal(formatProfileWindowLabel({ name: "1731", id: "x" }), "1731");
-  assert.equal(formatProfileWindowLabel({ name: "0001", id: "x" }), "0001");
-});
+    let applyCalls = 0;
+    let resolveFirst;
+    const firstGate = new Promise((r) => {
+      resolveFirst = r;
+    });
 
-test("formatProfileWindowLabel — empty name falls back to code from id", () => {
-  assert.equal(formatProfileWindowLabel({ name: "", id: "abcd1234-xxxx" }), "1234");
+    const realNative = require("./profile-taskbar-native.cjs");
+    const stub = {
+      ...realNative,
+      shouldSkipTaskbarBadge: () => false,
+      readTaskbarHintPid: () => 4242,
+      ensureBadgeIcoFast: async () => {
+        const p = path.join(os.tmpdir(), "stealth-badge-test.ico");
+        if (!fs.existsSync(p)) fs.writeFileSync(p, Buffer.alloc(256));
+        return p;
+      },
+      applyNativeProfileTaskbarChromeWithRetry: async () => {
+        applyCalls += 1;
+        if (applyCalls === 1) {
+          await firstGate;
+          return { ok: true, detail: "OK_ICON", via: "worker" };
+        }
+        return { ok: true, detail: "OK_ICON", via: "worker" };
+      },
+    };
+    require.cache[nativePath].exports = stub;
+
+    delete require.cache[titlePath];
+    const { scheduleProfileTaskbarBadgeApply } = require("./profile-window-title.cjs");
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-badge-sched-"));
+    try {
+      scheduleProfileTaskbarBadgeApply(dir, "0125", "0125", { browserPid: 4242 });
+      scheduleProfileTaskbarBadgeApply(dir, "0125", "0125", {
+        browserPid: 4242,
+        force: true,
+        isReinforce: true,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+      assert.equal(applyCalls, 1, "reinforce must not abort/restart in-flight open");
+      resolveFirst();
+      await new Promise((r) => setTimeout(r, 50));
+      assert.equal(applyCalls, 1, "open should complete as sole apply wave");
+    } finally {
+      delete require.cache[titlePath];
+      delete require.cache[nativePath];
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

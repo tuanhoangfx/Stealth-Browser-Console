@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "1.0.139",
+  "version": "1.0.147",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -132,7 +132,8 @@
       "**/node_modules/better-sqlite3/**",
       "**/node_modules/sql.js/**",
       "**/node_modules/cloakbrowser/**",
-      "**/node_modules/playwright-core/**"
+      "**/node_modules/playwright-core/**",
+      "**/electron/lib/*.ps1"
     ],
     "afterPack": "./electron/after-pack.cjs",
     "extraResources": [
