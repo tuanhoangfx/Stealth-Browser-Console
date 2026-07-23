@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "label": "v1.0.149-stable",
   "version": "1.0.149",
-  "gitCommit": null,
+  "gitCommit": "a05844cded864fed9a5e78b2acf9c79b16f6c3b9",
   "gitTag": "v1.0.149-stable",
   "packagedFrom": "5c3c3df5923851040d24732ee6ebbbe55c5a8f21",
   "notes": "v1.0.149: fix prod taskbar badge — resolveElectronLibScript prefers app.asar.unpacked (PowerShell cannot read asar). Includes badge NOHWND/AUMID fixes from 1.0.147–148. Setup-1.0.149.exe + win-unpacked SHA512 verified.",
