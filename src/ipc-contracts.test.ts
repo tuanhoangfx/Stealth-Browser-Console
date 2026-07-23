@@ -12,8 +12,9 @@ describe("ipc-contracts", () => {
   });
 
   it("validates create profile payload", () => {
-    expect(validateCreateProfilePayload({ name: "Test" }).name).toBe("Test");
+    expect(validateCreateProfilePayload({ name: "0125" }).name).toBe("0125");
     expect(() => validateCreateProfilePayload({ name: "  " })).toThrow();
+    expect(() => validateCreateProfilePayload({ name: "Test" })).toThrow(/4-digit/);
   });
 
   it("validates open url payload", () => {

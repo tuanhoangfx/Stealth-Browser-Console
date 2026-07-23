@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-23 - hub-ui SSOT hook-stability vendor sync
+
+- Version: `1.0.148`
+- Timestamp: 2026-07-23 11:01 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-23 — v1.0.147 — Fix 0015 NOHWND badge on open (stale PID)
 
 - Version: `1.0.147`
