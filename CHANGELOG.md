@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-23 - hub-ui SSOT hook-stability vendor sync
+
+- Version: `1.0.150`
+- Timestamp: 2026-07-23 15:18 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-23 — v1.0.149 — Fix prod taskbar badge (asar PS1 path)
 
 - Version: `1.0.149`
