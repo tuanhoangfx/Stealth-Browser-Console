@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-24 - preShip SSOT: verify-untracked-imports gate
+
+- Version: `1.0.151`
+- Timestamp: 2026-07-24
+- Type: Patch
+- Status: Pending
+
+### Changes
+
+- preShip SSOT: verify-untracked-imports gate
+
+### Verification
+
+- ship-pipeline slice → commit scoped paths only
+
+---
 ## 2026-07-23 - hub-ui SSOT hook-stability vendor sync
 
 - Version: `1.0.150`
