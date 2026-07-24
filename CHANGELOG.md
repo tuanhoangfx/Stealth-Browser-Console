@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-24 - preShip SSOT: verify-untracked + verify-no-sibling-tool-imports
+
+- Version: `1.0.152`
+- Timestamp: 2026-07-24
+- Type: Patch
+- Status: Pending
+
+### Changes
+
+- preShip SSOT: verify-untracked + verify-no-sibling-tool-imports
+
+### Verification
+
+- ship-pipeline slice → commit scoped paths only
+
+---
 ## 2026-07-24 - preShip SSOT: verify-untracked-imports gate
 
 - Version: `1.0.151`

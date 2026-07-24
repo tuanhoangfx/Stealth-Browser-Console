@@ -156,7 +156,7 @@
   },
   "manifestUpdatedAt": "2026-07-23T08:18:26.032Z",
   "release": {
-    "version": "1.0.151",
+    "version": "1.0.152",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -175,13 +175,15 @@
     "preShip": [
       "check-version-sync",
       "verify-untracked-imports",
+      "verify-no-sibling-tool-imports",
       "build"
     ],
     "preShipCommands": {
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
       "verify-untracked-imports": "node E:\\Dev\\Tool\\scripts\\verify-untracked-imports.mjs --product-root .",
+      "verify-no-sibling-tool-imports": "node E:\\Dev\\Tool\\scripts\\verify-no-sibling-tool-imports.mjs --product-root .",
       "build": "corepack pnpm run build"
     },
-    "syncedAt": "2026-07-24T08:57:14.677Z"
+    "syncedAt": "2026-07-24T09:47:01.376Z"
   }
 }
