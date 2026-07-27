@@ -177,6 +177,7 @@ node Tool/scripts/verify-p0020-workspace-chrome.mjs --code P0020
 - [ ] Heavy filter/KPI/chart pipelines gated with `useTabFrozenRows` / `tabActive` short-circuit
 - [ ] Large directories: `useHubDirectoryChromeReady` before facet counts + KPI/charts; `{tabActive ? <HubDirectoryScreen/> : null}`
 - [ ] **Clone bulk chrome:** if `filterToolbar` embeds Detail/bulk badges with `selectedCount`, set `statsKey: \`${rows}|${filtered}|${selectedCount}\`` (never only a boolean `sel` in `syncKey`) — see section above
+- [ ] **P0020 Account vaults:** Services / Mail / Facebook / TikTok / Material / Partner / Bank share one `useHubVaultBoot` + `DirectoryBootGate` (scope = filters/columns only — not a separate boot path)
 
 ---
 

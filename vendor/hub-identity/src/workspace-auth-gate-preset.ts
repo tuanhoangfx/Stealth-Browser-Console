@@ -8,7 +8,8 @@ export type WorkspaceAuthToolCode =
   | "P0013"
   | "P0016"
   | "P0020"
-  | "P0021";
+  | "P0021"
+  | "P0022";
 
 export type WorkspaceAuthGateToolInfo = {
   code?: string;
@@ -95,6 +96,11 @@ const BASE: Record<
     toolInfo: { name: "AutoVideo Studio" },
     forgotPassword: {},
   },
+  P0022: {
+    title: "Welcome to Infi Store",
+    toolInfo: { name: "Infi Store" },
+    forgotPassword: {},
+  },
 };
 
 export type CreateWorkspaceAuthGatePresetOptions = {
@@ -127,6 +133,8 @@ export function createWorkspaceAuthGatePreset(
         ? "Channel analytics & team ops"
       : options.code === "P0021"
         ? "Local video studio & render jobs"
+      : options.code === "P0022"
+        ? "Store · checkout & order history"
       : options.code === "P0020"
         ? "Notes, cookies & 2FA vault"
         : "Multi-channel inbox & fanpages");

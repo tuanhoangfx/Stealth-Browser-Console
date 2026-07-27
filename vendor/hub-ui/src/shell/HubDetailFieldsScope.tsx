@@ -57,19 +57,25 @@ export function HubDetailFieldsGroup({
  * - `slots=1` (default): one field + spacer — occupies first Layout 3 slot (not full row).
  * - `slots=2`: two fields + tail spacer.
  * - `slots=3`: three fields, no spacer.
+ * - `slots="full"`: one field full-width (Settings / narrow rail — no 3-col squeeze).
  */
 export function HubDetailFieldRow({
   children,
   slots = 1,
 }: {
   children: ReactNode;
-  slots?: 1 | 2 | 3;
+  slots?: 1 | 2 | 3 | "full";
 }) {
+  const full = slots === "full";
   return (
-    <div className="hub-adm-form-row hub-adm-form-row--aligned">
+    <div
+      className={`hub-adm-form-row hub-adm-form-row--aligned${
+        full ? " hub-adm-form-row--single" : ""
+      }`}
+    >
       {children}
-      {slots === 1 ? <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden /> : null}
-      {slots === 2 ? <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden /> : null}
+      {!full && slots === 1 ? <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden /> : null}
+      {!full && slots === 2 ? <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden /> : null}
     </div>
   );
 }

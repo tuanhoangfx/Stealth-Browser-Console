@@ -43,7 +43,7 @@ export const PROFILE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ProfileDir
     stealthProfileColumnHintContent,
   );
 
-/** Note hidden by default — 6 visible data columns + checkbox. */
+/** Default visible data columns + checkbox (includes Note). */
 export const DEFAULT_PROFILE_DIRECTORY_COLUMNS = new Set<ProfileDirectoryColumnKey>([
   "profile",
   "group",
@@ -53,6 +53,7 @@ export const DEFAULT_PROFILE_DIRECTORY_COLUMNS = new Set<ProfileDirectoryColumnK
   "updated",
   "startupUrl",
   "proxy",
+  "note",
 ]);
 
 export const PROFILE_DIRECTORY_COLUMNS_CHANGE = "stealth-profile-directory-columns-change";
@@ -87,7 +88,32 @@ export function readProfileDirectoryColumns(): ProfileDirectoryColumnKey[] {
     legacy.delete("lastOpened");
     visible.add("updated");
   }
+  // One-shot promote Note for any prefs set that still hides it (custom Display included).
+  // After promote, users may hide Note again via Display — we do not re-force.
+  if (!visible.has("note") && !readNoteColumnPromotedFlag()) {
+    visible.add("note");
+    profileDirectoryColumnPrefs.write(visible);
+    writeNoteColumnPromotedFlag();
+  }
   return PROFILE_DIRECTORY_GOLDEN_ORDER.filter((key) => visible.has(key));
+}
+
+const NOTE_COLUMN_PROMOTED_KEY = "p0003_profile_note_column_promoted_v1";
+
+function readNoteColumnPromotedFlag(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(NOTE_COLUMN_PROMOTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeNoteColumnPromotedFlag() {
+  try {
+    globalThis.localStorage?.setItem(NOTE_COLUMN_PROMOTED_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 export function writeProfileDirectoryColumns(cols: readonly string[]) {

@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { CHART_OTHERS_LABEL, CHART_TOP_N, prepareChartItems, topChartItems, withChartLegendIcon } from "./chart-items";
 
 describe("topChartItems", () => {

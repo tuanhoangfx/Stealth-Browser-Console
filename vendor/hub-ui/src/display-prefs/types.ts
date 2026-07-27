@@ -100,6 +100,8 @@ export type HubDisplayPrefsProps = {
   showHeaderPin?: boolean;
   showRange?: boolean;
   showLimit?: boolean;
+  /** Directory/shop pager rows (`tpage`) — works in global + tab scope. */
+  showPageSize?: boolean;
   showNavToggle?: boolean;
   /** Hide “Pin search bar” on system screen (P0020 behavior). */
   hideSearchPinOnSystem?: boolean;

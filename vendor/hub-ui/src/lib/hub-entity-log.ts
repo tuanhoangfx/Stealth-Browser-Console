@@ -33,6 +33,51 @@ export type HubEntityLogFieldMeta = {
 export const HUB_ENTITY_ACTIVITY_LOG_META_KEY = "activity_log";
 export const MAX_HUB_ENTITY_LOG_ENTRIES = 80;
 
+/**
+ * Canonical ISO-8601 UTC (`…Z`). Postgres / PostgREST often echo the same instant as
+ * `…+00:00` — string merge keys then fail to dedupe and Detail Log shows each change twice.
+ */
+export function canonicalizeHubEntityLogAt(at: string): string {
+  const trimmed = at.trim();
+  if (!trimmed) return trimmed;
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) return trimmed;
+  return new Date(ms).toISOString();
+}
+
+function hubEntityLogDedupeKey(entry: HubEntityLogEntry): string {
+  return `${canonicalizeHubEntityLogAt(entry.at)}\u0000${entry.message}`;
+}
+
+function preferRicherHubEntityLogEntry(a: HubEntityLogEntry, b: HubEntityLogEntry): HubEntityLogEntry {
+  const ac = a.changes?.length ?? 0;
+  const bc = b.changes?.length ?? 0;
+  if (bc > ac) return { ...b, at: canonicalizeHubEntityLogAt(b.at) };
+  return { ...a, at: canonicalizeHubEntityLogAt(a.at) };
+}
+
+/** Collapse Z / +00:00 twins and exact append dupes while preserving chronological order. */
+export function dedupeHubEntityLogEntries(entries: HubEntityLogEntry[]): HubEntityLogEntry[] {
+  if (entries.length <= 1) {
+    return entries.map((e) => ({ ...e, at: canonicalizeHubEntityLogAt(e.at) }));
+  }
+  const byKey = new Map<string, HubEntityLogEntry>();
+  for (const entry of entries) {
+    const normalized: HubEntityLogEntry = { ...entry, at: canonicalizeHubEntityLogAt(entry.at) };
+    const key = hubEntityLogDedupeKey(normalized);
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? preferRicherHubEntityLogEntry(prev, normalized) : normalized);
+  }
+  return [...byKey.values()]
+    .sort((x, y) => {
+      const dx = Date.parse(x.at);
+      const dy = Date.parse(y.at);
+      if (Number.isFinite(dx) && Number.isFinite(dy) && dx !== dy) return dx - dy;
+      return x.at < y.at ? -1 : x.at > y.at ? 1 : 0;
+    })
+    .slice(-MAX_HUB_ENTITY_LOG_ENTRIES);
+}
+
 export function hubEntityLogSameText(a: string | null | undefined, b: string | null | undefined): boolean {
   return (a?.trim() || "") === (b?.trim() || "");
 }
@@ -74,7 +119,8 @@ export function normalizeHubEntityLog(
   const out: HubEntityLogEntry[] = [];
   for (const item of entries) {
     if (!item || typeof item !== "object") continue;
-    const at = "at" in item && typeof item.at === "string" ? item.at.trim() : "";
+    const atRaw = "at" in item && typeof item.at === "string" ? item.at.trim() : "";
+    const at = canonicalizeHubEntityLogAt(atRaw);
     const message = "message" in item && typeof item.message === "string" ? item.message.trim() : "";
     if (!at || !message) continue;
     const changesRaw = "changes" in item && Array.isArray(item.changes) ? item.changes : [];
@@ -83,7 +129,7 @@ export function normalizeHubEntityLog(
       .filter((change: HubEntityLogChange | null): change is HubEntityLogChange => Boolean(change));
     out.push({ at, message, ...(changes.length ? { changes } : {}) });
   }
-  return out;
+  return dedupeHubEntityLogEntries(out);
 }
 
 /** Append one entry, capping to the newest `MAX_HUB_ENTITY_LOG_ENTRIES`. */
@@ -92,33 +138,21 @@ export function appendHubEntityLogEntry(
   entry: HubEntityLogEntry,
 ): HubEntityLogEntry[] {
   const message = entry.message.trim();
-  if (!message || !entry.at.trim()) return existing ? [...existing] : [];
-  const next = [...(existing ?? []), { ...entry, message }];
-  return next.length > MAX_HUB_ENTITY_LOG_ENTRIES ? next.slice(-MAX_HUB_ENTITY_LOG_ENTRIES) : next;
+  const at = canonicalizeHubEntityLogAt(entry.at);
+  if (!message || !at) return existing ? [...existing] : [];
+  return dedupeHubEntityLogEntries([...(existing ?? []), { ...entry, at, message }]);
 }
 
-const mergeKey = (entry: HubEntityLogEntry) => `${entry.at}\u0000${entry.message}`;
-
 /**
- * Union two logs, de-duped by `at + message`, oldest → newest, capped.
+ * Union two logs, de-duped by canonical `at + message`, oldest → newest, capped.
  * P0020 `mergeTwofaVaultAuditLogs` parity — guarantees no history is dropped
  * when merging a local snapshot with the freshest DB copy under concurrent edits.
  */
 export function mergeHubEntityAuditLogs(a: unknown, b: unknown): HubEntityLogEntry[] {
-  const seen = new Map<string, HubEntityLogEntry>();
-  for (const entry of [...normalizeHubEntityLog(a), ...normalizeHubEntityLog(b)]) {
-    const key = mergeKey(entry);
-    const prev = seen.get(key);
-    // Prefer the copy that carries structured changes.
-    if (!prev || (!prev.changes?.length && entry.changes?.length)) seen.set(key, entry);
-  }
-  const merged = [...seen.values()].sort((x, y) => {
-    const dx = Date.parse(x.at);
-    const dy = Date.parse(y.at);
-    if (Number.isFinite(dx) && Number.isFinite(dy) && dx !== dy) return dx - dy;
-    return x.at < y.at ? -1 : x.at > y.at ? 1 : 0;
-  });
-  return merged.length > MAX_HUB_ENTITY_LOG_ENTRIES ? merged.slice(-MAX_HUB_ENTITY_LOG_ENTRIES) : merged;
+  return dedupeHubEntityLogEntries([
+    ...normalizeHubEntityLog(a),
+    ...normalizeHubEntityLog(b),
+  ]);
 }
 
 /** Read the persisted audit trail from a row's metadata. */

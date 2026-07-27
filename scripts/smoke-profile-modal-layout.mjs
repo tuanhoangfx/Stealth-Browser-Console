@@ -1,5 +1,5 @@
 /**
- * Static smoke — Profile edit modal layout + rails (no Extensions in main; Console/History SSOT).
+ * Static smoke — Profile edit modal layout + rails (Note + Console SSOT).
  * Run: node scripts/smoke-profile-modal-layout.mjs
  */
 import fs from "node:fs";
@@ -22,8 +22,8 @@ const logRailTsx = fs.readFileSync(
   path.join(root, "src/features/profiles/ProfileDetailLogRail.tsx"),
   "utf8",
 );
-const historyRailTsx = fs.readFileSync(
-  path.join(root, "src/features/profiles/ProfileDetailHistoryRail.tsx"),
+const noteRailTsx = fs.readFileSync(
+  path.join(root, "src/features/profiles/ProfileDetailNoteRail.tsx"),
   "utf8",
 );
 const runtimePanels = fs.readFileSync(
@@ -43,12 +43,16 @@ if (detailToc.includes("Extensions") || detailToc.includes("profile-extensions")
   fail("profile-detail TOC must not include Extensions section");
 }
 
-if (!editModalTsx.includes("ProfileDetailHistoryRail")) {
-  fail("ProfileDetailModal edit mode must use ProfileDetailHistoryRail");
+if (!editModalTsx.includes("ProfileDetailNoteRail")) {
+  fail("ProfileDetailModal edit mode must use ProfileDetailNoteRail");
+}
+
+if (editModalTsx.includes("ProfileDetailHistoryRail")) {
+  fail("ProfileDetailModal must not use ProfileDetailHistoryRail — Note replaces History");
 }
 
 if (!editModalTsx.includes("ProfileDetailTocNav") || !editModalTsx.includes("stealth-profile-detail-runtime-rail")) {
-  fail("ProfileDetailModal bulk mode must include Navigate TOC + History/Console runtime rail (Detail parity)");
+  fail("ProfileDetailModal bulk mode must include Navigate TOC + Note/Console runtime rail (Detail parity)");
 }
 
 if (!editModalTsx.includes("ProfileBulkFormFields")) {
@@ -59,8 +63,16 @@ if (editModalTsx.includes("Bulk detail —") || editModalTsx.includes("HubBulkDe
   fail("ProfileDetailModal bulk mode must not use legacy Bulk detail title or HubBulkDetailField grid");
 }
 
-if (editModalTsx.includes("HubAdmNoteRail")) {
-  fail("ProfileDetailModal must not use Note rail — use History");
+if (!noteRailTsx.includes("HubAdmNoteRail") || !noteRailTsx.includes('mode="editor"')) {
+  fail("ProfileDetailNoteRail must use HubAdmNoteRail editor SSOT");
+}
+
+if (!noteRailTsx.includes("PROFILE_DETAIL_SECTION_NOTE") || !noteRailTsx.includes("PROFILE_DETAIL_NOTE_LABEL")) {
+  fail("ProfileDetailNoteRail must use Note section id + label SSOT");
+}
+
+if (!profilePrefsTs.includes('"note"') || !profilePrefsTs.match(/DEFAULT_PROFILE_DIRECTORY_COLUMNS[\s\S]*"note"/)) {
+  fail("DEFAULT_PROFILE_DIRECTORY_COLUMNS must include note by default");
 }
 
 if (!logRailTsx.includes("StealthConsoleContent")) {
@@ -92,10 +104,6 @@ if (!runtimePanels.includes("StealthConsoleRailTitle")) {
   fail("StealthSystemConsolePanel must use StealthConsoleRailTitle hint");
 }
 
-if (!historyRailTsx.includes("StealthRunHistoryContent")) {
-  fail("ProfileDetailHistoryRail must use StealthRunHistoryContent SSOT");
-}
-
 if (!runtimePanels.includes("export function StealthConsoleContent")) {
   fail("StealthConsoleContent shared export missing");
 }
@@ -120,10 +128,6 @@ if (shellTs.match(/PROFILE_EDIT_MODAL_SHELL_CLASS[^;]*hub-tool-detail-modal--fit
 
 if (!logRailTsx.includes("STEALTH_CONSOLE_RAIL_LABEL") || !logRailTsx.includes("showIcon")) {
   fail("ProfileDetailLogRail must use StealthConsoleRailTitle + Console SSOT label/icon");
-}
-
-if (!historyRailTsx.includes("STEALTH_RUN_HISTORY_RAIL_LABEL") || !historyRailTsx.includes("showIcon")) {
-  fail("ProfileDetailHistoryRail must use StealthRunHistoryRailTitle + Run History SSOT label/icon");
 }
 
 const liveChipPath = path.join(root, "src/features/profiles/StealthProfilesLiveHeaderChip.tsx");
@@ -174,7 +178,10 @@ const detailCss = fs.readFileSync(
 );
 
 if (!detailCss.includes("stealth-profile-detail-runtime-rail") || !detailCss.includes("grid-template-rows")) {
-  fail("stealth-profile-detail-modal.css must define 50/50 History + Console rail grid");
+  fail("stealth-profile-detail-modal.css must define 50/50 Note + Console rail grid");
+}
+if (!detailCss.includes("stealth-profile-detail-note-rail")) {
+  fail("stealth-profile-detail-modal.css must style stealth-profile-detail-note-rail");
 }
 if (!detailCss.includes("stealth-extension-detail-modal")) {
   fail("stealth-profile-detail-modal.css must include extension detail modal Layout 3 selectors");

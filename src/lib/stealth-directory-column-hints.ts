@@ -86,7 +86,7 @@ const PROFILE_COLUMN_HINT_DESCRIPTIONS: Record<StealthProfileColumnKey, string> 
   createdAt: "When this profile row was first created in the catalog.",
   startupUrl: "URL loaded when Run is clicked — normalized on blur in forms.",
   proxy: "Outbound proxy string for this profile (optional).",
-  note: "Internal free-text note — hidden from directory by default.",
+  note: "Internal free-text note — editable in Profile detail Note rail.",
   e0001: "Cookie Bridge (E0001) — per-profile override of the global extension toggle.",
   surfshark: "Surfshark VPN extension — per-profile override of the global toggle.",
 };

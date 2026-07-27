@@ -91,7 +91,7 @@ export const STEALTH_PROFILE_COLUMN_META = withExtensionColumnHeaderIcons(
     createdAt: col("Created", "hub-users-col--activity", "activity", "col.directory.created", "5.5rem"),
     startupUrl: col("Startup URL", "hub-users-col--email", "email", "col.directory.username", "18%"),
     proxy: col("Proxy", "hub-users-col--metric-c", "name", "col.directory.username", "12%"),
-    note: col("Note", "hub-users-col--id", "id", "col.directory.posts", "3.5rem"),
+    note: col("Note", "hub-users-col--id", "id", "col.directory.posts", "12%"),
     e0001: col("E0001", "hub-users-col--metric-a", "tools", "col.directory.status", "3.25rem"),
     surfshark: col("Surfshark", "hub-users-col--metric-b", "tools", "col.directory.status", "3.75rem"),
     },

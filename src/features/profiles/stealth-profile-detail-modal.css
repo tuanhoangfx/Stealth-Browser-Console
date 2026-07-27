@@ -63,12 +63,12 @@
   min-height: 0;
 }
 
-/* Detail modal — Run History + Console rails 50/50 (Profiles screen rail parity). */
+/* Detail modal — Note + Console rails 50/50 (Create modal Note rail parity). */
 .stealth-profile-detail-runtime-rail,
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
     .stealth-profile-create-modal
   )
-  .hub-tool-detail-split__rail:has(.stealth-profile-detail-history-rail):has(.stealth-profile-detail-log-rail),
+  .hub-tool-detail-split__rail:has(.stealth-profile-detail-note-rail):has(.stealth-profile-detail-log-rail),
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
   .hub-tool-detail-split__rail:has(.stealth-profile-detail-history-rail):has(.stealth-profile-detail-log-rail) {
   display: grid;
@@ -79,12 +79,14 @@
   overflow: hidden;
 }
 
+.stealth-profile-detail-note-rail,
 .stealth-profile-detail-history-rail {
   flex: unset;
   min-height: 0;
   height: 100%;
 }
 
+.stealth-profile-detail-note-rail .hub-tool-detail-rail__body,
 .stealth-profile-detail-history-rail .hub-tool-detail-rail__body {
   display: flex;
   flex-direction: column;

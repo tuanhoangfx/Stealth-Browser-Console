@@ -356,6 +356,21 @@ export function HubRouteAccessDirectoryTable<TRow>({
               <td className={HUB_ROUTE_ACCESS_COL.role}>
                 <div className="hub-users-role-cell">{renderRoleCell(row)}</div>
               </td>
+              {showSourceColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.source} hub-users-cell-muted text-center`}>
+                  {renderSourceCell?.(row)}
+                </td>
+              ) : null}
+              {showOwnershipColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.ownership} hub-users-cell-muted text-center`}>
+                  {renderOwnershipCell?.(row)}
+                </td>
+              ) : null}
+              {showLiveStatusColumn ? (
+                <td className={`${HUB_ROUTE_ACCESS_COL.liveStatus} hub-users-cell-muted text-center`}>
+                  {renderLiveStatusCell?.(row)}
+                </td>
+              ) : null}
               {showProfileColumn ? (
                 <td className={`${HUB_ROUTE_ACCESS_COL.profile} hub-users-cell-muted text-center`}>
                   {renderProfileCell?.(row)}
@@ -374,21 +389,6 @@ export function HubRouteAccessDirectoryTable<TRow>({
               {showFullInfoColumn ? (
                 <td className={`${HUB_ROUTE_ACCESS_COL.fullInfo} hub-users-cell-muted text-center`}>
                   {renderFullInfoCell?.(row)}
-                </td>
-              ) : null}
-              {showSourceColumn ? (
-                <td className={`${HUB_ROUTE_ACCESS_COL.source} hub-users-cell-muted text-center`}>
-                  {renderSourceCell?.(row)}
-                </td>
-              ) : null}
-              {showOwnershipColumn ? (
-                <td className={`${HUB_ROUTE_ACCESS_COL.ownership} hub-users-cell-muted text-center`}>
-                  {renderOwnershipCell?.(row)}
-                </td>
-              ) : null}
-              {showLiveStatusColumn ? (
-                <td className={`${HUB_ROUTE_ACCESS_COL.liveStatus} hub-users-cell-muted text-center`}>
-                  {renderLiveStatusCell?.(row)}
                 </td>
               ) : null}
               {showUsageColumn ? (

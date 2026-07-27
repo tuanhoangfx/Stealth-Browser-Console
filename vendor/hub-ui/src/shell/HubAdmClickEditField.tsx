@@ -47,6 +47,8 @@ export type HubAdmClickEditFieldProps = {
   readonlyHoverTitle?: boolean;
   /** Lock field — no click-to-edit (bulk apply busy, read-only preview). */
   disabled?: boolean;
+  /** Optional control after the value (e.g. Browse) — ClickFilter trailing SSOT. */
+  trailingAction?: ReactNode;
 };
 
 const DEFAULT_CONTROL_CLASS = "field auth-gate-field hub-adm-click-edit__input";
@@ -125,6 +127,7 @@ export function HubAdmClickEditField({
   renderDisplay,
   readonlyHoverTitle = true,
   disabled = false,
+  trailingAction,
 }: HubAdmClickEditFieldProps) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +136,15 @@ export function HubAdmClickEditField({
   const shown = displayValue ?? trimmed;
   const empty = !shown;
   const inputClass = `${controlClassName}${inputClassName ? ` ${inputClassName}` : ""}`;
+  const valueClassEditing = `hub-adm-inline-field__value hub-adm-inline-field__value--editing${
+    trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""
+  }`;
+  const valueClassReadonly = `hub-adm-inline-field__value${
+    trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""
+  }`;
+  const trailing = trailingAction ? (
+    <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+  ) : null;
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -184,7 +196,7 @@ export function HubAdmClickEditField({
         header={header}
         labelHint={labelHint}
         className={className}
-        valueClassName="hub-adm-inline-field__value hub-adm-inline-field__value--editing"
+        valueClassName={valueClassEditing}
       >
         <div
           ref={editShellRef}
@@ -212,6 +224,7 @@ export function HubAdmClickEditField({
             />
           )}
         </div>
+        {trailing}
       </AdmInlineFieldShell>
     );
   }
@@ -221,7 +234,7 @@ export function HubAdmClickEditField({
       header={header}
       labelHint={labelHint}
       className={`hub-adm-inline-field--readonly hub-adm-inline-field--click-edit${disabled ? " hub-adm-inline-field--disabled" : ""}${className ? ` ${className}` : ""}`}
-      valueClassName="hub-adm-inline-field__value"
+      valueClassName={valueClassReadonly}
     >
       {disabled ? (
         <span className="hub-adm-click-edit hub-adm-click-edit--disabled" aria-disabled="true">
@@ -241,6 +254,7 @@ export function HubAdmClickEditField({
           </span>
         </button>
       )}
+      {trailing}
     </AdmInlineFieldShell>
   );
 }

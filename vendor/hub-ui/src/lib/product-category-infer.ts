@@ -75,6 +75,32 @@ export function stripProductPlanSuffix(productName: string): string {
   return base;
 }
 
+/** Extra service-group aliases — clean messy SKU prefixes before brand fallback. */
+const SERVICE_GROUP_ALIASES: ReadonlyArray<{ re: RegExp; groupKey: string; groupLabel: string }> = [
+  { re: /^vpn\s*hma\b|hide\s*my\s*ass/i, groupKey: "hma", groupLabel: "HideMyAss" },
+  { re: /^proxy\b/i, groupKey: "proxy", groupLabel: "Proxy" },
+  { re: /^fpt\s*play/i, groupKey: "fpt-play", groupLabel: "FPT Play" },
+  { re: /^gpm\s*login|^gpmlogin/i, groupKey: "gpmlogin", groupLabel: "GPM Login" },
+  { re: /^fitroom/i, groupKey: "fitroom", groupLabel: "Fitroom" },
+  { re: /^shopdora/i, groupKey: "shopdora", groupLabel: "ShopDora" },
+  { re: /^sync\.?\s*so\b/i, groupKey: "sync-so", groupLabel: "Sync.so" },
+  { re: /^v0\.?dev\b|\bv0\b/i, groupKey: "v0", groupLabel: "v0.dev" },
+  { re: /^arcads/i, groupKey: "arcads", groupLabel: "Arcads" },
+  { re: /^lovart/i, groupKey: "lovart", groupLabel: "Lovart" },
+  { re: /^smodin/i, groupKey: "smodin", groupLabel: "Smodin" },
+  { re: /^clickup/i, groupKey: "clickup", groupLabel: "ClickUp" },
+  { re: /^invideo|in\s*video/i, groupKey: "invideo", groupLabel: "Invideo" },
+];
+
+function matchServiceGroupAlias(text: string): { groupKey: string; groupLabel: string } | null {
+  const hay = text.trim();
+  if (!hay) return null;
+  for (const row of SERVICE_GROUP_ALIASES) {
+    if (row.re.test(hay)) return { groupKey: row.groupKey, groupLabel: row.groupLabel };
+  }
+  return null;
+}
+
 /** Infer shared category from SKU name (brand SSOT + plan suffix strip). */
 export function inferProductCategory(productName: string): { groupKey: string; groupLabel: string } {
   const name = productName.trim();
@@ -85,12 +111,23 @@ export function inferProductCategory(productName: string): { groupKey: string; g
     return { groupKey: "acc gmail", groupLabel: "Acc Gmail" };
   }
 
+  const aliasFull = matchServiceGroupAlias(name);
+  if (aliasFull) return aliasFull;
+
   const brandFull = resolveHubBrandIconByMatch(name);
   if (brandFull && brandFull.label.toLowerCase() !== name.toLowerCase()) {
     return { groupKey: brandFull.id, groupLabel: brandFull.label };
   }
 
-  const base = stripProductPlanSuffix(name);
+  const base = stripProductPlanSuffix(name)
+    .replace(/\s+\d+\s*\$/g, "")
+    .replace(/\s*#\d+\b/g, "")
+    .replace(/\s+v\.?vip(?:\s*\d+)?$/i, "")
+    .trim();
+
+  const aliasBase = matchServiceGroupAlias(base);
+  if (aliasBase) return aliasBase;
+
   const brandBase = resolveHubBrandIconByMatch(base);
   if (brandBase) {
     return { groupKey: brandBase.id, groupLabel: brandBase.label };

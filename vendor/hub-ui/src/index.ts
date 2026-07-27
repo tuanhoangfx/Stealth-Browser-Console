@@ -675,6 +675,8 @@ export {
   hubEntityLogTextValue,
   mergeHubEntityAuditLogs,
   normalizeHubEntityLog,
+  canonicalizeHubEntityLogAt,
+  dedupeHubEntityLogEntries,
   parseHubEntityLogMessageChanges,
   pushHubEntityLogChange,
   readHubEntityActivityLog,
@@ -683,6 +685,11 @@ export {
   type HubEntityLogEntry,
   type HubEntityLogFieldMeta,
 } from "./lib/hub-entity-log";
+export {
+  isHubTempEntityId,
+  runHubDetailOptimisticSave,
+  type HubDetailOptimisticSaveOptions,
+} from "./lib/hub-detail-optimistic-save";
 export {
   flattenHubEntityLog,
   formatHubEntityLogActionLabel,

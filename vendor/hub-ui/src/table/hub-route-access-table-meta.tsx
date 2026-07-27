@@ -257,14 +257,16 @@ export function buildHubRouteAccessModalColumns(
   return [
     ...(showSelect ? [{ key: "select", label: "", className: HUB_ROUTE_ACCESS_COL.select }] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.user,
+    // Status band (Teams Member detail SSOT): Role → Source → Own → Live Status
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.role,
+    ...(showSourceColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.source] : []),
+    ...(showOwnershipColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.ownership] : []),
+    ...(showLiveStatusColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.liveStatus] : []),
+    // Identity band: Profile → Password → Recovery → Full Info
     ...(showProfileColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.profile] : []),
     ...(showPasswordColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.password] : []),
     ...(showMailRecoverColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.mailRecover] : []),
     ...(showFullInfoColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.fullInfo] : []),
-    ...(showSourceColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.source] : []),
-    ...(showOwnershipColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.ownership] : []),
-    ...(showLiveStatusColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.liveStatus] : []),
     ...(showUsageColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.usage] : []),
     ...(showSyncAtColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.syncAt] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.loadAt,

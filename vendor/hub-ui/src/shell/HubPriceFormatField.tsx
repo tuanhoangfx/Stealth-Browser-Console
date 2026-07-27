@@ -6,6 +6,10 @@ import {
 import type { FilterOption } from "../shell/FilterBar";
 import { HubAdmClickFilterField } from "./HubAdmClickEditField";
 import { HubDetailFieldRow, HubDetailFieldsGroup } from "./HubDetailFieldsScope";
+import {
+  HUB_ORDER_PRICE_TEXT_CLASS,
+  HUB_ORDER_PRICE_TEXT_DEFAULT_TONE,
+} from "./hub-order-price-badge";
 
 /** Sample amount used for option preview labels (1.250.000 ₫). */
 export const HUB_PRICE_FORMAT_PREVIEW_AMOUNT_CENTS = 125_000_000;
@@ -64,6 +68,23 @@ export function HubPriceFormatField({
       options={options}
       value={value}
       onChange={(next) => onChange(next as HubOrderPriceFormat)}
+      renderValue={(_value, displayLabel) => {
+        const sep = " — ";
+        const idx = displayLabel.indexOf(sep);
+        if (idx < 0) return displayLabel;
+        const name = displayLabel.slice(0, idx + sep.length);
+        const price = displayLabel.slice(idx + sep.length);
+        return (
+          <>
+            <span>{name}</span>
+            <span
+              className={`${HUB_ORDER_PRICE_TEXT_CLASS} ${HUB_ORDER_PRICE_TEXT_CLASS}--${HUB_ORDER_PRICE_TEXT_DEFAULT_TONE}`}
+            >
+              {price}
+            </span>
+          </>
+        );
+      }}
     />
   );
 

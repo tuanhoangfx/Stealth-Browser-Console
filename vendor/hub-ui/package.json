@@ -1,6 +1,6 @@
 {
   "name": "@tool-workspace/hub-ui",
-  "version": "0.2.54",
+  "version": "0.2.63",
   "private": true,
   "type": "module",
   "description": "Shared Hub shell UI — DisplayPrefs menu and hub-check-indicator styles.",

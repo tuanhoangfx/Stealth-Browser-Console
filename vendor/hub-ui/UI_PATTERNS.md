@@ -145,25 +145,27 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 
 ### Directory toolbar row 1 (golden — hub-ui)
 
-**Order (`DirectorySearchToolbar`):** view toggle → **`HubTablePageSizeSelect`** → **`HubWorkspacePeriodSelect`** (All) → **`HubDirectoryDisplayPanel`** (Display) → **`HubDirectoryTableColumnPresetMenu`** (preset, in `displayBand`).
+**Order (`DirectorySearchToolbar`):** view toggle → **`HubWorkspacePeriodSelect`** (All) → **`HubDirectoryDisplayPanel`** (Display + page size + preset) → result count.
 
 | Rule | SSOT |
 |------|------|
+| Page size | Lives in **Display** when `displayBand` is set — toolbar must **not** also render `HubTablePageSizeSelect` (hub-ui auto-hides via `resolveDirectoryToolbarShowTablePageSize`). Same rule on `HubDirectoryToolbarSlots` (`displayBand` prop). Only show toolbar page size when there is **no** Display band. |
 | Typography | `HUB_DIRECTORY_TOOLBAR_TYPO_CLASS` (`text-xs font-medium`) on row 1 — not `HUB_SHELL_LABEL_TYPO_CLASS` (FilterBar row 2) |
 | Trigger | `HubFilterDropdownTrigger` — **`forwardRef`**; portaled panels anchor via trigger rect |
 | Icon slot | 13×13 wrapper + `compactIconSize(13)`; label `leading-none` |
 | Period (All) | `workspacePeriodTriggerIconColor` — colored calendar icon only, **no dot on trigger**; dots in dropdown rows |
 | Preset | `HubDirectoryTableColumnPresetMenu` — same trigger + portal panel; clamp to viewport |
 
-**Golden:** P0020 `/twofa/mail` — All · 20 rows · Display · Current preset same height; panels open under trigger.
+**Golden:** P0020 / P0005 directory — All · Display · Current preset same height; page size only inside Display.
 
-**Header actions rail (P0020 workspace tabs)**
+**Header actions rail (Notify · Log · Settings)**
 
 | Component | Slot | Notes |
 |-----------|------|-------|
-| `HubNotifyButton` | Before Log | Bell + **Notify** label + unread badge |
-| `HubLogButton` | End rail | `quickActions[]` for tab shortcuts (e.g. Todo Activity log) |
-| `HubFilterRowButton` | FilterBar `row2Actions` | Primary CTA (New task / New note) |
+| `HubHeaderOpsPanels` | Tab header trailing | **SSOT** for Notify · Log · Settings on every directory tab |
+| `HubNotifyButton` | Inside ops panels | Bell + **Notify** label + unread badge |
+| `HubLogButton` | Inside ops panels | Session / tab log |
+| Settings | `HubDisplayPrefs` / tool prefs in `trailing` | KPI/charts/price — **not** Table & detail (that stays in Display) |
 
 **List modals (Notify, Activity log)**
 
@@ -685,7 +687,21 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 
 **Rules:** no forked toggle lists; preset after Display; non-directory UIs (Todo Kanban) skip table column SSOT. Onboard: copy `cookie-route-table-prefs.ts` pattern.
 
-**Coverage:** P0020 Cookie/Notes/Sheet/2FA (Services·Mail·Browser·Quota); P0004 Users/Library/Dashboard/Agent/Supabase/Server.
+**Frame presets (Detail ADM 1:1 — mandatory when the entity has a multi-section Detail modal):**
+
+| Rule | SSOT |
+|------|------|
+| Names / emoji | Match Detail TOC section labels (e.g. Orders: Customer · Order · Subscription · Sample) |
+| Visible columns | Required chrome + fields in that ADM frame only |
+| Seed | `upsertDirectoryBuiltinFramePresets()` via `ensure*BuiltinFramePresets()` (idempotent refresh) |
+| Delete | Hide Trash for `builtin: true` or `id.startsWith("builtin-")` (`HubDirectoryTableColumnPresetMenu`) |
+| Golden | P0020 Mail — Status / Identity / Service / Exchange / Plan (`twofa-mail-display-preset.ts`) |
+| Orders | P0005 `order-display-preset.ts` + `ORDER_TABLE_PRESET_*` in `order-table-prefs.ts` |
+| Customers / Products | P0005 `customer-display-preset.ts` / `product-display-preset.ts` |
+
+Do **not** invent a second preset menu — only `HubDirectoryTableColumnPresetMenu` via `tableColumnPresets`.
+
+**Coverage:** P0020 Cookie/Notes/Sheet/2FA (Services·Mail·Browser·Quota); P0004 Users/Library/Dashboard/Agent/Supabase/Server; P0005 Orders/Customers/Products frame presets.
 
 **Per-tool wiring**
 

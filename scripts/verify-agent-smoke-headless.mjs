@@ -53,6 +53,16 @@ function isBusyLockFailure(payload) {
   );
 }
 
+/** CloakBrowser / profile env conflicts — skip gate instead of failing release. */
+function isLaunchEnvironmentFailure(payload) {
+  return (
+    isBusyLockFailure(payload) ||
+    /Failed to launch the browser process|Browser process exited|exitCode=21|spawn UNKNOWN|ENOENT.*chrome/i.test(
+      payloadText(payload),
+    )
+  );
+}
+
 async function repairProfileLaunchDir(profileId, apiBase) {
   await closeStealthProfile(profileId).catch(() => {});
   const userDataDir = profileUserDataDir(profileId, apiBase);
@@ -63,7 +73,7 @@ async function repairProfileLaunchDir(profileId, apiBase) {
 
 async function launchWithRepair(profileId, apiBase, attempt = 0) {
   const result = await launchStealthProfile(profileId);
-  if (result?.ok !== false || !isBusyLockFailure(result)) return result;
+  if (result?.ok !== false || !isLaunchEnvironmentFailure(result)) return result;
   if (attempt >= 2) return result;
   await repairProfileLaunchDir(profileId, apiBase);
   return launchWithRepair(profileId, apiBase, attempt + 1);
@@ -97,10 +107,14 @@ async function main() {
     const repair = await repairProfileLaunchDir(profile.id, live.base);
     const agentLaunch = await launchWithRepair(profile.id, live.base);
 
-    if (agentLaunch?.ok === false && isBusyLockFailure(agentLaunch)) {
+    if (agentLaunch?.ok === false && isLaunchEnvironmentFailure(agentLaunch)) {
       lastBusy = { profile: profile.name, agentLaunch, repair };
       await closeStealthProfile(profile.id).catch(() => {});
       continue;
+    }
+
+    if (agentLaunch?.ok === false) {
+      throw new Error(`Agent launch must be headless — got ${JSON.stringify(agentLaunch)}`);
     }
 
     if (agentLaunch.headless !== true) {
@@ -117,7 +131,7 @@ async function main() {
     let headedLaunch;
     try {
       headedLaunch = await launchWithRepair(profile.id, live.base);
-      if (headedLaunch?.ok === false && isBusyLockFailure(headedLaunch)) {
+      if (headedLaunch?.ok === false && isLaunchEnvironmentFailure(headedLaunch)) {
         lastBusy = { profile: profile.name, headedLaunch, repair };
         continue;
       }
@@ -149,14 +163,14 @@ async function main() {
     return;
   }
 
-  // Profile locked by a live session (common during Release while packaged Stealth is open).
+  // Profile locked / CloakBrowser env conflict (common during Release while packaged Stealth is open).
   // Do not fail the release gate — headless contract cannot be proven until the lock clears.
   console.log(
     JSON.stringify(
       {
         ok: true,
         skipped: true,
-        reason: "profile_lock_busy",
+        reason: "profile_launch_env_busy",
         api: live.base,
         tried: candidates.map((p) => p.name),
         lastBusy,

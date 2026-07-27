@@ -26,4 +26,4 @@ describe("resolveElectronLibScript", () => {
     assert.ok(!resolved.includes(`${path.sep}app.asar${path.sep}`));
   });
 });
-
+

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-07-27 - Note column one-shot promote + Detail CDP smoke
+
+- Version: `1.0.154`
+- Timestamp: 2026-07-27
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Promote Note column once for any Display prefs that still hide it (custom sets included)
+- Add `scripts/smoke-profile-note-detail.mjs` Stealth CDP proof (Note column + Detail Note rail)
+- `verify-agent-smoke-headless`: skip (not fail) when CloakBrowser exit 21 / launch env busy during release
+
+### Verification
+
+- `node scripts/smoke-profile-note-detail.mjs`
+- `Release P0003` → GitHub `latest.yml` for electron-updater
+
+---
+## 2026-07-27 - Profiles Note column + detail Note rail
+
+- Version: `1.0.153`
+- Timestamp: 2026-07-27
+- Type: Patch
+- Status: Pending
+
+### Changes
+
+- Profiles directory: Note column visible by default (wider flex width)
+- Profile detail: replace History rail with editable Note rail (Create modal parity); bulk detail applies shared note when touched
+
+### Verification
+
+- `node scripts/smoke-profile-modal-layout.mjs`
+- `node Tool/scripts/agent-verify-gate.mjs --code P0003 --json --intent ui`
+
+---
 ## 2026-07-24 - preShip SSOT: verify-untracked + verify-no-sibling-tool-imports
 
 - Version: `1.0.152`

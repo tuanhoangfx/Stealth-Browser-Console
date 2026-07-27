@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RotateCcw, Settings } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
-import { LIMIT_OPTIONS, TIME_RANGES } from "./constants";
+import { LIMIT_OPTIONS, TABLE_PAGE_SIZE_OPTIONS, TIME_RANGES } from "./constants";
 import { MAX_VISIBLE_CHART } from "./chart-visible";
 import { MAX_VISIBLE_KPI } from "./kpi-visible";
 import { Section, ToggleRow } from "./primitives";
@@ -21,6 +21,7 @@ import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "../shell/H
 import { HubTocSectionNav, type HubTocNavItem } from "../shell/HubTocSectionNav";
 import { registerHubSettingsOpen } from "../keyboard/hub-keyboard-shortcuts";
 import { HubDirectoryTableColumnPresetMenu } from "../prefs/HubDirectoryTableColumnPresetMenu";
+import { patchHubTablePageSizeValue } from "../table/hub-table-page-size";
 
 function parseSet(raw: string | null): Set<string> | null {
   if (raw === null) return null;
@@ -45,6 +46,7 @@ export function HubDisplayPrefs({
   showHeaderPin = true,
   showRange = true,
   showLimit = true,
+  showPageSize = false,
   showNavToggle = false,
   hideSearchPinOnSystem = false,
   defaultKpiKeys,
@@ -112,7 +114,11 @@ export function HubDisplayPrefs({
   useEffect(() => {
     const sync = () => setPrefs(readPrefs());
     window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
+    window.addEventListener("hub-list-prefs-change", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hub-list-prefs-change", sync);
+    };
   }, [readPrefs]);
 
   const isSystem = screen === "system";
@@ -407,6 +413,23 @@ export function HubDisplayPrefs({
           </>
         ) : null}
         {headerExtras}
+      </SettingsAdmSection>,
+    );
+  }
+
+  if (showPageSize) {
+    displayParts.push(
+      <SettingsAdmSection key="page-size" label="Rows per page" emoji="📄">
+        <div className="space-y-0.5">
+          {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
+            <ToggleRow
+              key={n}
+              label={`${n} rows`}
+              on={prefs.tablePageSize === n}
+              onChange={() => update({ tpage: patchHubTablePageSizeValue(n) }, `Page size: ${n}`)}
+            />
+          ))}
+        </div>
       </SettingsAdmSection>,
     );
   }

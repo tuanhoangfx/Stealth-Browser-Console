@@ -72,6 +72,22 @@ table.hub-users-table {
   min-width: 0;
 }
 
+/* Fit measure span — must hide outside directory tables too (Settings ADM labels). */
+.hub-users-th-text--measure {
+  position: absolute;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  width: max-content;
+  max-width: none;
+}
+
+.hub-users-th-heading--icon-only .hub-users-th-text:not(.hub-users-th-text--measure) {
+  display: none !important;
+}
+
 .hub-users-th-emoji {
   flex-shrink: 0;
   font-size: 13px;

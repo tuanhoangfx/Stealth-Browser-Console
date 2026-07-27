@@ -24,7 +24,7 @@ import { resolveProfileLaunchUrl, resolveStartupUrlSave, startupUrlSaveError } f
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { DeviceConfig, ProfileRow } from "../../types";
 import { ProfileFormFields } from "./ProfileFormFields";
-import { ProfileDetailHistoryRail } from "./ProfileDetailHistoryRail";
+import { ProfileDetailNoteRail } from "./ProfileDetailNoteRail";
 import { ProfileDetailLogRail } from "./ProfileDetailLogRail";
 import { ProfileDetailTocNav } from "./ProfileDetailTocNav";
 import {
@@ -36,7 +36,7 @@ import { PROFILE_EDIT_MODAL_SHELL_CLASS } from "./profile-form-modal";
 import type { ProfileDetailModalProps } from "./profile-detail-modal-props";
 import { ProfileBulkFormFields, resolveBulkDevicePatch } from "./ProfileBulkFormFields";
 
-type ProfileBulkFieldKey = "groupId" | "startupUrl" | "proxy" | "devicePreset";
+type ProfileBulkFieldKey = "groupId" | "startupUrl" | "proxy" | "devicePreset" | "note";
 type BulkDraft = Record<ProfileBulkFieldKey, string>;
 
 function resolveUniformValue<T>(profiles: ProfileRow[], read: (profile: ProfileRow) => T): T | null {
@@ -57,6 +57,7 @@ function ProfileDetailEditBody({
   const [fingerprintSeed, setFingerprintSeed] = useState(profile.fingerprintSeed);
   const [device, setDevice] = useState<DeviceConfig>(() => deviceConfigFromProfile(profile));
   const [startupUrl, setStartupUrl] = useState(() => resolveProfileLaunchUrl(profile.startupUrl || ""));
+  const [note, setNote] = useState(profile.note || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [logRailFocused, setLogRailFocused] = useState(false);
@@ -78,7 +79,7 @@ function ProfileDetailEditBody({
       name: name.trim(),
       groupId,
       proxy: proxy.trim(),
-      note: profile.note,
+      note: note.trim(),
       fingerprintSeed,
       startupUrl: resolveStartupUrlSave(startupUrl, profile.startupUrl),
       extensionOverrides: profile.extensionOverrides,
@@ -190,7 +191,7 @@ function ProfileDetailEditBody({
           }
           rail={
             <div className="stealth-profile-detail-runtime-rail">
-              <ProfileDetailHistoryRail profileId={profile.id} />
+              <ProfileDetailNoteRail value={note} onChange={setNote} />
               <ProfileDetailLogRail profileName={displayName} focused={logRailFocused} />
             </div>
           }
@@ -211,6 +212,7 @@ function ProfileDetailBulkBody({
     startupUrl: resolveUniformValue(profiles, (profile) => profile.startupUrl || "") ?? "",
     proxy: resolveUniformValue(profiles, (profile) => profile.proxy || "") ?? "",
     devicePreset: resolveUniformValue(profiles, (profile) => profile.devicePreset || "") ?? "",
+    note: resolveUniformValue(profiles, (profile) => profile.note || "") ?? "",
   }));
   const [touched, setTouched] = useState<Set<ProfileBulkFieldKey>>(() => new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -221,7 +223,6 @@ function ProfileDetailBulkBody({
   const sectionIds = useMemo(() => PROFILE_DETAIL_TOC.map((item) => item.id), []);
   const tocItems = useMemo(() => profileDetailTocNavItems(), []);
   const selectedCount = profiles.length;
-  const profileIds = useMemo(() => profiles.map((profile) => profile.id), [profiles]);
   const profileNames = useMemo(() => profiles.map((profile) => profile.name), [profiles]);
   const canApply = touched.size > 0;
 
@@ -252,14 +253,21 @@ function ProfileDetailBulkBody({
       }
       const groupPatch = touched.has("groupId") ? draft.groupId || "default" : undefined;
       const proxyPatch = touched.has("proxy") ? draft.proxy.trim() : undefined;
+      const notePatch = touched.has("note") ? draft.note.trim() : undefined;
       const devicePatch = touched.has("devicePreset") && draft.devicePreset.trim()
         ? resolveBulkDevicePatch(draft.devicePreset)
         : null;
-      if (groupPatch !== undefined || proxyPatch !== undefined || devicePatch) {
+      if (
+        groupPatch !== undefined ||
+        proxyPatch !== undefined ||
+        notePatch !== undefined ||
+        devicePatch
+      ) {
         for (const profile of profiles) {
           const patch: Partial<ProfileRow> & { id: string } = { id: profile.id };
           if (groupPatch !== undefined) patch.groupId = groupPatch;
           if (proxyPatch !== undefined) patch.proxy = proxyPatch;
+          if (notePatch !== undefined) patch.note = notePatch;
           if (devicePatch) Object.assign(patch, devicePatch);
           if (Object.keys(patch).length > 1) await updateProfile(patch);
         }
@@ -362,7 +370,14 @@ function ProfileDetailBulkBody({
           }
           rail={
             <div className="stealth-profile-detail-runtime-rail">
-              <ProfileDetailHistoryRail profileIds={profileIds} />
+              <ProfileDetailNoteRail
+                value={draft.note}
+                onChange={(value) => {
+                  setDraft((prev) => ({ ...prev, note: value }));
+                  touchField("note");
+                }}
+                placeholder="Optional note applied to all selected profiles"
+              />
               <ProfileDetailLogRail profileNames={profileNames} focused={logRailFocused} />
             </div>
           }
