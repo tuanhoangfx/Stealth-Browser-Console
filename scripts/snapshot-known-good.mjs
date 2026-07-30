@@ -38,6 +38,17 @@ function sha512File(file) {
   return hash.digest("base64");
 }
 
+function tryRmDir(dir) {
+  if (!fs.existsSync(dir)) return { ok: true };
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    return { ok: true };
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : "";
+    return { ok: false, error, code };
+  }
+}
+
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -82,9 +93,24 @@ if (fs.existsSync(installerSrc)) {
 
 if (fs.existsSync(unpackedSrc)) {
   const backupUnpacked = path.join(backupRoot, "win-unpacked");
-  fs.rmSync(backupUnpacked, { recursive: true, force: true });
-  copyDir(unpackedSrc, backupUnpacked);
-  console.log(`snapshot-known-good: copied win-unpacked → ${path.relative(root, backupUnpacked)}`);
+  const removed = tryRmDir(backupUnpacked);
+  if (!removed.ok) {
+    const stale = path.join(backupRoot, `win-unpacked-stale-${Date.now()}`);
+    try {
+      fs.renameSync(backupUnpacked, stale);
+      console.warn(
+        `snapshot-known-good: win-unpacked locked (${removed.code || "EPERM"}) — renamed to ${path.basename(stale)}; installer pin still valid`,
+      );
+    } catch (renameError) {
+      console.warn(
+        `snapshot-known-good: skip win-unpacked refresh (${removed.code || "EPERM"}) — installer ${installerName} already copied; close known-good exe if you need unpacked backup`,
+      );
+    }
+  }
+  if (!fs.existsSync(backupUnpacked)) {
+    copyDir(unpackedSrc, backupUnpacked);
+    console.log(`snapshot-known-good: copied win-unpacked → ${path.relative(root, backupUnpacked)}`);
+  }
 } else {
   console.warn("snapshot-known-good: no dist-desktop/win-unpacked — run pnpm desktop:dist first");
 }

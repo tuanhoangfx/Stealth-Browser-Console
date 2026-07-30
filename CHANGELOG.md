@@ -1,11 +1,28 @@
 # Changelog
 
+## 2026-07-30 - Profiles directory More menu SSOT
+
+- Version: `1.0.170`
+- Timestamp: 2026-07-30 19:15 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-30 — v1.0.169 — Digit gap +10% + Console SSOT lock
 
 - Version: `1.0.169`
 - Timestamp: 2026-07-30 18:30 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.169
 
 ### Changes
 
