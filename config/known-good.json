@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.149-stable",
-  "version": "1.0.149",
-  "gitCommit": "a05844cded864fed9a5e78b2acf9c79b16f6c3b9",
-  "gitTag": "v1.0.149-stable",
+  "label": "v1.0.154-stable",
+  "version": "1.0.154",
+  "gitCommit": null,
+  "gitTag": "v1.0.154-stable",
   "packagedFrom": "5c3c3df5923851040d24732ee6ebbbe55c5a8f21",
   "notes": "v1.0.149: fix prod taskbar badge — resolveElectronLibScript prefers app.asar.unpacked (PowerShell cannot read asar). Includes badge NOHWND/AUMID fixes from 1.0.147–148. Setup-1.0.149.exe + win-unpacked SHA512 verified.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.149.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.154.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "v6eBry6fa64UKw4vHgUZT7CRIHHZFeR7Uj4vAGQJ+548Oj8T5vi7pZxAYj3mkoVhavn3EeP929OhRZgsPeFmRA==",
-    "capturedAt": "2026-07-23T05:51:01.612Z"
+    "sha512": "rc8Dqmzeo41DwsIO0fVRUcWCGYHrADieHERWr56cpi0rAN0JHPGN7mMsChFBjrI/M8JIeSKWnzEwwECpt1xuNw==",
+    "capturedAt": "2026-07-27T06:28:22.973Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

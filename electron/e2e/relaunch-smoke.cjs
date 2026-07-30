@@ -56,6 +56,16 @@ async function main() {
       assert(url && url !== "about:blank" && !url.startsWith("chrome://newtab"), "startup opens on first tab");
     }
 
+    // If maximize/boot steps accidentally create an extra "about:blank" page,
+    // it tends to remain as a white tab for users.
+    await new Promise((r) => setTimeout(r, 1500));
+    const blankCount = ctx
+      .pages()
+      .filter((p) => !p.isClosed())
+      .map((p) => String(p.url() || ""))
+      .filter((url) => url === "about:blank").length;
+    assert(blankCount === 0, `no extra about:blank tabs after launch (got ${blankCount})`);
+
     secondSessions = new SessionManager();
     secondSessions.setUserDataRoot(tmpRoot);
     const attached = await secondSessions.launch(profile);

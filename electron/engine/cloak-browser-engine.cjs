@@ -451,11 +451,21 @@ async function launchStealthPersistentContext(profileOptions) {
   if (options.viewport === null) {
     void (async () => {
       try {
-        const page = context.pages()[0] ?? (await context.newPage());
+        let page = context.pages()[0] ?? null;
+        let created = false;
+        if (!page) {
+          // Avoid leaving an extra "about:blank" tab behind (some runs need a page handle
+          // to resolve the windowId via CDP, but we can immediately close it).
+          page = await context.newPage();
+          created = true;
+        }
+
         const cdp = await context.newCDPSession(page);
         const { windowId } = await cdp.send("Browser.getWindowForTarget");
         await cdp.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "maximized" } });
         await cdp.detach().catch(() => undefined);
+
+        if (created) await page.close().catch(() => undefined);
       } catch {
         // best-effort — non-fatal if the platform rejects window bounds
       }

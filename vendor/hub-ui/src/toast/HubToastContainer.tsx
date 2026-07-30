@@ -1,23 +1,19 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Check, Copy, X } from "lucide-react";
 import { HubToastProvider, useHubToastRequired, type HubToast, type HubToastType } from "./HubToastContext";
+import { resolveHubToastPortalTarget } from "./resolve-hub-toast-portal";
+import "../styles/hub-toast.css";
 
-const styles: Record<HubToastType, string> = {
-  success: "border-emerald-500/45 bg-emerald-500/15 text-emerald-100",
-  error: "border-rose-500/50 bg-rose-500/15 text-rose-100",
-  warn: "border-amber-500/50 bg-amber-500/15 text-amber-100",
-  info: "border-indigo-500/45 bg-indigo-500/15 text-indigo-100",
-};
-
-const iconStyles: Record<HubToastType, string> = {
-  success: "text-emerald-300",
-  error: "text-rose-300",
-  warn: "text-amber-300",
-  info: "text-indigo-300",
+const iconToneClass: Record<HubToastType, string> = {
+  success: "hub-toast-item__icon--success",
+  error: "hub-toast-item__icon--error",
+  warn: "hub-toast-item__icon--warn",
+  info: "hub-toast-item__icon--info",
 };
 
 function ToastIcon({ toast }: { toast: HubToast }) {
-  const tone = iconStyles[toast.type];
+  const tone = iconToneClass[toast.type];
   if (toast.icon === "copy") {
     return <Copy size={14} className={`mt-0.5 shrink-0 ${tone}`} aria-hidden />;
   }
@@ -47,15 +43,14 @@ function ToastItem({ toast }: { toast: HubToast }) {
       style={{
         transform: visible ? "translateY(0)" : "translateY(8px)",
         opacity: visible ? 1 : 0,
-        transition: "transform 180ms ease-out, opacity 180ms ease-out",
       }}
-      className={`pointer-events-auto flex max-w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-xs leading-snug shadow-md backdrop-blur-sm ${styles[toast.type]}`}
+      className={`hub-toast-item hub-toast-item--${toast.type}`}
     >
       <ToastIcon toast={toast} />
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{toast.message}</p>
+        <p className="hub-toast-item__title">{toast.message}</p>
         {toast.preview ? (
-          <p className="mt-0.5 truncate font-mono text-[10px] opacity-90" title={toast.preview}>
+          <p className="hub-toast-item__preview" title={toast.preview}>
             {toast.preview}
           </p>
         ) : null}
@@ -72,16 +67,13 @@ function ToastItem({ toast }: { toast: HubToast }) {
   );
 }
 
-export function HubToastContainer() {
+function HubToastViewport() {
   const { toasts } = useHubToastRequired();
 
   if (!toasts.length) return null;
 
   return (
-    <div
-      className="pointer-events-none fixed bottom-4 right-4 z-[2000] flex w-[min(100vw-2rem,20rem)] flex-col-reverse gap-1.5"
-      aria-live="polite"
-    >
+    <div className="hub-toast-viewport" aria-live="polite">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />
       ))}
@@ -89,7 +81,19 @@ export function HubToastContainer() {
   );
 }
 
-/** Provider + fixed container — mount once at app root (P0020 parity). */
+/**
+ * Fixed toast stack — portals into the active tool-detail modal backdrop when open
+ * (same layer as the dialog; not dimmed by backdrop-filter). Otherwise `document.body`.
+ */
+export function HubToastContainer() {
+  const { toasts } = useHubToastRequired();
+  if (!toasts.length) return null;
+  if (typeof document === "undefined") return <HubToastViewport />;
+  const target = resolveHubToastPortalTarget();
+  return createPortal(<HubToastViewport />, target, `hub-toast-${target === document.body ? "body" : "modal"}`);
+}
+
+/** Provider + container — mount once at app root (P0020 `HubToastShell` SSOT). */
 export function HubToastShell({ children }: { children: ReactNode }) {
   return (
     <HubToastProvider>

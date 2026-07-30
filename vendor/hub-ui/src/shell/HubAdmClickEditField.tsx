@@ -168,18 +168,23 @@ export function HubAdmClickEditField({
   };
 
   const readonlyBody = (
-    <span
-      className={`hub-adm-click-edit__text hub-adm-detail-value-text${empty ? " hub-adm-click-edit__text--empty" : ""}`}
-      title={!readonlyHoverTitle || empty ? undefined : shown}
+    <HubDirectoryValuePopover
+      value={shown}
+      title={fieldLabel}
+      enabled={readonlyHoverTitle && !empty}
     >
-      {renderDisplay ? (
-        renderDisplay(value)
-      ) : empty ? (
-        placeholder || "—"
-      ) : (
-        <HubAdmSearchHighlightText text={shown} />
-      )}
-    </span>
+      <span
+        className={`hub-adm-click-edit__text hub-adm-detail-value-text${empty ? " hub-adm-click-edit__text--empty" : ""}`}
+      >
+        {renderDisplay ? (
+          renderDisplay(value)
+        ) : empty ? (
+          placeholder || "—"
+        ) : (
+          <HubAdmSearchHighlightText text={shown} />
+        )}
+      </span>
+    </HubDirectoryValuePopover>
   );
 
   if (editing && !disabled) {
@@ -352,6 +357,10 @@ export type HubAdmClickFilterFieldProps = {
   /** Allow creating a brand-new value from the panel search (free-text combobox). */
   allowCustom?: boolean;
   customOptionLabel?: (query: string) => string;
+  /** Rename the selected catalog value to the panel search text. */
+  allowRename?: boolean;
+  onRename?: (from: string, to: string) => void;
+  renameOptionLabel?: (from: string, to: string) => string;
   /** Optional control rendered after the value (e.g. copy icon). Does not shrink. */
   trailingAction?: ReactNode;
   /** Custom value body (e.g. On/Off status dot). Chevron still appended. */
@@ -374,6 +383,9 @@ export function HubAdmClickFilterField({
   clearLabel,
   allowCustom = false,
   customOptionLabel,
+  allowRename = false,
+  onRename,
+  renameOptionLabel,
   trailingAction,
   renderValue,
 }: HubAdmClickFilterFieldProps) {
@@ -382,6 +394,7 @@ export function HubAdmClickFilterField({
   const glyphPx = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
   const slotStyle = { width: glyphPx, height: glyphPx };
   const displayLabel = opt?.label ?? (value.trim() || fieldLabel);
+  const valueDetail = opt?.detail?.trim() || "";
 
   return (
     <AdmInlineFieldShell
@@ -408,34 +421,47 @@ export function HubAdmClickFilterField({
         clearLabel={clearLabel}
         allowCustom={allowCustom}
         customOptionLabel={customOptionLabel}
+        allowRename={allowRename}
+        onRename={onRename}
+        renameOptionLabel={renameOptionLabel}
         triggerContent={
           <>
-            <span className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate" title={displayLabel}>
-              {renderValue ? (
-                renderValue(value, displayLabel)
-              ) : (
-                <>
-                  {opt?.iconSrc ? (
-                    <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
-                      <img
-                        src={opt.iconSrc}
-                        alt=""
-                        width={glyphPx}
-                        height={glyphPx}
-                        className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
-                        decoding="async"
-                        draggable={false}
-                      />
-                    </span>
-                  ) : opt?.emoji ? (
-                    <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
-                      <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
-                    </span>
-                  ) : null}
-                  <HubAdmSearchHighlightText text={displayLabel} />
-                </>
-              )}
-            </span>
+            <HubDirectoryValuePopover
+              value={valueDetail || displayLabel}
+              title={displayLabel}
+              enabled={Boolean(valueDetail)}
+            >
+              <span
+                className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
+                title={valueDetail ? undefined : displayLabel}
+                data-testid={valueDetail ? "hub-adm-filter-value-tip" : undefined}
+              >
+                {renderValue ? (
+                  renderValue(value, displayLabel)
+                ) : (
+                  <>
+                    {opt?.iconSrc ? (
+                      <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
+                        <img
+                          src={opt.iconSrc}
+                          alt=""
+                          width={glyphPx}
+                          height={glyphPx}
+                          className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
+                          decoding="async"
+                          draggable={false}
+                        />
+                      </span>
+                    ) : opt?.emoji ? (
+                      <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+                        <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
+                      </span>
+                    ) : null}
+                    <HubAdmSearchHighlightText text={displayLabel} />
+                  </>
+                )}
+              </span>
+            </HubDirectoryValuePopover>
             <ChevronDown size={compactIconSize(10)} className="hub-adm-click-filter__chevron shrink-0" aria-hidden />
           </>
         }

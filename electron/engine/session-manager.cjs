@@ -771,6 +771,14 @@ class SessionManager {
         if (attempt < 2 && isLaunchLockError(error)) {
           const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
           if (retried) return retried;
+          // If another instance is in the middle of starting (process already exists)
+          // we avoid killing it immediately — wait a moment and retry attach/focus.
+          const alive = await hasProfileBrowserProcess(userDataDir);
+          if (alive) {
+            await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+            const retried2 = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
+            if (retried2) return retried2;
+          }
           await killOrphanProfileBrowser(userDataDir);
           await repairProfileUserDataDir(userDataDir);
           continue;

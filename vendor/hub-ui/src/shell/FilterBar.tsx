@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   Plus,
+  Pencil,
   Check,
   Activity,
   Clock,
@@ -70,7 +71,25 @@ export type FilterOption = {
   /** Brand img shell — bare (colored), tile (dark mark), darkInk (white mono). Default bare. */
   iconShell?: HubBrandIconShell;
   emoji?: string;
+  /**
+   * Secondary line beside the label in the panel (e.g. Encode Profile specs).
+   * Selected value may surface the same text via HubDirectoryValuePopover.
+   */
+  detail?: string;
 };
+
+/** Panel row label — `Name · detail` when detail is set (single truncate + native title). */
+export function filterOptionRowLabel(option: Pick<FilterOption, "label" | "detail">): {
+  text: string;
+  title: string;
+} {
+  const detail = option.detail?.trim() || "";
+  if (!detail) return { text: option.label, title: option.label };
+  return {
+    text: `${option.label} · ${detail}`,
+    title: `${option.label} · ${detail}`,
+  };
+}
 export type FilterDef = {
   key: string;
   label: string;
@@ -856,6 +875,14 @@ export type HubSingleFilterDropdownProps = {
   allowCustom?: boolean;
   /** Custom "create" row label builder — defaults to `Create “<query>”`. */
   customOptionLabel?: (query: string) => string;
+  /**
+   * When a catalog value is selected, allow renaming it to the panel search text.
+   * Shows a "Rename …" row when search differs from the current value and the target is unused.
+   */
+  allowRename?: boolean;
+  onRename?: (from: string, to: string) => void;
+  /** Custom rename row label — defaults to `Rename “<from>” to “<to>”`. */
+  renameOptionLabel?: (from: string, to: string) => string;
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -879,6 +906,9 @@ export function HubSingleFilterDropdown({
   clearLabel = "Clear",
   allowCustom = false,
   customOptionLabel,
+  allowRename = false,
+  onRename,
+  renameOptionLabel,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
@@ -901,12 +931,13 @@ export function HubSingleFilterDropdown({
   useLayoutEffect(() => {
     if (!open || !usePortal || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const hasDetail = options.some((o) => Boolean(o.detail?.trim()));
     setPanelPos({
       top: rect.bottom + 4,
       left: rect.left,
-      width: Math.max(rect.width, 288),
+      width: Math.max(rect.width, hasDetail ? 420 : 288),
     });
-  }, [open, usePortal]);
+  }, [open, usePortal, options]);
 
   useEffect(() => {
     if (!open) return;
@@ -922,7 +953,14 @@ export function HubSingleFilterDropdown({
 
   const filtered = panelSearchAsync?.serverFiltered
     ? options
-    : options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()));
+    : options.filter((o) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+          o.label.toLowerCase().includes(q) ||
+          (o.detail || "").toLowerCase().includes(q)
+        );
+      });
 
   const trimmedSearch = search.trim();
   const hasExactMatch = options.some(
@@ -930,9 +968,23 @@ export function HubSingleFilterDropdown({
       o.label.toLowerCase() === trimmedSearch.toLowerCase() ||
       o.value.toLowerCase() === trimmedSearch.toLowerCase(),
   );
-  const showCreate = allowCustom && trimmedSearch.length > 0 && !hasExactMatch;
+  const renameFrom = value.trim();
+  const showRename =
+    allowRename &&
+    Boolean(onRename) &&
+    renameFrom.length > 0 &&
+    trimmedSearch.length > 0 &&
+    trimmedSearch.toLowerCase() !== renameFrom.toLowerCase() &&
+    !hasExactMatch;
+  const showCreate = allowCustom && trimmedSearch.length > 0 && !hasExactMatch && !showRename;
 
   const handleCreateCustom = () => {
+    onChange(trimmedSearch);
+    setOpen(false);
+  };
+
+  const handleRename = () => {
+    onRename?.(renameFrom, trimmedSearch);
     onChange(trimmedSearch);
     setOpen(false);
   };
@@ -965,24 +1017,41 @@ export function HubSingleFilterDropdown({
         clearSelectionEnabled={allowClear && Boolean(value.trim())}
       />
       <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-        {filtered.map((o) => (
+        {filtered.map((o) => {
+          const row = filterOptionRowLabel(o);
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+              className={HUB_FILTER_DROPDOWN_ROW_CLASS}
+            >
+              <HubFilterDropdownCircle checked={o.value === value} />
+              <FilterOptionGlyph filterKey={filterKey} option={o} />
+              <span className="min-w-0 flex-1 truncate text-left" title={row.title}>
+                {row.text}
+              </span>
+              <FilterOptionCount value={o.count} />
+            </button>
+          );
+        })}
+        {showRename ? (
           <button
-            key={o.value}
             type="button"
-            onClick={() => {
-              onChange(o.value);
-              setOpen(false);
-            }}
+            onClick={handleRename}
             className={HUB_FILTER_DROPDOWN_ROW_CLASS}
           >
-            <HubFilterDropdownCircle checked={o.value === value} />
-            <FilterOptionGlyph filterKey={filterKey} option={o} />
-            <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
-              {o.label}
+            <Pencil size={compactIconSize(12)} className="shrink-0 text-[var(--muted)]" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {renameOptionLabel
+                ? renameOptionLabel(renameFrom, trimmedSearch)
+                : `Rename “${renameFrom}” to “${trimmedSearch}”`}
             </span>
-            <FilterOptionCount value={o.count} />
           </button>
-        ))}
+        ) : null}
         {showCreate ? (
           <button
             type="button"
@@ -995,7 +1064,7 @@ export function HubSingleFilterDropdown({
             </span>
           </button>
         ) : null}
-        {filtered.length === 0 && !showCreate ? (
+        {filtered.length === 0 && !showCreate && !showRename ? (
           <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
         ) : null}
       </div>

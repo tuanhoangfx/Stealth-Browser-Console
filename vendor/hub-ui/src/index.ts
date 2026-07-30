@@ -260,6 +260,7 @@ export {
   FilterBar,
   HubMultiFilterDropdown,
   HubSingleFilterDropdown,
+  filterOptionRowLabel,
   type FilterBarProps,
   type FilterDef,
   type FilterOption,
@@ -596,6 +597,7 @@ export {
   HubToastProvider,
   HubToastContainer,
   HubToastShell,
+  resolveHubToastPortalTarget,
   useHubToast,
   useHubToastRequired,
   formatCopyToastPreview,
@@ -1090,6 +1092,11 @@ export {
   HubRuntimeConsoleDuration,
 } from "./content/HubRuntimeConsoleTerm";
 export {
+  HubRuntimeConsoleContent,
+  HUB_RUNTIME_CONSOLE_RENDER_LIMIT,
+  type HubRuntimeConsoleEntry,
+} from "./content/HubRuntimeConsoleContent";
+export {
   HubRuntimeHistoryList,
   type HubRuntimeHistoryRow,
 } from "./content/HubRuntimeHistoryList";
@@ -1304,6 +1311,11 @@ export {
   type HubConfirmTone,
 } from "./shell/HubConfirmDialog";
 export { HubPromptDialog, type HubPromptDialogProps } from "./shell/HubPromptDialog";
+export {
+  HubCloneConfirmDialog,
+  type HubCloneConfirmDialogProps,
+  type HubCloneConfirmOptions,
+} from "./shell/HubCloneConfirmDialog";
 export {
   HubToolDetailModalFooterActions,
   type HubToolDetailModalFooterActionsProps,

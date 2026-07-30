@@ -1,11 +1,57 @@
 # Changelog
 
+## 2026-07-30 — v1.0.158 — Fix blank tabs + safer relaunch
+
+- Version: `1.0.158`
+- Timestamp: 2026-07-30 14:34 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Avoid leaving extra `about:blank` tab when maximizing via CDP.
+- Reduce “Opening in existing browser session” relaunch failures by retrying attach/focus before killing.
+
+## 2026-07-29 — v1.0.157 — Console SSOT HubRuntimeConsoleContent
+
+- Version: `1.0.157`
+- Timestamp: 2026-07-29 14:26 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Wire Console rail to shared `HubRuntimeConsoleContent` (newest-first + auto-scroll to top).
+
+## 2026-07-29 — v1.0.156 — Electron dev reload
+
+- Version: `1.0.156`
+- Timestamp: 2026-07-29 14:20 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-29 - Profiles directory More menu SSOT
+
+- Version: `1.0.155`
+- Timestamp: 2026-07-29 14:18 (UTC+7)
+- Type: Patch
+
+### Changes
+
+- Replace custom More dropdown with **`HubDirectoryBulkMoreMenu`** (Groups · Export · Import).
+
+---
 ## 2026-07-27 - Note column one-shot promote + Detail CDP smoke
 
 - Version: `1.0.154`
 - Timestamp: 2026-07-27
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.154
 
 ### Changes
 

@@ -16,6 +16,8 @@ export type HubDirectoryBulkMoreAction = {
   title?: string;
   tone?: HubBulkActionTone;
   selectedCount?: number;
+  /** Spin the Lucide icon (Sync / Save busy). */
+  iconSpinning?: boolean;
   onClick: () => void;
 };
 
@@ -46,6 +48,8 @@ export function HubDirectoryBulkMoreMenu({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
+
+  if (!actions.length) return null;
 
   return (
     <div ref={ref} className="relative">
@@ -79,7 +83,11 @@ export function HubDirectoryBulkMoreMenu({
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--text)] transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Icon size={14} className="shrink-0 opacity-80" aria-hidden />
+                <Icon
+                  size={14}
+                  className={`shrink-0 opacity-80${action.iconSpinning ? " animate-spin" : ""}`}
+                  aria-hidden
+                />
                 <span className="min-w-0 flex-1">{action.label}</span>
                 {action.selectedCount != null && action.selectedCount > 0 ? (
                   <HubBulkActionCountBadge count={action.selectedCount} tone={action.tone ?? "indigo"} />

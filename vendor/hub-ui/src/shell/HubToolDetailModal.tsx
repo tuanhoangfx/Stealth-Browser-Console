@@ -63,6 +63,7 @@ export function HubToolDetailModalPrimaryAction({
         danger ? "hub-tool-detail-modal__confirm--danger" : "",
         variant === "create" ? "hub-tool-detail-modal__confirm--create" : "",
         busy ? "hub-tool-detail-modal__confirm--busy" : "",
+        disabled && !busy ? "hub-tool-detail-modal__confirm--disabled" : "",
       ]
         .filter(Boolean)
         .join(" ")}

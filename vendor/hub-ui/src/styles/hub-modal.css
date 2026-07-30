@@ -39,10 +39,20 @@
 
 /* Tool-detail modal shell (P0004 golden — shared via hub-ui). */
 
+:root {
+  --hub-modal-backdrop-z: 1000;
+  --hub-toast-z: calc(var(--hub-modal-backdrop-z) + 20);
+}
+
+.hub-modal-frame {
+  position: relative;
+  z-index: 1;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--hub-modal-backdrop-z, 1000);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -503,9 +513,18 @@ body.hub-modal-open {
 
 .hub-tool-detail-modal__confirm:disabled,
 .cookie-dl-modal__confirm:disabled {
-  opacity: 0.6;
+  opacity: 0.38;
   cursor: not-allowed;
   box-shadow: none;
+  filter: saturate(0.65);
+}
+
+.hub-tool-detail-modal__confirm--disabled:not(.hub-tool-detail-modal__confirm--busy),
+.cookie-dl-modal__confirm.hub-tool-detail-modal__confirm--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: saturate(0.65);
 }
 
 .hub-tool-detail-modal__confirm--danger,

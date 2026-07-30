@@ -3,9 +3,10 @@ import {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HubBulkActionButton,
   HubDirectoryAdaptiveEditAction,
+  HubDirectoryBulkMoreMenu,
   HubDirectoryNewBulkAction,
 } from "@tool-workspace/hub-ui";
-import { Blocks, EllipsisVertical, FolderTree, Layers, Play, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
+import { Blocks, FolderTree, Layers, Play, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
 import { profileAdaptiveEditLabelHint } from "./profile-bulk-action-hints";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
@@ -176,18 +177,6 @@ export function StealthProfilesDirectoryBulkActions({
   const e0001Icon = extensionIcons?.e0001 ?? null;
   const surfsharkIcon = extensionIcons?.surfshark ?? null;
 
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!moreOpen) return;
-    const onDoc = (event: MouseEvent) => {
-      if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [moreOpen]);
-
   return (
     <>
       <HubDirectoryNewBulkAction title="Create a new browser profile" onClick={onCreate} />
@@ -277,49 +266,30 @@ export function StealthProfilesDirectoryBulkActions({
         disabled={!hasSelection || syncBusy}
         onClick={onDelete}
       />
-      <div ref={moreRef} className="relative">
-        <HubBulkActionButton
-          icon={<EllipsisVertical size={14} aria-hidden />}
-          label="More"
-          title="Groups, Export, Import"
-          tone="neutral"
-          onClick={() => setMoreOpen((v) => !v)}
-        />
-        {moreOpen ? (
-          <div role="menu" className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} right-0 w-44`}>
-            <div className="space-y-0.5 p-1.5">
-              <button
-                type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors hover:bg-white/[.06]"
-                onClick={() => { onGroups(); setMoreOpen(false); }}
-              >
-                <FolderTree size={14} className="shrink-0 text-slate-400" aria-hidden />
-                <span className="text-[var(--text)]">Groups</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!hasSelection || syncBusy}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors hover:bg-white/[.06] disabled:opacity-45"
-                onClick={() => { onExport(); setMoreOpen(false); }}
-              >
-                <Download size={14} className="shrink-0 text-slate-400" aria-hidden />
-                <span className="text-[var(--text)]">Export</span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] transition-colors hover:bg-white/[.06]"
-                onClick={() => { onImport(); setMoreOpen(false); }}
-              >
-                <Upload size={14} className="shrink-0 text-slate-400" aria-hidden />
-                <span className="text-[var(--text)]">Import</span>
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </div>
+      <HubDirectoryBulkMoreMenu
+        title="Groups, Export, Import"
+        actions={[
+          {
+            key: "groups",
+            label: "Groups",
+            icon: FolderTree,
+            onClick: onGroups,
+          },
+          {
+            key: "export",
+            label: "Export",
+            icon: Download,
+            disabled: !hasSelection || syncBusy,
+            onClick: onExport,
+          },
+          {
+            key: "import",
+            label: "Import",
+            icon: Upload,
+            onClick: onImport,
+          },
+        ]}
+      />
     </>
   );
 }
