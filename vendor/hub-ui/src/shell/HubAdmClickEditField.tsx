@@ -394,7 +394,15 @@ export function HubAdmClickFilterField({
   const glyphPx = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
   const slotStyle = { width: glyphPx, height: glyphPx };
   const displayLabel = opt?.label ?? (value.trim() || fieldLabel);
-  const valueDetail = opt?.detail?.trim() || "";
+  const tipText = (opt?.tip || opt?.detail || "").trim();
+  const valueHint: HubDirectoryColumnHintContent | undefined = tipText
+    ? {
+        title: displayLabel,
+        titleGlyph: opt?.emoji ? { emoji: opt.emoji } : undefined,
+        description: tipText,
+        lines: [],
+      }
+    : undefined;
 
   return (
     <AdmInlineFieldShell
@@ -426,15 +434,45 @@ export function HubAdmClickFilterField({
         renameOptionLabel={renameOptionLabel}
         triggerContent={
           <>
-            <HubDirectoryValuePopover
-              value={valueDetail || displayLabel}
-              title={displayLabel}
-              enabled={Boolean(valueDetail)}
-            >
+            {valueHint ? (
+              <HubDirectoryColumnHint
+                content={valueHint}
+                titleGlyph={valueHint.titleGlyph}
+              >
+                <span
+                  className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
+                  data-testid="hub-adm-filter-value-tip"
+                >
+                  {renderValue ? (
+                    renderValue(value, displayLabel)
+                  ) : (
+                    <>
+                      {opt?.iconSrc ? (
+                        <span className="inline-flex shrink-0 items-center justify-center overflow-hidden" style={slotStyle} aria-hidden>
+                          <img
+                            src={opt.iconSrc}
+                            alt=""
+                            width={glyphPx}
+                            height={glyphPx}
+                            className={hubDirectoryTableBrandImgClass(opt.iconShell ?? "bare")}
+                            decoding="async"
+                            draggable={false}
+                          />
+                        </span>
+                      ) : opt?.emoji ? (
+                        <span className="inline-flex shrink-0 items-center justify-center leading-none" style={slotStyle} aria-hidden>
+                          <span className={hubFilterOptionEmojiClass()}>{opt.emoji}</span>
+                        </span>
+                      ) : null}
+                      <HubAdmSearchHighlightText text={displayLabel} />
+                    </>
+                  )}
+                </span>
+              </HubDirectoryColumnHint>
+            ) : (
               <span
                 className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
-                title={valueDetail ? undefined : displayLabel}
-                data-testid={valueDetail ? "hub-adm-filter-value-tip" : undefined}
+                title={displayLabel}
               >
                 {renderValue ? (
                   renderValue(value, displayLabel)
@@ -461,7 +499,7 @@ export function HubAdmClickFilterField({
                   </>
                 )}
               </span>
-            </HubDirectoryValuePopover>
+            )}
             <ChevronDown size={compactIconSize(10)} className="hub-adm-click-filter__chevron shrink-0" aria-hidden />
           </>
         }

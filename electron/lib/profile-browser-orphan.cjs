@@ -1,5 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
 
 const { markProfileChromeCleanExit } = require("./profile-chrome-session.cjs");
 const {
@@ -8,6 +10,8 @@ const {
   escapePsSingleQuoted,
 } = require("./chrome-process-query.cjs");
 const { runPowerShellCommandAsync } = require("./powershell-exec.cjs");
+
+const execFileAsync = promisify(execFile);
 
 const CHROME_NAMES = new Set(["chrome.exe", "chromium.exe"]);
 const PROFILE_LOCK_FILES = ["SingletonLock", "SingletonCookie", "lockfile", "SingletonSocket", "SingletonBadge"];
@@ -118,11 +122,9 @@ async function listProfileBrowserPids(userDataDir) {
   const key = path.resolve(String(userDataDir));
   const cached = pidListCache.get(key);
   if (cached && Date.now() - cached.at < PID_LIST_CACHE_MS) return cached.pids;
+  // Merge Restart Manager lock owners + cmdline WMI. Lock-only early-return missed
+  // Chrome App / PWA orphans (--app-id / --source-shortcut) that still hold the dir.
   const lockPids = await listProfileBrowserPidsByLock(userDataDir);
-  if (lockPids.length) {
-    pidListCache.set(key, { pids: lockPids, at: Date.now() });
-    return lockPids;
-  }
   let cliPids = [];
   try {
     const stdout = await runPowerShellCommandAsync(listChromeProcessesPs(userDataDir));
@@ -133,7 +135,7 @@ async function listProfileBrowserPids(userDataDir) {
   } catch {
     cliPids = [];
   }
-  const pids = [...new Set(cliPids)];
+  const pids = [...new Set([...lockPids, ...cliPids])];
   pidListCache.set(key, { pids, at: Date.now() });
   return pids;
 }

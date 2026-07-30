@@ -3,6 +3,7 @@
 const { runOpenUrl } = require("../automation/open-url.cjs");
 const { getBinaryInfoCached } = require("../engine/cloak-browser-engine.cjs");
 const { isCorruptSqliteError, recoverCorruptDatabase } = require("../db/init.cjs");
+const APP_VERSION = require("../../package.json").version;
 
 const PATCH_ALLOWED_FIELDS = [
   "name",
@@ -51,6 +52,20 @@ function resolveUserDataRoot(deps) {
   return typeof root === "string" ? root : "";
 }
 
+function createLaunchLogger() {
+  const logs = [];
+  return {
+    logs,
+    push(level, message) {
+      logs.push({
+        level,
+        message,
+        time: new Date().toISOString(),
+      });
+    },
+  };
+}
+
 async function launchProfileOnce(deps, { id, name, skipStartupUrl = false } = {}) {
   if (deps.verifyRuntime) {
     const runtime = deps.verifyRuntime();
@@ -67,24 +82,53 @@ async function launchProfileOnce(deps, { id, name, skipStartupUrl = false } = {}
  * @param {{ sessionManager: import('../engine/session-manager.cjs').SessionManager, profileService: object, userDataRoot?: () => string, verifyRuntime?: () => { ok: boolean }, formatRuntimeError?: (r: object) => string }} deps
  */
 async function launchProfile(deps, { id, name, skipStartupUrl = false } = {}) {
+  const logger = createLaunchLogger();
+  const profile = deps.profileService.resolveProfileForLaunch({ id, name });
+  if (!profile) throw new Error("Profile not found.");
+  logger.push("info", `Stealth v${APP_VERSION} — launch start`);
+  logger.push(
+    "info",
+    skipStartupUrl
+      ? "Opening browser without startup URL navigation"
+      : profile.startupUrl
+        ? `Opening browser with startup URL: ${profile.startupUrl}`
+        : "Opening browser without startup URL",
+  );
   try {
-    return await launchProfileOnce(deps, { id, name, skipStartupUrl });
+    const result = await launchProfileOnce(deps, { id, name, skipStartupUrl });
+    logger.push("success", result.focused ? "Existing browser focused" : "Browser launched");
+    logger.push("success", `Profile status: ${result.status || "running"}`);
+    return { ...result, logs: logger.logs };
   } catch (error) {
     const userDataRoot = resolveUserDataRoot(deps);
-    if (!userDataRoot || !isCorruptSqliteError(error)) throw error;
+    if (!userDataRoot || !isCorruptSqliteError(error)) {
+      logger.push("error", error instanceof Error ? error.message : String(error));
+      throw Object.assign(error instanceof Error ? error : new Error(String(error)), { logs: logger.logs });
+    }
     const recovered = await recoverCorruptDatabase(userDataRoot);
-    if (!recovered.ok) throw error;
+    if (!recovered.ok) {
+      logger.push("error", error instanceof Error ? error.message : String(error));
+      throw Object.assign(error instanceof Error ? error : new Error(String(error)), { logs: logger.logs });
+    }
     const how = recovered.rotated ? "rotated to fresh DB" : "repaired in place";
+    logger.push("warn", `Recovered corrupt stealth-console.db (${how}) — retrying launch`);
     console.warn(`[profile-ops] recovered corrupt stealth-console.db (${how}) — retrying launch`);
     try {
-      return await launchProfileOnce(deps, { id, name, skipStartupUrl });
+      const result = await launchProfileOnce(deps, { id, name, skipStartupUrl });
+      logger.push("success", result.focused ? "Existing browser focused" : "Browser launched");
+      logger.push("success", `Profile status: ${result.status || "running"}`);
+      return { ...result, logs: logger.logs };
     } catch (retryError) {
       // Do not rethrow as unhandled process death — surface as launch failure only.
       console.error(
         "[profile-ops] launch still failed after DB recover:",
         retryError instanceof Error ? retryError.message : retryError,
       );
-      throw retryError;
+      logger.push("error", retryError instanceof Error ? retryError.message : String(retryError));
+      throw Object.assign(
+        retryError instanceof Error ? retryError : new Error(String(retryError)),
+        { logs: logger.logs },
+      );
     }
   }
 }

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { applyDirectorySplitScrollbarSync } from "./directory-split-scrollbar-sync";
+import {
+  applyDirectorySplitHorizontalScrollSync,
+  applyDirectorySplitScrollbarSync,
+} from "./directory-split-scrollbar-sync";
 
-/** Keep split thead/body columns aligned when tbody shows a vertical scrollbar. */
+/** Keep split thead/body columns aligned (vertical scrollbar pad + horizontal scrollLeft). */
 export function useDirectorySplitScrollbarSync(enabled: boolean) {
   const headRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -15,6 +18,7 @@ export function useDirectorySplitScrollbarSync(enabled: boolean) {
 
     const sync = () => {
       setScrollbarPad(applyDirectorySplitScrollbarSync(head, body));
+      applyDirectorySplitHorizontalScrollSync(head, body);
     };
 
     sync();

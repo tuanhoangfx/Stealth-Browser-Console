@@ -10,6 +10,7 @@ export type HubListChromeHeaderProps = {
   titleIconClass?: string;
   metaItems?: TabHeaderMetaItem[];
   centerStats?: TabHeaderStatItem[];
+  centerContent?: ReactNode;
   actions?: ReactNode;
 };
 
@@ -21,6 +22,7 @@ export function HubListChromeHeader({
   titleIconClass,
   metaItems = [],
   centerStats = [],
+  centerContent,
   actions,
 }: HubListChromeHeaderProps) {
   const { searchPin, headerPin, stackChrome } = useHubChromePrefs();
@@ -33,6 +35,7 @@ export function HubListChromeHeader({
       title={title}
       metaItems={metaItems}
       centerStats={centerStats}
+      centerContent={centerContent}
       pinSticky={stackChrome ? false : headerPin}
       dividerBelow={stackChrome ? false : !searchPin}
       embedded={stackChrome}

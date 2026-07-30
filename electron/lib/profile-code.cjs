@@ -35,13 +35,13 @@ const THOUSANDS_DIGIT_HEX = Object.freeze([
   "#c8ff00",
 ]);
 
-/** Design V4 — px gap between adjacent last3 digits on taskbar ICO (SSOT for render-taskbar-badge.ps1). +30% vs spaced4. */
+/** Design V4 — px gap between adjacent last3 digits on taskbar ICO (SSOT for render-taskbar-badge.ps1). +10% vs spaced7. */
 const BADGE_DIGIT_GAP_BY_MAX_SIZE = Object.freeze([
-  { maxSize: 16, gap: 2.52 },
-  { maxSize: 20, gap: 2.99 },
-  { maxSize: 24, gap: 3.46 },
-  { maxSize: 32, gap: 4.39 },
-  { maxSize: 48, gap: 5.33 },
+  { maxSize: 16, gap: 3.5 },
+  { maxSize: 20, gap: 4.2 },
+  { maxSize: 24, gap: 4.8 },
+  { maxSize: 32, gap: 6.2 },
+  { maxSize: 48, gap: 7.4 },
 ]);
 
 /** @param {number} size ICO frame width/height in px */
@@ -50,7 +50,7 @@ function digitGapForIcoSize(size) {
   for (const rule of BADGE_DIGIT_GAP_BY_MAX_SIZE) {
     if (s <= rule.maxSize) return rule.gap;
   }
-  return Math.round(s * 0.112 * 10) / 10;
+  return Math.round(s * 0.155848 * 10) / 10;
 }
 
 /** @param {number[]} sizes */

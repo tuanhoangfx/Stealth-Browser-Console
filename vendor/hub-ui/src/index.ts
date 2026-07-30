@@ -850,6 +850,7 @@ export {
 export {
   HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY,
   HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS,
+  HUB_DIRECTORY_NOTE_COL_WIDTH,
   HUB_DIRECTORY_SELECT_WIDTH_SPEC,
   isFixedDirectoryColumnRole,
   isFixedDirectoryColumnWidth,
@@ -859,6 +860,7 @@ export {
   type HubDirectoryColumnWidthKind,
   type HubDirectoryColumnWidthSpec,
 } from "./table/hub-directory-column-width-registry";
+export { buildSharedDirectoryWidthMap } from "./table/hub-directory-width-groups";
 export {
   HUB_ROUTE_ACCESS_TABLE_CLASS,
   HUB_ROUTE_ACCESS_TABLE_WRAP_CLASS,

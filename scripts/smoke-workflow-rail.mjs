@@ -31,6 +31,13 @@ if (isLiveDev) {
     console.error("smoke-workflow-rail: seed-smoke-profiles-pager failed");
     process.exit(1);
   }
+  const runtimeSeed = spawnElectronNode("scripts/lib/seed-smoke-runtime-rail.cjs", [], {
+    env: stealthElectronEnv(),
+  });
+  if (runtimeSeed.status !== 0) {
+    console.error("smoke-workflow-rail: seed-smoke-runtime-rail failed");
+    process.exit(1);
+  }
 }
 
 function findElectronCli() {
@@ -143,6 +150,15 @@ const probeScript = `
   );
   const table = workflowTable;
   const history = scope.querySelector(".stealth-runtime-history");
+  let historyRows = history?.querySelectorAll(".hub-runtime-history-list__row").length || 0;
+  let consoleLines = scope.querySelectorAll(".hub-runtime-term__line").length || 0;
+  if (${isLiveDev}) {
+    for (let attempt = 0; attempt < 10 && (historyRows === 0 || consoleLines === 0); attempt += 1) {
+      await new Promise((r) => setTimeout(r, 500));
+      historyRows = history?.querySelectorAll(".hub-runtime-history-list__row").length || 0;
+      consoleLines = scope.querySelectorAll(".hub-runtime-term__line").length || 0;
+    }
+  }
   let tableOverlapsHistory = false;
   if (table && history) {
     const tr = table.getBoundingClientRect();
@@ -180,13 +196,14 @@ const probeScript = `
     Boolean(workflowTable) &&
     rowCount > 0 &&
     rowCount === expectedRows &&
-    !pageSizeBtn &&
     !quickRunBtn &&
     !tableOverlapsHistory &&
     searchStable &&
     profilesDirectoryOk &&
     workflowCanvasAbsent &&
-    workflowCanvasOk;
+    workflowCanvasOk &&
+    (!${isLiveDev} || historyRows > 0) &&
+    (!${isLiveDev} || consoleLines > 0);
   return {
     ok,
     clickedProfiles: Boolean(profilesNav),
@@ -201,6 +218,8 @@ const probeScript = `
     pagerText,
     pageSizeBtnText: pageSizeBtn?.textContent || null,
     quickRunAbsent: !quickRunBtn,
+    historyRows,
+    consoleLines,
     tableOverlapsHistory,
     searchStable,
     searchFilteredRows,

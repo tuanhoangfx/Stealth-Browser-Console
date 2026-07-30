@@ -2,13 +2,13 @@
 export const PROFILE_CODE_MIN = 0;
 export const PROFILE_CODE_MAX = 9999;
 
-/** UI mirror — px gap between last3 digits on taskbar ICO (+30% vs spaced4). */
+/** UI mirror — px gap between last3 digits on taskbar ICO (+10% vs spaced7). */
 export const BADGE_DIGIT_GAP_BY_MAX_SIZE = [
-  { maxSize: 16, gap: 2.52 },
-  { maxSize: 20, gap: 2.99 },
-  { maxSize: 24, gap: 3.46 },
-  { maxSize: 32, gap: 4.39 },
-  { maxSize: 48, gap: 5.33 },
+  { maxSize: 16, gap: 3.5 },
+  { maxSize: 20, gap: 4.2 },
+  { maxSize: 24, gap: 4.8 },
+  { maxSize: 32, gap: 6.2 },
+  { maxSize: 48, gap: 7.4 },
 ] as const;
 
 export function digitGapForIcoSize(size: number): number {
@@ -16,7 +16,7 @@ export function digitGapForIcoSize(size: number): number {
   for (const rule of BADGE_DIGIT_GAP_BY_MAX_SIZE) {
     if (s <= rule.maxSize) return rule.gap;
   }
-  return Math.round(s * 0.112 * 10) / 10;
+  return Math.round(s * 0.155848 * 10) / 10;
 }
 
 export function digitGapsCsvForSizes(sizes: number[]): string {

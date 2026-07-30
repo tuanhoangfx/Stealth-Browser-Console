@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { RunLogEntry } from "../../types";
 
+/**
+ * P0003 System Console session buffer SSOT (lock = v1.0.154).
+ * Live lines only via addLog — History panel is separate. See .cursor/rules/p0003-runtime-console-ssot.mdc.
+ */
 export type ConsoleLog = RunLogEntry & {
   id: string;
   source: string;

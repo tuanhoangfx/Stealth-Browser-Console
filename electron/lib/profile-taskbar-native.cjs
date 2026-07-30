@@ -16,7 +16,7 @@ const {
 } = require("./profile-code.cjs");
 
 /** Design V4 — digits only on native Chromium icon; thousands → digit color (0=white, 1–9 vivid). */
-const BADGE_STYLE = "v4-digits-only-spaced5";
+const BADGE_STYLE = "v4-digits-only-spaced8";
 /** Hot path for taskbar apply — 48/32/16 only (Win11 ~40–48; 16 small). Fewer sizes = faster cold ICO. */
 const HOT_ICO_SIZES = Object.freeze([48, 32, 16]);
 /** Prefer 48 first — Win11 taskbar often uses ~40–48px icons. */

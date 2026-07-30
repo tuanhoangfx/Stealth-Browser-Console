@@ -1,4 +1,4 @@
-import type { RunHistoryItem, RunLogEntry } from "../../types";
+import type { ProfileEvent, RunHistoryItem, RunLogEntry } from "../../types";
 import { formatRunDuration, formatRunTimestamp } from "../../lib/stealth-profile-utils";
 import type { ConsoleLog } from "../runtime/RunLogsContext";
 
@@ -144,6 +144,18 @@ export function bulkActivityToConsoleLines(entries: ProfileActivityLogEntry[]): 
   }));
 }
 
+export function profileConsoleLinesToConsoleLogs(lines: ProfileConsoleLine[]): ConsoleLog[] {
+  return lines.map((line) => ({
+    id: line.id,
+    level: (line.level === "success" || line.level === "failed" || line.level === "running"
+      ? "info"
+      : line.level) as RunLogEntry["level"],
+    source: line.source,
+    message: line.message,
+    time: line.time,
+  }));
+}
+
 /** Merge session console lines (source = profile name) + persisted workflow runs + lifecycle events. */
 export function buildProfileConsoleLines(
   profileId: string,
@@ -184,6 +196,52 @@ export function buildProfileConsoleLines(
     }));
 
   return [...consoleLines, ...runLines, ...eventLines].sort(
+    (a, b) => consoleLineTimestamp(b) - consoleLineTimestamp(a),
+  );
+}
+
+/** System rail SSOT — merge session console + persisted run summaries/logs + lifecycle events. */
+export function buildSystemConsoleLines(
+  history: RunHistoryItem[],
+  consoleLogs: ConsoleLog[],
+  profileEvents: ProfileEvent[] = [],
+  profileNamesById: Record<string, string> = {},
+): ProfileConsoleLine[] {
+  const sessionLines: ProfileConsoleLine[] = consoleLogs.map((log) => ({
+    id: log.id,
+    level: log.level,
+    time: log.time,
+    source: log.source,
+    message: log.message,
+  }));
+
+  const runSummaryLines: ProfileConsoleLine[] = history.map((run) => ({
+    id: `run-${run.id || run.startedAt}`,
+    level: runStatusToLevel(run.status),
+    time: run.finishedAt || run.startedAt || new Date(0).toISOString(),
+    source: run.profileName.trim() || run.workflow || "Workflow",
+    message: profileRunLogMessage(run),
+  }));
+
+  const runLogLines: ProfileConsoleLine[] = history.flatMap((run) =>
+    (run.logs || []).map((entry, index) => ({
+      id: `runlog-${run.id || run.startedAt || "unknown"}-${index}`,
+      level: entry.level,
+      time: entry.time || run.finishedAt || run.startedAt || new Date(0).toISOString(),
+      source: run.profileName.trim() || run.workflow || "Workflow",
+      message: entry.message,
+    })),
+  );
+
+  const eventLines: ProfileConsoleLine[] = profileEvents.map((event) => ({
+    id: `event-${event.id}`,
+    level: profileEventLevel(event.level),
+    time: event.createdAt,
+    source: profileNamesById[event.profileId] || "Lifecycle",
+    message: event.message || event.eventType,
+  }));
+
+  return [...sessionLines, ...runLogLines, ...runSummaryLines, ...eventLines].sort(
     (a, b) => consoleLineTimestamp(b) - consoleLineTimestamp(a),
   );
 }

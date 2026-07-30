@@ -151,9 +151,9 @@ export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list hub-scro
 export const HUB_FILTER_DROPDOWN_PANEL_CLASS =
   "anim-pop absolute top-full z-30 mt-1 w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
 
-/** Portaled panel — fixed position, escapes modal overflow clipping. */
+/** Portaled panel — fixed position, escapes modal/rail overflow clipping. */
 export const HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS =
-  "anim-pop fixed z-[4000] w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
+  "anim-pop fixed z-[10050] w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
 
 /** Golden filter panel row — All {label} + options share one weight (P0004 Group filter). */
 export const HUB_FILTER_DROPDOWN_ROW_CLASS =

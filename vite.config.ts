@@ -57,7 +57,7 @@ export default defineConfig(async () => {
       emptyOutDir: true,
       rollupOptions: {
         output: {
-          manualChunks(id) {
+          manualChunks(id: string) {
             if (id.includes("node_modules/dagre") || id.includes("node_modules/@xyflow")) {
               return "workflow-editor";
             }

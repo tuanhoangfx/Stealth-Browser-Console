@@ -19,20 +19,32 @@ function readViteEnv(key: string): string {
   return val != null && String(val).trim() ? String(val).trim() : "";
 }
 
-/** Next.js only inlines static process.env.NEXT_PUBLIC_* references. */
-function readNextPublicDevAutoLoginEmail(): string {
-  const val = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_EMAIL;
+/**
+ * Next.js inlines static `process.env.NEXT_PUBLIC_*` at build time.
+ * Vite browser has no `process` — guard before touch (Orders embed crash).
+ */
+function readNextPublicEnv(key: "NEXT_PUBLIC_DEV_AUTO_LOGIN_EMAIL" | "NEXT_PUBLIC_DEV_AUTO_LOGIN_PASSWORD" | "NEXT_PUBLIC_DEV_AUTO_LOGIN_ALLOWED_EMAIL"): string {
+  if (typeof process === "undefined") return "";
+  // Keep static member access for Next.js inlining.
+  const val =
+    key === "NEXT_PUBLIC_DEV_AUTO_LOGIN_EMAIL"
+      ? process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_EMAIL
+      : key === "NEXT_PUBLIC_DEV_AUTO_LOGIN_PASSWORD"
+        ? process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_PASSWORD
+        : process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_ALLOWED_EMAIL;
   return val != null && String(val).trim() ? String(val).trim() : "";
+}
+
+function readNextPublicDevAutoLoginEmail(): string {
+  return readNextPublicEnv("NEXT_PUBLIC_DEV_AUTO_LOGIN_EMAIL");
 }
 
 function readNextPublicDevAutoLoginPassword(): string {
-  const val = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_PASSWORD;
-  return val != null && String(val).trim() ? String(val).trim() : "";
+  return readNextPublicEnv("NEXT_PUBLIC_DEV_AUTO_LOGIN_PASSWORD");
 }
 
 function readNextPublicDevAutoLoginAllowedEmail(): string {
-  const val = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_ALLOWED_EMAIL;
-  return val != null && String(val).trim() ? String(val).trim() : "";
+  return readNextPublicEnv("NEXT_PUBLIC_DEV_AUTO_LOGIN_ALLOWED_EMAIL");
 }
 
 function readBundledEnv(suffix: string): string {

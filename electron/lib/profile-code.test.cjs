@@ -56,12 +56,12 @@ describe("profile-code", () => {
     assert.equal(extractFourDigitCode("0009"), "0009");
   });
 
-  it("digit gap SSOT (+30% vs spaced4)", () => {
-    assert.equal(digitGapForIcoSize(16), 2.52);
-    assert.equal(digitGapForIcoSize(48), 5.33);
-    assert.equal(digitGapForIcoSize(64), 7.2);
+  it("digit gap SSOT (+10% vs spaced7)", () => {
+    assert.equal(digitGapForIcoSize(16), 3.5);
+    assert.equal(digitGapForIcoSize(48), 7.4);
+    assert.equal(digitGapForIcoSize(64), 10);
     assert.equal(BADGE_DIGIT_GAP_BY_MAX_SIZE.length, 5);
-    assert.equal(digitGapsCsvForSizes([48, 32]), "48:5.33,32:4.39");
+    assert.equal(digitGapsCsvForSizes([48, 32]), "48:7.4,32:6.2");
   });
 
   it("range constants", () => {

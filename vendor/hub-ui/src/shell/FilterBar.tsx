@@ -72,22 +72,28 @@ export type FilterOption = {
   iconShell?: HubBrandIconShell;
   emoji?: string;
   /**
-   * Secondary line beside the label in the panel (e.g. Encode Profile specs).
-   * Selected value may surface the same text via HubDirectoryValuePopover.
+   * Short secondary text beside the label in the panel (e.g. `Stream copy · keep codec`).
+   * Keep brief — long copy belongs in `tip` / selected-value ColumnHint.
    */
   detail?: string;
+  /**
+   * Full hover tip for the selected value (HubDirectoryColumnHint description).
+   * Falls back to `detail` when omitted.
+   */
+  tip?: string;
 };
 
 /** Panel row label — `Name · detail` when detail is set (single truncate + native title). */
-export function filterOptionRowLabel(option: Pick<FilterOption, "label" | "detail">): {
+export function filterOptionRowLabel(option: Pick<FilterOption, "label" | "detail" | "tip">): {
   text: string;
   title: string;
 } {
   const detail = option.detail?.trim() || "";
-  if (!detail) return { text: option.label, title: option.label };
+  const tip = option.tip?.trim() || detail;
+  if (!detail) return { text: option.label, title: tip || option.label };
   return {
     text: `${option.label} · ${detail}`,
-    title: `${option.label} · ${detail}`,
+    title: tip ? `${option.label} · ${tip}` : `${option.label} · ${detail}`,
   };
 }
 export type FilterDef = {
@@ -932,11 +938,19 @@ export function HubSingleFilterDropdown({
     if (!open || !usePortal || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const hasDetail = options.some((o) => Boolean(o.detail?.trim()));
-    setPanelPos({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, hasDetail ? 420 : 288),
-    });
+    const width = Math.max(rect.width, hasDetail ? 360 : 288);
+    const estimatedHeight = Math.min(320, 52 + options.length * 36);
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+    const top = openUp
+      ? Math.max(8, rect.top - estimatedHeight - 4)
+      : rect.bottom + 4;
+    const left = Math.min(
+      Math.max(8, rect.left),
+      Math.max(8, window.innerWidth - width - 8),
+    );
+    setPanelPos({ top, left, width });
   }, [open, usePortal, options]);
 
   useEffect(() => {
@@ -958,7 +972,8 @@ export function HubSingleFilterDropdown({
         const q = search.toLowerCase();
         return (
           o.label.toLowerCase().includes(q) ||
-          (o.detail || "").toLowerCase().includes(q)
+          (o.detail || "").toLowerCase().includes(q) ||
+          (o.tip || "").toLowerCase().includes(q)
         );
       });
 

@@ -199,7 +199,7 @@ function test(name, fn) {
     assert.strictEqual(page.total, 250);
     const p2 = svc.listProfilesPage({ limit: 50, offset: 240 });
     assert.strictEqual(p2.profiles.length, 10);
-    const search = svc.listProfilesPage({ search: "Acc001" });
+    const search = svc.listProfilesPage({ search: "0001" });
     assert.strictEqual(search.total, 1);
     flushDatabase(); closeDatabase();
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* debounce flush */ }
@@ -233,3 +233,4 @@ function test(name, fn) {
   }
   console.log("\nâœ“ api-routes: all passed");
 })();
+

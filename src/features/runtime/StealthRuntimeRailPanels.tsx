@@ -8,8 +8,8 @@ import {
 import {
   HubActivityTimestampLabel,
   HubPanel,
-  HubRuntimeConsoleContent,
   HubRuntimeConsoleLine,
+  HubRuntimeConsoleTerm,
   HubRuntimeHistoryList,
   compactIconSize,
   formatHubTimestampFull,
@@ -44,29 +44,37 @@ export function StealthConsoleContent({
   logs: ConsoleLog[];
   emptyHint?: string;
 }) {
+  const visibleLogs = useMemo(() => logs.slice(0, STEALTH_CONSOLE_RENDER_LIMIT), [logs]);
+
   return (
-    <HubRuntimeConsoleContent
-      logs={logs}
-      renderLimit={STEALTH_CONSOLE_RENDER_LIMIT}
-      emptyHint={emptyHint}
-      renderLine={(log) => {
-        const channel = inferStealthConsoleChannel(log.source);
-        return (
-          <HubRuntimeConsoleLine
-            key={log.id}
-            level={log.level}
-            time={log.time}
-            channelBadge={<StealthConsoleChannelBadge channel={channel} compact />}
-            source={log.source}
-            message={log.message}
-          />
-        );
-      }}
-    />
+    <HubRuntimeConsoleTerm>
+      {visibleLogs.length === 0 ? (
+        <div className="text-hub-muted">{emptyHint}</div>
+      ) : (
+        visibleLogs.map((log) => {
+          const channel = inferStealthConsoleChannel(log.source);
+          return (
+            <HubRuntimeConsoleLine
+              key={log.id}
+              level={log.level}
+              time={log.time}
+              channelBadge={<StealthConsoleChannelBadge channel={channel} compact />}
+              source={log.source}
+              message={log.message}
+            />
+          );
+        })
+      )}
+      {logs.length > STEALTH_CONSOLE_RENDER_LIMIT ? (
+        <div className="text-hub-muted">
+          Showing latest {STEALTH_CONSOLE_RENDER_LIMIT} of {logs.length} lines
+        </div>
+      ) : null}
+    </HubRuntimeConsoleTerm>
   );
 }
 
-/** System terminal — channel badges parity P0020 TodoHubBadge priority pills. */
+/** System Console SSOT (v1.0.154 lock) — live useRunLogs().logs only; never merge History here. */
 export function StealthSystemConsolePanel() {
   const { logs, clearLogs } = useRunLogs();
 

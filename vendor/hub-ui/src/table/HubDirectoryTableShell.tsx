@@ -131,6 +131,8 @@ type DirectoryBodyRowProps<TItem> = {
   showSelect: boolean;
   /** Pre-computed class string (getRowClassName result) so memo compares a primitive. */
   extraClassName: string;
+  /** Row opens detail / activates — cursor + affordance. */
+  rowClickable: boolean;
   renderRowCells: (item: TItem) => ReactNode;
   renderStaticCells?: (item: TItem) => ReactNode;
   onToggleSelect?: (id: string) => void;
@@ -154,6 +156,7 @@ function DirectoryBodyRowInner<TItem>({
   rowCanSelect,
   showSelect,
   extraClassName,
+  rowClickable,
   renderRowCells,
   renderStaticCells,
   onToggleSelect,
@@ -163,7 +166,9 @@ function DirectoryBodyRowInner<TItem>({
 }: DirectoryBodyRowProps<TItem>) {
   return (
     <tr
-      className={`hub-users-row${selected ? " is-selected" : ""}${extraClassName}`}
+      className={`hub-users-row${selected ? " is-selected" : ""}${
+        rowClickable ? " cursor-pointer" : ""
+      }${extraClassName ? ` ${extraClassName.trim()}` : ""}`}
       onClick={() => callbacksRef.current.onRowClick?.(item)}
       onDoubleClick={() => callbacksRef.current.onRowDoubleClick?.(item)}
       onMouseEnter={() => {
@@ -457,6 +462,7 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
               rowCanSelect={rowCanSelect}
               showSelect={showSelect}
               extraClassName={getRowClassName?.(item) ?? ""}
+              rowClickable={Boolean(onRowClick)}
               renderRowCells={renderRowCells}
               renderStaticCells={renderStaticCells}
               onToggleSelect={onToggleSelect}

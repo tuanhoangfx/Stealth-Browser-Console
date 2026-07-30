@@ -59,3 +59,12 @@ export function applyDirectorySplitScrollbarSync(head: HTMLElement, body: HTMLEl
 
   return pad;
 }
+
+/**
+ * Keep split thead columns aligned with tbody when the body scrolls horizontally.
+ * Head uses overflow:hidden (no second scrollbar) but still accepts programmatic scrollLeft.
+ */
+export function applyDirectorySplitHorizontalScrollSync(head: HTMLElement, body: HTMLElement): void {
+  const next = body.scrollLeft;
+  if (head.scrollLeft !== next) head.scrollLeft = next;
+}

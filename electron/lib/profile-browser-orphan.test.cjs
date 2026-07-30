@@ -1,7 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
-const { listChromeProcessesPs } = require("./profile-browser-orphan.cjs");
+const { listChromeProcessesPs, killOrphanProfileBrowser } = require("./profile-browser-orphan.cjs");
 
 const ROOT = path.join("C:", "Users", "me", "AppData", "Roaming", "stealth-browser-console");
 const PROFILE_A = path.join(ROOT, "profiles", "aaaaaaaa-1111-2222-3333-444444444444");
@@ -52,4 +53,23 @@ test("orphan match is profile-scoped, not root-wide", async (t) => {
     const idB = path.basename(PROFILE_B);
     assert.ok(!scriptA.includes(idB), "profile A needles must not contain profile B id");
   });
+});
+
+test("killOrphanProfileBrowser can invoke taskkill (execFileAsync wired)", async () => {
+  // Regression: missing execFileAsync import made every kill silently no-op (killed: 0)
+  // while Chrome App shortcuts still held Stealth profile dirs.
+  const src = fs.readFileSync(path.join(__dirname, "profile-browser-orphan.cjs"), "utf8");
+  assert.match(src, /execFileAsync\s*=\s*promisify\(execFile\)/);
+  assert.match(src, /require\("node:child_process"\)/);
+  const emptyDir = path.join(
+    require("node:os").tmpdir(),
+    `stealth-orphan-kill-empty-${process.pid}`,
+  );
+  fs.mkdirSync(emptyDir, { recursive: true });
+  try {
+    const result = await killOrphanProfileBrowser(emptyDir);
+    assert.equal(result.killed, 0);
+  } finally {
+    fs.rmSync(emptyDir, { recursive: true, force: true });
+  }
 });

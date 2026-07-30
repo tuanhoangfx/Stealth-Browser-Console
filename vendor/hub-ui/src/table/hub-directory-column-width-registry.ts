@@ -50,6 +50,14 @@ export const HUB_DIRECTORY_SELECT_WIDTH_SPEC: HubDirectoryColumnWidthSpec = {
   token: "36px",
 };
 
+/**
+ * Freeform directory **Note** column width SSOT (P0020 Services/Mail/Teams, P0005 Orders,
+ * P0013 Movies, P0003 Profiles, …). Prefer rem lock + generated/theme CSS that beats
+ * hub-directory-table neutralize (`th/td max-width:none`). Not for fluid % “Notes” chrome
+ * on system panels (P0004 server/supabase summaries).
+ */
+export const HUB_DIRECTORY_NOTE_COL_WIDTH = "12rem";
+
 /** Playwright / visual regression bands (px) for fixed chrome columns. */
 export const HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS = {
   select: { min: 34, max: 40, target: 36 },

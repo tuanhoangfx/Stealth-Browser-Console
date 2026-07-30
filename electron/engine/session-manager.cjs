@@ -387,7 +387,16 @@ class SessionManager {
     }
 
     const focused = await focusProfileBrowserWindow(userDataDir);
-    if (!focused.ok) return null;
+    if (!focused.ok) {
+      // Live Chrome holds the profile (often Taskbar PWA / --app-id) but has no
+      // focusable Stealth window. Kill so the next openProfile can reclaim the dir
+      // instead of failing with "Opening in existing browser session".
+      if (focused.reason === "no-window" || focused.reason === "not-running") {
+        await killOrphanProfileBrowser(userDataDir);
+        removeStaleProfileLocks(userDataDir);
+      }
+      return null;
+    }
 
     const focusDebugPort = sidecar?.debugPort || port || 0;
     let focusPid = sidecar?.pid || 0;

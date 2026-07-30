@@ -1,5 +1,131 @@
 # Changelog
 
+## 2026-07-30 — v1.0.169 — Digit gap +10% + Console SSOT lock
+
+- Version: `1.0.169`
+- Timestamp: 2026-07-30 18:30 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Taskbar badge digit gap +10% vs spaced7 (`v4-digits-only-spaced8`).
+- Lock System Console SSOT to live `RunLogs` only (v1.0.154): Cursor rule + `runtime-console-ssot.test.ts` regression guard.
+
+## 2026-07-30 — v1.0.168 — Taskbar digit gap +15%
+
+- Version: `1.0.168`
+- Timestamp: 2026-07-30 18:25 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Increase taskbar badge digit gap +15% vs spaced6 (`v4-digits-only-spaced7`); SSOT in `profile-code.cjs` / `profile-code.ts`.
+
+## 2026-07-30 — v1.0.167 — Electron dev reload
+
+- Version: `1.0.167`
+- Timestamp: 2026-07-30 18:02 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-30 — v1.0.166 — Electron dev reload
+
+- Version: `1.0.166`
+- Timestamp: 2026-07-30 17:35 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-30 — v1.0.165 — Electron dev reload
+
+- Version: `1.0.165`
+- Timestamp: 2026-07-30 17:02 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-30 — v1.0.164 — Restore launch transcript in console
+
+- Version: `1.0.164`
+- Timestamp: 2026-07-30 16:57 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Restore backend-driven launch transcript lines in `Console` so profile open now pushes detailed lifecycle messages instead of only summary/history rows.
+- Keep the UI fallback for older payloads, but prefer launch-returned logs whenever Electron supplies them.
+
+## 2026-07-30 — v1.0.163 — Electron dev reload
+
+- Version: `1.0.163`
+- Timestamp: 2026-07-30 16:51 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-30 — v1.0.162 — Rehydrate console from persisted run logs
+
+- Version: `1.0.162`
+- Timestamp: 2026-07-30 16:52 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Restore the old console feel by hydrating session console lines from persisted `run.logs` on history refresh.
+- Keep terminal-style command lines visible after reload instead of only showing fresh summary lines.
+
+## 2026-07-30 — v1.0.161 — Restore runtime console data
+
+- Version: `1.0.161`
+- Timestamp: 2026-07-30 16:20 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Restore runtime rail console by merging session logs with persisted run history and profile events.
+- Add runtime-rail smoke seed + unit/smoke coverage so empty History/Console regressions are caught.
+
+## 2026-07-30 — v1.0.160 — Electron dev reload
+
+- Version: `1.0.160`
+- Timestamp: 2026-07-30 16:00 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-07-30 — v1.0.159 — Increase taskbar digit gap 10%
+
+- Version: `1.0.159`
+- Timestamp: 2026-07-30 15:57 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Increase taskbar badge digit gap by 10% over the current lock (`spaced6` cache/style tag).
+- Sync the gap SSOT across Electron runtime, UI mirror, and unit tests.
+
 ## 2026-07-30 — v1.0.158 — Fix blank tabs + safer relaunch
 
 - Version: `1.0.158`

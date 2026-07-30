@@ -12,7 +12,7 @@ fs.mkdirSync(out, { recursive: true });
 const codes = ["0012", "0013", "0072", "0073", "0888", "1888", "2888", "3888", "4888"];
 
 for (const c of codes) {
-  const ico = path.join(dir, `v4-digits-only-spaced5-${c}-hot.ico`);
+  const ico = path.join(dir, `v4-digits-only-spaced8-${c}-hot.ico`);
   const png = path.join(out, `${c}.png`);
   if (!fs.existsSync(ico)) {
     console.log(JSON.stringify({ code: c, missing: true }));

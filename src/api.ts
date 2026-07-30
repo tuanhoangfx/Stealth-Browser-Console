@@ -176,6 +176,7 @@ export type LaunchProfileResult = {
   headless?: boolean;
   agentSmoke?: boolean;
   focused?: boolean;
+  logs?: RunLogEntry[];
 };
 
 export async function launchProfile(id: string, name?: string): Promise<LaunchProfileResult> {
@@ -185,6 +186,7 @@ export async function launchProfile(id: string, name?: string): Promise<LaunchPr
     headless: data.headless,
     agentSmoke: data.agentSmoke,
     focused: data.focused,
+    logs: data.logs,
   };
 }
 

@@ -1,23 +1,10 @@
 import { useMemo } from "react";
 import { HubToolDetailRail } from "@tool-workspace/hub-ui";
-import type { RunLogEntry } from "../../types";
 import { PROFILE_MODAL_SECTION_STICKER } from "../../lib/profile-form-stickers";
 import { StealthConsoleContent } from "../runtime/StealthRuntimeRailPanels";
 import { StealthConsoleRailTitle } from "../runtime/stealth-console-hint";
 import { PROFILE_DETAIL_SECTION_LOG } from "./profile-detail-toc";
-import type { ProfileConsoleLine } from "./profile-run-log";
-
-function toConsoleLogs(lines: ProfileConsoleLine[]) {
-  return lines.map((line) => ({
-    id: line.id,
-    level: (line.level === "success" || line.level === "failed" || line.level === "running"
-      ? "info"
-      : line.level) as RunLogEntry["level"],
-    source: line.source,
-    message: line.message,
-    time: line.time,
-  }));
-}
+import { profileConsoleLinesToConsoleLogs, type ProfileConsoleLine } from "./profile-run-log";
 
 /** Create/bulk modal console rail — Console SSOT (no channel legend row). */
 export function ProfileActivityLogRail({
@@ -29,7 +16,7 @@ export function ProfileActivityLogRail({
   emptyHint: string;
   focused?: boolean;
 }) {
-  const consoleLogs = useMemo(() => toConsoleLogs(lines), [lines]);
+  const consoleLogs = useMemo(() => profileConsoleLinesToConsoleLogs(lines), [lines]);
 
   return (
     <HubToolDetailRail

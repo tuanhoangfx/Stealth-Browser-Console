@@ -26,7 +26,7 @@ export function DesignTemplatePage() {
           </p>
           <p className="mt-1 text-[11px] text-emerald-200/90">
             Taskbar profile badge locked <strong>Design {TASKBAR_PROFILE_BADGE_DESIGN_LOCK}</strong> — colored last3
-            only (`v4-digits-only-spaced5`, +30% digit gap vs spaced4). 0xxx white; 1xxx sky cyan (#00c8ff); 2–9 vivid hues.
+            only (`v4-digits-only-spaced8`, +10% gap vs spaced7). 0xxx white; 1xxx sky cyan (#00c8ff); 2–9 vivid hues.
           </p>
         </div>
       </Glass>
