@@ -356,6 +356,7 @@ declare global {
         headless?: boolean;
         agentSmoke?: boolean;
         focused?: boolean;
+        logs?: RunLogEntry[];
       }>;
       closeProfile: (payload: { id: string; name?: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
       closeAllProfiles: () => Promise<{ ok: boolean; count: number; ids: string[] }>;

@@ -39,7 +39,7 @@ export const HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY: Partial<
   code: { kind: "fixed", token: "4.5rem" },
   browser: { kind: "fixed", token: "4.5rem" },
   /** Directory audit log — one-line summary + ellipsis (P0020 Log column). */
-  log: { kind: "fixed", token: "9rem" },
+  log: { kind: "fixed", token: "15rem" },
   bots: { kind: "fixed", token: "3.75rem" },
   members: { kind: "fixed", token: "5rem" },
   active: { kind: "fixed", token: "5rem" },
@@ -56,7 +56,7 @@ export const HUB_DIRECTORY_SELECT_WIDTH_SPEC: HubDirectoryColumnWidthSpec = {
  * hub-directory-table neutralize (`th/td max-width:none`). Not for fluid % “Notes” chrome
  * on system panels (P0004 server/supabase summaries).
  */
-export const HUB_DIRECTORY_NOTE_COL_WIDTH = "12rem";
+export const HUB_DIRECTORY_NOTE_COL_WIDTH = "20rem";
 
 /** Playwright / visual regression bands (px) for fixed chrome columns. */
 export const HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS = {

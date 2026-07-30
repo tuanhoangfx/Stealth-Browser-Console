@@ -8,6 +8,7 @@ import type {
   ProfileRow,
   ProfileCatalogStats,
   RunHistoryItem,
+  RunLogEntry,
   StealthGroup,
   StealthProfile,
   CookieBridgeStatus,
