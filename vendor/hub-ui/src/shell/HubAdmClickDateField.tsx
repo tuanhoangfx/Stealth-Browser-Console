@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
 import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import { HubAdmInlineFieldLabel } from "./HubAdmClickEditField";
@@ -16,6 +17,8 @@ export type HubAdmClickDateFieldProps = {
   compactTrigger?: boolean;
   hideTriggerIcon?: boolean;
   disabled?: boolean;
+  /** Optional control after the value (e.g. copy icon). Does not shrink. */
+  trailingAction?: ReactNode;
 };
 
 /** Account-detail modal — label + Todo calendar picker (click to open month grid). */
@@ -32,6 +35,7 @@ export function HubAdmClickDateField({
   compactTrigger = true,
   hideTriggerIcon = true,
   disabled = false,
+  trailingAction,
 }: HubAdmClickDateFieldProps) {
   const emoji = hideTriggerIcon ? undefined : (triggerEmoji ?? header.headerEmoji);
 
@@ -40,7 +44,9 @@ export function HubAdmClickDateField({
       className={`hub-adm-inline-field hub-adm-inline-field--readonly hub-adm-inline-field--click-date min-w-0${disabled ? " hub-adm-inline-field--disabled" : ""}${className ? ` ${className}` : ""}`}
     >
       <HubAdmInlineFieldLabel header={header} labelHint={labelHint} />
-      <div className="hub-adm-inline-field__value">
+      <div
+        className={`hub-adm-inline-field__value${trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""}`}
+      >
         <HubFilterDatePicker
           value={value}
           onChange={onChange}
@@ -53,6 +59,9 @@ export function HubAdmClickDateField({
           compactTrigger={compactTrigger}
           disabled={disabled}
         />
+        {trailingAction ? (
+          <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+        ) : null}
       </div>
     </div>
   );

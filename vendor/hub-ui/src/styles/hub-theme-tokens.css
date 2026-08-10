@@ -434,6 +434,9 @@ body,
 /* Shell — viewport-locked; scroll chỉ trong main */
 .hub-app {
   --hub-sidebar-width: 15rem;
+  --hub-bp-sm: 640px;
+  --hub-bp-md: 768px;
+  --hub-bp-lg: 1100px;
   display: flex;
   flex: 1;
   width: 100%;
@@ -444,7 +447,8 @@ body,
   background: var(--bg);
   color: var(--text);
 }
-.hub-app > aside {
+.hub-app > aside,
+.hub-app aside.hub-sidebar-shell {
   position: relative;
   z-index: 50;
   width: 15rem;

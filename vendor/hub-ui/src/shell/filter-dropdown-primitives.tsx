@@ -1,4 +1,4 @@
-import { Check, ChevronDown, FolderOpen, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, FolderOpen, Plus, type LucideIcon } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
@@ -251,6 +251,12 @@ type HubFilterDropdownPanelSearchProps = {
   onClearSelection?: () => void;
   clearSelectionLabel?: string;
   clearSelectionEnabled?: boolean;
+  /**
+   * Optional — panel header “+” (replaces Clear when set).
+   * Services Plan Package → open Add Material.
+   */
+  onCreateAction?: () => void;
+  createActionAriaLabel?: string;
 };
 
 /** Compact search row at top of filter dropdown panels (multi-select + portal). */
@@ -261,11 +267,15 @@ export function HubFilterDropdownPanelSearch({
   onClearSelection,
   clearSelectionLabel = "Clear",
   clearSelectionEnabled = false,
+  onCreateAction,
+  createActionAriaLabel = "Add",
 }: HubFilterDropdownPanelSearchProps) {
-  const showClear = Boolean(onClearSelection) && clearSelectionEnabled;
+  const showCreate = Boolean(onCreateAction);
+  const showClear = !showCreate && Boolean(onClearSelection) && clearSelectionEnabled;
+  const showTrailing = showCreate || showClear;
   return (
     <div className="border-b border-white/5 p-2">
-      <div className={`flex min-w-0 items-center${showClear ? " gap-2" : ""}`}>
+      <div className={`flex min-w-0 items-center${showTrailing ? " gap-2" : ""}`}>
         <div className="relative min-w-0 flex-1">
           <input
             type="search"
@@ -277,7 +287,17 @@ export function HubFilterDropdownPanelSearch({
             {...HUB_NO_SPELLCHECK_PROPS}
           />
         </div>
-        {showClear ? (
+        {showCreate ? (
+          <button
+            type="button"
+            onClick={onCreateAction}
+            aria-label={createActionAriaLabel}
+            title={createActionAriaLabel}
+            className="grid h-[var(--hub-control-h)] w-[var(--hub-control-h)] shrink-0 place-items-center rounded-md text-[var(--muted)] hover:bg-white/[0.06] hover:text-[var(--text)]"
+          >
+            <Plus size={compactIconSize(14)} aria-hidden />
+          </button>
+        ) : showClear ? (
           <button
             type="button"
             onClick={onClearSelection}

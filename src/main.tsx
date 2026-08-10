@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { initHubUserZoom, mountHubApp } from "@tool-workspace/hub-ui";
+import { initHubUserZoom, installHubPerfBlackbox, mountHubApp } from "@tool-workspace/hub-ui";
 import { App } from "./App";
 import { setupHubUi } from "./lib/hub-ui-setup";
 import { clearOfflineModeStorage } from "./lib/offlineMode";
@@ -24,6 +24,8 @@ import "./features/profiles/stealth-profile-detail-modal.css";
 clearOfflineModeStorage();
 
 initHubUserZoom();
+// Freeze/crash diagnostics readable cross-window (PWA/tab share localStorage).
+installHubPerfBlackbox({ code: "P0003" });
 setupHubUi();
 syncDocumentTheme(readStoredThemeMode());
 

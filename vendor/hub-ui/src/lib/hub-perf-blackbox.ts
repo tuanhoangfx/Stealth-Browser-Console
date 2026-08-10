@@ -1,0 +1,208 @@
+/**
+ * Hub perf black box — shared freeze/crash/sync diagnostics for every hub tool.
+ *
+ * Rolling buffer in localStorage (`<code>:perf-blackbox`) readable from ANY
+ * same-origin window (PWA ↔ tab share storage), so a laggy/crashed session can be
+ * inspected remotely without DevTools on the affected window.
+ *
+ * Records:
+ * - longtasks ≥ `longtaskMinMs` with the active screen + visibility
+ * - heap heartbeat every `heartbeatMs` (also proves liveness)
+ * - screen switches (history pushState/replaceState/popstate) with heap
+ * - previous-session crash detection: last heartbeat newer than last clean
+ *   pagehide goodbye — catches OOM renderer kills that leave no JS log
+ * - custom spans/events: sync pulls, search settles, chunk reloads… via
+ *   `beginHubBlackboxSpan` / `hubBlackboxEvent`, or — for modules that must stay
+ *   DOM-import-free (worker-ready sync engines) — a plain CustomEvent:
+ *   `window.dispatchEvent(new CustomEvent("hub:blackbox", { detail: { kind, ...data } }))`
+ *
+ * Read from console: `window.__hubBlackbox.read()` · clear: `.clear()`.
+ * Budget: ≤ ~60KB localStorage, coalesced flush — no hot-path cost.
+ */
+
+export type HubBlackboxEntry = {
+  /** epoch ms */
+  t: number;
+  kind: string;
+  [key: string]: unknown;
+};
+
+export type HubBlackboxOptions = {
+  /** Tool code, lowercased into the storage key prefix (e.g. "P0020" → `p0020:`). */
+  code: string;
+  maxEntries?: number;
+  longtaskMinMs?: number;
+  heartbeatMs?: number;
+};
+
+const FLUSH_MS = 2_000;
+
+let installed = false;
+let buf: HubBlackboxEntry[] = [];
+let flushTimer: number | null = null;
+let storageKey = "hub:perf-blackbox";
+let maxEntries = 400;
+
+function screenLabel(): string {
+  try {
+    return `${window.location.pathname}${window.location.search}`;
+  } catch {
+    return "?";
+  }
+}
+
+function heapMB(): number | null {
+  try {
+    const mem = (performance as { memory?: { usedJSHeapSize: number } }).memory;
+    return mem ? Math.round(mem.usedJSHeapSize / 1048576) : null;
+  } catch {
+    return null;
+  }
+}
+
+function flush(): void {
+  flushTimer = null;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(buf.slice(-maxEntries)));
+  } catch {
+    /* quota — drop oldest half and retry once */
+    buf = buf.slice(-Math.floor(maxEntries / 2));
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(buf));
+    } catch {
+      /* give up silently */
+    }
+  }
+}
+
+function push(entry: HubBlackboxEntry): void {
+  if (!installed) return;
+  buf.push(entry);
+  if (buf.length > maxEntries + 50) buf = buf.slice(-maxEntries);
+  if (flushTimer == null && typeof window !== "undefined") {
+    flushTimer = window.setTimeout(flush, FLUSH_MS);
+  }
+}
+
+/** Manual diagnostic event — no-op until `installHubPerfBlackbox` ran. */
+export function hubBlackboxEvent(kind: string, data?: Record<string, unknown>): void {
+  push({ t: Date.now(), kind, screen: screenLabel(), ...data });
+}
+
+/**
+ * Duration span for sync/search/loading work: `const end = beginHubBlackboxSpan("sync:full-pull");
+ * … ; end({ rows })`. Logs one entry with `ms` on end. No-op until installed.
+ */
+export function beginHubBlackboxSpan(
+  label: string,
+  data?: Record<string, unknown>,
+): (extra?: Record<string, unknown>) => void {
+  const startedAt = Date.now();
+  return (extra?: Record<string, unknown>) => {
+    push({ t: startedAt, kind: `span:${label}`, ms: Date.now() - startedAt, screen: screenLabel(), ...data, ...extra });
+  };
+}
+
+export function installHubPerfBlackbox(opts: HubBlackboxOptions): void {
+  if (installed || typeof window === "undefined" || typeof localStorage === "undefined") return;
+  installed = true;
+
+  const prefix = opts.code.trim().toLowerCase();
+  storageKey = `${prefix}:perf-blackbox`;
+  maxEntries = opts.maxEntries ?? 400;
+  const longtaskMinMs = opts.longtaskMinMs ?? 200;
+  const heartbeatMs = opts.heartbeatMs ?? 20_000;
+  const aliveKey = `${prefix}:perf-blackbox-alive`;
+  const byeKey = `${prefix}:perf-blackbox-bye`;
+
+  try {
+    buf = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as HubBlackboxEntry[];
+    if (!Array.isArray(buf)) buf = [];
+  } catch {
+    buf = [];
+  }
+
+  // Previous session crashed if it heartbeat'd after its last clean goodbye.
+  const prevAlive = Number(localStorage.getItem(aliveKey) ?? 0);
+  const prevBye = Number(localStorage.getItem(byeKey) ?? 0);
+  if (prevAlive > prevBye) {
+    const prevHeap = [...buf].reverse().find((e) => e.kind === "heap");
+    push({
+      t: Date.now(),
+      kind: "prev-session-crash",
+      lastAliveAt: prevAlive,
+      lastHeapMB: prevHeap?.mb ?? null,
+      lastScreen: prevHeap?.screen ?? null,
+    });
+  }
+  push({ t: Date.now(), kind: "boot", screen: screenLabel(), mb: heapMB() });
+
+  try {
+    const po = new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) {
+        if (e.duration < longtaskMinMs) continue;
+        push({
+          t: Date.now(),
+          kind: "longtask",
+          ms: Math.round(e.duration),
+          screen: screenLabel(),
+          vis: document.visibilityState,
+        });
+      }
+    });
+    po.observe({ type: "longtask", buffered: true });
+  } catch {
+    /* longtask unsupported */
+  }
+
+  const beat = () => {
+    try {
+      localStorage.setItem(aliveKey, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+    push({ t: Date.now(), kind: "heap", mb: heapMB(), screen: screenLabel(), vis: document.visibilityState });
+  };
+  window.setInterval(beat, heartbeatMs);
+  beat();
+
+  const logScreen = () => push({ t: Date.now(), kind: "screen", screen: screenLabel(), mb: heapMB() });
+  const origPush = history.pushState.bind(history);
+  history.pushState = (...args: Parameters<History["pushState"]>) => {
+    origPush(...args);
+    logScreen();
+  };
+  const origReplace = history.replaceState.bind(history);
+  history.replaceState = (...args: Parameters<History["replaceState"]>) => {
+    origReplace(...args);
+    logScreen();
+  };
+  window.addEventListener("popstate", logScreen);
+
+  // DOM-import-free emit channel for pure sync/search engines (worker-ready modules
+  // must not import this file): dispatch `hub:blackbox` with { kind, ...data }.
+  window.addEventListener("hub:blackbox", (event) => {
+    const detail = (event as CustomEvent<Record<string, unknown> | undefined>).detail;
+    if (!detail || typeof detail.kind !== "string") return;
+    const { kind, ...data } = detail;
+    push({ t: Date.now(), kind, screen: screenLabel(), ...data });
+  });
+
+  window.addEventListener("pagehide", () => {
+    try {
+      localStorage.setItem(byeKey, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+    push({ t: Date.now(), kind: "bye", mb: heapMB() });
+    flush();
+  });
+
+  (window as unknown as Record<string, unknown>).__hubBlackbox = {
+    read: () => buf.slice(),
+    clear: () => {
+      buf = [];
+      flush();
+    },
+  };
+}

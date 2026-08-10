@@ -1,5 +1,21 @@
-﻿# Changelog
+# Changelog
 
+## 2026-08-10 - Profiles directory More menu SSOT
+
+- Version: `1.0.171`
+- Timestamp: 2026-08-10 13:03 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
 ## 2026-07-30 - Profiles directory More menu SSOT
 
 - Version: `1.0.170`

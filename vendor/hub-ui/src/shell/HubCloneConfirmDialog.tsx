@@ -56,12 +56,13 @@ export function HubCloneConfirmDialog({
   onClose,
 }: HubCloneConfirmDialogProps) {
   const [count, setCount] = useState(1);
-  const [keepProfile, setKeepProfile] = useState(false);
+  /** Default on — Profile stays with the source; Account is uniquified so a new row survives vault slot dedupe. */
+  const [keepProfile, setKeepProfile] = useState(true);
 
   useEffect(() => {
     if (!open) {
       setCount(1);
-      setKeepProfile(false);
+      setKeepProfile(true);
     }
   }, [open]);
 
@@ -137,16 +138,19 @@ export function HubCloneConfirmDialog({
         </HubDetailFieldsGroup>
         <p className="text-[13px] text-[var(--muted)]">
           Creates {count} new row{count === 1 ? "" : "s"} with the same data as{" "}
-          <span className="text-[var(--text)]">{sourceLabel}</span>.
+          <span className="text-[var(--text)]">{sourceLabel}</span>
+          {keepProfile
+            ? ". Opens the new row Detail when done."
+            : " (new Profile, same Account). Opens the new row Detail when done."}
         </p>
         {showKeepProfile ? (
           <p className="text-[12px] text-[var(--muted)]">
             {keepProfile
               ? count === 1
-                ? "Keeps the source Profile — the matching identity is replaced."
+                ? "Keeps the source Profile — Account gets a +clone tag only if that Profile+email already exists."
                 : "The first copy keeps the source Profile; remaining copies use the next free Profile slots."
               : count === 1
-                ? "Assigns the next free Profile after the current max."
+                ? "Assigns the next free Profile after the current max (same Account email)."
                 : "Each clone gets the next free Profile slot."}
           </p>
         ) : null}

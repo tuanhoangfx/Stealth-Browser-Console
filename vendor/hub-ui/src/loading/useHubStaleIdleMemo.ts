@@ -5,6 +5,23 @@ type CacheBucket = Map<string, unknown>;
 /** Session cache — survives tab hide / remount (directory chrome stale-first). */
 const caches = new Map<string, CacheBucket>();
 
+/**
+ * Per-namespace entry cap. Fingerprints embed data revisions (length/ids), so long
+ * realtime sessions mint new keys constantly — an unbounded bucket pins every dead
+ * generation of large computed bundles (P0020 17k-row vault analytics → OOM).
+ */
+const MAX_BUCKET_ENTRIES = 2;
+
+function setBucketValue(bucket: CacheBucket, fingerprint: string, value: unknown): void {
+  bucket.delete(fingerprint);
+  bucket.set(fingerprint, value);
+  while (bucket.size > MAX_BUCKET_ENTRIES) {
+    const oldest = bucket.keys().next().value;
+    if (oldest === undefined) break;
+    bucket.delete(oldest);
+  }
+}
+
 function getBucket(namespace: string): CacheBucket {
   let bucket = caches.get(namespace);
   if (!bucket) {
@@ -112,7 +129,7 @@ export function useHubStaleIdleMemo<T>(
     const apply = () => {
       if (cancelled) return;
       const next = computeRef.current();
-      bucket.set(fingerprint, next);
+      setBucketValue(bucket, fingerprint, next);
       setState({ fp: fingerprint, value: next });
     };
 

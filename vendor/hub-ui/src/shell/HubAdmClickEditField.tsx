@@ -270,7 +270,7 @@ export type HubAdmClickMultilineEditFieldProps = HubAdmClickEditFieldProps & {
   showHoverPopover?: boolean;
 };
 
-/** Account-detail modal — multiline click-edit; Shift+Enter newline, Enter commits. */
+/** Account-detail modal — multiline click-edit; Enter newline · blur/Escape exits (Note rail parity). */
 export function HubAdmClickMultilineEditField({
   lines = 3,
   showHoverPopover = true,
@@ -310,10 +310,6 @@ export function HubAdmClickMultilineEditField({
           onChange={(e) => onEditChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") onDone();
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onDone();
-            }
           }}
         />
       )}
@@ -354,6 +350,9 @@ export type HubAdmClickFilterFieldProps = {
   /** Reset selection to empty — Clear beside panel search (no fake “None” option). */
   allowClear?: boolean;
   clearLabel?: string;
+  /** Panel header “+” — replaces Clear (e.g. Plan Package → Add Material). */
+  onPanelCreate?: () => void;
+  panelCreateAriaLabel?: string;
   /** Allow creating a brand-new value from the panel search (free-text combobox). */
   allowCustom?: boolean;
   customOptionLabel?: (query: string) => string;
@@ -381,6 +380,8 @@ export function HubAdmClickFilterField({
   panelSearchAsync,
   allowClear = false,
   clearLabel,
+  onPanelCreate,
+  panelCreateAriaLabel,
   allowCustom = false,
   customOptionLabel,
   allowRename = false,
@@ -427,6 +428,8 @@ export function HubAdmClickFilterField({
         panelSearchAsync={panelSearchAsync}
         allowClear={allowClear}
         clearLabel={clearLabel}
+        onPanelCreate={onPanelCreate}
+        panelCreateAriaLabel={panelCreateAriaLabel}
         allowCustom={allowCustom}
         customOptionLabel={customOptionLabel}
         allowRename={allowRename}
@@ -520,6 +523,8 @@ export type HubAdmReadonlyFieldProps = {
   empty?: boolean;
   /** `inline` — badges, toggles, copy chips (full value width, centered row). */
   valueLayout?: "text" | "inline";
+  /** Optional control after the value (e.g. copy icon). Does not shrink. */
+  trailingAction?: ReactNode;
 };
 
 /** Account-detail modal — label + read-only value (no edit affordance). */
@@ -530,16 +535,17 @@ export function HubAdmReadonlyField({
   className = "",
   empty = false,
   valueLayout = "text",
+  trailingAction,
 }: HubAdmReadonlyFieldProps) {
   return (
     <AdmInlineFieldShell
       header={header}
       labelHint={labelHint}
       className={`hub-adm-inline-field--readonly${className ? ` ${className}` : ""}`}
-      valueClassName="hub-adm-inline-field__value"
+      valueClassName={`hub-adm-inline-field__value${trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""}`}
     >
       <span
-        className={`hub-adm-readonly-value${
+        className={`hub-adm-readonly-value min-w-0 flex-1${
           empty ? " hub-adm-readonly-value--empty" : ""
         }${
           valueLayout === "inline"
@@ -549,6 +555,9 @@ export function HubAdmReadonlyField({
       >
         {children}
       </span>
+      {trailingAction ? (
+        <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+      ) : null}
     </AdmInlineFieldShell>
   );
 }

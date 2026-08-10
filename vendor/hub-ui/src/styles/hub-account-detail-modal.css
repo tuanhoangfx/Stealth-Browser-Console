@@ -1265,14 +1265,14 @@
   overflow: hidden;
 }
 
-/* Layout 3 right rail stack — Note : Log = 2 : 3 (Services Account Detail SSOT). */
+/* Layout 3 right rail stack — Note : Log = 5 : 5 (Account Detail SSOT). */
 .hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--note {
-  flex: 2 1 0;
+  flex: 5 1 0;
   min-height: 0;
 }
 
 .hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--log {
-  flex: 3 1 0;
+  flex: 5 1 0;
   min-height: 0;
 }
 

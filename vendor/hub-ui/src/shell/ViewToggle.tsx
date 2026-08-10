@@ -5,7 +5,7 @@ export type HubViewMode = "table" | "card";
 
 export function ViewToggle({ value, onChange }: { value: HubViewMode; onChange: (v: HubViewMode) => void }) {
   return (
-    <div className="inline-flex h-[var(--hub-control-h)] items-center rounded-lg border border-white/10 bg-[var(--panel)] p-0.5">
+    <div className="hub-view-toggle inline-flex h-[var(--hub-control-h)] items-center rounded-lg border border-white/10 bg-[var(--panel)] p-0.5">
       <Btn
         active={value === "table"}
         onClick={() => onChange("table")}
@@ -48,7 +48,8 @@ function Btn({
         active ? "bg-indigo-500/20 text-indigo-200" : "text-[var(--muted)] hover:text-[var(--text)]"
       }`}
     >
-      {icon} {label}
+      {icon}
+      <span className="hub-view-toggle__label">{label}</span>
     </button>
   );
 }

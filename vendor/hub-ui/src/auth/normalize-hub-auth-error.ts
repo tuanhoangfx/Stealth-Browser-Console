@@ -20,6 +20,8 @@ export function normalizeHubAuthError(raw: unknown, opts: NormalizeHubAuthErrorO
   const msg = formatHubAuthErrorMessage(raw);
   const lower = msg.toLowerCase();
   if (lower.includes("rate limit")) return "Temporary sign-in issue. Please try again in a moment.";
+  if (lower.includes("sign-in service unavailable")) return msg;
+  if (lower.includes("user id not found")) return msg;
   if (lower.includes("invalid login credentials")) {
     return opts.toolHubHint
       ? "Incorrect user ID/email or password. Use the same credentials as Tool Hub (P0004)."

@@ -37,26 +37,54 @@ export function HubSearchField({
   const [draft, setDraft] = useState(value);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  /** Last value we pushed to parent — used to accept external clears/resets without clobbering typing. */
+  const lastFlushedRef = useRef(value);
+  /** True after flush until parent value catches up — blocks lagging "" from wiping VN IME drafts. */
+  const awaitingAckRef = useRef(false);
+  const composingRef = useRef(false);
 
+  const flushToParent = (next: string) => {
+    lastFlushedRef.current = next;
+    awaitingAckRef.current = true;
+    onChange(next);
+  };
+
+  // External value sync (clear / deep-link / tab reset).
+  // Never overwrite a newer local draft with a lagging parent value — that jump
+  // is especially bad for Vietnamese IME (multi-keystroke → transition-delayed filterQuery).
   useEffect(() => {
     if (!debounced) return;
-    if (value !== draftRef.current) {
-      setDraft(value);
+    if (value === lastFlushedRef.current) {
+      awaitingAckRef.current = false;
     }
+    if (value === draftRef.current) return;
+    if (composingRef.current) return;
+    if (value === lastFlushedRef.current) return;
+    // Parent still behind our flush (often "") — keep draft.
+    if (awaitingAckRef.current) return;
+    setDraft(value);
+    lastFlushedRef.current = value;
   }, [debounced, value]);
 
   useEffect(() => {
     if (!debounced) return;
-    const id = window.setTimeout(() => startTransition(() => onChange(draft)), debounceMs);
+    if (composingRef.current) return;
+    if (draft === lastFlushedRef.current) return;
+    const id = window.setTimeout(() => {
+      if (composingRef.current) return;
+      startTransition(() => flushToParent(draftRef.current));
+    }, debounceMs);
     return () => window.clearTimeout(id);
-  }, [debounced, debounceMs, draft, onChange]);
+    // flushToParent closes over onChange — intentionally omit to avoid re-arm storms
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onChange identity usually stable
+  }, [debounced, debounceMs, draft]);
 
   const displayValue = debounced ? draft : value;
 
   const setDisplayValue = (next: string, flush = false) => {
     if (debounced) {
       setDraft(next);
-      if (flush || next === "") onChange(next);
+      if (flush || next === "") flushToParent(next);
       return;
     }
     onChange(next);
@@ -79,6 +107,14 @@ export function HubSearchField({
         name="hub-directory-search"
         value={displayValue}
         onChange={(e) => setDisplayValue(e.target.value)}
+        onCompositionStart={() => {
+          composingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          composingRef.current = false;
+          // Final composed string (Vietnamese Telex/VNI) — update draft + flush.
+          setDisplayValue(e.currentTarget.value, debounced);
+        }}
         placeholder={placeholder}
         className="field h-[var(--hub-control-h)] w-full min-w-0 text-xs"
         style={{ paddingLeft: 31, paddingRight: displayValue ? 25 : 36 }}

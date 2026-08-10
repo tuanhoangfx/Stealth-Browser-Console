@@ -25,6 +25,8 @@ export type HubAuthGateModalProps = {
   submitPlacement?: "form" | "footer";
   errorOptions?: NormalizeHubAuthErrorOptions;
   anonymousHint?: string;
+  /** Block submit while dev auto-login / boot auth is in flight (P0020). */
+  submitDisabled?: boolean;
   onSubmit: (
     login: string,
     password: string,
@@ -47,6 +49,7 @@ export function HubAuthGateModal({
   onForgotPassword,
   errorOptions,
   anonymousHint = "Browse with limited features. Cloud sync and vault require sign-in.",
+  submitDisabled = false,
 }: HubAuthGateModalProps) {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -70,6 +73,7 @@ export function HubAuthGateModal({
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (mode === "anonymous") return;
+    if (submitDisabled) return;
     setBusy(true);
     setMessage("");
     try {
@@ -194,6 +198,7 @@ export function HubAuthGateModal({
               {...HUB_NO_SPELLCHECK_PROPS}
               value={login}
               onChange={(e) => setLogin(e.target.value)}
+              disabled={busy || submitDisabled}
               required
             />
             <div className="auth-gate-password-wrap">
@@ -206,6 +211,7 @@ export function HubAuthGateModal({
                 {...HUB_NO_SPELLCHECK_PROPS}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={busy || submitDisabled}
                 required
               />
               {mode === "signin" && onForgotPassword ? (
@@ -220,9 +226,15 @@ export function HubAuthGateModal({
               ) : null}
             </div>
             {message ? <p className="auth-gate-message">{message}</p> : null}
-            <button type="submit" className="auth-gate-submit" disabled={busy}>
+            <button type="submit" className="auth-gate-submit" disabled={busy || submitDisabled}>
               <SubmitIcon size={compactIconSize(16)} aria-hidden />
-              <span>{busy ? "Please wait…" : mode === "signin" ? "Sign In" : "Sign Up"}</span>
+              <span>
+                {busy || submitDisabled
+                  ? "Please wait…"
+                  : mode === "signin"
+                    ? "Sign In"
+                    : "Sign Up"}
+              </span>
             </button>
           </form>
         )}

@@ -19,6 +19,7 @@ export type WorkspaceAuthGateConfig = {
   title: string;
   toolInfo: HubAuthToolInfo;
   headerLeading?: ReactNode;
+  submitDisabled?: boolean;
   onSubmit: HubAuthGateModalProps["onSubmit"];
   anonymousHint?: string;
   errorOptions?: NormalizeHubAuthErrorOptions;
@@ -60,6 +61,7 @@ export function WorkspaceAuthGate(config: WorkspaceAuthGateConfig) {
 
 export type CreateWorkspaceAuthGateOptions = CreateWorkspaceAuthGatePresetOptions & {
   headerLeading?: ReactNode;
+  submitDisabled?: boolean;
   onSubmit: HubAuthGateModalProps["onSubmit"];
   onAuthed?: () => void;
   onAnonymous?: () => void;
@@ -80,6 +82,7 @@ export function createWorkspaceAuthGate(options: CreateWorkspaceAuthGateOptions)
     tagline,
     title,
     headerLeading,
+    submitDisabled,
     onSubmit,
     onAuthed,
     onAnonymous,
@@ -98,6 +101,7 @@ export function createWorkspaceAuthGate(options: CreateWorkspaceAuthGateOptions)
     anonymousHint: preset.anonymousHint,
     errorOptions: preset.errorOptions,
     headerLeading,
+    submitDisabled,
     onSubmit,
     forgotPassword: {
       ...preset.forgotPassword,

@@ -13,6 +13,8 @@
  * cells with no shell/product cell edits and stays correct after column reorder / hide.
  */
 
+import { failDirectoryColumnMeta } from "./hub-directory-column-width-registry";
+
 export type DirectoryStickyLeadEntry = {
   /** Column class present on both `<th>` and `<td>` (e.g. `hub-users-col--od-order-date`). */
   colClass: string;
@@ -71,7 +73,8 @@ function parseLength(width: string): LengthSum {
   const trimmed = width.trim();
   if (trimmed.endsWith("rem")) return { px: 0, rem: Number.parseFloat(trimmed) };
   if (trimmed.endsWith("px")) return { px: Number.parseFloat(trimmed), rem: 0 };
-  throw new Error(`directory-sticky-columns: unsupported width "${width}" (only px/rem)`);
+  failDirectoryColumnMeta(`directory-sticky-columns: unsupported width "${width}" (only px/rem)`);
+  return { px: 0, rem: 0 };
 }
 
 function formatLeft(sum: LengthSum): string {

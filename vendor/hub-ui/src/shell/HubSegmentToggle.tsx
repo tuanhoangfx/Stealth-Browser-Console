@@ -28,7 +28,7 @@ export function HubSegmentToggle<T extends string>({
 }: HubSegmentToggleProps<T>) {
   return (
     <div
-      className={`inline-flex h-[var(--hub-control-h)] items-center rounded-lg border border-white/10 bg-[var(--panel)] p-0.5 ${className}`.trim()}
+      className={`hub-segment-toggle inline-flex h-[var(--hub-control-h)] items-center rounded-lg border border-white/10 bg-[var(--panel)] p-0.5 ${className}`.trim()}
       role="group"
     >
       {options.map((opt) => {
@@ -44,7 +44,7 @@ export function HubSegmentToggle<T extends string>({
             }`}
           >
             {opt.icon}
-            <span>{opt.label}</span>
+            <span className="hub-segment-toggle__label">{opt.label}</span>
           </button>
         );
       })}

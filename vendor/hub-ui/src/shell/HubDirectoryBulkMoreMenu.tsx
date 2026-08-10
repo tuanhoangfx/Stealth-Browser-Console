@@ -60,10 +60,11 @@ export function HubDirectoryBulkMoreMenu({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         title={title}
+        aria-label="More"
         className={`${HUB_BULK_ACTION_BTN_CLASS} border border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5`}
       >
         <Ellipsis size={14} aria-hidden />
-        More
+        <span className="hub-bulk-action-btn__label">More</span>
         {selectedCount > 0 ? <HubBulkActionCountBadge count={selectedCount} tone="indigo" /> : null}
       </button>
       {open ? (

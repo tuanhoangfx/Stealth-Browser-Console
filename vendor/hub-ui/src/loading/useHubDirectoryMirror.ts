@@ -150,22 +150,22 @@ export function useHubDirectoryMirror<T>({
     const unreg = registerRefresh(reload);
     const releaseSync = ensureSync?.();
 
-    // Heal stale data after returning to a backgrounded tab/window (e.g. a bulk
+    // Heal stale data after returning to a backgrounded tab (e.g. a bulk
     // server-side change ran elsewhere). Cheap silent delta-fetch, cooldown-gated.
-    const revalidateOnFocus = () => {
+    // visibilitychange only — a window `focus` listener additionally fired on every
+    // app-window switch and stacked one silent fetch per mounted directory (lag).
+    const revalidateOnVisible = () => {
       if (!tabActiveRef.current) return;
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       if (Date.now() - lastFetchAtRef.current <= revalidateCooldownMs) return;
       void load({ silent: true });
     };
-    window.addEventListener("focus", revalidateOnFocus);
-    document.addEventListener("visibilitychange", revalidateOnFocus);
+    document.addEventListener("visibilitychange", revalidateOnVisible);
 
     return () => {
       releaseSync?.();
       window.removeEventListener(mirrorChangeEvent, onMirror);
-      window.removeEventListener("focus", revalidateOnFocus);
-      document.removeEventListener("visibilitychange", revalidateOnFocus);
+      document.removeEventListener("visibilitychange", revalidateOnVisible);
       unreg();
     };
   }, [ensureSync, load, mirrorChangeEvent, registerRefresh, reload, revalidateCooldownMs, syncFromMirror]);

@@ -5,6 +5,7 @@
  * 1. Validate locally (sync) — fail before busy if invalid.
  * 2. `setBusy(true)` only for the sync local apply window.
  * 3. `applyLocal()` — patch state, log, toast, stay-open create→edit.
+ * 3b. `reseedHubDetailDraftAfterSave()` — re-seed form draft/baseline so Save disables (same turn).
  * 4. `setBusy(false)` immediately after local apply.
  * 5. `void persistCloud()` — network / Supabase in background; surface errors via `onCloudError`.
  *
@@ -39,6 +40,19 @@ export async function runHubDetailOptimisticSave(
     opts.onCloudError?.(err);
   });
   return "ok";
+}
+
+/**
+ * Hub Detail Save step 3b — re-seed form draft/baseline from the persisted row so `dirty` clears
+ * and Save disables in the same turn as optimistic apply (Vault baseline ref, Team useState, …).
+ * Call inside `applyLocal` immediately after patching display/list state.
+ */
+export function reseedHubDetailDraftAfterSave<TSaved, TDraft>(
+  saved: TSaved,
+  buildDraftFromSaved: (saved: TSaved) => TDraft,
+  applyDraft: (draft: TDraft) => void,
+): void {
+  applyDraft(buildDraftFromSaved(saved));
 }
 
 /** Seat / row ids minted client-side before cloud insert (Member create→edit). */

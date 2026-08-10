@@ -36,7 +36,6 @@ export const PRODUCT_PLAN_SUFFIX_PATTERNS: RegExp[] = [
 export function parseProductPlanDurationDays(productName: string): number | null {
   const name = String(productName ?? "").trim();
   if (!name) return null;
-  if (/\b(?:trial)\b/i.test(name)) return 3;
   if (/\b(?:lifetime|permanent|vĩnh\s*viễn|vinh\s*vien|trọn\s*đời|tron\s*doi)\b/i.test(name)) {
     return 10000;
   }
@@ -52,6 +51,9 @@ export function parseProductPlanDurationDays(productName: string): number | null
 
   const day = name.match(/(?:^|[\s(])(\d+)\s*(?:days?|d)(?:\s|$|[),])/i);
   if (day) return Number(day[1]);
+
+  // Keyword fallback after explicit Nd/Nw/Nm/Ny tokens.
+  if (/\b(?:trial)\b/i.test(name)) return 3;
 
   return null;
 }

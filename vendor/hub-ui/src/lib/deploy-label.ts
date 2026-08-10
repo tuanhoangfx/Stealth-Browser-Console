@@ -6,6 +6,9 @@ export function deployLabel(target?: string): string {
     vps: "VPS · CloudFly",
     "github-release": "GitHub Release",
     local: "Local only",
+    cloudflare: "Cloudflare Pages",
+    "docker-lenovo": "Lenovo · Home Server",
+    lenovo: "Lenovo · Home Server",
   };
   return target ? (map[target] ?? target) : "—";
 }

@@ -148,6 +148,7 @@ function KpiTile({
   return (
     <div
       className={`hub-kpi-tile anim-slide relative min-w-0 overflow-hidden rounded-2xl border border-white/5 bg-[var(--panel)] transition-all hover:-translate-y-0.5 hover:ring-2 ${t.ring}`}
+      title={typeof label === "string" ? label : undefined}
     >
       <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br ${t.bg} blur-2xl`} />
       <div className="hub-kpi-tile__inner relative flex min-w-0 items-center">

@@ -157,7 +157,7 @@ export function HubWorkspaceUserShell({
           onClose={() => setOpen(false)}
           title={displayTitle}
           userId={session?.user?.id ?? null}
-          sessionActive={Boolean(session) && !anonymous}
+          sessionActive={Boolean(session?.user?.id?.trim()) && !anonymous}
           signingOut={signingOut}
           onSignOut={handleSignOut}
           workspaceNote={workspaceNote}

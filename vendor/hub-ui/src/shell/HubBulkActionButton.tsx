@@ -31,7 +31,7 @@ const BADGE_CLASS: Record<HubBulkActionTone, string> = {
   neutral: "bg-white/80 text-[#0f1220]",
 };
 
-export const HUB_BULK_ACTION_BTN_CLASS = `inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border px-3 ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} transition-colors disabled:cursor-not-allowed`;
+export const HUB_BULK_ACTION_BTN_CLASS = `hub-bulk-action-btn relative inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border px-3 ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} transition-colors disabled:cursor-not-allowed`;
 
 export type HubBulkActionCountBadgeProps = {
   count: number;
@@ -59,6 +59,8 @@ export type HubBulkActionButtonProps = {
   onClick: () => void;
   /** Popover hint on label — replaces native `title` when set. */
   labelHint?: HubDirectoryColumnHintContent;
+  /** Custom label node (e.g. fixed-width Select/Unselect) — still uses `label` for a11y text. */
+  labelNode?: ReactNode;
 };
 
 /** Golden bulk-action CTA — filter row 2 (Pin, Refresh, Edit, Sync, …). */
@@ -72,12 +74,17 @@ export function HubBulkActionButton({
   iconSpinning = false,
   onClick,
   labelHint,
+  labelNode,
 }: HubBulkActionButtonProps) {
-  const labelNode = <span>{label}</span>;
-  const labelContent = labelHint ? (
-    <HubDirectoryColumnHint content={labelHint}>{labelNode}</HubDirectoryColumnHint>
-  ) : (
-    labelNode
+  const labelNodeInner = labelNode ?? <span>{label}</span>;
+  const labelContent = (
+    <span className="hub-bulk-action-btn__label">
+      {labelHint ? (
+        <HubDirectoryColumnHint content={labelHint}>{labelNodeInner}</HubDirectoryColumnHint>
+      ) : (
+        labelNodeInner
+      )}
+    </span>
   );
 
   return (
@@ -86,6 +93,7 @@ export function HubBulkActionButton({
       disabled={disabled}
       onClick={onClick}
       title={labelHint ? undefined : title}
+      aria-label={label}
       className={`${HUB_BULK_ACTION_BTN_CLASS} ${TONE_CLASS[tone]}`}
     >
       <span

@@ -154,9 +154,9 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-07-30T12:19:23.786Z",
+  "manifestUpdatedAt": "2026-08-10T06:03:35.433Z",
   "release": {
-    "version": "1.0.170",
+    "version": "1.0.171",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -176,13 +176,15 @@
       "check-version-sync",
       "verify-untracked-imports",
       "verify-no-sibling-tool-imports",
+      "hub-workspace-chrome-ssot",
       "build"
     ],
     "preShipCommands": {
       "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
       "verify-untracked-imports": "node E:\\Dev\\Tool\\scripts\\verify-untracked-imports.mjs --product-root .",
       "verify-no-sibling-tool-imports": "node E:\\Dev\\Tool\\scripts\\verify-no-sibling-tool-imports.mjs --product-root .",
-      "build": "corepack pnpm run build"
+      "build": "corepack pnpm run build",
+      "hub-workspace-chrome-ssot": "node E:\\Dev\\Tool\\scripts\\audit-hub-workspace-chrome-ssot.mjs --json"
     },
     "syncedAt": "2026-07-24T09:47:01.376Z"
   }

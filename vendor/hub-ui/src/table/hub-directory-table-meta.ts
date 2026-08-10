@@ -5,7 +5,7 @@ import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubDirectoryColumnHintContent } from "./HubDirectoryColumnHint";
 import { HUB_DIRECTORY_TABLE_SCROLL_CLASS } from "./directory-table-scroll";
 import type { HubTableColumnRole } from "./hub-table-column-meta";
-import { validateDirectoryColumnWidthMeta } from "./hub-directory-column-width-registry";
+import { failDirectoryColumnMeta, validateDirectoryColumnWidthMeta } from "./hub-directory-column-width-registry";
 
 export type HubDirectoryTableVariant =
   | "default"
@@ -139,7 +139,7 @@ export function validateDirectoryColumns<TKey extends string>(
   const colClasses = columns.map((c) => c.colClass);
   const dupes = colClasses.filter((c, i) => colClasses.indexOf(c) !== i);
   if (dupes.length) {
-    throw new Error(
+    failDirectoryColumnMeta(
       `Directory columns: duplicate colClass "${dupes[0]}" — each column needs a unique colClass or use width SSOT per key.`,
     );
   }
@@ -148,7 +148,7 @@ export function validateDirectoryColumns<TKey extends string>(
   if (percentWidths.length === columns.length && columns.length > 0) {
     const sum = percentWidths.reduce((a, b) => a + b, 0);
     if (sum > 100.01) {
-      throw new Error(`Directory columns: width sum ${sum}% exceeds 100%`);
+      failDirectoryColumnMeta(`Directory columns: width sum ${sum}% exceeds 100%`);
     }
   }
 }
@@ -159,12 +159,14 @@ export function buildDirectoryColumns<TKey extends string>(
   meta: Record<string, HubDirectoryColumnMetaInput>,
   options?: { sortable?: boolean; fallbackLabel?: (key: TKey) => string },
 ): HubDirectoryColumnDef<TKey>[] {
-  const columns = keys.map((key) => {
+  const columns = keys.flatMap((key) => {
     const def = meta[key];
     if (!def) {
-      throw new Error(`Directory columns: missing meta for key "${key}"`);
+      // Dev: throw. Prod: drop the unknown column instead of killing the tab.
+      failDirectoryColumnMeta(`Directory columns: missing meta for key "${key}"`);
+      return [];
     }
-    return {
+    return [{
       key,
       label: def.label,
       colClass: def.colClass,
@@ -185,7 +187,7 @@ export function buildDirectoryColumns<TKey extends string>(
       headerImageSrc: def.headerImageSrc,
       headerTooltip: def.headerTooltip,
       headerHint: def.headerHint,
-    };
+    }];
   });
   validateDirectoryColumnWidthMeta(columns);
   const normalized = scaleDirectoryColumnWidths(columns);

@@ -81,6 +81,8 @@ export function HubCopyBadge({
           ? "hub-copy-badge--chip gap-0 px-1"
           : "hub-copy-badge--full gap-1 px-1.5 font-mono font-medium leading-none"
       } ${className}`}
+      title={copyActionTitle}
+      data-hub-copy-value={value}
     >
       {!chip ? (
         <Fingerprint size={compactIconSize(10)} className="shrink-0 text-indigo-300/80" aria-hidden />
