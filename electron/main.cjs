@@ -391,14 +391,24 @@ function bindIpc() {
     );
   });
 
-  ipcMain.handle("app:info", () => ({
-    name: app.getName(),
-    version: app.getVersion(),
-    isPackaged: app.isPackaged,
-    userDataPath: userDataRoot(),
-    profileExtensionsEnabled: getProfileExtensionsEnabled(),
-    extensionToggles: getExtensionToggles(),
-  }));
+  ipcMain.handle("app:info", () => {
+    const {
+      getProfilesLocationInfo,
+      ensureProfilesLocationInitialized,
+    } = require("./lib/profiles-location.cjs");
+    ensureProfilesLocationInitialized(userDataRoot());
+    const profilesLocation = getProfilesLocationInfo(userDataRoot());
+    return {
+      name: app.getName(),
+      version: app.getVersion(),
+      isPackaged: app.isPackaged,
+      userDataPath: userDataRoot(),
+      profilesPath: profilesLocation.profilesRoot,
+      profilesLocation,
+      profileExtensionsEnabled: getProfileExtensionsEnabled(),
+      extensionToggles: getExtensionToggles(),
+    };
+  });
 
   ipcMain.handle("vault:setUserScope", (_event, payload = {}) => {
     const vaultUserScope = require("./lib/vault-user-scope.cjs");
@@ -469,6 +479,104 @@ function bindIpc() {
     return { ok: true, path: userDataRoot() };
   });
 
+  ipcMain.handle("app:openProfilesFolder", () => {
+    const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+    const profilesPath = resolveProfilesRoot(userDataRoot());
+    shell.openPath(profilesPath);
+    return { ok: true, path: profilesPath };
+  });
+
+  ipcMain.handle("app:getProfilesLocation", () => {
+    const { getProfilesLocationInfo, ensureProfilesLocationInitialized } = require("./lib/profiles-location.cjs");
+    ensureProfilesLocationInitialized(userDataRoot());
+    return { ok: true, ...getProfilesLocationInfo(userDataRoot()) };
+  });
+
+  ipcMain.handle("app:dismissProfilesLocationPrompt", () => {
+    const { dismissProfilesLocationPrompt, getProfilesLocationInfo } = require("./lib/profiles-location.cjs");
+    dismissProfilesLocationPrompt(userDataRoot());
+    return { ok: true, ...getProfilesLocationInfo(userDataRoot()) };
+  });
+
+  ipcMain.handle("app:chooseProfilesLocation", async () => {
+    const { getProfilesLocationInfo, suggestProfilesRoot } = require("./lib/profiles-location.cjs");
+    const current = getProfilesLocationInfo(userDataRoot());
+    const pick = await dialog.showOpenDialog({
+      title: "Choose profiles storage folder",
+      defaultPath: current.suggestedProfilesRoot || current.profilesRoot,
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (pick.canceled || !pick.filePaths?.[0]) {
+      return { ok: false, canceled: true, ...current };
+    }
+    return {
+      ok: true,
+      selectedPath: pick.filePaths[0],
+      suggestedProfilesRoot: suggestProfilesRoot(userDataRoot()),
+      ...current,
+    };
+  });
+
+  ipcMain.handle("app:migrateProfilesLocation", async (_event, payload = {}) => {
+    const {
+      migrateProfilesRoot,
+      setProfilesRoot,
+      getProfilesLocationInfo,
+    } = require("./lib/profiles-location.cjs");
+    const target = String(payload.path || payload.profilesRoot || "").trim();
+    if (!target) return { ok: false, error: "path is required" };
+
+    const running = sessionManager.listRunning?.() || [];
+    if (running.length) {
+      return {
+        ok: false,
+        error: `Close ${running.length} open profile(s) before moving storage.`,
+        runningCount: running.length,
+      };
+    }
+
+    try {
+      await sessionManager.closeAll?.();
+    } catch {
+      /* best effort */
+    }
+
+    try {
+      if (payload.mode === "point-only") {
+        setProfilesRoot(userDataRoot(), target, { source: "settings-point" });
+        return { ok: true, moved: false, ...getProfilesLocationInfo(userDataRoot()) };
+      }
+      const result = migrateProfilesRoot(userDataRoot(), target, { source: "settings-migrate" });
+      return { ok: true, moved: !result.skipped, ...result.info, result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("app:applySuggestedProfilesLocation", async () => {
+    const { suggestProfilesRoot, migrateProfilesRoot, getProfilesLocationInfo } = require("./lib/profiles-location.cjs");
+    const target = suggestProfilesRoot(userDataRoot());
+    const running = sessionManager.listRunning?.() || [];
+    if (running.length) {
+      return {
+        ok: false,
+        error: `Close ${running.length} open profile(s) before moving storage.`,
+        runningCount: running.length,
+      };
+    }
+    try {
+      await sessionManager.closeAll?.();
+    } catch {
+      /* best effort */
+    }
+    try {
+      const result = migrateProfilesRoot(userDataRoot(), target, { source: "apply-suggested" });
+      return { ok: true, moved: !result.skipped, ...result.info, result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   const { listLaunchPerf, clearLaunchPerf } = require("./lib/profile-launch-perf.cjs");
   const { readLaunchBench } = require("./lib/launch-bench-store.cjs");
 
@@ -524,7 +632,8 @@ function bindIpc() {
       const result = await installStoreExtension(userDataRoot(), storeIdOrUrl, { profileIds, force });
       const binary = await getBinaryInfoCached();
       const { prepareProfileExtensions } = require("./lib/native-extension-load.cjs");
-      const profilesDir = path.join(userDataRoot(), "profiles");
+      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const profilesDir = resolveProfilesRoot(userDataRoot());
       const wanted = Array.isArray(profileIds) && profileIds.length ? new Set(profileIds) : null;
       if (fs.existsSync(profilesDir)) {
         for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
@@ -878,6 +987,11 @@ app.whenReady().then(async () => {
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
   await openDatabase(userDataRoot());
+  try {
+    require("./lib/profiles-location.cjs").ensureProfilesLocationInitialized(userDataRoot());
+  } catch (error) {
+    console.warn("[profiles-location] init failed:", error instanceof Error ? error.message : error);
+  }
   const catalogCount = profileService.listProfilesLite().length;
   const { tryAutoRestoreCatalogIfEmpty } = require("./lib/catalog-backup-recovery.cjs");
   const { closeDatabase } = require("./db/init.cjs");

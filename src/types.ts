@@ -1,3 +1,15 @@
+export type ProfilesLocationInfo = {
+  userDataRoot: string;
+  profilesRoot: string;
+  defaultProfilesRoot: string;
+  suggestedProfilesRoot: string;
+  usingCustom: boolean;
+  promptPending: boolean;
+  source: string | null;
+  profileDirCount: number;
+  configPath: string;
+};
+
 export type StealthScreen = "profiles" | "workflow" | "system";
 
 export type ProfileStatus = "closed" | "opening" | "running" | "failed";
@@ -424,7 +436,16 @@ declare global {
         steps?: ScriptStep[];
         workflowId?: string;
       }) => Promise<OpenUrlResult>;
-      appInfo: () => Promise<{ name: string; version: string; isPackaged: boolean; userDataPath: string; profileExtensionsEnabled?: boolean; extensionToggles?: ExtensionToggles }>;
+      appInfo: () => Promise<{
+        name: string;
+        version: string;
+        isPackaged: boolean;
+        userDataPath: string;
+        profilesPath?: string;
+        profilesLocation?: ProfilesLocationInfo;
+        profileExtensionsEnabled?: boolean;
+        extensionToggles?: ExtensionToggles;
+      }>;
       setVaultUserScope: (payload: {
         email?: string | null;
       }) => Promise<{
@@ -442,6 +463,19 @@ declare global {
         devScope: boolean;
       }>;
       openDataFolder: () => Promise<{ ok: boolean; path: string }>;
+      openProfilesFolder: () => Promise<{ ok: boolean; path: string }>;
+      getProfilesLocation: () => Promise<{ ok: boolean } & ProfilesLocationInfo>;
+      dismissProfilesLocationPrompt: () => Promise<{ ok: boolean } & ProfilesLocationInfo>;
+      chooseProfilesLocation: () => Promise<
+        { ok: boolean; canceled?: boolean; selectedPath?: string } & Partial<ProfilesLocationInfo>
+      >;
+      migrateProfilesLocation: (payload: {
+        path: string;
+        mode?: "migrate" | "point-only";
+      }) => Promise<{ ok: boolean; error?: string; moved?: boolean } & Partial<ProfilesLocationInfo>>;
+      applySuggestedProfilesLocation: () => Promise<
+        { ok: boolean; error?: string; moved?: boolean } & Partial<ProfilesLocationInfo>
+      >;
       getProfileExtensionsEnabled: () => Promise<{ ok: boolean; enabled: boolean }>;
       setProfileExtensionsEnabled: (payload: { enabled: boolean }) => Promise<{ ok: boolean; enabled: boolean }>;
       getExtensionToggles: () => Promise<{ ok: boolean; toggles: ExtensionToggles }>;

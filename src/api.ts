@@ -300,6 +300,30 @@ export async function openDataFolder() {
   return api().openDataFolder();
 }
 
+export async function openProfilesFolder() {
+  return api().openProfilesFolder();
+}
+
+export async function fetchProfilesLocation() {
+  return api().getProfilesLocation();
+}
+
+export async function dismissProfilesLocationPrompt() {
+  return api().dismissProfilesLocationPrompt();
+}
+
+export async function chooseProfilesLocation() {
+  return api().chooseProfilesLocation();
+}
+
+export async function migrateProfilesLocation(payload: { path: string; mode?: "migrate" | "point-only" }) {
+  return api().migrateProfilesLocation(payload);
+}
+
+export async function applySuggestedProfilesLocation() {
+  return api().applySuggestedProfilesLocation();
+}
+
 export async function fetchProfileExtensionsEnabled(): Promise<boolean> {
   const data = await api().getProfileExtensionsEnabled();
   if (!data.ok) throw new Error("Extension settings unavailable");

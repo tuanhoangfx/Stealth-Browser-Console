@@ -49,8 +49,10 @@ function buildFolderMap(profiles) {
   });
 }
 
+const { resolveProfilesRoot } = require("./profiles-location.cjs");
+
 function profilesRoot(userDataRoot) {
-  return path.join(userDataRoot, "profiles");
+  return resolveProfilesRoot(userDataRoot);
 }
 
 function zipWithPowerShell(sourceDir, zipPath) {

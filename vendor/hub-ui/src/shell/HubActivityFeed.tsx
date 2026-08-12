@@ -6,15 +6,19 @@ import {
   type ReactNode,
 } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ExternalLink, Pencil, Search, Trash2, UserPlus } from "lucide-react";
+import { ExternalLink, Pencil, ScrollText, Search, Trash2, UserPlus } from "lucide-react";
 
 export type HubActivityFeedKind = "create" | "update" | "delete";
 
-export type HubActivityKindFilter = "all" | HubActivityFeedKind;
+/**
+ * Kind values beyond CRUD are allowed (e.g. `system` session lines, `sync`).
+ * Unknown kinds render a generic badge via `resolveHubActivityKindMeta`.
+ */
+export type HubActivityKindFilter = "all" | HubActivityFeedKind | (string & {});
 
 export type HubActivityFeedItem = {
   id: string;
-  kind?: HubActivityFeedKind;
+  kind?: HubActivityFeedKind | (string & {});
   label: string;
   detail?: string;
   at?: number;
@@ -32,13 +36,26 @@ const KIND_META: Record<
   delete: { label: "Removed", Icon: Trash2, className: "text-rose-400" },
 };
 
-export function resolveHubActivityKindMeta(kind: HubActivityFeedKind | undefined): {
+/** Non-CRUD kinds — session/system lines share the Log cyan identity. */
+const EXTRA_KIND_META: Record<string, { label: string; Icon: LucideIcon; className: string }> = {
+  system: { label: "System", Icon: ScrollText, className: "text-cyan-300" },
+  sync: { label: "Sync", Icon: ScrollText, className: "text-indigo-300" },
+};
+
+export function resolveHubActivityKindMeta(kind: string | undefined): {
   label: string;
   Icon: LucideIcon;
   className: string;
 } | null {
-  if (!kind || !(kind in KIND_META)) return null;
-  return KIND_META[kind];
+  if (!kind) return null;
+  if (kind in KIND_META) return KIND_META[kind as HubActivityFeedKind];
+  if (kind in EXTRA_KIND_META) return EXTRA_KIND_META[kind]!;
+  /** Unknown custom kind — generic badge (label = capitalized kind). */
+  return {
+    label: kind.charAt(0).toUpperCase() + kind.slice(1),
+    Icon: ScrollText,
+    className: "text-slate-300",
+  };
 }
 
 export function hubActivityKindLabel(kind: HubActivityFeedKind): string {

@@ -168,7 +168,8 @@ export async function syncDevCatalogFromProd({ force = false } = {}) {
   const devRoot = rootFor(DEV_DIR);
   const prodDb = path.join(prodRoot, "data", "stealth-console.db");
   const devDb = path.join(devRoot, "data", "stealth-console.db");
-  const prodProfiles = path.join(prodRoot, "profiles");
+  const { resolveProfilesRoot } = require("../../electron/lib/profiles-location.cjs");
+  const prodProfiles = resolveProfilesRoot(prodRoot);
   const devProfiles = path.join(devRoot, "profiles");
   const limit = resolveSeedLimit();
 

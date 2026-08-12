@@ -172,7 +172,8 @@ class SessionManager {
     const root = this.#userDataRoot;
     if (!root) return { cleaned: 0 };
     let cleaned = 0;
-    const profilesDir = path.join(root, "profiles");
+    const { resolveProfilesRoot } = require("../lib/profiles-location.cjs");
+    const profilesDir = resolveProfilesRoot(root);
 
     for (const row of profileService.listActiveProfileIds()) {
       if (this.isRunning(row.id)) continue;

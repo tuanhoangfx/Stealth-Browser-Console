@@ -25,6 +25,7 @@ runStep("smoke-asar-ps1-resolve", "node", ["scripts/smoke-asar-ps1-resolve.mjs"]
 runStep("cloakbrowser-esm-deps", "node", ["scripts/verify-cloakbrowser-esm-deps.mjs"]);
 runStep("dev-desktop-process", "node", ["scripts/lib/dev-desktop-process.test.mjs"]);
 runStep("stealth-electron-env", "node", ["scripts/lib/stealth-electron-env.test.mjs"]);
+runStep("profiles-location", "node", ["--test", "electron/lib/profiles-location.test.cjs"]);
 runStep("microsoft-gate-gmail", "node", ["--test", "electron/automation/script-steps.microsoft-gate.test.cjs"]);
 runStep("captcha-stop-gmail", "node", ["--test", "electron/automation/script-steps.captcha-stop.test.cjs"]);
 runStep("profile-window-title", "node", ["--test", "electron/lib/profile-window-title.test.cjs"]);

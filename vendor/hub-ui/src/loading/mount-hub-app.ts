@@ -3,7 +3,12 @@ import { hideBootLoader } from "./hub-loader-dom";
 export function mountHubApp(rootEl: HTMLElement, render: () => void) {
   try {
     render();
+    // requestAnimationFrame never fires while the tab is in the background, so a tool opened
+    // in a background tab mounted fine but left __hubBootReady false forever — and the boot
+    // fallback then declared a fully working app "did not finish loading" at its 120s timeout.
+    // hideBootLoader is idempotent, so arm a timer alongside the frame.
     requestAnimationFrame(() => hideBootLoader());
+    setTimeout(() => hideBootLoader(), 1500);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     hideBootLoader();

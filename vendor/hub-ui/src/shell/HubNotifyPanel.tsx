@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   Bell,
+  Info,
   Pencil,
   ShieldAlert,
   Trash2,
@@ -17,12 +18,19 @@ import { markAllNotifySeen, markNotifySeenId, readNotifySeenIds } from "./hub-no
 import type { HubLogQuickAction } from "./HubUsageLogPanel";
 import {
   HubActivityFeedRows,
-  HubActivityFeedToolbar,
   HubOpsFeedFilterProvider,
   filterHubActivityFeedItems,
   type HubActivityFeedItem,
   type HubActivityKindFilter,
 } from "./HubActivityFeed";
+import {
+  HubOpsMarkAllReadButton,
+  HubOpsPanelBadge,
+  HubOpsPanelSearch,
+  HubOpsTypeTocNav,
+  useHubOpsTypeToc,
+  type HubOpsTypeTocChrome,
+} from "./HubOpsPanelChrome";
 import { HUB_NOTIFY_EMPTY_MESSAGE } from "./hub-chrome-messages";
 
 export type HubNotifyAlertSeverity = "ok" | "warn" | "bad";
@@ -67,6 +75,12 @@ export type HubNotifyPanelProps = {
   onAlertOpenDetail?: (alert: HubNotifyAlert) => void;
   /** @deprecated Use onAlertOpenDetail — row click now marks read only. */
   onAlertAction?: (alert: HubNotifyAlert) => void;
+  /**
+   * Type-first TOC (All / Create / Update / Critical / …) — TOC click filters
+   * the feed (replaces the old header kind chips). Default: auto — enabled when
+   * any alert carries `meta.kind`; otherwise the legacy severity scrollspy TOC.
+   */
+  typeToc?: boolean;
 };
 
 type SeveritySectionDef = {
@@ -118,6 +132,42 @@ export function resolveHubNotifyAlertIcon(alert: HubNotifyAlert): {
   return { Icon: severityIcon(alert.severity), className: severityIconClass(alert.severity) };
 }
 
+/**
+ * Type bucket for the TOC — `meta.kind` when present (create / update / delete
+ * / system / custom), else the severity bucket so untyped alerts still group.
+ */
+export function resolveHubNotifyAlertKind(alert: HubNotifyAlert): string {
+  const raw = typeof alert.meta?.kind === "string" ? alert.meta.kind.trim().toLowerCase() : "";
+  if (raw) return raw;
+  if (alert.severity === "bad") return "critical";
+  if (alert.severity === "warn") return "warning";
+  return "info";
+}
+
+/** Severity buckets rendered in the type TOC (kind ⇢ severity section chrome). */
+const NOTIFY_KIND_SEVERITY: Record<string, HubNotifyAlertSeverity> = {
+  critical: "bad",
+  warning: "warn",
+  info: "ok",
+};
+
+const NOTIFY_SEVERITY_TOC_CHROME: Record<HubNotifyAlertSeverity, HubOpsTypeTocChrome> = {
+  bad: { label: "Critical", Icon: ShieldAlert, className: "text-rose-400" },
+  warn: { label: "Warnings", Icon: AlertTriangle, className: "text-amber-300" },
+  ok: { label: "Info", Icon: Info, className: "text-emerald-400" },
+};
+
+/** Fixed head of the type TOC — custom kinds append after, sorted. */
+const NOTIFY_TYPE_ORDER = [
+  "create",
+  "update",
+  "delete",
+  "critical",
+  "warning",
+  "system",
+  "info",
+] as const;
+
 function alertToFeedItem(
   alert: HubNotifyAlert,
   renderAlertBody?: (alert: HubNotifyAlert) => ReactNode,
@@ -151,6 +201,7 @@ export function HubNotifyPanel({
   renderAlertBody,
   onAlertOpenDetail,
   onAlertAction,
+  typeToc,
 }: HubNotifyPanelProps) {
   const [open, setOpen] = useState(false);
   const [seenIds, setSeenIds] = useState(() => readNotifySeenIds(scopeKey));
@@ -168,18 +219,60 @@ export function HubNotifyPanel({
   const openDetail = onAlertOpenDetail ?? onAlertAction;
   const sections = useMemo(() => resolveSeveritySections(severitySections), [severitySections]);
 
+  /** Any typed alert turns the TOC type-first; severity-only feeds stay legacy. */
   const hasKindMeta = useMemo(
     () =>
-      activeAlerts.some((a) => {
-        const k = a.meta?.kind;
-        return k === "create" || k === "update" || k === "delete";
-      }),
+      activeAlerts.some(
+        (a) => typeof a.meta?.kind === "string" && a.meta.kind.trim().length > 0,
+      ),
     [activeAlerts],
   );
+  const typeTocEnabled = typeToc ?? hasKindMeta;
+
+  /** Type bucket per alert id — TOC filter + counts (rows keep their own icons). */
+  const alertKinds = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const alert of activeAlerts) map.set(alert.id, resolveHubNotifyAlertKind(alert));
+    return map;
+  }, [activeAlerts]);
+
+  /** Search-filtered alerts drive TOC counts (kind filter excluded, like Log). */
+  const searchedKinds = useMemo(() => {
+    if (!typeTocEnabled) return [];
+    const q = query.trim().toLowerCase();
+    return activeAlerts
+      .filter((a) => !q || `${a.label} ${a.detail ?? ""}`.toLowerCase().includes(q))
+      .map((a) => alertKinds.get(a.id) ?? "info");
+  }, [activeAlerts, alertKinds, query, typeTocEnabled]);
+
+  /** Severity buckets inherit the consumer's section chrome (Updates / Removed). */
+  const tocChromeOf = useCallback(
+    (kind: HubActivityKindFilter): HubOpsTypeTocChrome | null => {
+      const severity = NOTIFY_KIND_SEVERITY[kind as string];
+      if (!severity) return null;
+      const section = sections.find((s) => s.key === severity);
+      if (!section) return NOTIFY_SEVERITY_TOC_CHROME[severity];
+      return { label: section.label, Icon: section.icon, className: section.iconClassName };
+    },
+    [sections],
+  );
+
+  const typeTocEntries = useHubOpsTypeToc({
+    enabled: typeTocEnabled,
+    kinds: searchedKinds,
+    order: NOTIFY_TYPE_ORDER,
+    chromeOf: tocChromeOf,
+  });
 
   useEffect(() => {
     setSeenIds(readNotifySeenIds(scopeKey));
   }, [scopeKey]);
+
+  useEffect(() => {
+    if (open) return;
+    setQuery("");
+    setKindFilter("all");
+  }, [open]);
 
   const markRead = useCallback(
     (id: string) => {
@@ -248,11 +341,18 @@ export function HubNotifyPanel({
       return { tocItems: toc, sectionIds: ids, body: sectionNodes };
     }
 
+    let alertSections = 0;
     for (const { key, label, icon: SectionIcon, iconClassName } of sections) {
       const rows = activeAlerts.filter((a) => a.severity === key);
       if (!rows.length) continue;
-      const feedItems = rows.map((a) => alertToFeedItem(a, renderAlertBody));
-      const filtered = filterHubActivityFeedItems(feedItems, query, hasKindMeta ? kindFilter : "all");
+      const typeMatched = typeTocEnabled
+        ? rows.filter((a) => kindFilter === "all" || alertKinds.get(a.id) === kindFilter)
+        : rows;
+      const feedItems = typeMatched.map((a) => alertToFeedItem(a, renderAlertBody));
+      const filtered = filterHubActivityFeedItems(feedItems, query, "all");
+      /** Type mode — the TOC is the filter, so empty buckets drop out entirely. */
+      if (typeTocEnabled && filtered.length === 0) continue;
+      alertSections += 1;
       const id = `notify-${key}`;
       const tocIcon = <SectionIcon size={14} className={iconClassName} aria-hidden />;
       toc.push({ id, label, icon: tocIcon });
@@ -283,11 +383,24 @@ export function HubNotifyPanel({
       );
     }
 
+    if (alertSections === 0) {
+      const id = "notify-empty";
+      toc.push({ id, label: "Alerts", icon: alertIcon });
+      ids.push(id);
+      sectionNodes.push(
+        <HubToolDetailSection key={id} id={id} title="Alerts" icon={alertIcon}>
+          <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)]">
+            No alerts match the current filters.
+          </div>
+        </HubToolDetailSection>,
+      );
+    }
+
     return { tocItems: toc, sectionIds: ids, body: sectionNodes };
   }, [
     activeAlerts,
+    alertKinds,
     emptyMessage,
-    hasKindMeta,
     kindFilter,
     markRead,
     openDetail,
@@ -298,9 +411,10 @@ export function HubNotifyPanel({
     seenIds,
     subtitle,
     trackUnread,
+    typeTocEnabled,
   ]);
 
-  const showToc = tocItems.length > 0;
+  const showToc = typeTocEnabled || tocItems.length > 0;
   const feedFilter = useMemo(
     () => ({ query, setQuery, kindFilter, setKindFilter }),
     [query, kindFilter],
@@ -326,41 +440,32 @@ export function HubNotifyPanel({
         titleId="hub-notify-panel-title"
         headerIcon={Bell}
         headerIconClassName="text-amber-300"
-        headerTrailing={
-          <div className="flex items-center gap-2">
-            {unreadCount > 0 ? (
-              <button
-                type="button"
-                className="rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)]"
-                onClick={markAllRead}
-              >
-                Mark all read
-              </button>
-            ) : null}
-            {badge > 0 ? (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-200">
-                {badge}
-              </span>
-            ) : null}
-          </div>
-        }
+        headerTrailing={badge > 0 ? <HubOpsPanelBadge count={badge} tone="amber" /> : undefined}
         headerCenter={
-          <HubActivityFeedToolbar
+          <HubOpsPanelSearch
             query={query}
             onQueryChange={setQuery}
-            kindFilter={kindFilter}
-            onKindFilterChange={setKindFilter}
-            showKindFilters={hasKindMeta}
-            searchPlaceholder="Search alerts…"
-            variant="header"
+            placeholder="Search alerts…"
           />
         }
+        headerActions={
+          unreadCount > 0 ? <HubOpsMarkAllReadButton onClick={markAllRead} /> : undefined
+        }
         shellClassName="hub-header-panel-modal"
-        sectionIds={showToc ? sectionIds : undefined}
+        sectionIds={showToc && !typeTocEnabled ? sectionIds : undefined}
         toc={
           showToc ? (
             <div className="hub-toc-nav">
-              <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+              {typeTocEnabled ? (
+                <HubOpsTypeTocNav
+                  entries={typeTocEntries}
+                  active={kindFilter}
+                  onSelect={setKindFilter}
+                  ariaLabel="Alert types"
+                />
+              ) : (
+                <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+              )}
             </div>
           ) : undefined
         }

@@ -76,8 +76,10 @@ function cloakDistImport(relativePath) {
   return import(pathToFileURL(filePath).href);
 }
 
+const { resolveProfileUserDataDir } = require("../lib/profiles-location.cjs");
+
 function profileDataDir(userDataRoot, profileId) {
-  return path.join(userDataRoot, "profiles", String(profileId));
+  return resolveProfileUserDataDir(userDataRoot, profileId);
 }
 
 const { formatProxyForLaunch, toPlaywrightProxy } = require("../lib/proxy-pool.cjs");

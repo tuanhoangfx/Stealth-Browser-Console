@@ -17,8 +17,38 @@
   var depProbeFails = 0;
   var hungShown = false;
 
+  // Every diagnostic below this line is about a local Vite dev server: it probes
+  // /@vite/client and /node_modules/.vite/deps/react.js, and its hints tell you to run
+  // pnpm dev:recover or tskill a PID. On a deployed static host none of that exists, so a
+  // merely slow boot used to show visitors "Vite is preparing modules after a cold start"
+  // plus PowerShell instructions, and then poll a 404 every 15s forever.
+  var IS_DEV_HOST = (function () {
+    var h = window.location.hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h.endsWith(".localhost");
+  })();
+
   function getLoaderEl() {
     return document.getElementById(BOOT_ID);
+  }
+
+  /**
+   * The app mounted, whatever the boot-ready signal says. A tool opened in a background tab
+   * mounts normally but its rAF-scheduled hideBootLoader() never runs, so every timer below
+   * used to keep firing against a working app — ending on a full-screen "did not finish
+   * loading" error on top of rendered content. Rendered children are the ground truth.
+   */
+  function appHasRendered() {
+    var root = document.getElementById("root");
+    return !!root && root.childElementCount > 0;
+  }
+
+  function bootSettled() {
+    if (window.__hubBootReady) return true;
+    if (!appHasRendered()) return false;
+    window.__hubBootReady = true;
+    var el = getLoaderEl();
+    if (el) el.remove();
+    return true;
   }
 
   function showBootWaiting(message, submessage) {
@@ -101,7 +131,7 @@
   }
 
   function showHungPrebundleError() {
-    if (window.__hubBootReady || hungShown) return;
+    if (bootSettled() || hungShown) return;
     hungShown = true;
     var port = window.location.port || "5175";
     showBootError(
@@ -119,9 +149,9 @@
   }
 
   function probeViteDeps() {
-    if (window.__hubBootReady || hungShown) return;
+    if (bootSettled() || hungShown) return;
     fetchProbe("/node_modules/.vite/deps/react.js", DEP_PROBE_TIMEOUT_MS).then(function (r) {
-      if (window.__hubBootReady || hungShown) return;
+      if (bootSettled() || hungShown) return;
       if (!r.ok) {
         depProbeFails += 1;
         if (depProbeFails >= DEP_PROBE_FAIL_LIMIT) {
@@ -144,23 +174,23 @@
   });
 
   window.addEventListener("error", function (event) {
-    if (window.__hubBootReady) return;
+    if (bootSettled()) return;
     var msg = event.message || "Script error";
     var detail = event.filename ? event.filename + ":" + (event.lineno || "?") : "";
     showBootError(msg, detail);
   });
 
   window.addEventListener("unhandledrejection", function (event) {
-    if (window.__hubBootReady) return;
+    if (bootSettled()) return;
     var reason = event.reason;
     var msg = reason && reason.message ? reason.message : String(reason || "Unhandled promise rejection");
     showBootError(msg);
   });
 
   window.setTimeout(function () {
-    if (window.__hubBootReady || hungShown) return;
+    if (bootSettled() || hungShown || !IS_DEV_HOST) return;
     fetchProbe("/@vite/client", 5000).then(function (r) {
-      if (window.__hubBootReady || hungShown || r.ok) return;
+      if (bootSettled() || hungShown || r.ok) return;
       var port = window.location.port || "PORT";
       var reason = String(r.reason || "");
       if (reason === "timeout" || /failed|refused|network/i.test(reason)) {
@@ -174,7 +204,11 @@
   }, SERVER_PROBE_MS);
 
   window.setTimeout(function () {
-    if (window.__hubBootReady || hungShown) return;
+    if (bootSettled() || hungShown) return;
+    if (!IS_DEV_HOST) {
+      showBootWaiting("Still loading…", "The app is taking longer than usual to start.");
+      return;
+    }
     showBootWaiting(
       "Prebundling dependencies…",
       "Vite is preparing modules after a cold start — this may take 1–2 minutes.",
@@ -183,7 +217,14 @@
   }, PREBUNDLE_HINT_MS);
 
   window.setTimeout(function () {
-    if (window.__hubBootReady || hungShown) return;
+    if (bootSettled() || hungShown) return;
+    if (!IS_DEV_HOST) {
+      showBootError(
+        "The app did not finish loading.",
+        "Reload the page. If it keeps failing, check your connection or try again shortly.",
+      );
+      return;
+    }
     var port = window.location.port || "PORT";
     var hungHint =
       devRecoverHint(port) +

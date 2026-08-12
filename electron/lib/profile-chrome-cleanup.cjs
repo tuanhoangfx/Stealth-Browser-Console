@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolveProfilesRoot } = require("./profiles-location.cjs");
 const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
 const { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } = require("./stealth-extension-store-ids.cjs");
 
@@ -216,7 +217,7 @@ function purgeAllProfilesSurfshark(userDataRoot) {
   if (!cacheRemoved && isSurfsharkPurgeComplete(userDataRoot)) {
     return { profiles: 0, removed: 0, prefsCleaned: 0, cacheRemoved: false, skipped: true };
   }
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let removed = 0;
   let prefsCleaned = 0;
@@ -317,7 +318,7 @@ function purgeDuplicateUnpackedStoreExtensions(userDataDir) {
 
 function purgeAllProfilesDuplicateUnpackedStoreExtensions(userDataRoot) {
   if (!userDataRoot) return { profiles: 0, removed: 0 };
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let removed = 0;
   if (!fs.existsSync(profilesDir)) return { profiles, removed };
@@ -471,7 +472,7 @@ function purgeBrokenExtensionPrefs(userDataDir) {
 /** Bulk scrub broken extension prefs across every profile Chrome dir. */
 function purgeAllProfilesBrokenExtensionPrefs(userDataRoot) {
   if (!userDataRoot) return { profiles: 0, removed: 0, prefsCleaned: 0 };
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let removed = 0;
   let prefsCleaned = 0;
@@ -492,7 +493,7 @@ function purgeAllProfilesBrokenExtensionPrefs(userDataRoot) {
 /** Bulk scrub stale E0001 pins across every profile Chrome dir. */
 function purgeAllProfilesStaleCookieBridgePrefs(userDataRoot, bridgeDir) {
   if (!userDataRoot || !bridgeDir) return { profiles: 0, removed: 0, prefsCleaned: 0 };
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let removed = 0;
   let prefsCleaned = 0;
@@ -559,7 +560,7 @@ function purgeIdentityToolbarRoot(userDataRoot) {
 /** Bulk purge — scan every profile Chrome dir + drop identity-toolbar root. */
 function purgeAllProfilesIdentityToolbar(userDataRoot) {
   if (!userDataRoot) return { profiles: 0, removed: 0, prefsCleaned: 0 };
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let removed = 0;
   let prefsCleaned = 0;

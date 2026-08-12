@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CheckCircle2, Download, RefreshCw, Sparkles, Wrench, Zap } from "lucide-react";
-import { HubActivityFeedToolbar } from "./HubActivityFeed";
+import type { HubActivityKindFilter } from "./HubActivityFeed";
+import {
+  HubOpsPanelSearch,
+  HubOpsTypeTocNav,
+  useHubOpsTypeToc,
+  type HubOpsTypeTocChrome,
+} from "./HubOpsPanelChrome";
 import { HubChromeActivityAge } from "./HubChromeActivityAge";
 import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
@@ -88,6 +94,19 @@ const KIND_META: Record<
     chip: "border-amber-400/35 bg-amber-500/15 text-amber-100",
   },
 };
+
+/**
+ * Fixed head of the release type TOC. Feed kinds are `new | improve | fix`; the
+ * labels users see are New · Update · Fixed (same words as the row badges).
+ */
+const RELEASE_TYPE_ORDER = ["new", "improve", "fix"] as const;
+
+/** Type TOC chrome — reuses the row badge glyphs so rail and rows read alike. */
+function releaseTypeTocChrome(kind: HubActivityKindFilter): HubOpsTypeTocChrome | null {
+  const meta = KIND_META[kind as HubReleaseNoteKind];
+  if (!meta) return null;
+  return { label: meta.label, Icon: meta.Icon, className: meta.className };
+}
 
 /** Kind badge — primary change type for the release (before version + age). */
 function ReleaseKindBadge({ kind }: { kind: HubReleaseNoteKind }) {
@@ -195,9 +214,16 @@ export type HubVersionReleaseNotesProps = {
 };
 
 /**
- * Update Release — Layout 2 TOC + V1 timeline (User copy).
- * Hub trigger = Latest/Update status icons (not scroll glyph).
- * Cards = kind badge → version + age → optional headline (no per-row Latest/Update).
+ * Update Release — ops-panel chrome SSOT (`HubOpsPanelChrome`) + V1 timeline.
+ *
+ * Same shell contract as Log · Notify: search in `headerCenter` via
+ * `HubOpsPanelSearch` (no chip row anywhere), left rail = **type TOC first**
+ * (`HubOpsTypeTocNav`: All · New · Update · Fixed with counts, click filters the
+ * timeline) followed by the version scrollspy list, which stays because a
+ * release feed is chronological and jumping to `v6.1.175` is the primary move.
+ * Hub trigger = Latest/Update status icons (not scroll glyph). Cards keep the
+ * praised 2-line format: kind badge → version + age → optional headline.
+ * No "Mark all read" — opening the modal marks the whole feed seen.
  */
 export function HubVersionReleaseNotes({
   code,
@@ -210,6 +236,7 @@ export function HubVersionReleaseNotes({
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<HubReleaseNoteEntry[] | null>(hubReleaseNotesCache);
   const [query, setQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<HubActivityKindFilter>("all");
   const [unseen, setUnseen] = useState(() =>
     hasUnseenHubReleaseNotes(version, readHubReleaseNotesSeen(code)),
   );
@@ -234,7 +261,9 @@ export function HubVersionReleaseNotes({
   }, [open, entries]);
 
   useEffect(() => {
-    if (!open) setQuery("");
+    if (open) return;
+    setQuery("");
+    setKindFilter("all");
   }, [open]);
 
   const resolvedEntries = useMemo(() => {
@@ -242,10 +271,27 @@ export function HubVersionReleaseNotes({
     return ensureHubReleaseNotesIncludeCurrent(entries, currentVersion, publishedAt);
   }, [entries, currentVersion, publishedAt]);
 
-  const filtered = useMemo(() => {
+  /** Search-only pass — drives the type TOC counts (same rule as Log · Notify). */
+  const searched = useMemo(() => {
     if (!resolvedEntries) return null;
     return resolvedEntries.filter((entry) => entryMatchesQuery(entry, query));
   }, [resolvedEntries, query]);
+
+  const searchedKinds = useMemo(() => (searched ?? []).map((entry) => entry.kind), [searched]);
+
+  const typeTocEntries = useHubOpsTypeToc({
+    kinds: searchedKinds,
+    order: RELEASE_TYPE_ORDER,
+    /** Module-level fn — stable identity, so the TOC memo never churns. */
+    chromeOf: releaseTypeTocChrome,
+  });
+
+  /** Rendered timeline = search ∩ type TOC selection. */
+  const filtered = useMemo(() => {
+    if (!searched) return null;
+    if (kindFilter === "all") return searched;
+    return searched.filter((entry) => entry.kind === kindFilter);
+  }, [kindFilter, searched]);
 
   const { tocItems, sectionIds, body } = useMemo(() => {
     const toc: HubTocNavItem[] = [];
@@ -255,7 +301,6 @@ export function HubVersionReleaseNotes({
 
     if (filtered === null) {
       const id = "release-loading";
-      toc.push({ id, label: "Recent", icon: fallbackIcon });
       ids.push(id);
       sections.push(
         <HubToolDetailSection key={id} id={id} title="Recent" icon={fallbackIcon} hideHeader>
@@ -269,13 +314,12 @@ export function HubVersionReleaseNotes({
 
     if (filtered.length === 0) {
       const id = "release-empty";
-      toc.push({ id, label: "Recent", icon: fallbackIcon });
       ids.push(id);
       sections.push(
         <HubToolDetailSection key={id} id={id} title="Recent" icon={fallbackIcon} hideHeader>
           <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-[var(--muted)] app-tab-header__chrome-text">
             {resolvedEntries?.length
-              ? "No release notes match the current search."
+              ? "No release notes match the current filters."
               : "No release notes yet."}
           </div>
         </HubToolDetailSection>,
@@ -354,21 +398,33 @@ export function HubVersionReleaseNotes({
           </div>
         }
         headerCenter={
-          <HubActivityFeedToolbar
+          <HubOpsPanelSearch
             query={query}
             onQueryChange={setQuery}
-            kindFilter="all"
-            onKindFilterChange={() => undefined}
-            showKindFilters={false}
-            searchPlaceholder="Search releases…"
-            variant="header"
+            placeholder="Search releases…"
           />
         }
         shellClassName="hub-header-panel-modal hub-release-notes-modal"
         sectionIds={sectionIds}
         toc={
           <div className="hub-toc-nav">
-            <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+            <HubOpsTypeTocNav
+              entries={typeTocEntries}
+              active={kindFilter}
+              onSelect={setKindFilter}
+              ariaLabel="Release types"
+            />
+            {tocItems.length ? (
+              <div className="hub-release-version-toc mt-2 border-t border-white/5 pt-2">
+                <div className="px-2 text-[9px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  Versions
+                </div>
+                <HubTocSectionNav
+                  items={tocItems}
+                  scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT}
+                />
+              </div>
+            ) : null}
           </div>
         }
       >

@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const https = require("node:https");
 const os = require("node:os");
 const path = require("node:path");
+const { resolveProfilesRoot } = require("./profiles-location.cjs");
 const { spawnSync } = require("node:child_process");
 const { pinStoreExtension } = require("./profile-chrome-preferences.cjs");
 
@@ -399,7 +400,7 @@ function installStoreExtensionToProfiles(userDataRoot, storeId, unpackedPath, pr
 }
 
 function listProfileChromeDirs(userDataRoot) {
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   if (!fs.existsSync(profilesDir)) return [];
   return fs
     .readdirSync(profilesDir, { withFileTypes: true })

@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolveProfilesRoot } = require("./profiles-location.cjs");
 const {
   COOKIE_BRIDGE_STORE_ID,
   cookieBridgeEnabled,
@@ -278,7 +279,7 @@ function profileNeedsExtensionPathRepair(userDataDir) {
 }
 
 function repairAllProfileExtensionPaths(userDataRoot, cloakCacheDir) {
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let rewritten = 0;
   if (!fs.existsSync(profilesDir)) return { profiles, rewritten };
@@ -305,7 +306,7 @@ function ensureCookieBridgeOnAllProfiles(userDataRoot, cloakCacheDir) {
   }
   if (!resolveCookieBridgeExtensionDirSync(userDataRoot)) return { profiles: 0, pinned: 0 };
 
-  const profilesDir = path.join(userDataRoot, "profiles");
+  const profilesDir = resolveProfilesRoot(userDataRoot);
   let profiles = 0;
   let pinned = 0;
   if (!fs.existsSync(profilesDir)) return { profiles, pinned };

@@ -884,6 +884,21 @@ body.hub-modal-open {
   justify-self: stretch;
 }
 
+/* Right-corner header actions (Mark all read) — third column before the frame close X. */
+.hub-header-panel-modal
+  .user-access-modal__header:has(.user-access-modal__header-center):has(.user-access-modal__header-actions) {
+  grid-template-columns: minmax(0, auto) minmax(12rem, 1fr) minmax(0, auto);
+}
+
+.user-access-modal__header-actions {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  justify-self: end;
+}
+
 .hub-activity-feed-toolbar--header input[type="search"] {
   min-height: 1.75rem;
   padding-top: 0.3rem;

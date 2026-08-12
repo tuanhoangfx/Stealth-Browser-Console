@@ -10,7 +10,20 @@ import {
 } from "@tool-workspace/hub-ui";
 import { HubModalFilterField } from "@tool-workspace/hub-ui";
 import { useRegisterSettingsSave } from "./stealth-settings-save-context";
-import { fetchAppInfo, fetchEngineHealth, fetchExtensionToggles, openDataFolder, setExtensionToggles, updateEngineBinary } from "../../api";
+import {
+  applySuggestedProfilesLocation,
+  chooseProfilesLocation,
+  dismissProfilesLocationPrompt,
+  fetchAppInfo,
+  fetchEngineHealth,
+  fetchExtensionToggles,
+  fetchProfilesLocation,
+  migrateProfilesLocation,
+  openDataFolder,
+  openProfilesFolder,
+  setExtensionToggles,
+  updateEngineBinary,
+} from "../../api";
 import { useStealthShell } from "../../context/stealth-shell-context";
 import {
   LOCALE_OPTIONS,
@@ -34,7 +47,7 @@ import {
 } from "../../lib/stealth-app-prefs";
 import { formatStartupUrlOnBlur, normalizeStartupUrl } from "../../lib/startup-url";
 import { stealthFormFieldHintContent } from "../../lib/stealth-directory-column-hints";
-import type { EngineHealth, ExtensionToggles } from "../../types";
+import type { EngineHealth, ExtensionToggles, ProfilesLocationInfo } from "../../types";
 
 const SETTINGS_FORM_CLASS = `${HUB_TOOL_DETAIL_FORM_GRID_2_CLASS} stealth-settings-form min-w-0`;
 
@@ -333,20 +346,143 @@ function EngineSectionBody() {
 
 function DataFolderSectionBody() {
   const [userDataPath, setUserDataPath] = useState("");
+  const [loc, setLoc] = useState<ProfilesLocationInfo | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const refresh = async () => {
+    const [info, location] = await Promise.all([fetchAppInfo(), fetchProfilesLocation()]);
+    setUserDataPath(info.userDataPath);
+    if (location?.ok !== false) {
+      setLoc(location as ProfilesLocationInfo);
+    }
+  };
 
   useEffect(() => {
-    void fetchAppInfo().then((info) => setUserDataPath(info.userDataPath));
+    void refresh().catch((err: unknown) => {
+      setMessage(err instanceof Error ? err.message : "Failed to load storage paths");
+    });
   }, []);
+
+  const runMigrate = async (target: string, mode: "migrate" | "point-only" = "migrate") => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await migrateProfilesLocation({ path: target, mode });
+      if (!result.ok) {
+        setMessage(result.error || "Move failed");
+        return;
+      }
+      setMessage(result.moved ? "Profiles moved." : "Profiles location updated.");
+      await refresh();
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Move failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className={SETTINGS_FORM_CLASS}>
-      <p className="col-span-full break-all text-xs text-[var(--muted)]">{userDataPath || "—"}</p>
-      <div className="col-span-full">
+      <p className="col-span-full text-xs text-[var(--muted)]">
+        App database stays in AppData. Chromium profile folders can live on another fixed drive for long-term
+        stability (same SSD speed on multi-partition disks).
+      </p>
+      <div className="col-span-full space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">App data</p>
+        <p className="break-all font-mono text-xs text-[var(--muted)]">{userDataPath || "—"}</p>
+      </div>
+      <div className="col-span-full space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Profiles storage</p>
+        <p className="break-all font-mono text-xs text-cyan-100/90">{loc?.profilesRoot || "—"}</p>
+        <p className="text-xs text-[var(--muted)]">
+          {loc?.usingCustom ? "Custom location" : "Default (under App data)"}
+          {loc ? ` · ${loc.profileDirCount} profile folder(s)` : ""}
+        </p>
+      </div>
+      {loc?.promptPending && loc.suggestedProfilesRoot && loc.suggestedProfilesRoot !== loc.profilesRoot ? (
+        <div className="col-span-full">
+          <HubAlert tone="info">
+            Recommended: {loc.suggestedProfilesRoot}. Close open profiles before moving. Prefer a non-system fixed
+            drive when available.
+          </HubAlert>
+        </div>
+      ) : null}
+      {message ? (
+        <p className="col-span-full text-xs text-[var(--muted)]">{message}</p>
+      ) : null}
+      <div className="col-span-full flex flex-wrap gap-2">
         <HubToolDetailModalPrimaryAction
-          label="Open data folder"
+          label="Open app data"
           onClick={() => void openDataFolder()}
           icon={FolderOpen}
         />
+        <HubToolDetailModalPrimaryAction
+          label="Open profiles folder"
+          onClick={() => void openProfilesFolder()}
+          icon={FolderOpen}
+        />
+        <HubToolDetailModalPrimaryAction
+          label={busy ? "Working…" : "Change profiles location…"}
+          disabled={busy}
+          onClick={() => {
+            void (async () => {
+              setBusy(true);
+              setMessage("");
+              try {
+                const pick = await chooseProfilesLocation();
+                if (!pick.ok || pick.canceled || !pick.selectedPath) {
+                  setMessage(pick.canceled ? "Canceled." : "No folder selected.");
+                  return;
+                }
+                await runMigrate(pick.selectedPath, "migrate");
+              } catch (err: unknown) {
+                setMessage(err instanceof Error ? err.message : "Chooser failed");
+              } finally {
+                setBusy(false);
+              }
+            })();
+          }}
+          icon={FolderOpen}
+        />
+        {loc?.promptPending && loc.suggestedProfilesRoot ? (
+          <>
+            <HubToolDetailModalPrimaryAction
+              label={busy ? "Working…" : "Use recommended location"}
+              disabled={busy}
+              onClick={() => {
+                void (async () => {
+                  setBusy(true);
+                  setMessage("");
+                  try {
+                    const result = await applySuggestedProfilesLocation();
+                    if (!result.ok) {
+                      setMessage(result.error || "Apply failed");
+                      return;
+                    }
+                    setMessage(result.moved ? "Moved to recommended location." : "Already on recommended location.");
+                    await refresh();
+                  } catch (err: unknown) {
+                    setMessage(err instanceof Error ? err.message : "Apply failed");
+                  } finally {
+                    setBusy(false);
+                  }
+                })();
+              }}
+              icon={Download}
+            />
+            <HubToolDetailModalPrimaryAction
+              label="Keep current"
+              disabled={busy}
+              onClick={() => {
+                void dismissProfilesLocationPrompt()
+                  .then(() => refresh())
+                  .then(() => setMessage("Kept current location."));
+              }}
+              icon={Info}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   );

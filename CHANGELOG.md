@@ -1,6 +1,37 @@
 # Changelog
 
-## 2026-08-12 - Profiles directory More menu SSOT
+## 2026-08-12 — v1.0.176 — Electron dev reload
+
+- Version: `1.0.176`
+- Timestamp: 2026-08-12 02:39 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
+## 2026-08-13 - Profiles storage location (portable)
+
+- Version: `1.0.175`
+- Timestamp: 2026-08-13 02:40 (UTC+7)
+- Type: Feature
+- Status: Draft
+
+### Changes
+
+- Split **profilesRoot** from Electron userData (DB/settings stay in AppData).
+- Settings → **Data folder**: change / migrate profiles location; recommended non-system drive path.
+- Config: `{userData}/data/profiles-location.json` (no hard-coded D: — heuristic per machine).
+- NSIS seeds first-run `promptPending` when config missing; adopt existing junction targets on upgrade.
+- Startup `ensureProfilesLocationInitialized` + IPC open/migrate/apply-suggested.
+
+### Verification
+
+- `node --test electron/lib/profiles-location.test.cjs`
+- Adopted live config → `D:\StealthBrowser\profiles` (source: adopt-reparse)
+
+---
 
 - Version: `1.0.174`
 - Timestamp: 2026-08-12 21:22 (UTC+7)

@@ -1,0 +1,214 @@
+{
+  "generatedAt": "2026-08-12T19:48:00.358Z",
+  "entries": [
+    {
+      "version": "1.0.176",
+      "date": "2026-08-12",
+      "at": "2026-08-12T19:48:00.358Z",
+      "title": "chore: release v1.0.176",
+      "bullets": [
+        "Maintenance and polish since the last documented release."
+      ],
+      "kind": "improve",
+      "userTitle": "Release v1.0.176",
+      "userSummary": "",
+      "userHighlights": [
+        "Maintenance and polish since the last documented release."
+      ]
+    },
+    {
+      "version": "1.0.175",
+      "date": "2026-08-13",
+      "at": "2026-08-13T02:40:00+07:00",
+      "title": "Profiles storage location (portable)",
+      "bullets": [
+        "Split profilesRoot from Electron userData (DB/settings stay in AppData).",
+        "Settings → Data folder: change / migrate profiles location; recommended non-system drive path.",
+        "Config: {userData}/data/profiles-location.json (no hard-coded D: — heuristic per machine).",
+        "NSIS seeds first-run promptPending when config missing; adopt existing junction targets on upgrade.",
+        "Startup ensureProfilesLocationInitialized + IPC open/migrate/apply-suggested."
+      ],
+      "kind": "improve",
+      "userTitle": "Profiles storage location",
+      "userSummary": "",
+      "userHighlights": [
+        "Split profiles Root from Electron user Data .",
+        "Settings → Data folder: change migrate profiles location",
+        "Config: {user Data} data profiles-location.json .",
+        "NSIS seeds first-run prompt Pending when config missing"
+      ]
+    },
+    {
+      "version": "1.0.155",
+      "date": "2026-07-29",
+      "at": "2026-07-29T14:18:00+07:00",
+      "title": "Profiles directory More menu SSOT",
+      "bullets": [
+        "Replace custom More dropdown with HubDirectoryBulkMoreMenu (Groups Â· Export Â· Import)."
+      ],
+      "kind": "improve",
+      "userTitle": "Profiles directory More menu shared UI",
+      "userSummary": "",
+      "userHighlights": [
+        "Replace custom More dropdown with Hub Directory Bulk More Menu ."
+      ]
+    },
+    {
+      "version": "1.0.154",
+      "date": "2026-07-27",
+      "at": "2026-07-27",
+      "title": "Note column one-shot promote + Detail CDP smoke",
+      "bullets": [
+        "Promote Note column once for any Display prefs that still hide it (custom sets included)",
+        "Add scripts/smoke-profile-note-detail.mjs Stealth CDP proof (Note column + Detail Note rail)",
+        "verify-agent-smoke-headless: skip (not fail) when CloakBrowser exit 21 / launch env busy during release"
+      ],
+      "kind": "improve",
+      "userTitle": "Note column one-shot promote + Detail CDP smoke",
+      "userSummary": "",
+      "userHighlights": [
+        "Promote Note column once for any Display prefs that still hide it",
+        "Add Stealth CDP proof",
+        "Verify-agent-smoke-headless: skip when Cloak Browser exit 21 launch env busy during release"
+      ]
+    },
+    {
+      "version": "1.0.153",
+      "date": "2026-07-27",
+      "at": "2026-07-27",
+      "title": "Profiles Note column + detail Note rail",
+      "bullets": [
+        "Profiles directory: Note column visible by default (wider flex width)",
+        "Profile detail: replace History rail with editable Note rail (Create modal parity); bulk detail applies shared note when touched"
+      ],
+      "kind": "improve",
+      "userTitle": "Profiles Note column + detail Note rail",
+      "userSummary": "",
+      "userHighlights": [
+        "Profiles directory: Note column visible by default",
+        "Profile detail: replace History rail with editable Note rail"
+      ]
+    },
+    {
+      "version": "1.0.152",
+      "date": "2026-07-24",
+      "at": "2026-07-24",
+      "title": "preShip SSOT: verify-untracked + verify-no-sibling-tool-imports",
+      "bullets": [
+        "preShip SSOT: verify-untracked + verify-no-sibling-tool-imports"
+      ],
+      "kind": "improve",
+      "userTitle": "Pre Ship shared UI: verify-untracked + verify",
+      "userSummary": "",
+      "userHighlights": [
+        "Pre Ship shared UI: verify-untracked + verify"
+      ]
+    },
+    {
+      "version": "1.0.151",
+      "date": "2026-07-24",
+      "at": "2026-07-24",
+      "title": "preShip SSOT: verify-untracked-imports gate",
+      "bullets": [
+        "preShip SSOT: verify-untracked-imports gate"
+      ],
+      "kind": "improve",
+      "userTitle": "Pre Ship shared UI: verify-untracked-imports gate",
+      "userSummary": "",
+      "userHighlights": [
+        "Pre Ship shared UI: verify-untracked-imports gate"
+      ]
+    },
+    {
+      "version": "1.0.33",
+      "date": "2026-07-17",
+      "at": "2026-07-17T22:26:00+07:00",
+      "title": "hub-ui SSOT hook-stability vendor sync",
+      "bullets": [
+        "Sync hub-ui SSOT hook-stability patch into vendor/hub-ui: useHubDirectorySelection, useDirectoryHaystackFilter, and useDirectoryTableSort now self-stabilize their row-projection callbacks (idOf/keyOf/sortableValue) via refs, so inline (row) => row.id no longer rebuilds the selection/haystack/sort memos every render Ã¢â‚¬â€ snappier checkbox click, drag-sweep, search, and sort with no consumer code changes."
+      ],
+      "kind": "improve",
+      "userTitle": "Hub-ui shared UI hook-stability vendor sync",
+      "userSummary": "",
+      "userHighlights": [
+        "Sync hub-ui shared UI hook-stability patch into vendor hub-ui: use Hub Directory Selection, use D…"
+      ]
+    },
+    {
+      "version": "0.10.70",
+      "date": "2026-07-08",
+      "at": "2026-07-08T16:47:00+07:00",
+      "title": "P0003 version sync",
+      "bullets": [
+        "Align CHANGELOG with package.json v0.10.70.",
+        "Align CHANGELOG with package.json v0.10.69.",
+        "Align CHANGELOG with package.json v0.10.68.",
+        "Align CHANGELOG with package.json v0.10.67."
+      ],
+      "kind": "improve",
+      "userTitle": "P0003 version sync",
+      "userSummary": "",
+      "userHighlights": [
+        "Align CHANGELOG with package.json v0.10.70.",
+        "Align CHANGELOG with package.json v0.10.69.",
+        "Align CHANGELOG with package.json v0.10.68.",
+        "Align CHANGELOG with package.json v0.10.67."
+      ]
+    },
+    {
+      "version": "0.10.66",
+      "date": "2026-07-08",
+      "at": "2026-07-08T07:43:00+07:00",
+      "title": "fix desktop updater packaged deps (fs-extra)",
+      "bullets": [
+        "Stage electron-updater runtime deps into electron/packaged-node_modules/ before electron-builder pack (fixes Cannot find module 'fs-extra' on install).",
+        "Lazy-load updater + prepend Module.globalPaths in desktop-updater.cjs so startup survives missing deps in dev.",
+        "Add direct deps: fs-extra, builder-util-runtime, js-yaml, lazy-val, semver, tiny-typed-emitter, lodash.*.",
+        "Gate: verify-packaged-unpacked.mjs checks updater deps inside asar."
+      ],
+      "kind": "fix",
+      "userTitle": "Fix desktop updater packaged deps",
+      "userSummary": "",
+      "userHighlights": [
+        "Stage electron-updater runtime deps into electron packaged-node modules before electron-builder p…",
+        "Lazy-load updater + prepend Module.global Paths in so startup survives missing deps in dev.",
+        "Add direct deps: fs-extra, builder-util-runtime, js-yaml, lazy-val, semver, tiny-typed-emitter, l…",
+        "Gate: checks updater deps inside asar."
+      ]
+    },
+    {
+      "version": "0.10.65",
+      "date": "2026-07-08",
+      "at": "2026-07-08T07:24:00+07:00",
+      "title": "P0003 version sync",
+      "bullets": [
+        "Align CHANGELOG with package.json v0.10.65.",
+        "Align CHANGELOG with package.json v0.10.64.",
+        "Align CHANGELOG with package.json v0.10.62."
+      ],
+      "kind": "improve",
+      "userTitle": "P0003 version sync",
+      "userSummary": "",
+      "userHighlights": [
+        "Align CHANGELOG with package.json v0.10.65.",
+        "Align CHANGELOG with package.json v0.10.64.",
+        "Align CHANGELOG with package.json v0.10.62."
+      ]
+    },
+    {
+      "version": "0.10.41",
+      "date": "2026-07-06",
+      "at": "2026-07-06T17:50:00+07:00",
+      "title": "Proxy launch fix (host:port:user:pass Ã¢â€ â€™ Playwright)",
+      "bullets": [
+        "Proxy Ã¢â‚¬â€ parseProxy supports host:port:user shorthand; formatProxyForLaunch + toPlaywrightProxy normalize GPM/antidetect strings before launchPersistentContext (fixes Invalid URL on 14.249.5.164:32350:infi:infi)."
+      ],
+      "kind": "fix",
+      "userTitle": "Proxy launch fix",
+      "userSummary": "",
+      "userHighlights": [
+        "Proxy Ã¢â‚¬â€ parse Proxy supports host:port:user shorthand"
+      ]
+    }
+  ]
+}

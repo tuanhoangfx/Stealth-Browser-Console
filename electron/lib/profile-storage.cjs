@@ -1,12 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { resolveProfilesRoot } = require("./profiles-location.cjs");
 
 const folderSizeCache = new Map();
 const FOLDER_SIZE_CACHE_MAX = 5000;
 
 function profilesRoot(userDataRoot) {
-  return path.join(userDataRoot, "profiles");
+  return resolveProfilesRoot(userDataRoot);
 }
 
 function directorySizeBytes(dir) {

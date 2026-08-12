@@ -379,20 +379,20 @@
     "faviconDomain": "genspark.com"
   },
   {
-    "id": "github",
-    "label": "GitHub",
-    "match": "github",
-    "src": "/assets/brand-icons/github.png",
-    "shell": "tile",
-    "faviconDomain": "github.com"
-  },
-  {
     "id": "github-copilot",
     "label": "GitHub Copilot",
     "match": "github\\s*copilot|copilot",
     "src": "/assets/brand-icons/github-copilot.png",
     "shell": "bare",
     "faviconDomain": "githubcopilot.com"
+  },
+  {
+    "id": "github",
+    "label": "GitHub",
+    "match": "github",
+    "src": "/assets/brand-icons/github.png",
+    "shell": "tile",
+    "faviconDomain": "github.com"
   },
   {
     "id": "glm",

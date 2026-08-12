@@ -133,6 +133,8 @@ export type HubToolDetailModalProps = {
   headerTrailing?: ReactNode;
   /** Center slot — account-detail global search (golden Mail modal). */
   headerCenter?: ReactNode;
+  /** Right-corner slot before the frame close X (e.g. Log "Mark all read"). */
+  headerActions?: ReactNode;
   /** Full header override (User access, etc.). */
   header?: ReactNode;
   /** Left TOC column. */
@@ -152,6 +154,11 @@ export type HubToolDetailModalProps = {
   children: ReactNode;
   /** Inline tab/page — same chrome as modal, no overlay (P0004 System Overview). */
   embedded?: boolean;
+  /**
+   * Stacked child detail — parent Order/Team stays open (View customer / Mail recover).
+   * Escape + backdrop close only the top stack layer.
+   */
+  stacked?: boolean;
   /**
    * Save / cloud sync in flight — footer primary shows spinner + busyLabel (Delete parity).
    * No body HubLoaderOrb — button busy is the SSOT signal.
@@ -176,6 +183,7 @@ export function HubToolDetailModal({
   headerLeading,
   headerTrailing,
   headerCenter,
+  headerActions,
   header,
   toc,
   sectionIds,
@@ -189,12 +197,13 @@ export function HubToolDetailModal({
   ariaLabel,
   children,
   embedded = false,
+  stacked = false,
   busy = false,
   busyLabel: _busyLabel = HUB_DETAIL_MODAL_SAVING_LABEL,
 }: HubToolDetailModalProps) {
   const resolvedHeader =
     header ??
-    (title || headerTrailing || headerCenter ? (
+    (title || headerTrailing || headerCenter || headerActions ? (
       <header className="user-access-modal__header">
         <div className="user-access-modal__header-main min-w-0 flex-1">
           {title ? (
@@ -229,6 +238,9 @@ export function HubToolDetailModal({
         {headerCenter ? (
           <div className="user-access-modal__header-center min-w-0">{headerCenter}</div>
         ) : null}
+        {headerActions ? (
+          <div className="user-access-modal__header-actions">{headerActions}</div>
+        ) : null}
       </header>
     ) : undefined);
 
@@ -258,6 +270,7 @@ export function HubToolDetailModal({
       open={open}
       onClose={onClose}
       embedded={embedded}
+      stacked={stacked}
       ariaLabel={ariaLabel}
       ariaLabelledBy={ariaLabelledBy ?? (title ? titleId : undefined)}
       size={size}

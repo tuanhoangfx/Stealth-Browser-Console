@@ -1333,6 +1333,13 @@ export { HubModalCloseButton, type HubModalCloseButtonProps } from "./shell/HubM
 export { HubModalFrame, type HubModalFrameProps } from "./shell/HubModalFrame";
 export { HubDetailModal, type HubDetailModalProps, type HubDetailModalSize } from "./shell/HubDetailModal";
 export {
+  acquireHubDetailModalStackLayer,
+  hubDetailModalStackBackdropStyle,
+  isTopHubDetailModalStackLayer,
+  releaseHubDetailModalStackLayer,
+  resetHubDetailModalStackForTests,
+} from "./shell/hub-detail-modal-stack";
+export {
   HubToolDetailSplitLayout,
   HubToolDetailPanel,
   HubToolDetailRail,
@@ -1636,6 +1643,7 @@ export { HubLogButton, type HubLogButtonProps, type HubLogButtonVariant } from "
 export {
   HubNotifyPanel,
   resolveHubNotifyAlertIcon,
+  resolveHubNotifyAlertKind,
   type HubNotifyAlert,
   type HubNotifyAlertSeverity,
   type HubNotifyPanelProps,
@@ -1658,6 +1666,23 @@ export {
   type HubActivityKindFilter,
   type HubOpsFeedFilterValue,
 } from "./shell/HubActivityFeed";
+export {
+  HubOpsMarkAllReadButton,
+  HubOpsPanelBadge,
+  HubOpsPanelSearch,
+  HubOpsTypeTocNav,
+  HUB_OPS_CRUD_KINDS,
+  buildHubOpsTypeTocEntries,
+  hubOpsTypeTocIcon,
+  hubOpsTypeTocLabel,
+  resolveHubOpsTypeTocChrome,
+  useHubOpsTypeToc,
+  type HubOpsPanelBadgeTone,
+  type HubOpsTypeTocChrome,
+  type HubOpsTypeTocEntry,
+  type HubOpsTypeTocInput,
+  type HubOpsTypeTocNavProps,
+} from "./shell/HubOpsPanelChrome";
 export {
   hasUnreadNotifyAlerts,
   markAllNotifySeen,

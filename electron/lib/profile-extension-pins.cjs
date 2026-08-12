@@ -5,7 +5,8 @@ const { installStoreExtension } = require("./webstore-extension.cjs");
 const { prepareProfileExtensions } = require("./native-extension-load.cjs");
 
 function profileChromeDir(userDataRoot, profileId) {
-  return path.join(userDataRoot, "profiles", String(profileId));
+  const { resolveProfileUserDataDir } = require("./profiles-location.cjs");
+  return resolveProfileUserDataDir(userDataRoot, profileId);
 }
 
 /** Pin store extensions when a profile override enables them while global default is off. */
