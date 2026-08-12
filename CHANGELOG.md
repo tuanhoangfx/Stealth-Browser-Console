@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-13 - Embed Stealth icon into exe (Fast sign fix)
+
+- Version: `1.0.180`
+- Timestamp: 2026-08-13 05:10 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Fast release set `win.signAndEditExecutable=false`, which skipped rcedit icon embedding and left the default Electron atom on the exe. Keep only `signExecutable=false` so Authenticode is skipped but the Stealth `app.ico` is still applied.
+- Continues 1.0.179 packaging of `build/icons` + `resources/app.ico` for BrowserWindow.
+
+### Verification
+
+- ExtractAssociatedIcon on Setup/exe is Stealth brand (not Electron atom)
+- Title bar + taskbar show Stealth icon after install
+
+---
+
 ## 2026-08-13 - Desktop shell icon (title bar + taskbar)
 
 - Version: `1.0.179`

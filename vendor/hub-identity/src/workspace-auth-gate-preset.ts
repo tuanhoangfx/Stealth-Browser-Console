@@ -5,6 +5,7 @@ export type WorkspaceAuthToolCode =
   | "P0003"
   | "P0004"
   | "P0005"
+  | "P0012"
   | "P0013"
   | "P0016"
   | "P0020"
@@ -68,6 +69,12 @@ const BASE: Record<
   P0005: {
     title: "Welcome to CRM",
     toolInfo: { name: "CRM" },
+    forgotPassword: {},
+  },
+  P0012: {
+    title: "Welcome to Todo",
+    toolInfo: { name: "Todo" },
+    errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },
   P0013: {

@@ -545,9 +545,10 @@ if (canPrepackaged) {
 }
 builderArgs.push(`--config.directories.output=${stagingOutput}`);
 if (skipSign) {
-  // eb 26.15+: signExecutable=false skips signtool; keep separate from invalid win.sign=null.
+  // eb 26.15+: signExecutable=false skips Authenticode only.
+  // Do NOT set signAndEditExecutable=false — that also skips rcedit icon/metadata
+  // and leaves the default Electron atom on the exe (title-bar may still work via asar icon).
   builderArgs.push("--config.win.signExecutable=false");
-  builderArgs.push("--config.win.signAndEditExecutable=false");
 }
 if (fastMode && publish !== "always") {
   // store = no LZMA — package-only Fast ~45s. Publish keeps default compression (smaller feed).

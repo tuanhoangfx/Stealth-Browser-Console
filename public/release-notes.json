@@ -1,6 +1,23 @@
 {
-  "generatedAt": "2026-08-12T22:03:35.027Z",
+  "generatedAt": "2026-08-12T22:05:55.253Z",
   "entries": [
+    {
+      "version": "1.0.180",
+      "date": "2026-08-13",
+      "at": "2026-08-13T05:10:00+07:00",
+      "title": "Embed Stealth icon into exe (Fast sign fix)",
+      "bullets": [
+        "Fast release set win.signAndEditExecutable=false, which skipped rcedit icon embedding and left the default Electron atom on the exe. Keep only signExecutable=false so Authenticode is skipped but the Stealth app.ico is still applied.",
+        "Continues 1.0.179 packaging of build/icons + resources/app.ico for BrowserWindow."
+      ],
+      "kind": "improve",
+      "userTitle": "Embed Stealth icon into exe",
+      "userSummary": "",
+      "userHighlights": [
+        "Fast release set win.sign And Edit Executable=false, which skipped rcedit icon embedding and left…",
+        "Continues 1.0.179 packaging of build icons + resources app.ico for Browser Window."
+      ]
+    },
     {
       "version": "1.0.179",
       "date": "2026-08-13",
@@ -189,27 +206,6 @@
         "Align CHANGELOG with package.json v0.10.69.",
         "Align CHANGELOG with package.json v0.10.68.",
         "Align CHANGELOG with package.json v0.10.67."
-      ]
-    },
-    {
-      "version": "0.10.66",
-      "date": "2026-07-08",
-      "at": "2026-07-08T07:43:00+07:00",
-      "title": "fix desktop updater packaged deps (fs-extra)",
-      "bullets": [
-        "Stage electron-updater runtime deps into electron/packaged-node_modules/ before electron-builder pack (fixes Cannot find module 'fs-extra' on install).",
-        "Lazy-load updater + prepend Module.globalPaths in desktop-updater.cjs so startup survives missing deps in dev.",
-        "Add direct deps: fs-extra, builder-util-runtime, js-yaml, lazy-val, semver, tiny-typed-emitter, lodash.*.",
-        "Gate: verify-packaged-unpacked.mjs checks updater deps inside asar."
-      ],
-      "kind": "fix",
-      "userTitle": "Fix desktop updater packaged deps",
-      "userSummary": "",
-      "userHighlights": [
-        "Stage electron-updater runtime deps into electron packaged-node modules before electron-builder p…",
-        "Lazy-load updater + prepend Module.global Paths in so startup survives missing deps in dev.",
-        "Add direct deps: fs-extra, builder-util-runtime, js-yaml, lazy-val, semver, tiny-typed-emitter, l…",
-        "Gate: checks updater deps inside asar."
       ]
     }
   ]
