@@ -1044,6 +1044,7 @@ export {
   type HubMainShellMode,
   type ToolManifestUiShell,
   type ToolManifestUiShellInput,
+  hubAppShellClassName,
 } from "./shell/hub-main-shell-class";
 export { applyHubEmbedDocumentClass, isHubEmbedMode } from "./shell/hub-embed-mode";
 export {

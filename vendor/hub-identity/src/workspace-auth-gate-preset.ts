@@ -43,23 +43,38 @@ const P0020_ANONYMOUS_HINTS: Record<string, string> = {
   system: "Browse system tools locally. Admin features require sign-in.",
 };
 
-const BASE: Record<
-  WorkspaceAuthToolCode,
-  Omit<WorkspaceAuthGatePreset, "toolInfo"> & { toolInfo: Omit<WorkspaceAuthGateToolInfo, "tagline"> }
-> = {
+/**
+ * Title + tagline per tool, in one table.
+ *
+ * The tagline used to live in a separate ternary chain whose final `else` was P0016's copy, so
+ * every tool added here but not there silently shipped "Multi-channel inbox & fanpages" on its
+ * login screen. P0012 did exactly that. Keeping both fields in one record makes a missing entry
+ * a type error instead of another tool's branding.
+ */
+/**
+ * The only taglines that depend on more than the tool code.
+ *
+ * Explicit and narrow on purpose: the old resolution chain made every tool's tagline look
+ * variant-dependent when only P0004's is.
+ */
+const VARIANT_TAGLINES: Partial<Record<WorkspaceAuthToolCode, Record<string, string>>> = {
+  P0004: { users: "Users, roles & password reset" },
+};
+
+const BASE: Record<WorkspaceAuthToolCode, WorkspaceAuthGatePreset> = {
   P0001: {
     title: "Welcome to GPM Console",
-    toolInfo: { name: "GPM Console" },
+    toolInfo: { name: "GPM Console", tagline: "GPM Login automation" },
     forgotPassword: {},
   },
   P0003: {
     title: "Welcome to Stealth Browser Console",
-    toolInfo: { name: "Stealth Browser Console" },
+    toolInfo: { name: "Stealth Browser Console", tagline: "" },
     forgotPassword: {},
   },
   P0004: {
     title: "Welcome to Tool Hub",
-    toolInfo: { name: "Tool Hub" },
+    toolInfo: { name: "Tool Hub", tagline: "Workspace login for infi tools" },
     forgotPassword: {
       syntheticHint:
         "Link your email in Account after sign-in, or ask an admin to reset your password.",
@@ -68,18 +83,18 @@ const BASE: Record<
   },
   P0005: {
     title: "Welcome to CRM",
-    toolInfo: { name: "CRM" },
+    toolInfo: { name: "CRM", tagline: "CRM · customers & orders" },
     forgotPassword: {},
   },
   P0012: {
     title: "Welcome to Todo",
-    toolInfo: { name: "Todo" },
+    toolInfo: { name: "Todo", tagline: "Tasks, boards & team workload" },
     errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },
   P0013: {
     title: "Welcome to YouTube Channel Dashboard",
-    toolInfo: { name: "YouTube Channel Dashboard" },
+    toolInfo: { name: "YouTube Channel Dashboard", tagline: "Channel analytics & team ops" },
     forgotPassword: {
       syntheticHint:
         "Link your email in Account after sign-in, or ask an admin to reset your password.",
@@ -88,24 +103,24 @@ const BASE: Record<
   },
   P0016: {
     title: "Welcome to Chat Center",
-    toolInfo: { name: "Chat Center" },
+    toolInfo: { name: "Chat Center", tagline: "Multi-channel inbox & fanpages" },
     errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },
   P0020: {
     title: "Welcome to Data Box",
-    toolInfo: { name: "Data Box" },
+    toolInfo: { name: "Data Box", tagline: "Notes, cookies & 2FA vault" },
     errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },
   P0021: {
     title: "Welcome to AutoVideo Studio",
-    toolInfo: { name: "AutoVideo Studio" },
+    toolInfo: { name: "AutoVideo Studio", tagline: "Local video studio & render jobs" },
     forgotPassword: {},
   },
   P0022: {
     title: "Welcome to Infi Store",
-    toolInfo: { name: "Infi Store" },
+    toolInfo: { name: "Infi Store", tagline: "Store · checkout & order history" },
     forgotPassword: {},
   },
 };
@@ -126,25 +141,8 @@ export function createWorkspaceAuthGatePreset(
   const base = BASE[options.code];
   const tagline =
     options.tagline ??
-    (options.code === "P0004"
-      ? options.variant === "users"
-        ? "Users, roles & password reset"
-        : "Workspace login for infi tools"
-      : options.code === "P0001"
-        ? "GPM Login automation"
-      : options.code === "P0003"
-        ? ""
-      : options.code === "P0005"
-        ? "CRM · customers & orders"
-      : options.code === "P0013"
-        ? "Channel analytics & team ops"
-      : options.code === "P0021"
-        ? "Local video studio & render jobs"
-      : options.code === "P0022"
-        ? "Store · checkout & order history"
-      : options.code === "P0020"
-        ? "Notes, cookies & 2FA vault"
-        : "Multi-channel inbox & fanpages");
+    (options.variant ? VARIANT_TAGLINES[options.code]?.[options.variant] : undefined) ??
+    base.toolInfo.tagline;
 
   const anonymousHint =
     options.code === "P0020" && options.variant

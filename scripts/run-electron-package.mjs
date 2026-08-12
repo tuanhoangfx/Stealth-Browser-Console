@@ -178,7 +178,7 @@ function promoteStagingToProductOutput(stagingOutput, ver) {
   if (!fs.existsSync(stagedUnpacked)) return;
 
   if (installerOnly) {
-    console.log("run-electron-package: installer-only — skip win-unpacked promote (Fast path)");
+    console.log("run-electron-package: installer-only — skip full win-unpacked promote (Fast path)");
     const seedExe = path.join(targetUnpacked, "Stealth Browser Console.exe");
     if (!fs.existsSync(seedExe)) {
       try {
@@ -186,6 +186,25 @@ function promoteStagingToProductOutput(stagingOutput, ver) {
         console.log("run-electron-package: seeded win-unpacked for next Fast prepackaged");
       } catch (e) {
         console.warn(`run-electron-package: seed win-unpacked skipped (${e && e.message})`);
+      }
+    } else {
+      // Keep warm tree's shell icon current — otherwise next --prepackaged re-ships Electron atom.
+      try {
+        const srcIco = path.join(stagedUnpacked, "resources", "app.ico");
+        const dstIco = path.join(targetUnpacked, "resources", "app.ico");
+        if (fs.existsSync(srcIco)) {
+          fs.mkdirSync(path.dirname(dstIco), { recursive: true });
+          fs.copyFileSync(srcIco, dstIco);
+        }
+        const srcExe = path.join(stagedUnpacked, "Stealth Browser Console.exe");
+        if (fs.existsSync(srcExe)) {
+          fs.copyFileSync(srcExe, seedExe);
+          console.log("run-electron-package: refreshed warm exe + resources/app.ico (shell icon)");
+        }
+      } catch (e) {
+        console.warn(
+          `run-electron-package: warm shell-icon refresh skipped (${e && e.message}) — close packaged Stealth if EPERM`,
+        );
       }
     }
     return;
@@ -587,6 +606,9 @@ if ((result.status ?? 1) !== 0) {
   process.exit(result.status ?? 1);
 }
 
+// Hard gate: never ship Electron default atom / missing BrowserWindow icon assets.
+runNodeScript("scripts/smoke-packaged-shell-icon.mjs", ["--staging", stagingOutput]);
+
 promoteStagingToProductOutput(stagingOutput, version);
 rmDir(stagingOutput);
 
@@ -595,7 +617,7 @@ if (!canPrepackaged) {
   runNodeScript("scripts/smoke-packaged-cloakbrowser-import.cjs");
   runNodeScript("scripts/smoke-asar-ps1-resolve.mjs");
 } else {
-  console.log("run-electron-package: skip post-pack smokes (Fast prepackaged; tree already verified)");
+  console.log("run-electron-package: skip cloak/ps1 smokes (Fast prepackaged); shell-icon smoke already ran");
 }
 
 const tag = `v${version}`;

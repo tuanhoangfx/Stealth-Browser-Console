@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-13 - Shell icon pack gate (no Electron atom regress)
+
+- Version: `1.0.181`
+- Timestamp: 2026-08-13 05:20 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Add `smoke-packaged-shell-icon.mjs` post-pack gate (exe icon ≠ Electron atom; `resources/app.ico`; forbid live `signAndEditExecutable=false`).
+- Fast installer-only refreshes warm exe + `resources/app.ico` so next `--prepackaged` cannot re-ship the atom icon.
+
+### Verification
+
+- `node scripts/smoke-packaged-shell-icon.mjs` PASS on packaged tree
+
+---
+
 ## 2026-08-13 - Embed Stealth icon into exe (Fast sign fix)
 
 - Version: `1.0.180`

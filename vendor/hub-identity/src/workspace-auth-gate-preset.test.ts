@@ -31,4 +31,25 @@ describe("createWorkspaceAuthGatePreset", () => {
     expect(preset.toolInfo.name).toBe("GPM Console");
     expect(preset.toolInfo.tagline).toBe("GPM Login automation");
   });
+
+  it("gives P0012 its own tagline, not another tool's", () => {
+    const preset = createWorkspaceAuthGatePreset({ code: "P0012" });
+    expect(preset.title).toBe("Welcome to Todo");
+    expect(preset.toolInfo.name).toBe("Todo");
+    expect(preset.toolInfo.tagline).toBe("Tasks, boards & team workload");
+  });
+
+  it("never falls back to another tool's tagline", () => {
+    // The old resolution chain ended in P0016's copy, so any code missing from it shipped
+    // "Multi-channel inbox & fanpages" on its login screen. P0012 did exactly that.
+    const codes = [
+      "P0001", "P0003", "P0004", "P0005", "P0012", "P0013", "P0016", "P0020", "P0021", "P0022",
+    ] as const;
+    const p0016 = createWorkspaceAuthGatePreset({ code: "P0016" }).toolInfo.tagline;
+    for (const code of codes) {
+      const preset = createWorkspaceAuthGatePreset({ code });
+      if (code === "P0016") continue;
+      expect(preset.toolInfo.tagline, `${code} borrowed P0016's tagline`).not.toBe(p0016);
+    }
+  });
 });

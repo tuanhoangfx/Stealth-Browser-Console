@@ -1,6 +1,23 @@
 {
-  "generatedAt": "2026-08-12T22:11:36.162Z",
+  "generatedAt": "2026-08-12T22:18:51.188Z",
   "entries": [
+    {
+      "version": "1.0.181",
+      "date": "2026-08-13",
+      "at": "2026-08-13T05:20:00+07:00",
+      "title": "Shell icon pack gate (no Electron atom regress)",
+      "bullets": [
+        "Add smoke-packaged-shell-icon.mjs post-pack gate (exe icon ≠ Electron atom; resources/app.ico; forbid live signAndEditExecutable=false).",
+        "Fast installer-only refreshes warm exe + resources/app.ico so next --prepackaged cannot re-ship the atom icon."
+      ],
+      "kind": "improve",
+      "userTitle": "Shell icon pack gate",
+      "userSummary": "",
+      "userHighlights": [
+        "Add post-pack gate .",
+        "Fast installer-only refreshes warm exe + resources app.ico so next --prepackaged cannot re-ship t…"
+      ]
+    },
     {
       "version": "1.0.180",
       "date": "2026-08-13",
@@ -185,27 +202,6 @@
       "userSummary": "",
       "userHighlights": [
         "Sync hub-ui shared UI hook-stability patch into vendor hub-ui: use Hub Directory Selection, use D…"
-      ]
-    },
-    {
-      "version": "0.10.70",
-      "date": "2026-07-08",
-      "at": "2026-07-08T16:47:00+07:00",
-      "title": "P0003 version sync",
-      "bullets": [
-        "Align CHANGELOG with package.json v0.10.70.",
-        "Align CHANGELOG with package.json v0.10.69.",
-        "Align CHANGELOG with package.json v0.10.68.",
-        "Align CHANGELOG with package.json v0.10.67."
-      ],
-      "kind": "improve",
-      "userTitle": "P0003 version sync",
-      "userSummary": "",
-      "userHighlights": [
-        "Align CHANGELOG with package.json v0.10.70.",
-        "Align CHANGELOG with package.json v0.10.69.",
-        "Align CHANGELOG with package.json v0.10.68.",
-        "Align CHANGELOG with package.json v0.10.67."
       ]
     }
   ]

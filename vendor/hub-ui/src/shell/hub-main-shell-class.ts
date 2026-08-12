@@ -62,3 +62,18 @@ export function hubMainShellClassFromManifest(
     extraClassName,
   });
 }
+
+/**
+ * Golden hub app shell — the flex row that holds the sidebar and `<main>`.
+ *
+ * `#root` is a flex *column* (styles/base.css), so a host that renders the sidebar and main as
+ * direct root children stacks them: the sidebar takes the full viewport height and main lands
+ * below the fold. P0012 shipped exactly that. This row wrapper is what keeps them side by side.
+ *
+ * Shared because P0020 and P0026 each spelled the same class string out by hand.
+ */
+export function hubAppShellClassName(extraClassName = ""): string {
+  return ["hub-app theme-hub flex h-full min-h-0 min-h-dvh w-full overflow-hidden", extraClassName]
+    .filter(Boolean)
+    .join(" ");
+}
