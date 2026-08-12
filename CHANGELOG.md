@@ -1,11 +1,30 @@
 # Changelog
 
+## 2026-08-13 - Hub User ID sign-in resolve-login
+
+- Version: `1.0.178`
+- Timestamp: 2026-08-13 04:05 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Fix packaged Hub login for User ID (e.g. `czpgo`): use `signInHubIdentityPlane` so `/hub/auth/resolve-login` maps to real auth email (`czpgo@outlook.com`) before synthetic `@infix1.io.vn` fallback.
+
+### Verification
+
+- CDP: resolve-login → password grant on `czpgo@outlook.com` first
+- Fast Vite build + local asar patch smoke
+
+---
+
 ## 2026-08-13 - Profiles storage location (portable) + hub-ui modal TS
 
 - Version: `1.0.177`
 - Timestamp: 2026-08-13 02:55 (UTC+7)
 - Type: Patch
-- Status: Draft
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.0.177
 
 ### Changes
 

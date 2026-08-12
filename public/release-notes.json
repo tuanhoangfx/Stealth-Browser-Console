@@ -1,19 +1,36 @@
 {
-  "generatedAt": "2026-08-12T19:48:00.358Z",
+  "generatedAt": "2026-08-12T21:06:48.347Z",
   "entries": [
     {
-      "version": "1.0.176",
-      "date": "2026-08-12",
-      "at": "2026-08-12T19:48:00.358Z",
-      "title": "chore: release v1.0.176",
+      "version": "1.0.178",
+      "date": "2026-08-13",
+      "at": "2026-08-13T04:05:00+07:00",
+      "title": "Hub User ID sign-in resolve-login",
       "bullets": [
-        "Maintenance and polish since the last documented release."
+        "Fix packaged Hub login for User ID (e.g. czpgo): use signInHubIdentityPlane so /hub/auth/resolve-login maps to real auth email (czpgo@outlook.com) before synthetic @infix1.io.vn fallback."
       ],
       "kind": "improve",
-      "userTitle": "Release v1.0.176",
+      "userTitle": "Hub User ID sign-in resolve-login",
       "userSummary": "",
       "userHighlights": [
-        "Maintenance and polish since the last documented release."
+        "Fix packaged Hub login for User ID : use sign In Hub Identity Plane so hub auth resolve-login map…"
+      ]
+    },
+    {
+      "version": "1.0.177",
+      "date": "2026-08-13",
+      "at": "2026-08-13T02:55:00+07:00",
+      "title": "Profiles storage location (portable) + hub-ui modal TS",
+      "bullets": [
+        "Fix vendor hub-ui HubDetailModal CSS custom-property typing (unblocks desktop Release build).",
+        "Includes 1.0.176 profilesRoot / Settings Data folder / NSIS first-run."
+      ],
+      "kind": "improve",
+      "userTitle": "Profiles storage location + hub-ui modal TS",
+      "userSummary": "",
+      "userHighlights": [
+        "Fix vendor hub-ui Hub Detail Modal CSS custom-property typing .",
+        "Includes 1.0.176 profiles Root Settings Data folder NSIS first-run."
       ]
     },
     {
@@ -23,8 +40,8 @@
       "title": "Profiles storage location (portable)",
       "bullets": [
         "Split profilesRoot from Electron userData (DB/settings stay in AppData).",
-        "Settings → Data folder: change / migrate profiles location; recommended non-system drive path.",
-        "Config: {userData}/data/profiles-location.json (no hard-coded D: — heuristic per machine).",
+        "Settings â†’ Data folder: change / migrate profiles location; recommended non-system drive path.",
+        "Config: {userData}/data/profiles-location.json (no hard-coded D: â€” heuristic per machine).",
         "NSIS seeds first-run promptPending when config missing; adopt existing junction targets on upgrade.",
         "Startup ensureProfilesLocationInitialized + IPC open/migrate/apply-suggested."
       ],
@@ -33,7 +50,7 @@
       "userSummary": "",
       "userHighlights": [
         "Split profiles Root from Electron user Data .",
-        "Settings → Data folder: change migrate profiles location",
+        "Settings â†’ Data folder: change migrate profiles location",
         "Config: {user Data} data profiles-location.json .",
         "NSIS seeds first-run prompt Pending when config missing"
       ]
@@ -44,7 +61,7 @@
       "at": "2026-07-29T14:18:00+07:00",
       "title": "Profiles directory More menu SSOT",
       "bullets": [
-        "Replace custom More dropdown with HubDirectoryBulkMoreMenu (Groups Â· Export Â· Import)."
+        "Replace custom More dropdown with HubDirectoryBulkMoreMenu (Groups Ã‚Â· Export Ã‚Â· Import)."
       ],
       "kind": "improve",
       "userTitle": "Profiles directory More menu shared UI",
@@ -125,7 +142,7 @@
       "at": "2026-07-17T22:26:00+07:00",
       "title": "hub-ui SSOT hook-stability vendor sync",
       "bullets": [
-        "Sync hub-ui SSOT hook-stability patch into vendor/hub-ui: useHubDirectorySelection, useDirectoryHaystackFilter, and useDirectoryTableSort now self-stabilize their row-projection callbacks (idOf/keyOf/sortableValue) via refs, so inline (row) => row.id no longer rebuilds the selection/haystack/sort memos every render Ã¢â‚¬â€ snappier checkbox click, drag-sweep, search, and sort with no consumer code changes."
+        "Sync hub-ui SSOT hook-stability patch into vendor/hub-ui: useHubDirectorySelection, useDirectoryHaystackFilter, and useDirectoryTableSort now self-stabilize their row-projection callbacks (idOf/keyOf/sortableValue) via refs, so inline (row) => row.id no longer rebuilds the selection/haystack/sort memos every render ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â snappier checkbox click, drag-sweep, search, and sort with no consumer code changes."
       ],
       "kind": "improve",
       "userTitle": "Hub-ui shared UI hook-stability vendor sync",
@@ -193,21 +210,6 @@
         "Align CHANGELOG with package.json v0.10.65.",
         "Align CHANGELOG with package.json v0.10.64.",
         "Align CHANGELOG with package.json v0.10.62."
-      ]
-    },
-    {
-      "version": "0.10.41",
-      "date": "2026-07-06",
-      "at": "2026-07-06T17:50:00+07:00",
-      "title": "Proxy launch fix (host:port:user:pass Ã¢â€ â€™ Playwright)",
-      "bullets": [
-        "Proxy Ã¢â‚¬â€ parseProxy supports host:port:user shorthand; formatProxyForLaunch + toPlaywrightProxy normalize GPM/antidetect strings before launchPersistentContext (fixes Invalid URL on 14.249.5.164:32350:infi:infi)."
-      ],
-      "kind": "fix",
-      "userTitle": "Proxy launch fix",
-      "userSummary": "",
-      "userHighlights": [
-        "Proxy Ã¢â‚¬â€ parse Proxy supports host:port:user shorthand"
       ]
     }
   ]
