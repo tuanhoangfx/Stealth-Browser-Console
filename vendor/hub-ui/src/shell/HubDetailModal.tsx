@@ -136,7 +136,7 @@ export function HubDetailModal({
       ]
         .filter(Boolean)
         .join(" ")}
-      style={backdropStyle}
+      style={backdropStyle as CSSProperties}
       role="presentation"
       onClick={onBackdropClick}
       data-hub-modal-stack={effectiveLayer}

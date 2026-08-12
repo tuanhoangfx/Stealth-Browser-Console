@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "1.0.176",
+  "version": "1.0.177",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -10,13 +10,14 @@
     "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console.git"
   },
   "scripts": {
-    "lint": "node ../scripts/hub-vite-alias-check.mjs --code P0003 && node ../scripts/hub-identity-vendor-hash-check.mjs --code P0003",
+    "lint": "node ../scripts/run-script-chain.cjs -- node ../scripts/hub-vite-alias-check.mjs --code P0003 -- node ../scripts/hub-identity-vendor-hash-check.mjs --code P0003",
     "predev": "node scripts/predev.mjs",
     "predev:web": "node scripts/predev.mjs",
     "dev": "node scripts/dev-node.mjs",
     "dev:recover": "node scripts/dev-recover.cjs",
     "dev:recover:open": "node scripts/dev-recover.cjs --open",
     "db:repair": "node scripts/repair-stealth-db.mjs",
+    "db:prune-orphans": "node scripts/prune-catalog-orphans.mjs",
     "dev:reload": "node scripts/dev-desktop-reload.mjs",
     "sync:api": "node scripts/sync-stealth-api-surface.mjs",
     "sync:9router": "node scripts/sync-9router-from-p0007.mjs",

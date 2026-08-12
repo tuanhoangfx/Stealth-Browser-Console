@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 /**
  * Stacked Hub detail modals (P0020 Mail-from-Team / P0005 View customer from Order).
  * Parent stays mounted; child opens on a higher layer. Escape closes only the top layer.
@@ -18,7 +20,6 @@ export function releaseHubDetailModalStackLayer(layer: number): void {
     hubDetailModalStackTop = Math.max(0, hubDetailModalStackTop - 1);
     return;
   }
-  // Out-of-order unmount (parent closed while child open) — clamp.
   if (layer < hubDetailModalStackTop) {
     hubDetailModalStackTop = Math.max(0, layer - 1);
   }
@@ -29,10 +30,10 @@ export function isTopHubDetailModalStackLayer(layer: number): boolean {
 }
 
 /** CSS variable bump per stack depth above the first open modal. */
-export function hubDetailModalStackBackdropStyle(layer: number): { ["--hub-modal-backdrop-z"]?: number } {
+export function hubDetailModalStackBackdropStyle(layer: number): CSSProperties {
   if (layer <= 1) return {};
   const base = 1000;
-  return { ["--hub-modal-backdrop-z"]: base + (layer - 1) * 50 };
+  return { ["--hub-modal-backdrop-z"]: String(base + (layer - 1) * 50) } as CSSProperties;
 }
 
 /** Test / reset helper — not for product UI. */
