@@ -2,6 +2,7 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const {
+  listAppIconCandidates,
   resolveAppIconPath,
   resolveAppIconPathIfExists,
   assertAppIconReady,
@@ -21,6 +22,12 @@ describe("desktop-app-icon", () => {
   it("committed app.ico exists and is non-trivial size", () => {
     const iconPath = assertAppIconReady(rootDir);
     assert.equal(resolveAppIconPathIfExists(rootDir), iconPath);
+  });
+
+  it("lists build/icons before resourcesPath fallbacks", () => {
+    const candidates = listAppIconCandidates(rootDir);
+    assert.equal(candidates[0], path.join(rootDir, "build", "icons", "app.ico"));
+    assert.ok(candidates.length >= 2);
   });
 });
 

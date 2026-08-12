@@ -205,6 +205,7 @@ export {
   HUB_BOOT_LOADER_ID,
   HUB_TAB_LOADER_ROOT_ID,
 } from "./loading/hub-loader-dom";
+export { useHubTabLeader } from "./loading/useHubTabLeader";
 export {
   HubToolLoadingProvider,
   useHubToolLoading,

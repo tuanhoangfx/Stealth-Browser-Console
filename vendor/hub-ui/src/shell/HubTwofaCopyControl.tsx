@@ -55,7 +55,6 @@ export function HubTwofaCopyControl({
       <button
         type="button"
         className={`hub-directory-copy-control twofa-copy-control ${className}`.trim()}
-        title={copyToastLabel}
         aria-label={copyToastLabel}
         onClick={runCopy}
       >

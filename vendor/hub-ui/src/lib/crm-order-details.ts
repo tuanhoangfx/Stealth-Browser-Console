@@ -8,8 +8,8 @@ export type CrmOrderDetailsMirrorRow = {
   id: string;
   product_name?: string | null;
   external_order_id?: string | null;
-  /** CRM order status (🚦 sheet_status) — used to keep only completed orders in usage counts. */
-  sheet_status?: string | null;
+  /** CRM order status (🚦 order_status) — used to keep only completed orders in usage counts. */
+  order_status?: string | null;
   metadata?: Record<string, unknown> | null;
 };
 

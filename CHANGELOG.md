@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-08-13 - Desktop shell icon (title bar + taskbar)
+
+- Version: `1.0.179`
+- Timestamp: 2026-08-13 04:30 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Package `build/icons/**` into the app (asar + `resources/app.ico`) so BrowserWindow can load the Stealth icon — Fast releases had omitted it, leaving a blank title-bar glyph and the default Electron atom on the exe.
+- Fast prepackaged path now seeds icons into `app.asar` and forces rebuild when the shell icon is missing.
+- Resolve icon with `resourcesPath` fallback (Windows NativeImage).
+
+### Verification
+
+- `node --test electron/lib/desktop-app-icon.test.cjs`
+- Install Setup → title bar / taskbar show Stealth brand icon (not Electron atom / blank)
+
+---
+
 ## 2026-08-13 - Hub User ID sign-in resolve-login
 
 - Version: `1.0.178`

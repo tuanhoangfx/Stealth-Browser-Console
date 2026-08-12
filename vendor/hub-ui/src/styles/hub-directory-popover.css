@@ -4,6 +4,8 @@
   display: inline-flex;
   align-items: center;
   max-width: 100%;
+  /* Flex directory cells — shrink so trailing open icons (Customer / Service) stay visible. */
+  min-width: 0;
 }
 
 .hub-directory-popover-anchor > .hub-users-th-label {

@@ -2089,12 +2089,12 @@ table.hub-users-table--route-access .hub-users-th-text {
   text-overflow: ellipsis;
 }
 
-/* Directory variants — tool theme may extend (P0020 data-box-layout) */
-table.hub-users-table--sheet {
+/* Directory variants — tool theme may extend (P0020 data-box-layout). */
+table.hub-users-table--dense {
   font-size: var(--hub-table-body-size, 12px);
 }
 
-table.hub-users-table--sheet th {
+table.hub-users-table--dense th {
   font-size: var(--hub-table-header-size, 12px);
 }
 

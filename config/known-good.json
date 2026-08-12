@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.169-stable",
-  "version": "1.0.169",
-  "gitCommit": "30569896deee5201d2b87c866afedd0eec8e79eb",
-  "gitTag": "v1.0.169-stable",
+  "label": "v1.0.178-stable",
+  "version": "1.0.178",
+  "gitCommit": null,
+  "gitTag": "v1.0.178-stable",
   "packagedFrom": "30569896deee5201d2b87c866afedd0eec8e79eb",
   "notes": "v1.0.169: digit gap spaced8, orphan kill fix, runtime console SSOT lock. Installer pinned.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.169.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.178.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "dzRVUhcwb5N5T7oWUMEeoNFm2bWUQlZQne+1olwK7WplIyl88m5X6zTHcj4nnaaHOlr8Mzfoups7Sazist1mxA==",
-    "capturedAt": "2026-07-30T12:13:51.083Z"
+    "sha512": "Fm/Zk8iKRYmZeGKC0meXp387LAyEb68u47WPM59zDiSU/cljNyicXOjf8JiE4gln5LgSXGj2eYqKfBduQI6ViA==",
+    "capturedAt": "2026-08-12T21:12:32.876Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

@@ -25,7 +25,7 @@ export type HubDirectoryTableVariant =
   | "agent-context"
   | "tool-versions"
   | "tool-links"
-  | "sheet"
+  | "dense"
   | "folders"
   | "cookie-routes";
 
@@ -304,7 +304,7 @@ export const HUB_DIRECTORY_FRAME_CLASS = "hub-directory-frame";
 export const HUB_DIRECTORY_FRAME_TABLE_CLASS = "hub-directory-frame-table";
 
 export function hubDirectoryFrameTableClass(variant: HubDirectoryTableVariant = "6"): string {
-  return `${hubDirectoryTableClass(variant)} hub-users-table--sheet ${HUB_DIRECTORY_FRAME_TABLE_CLASS}`;
+  return `${hubDirectoryTableClass(variant)} hub-users-table--dense ${HUB_DIRECTORY_FRAME_TABLE_CLASS}`;
 }
 
 export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "default"): string {
@@ -336,8 +336,8 @@ export function hubDirectoryTableClass(variant: HubDirectoryTableVariant = "defa
   if (variant === "tool-links") {
     return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--tool-links`;
   }
-  if (variant === "sheet") {
-    return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--sheet`;
+  if (variant === "dense") {
+    return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--dense`;
   }
   if (variant === "folders") {
     return `${HUB_DIRECTORY_TABLE_BASE_CLASS} hub-users-table--folders`;

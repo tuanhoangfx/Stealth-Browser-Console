@@ -261,15 +261,32 @@ function refreshUnpackedAppAsar(unpackedDir) {
     const raw = asarApi.extractFile(asarPath, "package.json");
     const asarPkg = JSON.parse(Buffer.isBuffer(raw) ? raw.toString("utf8") : String(raw));
     const distIndex = path.join(root, "dist", "index.html");
+    let hasShellIcon = false;
+    try {
+      const ico = asarApi.extractFile(asarPath, "build/icons/app.ico");
+      hasShellIcon = Buffer.isBuffer(ico) ? ico.length >= 1024 : Buffer.byteLength(String(ico)) >= 1024;
+    } catch {
+      hasShellIcon = false;
+    }
     if (
+      hasShellIcon &&
       asarPkg.version === version &&
       fs.existsSync(distIndex) &&
       fs.statSync(distIndex).mtimeMs <= fs.statSync(asarPath).mtimeMs
     ) {
       const warm = path.join(os.tmpdir(), `p0003-app-warm-${Date.now()}.asar`);
       fs.copyFileSync(asarPath, warm);
-      console.log(`run-electron-package: skip asar rebuild (v${version}, dist older than asar)`);
+      const appIcoSrc = path.join(root, "build", "icons", "app.ico");
+      if (fs.existsSync(appIcoSrc)) {
+        const appIcoDest = path.join(unpackedDir, "resources", "app.ico");
+        fs.mkdirSync(path.dirname(appIcoDest), { recursive: true });
+        fs.copyFileSync(appIcoSrc, appIcoDest);
+      }
+      console.log(`run-electron-package: skip asar rebuild (v${version}, dist older than asar, shell icon ok)`);
       return warm;
+    }
+    if (!hasShellIcon) {
+      console.log("run-electron-package: app.asar missing build/icons/app.ico — forcing rebuild");
     }
   } catch {
     /* fall through to rebuild */
@@ -281,6 +298,18 @@ function refreshUnpackedAppAsar(unpackedDir) {
   const distDest = path.join(tmp, "dist");
   rmDir(distDest);
   copyDir(path.join(root, "dist"), distDest);
+  // Always seed shell icons — BrowserWindow reads build/icons/app.ico from asar root.
+  // Historical Fast trees omitted this path → blank title-bar / taskbar glyph.
+  const iconsSrc = path.join(root, "build", "icons");
+  if (fs.existsSync(path.join(iconsSrc, "app.ico"))) {
+    const iconsDest = path.join(tmp, "build", "icons");
+    fs.mkdirSync(path.dirname(iconsDest), { recursive: true });
+    rmDir(iconsDest);
+    copyDir(iconsSrc, iconsDest);
+    console.log("run-electron-package: seeded build/icons into app.asar");
+  } else {
+    console.warn("run-electron-package: build/icons/app.ico missing — title-bar icon will be blank");
+  }
   const pkgFile = path.join(tmp, "package.json");
   if (fs.existsSync(pkgFile)) {
     const asarPkg = JSON.parse(fs.readFileSync(pkgFile, "utf8"));
@@ -326,6 +355,15 @@ function refreshUnpackedAppAsar(unpackedDir) {
   }
   fs.copyFileSync(tmpAsar, asarPath);
   console.log(`run-electron-package: rebuilt app.asar (dist UI, ${(fs.statSync(asarPath).size / (1024 * 1024)).toFixed(1)} MB)`);
+
+  // Outside-asar copy for NativeImage (Windows can be flaky reading .ico from asar).
+  const appIcoSrc = path.join(root, "build", "icons", "app.ico");
+  if (fs.existsSync(appIcoSrc)) {
+    const appIcoDest = path.join(unpackedDir, "resources", "app.ico");
+    fs.mkdirSync(path.dirname(appIcoDest), { recursive: true });
+    fs.copyFileSync(appIcoSrc, appIcoDest);
+    console.log("run-electron-package: wrote resources/app.ico (BrowserWindow fallback)");
+  }
 
   const tokenSrc = path.join(root, "build", "updater-gh-token");
   if (fs.existsSync(tokenSrc)) {
