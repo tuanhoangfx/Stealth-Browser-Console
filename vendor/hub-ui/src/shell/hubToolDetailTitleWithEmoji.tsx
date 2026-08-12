@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 
 /** Sheet sticker + label — directory header / tool-detail panel / rail parity. */
 export function hubToolDetailTitleWithEmoji(title: string, emoji: string): ReactNode {
@@ -22,9 +22,9 @@ export function resolveHubToolDetailRailHead({
 }: {
   title: ReactNode;
   titleEmoji?: string;
-  icon?: LucideIcon;
+  icon?: HubGlyphComponent;
   iconClassName?: string;
-}): { titleNode: ReactNode; icon?: LucideIcon; iconClassName?: string } {
+}): { titleNode: ReactNode; icon?: HubGlyphComponent; iconClassName?: string } {
   if (!titleEmoji) {
     return { titleNode: title, icon, iconClassName };
   }

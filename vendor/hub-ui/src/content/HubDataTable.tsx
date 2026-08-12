@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import type { ReactNode } from "react";
 import type { HubTableColumnRole } from "../table/hub-table-column-meta";
 import { HubTableColumnHeader } from "./HubTableColumnHeader";
@@ -8,7 +9,8 @@ export type HubTableColumn = {
   label: string;
   className?: string;
   role?: HubTableColumnRole;
-  icon?: LucideIcon;
+  /** Widened to HubGlyphComponent — column meta headerIcon may be a memo/forwardRef object. */
+  icon?: HubGlyphComponent;
   iconClassName?: string;
   /** Sticker emoji — preferred over Lucide role icon in headers. */
   headerEmoji?: string;

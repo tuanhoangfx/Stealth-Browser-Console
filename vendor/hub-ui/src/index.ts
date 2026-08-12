@@ -1352,6 +1352,13 @@ export {
   type HubToolDetailModalProps,
   type HubToolDetailModalTocLayoutProps,
 } from "./shell/HubToolDetailModal";
+export { HUB_TOOL_DETAIL_MODAL_ADD_ACTION_TONE } from "./shell/hub-tool-detail-modal-action-tones";
+export {
+  formatVaultIdForDisplay,
+  isDraftVaultSentinelId,
+  isUuidVaultId,
+  vaultIdFromStringKey,
+} from "./lib/vault-id-from-key";
 export {
   HubConfirmDialog,
   type HubConfirmDialogProps,

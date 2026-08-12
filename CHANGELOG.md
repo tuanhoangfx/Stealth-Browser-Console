@@ -2,8 +2,8 @@
 
 ## 2026-08-12 - Profiles directory More menu SSOT
 
-- Version: `1.0.173`
-- Timestamp: 2026-08-12 17:21 (UTC+7)
+- Version: `1.0.174`
+- Timestamp: 2026-08-12 21:22 (UTC+7)
 - Type: Patch
 - Status: Draft
 

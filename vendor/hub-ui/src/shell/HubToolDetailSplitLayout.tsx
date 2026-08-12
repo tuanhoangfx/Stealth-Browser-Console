@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import { HUB_ADM_TYPE_NAV_CLASS } from "./hubAccountDetailModal";
 import { resolveHubToolDetailRailHead } from "./hubToolDetailTitleWithEmoji";
 
@@ -40,7 +40,7 @@ export function HubToolDetailPanel({
 }: {
   id?: string;
   title: ReactNode;
-  icon?: LucideIcon;
+  icon?: HubGlyphComponent;
   iconClassName?: string;
   /** Slot below panel head — meta row, filters, etc. */
   headExtra?: ReactNode;
@@ -81,7 +81,7 @@ export function HubToolDetailRail({
   title: ReactNode;
   /** Sheet sticker — replaces Lucide rail icon when set (📜 Note · 📋 Console). */
   titleEmoji?: string;
-  icon?: LucideIcon;
+  icon?: HubGlyphComponent;
   iconClassName?: string;
   children: ReactNode;
   scroll?: boolean;

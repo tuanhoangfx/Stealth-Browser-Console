@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import { createElement } from "react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubDirectoryColumnHintContent } from "./HubDirectoryColumnHint";
@@ -61,7 +62,7 @@ export type HubDirectoryColumnMetaInput = {
   colClass: string;
   role: HubTableColumnRole;
   width: string;
-  headerIcon?: LucideIcon;
+  headerIcon?: HubGlyphComponent;
   headerIconClassName?: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
@@ -81,7 +82,7 @@ export type HubDirectoryColumnDef<TKey extends string = string> = {
   width: string;
   sortable?: boolean;
   headerAlign?: "start" | "center";
-  headerIcon?: LucideIcon;
+  headerIcon?: HubGlyphComponent;
   headerIconClassName?: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
