@@ -313,7 +313,40 @@ function refreshUnpackedAppAsar(unpackedDir) {
 
   const tmp = path.join(os.tmpdir(), `p0003-asar-patch-${Date.now()}`);
   const tmpAsar = path.join(os.tmpdir(), `p0003-app-${Date.now()}.asar`);
-  asarApi.extractAll(asarPath, tmp);
+
+  /** Rebuild asar payload from repo disk when extractAll fails (e.g. stale asarUnpack stubs). */
+  function seedAsarTreeFromDisk(dest) {
+    fs.mkdirSync(dest, { recursive: true });
+    for (const rel of ["electron", "shared", "dist"]) {
+      const src = path.join(root, rel);
+      if (!fs.existsSync(src)) continue;
+      const out = path.join(dest, rel);
+      rmDir(out);
+      copyDir(src, out);
+    }
+    const iconsSrc = path.join(root, "build", "icons");
+    if (fs.existsSync(path.join(iconsSrc, "app.ico"))) {
+      const iconsDest = path.join(dest, "build", "icons");
+      rmDir(iconsDest);
+      copyDir(iconsSrc, iconsDest);
+    }
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+    pkg.version = version;
+    fs.writeFileSync(path.join(dest, "package.json"), `${JSON.stringify(pkg, null, 2)}\n`);
+    const releaseMd = path.join(root, "RELEASE.md");
+    if (fs.existsSync(releaseMd)) fs.copyFileSync(releaseMd, path.join(dest, "RELEASE.md"));
+    console.log("run-electron-package: seeded app.asar tree from disk (electron/shared/dist/icons)");
+  }
+
+  try {
+    asarApi.extractAll(asarPath, tmp);
+  } catch (e) {
+    console.warn(
+      `run-electron-package: extractAll failed (${e && e.message}) — rebuilding asar from disk (prod exe left running)`,
+    );
+    rmDir(tmp);
+    seedAsarTreeFromDisk(tmp);
+  }
   const distDest = path.join(tmp, "dist");
   rmDir(distDest);
   copyDir(path.join(root, "dist"), distDest);

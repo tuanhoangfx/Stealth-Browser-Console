@@ -2,6 +2,22 @@
 
 ## 2026-08-13 - Shell icon pack gate (no Electron atom regress)
 
+- Version: `1.0.182`
+- Timestamp: 2026-08-13 05:22 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-13 - Shell icon pack gate (no Electron atom regress)
+
 - Version: `1.0.181`
 - Timestamp: 2026-08-13 05:20 (UTC+7)
 - Type: Patch
