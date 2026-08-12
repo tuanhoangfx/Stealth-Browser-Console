@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-08-12T22:18:51.188Z",
+  "generatedAt": "2026-08-12T22:22:37.208Z",
   "entries": [
+    {
+      "version": "1.0.182",
+      "date": "2026-08-12",
+      "at": "2026-08-12T22:22:37.208Z",
+      "title": "chore: release v1.0.182",
+      "bullets": [
+        "Maintenance and polish since the last documented release."
+      ],
+      "kind": "improve",
+      "userTitle": "Release v1.0.182",
+      "userSummary": "",
+      "userHighlights": [
+        "Maintenance and polish since the last documented release."
+      ]
+    },
     {
       "version": "1.0.181",
       "date": "2026-08-13",
@@ -187,21 +202,6 @@
       "userSummary": "",
       "userHighlights": [
         "Pre Ship shared UI: verify-untracked-imports gate"
-      ]
-    },
-    {
-      "version": "1.0.33",
-      "date": "2026-07-17",
-      "at": "2026-07-17T22:26:00+07:00",
-      "title": "hub-ui SSOT hook-stability vendor sync",
-      "bullets": [
-        "Sync hub-ui SSOT hook-stability patch into vendor/hub-ui: useHubDirectorySelection, useDirectoryHaystackFilter, and useDirectoryTableSort now self-stabilize their row-projection callbacks (idOf/keyOf/sortableValue) via refs, so inline (row) => row.id no longer rebuilds the selection/haystack/sort memos every render ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â snappier checkbox click, drag-sweep, search, and sort with no consumer code changes."
-      ],
-      "kind": "improve",
-      "userTitle": "Hub-ui shared UI hook-stability vendor sync",
-      "userSummary": "",
-      "userHighlights": [
-        "Sync hub-ui shared UI hook-stability patch into vendor hub-ui: use Hub Directory Selection, use D…"
       ]
     }
   ]

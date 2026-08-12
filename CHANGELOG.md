@@ -5,7 +5,7 @@
 - Version: `1.0.182`
 - Timestamp: 2026-08-13 05:22 (UTC+7)
 - Type: Patch
-- Status: Draft
+- Status: Committed
 
 ### Changes
 
