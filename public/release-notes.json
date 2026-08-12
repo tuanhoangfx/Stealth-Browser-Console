@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-12T22:22:37.208Z",
+  "generatedAt": "2026-08-12T22:27:56.846Z",
   "entries": [
     {
       "version": "1.0.182",
       "date": "2026-08-12",
-      "at": "2026-08-12T22:22:37.208Z",
+      "at": "2026-08-12T22:27:56.846Z",
       "title": "chore: release v1.0.182",
       "bullets": [
         "Maintenance and polish since the last documented release."
