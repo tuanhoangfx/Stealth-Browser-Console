@@ -1,4 +1,6 @@
 /** Internal auth email domain for User ID sign-in (Supabase requires an email). */
+import aliasRegistry from "../data/hub-login-id-aliases.json";
+
 export const HUB_ID_EMAIL_DOMAIN = "@infix1.io.vn";
 
 /** Legacy synthetic domain — kept for matching existing auth.users rows. */
@@ -38,11 +40,18 @@ export function normalizeLoginId(raw: string): string | null {
 
 /**
  * Known User ID aliases → canonical login_id (auth email local-part).
- * Keeps short bookmarks like `enzyadmin` working for `enzy.admin@infix1.io.vn`.
+ * SSOT: Tool/docs/playbooks/_cards/hub-login-id-aliases.json
  */
-export const HUB_LOGIN_ID_ALIASES: Readonly<Record<string, string>> = {
-  enzyadmin: "enzy.admin",
-};
+export const HUB_LOGIN_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  ...aliasRegistry.aliases,
+});
+
+/** Derive login_id from real contact email local-part (before @). */
+export function loginIdFromContactEmail(email: string | null | undefined): string | null {
+  const mail = sanitizeHubLoginInput(String(email ?? "")).toLowerCase();
+  if (!mail || !looksLikeEmail(mail) || isHubSyntheticEmail(mail)) return null;
+  return normalizeLoginId(mail.split("@")[0] ?? "");
+}
 
 /** Apply alias then normalize — null if invalid. */
 export function canonicalLoginId(raw: string): string | null {
@@ -141,7 +150,7 @@ export function hubAuthEmailFromLoginOrEmail(opts: {
   loginId?: string | null;
   email?: string | null;
 }): { authEmail: string; loginId: string | null; contactEmail: string | null } | { error: string } {
-  const id = normalizeLoginId(String(opts.loginId ?? "").trim());
+  const id = canonicalLoginId(String(opts.loginId ?? "").trim());
   const mail = sanitizeHubLoginInput(String(opts.email ?? "")).toLowerCase();
   if (id) {
     const contactEmail = mail && !isHubSyntheticEmail(mail) ? mail : null;
@@ -161,7 +170,7 @@ export function hubAuthEmailFromLoginOrEmail(opts: {
         contactEmail: null,
       };
     }
-    return { authEmail: mail, loginId: null, contactEmail: mail };
+    return { authEmail: mail, loginId: loginIdFromContactEmail(mail), contactEmail: mail };
   }
   return { error: "login_id or email required" };
 }

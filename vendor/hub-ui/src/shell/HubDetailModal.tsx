@@ -2,7 +2,7 @@ import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { HubModalFrame } from "./HubModalFrame";
 
-/** @deprecated Outer shell is unified via `--hub-modal-*` CSS; `compact` only keeps the legacy class name. */
+/** `compact` = centered form backdrop (no sidebar pad) + max-w frame. `detail` = Settings/Log scale. */
 export type HubDetailModalSize = "detail" | "compact";
 
 export type HubDetailModalProps = {
@@ -18,6 +18,11 @@ export type HubDetailModalProps = {
   closeOnBackdrop?: boolean;
   shellClassName?: string;
   shellStyle?: CSSProperties;
+  /**
+   * Extra classes on HubModalFrame — compact defaults to `w-full max-w-md`
+   * so shell width matches the frame (close button stays on the panel corner).
+   */
+  frameClassName?: string;
   /** Tab/page inline — no portal, backdrop, escape, or body scroll lock. */
   embedded?: boolean;
 };
@@ -35,6 +40,7 @@ export function HubDetailModal({
   closeOnBackdrop = true,
   shellClassName = "",
   shellStyle,
+  frameClassName,
   embedded = false,
 }: HubDetailModalProps) {
   useEffect(() => {
@@ -52,10 +58,12 @@ export function HubDetailModal({
 
   if (!open || typeof document === "undefined") return null;
 
+  const isCompact = size === "compact";
   const shellClasses = [
     "modal-shell",
     "modal-shell--tool-detail",
-    size === "compact" ? "modal-shell--compact" : "",
+    isCompact ? "modal-shell--compact" : "",
+    isCompact ? "hub-tool-detail-modal--fit" : "",
     embedded ? "hub-tool-detail-modal--embedded" : "",
     shellClassName,
   ]
@@ -79,13 +87,22 @@ export function HubDetailModal({
 
   if (embedded) return shell;
 
+  const resolvedFrameClass =
+    frameClassName ?? (isCompact ? "w-full max-w-md" : "");
+
   return createPortal(
     <div
-      className="modal-backdrop modal-backdrop--tool-detail"
+      className={
+        isCompact
+          ? "modal-backdrop modal-backdrop--compact"
+          : "modal-backdrop modal-backdrop--tool-detail"
+      }
       role="presentation"
       onClick={closeOnBackdrop ? onClose : undefined}
     >
-      <HubModalFrame onClose={onClose}>{shell}</HubModalFrame>
+      <HubModalFrame onClose={onClose} className={resolvedFrameClass}>
+        {shell}
+      </HubModalFrame>
     </div>,
     document.body,
   );

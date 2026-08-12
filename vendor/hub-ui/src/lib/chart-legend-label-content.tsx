@@ -3,6 +3,19 @@ import { compactIconSize } from "../ui-scale";
 import { hubBrandIconImgClass, hubFilterOptionEmojiClass, type HubBrandIconShell } from "../shell/filter-dropdown-primitives";
 import { splitChartLegendGlyph } from "./chart-legend-glyphs";
 
+/**
+ * `iconMeta.icon` comes from tool-side registries and prefs, so a shape drift (a plain
+ * `{title, description}` object landing where a component belongs) used to reach JSX as
+ * `<Icon/>` -> "element type is invalid: got: object" -> the whole screen unmounted into
+ * the error boundary. Accept only real component types: a function, or a React object
+ * type (`forwardRef` / `memo`, which is what Lucide ships).
+ */
+export function canRenderHubGlyphComponent<T>(icon: T | null | undefined): icon is T {
+  if (typeof icon === "function") return true;
+  return typeof icon === "object" && icon !== null && "$$typeof" in (icon as object);
+}
+
+
 /** Chart legend row — brand / Lucide / emoji / color dot + label text (SSOT gap via `.hub-chart-legend-label`). */
 export function ChartLegendLabelContent({
   label,
@@ -40,7 +53,7 @@ export function ChartLegendLabelContent({
         <span className={hubFilterOptionEmojiClass()} aria-hidden>
           {glyph}
         </span>
-      ) : Icon ? (
+      ) : canRenderHubGlyphComponent(Icon) ? (
         <Icon size={compactIconSize(11)} className={`shrink-0 ${iconMeta!.className}`} aria-hidden />
       ) : (
         <span className="hub-chart-legend-label__glyph" aria-hidden />

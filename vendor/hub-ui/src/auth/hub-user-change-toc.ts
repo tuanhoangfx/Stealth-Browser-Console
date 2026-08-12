@@ -18,6 +18,10 @@ export const HUB_CHANGE_PASSWORD_TOC: HubUserChangeTocEntry[] = [
   { id: "hub-change-password-verify", label: "Verify", semanticKey: "user.security" },
 ];
 
+export const HUB_CHANGE_USERNAME_TOC: HubUserChangeTocEntry[] = [
+  { id: "hub-change-username-id", label: "User ID", semanticKey: "user.account" },
+];
+
 export function hubUserChangeTocItems(entries: readonly HubUserChangeTocEntry[]): HubTocNavItem[] {
   return entries.map(({ id, label, semanticKey }) => ({
     id,

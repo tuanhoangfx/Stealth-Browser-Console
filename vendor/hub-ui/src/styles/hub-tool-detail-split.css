@@ -91,7 +91,7 @@
 
 /* Wide account-style detail shell — opt-in on modal class. */
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split {
-  --hub-modal-max-w: min(96rem, calc(100vw - var(--app-sidebar-width, 0px) - 1.5rem));
+  --hub-modal-max-w: min(72rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
   --hub-modal-max-h: 960px;
   --hub-modal-max-vh: 92vh;
   --hub-tool-detail-rail-w: min(28rem, 40%);

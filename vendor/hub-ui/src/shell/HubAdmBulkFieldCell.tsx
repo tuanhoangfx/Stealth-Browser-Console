@@ -28,7 +28,7 @@ export function HubAdmBulkFieldCell({
   const controlDisabled = disabled || !apply;
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-3 text-[11px] text-[var(--muted)]">
+      <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

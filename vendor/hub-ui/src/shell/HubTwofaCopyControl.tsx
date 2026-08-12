@@ -16,7 +16,11 @@ export type HubTwofaCopyControlProps = {
   copyFeedback?: HubCopyFeedback;
 };
 
-/** Directory table copy control — 2FA Account / Password / Secret parity (P0020 golden). No cell tooltip. */
+/**
+ * Directory table copy control — click value to copy + toast; no trailing copy glyph.
+ * stopPropagation keeps row click → Detail (P0020 Services/Mail SSOT).
+ * Modal dropdown copy icons use `HubAdmDetailCopyTrailingAction` instead.
+ */
 export function HubTwofaCopyControl({
   value,
   display,
@@ -34,28 +38,32 @@ export function HubTwofaCopyControl({
     copyFeedback === "toast" || (copyFeedback === "auto" && toast != null);
   const useInlineTick = copyFeedback === "inline" || (copyFeedback === "auto" && toast == null);
 
+  const runCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void copyTextWithFallback(text).finally(() => {
+      if (useToast) {
+        toast?.pushCopyToast(text, copyToastLabel);
+      } else if (useInlineTick) {
+        flash();
+      }
+      onCopied?.();
+    });
+  };
+
   return (
-    <button
-      type="button"
-      className={`hub-directory-copy-wrap twofa-copy-control-wrap ${wrapClassName}`.trim()}
-      onClick={(e) => {
-        e.stopPropagation();
-        void copyTextWithFallback(text).finally(() => {
-          if (useToast) {
-            toast?.pushCopyToast(text, copyToastLabel);
-          } else if (useInlineTick) {
-            flash();
-          }
-          onCopied?.();
-        });
-      }}
-    >
-      <span className={`hub-directory-copy-control twofa-copy-control ${className}`.trim()}>
+    <span className={`hub-directory-copy-wrap twofa-copy-control-wrap ${wrapClassName}`.trim()}>
+      <button
+        type="button"
+        className={`hub-directory-copy-control twofa-copy-control ${className}`.trim()}
+        title={copyToastLabel}
+        aria-label={copyToastLabel}
+        onClick={runCopy}
+      >
         <span className="hub-directory-copy-control__value twofa-copy-control__value min-w-0">{display}</span>
         {useInlineTick && copied ? (
           <Check size={10} className="twofa-copy-control__tick shrink-0 text-emerald-400" aria-hidden />
         ) : null}
-      </span>
-    </button>
+      </button>
+    </span>
   );
 }

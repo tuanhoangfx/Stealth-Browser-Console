@@ -14,11 +14,14 @@ export type DirectorySearchResultCountGuardInput = {
 };
 
 export type HubDirectorySelectionSlots = {
+  /** @deprecated table mode uses `toolbarLeading` (closes desktop grid gap vs ViewToggle). */
   searchTrailing?: ReactNode;
+  /** Table mode — leading slot of FilterBar toolbar (immediately before ViewToggle). */
+  toolbarLeading?: ReactNode;
   row2Trailing?: ReactNode;
 };
 
-/** SSOT — omit `HubResultCount` when FilterBar `searchTrailing` already shows x/y selection. */
+/** SSOT — omit `HubResultCount` when selection chip already shows x/y. */
 export function shouldShowHubDirectoryResultCount(opts: {
   showResultCount?: boolean;
   hasSearchSelectionChip?: boolean;
@@ -40,7 +43,11 @@ export function resolveDirectorySearchResultCountGuard(
   };
 }
 
-/** Route V2 selection chip — table: beside search · card: row-2 after bulk actions. */
+/**
+ * Route V2 selection chip —
+ * table: FilterBar toolbar leading (next to ViewToggle; avoids 1fr gap after search) ·
+ * card: row-2 after bulk actions.
+ */
 export function buildHubDirectorySelectionSlots(
   props: HubDirectoryToolbarSelectionProps | undefined,
   viewMode: HubViewMode = "table",
@@ -48,5 +55,5 @@ export function buildHubDirectorySelectionSlots(
   if (!props) return {};
   const chip = <HubDirectoryToolbarSelection {...props} />;
   if (viewMode === "card") return { row2Trailing: chip };
-  return { searchTrailing: chip };
+  return { toolbarLeading: chip };
 }

@@ -33,8 +33,14 @@ export type HubDirectoryScreenProps = {
   filterShortcutScope?: string;
   /** Debounce filter query in HubSearchField — avoids directory chrome re-render per keystroke. */
   searchDebounceMs?: number;
+  /** Filters/actions only — no HubSearchField (e.g. Performance Staff: time + bulk). */
+  hideSearch?: boolean;
+  /**
+   * Searchbar Lite single row (default when hideSearch). Pass false to keep stacked hub rows without search.
+   */
+  searchbarLite?: boolean;
   filterToolbar?: ReactNode;
-  /** `x/y` selection chip — table: beside search · card: filter row-2 trailing. */
+  /** `x/y` selection chip — table: toolbar leading (before ViewToggle) · card: filter row-2 trailing. */
   filterSelectionToolbar?: HubDirectoryToolbarSelectionProps;
   /** Placement for `filterSelectionToolbar` (default `table`). */
   directoryViewMode?: HubViewMode;
@@ -71,6 +77,8 @@ export function HubDirectoryScreen({
   filterPlaceholder = "Search…",
   filterShortcutScope = "default",
   searchDebounceMs = 0,
+  hideSearch = false,
+  searchbarLite,
   filterToolbar,
   filterSelectionToolbar,
   directoryViewMode = "table",
@@ -81,9 +89,14 @@ export function HubDirectoryScreen({
   children,
 }: HubDirectoryScreenProps) {
   const { searchPin, headerPin, stackChrome } = useHubChromePrefs();
-  const showFilterBar = Boolean(onQueryChange);
+  const showFilterBar =
+    Boolean(onQueryChange) ||
+    Boolean(filterRowLeading || filterRowActions || directoryToolbar || filterToolbar) ||
+    filters.length > 0;
+  const noopQuery = onQueryChange ?? (() => {});
   const noopFilterValues = onFilterValuesChange ?? (() => {});
   const selectionSlots = buildHubDirectorySelectionSlots(filterSelectionToolbar, directoryViewMode);
+  const effectiveHideSearch = hideSearch || !onQueryChange;
 
   const filterBar = showFilterBar ? (
     <FilterBar
@@ -95,14 +108,15 @@ export function HubDirectoryScreen({
       placeholder={filterPlaceholder}
       filters={filters}
       query={query}
-      onQueryChange={onQueryChange!}
+      onQueryChange={noopQuery}
       queryPending={queryPending}
       values={filterValues}
       onValuesChange={noopFilterValues}
       searchTrailing={selectionSlots.searchTrailing}
       toolbar={
-        directoryToolbar || filterToolbar ? (
+        selectionSlots.toolbarLeading || directoryToolbar || filterToolbar ? (
           <>
+            {selectionSlots.toolbarLeading}
             {directoryToolbar}
             {filterToolbar}
           </>
@@ -112,6 +126,8 @@ export function HubDirectoryScreen({
       row2Actions={filterRowActions}
       row2Trailing={selectionSlots.row2Trailing}
       searchDebounceMs={searchDebounceMs}
+      hideSearch={effectiveHideSearch}
+      searchbarLite={searchbarLite}
     />
   ) : undefined;
 

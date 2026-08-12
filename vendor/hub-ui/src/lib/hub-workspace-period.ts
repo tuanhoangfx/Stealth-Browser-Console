@@ -29,7 +29,16 @@ export type WorkspacePeriodScope =
   | "twofa.browser"
   | "cookie"
   | "orders"
-  | "customers";
+  | "customers"
+  | "products"
+  | "performance"
+  | "users"
+  | "hub"
+  | "dashboard"
+  | "bots"
+  | "groups"
+  | "teams"
+  | "places";
 
 export type WorkspacePeriodPrefs = {
   range: WorkspacePeriodKey;
@@ -84,6 +93,15 @@ const SCOPE_URL_KEYS: Record<
   cookie: { range: "crange", month: "cperiodMonth", from: "cperiodFrom", to: "cperiodTo" },
   orders: { range: "osrange", month: "osperiodMonth", from: "osperiodFrom", to: "osperiodTo" },
   customers: { range: "csrange", month: "csperiodMonth", from: "csperiodFrom", to: "csperiodTo" },
+  products: { range: "prdrange", month: "prdperiodMonth", from: "prdperiodFrom", to: "prdperiodTo" },
+  performance: { range: "perfrange", month: "perfperiodMonth", from: "perfperiodFrom", to: "perfperiodTo" },
+  users: { range: "usrange", month: "usperiodMonth", from: "usperiodFrom", to: "usperiodTo" },
+  hub: { range: "hbrange", month: "hbperiodMonth", from: "hbperiodFrom", to: "hbperiodTo" },
+  dashboard: { range: "dbrange", month: "dbperiodMonth", from: "dbperiodFrom", to: "dbperiodTo" },
+  bots: { range: "botrange", month: "botperiodMonth", from: "botperiodFrom", to: "botperiodTo" },
+  groups: { range: "grprange", month: "grpperiodMonth", from: "grpperiodFrom", to: "grpperiodTo" },
+  teams: { range: "teamrange", month: "teamperiodMonth", from: "teamperiodFrom", to: "teamperiodTo" },
+  places: { range: "plcrange", month: "plcperiodMonth", from: "plcperiodFrom", to: "plcperiodTo" },
 };
 
 const TWOFA_VAULT_PERIOD_SCOPES = new Set<WorkspacePeriodScope>([

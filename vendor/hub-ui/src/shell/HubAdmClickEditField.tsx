@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import { HubAdmSearchHighlightText } from "./HubAdmSearchHighlightText";
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
 import { HubTableColumnHeader } from "../content/HubTableColumnHeader";
 import { resolveHubTableColumnMeta } from "../table/hub-table-column-meta";
@@ -15,6 +15,11 @@ import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { HubSingleFilterDropdown, type FilterOption, type HubSingleFilterDropdownProps } from "./FilterBar";
 import { HUB_DIRECTORY_TABLE_BRAND_ICON_PX } from "./HubDirectoryBrandNameCell";
 import { hubDirectoryTableBrandImgClass, hubFilterOptionEmojiClass } from "./filter-dropdown-primitives";
+import {
+  buildHubAdmDetailCopyTrailingAction,
+  mergeHubAdmTrailingActions,
+} from "./hub-adm-detail-copy-action";
+import "./hub-adm-detail-copy-action.css";
 
 export type HubAdmClickEditRenderCtx = {
   value: string;
@@ -47,6 +52,11 @@ export type HubAdmClickEditFieldProps = {
   readonlyHoverTitle?: boolean;
   /** Lock field — no click-to-edit (bulk apply busy, read-only preview). */
   disabled?: boolean;
+  /** Clipboard text; defaults to display value when non-empty. */
+  copyValue?: string;
+  copyToastLabel?: string;
+  /** Default false — copy icon only on ClickFilter dropdowns; opt in for special readonly edit rows. */
+  showCopyAction?: boolean;
   /** Optional control after the value (e.g. Browse) — ClickFilter trailing SSOT. */
   trailingAction?: ReactNode;
 };
@@ -76,7 +86,7 @@ export function HubAdmInlineFieldLabel({
 }) {
   const label = (
     <span className="hub-adm-inline-field__label hub-users-th-label hub-users-th-label--start hub-inline-gap-name">
-      <HubTableColumnHeader {...header} />
+      <HubTableColumnHeader {...header} enableFit={false} />
     </span>
   );
   if (!labelHint) return label;
@@ -108,7 +118,7 @@ function AdmInlineFieldShell({
   );
 }
 
-/** Account-detail modal — plain label value; pencil on hover; click value to edit. */
+/** Account-detail modal — plain label value; click value to edit (no pencil affordance). */
 export function HubAdmClickEditField({
   header,
   fieldLabel,
@@ -127,6 +137,9 @@ export function HubAdmClickEditField({
   renderDisplay,
   readonlyHoverTitle = true,
   disabled = false,
+  copyValue,
+  copyToastLabel,
+  showCopyAction,
   trailingAction,
 }: HubAdmClickEditFieldProps) {
   const [editing, setEditing] = useState(false);
@@ -135,15 +148,25 @@ export function HubAdmClickEditField({
   const trimmed = value.trim();
   const shown = displayValue ?? trimmed;
   const empty = !shown;
+  const resolvedCopy = (copyValue ?? shown).trim();
+  const autoCopy =
+    showCopyAction === true && resolvedCopy && !disabled && !empty
+      ? buildHubAdmDetailCopyTrailingAction({
+          copyText: resolvedCopy,
+          title: `Copy ${fieldLabel}`,
+          copyToastLabel: copyToastLabel ?? `${fieldLabel} copied`,
+        })
+      : null;
+  const mergedTrailing = mergeHubAdmTrailingActions(autoCopy, trailingAction);
   const inputClass = `${controlClassName}${inputClassName ? ` ${inputClassName}` : ""}`;
   const valueClassEditing = `hub-adm-inline-field__value hub-adm-inline-field__value--editing${
-    trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""
+    mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""
   }`;
   const valueClassReadonly = `hub-adm-inline-field__value${
-    trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""
+    mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""
   }`;
-  const trailing = trailingAction ? (
-    <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+  const trailing = mergedTrailing ? (
+    <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{mergedTrailing}</span>
   ) : null;
 
   useEffect(() => {
@@ -254,9 +277,6 @@ export function HubAdmClickEditField({
           onClick={startEdit}
         >
           {readonlyBody}
-          <span className="hub-adm-click-edit__action" aria-hidden>
-            <Pencil size={compactIconSize(10)} />
-          </span>
         </button>
       )}
       {trailing}
@@ -364,6 +384,11 @@ export type HubAdmClickFilterFieldProps = {
   trailingAction?: ReactNode;
   /** Custom value body (e.g. On/Off status dot). Chevron still appended. */
   renderValue?: (value: string, displayLabel: string) => ReactNode;
+  /** Clipboard text; defaults to option label when value set. */
+  copyValue?: string;
+  copyToastLabel?: string;
+  /** Default true — append copy icon when resolved copy value is non-empty (dropdown SSOT). */
+  showCopyAction?: boolean;
 };
 
 /** Account-detail modal — plain label + emoji/value; chevron always visible; opens filter panel. */
@@ -389,6 +414,9 @@ export function HubAdmClickFilterField({
   renameOptionLabel,
   trailingAction,
   renderValue,
+  copyValue,
+  copyToastLabel,
+  showCopyAction,
 }: HubAdmClickFilterFieldProps) {
   const opt = options.find((o) => o.value === value);
   /** Parity with directory table brand glyphs (`HubDirectoryBrandNameCell` 16px). */
@@ -405,12 +433,23 @@ export function HubAdmClickFilterField({
       }
     : undefined;
 
+  const resolvedCopy = (copyValue ?? (value.trim() ? displayLabel : "")).trim();
+  const autoCopy =
+    showCopyAction !== false && resolvedCopy && !disabled
+      ? buildHubAdmDetailCopyTrailingAction({
+          copyText: resolvedCopy,
+          title: `Copy ${fieldLabel}`,
+          copyToastLabel: copyToastLabel ?? `${fieldLabel} copied`,
+        })
+      : null;
+  const mergedTrailing = mergeHubAdmTrailingActions(autoCopy, trailingAction);
+
   return (
     <AdmInlineFieldShell
       header={header}
       labelHint={labelHint}
       className={`hub-adm-inline-field--readonly hub-adm-inline-field--click-filter${className ? ` ${className}` : ""}`}
-      valueClassName={`hub-adm-inline-field__value${trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""}`}
+      valueClassName={`hub-adm-inline-field__value${mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""}`}
     >
       <HubSingleFilterDropdown
         filterKey={filterKey}
@@ -508,8 +547,8 @@ export function HubAdmClickFilterField({
         }
         triggerHideChevron
       />
-      {trailingAction ? (
-        <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+      {mergedTrailing ? (
+        <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{mergedTrailing}</span>
       ) : null}
     </AdmInlineFieldShell>
   );

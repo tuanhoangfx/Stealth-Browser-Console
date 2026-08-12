@@ -45,7 +45,7 @@ export type DirectorySearchToolbarProps = {
   showRefresh?: boolean;
   /** When false, omit shown/total chip (e.g. Todo row-1 period-only). */
   showResultCount?: boolean;
-  /** When FilterBar `searchTrailing` shows x/y selection — omit duplicate shown/total chip. */
+  /** When selection chip shows x/y (toolbar leading or searchTrailing) — omit duplicate shown/total chip. */
   hasSearchSelectionChip?: boolean;
   displayBand?: ReactNode;
   trailing?: ReactNode;
@@ -96,11 +96,11 @@ export function DirectorySearchToolbar({
       {showViewToggle && viewMode != null && onViewModeChange ? (
         <ViewToggle value={viewMode} onChange={onViewModeChange} />
       ) : null}
+      {workspacePeriod ? <HubWorkspacePeriodSelect {...workspacePeriod} /> : null}
       {showTimeRange ? <HubTimeRangeSelect value={period} /> : null}
       {resolvedShowTablePageSize ? (
         <HubTablePageSizeSelect value={tablePageSize} onChange={onTablePageSizeChange} />
       ) : null}
-      {workspacePeriod ? <HubWorkspacePeriodSelect {...workspacePeriod} /> : null}
       {displayBand}
       {resultCountVisible ? (
         <HubResultCount

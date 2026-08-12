@@ -24,6 +24,8 @@ export type SignInHubIdentityConfig = {
   getHubClient: () => SupabaseClient | null;
   hubNotConfiguredError?: string;
   cacheHubIdentityFromSession: (session: Session, mirrorEmail: string) => void;
+  /** Same-origin resolve-login API (User ID → auth.users email). */
+  resolveLoginApiUrl?: string;
   /** Tool worker bypass when GoTrue rate-limits password grant (admin recovery). */
   recoverHubSession?: (
     loginInput: string,
@@ -71,7 +73,9 @@ export async function signInHubIdentityPlane(
     return { data: { session: result.data.session }, error: result.error };
   };
 
-  const identityResult = await signInWithHubPassword(login, identityAttempt, mode);
+  const identityResult = await signInWithHubPassword(login, identityAttempt, mode, {
+    resolveLoginApiUrl: config.resolveLoginApiUrl,
+  });
   let identitySession = identityResult.data?.session as Session | null | undefined;
 
   if (!identitySession) {
@@ -162,18 +166,18 @@ export async function runWorkspaceDualSignIn(
     wrappedConfig,
   );
 
+  const planeCtx = { loginInput, password, mode, mirrorEmail };
+  const planeResults = await Promise.all(
+    config.planes.map((plane) => plane.authenticate(planeCtx)),
+  );
+
   const planes: MirrorSupabaseAuthResult[] = [];
-  for (const plane of config.planes) {
-    const result = await plane.authenticate({
-      loginInput,
-      password,
-      mode,
-      mirrorEmail,
-    });
-    if (!result.session && recoveredPlaneSession) {
-      config.adoptRecoveredPlaneSession?.(recoveredPlaneSession);
-      planes.push({ session: recoveredPlaneSession, error: result.error });
-      recoveredPlaneSession = null;
+  let recovered = recoveredPlaneSession;
+  for (const result of planeResults) {
+    if (!result.session && recovered) {
+      config.adoptRecoveredPlaneSession?.(recovered);
+      planes.push({ session: recovered, error: result.error });
+      recovered = null;
       continue;
     }
     planes.push(result);

@@ -148,6 +148,15 @@ body {
   display: none;
 }
 
+/* Searchbar Lite — tighter chrome than full directory FilterBar */
+.hub-filter-bar--lite {
+  --hub-filter-lite-pad-y: 0.375rem;
+}
+.hub-filter-bar--lite .hub-filter-bar__lite-row {
+  min-height: var(--hub-control-h, 31px);
+  row-gap: 0.375rem;
+}
+
 .hub-loader-orb {
   position: relative;
   width: 6rem;

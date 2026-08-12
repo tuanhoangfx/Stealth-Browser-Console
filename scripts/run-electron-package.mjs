@@ -7,7 +7,11 @@
  *   --publish never|always
  *   --target dir
  *   --with-portable   also build portable exe (slower; ~doubles pack+sign+upload)
- *   --skip-build      reuse dist/ when index.html exists
+ *   --skip-build      reuse dist/ when index.html exists (release-desktop Fast owns Vite)
+ *   --installer-only  or DESKTOP_RELEASE_INSTALLER_ONLY=1 — promote Setup+yml only; keep warm win-unpacked
+ *
+ * Fast (DESKTOP_RELEASE_FAST=1): skip Authenticode unless DESKTOP_RELEASE_SIGN=1;
+ * prefer --prepackaged NSIS after refreshing app.asar dist/ from Vite out.
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -22,6 +26,8 @@ const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const node = resolveNodeExe();
 const productOutput = path.join(root, "dist-desktop");
+const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const version = process.env.STEALTH_RELEASE_VERSION?.trim() || pkg.version;
 
 const publish =
   process.argv.includes("--publish") && process.argv[process.argv.indexOf("--publish") + 1]
@@ -30,6 +36,9 @@ const publish =
 const targetDir = process.argv.includes("--target") && process.argv[process.argv.indexOf("--target") + 1] === "dir";
 const withPortable = process.argv.includes("--with-portable");
 const skipBuild = process.argv.includes("--skip-build");
+const installerOnly =
+  process.argv.includes("--installer-only") || process.env.DESKTOP_RELEASE_INSTALLER_ONLY === "1";
+const fastMode = installerOnly || process.env.DESKTOP_RELEASE_FAST === "1";
 
 function runNodeScript(rel, extraArgs = []) {
   const result = spawnSync(node, [path.join(root, rel), ...extraArgs], winSpawnOpts({ cwd: root, stdio: "inherit" }));
@@ -130,16 +139,16 @@ function copyDirBestEffort(src, dest) {
   copyDir(src, dest);
 }
 
-function pruneStaleDesktopArtifacts(outputDir, version) {
+function pruneStaleDesktopArtifacts(outputDir, ver) {
   if (!fs.existsSync(outputDir)) return;
   for (const name of fs.readdirSync(outputDir)) {
     const full = path.join(outputDir, name);
     if (!fs.statSync(full).isFile()) continue;
     if (name === "latest.yml") continue;
     const staleSetup =
-      /^Stealth-Browser-Console-Setup-/.test(name) && !name.includes(`-${version}.`);
+      /^Stealth-Browser-Console-Setup-/.test(name) && !name.includes(`-${ver}.`);
     const stalePortable =
-      /^Stealth-Browser-Console-Portable-/.test(name) && !name.includes(`-${version}.`);
+      /^Stealth-Browser-Console-Portable-/.test(name) && !name.includes(`-${ver}.`);
     if (staleSetup || stalePortable) {
       fs.unlinkSync(full);
       console.log(`run-electron-package: removed stale artifact ${name}`);
@@ -147,13 +156,13 @@ function pruneStaleDesktopArtifacts(outputDir, version) {
   }
 }
 
-function promoteStagingToProductOutput(stagingOutput, productOutput, version) {
+function promoteStagingToProductOutput(stagingOutput, ver) {
   fs.mkdirSync(productOutput, { recursive: true });
   const pendingUnpacked = path.join(productOutput, "win-unpacked-pending");
   const targetUnpacked = path.join(productOutput, "win-unpacked");
   const marker = path.join(productOutput, "PENDING_UNPACKED.json");
 
-  const setupExe = `Stealth-Browser-Console-Setup-${version}.exe`;
+  const setupExe = `Stealth-Browser-Console-Setup-${ver}.exe`;
   const setupBlockmap = `${setupExe}.blockmap`;
 
   for (const name of [setupExe, setupBlockmap, "latest.yml"]) {
@@ -163,10 +172,24 @@ function promoteStagingToProductOutput(stagingOutput, productOutput, version) {
     }
   }
 
-  pruneStaleDesktopArtifacts(productOutput, version);
+  pruneStaleDesktopArtifacts(productOutput, ver);
 
   const stagedUnpacked = path.join(stagingOutput, "win-unpacked");
   if (!fs.existsSync(stagedUnpacked)) return;
+
+  if (installerOnly) {
+    console.log("run-electron-package: installer-only — skip win-unpacked promote (Fast path)");
+    const seedExe = path.join(targetUnpacked, "Stealth Browser Console.exe");
+    if (!fs.existsSync(seedExe)) {
+      try {
+        copyDir(stagedUnpacked, targetUnpacked);
+        console.log("run-electron-package: seeded win-unpacked for next Fast prepackaged");
+      } catch (e) {
+        console.warn(`run-electron-package: seed win-unpacked skipped (${e && e.message})`);
+      }
+    }
+    return;
+  }
 
   try {
     copyDirBestEffort(stagedUnpacked, targetUnpacked);
@@ -185,7 +208,7 @@ function promoteStagingToProductOutput(stagingOutput, productOutput, version) {
       marker,
       JSON.stringify(
         {
-          version,
+          version: ver,
           stagedAt: new Date().toISOString(),
           hint: "Close packaged Stealth only if you need win-unpacked replaced, then: pnpm desktop:swap-unpacked",
         },
@@ -196,17 +219,135 @@ function promoteStagingToProductOutput(stagingOutput, productOutput, version) {
   }
 }
 
-function distFresh() {
-  const index = path.join(root, "dist", "index.html");
-  if (!fs.existsSync(index)) return false;
-  const built = fs.statSync(index).mtimeMs;
-  const viteConfig = path.join(root, "vite.config.ts");
-  const srcApp = path.join(root, "src", "App.tsx");
-  const newestSrc = Math.max(fs.statSync(viteConfig).mtimeMs, fs.statSync(srcApp).mtimeMs);
-  return built >= newestSrc;
+function assertUiVersionBaked() {
+  const distAssets = path.join(root, "dist", "assets");
+  if (!fs.existsSync(path.join(root, "dist", "index.html")) || !fs.existsSync(distAssets)) {
+    console.error("run-electron-package: FAIL — dist/ missing. Run Vite build first.");
+    process.exit(1);
+  }
+  let hit = false;
+  for (const name of fs.readdirSync(distAssets)) {
+    if (!name.endsWith(".js")) continue;
+    const text = fs.readFileSync(path.join(distAssets, name), "utf8");
+    if (text.includes(version)) {
+      hit = true;
+      break;
+    }
+  }
+  if (!hit) {
+    console.error(
+      `run-electron-package: FAIL — Vite dist does not contain package version ${version}. Re-run build after bumping version.`,
+    );
+    process.exit(1);
+  }
+  console.log(`run-electron-package: UI dist contains version ${version}`);
 }
 
-function removeStaleReleaseAssets(tag, version) {
+function refreshUnpackedAppAsar(unpackedDir) {
+  const asarPath = path.join(unpackedDir, "resources", "app.asar");
+  if (!fs.existsSync(asarPath)) {
+    throw new Error(`run-electron-package: missing ${asarPath} for Fast prepackaged refresh`);
+  }
+
+  // Sync check via nested node (extractFile is sync in @electron/asar).
+  let asarApi = null;
+  try {
+    asarApi = require("@electron/asar");
+  } catch {
+    throw new Error("run-electron-package: @electron/asar required for Fast prepackaged UI refresh");
+  }
+
+  try {
+    const raw = asarApi.extractFile(asarPath, "package.json");
+    const asarPkg = JSON.parse(Buffer.isBuffer(raw) ? raw.toString("utf8") : String(raw));
+    const distIndex = path.join(root, "dist", "index.html");
+    if (
+      asarPkg.version === version &&
+      fs.existsSync(distIndex) &&
+      fs.statSync(distIndex).mtimeMs <= fs.statSync(asarPath).mtimeMs
+    ) {
+      const warm = path.join(os.tmpdir(), `p0003-app-warm-${Date.now()}.asar`);
+      fs.copyFileSync(asarPath, warm);
+      console.log(`run-electron-package: skip asar rebuild (v${version}, dist older than asar)`);
+      return warm;
+    }
+  } catch {
+    /* fall through to rebuild */
+  }
+
+  const tmp = path.join(os.tmpdir(), `p0003-asar-patch-${Date.now()}`);
+  const tmpAsar = path.join(os.tmpdir(), `p0003-app-${Date.now()}.asar`);
+  asarApi.extractAll(asarPath, tmp);
+  const distDest = path.join(tmp, "dist");
+  rmDir(distDest);
+  copyDir(path.join(root, "dist"), distDest);
+  const pkgFile = path.join(tmp, "package.json");
+  if (fs.existsSync(pkgFile)) {
+    const asarPkg = JSON.parse(fs.readFileSync(pkgFile, "utf8"));
+    if (asarPkg.version !== version) {
+      asarPkg.version = version;
+      fs.writeFileSync(pkgFile, `${JSON.stringify(asarPkg, null, 2)}\n`);
+      console.log(`run-electron-package: patched app.asar package.json → ${version}`);
+    }
+  }
+  // UI-only Fast: refresh dist. Main/shared need DESKTOP_RELEASE_REFRESH_MAIN=1 (or full pack).
+  if (process.env.DESKTOP_RELEASE_REFRESH_MAIN === "1") {
+    for (const rel of ["electron", "shared"]) {
+      const src = path.join(root, rel);
+      if (!fs.existsSync(src)) continue;
+      const dest = path.join(tmp, rel);
+      rmDir(dest);
+      copyDir(src, dest);
+    }
+    console.log("run-electron-package: refreshed electron+shared inside app.asar");
+  }
+  // @electron/asar createPackage is async — run via nested node so callers stay sync.
+  const create = spawnSync(
+    node,
+    [
+      "-e",
+      `require("@electron/asar").createPackage(${JSON.stringify(tmp)}, ${JSON.stringify(tmpAsar)}).then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });`,
+    ],
+    winSpawnOpts({ cwd: root, stdio: "inherit" }),
+  );
+  if ((create.status ?? 1) !== 0) {
+    rmDir(tmp);
+    throw new Error(`run-electron-package: createPackage failed (${tmpAsar})`);
+  }
+  rmDir(tmp);
+  if (!fs.existsSync(tmpAsar) || fs.statSync(tmpAsar).size < 1024) {
+    throw new Error(`run-electron-package: createPackage produced empty asar (${tmpAsar})`);
+  }
+  fs.mkdirSync(path.dirname(asarPath), { recursive: true });
+  try {
+    if (fs.existsSync(asarPath)) fs.unlinkSync(asarPath);
+  } catch (e) {
+    console.warn(`run-electron-package: could not unlink old asar (${e && e.message}) — overwrite`);
+  }
+  fs.copyFileSync(tmpAsar, asarPath);
+  console.log(`run-electron-package: rebuilt app.asar (dist UI, ${(fs.statSync(asarPath).size / (1024 * 1024)).toFixed(1)} MB)`);
+
+  const tokenSrc = path.join(root, "build", "updater-gh-token");
+  if (fs.existsSync(tokenSrc)) {
+    const tokenDest = path.join(unpackedDir, "resources", "updater-gh-token");
+    try {
+      if (fs.existsSync(tokenDest)) {
+        const dstSt = fs.statSync(tokenDest);
+        if (dstSt.isDirectory()) rmDir(tokenDest);
+        else fs.unlinkSync(tokenDest);
+      }
+      fs.mkdirSync(path.dirname(tokenDest), { recursive: true });
+      const st = fs.statSync(tokenSrc);
+      if (st.isDirectory()) copyDir(tokenSrc, tokenDest);
+      else copyFileWithRetry(tokenSrc, tokenDest);
+    } catch (e) {
+      console.warn(`run-electron-package: updater-gh-token refresh skipped (${e && e.message})`);
+    }
+  }
+  return tmpAsar;
+}
+
+function removeStaleReleaseAssets(tag, ver) {
   const existing = spawnSync("gh", ["release", "view", tag, "--json", "assets"], {
     encoding: "utf8",
     shell: false,
@@ -220,9 +361,9 @@ function removeStaleReleaseAssets(tag, version) {
     return;
   }
   const keep = new Set([
-    `Stealth-Browser-Console-Setup-${version}.exe`,
-    `Stealth-Browser-Console-Setup-${version}.exe.blockmap`,
-    `Stealth-Browser-Console-Portable-${version}.exe`,
+    `Stealth-Browser-Console-Setup-${ver}.exe`,
+    `Stealth-Browser-Console-Setup-${ver}.exe.blockmap`,
+    `Stealth-Browser-Console-Portable-${ver}.exe`,
     "latest.yml",
   ]);
   for (const asset of assets) {
@@ -242,10 +383,10 @@ function removeStaleReleaseAssets(tag, version) {
   }
 }
 
-function uploadReleaseAssets(tag, version, files) {
+function uploadReleaseAssets(tag, ver, files) {
   const present = files.filter((f) => fs.existsSync(f));
   if (present.length === 0) return;
-  removeStaleReleaseAssets(tag, version);
+  removeStaleReleaseAssets(tag, ver);
   console.log(`\n==> gh release upload ${tag} (${present.length} assets)`);
   const res = spawnSync("gh", ["release", "upload", tag, ...present, "--clobber"], {
     cwd: root,
@@ -255,11 +396,7 @@ function uploadReleaseAssets(tag, version, files) {
   if (res.status !== 0) process.exit(res.status ?? 1);
 }
 
-function uploadMissingAssets(tag, files, version) {
-  uploadReleaseAssets(tag, version, files);
-}
-
-function ensureGitHubRelease(tag, version) {
+function ensureGitHubRelease(tag, ver) {
   const view = spawnSync("gh", ["release", "view", tag], {
     cwd: root,
     stdio: "ignore",
@@ -269,22 +406,22 @@ function ensureGitHubRelease(tag, version) {
   console.log(`\n==> gh release create ${tag}`);
   const res = spawnSync(
     "gh",
-    ["release", "create", tag, "--title", version, "--notes", `Desktop release ${tag}. See CHANGELOG.md.`],
+    ["release", "create", tag, "--title", ver, "--notes", `Desktop release ${tag}. See CHANGELOG.md.`],
     { cwd: root, stdio: "inherit", shell: false },
   );
   if (res.status !== 0) process.exit(res.status ?? 1);
 }
 
-function collectPublishArtifacts(outputDir, version, withPortableFlag) {
+function collectPublishArtifacts(outputDir, ver, withPortableFlag) {
   const files = [];
-  const setup = path.join(outputDir, `Stealth-Browser-Console-Setup-${version}.exe`);
+  const setup = path.join(outputDir, `Stealth-Browser-Console-Setup-${ver}.exe`);
   const blockmap = `${setup}.blockmap`;
   const latest = path.join(outputDir, "latest.yml");
   if (fs.existsSync(setup)) files.push(setup);
   if (fs.existsSync(blockmap)) files.push(blockmap);
   if (fs.existsSync(latest)) files.push(latest);
   if (withPortableFlag) {
-    const portable = path.join(outputDir, `Stealth-Browser-Console-Portable-${version}.exe`);
+    const portable = path.join(outputDir, `Stealth-Browser-Console-Portable-${ver}.exe`);
     if (fs.existsSync(portable)) files.push(portable);
   }
   return files;
@@ -292,13 +429,18 @@ function collectPublishArtifacts(outputDir, version, withPortableFlag) {
 
 runNodeScript("scripts/sync-app-icon.cjs");
 
-if (!skipBuild || !distFresh()) {
+if (!skipBuild) {
+  runNodeScript("scripts/run-build.mjs");
+} else if (!fs.existsSync(path.join(root, "dist", "index.html"))) {
+  console.log("run-electron-package: --skip-build but dist/ missing — building");
   runNodeScript("scripts/run-build.mjs");
 } else {
-  console.log("run-electron-package: skip run-build.mjs (dist/ fresh, --skip-build)");
+  console.log("run-electron-package: skip run-build.mjs (--skip-build; release-desktop owns Vite)");
 }
 
-if (process.platform === "win32") {
+assertUiVersionBaked();
+
+if (process.platform === "win32" && !fastMode) {
   const ensureVs = spawnSync(
     "powershell",
     ["-ExecutionPolicy", "Bypass", "-File", path.join(root, "scripts", "ensure-vs-build-tools.ps1")],
@@ -306,11 +448,27 @@ if (process.platform === "win32") {
   );
   if ((ensureVs.status ?? 1) !== 0) process.exit(ensureVs.status ?? 1);
   runNodeScript("scripts/ensure-better-sqlite3.mjs");
+} else if (fastMode) {
+  console.log("run-electron-package: skip VS/native rebuild (Fast)");
 }
 
 runNodeScript("scripts/write-updater-auth.mjs");
-runNodeScript("scripts/verify-cloakbrowser-esm-deps.mjs");
-runNodeScript("scripts/stage-packaged-node-modules.mjs");
+
+const unpackedLocal = path.join(productOutput, "win-unpacked");
+const canPrepackaged =
+  !targetDir &&
+  !withPortable &&
+  installerOnly &&
+  process.env.DESKTOP_RELEASE_REUSE_UNPACKED !== "0" &&
+  fs.existsSync(path.join(unpackedLocal, "Stealth Browser Console.exe")) &&
+  fs.existsSync(path.join(unpackedLocal, "resources", "app.asar"));
+
+if (!canPrepackaged) {
+  runNodeScript("scripts/verify-cloakbrowser-esm-deps.mjs");
+  runNodeScript("scripts/stage-packaged-node-modules.mjs");
+} else {
+  console.log("run-electron-package: skip cloak stage (Fast prepackaged reuses unpacked native tree)");
+}
 
 const stagingOutput = path.join(os.tmpdir(), `p0003-eb-${Date.now()}`);
 rmDir(stagingOutput);
@@ -319,37 +477,87 @@ const winTargets = withPortable ? ["nsis", "portable"] : ["nsis"];
 // electron-builder publish per target caused duplicate GitHub releases (nsis + portable).
 // Package locally with --publish never; upload once via gh CLI below.
 const builderPublish = publish === "always" ? "never" : publish;
-const builderArgs = [
-  ...(targetDir ? ["--dir"] : ["--win", ...winTargets, "--x64"]),
-  "--publish",
-  builderPublish,
-  `--config.directories.output=${stagingOutput}`,
-];
+
+const skipSign = process.env.DESKTOP_RELEASE_SIGN !== "1" && fastMode;
+const builderEnv = ensureWorkingPnpmOnPath({ ...process.env });
+if (skipSign) {
+  // electron-builder 26: win.sign=false disables signtool (store certs still found otherwise).
+  builderEnv.CSC_IDENTITY_AUTO_DISCOVERY = "false";
+  delete builderEnv.CSC_LINK;
+  delete builderEnv.WIN_CSC_LINK;
+  delete builderEnv.CSC_KEY_PASSWORD;
+  delete builderEnv.WIN_CSC_KEY_PASSWORD;
+  delete builderEnv.CSC_NAME;
+  delete builderEnv.WIN_CSC_NAME;
+  console.log("run-electron-package: skip code signing (set DESKTOP_RELEASE_SIGN=1 to enable)");
+}
+
+const builderArgs = [];
+let asarWarmBackup = "";
+if (canPrepackaged) {
+  console.log(`run-electron-package: Fast prepackaged NSIS from ${unpackedLocal}`);
+  asarWarmBackup = refreshUnpackedAppAsar(unpackedLocal);
+  builderArgs.push("--prepackaged", unpackedLocal, "--win", "nsis", "--x64", "--publish", builderPublish);
+} else {
+  builderArgs.push(
+    ...(targetDir ? ["--dir"] : ["--win", ...winTargets, "--x64"]),
+    "--publish",
+    builderPublish,
+  );
+}
+builderArgs.push(`--config.directories.output=${stagingOutput}`);
+if (skipSign) {
+  // eb 26.15+: signExecutable=false skips signtool; keep separate from invalid win.sign=null.
+  builderArgs.push("--config.win.signExecutable=false");
+  builderArgs.push("--config.win.signAndEditExecutable=false");
+}
+if (fastMode && publish !== "always") {
+  // store = no LZMA — package-only Fast ~45s. Publish keeps default compression (smaller feed).
+  builderArgs.push("--config.compression=store");
+  console.log("run-electron-package: Fast package-only → compression=store");
+}
 
 console.log(
-  `run-electron-package: targets=${targetDir ? "dir" : winTargets.join("+")} builder-publish=${builderPublish}${publish === "always" ? " (gh upload after pack)" : ""}${withPortable ? " (portable adds ~3–5 min)" : ""}`,
+  `run-electron-package: stage=${stagingOutput} target=${canPrepackaged ? "prepackaged-nsis" : targetDir ? "dir" : winTargets.join("+")} builder-publish=${builderPublish}${publish === "always" ? " (gh upload after pack)" : ""}${withPortable ? " (portable adds ~3–5 min)" : ""} version=${version}`,
 );
 
-const builderEnv = ensureWorkingPnpmOnPath({ ...process.env });
 const result = spawnSync(
   node,
   [findElectronBuilder(), ...builderArgs],
   winSpawnOpts({ cwd: root, stdio: "inherit", env: builderEnv }),
 );
+if (asarWarmBackup) {
+  const asarPath = path.join(unpackedLocal, "resources", "app.asar");
+  try {
+    if (!fs.existsSync(asarPath) || fs.statSync(asarPath).size < 1024) {
+      fs.mkdirSync(path.dirname(asarPath), { recursive: true });
+      fs.copyFileSync(asarWarmBackup, asarPath);
+      console.log("run-electron-package: restored warm app.asar after prepackaged NSIS");
+    }
+  } catch (e) {
+    console.warn(`run-electron-package: warm asar restore failed (${e && e.message})`);
+  }
+  try {
+    fs.unlinkSync(asarWarmBackup);
+  } catch {
+    /* ignore */
+  }
+}
 if ((result.status ?? 1) !== 0) {
   rmDir(stagingOutput);
   process.exit(result.status ?? 1);
 }
 
-const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
-const version = pkg.version;
-
-promoteStagingToProductOutput(stagingOutput, productOutput, version);
+promoteStagingToProductOutput(stagingOutput, version);
 rmDir(stagingOutput);
 
-runNodeScript("scripts/verify-packaged-unpacked.mjs");
-runNodeScript("scripts/smoke-packaged-cloakbrowser-import.cjs");
-runNodeScript("scripts/smoke-asar-ps1-resolve.mjs");
+if (!canPrepackaged) {
+  runNodeScript("scripts/verify-packaged-unpacked.mjs");
+  runNodeScript("scripts/smoke-packaged-cloakbrowser-import.cjs");
+  runNodeScript("scripts/smoke-asar-ps1-resolve.mjs");
+} else {
+  console.log("run-electron-package: skip post-pack smokes (Fast prepackaged; tree already verified)");
+}
 
 const tag = `v${version}`;
 
@@ -357,7 +565,6 @@ const setup = path.join(productOutput, `Stealth-Browser-Console-Setup-${version}
 const portable = withPortable
   ? path.join(productOutput, `Stealth-Browser-Console-Portable-${version}.exe`)
   : null;
-const latestYml = path.join(productOutput, "latest.yml");
 
 if (fs.existsSync(setup)) {
   const mb = (fs.statSync(setup).size / (1024 * 1024)).toFixed(1);
@@ -373,7 +580,7 @@ if (portable && fs.existsSync(portable)) {
 if (publish === "always") {
   const uploadFiles = collectPublishArtifacts(productOutput, version, withPortable);
   ensureGitHubRelease(tag, version);
-  uploadMissingAssets(tag, uploadFiles, version);
+  uploadReleaseAssets(tag, version, uploadFiles);
   runNodeScript("scripts/dedupe-github-releases.mjs", ["--tag", tag]);
 
   const verifyArgs = ["--tag", tag];

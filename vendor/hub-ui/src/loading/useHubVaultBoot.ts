@@ -29,9 +29,20 @@ export function useHubVaultBoot<T>({
   onHydrated,
   bootTimeoutMs = 2_000,
 }: HubVaultBootOptions<T>) {
+  /**
+   * `readFast()` is a whole-dataset read: on P0020 it maps ~19.5k vault rows, ~490ms per
+   * call in dev. It used to run once in this initializer and again in the effect below, so
+   * every screen mount paid for it twice — synchronously, while React was building the tree.
+   * Read once per mount and hand the same result to the effect.
+   */
+  const firstFastRef = useRef<T[] | null>(null);
+  const readFirstFast = (): T[] => {
+    if (firstFastRef.current === null) firstFastRef.current = readFast();
+    return firstFastRef.current;
+  };
   const [bootReady, setBootReady] = useState(() => {
     if (typeof window === "undefined") return false;
-    return !needsBootGate(readFast());
+    return !needsBootGate(readFirstFast());
   });
   /** True only after hydrate finished or boot timeout — never set on start (avoids stuck gate). */
   const settledRef = useRef(false);
@@ -45,7 +56,9 @@ export function useHubVaultBoot<T>({
     if (once && settledRef.current) return;
 
     let cancelled = false;
-    const fast = readFast();
+    // Reuse the mount read; later activations (tabActive toggles) must see fresh data.
+    const fast = firstFastRef.current ?? readFast();
+    firstFastRef.current = null;
     onFastPaint(fast);
     const gate = needsBootGate(fast);
     setBootReady(!gate);

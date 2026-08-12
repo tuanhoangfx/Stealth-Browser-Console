@@ -2,12 +2,10 @@ import type { ReactNode } from "react";
 import { Database } from "lucide-react";
 import {
   AppTabHeader,
-  buildConsoleVersionMetaItems,
   useHubChromePrefs,
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
-import { APP_VERSION } from "../../lib/app-meta";
-import toolManifest from "../../../tool.manifest.json";
+import { useStealthVersionMetaItems } from "../../hooks/useStealthVersionMetaItems";
 
 export function ProfileListChromeHeader({
   centerStats,
@@ -21,6 +19,7 @@ export function ProfileListChromeHeader({
   statusSlot?: ReactNode;
 }) {
   const { searchPin, headerPin, stackChrome } = useHubChromePrefs();
+  const metaItems = useStealthVersionMetaItems();
 
   return (
     <AppTabHeader
@@ -28,7 +27,7 @@ export function ProfileListChromeHeader({
       titleIcon={Database}
       titleIconClass="text-emerald-300"
       title="Profiles"
-      metaItems={buildConsoleVersionMetaItems(APP_VERSION, toolManifest)}
+      metaItems={metaItems}
       centerStats={centerStats ?? []}
       centerContent={centerContent}
       statusSlot={statusSlot}

@@ -18,6 +18,8 @@ export type HubWorkspacePeriodSelectProps = {
   applyLabel?: string;
   /** Trigger native tooltip — default creation-date SSOT. */
   title?: string;
+  /** Optional micro meta after period label (e.g. “Weekly”). */
+  triggerMeta?: string;
 };
 
 /** Golden Period filter — HubPeriodSelect + per-tab URL prefs. */
@@ -29,6 +31,7 @@ export function HubWorkspacePeriodSelect({
   labels,
   applyLabel = "Apply",
   title = WORKSPACE_PERIOD_FILTER_HINT,
+  triggerMeta,
 }: HubWorkspacePeriodSelectProps) {
   const period = useWorkspacePeriod(scope, defaultRange);
 
@@ -60,6 +63,7 @@ export function HubWorkspacePeriodSelect({
       endLabel="End"
       triggerTypoClass={HUB_DIRECTORY_TOOLBAR_TYPO_CLASS}
       title={title}
+      triggerMeta={triggerMeta}
     />
   );
 }

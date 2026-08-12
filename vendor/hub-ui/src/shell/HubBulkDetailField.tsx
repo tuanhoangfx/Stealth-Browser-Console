@@ -9,8 +9,7 @@ import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader"
 import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import type { FilterOption, HubSingleFilterDropdownProps } from "./FilterBar";
 import {
-  HUB_ADM_GRID_SLOT_SPACER_CLASS,
-  HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS,
+  hubAdmGridSlotPadClass,
 } from "./hubAccountDetailModal";
 
 /** HubAdmClick* component names — bulk detail field SSOT contract. */
@@ -192,12 +191,12 @@ export function groupHubBulkDetailFieldsForRows<T extends { key: string; fullWid
  * Use ONE spacer only: 1 field → span cols 3–6; 2 fields → span cols 5–6.
  * Never stack both — the first already fills to end-of-row and the second wraps into an empty row. */
 export function HubBulkDetailRowSpacers({ fieldCount }: { fieldCount: number }) {
-  if (fieldCount >= 3) return null;
-  if (fieldCount === 2) {
-    return <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />;
-  }
-  if (fieldCount === 1) {
-    return <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden />;
-  }
-  return null;
+  const cls = hubAdmGridSlotPadClass(fieldCount);
+  if (!cls) return null;
+  return <span className={cls} aria-hidden />;
+}
+
+/** Alias — `filledCount` naming for Catalog / Product Detail call sites. */
+export function HubAdmGridSlotPad({ filledCount }: { filledCount: number }) {
+  return <HubBulkDetailRowSpacers fieldCount={filledCount} />;
 }

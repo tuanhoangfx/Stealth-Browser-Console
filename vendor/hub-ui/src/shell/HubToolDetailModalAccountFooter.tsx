@@ -29,6 +29,8 @@ export type HubToolDetailModalAccountFooterProps = {
   onDelete?: () => void;
   deleteLabel?: string;
   deleteIcon?: LucideIcon;
+  /** Subtle hotkey chip beside Delete (e.g. Del) — hidden while busy. */
+  deleteHotkeyHint?: string;
   /**
    * Extra secondary actions after Close/Delete (View customer, View orders, …).
    * Rendered in the same centered cluster — do not use left/right split.
@@ -40,7 +42,7 @@ export type HubToolDetailModalAccountFooterProps = {
 
 /**
  * Golden account-detail footer — single centered cluster:
- * **Save → Close → Delete? → trailing secondaries (`leading`)**.
+ * **Save → trailing secondaries (`leading`) → Close → Delete?**.
  *
  * Reference: P0020 TwofaAccountDetailModal · P0005 Order/Customer Detail.
  */
@@ -59,6 +61,7 @@ export function HubToolDetailModalAccountFooter({
   onDelete,
   deleteLabel = "Delete",
   deleteIcon = Trash2,
+  deleteHotkeyHint,
   leading,
   saveSlot,
 }: HubToolDetailModalAccountFooterProps) {
@@ -77,6 +80,7 @@ export function HubToolDetailModalAccountFooter({
               variant={saveVariant}
             />
           ) : null)}
+        {leading}
         <HubToolDetailModalSecondaryAction
           label={closeLabel}
           onClick={onClose}
@@ -84,15 +88,21 @@ export function HubToolDetailModalAccountFooter({
           icon={closeIcon}
         />
         {onDelete ? (
-          <HubToolDetailModalPrimaryAction
-            label={deleteLabel}
-            onClick={onDelete}
-            danger
-            disabled={busy}
-            icon={deleteIcon}
-          />
+          <span className="hub-tool-detail-modal__delete-wrap">
+            <HubToolDetailModalPrimaryAction
+              label={deleteLabel}
+              onClick={onDelete}
+              danger
+              disabled={busy}
+              icon={deleteIcon}
+            />
+            {deleteHotkeyHint && !busy ? (
+              <kbd className="hub-tool-detail-modal__hotkey-hint" aria-hidden>
+                {deleteHotkeyHint}
+              </kbd>
+            ) : null}
+          </span>
         ) : null}
-        {leading}
       </div>
     </div>
   );

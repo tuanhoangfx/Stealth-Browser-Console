@@ -1,4 +1,5 @@
-/* Directory copy control — SSOT base (P0020 twofa-table-cells extends with tone modifiers). */
+/* Directory copy control — SSOT base (P0020 twofa-table-cells extends with tone modifiers).
+   Whole value is click-to-copy; stopPropagation preserves row click → Detail. */
 .hub-directory-copy-wrap,
 .twofa-copy-control-wrap {
   display: inline-flex;
@@ -9,7 +10,6 @@
   margin: 0;
   border: none;
   background: transparent;
-  cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -20,21 +20,21 @@
   display: inline-flex;
   max-width: 100%;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   border: none;
   background: transparent;
   padding: 0;
   margin: 0;
-  cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
+  cursor: pointer;
   transition: opacity 0.12s ease;
 }
 
 .hub-directory-copy-control:hover,
 .twofa-copy-control:hover {
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .hub-directory-copy-control__value,

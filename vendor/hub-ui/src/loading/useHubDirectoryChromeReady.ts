@@ -16,9 +16,17 @@ export const HUB_DIRECTORY_CHROME_READY_FALLBACK_MS = 48;
  * on ready (mirror hydration, fetches) rather than merely un-gating deferred memos:
  * rAF starvation signals the main thread is already busy, so kicking off extra work
  * from a timer during the long task makes contention worse, not better.
+ *
+ * `armKey` re-arms the gate when it changes (e.g. P0020 vault sub-scope Services↔Mail):
+ * without it the deferral only ever fires on tab enter, and every sub-scope switch runs
+ * the full facet/KPI/chart pipeline synchronously in one commit.
  */
-export function useHubDirectoryChromeReady(tabActive: boolean, opts?: { rafOnly?: boolean }): boolean {
+export function useHubDirectoryChromeReady(
+  tabActive: boolean,
+  opts?: { rafOnly?: boolean; armKey?: string | number },
+): boolean {
   const rafOnly = opts?.rafOnly === true;
+  const armKey = opts?.armKey;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -26,6 +34,8 @@ export function useHubDirectoryChromeReady(tabActive: boolean, opts?: { rafOnly?
       setReady(false);
       return;
     }
+    // Re-arm (armKey change while active) — same light-first-paint contract as tab enter.
+    setReady(false);
     let cancelled = false;
     let inner = 0;
     const mark = () => {
@@ -43,7 +53,7 @@ export function useHubDirectoryChromeReady(tabActive: boolean, opts?: { rafOnly?
       if (inner) window.cancelAnimationFrame(inner);
       if (fallback) window.clearTimeout(fallback);
     };
-  }, [tabActive, rafOnly]);
+  }, [tabActive, rafOnly, armKey]);
 
   return tabActive && ready;
 }

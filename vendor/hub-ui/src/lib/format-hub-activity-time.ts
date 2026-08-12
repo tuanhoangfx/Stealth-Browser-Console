@@ -30,7 +30,8 @@ export function parseHubActivityMs(at: string | number | null | undefined): numb
  * Fresh ≤1h (red) · Recent ≤24h (orange) · Days ≤3d (blue) · Week ≤7d (teal) · Stale >7d (gray).
  */
 export function hubActivityAgeTone(ms: number, now = Date.now()): HubActivityAgeTone {
-  if (ms > now) return "stale";
+  // Future stamps (date-only → UTC noon skew) treat as fresh — never calendar "dd/mm/yy".
+  if (ms > now) return "fresh";
   const age = now - ms;
   if (age <= HUB_ACTIVITY_FRESH_MS) return "fresh";
   if (age <= HUB_ACTIVITY_RECENT_MS) return "recent";
@@ -59,7 +60,7 @@ export function formatHubActivityStaleLabel(ms: number): string {
 
 /** Relative label within the last 24 hours (also supports Nd ago for >24h callers). */
 export function formatHubActivityRelativeAge(ms: number, now = Date.now()): string {
-  if (ms > now) return formatHubActivityStaleLabel(ms);
+  if (ms > now) return "Just now";
   const ageMs = now - ms;
   const ageSec = Math.floor(ageMs / 1000);
   if (ageSec < 60) return "Just now";

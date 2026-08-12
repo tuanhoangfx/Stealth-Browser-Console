@@ -24,6 +24,11 @@ export type HubCopyBadgeProps = {
   display?: HubCopyBadgeDisplay;
   /** Optional label override (e.g. search highlight). */
   labelContent?: ReactNode;
+  /**
+   * Trailing Copy glyph — default on for ID chips.
+   * Full Info SSOT: fingerprint leading only (not dropdown-style Copy).
+   */
+  showTrailingCopy?: boolean;
 };
 
 export function hubCopyBadgeDisplayLabel(value: string, label?: string): string {
@@ -44,6 +49,7 @@ export function HubCopyBadge({
   copyToastLabel,
   display = "full",
   labelContent,
+  showTrailingCopy = true,
 }: HubCopyBadgeProps) {
   const toast = useHubToast();
   const [copied, setCopied] = useState(false);
@@ -88,7 +94,7 @@ export function HubCopyBadge({
         <Fingerprint size={compactIconSize(10)} className="shrink-0 text-indigo-300/80" aria-hidden />
       ) : null}
       <span className="truncate">{labelContent ?? displayLabel}</span>
-      {!chip ? (
+      {!chip && showTrailingCopy ? (
         <Copy size={compactIconSize(10)} className="shrink-0 opacity-60" aria-hidden />
       ) : null}
       {!chip && useInlineTick && copied ? (

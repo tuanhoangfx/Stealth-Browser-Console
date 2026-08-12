@@ -13,6 +13,7 @@ export type HubDirectoryTableVariant =
   | "5"
   | "6"
   | "7"
+  | "8"
   | "accounts"
   | "fb-accounts"
   | "pages"

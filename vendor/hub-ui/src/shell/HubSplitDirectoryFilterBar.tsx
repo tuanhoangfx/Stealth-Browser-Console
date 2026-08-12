@@ -11,7 +11,7 @@ export type HubSplitDirectoryFilterBarProps = Omit<
 > & {
   shortcutScope: string;
   toolbar?: ReactNode;
-  /** `x/y` selection chip — table: beside search · card: filter row-2 trailing. */
+  /** `x/y` selection chip — table: toolbar leading · card: filter row-2 trailing. */
   filterSelectionToolbar?: HubDirectoryToolbarSelectionProps;
   directoryViewMode?: HubViewMode;
   row2Leading?: ReactNode;
@@ -32,6 +32,13 @@ export function HubSplitDirectoryFilterBar({
   ...rest
 }: HubSplitDirectoryFilterBarProps) {
   const selectionSlots = buildHubDirectorySelectionSlots(filterSelectionToolbar, directoryViewMode);
+  const mergedToolbar =
+    selectionSlots.toolbarLeading || toolbar ? (
+      <>
+        {selectionSlots.toolbarLeading}
+        {toolbar}
+      </>
+    ) : undefined;
 
   return (
     <HubDirectorySelectionChromeProvider active={Boolean(filterSelectionToolbar)}>
@@ -40,7 +47,7 @@ export function HubSplitDirectoryFilterBar({
         frameless
         pinSticky={false}
         shortcutScope={shortcutScope}
-        toolbar={toolbar}
+        toolbar={mergedToolbar}
         searchTrailing={searchTrailing ?? selectionSlots.searchTrailing}
         row2Leading={row2Leading}
         row2Actions={row2Actions}

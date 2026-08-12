@@ -13,21 +13,29 @@ export function buildConsoleVersionMetaItems(
     builtAtIso?: string;
     changelogPublishedAt?: string;
     extra?: TabHeaderMetaItem[];
+    /** Icon/control after version label (update status SSOT). */
+    versionAfter?: TabHeaderMetaItem["after"];
   },
 ): TabHeaderMetaItem[] {
   const toolSemver = String(appVersion).replace(/^v/i, "").trim();
   const displayVersion = resolveHubDisplayAppVersion(appVersion);
   // Host portal (P0026) version inside embed — one clock for every ENZY screen.
+  let items: TabHeaderMetaItem[];
   if (displayVersion !== toolSemver) {
-    return buildVersionMetaItems(displayVersion, null, true, options?.extra ?? []);
+    items = buildVersionMetaItems(displayVersion, null, true, options?.extra ?? []);
+  } else {
+    const release = resolveAppVersionReleaseMeta({
+      appVersion: displayVersion,
+      manifest,
+      builtAtIso: options?.builtAtIso,
+      changelogPublishedAt: options?.changelogPublishedAt,
+    });
+    items = buildVersionMetaItems(displayVersion, release.publishedAt, release.live, options?.extra ?? []);
   }
-  const release = resolveAppVersionReleaseMeta({
-    appVersion: displayVersion,
-    manifest,
-    builtAtIso: options?.builtAtIso,
-    changelogPublishedAt: options?.changelogPublishedAt,
-  });
-  return buildVersionMetaItems(displayVersion, release.publishedAt, release.live, options?.extra ?? []);
+  if (options?.versionAfter && items[0]) {
+    items = [{ ...items[0], after: options.versionAfter }, ...items.slice(1)];
+  }
+  return items;
 }
 
 /** Legacy `vX.Y.Z · dd/mm/yy` string meta (scaffold / simple headers). */

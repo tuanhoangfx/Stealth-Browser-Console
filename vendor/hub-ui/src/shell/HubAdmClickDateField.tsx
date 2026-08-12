@@ -3,6 +3,11 @@ import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader"
 import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import { HubAdmInlineFieldLabel } from "./HubAdmClickEditField";
 import { HUB_DATE_PICKER_PLACEHOLDER, HubFilterDatePicker } from "./HubFilterDatePicker";
+import {
+  buildHubAdmDetailCopyTrailingAction,
+  mergeHubAdmTrailingActions,
+} from "./hub-adm-detail-copy-action";
+import "./hub-adm-detail-copy-action.css";
 
 export type HubAdmClickDateFieldProps = {
   header: HubTableColumnHeaderProps;
@@ -17,6 +22,11 @@ export type HubAdmClickDateFieldProps = {
   compactTrigger?: boolean;
   hideTriggerIcon?: boolean;
   disabled?: boolean;
+  /** Clipboard text; defaults to picker value when non-empty. */
+  copyValue?: string;
+  copyToastLabel?: string;
+  /** Default false — copy icon on ClickFilter dropdowns only; opt in for date fields. */
+  showCopyAction?: boolean;
   /** Optional control after the value (e.g. copy icon). Does not shrink. */
   trailingAction?: ReactNode;
 };
@@ -35,9 +45,22 @@ export function HubAdmClickDateField({
   compactTrigger = true,
   hideTriggerIcon = true,
   disabled = false,
+  copyValue,
+  copyToastLabel,
+  showCopyAction,
   trailingAction,
 }: HubAdmClickDateFieldProps) {
   const emoji = hideTriggerIcon ? undefined : (triggerEmoji ?? header.headerEmoji);
+  const resolvedCopy = (copyValue ?? value.trim()).trim();
+  const autoCopy =
+    showCopyAction === true && resolvedCopy && !disabled
+      ? buildHubAdmDetailCopyTrailingAction({
+          copyText: resolvedCopy,
+          title: `Copy ${fieldLabel}`,
+          copyToastLabel: copyToastLabel ?? `${fieldLabel} copied`,
+        })
+      : null;
+  const mergedTrailing = mergeHubAdmTrailingActions(autoCopy, trailingAction);
 
   return (
     <div
@@ -45,7 +68,7 @@ export function HubAdmClickDateField({
     >
       <HubAdmInlineFieldLabel header={header} labelHint={labelHint} />
       <div
-        className={`hub-adm-inline-field__value${trailingAction ? " hub-adm-inline-field__value--has-trailing" : ""}`}
+        className={`hub-adm-inline-field__value${mergedTrailing ? " hub-adm-inline-field__value--has-trailing" : ""}`}
       >
         <HubFilterDatePicker
           value={value}
@@ -59,8 +82,8 @@ export function HubAdmClickDateField({
           compactTrigger={compactTrigger}
           disabled={disabled}
         />
-        {trailingAction ? (
-          <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{trailingAction}</span>
+        {mergedTrailing ? (
+          <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{mergedTrailing}</span>
         ) : null}
       </div>
     </div>

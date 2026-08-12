@@ -19,7 +19,7 @@ export function HubAdmSectionLabel({
   const label = (
     <div className="hub-adm-section-label">
       <span className="hub-adm-section-label__inner hub-users-th-label hub-users-th-label--start hub-inline-gap-name">
-        <HubTableColumnHeader {...header} />
+        <HubTableColumnHeader {...header} enableFit={false} />
       </span>
     </div>
   );

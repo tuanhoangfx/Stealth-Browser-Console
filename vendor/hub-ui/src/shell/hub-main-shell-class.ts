@@ -34,15 +34,30 @@ export type ToolManifestUiShell = {
   userFooter?: "workspace" | "hub-admin";
 };
 
+/**
+ * Raw `tool.manifest.json` shape. A JSON import widens literals to `string`, so hosts that pass
+ * `toolManifest.uiShell` straight through cannot satisfy `ToolManifestUiShell` (P0005, P0026).
+ */
+export type ToolManifestUiShellInput = {
+  golden?: string;
+  mainMode?: string;
+  splitScreens?: readonly string[];
+  userFooter?: string;
+};
+
+function asHubMainShellMode(value: string | undefined): HubMainShellMode | undefined {
+  return value === "directory" || value === "split" ? value : undefined;
+}
+
 /** Build hub-main class from tool.manifest `uiShell` block. */
 export function hubMainShellClassFromManifest(
   screen: string,
-  uiShell?: ToolManifestUiShell | null,
+  uiShell?: ToolManifestUiShell | ToolManifestUiShellInput | null,
   extraClassName?: string,
 ): string {
   return hubMainShellClassName({
     screen,
-    mode: uiShell?.mainMode,
+    mode: asHubMainShellMode(uiShell?.mainMode),
     splitScreens: uiShell?.splitScreens ?? [],
     extraClassName,
   });

@@ -48,7 +48,7 @@
 }
 
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {
-  --hub-modal-max-w: min(96rem, calc(100vw - var(--app-sidebar-width, 0px) - 1.5rem));
+  /* width: shared Layout 2/3 block in hub-modal.css (SSOT) */
   --hub-modal-max-h: 768px;
   --hub-modal-max-vh: 73.6vh;
 
@@ -843,6 +843,43 @@
   -webkit-line-clamp: 2;
 }
 
+/* Full-width Note line (Order Details / Info / About / Warranty) — always-open textarea.
+ * Height = rows × --hub-adm-note-line-row-h (+ pad). Parent sets --hub-adm-note-line-rows via rows prop.
+ * Do NOT redeclare --hub-adm-note-line-rows on the control (would ignore parent rows=3). */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-detail-note-line {
+  --hub-adm-note-line-rows: 6;
+  --hub-adm-note-line-row-h: 1.15rem;
+  align-items: start;
+  width: 100%;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-detail-note-line > .hub-adm-inline-field__value {
+  align-self: stretch;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-detail-note-line .hub-adm-note-editor-field,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-detail-note-line .hub-adm-note-editor {
+  width: 100%;
+  height: calc(
+    (var(--hub-adm-note-line-row-h) * var(--hub-adm-note-line-rows)) + 0.4rem
+  );
+  max-height: calc(
+    (var(--hub-adm-note-line-row-h) * var(--hub-adm-note-line-rows)) + 0.4rem
+  );
+  min-height: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-detail-note-line .hub-adm-detail-note-line__control {
+  box-sizing: border-box;
+  /* Beat `.hub-account-detail-modal .hub-adm-note-textarea { height: 100% }` rail fill. */
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none;
+  padding: 0.2rem 0.4rem;
+  overflow-y: auto;
+  resize: none;
+}
+
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__textarea {
   min-height: calc(var(--hub-adm-value-h, 1.65rem) * 2);
   height: auto;
@@ -928,9 +965,13 @@
   transition: opacity 0.12s ease, color 0.12s ease;
 }
 
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit__action {
+  display: none !important;
+}
+
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit:hover .hub-adm-click-edit__action,
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-edit:focus-visible .hub-adm-click-edit__action {
-  opacity: 1;
+  opacity: 0;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trigger:hover .hub-adm-click-filter__chevron,

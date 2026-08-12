@@ -135,12 +135,14 @@ export function useHubStaleIdleMemo<T>(
 
     const hit = bucket.get(fingerprint) as T | undefined;
     if (hit !== undefined) {
-      setState({ fp: fingerprint, value: hit });
-      handle = scheduleIdle(apply);
-      return () => {
-        cancelled = true;
-        cancelScheduled(handle);
-      };
+      // Fingerprint encodes the inputs — a hit IS current. The old idle refresh here
+      // re-ran the full compute AND minted a new value identity on every activation
+      // (the P0005 Products "6s per tab open" pattern), cascading through every
+      // downstream memo (charts/KPI/band) for an identical result.
+      setState((prev) =>
+        prev?.fp === fingerprint && prev.value === hit ? prev : { fp: fingerprint, value: hit },
+      );
+      return;
     }
 
     handle = scheduleAfterPaint(apply);

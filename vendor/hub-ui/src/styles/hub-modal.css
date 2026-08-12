@@ -47,6 +47,40 @@
 .hub-modal-frame {
   position: relative;
   z-index: 1;
+  /* Close button sits slightly outside the panel edge — never clip it. */
+  overflow: visible;
+}
+
+/*
+ * Compact forms (Edit Shift / Confirm / Note…): HubModalFrame owns max-width
+ * (`max-w-md` / `max-w-lg`). Without this override, `.modal-shell--tool-detail`
+ * forces Settings-scale width (≈72rem) and the red X anchors to the narrow
+ * frame while the visible shell overflows — looks “floating / misaligned”.
+ * Large Settings/Log shells use HubDetailModal without a max-w frame and keep
+ * the width rules above.
+ */
+.hub-modal-frame > .modal-shell.modal-shell--tool-detail,
+.hub-modal-frame > .modal-shell.modal-shell--compact {
+  width: 100%;
+  max-width: 100%;
+  /* Keep consumer height utilities (e.g. Shift history `h-[min(85vh,860px)]`). */
+  min-height: 0;
+  flex: none;
+}
+
+/*
+ * …but a Layout 2 / Layout 3 tool modal must NOT be sized by its wrapper.
+ *
+ * The rule above makes the shell fill the frame, so the real width came from whatever
+ * Tailwind `max-w-*` each consumer happened to pass to HubModalFrame — measured on dev:
+ * P0005 Service 1263px, P0020 Service ~1625px, P0020 Partner ~1692px, P0020 Add ~870px,
+ * all with identical shell tokens. The frame now follows the same SSOT width, so every
+ * Layout 2/3 modal is the same box in every tool. `--fit` (confirm / small forms) keeps
+ * the consumer's own width.
+ */
+.hub-modal-frame:has(> .modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit)) {
+  width: min(88rem, calc(100vw - var(--hub-modal-h-margin, 2rem)));
+  max-width: none;
 }
 
 .modal-backdrop {
@@ -60,16 +94,36 @@
 }
 
 .modal-backdrop--tool-detail {
-  --app-sidebar-width: 15rem;
-  /* Golden — one shell size for Settings · Log · User · tool forms across P00xx. */
-  --hub-modal-max-w: 72rem;
+  /* Golden — one shell size for Settings · Log · User · Layout 2/3 across P00xx (P0005 CRM SSOT). */
+  --hub-modal-h-margin: 2rem;
+  --hub-modal-max-w: min(72rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin)));
+  --hub-modal-max-h: 860px;
+  --hub-modal-max-vh: 88vh;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 1rem;
+  padding-left: calc(var(--app-sidebar-width, 0px) + 1rem);
+  background: rgba(6, 8, 14, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/*
+ * Compact forms (Edit Shift / Confirm / Note / Add…): true viewport center —
+ * no Hub sidebar left pad (that offset makes small panels look “lệch”).
+ * Pair with HubModalFrame `max-w-md`/`max-w-lg` + width lock above.
+ */
+.modal-backdrop--compact {
+  --app-sidebar-width: 0px;
+  --hub-modal-max-w: 28rem;
   --hub-modal-max-h: 860px;
   --hub-modal-max-vh: 88vh;
   --hub-modal-h-margin: 2rem;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 1rem 1rem 1rem calc(var(--app-sidebar-width) + 1rem);
+  padding: 1.5rem 1rem;
   background: rgba(6, 8, 14, 0.62);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -80,8 +134,8 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  width: min(var(--hub-modal-max-w), calc(100vw - var(--app-sidebar-width) - var(--hub-modal-h-margin)));
-  max-width: calc(100vw - var(--app-sidebar-width) - var(--hub-modal-h-margin));
+  width: min(var(--hub-modal-max-w), calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
+  max-width: calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem));
   height: auto;
   flex: 0 1 auto;
   min-height: 0;
@@ -99,9 +153,31 @@
   transform: none;
 }
 
-/* TOC / directory modals — consistent fill height. Opt out with .hub-tool-detail-modal--fit (confirm, small forms). */
-.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) {
-  min-height: min(var(--hub-modal-fill-min-h, 640px), var(--hub-modal-max-vh));
+/*
+ * ONE shell size for every Layout 2 / Layout 3 tool modal across P00xx.
+ *
+ * Reference box = P0005 CRM Service detail (the golden one): 72rem wide, 768px tall
+ * capped at 73.6vh. Before this, header panels (Log · Notify · Update Release · Usage)
+ * were content-fit against 860px/88vh while detail modals were fixed 768px/73.6vh, so the
+ * same screen showed two different modal boxes — and tools kept adding their own
+ * `--hub-modal-max-*` overrides on top.
+ *
+ * Opt-out stays `.hub-tool-detail-modal--fit` (confirm dialogs, small forms) — that class
+ * is the documented way to ask for a content-sized shell.
+ */
+.modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) {
+  --hub-modal-max-w: min(88rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
+  --hub-modal-max-h: 768px;
+  --hub-modal-max-vh: 73.6vh;
+
+  /* The shell is a flex item: default `min-width: auto` let the widest field grid inside
+     push the box past `width`, so every modal ended up sized by its own content (measured:
+     P0005 Service 1263px, P0020 Service ~1625px, P0020 Add ~870px — same CSS, three boxes).
+     `min-width: 0` makes the token authoritative; inner grids wrap / scroll instead. */
+  min-width: 0;
+  height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  min-height: min(512px, var(--hub-modal-max-vh));
+  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
 }
 
 .modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit):not(.hub-header-panel-modal):not(.hub-settings-modal) .hub-tool-detail-modal__body,
@@ -133,7 +209,8 @@
 }
 
 @media (max-width: 1024px) {
-  .modal-backdrop--tool-detail {
+  .modal-backdrop--tool-detail,
+  .modal-backdrop--compact {
     --app-sidebar-width: 0px;
     padding: 0.75rem;
   }
@@ -487,6 +564,29 @@ body.hub-modal-open {
   flex: 0 0 auto;
 }
 
+.hub-tool-detail-modal__delete-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hub-tool-detail-modal__hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
 .hub-tool-detail-modal__confirm,
 .cookie-dl-modal__confirm {
   display: inline-flex;
@@ -754,12 +854,40 @@ body.hub-modal-open {
   --overview-toc-w: 14rem;
   --overview-toc-row-h: 2.125rem;
   --hub-settings-toc-icon: 11px;
-  height: auto;
+  /* NO `height: auto` — these panels used to shrink-wrap their content, so Log / Notify /
+     Update Release / Settings opened as a shorter box than every detail modal on the same
+     screen. Height comes from the shared Layout 2/3 block above (one shell size SSOT). */
 }
 
 .hub-header-panel-modal .user-access-modal__header,
 .hub-settings-modal .user-access-modal__header {
   padding: 0.55rem 0.85rem;
+}
+
+/* Layout 2 ops (Log · Notify · Update Release) — pin search in headerCenter. */
+.hub-header-panel-modal .user-access-modal__header:has(.user-access-modal__header-center) {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(12rem, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.hub-header-panel-modal .user-access-modal__header:has(.user-access-modal__header-center) .user-access-modal__header-main {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.hub-header-panel-modal .user-access-modal__header-center {
+  min-width: 0;
+  width: 100%;
+  max-width: 28rem;
+  justify-self: stretch;
+}
+
+.hub-activity-feed-toolbar--header input[type="search"] {
+  min-height: 1.75rem;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
 }
 
 .hub-header-panel-modal .hub-tool-detail-modal__layout,
@@ -785,4 +913,107 @@ body.hub-modal-open {
     max-height: 9rem;
     overflow-y: auto;
   }
+}
+
+.hub-notify-alert-item--read {
+  opacity: 0.55;
+}
+
+.hub-notify-alert-item--read .hub-notify-alert-row {
+  border-color: transparent;
+}
+
+.hub-notify-alert-open {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Update Release — TOC + V1 timeline (Design lock). */
+.hub-tool-detail-section--flush {
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+}
+
+.hub-tool-detail-section--flush .hub-tool-detail-section__body {
+  padding: 0;
+}
+
+.hub-release-timeline {
+  gap: 0.35rem;
+}
+
+.hub-release-timeline-item {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
+.hub-release-timeline-rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.85rem;
+}
+
+.hub-release-timeline-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
+  flex-shrink: 0;
+}
+
+.hub-release-timeline-line {
+  width: 1px;
+  flex: 1;
+  min-height: 2rem;
+  margin-top: 0.3rem;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.35), rgba(255, 255, 255, 0.06));
+}
+
+.hub-release-timeline-card {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.7rem 0.8rem;
+}
+
+.hub-release-timeline-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+}
+
+.hub-release-headline {
+  flex: 1 1 8rem;
+}
+
+.hub-release-header-version {
+  max-width: min(100%, 20rem);
+}
+
+/* Match hub header chrome scale inside Update Release modal. */
+.hub-release-notes-modal {
+  --hub-header-chrome-font-size: 12px;
+  --hub-header-chrome-font-weight: 500;
+}
+
+.hub-release-notes-modal .user-access-modal__header-name,
+.hub-release-notes-modal .app-tab-header__chrome-text,
+.hub-release-notes-modal .hub-activity-feed-toolbar input[type="search"],
+.hub-release-notes-modal .hub-toc-nav {
+  font-size: var(--hub-header-chrome-font-size);
+  font-weight: var(--hub-header-chrome-font-weight);
+  line-height: 1.25;
+}
+
+.hub-release-notes-modal .hub-release-kind-badge {
+  font-size: var(--hub-header-chrome-font-size);
+  line-height: 1.2;
 }

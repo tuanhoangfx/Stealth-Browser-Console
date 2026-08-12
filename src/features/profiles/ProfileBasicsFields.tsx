@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS } from "@tool-workspace/hub-ui";
+import { HubAdmGridSlotPad } from "@tool-workspace/hub-ui";
 import { formatStartupUrlOnBlur } from "../../lib/startup-url";
 import { PROXY_PRESETS } from "../../lib/stealth-profile-utils";
 import {
@@ -86,7 +86,7 @@ export function ProfileBasicsFields({
             />
           )}
         />
-        {!showName ? <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden /> : null}
+        {!showName ? <HubAdmGridSlotPad filledCount={2} /> : null}
       </div>
 
       <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
@@ -106,7 +106,7 @@ export function ProfileBasicsFields({
           onChange={setProxy}
           placeholder="http://user:pass@host:port"
         />
-        <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+        <HubAdmGridSlotPad filledCount={2} />
       </div>
     </>
   );

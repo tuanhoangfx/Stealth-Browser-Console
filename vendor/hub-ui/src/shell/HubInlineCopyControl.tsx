@@ -112,6 +112,12 @@ export function HubInlineCopyControl({
 
       className={`hub-inline-copy-control ${className}`.trim()}
 
+      title={title}
+
+      aria-label={title}
+
+      data-hub-copy-value={text}
+
       onClick={(e) => {
 
         e.stopPropagation();

@@ -21,6 +21,11 @@ export type HubTableColumnHeaderProps = {
   icon?: LucideIcon;
   iconClassName?: string;
   brandIcon?: HubBrandIconId;
+  /**
+   * Table headers: measure + icon-only collapse when the th is too narrow.
+   * Adm detail/section labels: set false — no measure clone (avoids `AccountAccount` textContent).
+   */
+  enableFit?: boolean;
 };
 
 /** Table header icon + label — wrap with `.hub-users-th-label` in sortable headers. */
@@ -32,6 +37,7 @@ export function HubTableColumnHeader({
   icon: IconProp,
   iconClassName,
   brandIcon,
+  enableFit = true,
 }: HubTableColumnHeaderProps) {
   const headingRef = useRef<HTMLSpanElement>(null);
   const glyphRef = useRef<HTMLSpanElement>(null);
@@ -48,7 +54,7 @@ export function HubTableColumnHeader({
   const iconOnly = useHubTableColumnHeaderFit(
     { headingRef, glyphRef, textMeasureRef },
     displayText,
-    showGlyph && Boolean(displayText.trim()),
+    enableFit && showGlyph && Boolean(displayText.trim()),
   );
 
   const showText = Boolean(displayText.trim()) && !iconOnly;
@@ -59,7 +65,7 @@ export function HubTableColumnHeader({
     </span>
   );
 
-  const measureText = (
+  const measureText = enableFit ? (
     <span
       ref={textMeasureRef}
       className="hub-users-th-text hub-users-th-text--measure"
@@ -67,7 +73,7 @@ export function HubTableColumnHeader({
     >
       {displayText}
     </span>
-  );
+  ) : null;
 
   if (headerEmoji) {
     return (

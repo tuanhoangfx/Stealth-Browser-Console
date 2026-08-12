@@ -25,7 +25,7 @@ function variantClass(variant: "account" | "password", masked?: boolean): string
   return "twofa-copy-control--account hub-users-name-title";
 }
 
-/** Directory click-to-copy — P0020 Mail / Service / Account parity (`HubTwofaCopyControl` + dark popover). */
+/** Directory click-to-copy — P0020 Mail / Service / Account (value click + toast; no trailing icon). */
 export function HubDirectoryCopyText({
   value,
   display,
@@ -50,16 +50,14 @@ export function HubDirectoryCopyText({
     resolvedDisplay !== text;
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <HubTwofaCopyControl
-        value={text}
-        display={resolvedDisplay}
-        className={`${variantClass(variant, masked)} ${className}`.trim()}
-        wrapClassName={variant === "password" ? `twofa-copy-control-wrap--value ${wrapClassName}`.trim() : wrapClassName}
-        copyToastLabel={copyToastLabel}
-        copyFeedback={copyFeedback}
-        onCopied={onCopied}
-      />
-    </div>
+    <HubTwofaCopyControl
+      value={text}
+      display={resolvedDisplay}
+      className={`${variantClass(variant, masked)} ${className}`.trim()}
+      wrapClassName={variant === "password" ? `twofa-copy-control-wrap--value ${wrapClassName}`.trim() : wrapClassName}
+      copyToastLabel={copyToastLabel}
+      copyFeedback={copyFeedback}
+      onCopied={onCopied}
+    />
   );
 }

@@ -20,7 +20,7 @@ export function HubResultCount({
   return (
     <span
       className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 text-xs font-semibold tabular-nums text-cyan-100 shadow-sm shadow-cyan-500/10"
-      title={`${shown} of ${total} ${label} shown`}
+      title={`${shown} of ${total} ${label} Shown`}
     >
       {brandIcon ? (
         <HubBrandIcon brandId={brandIcon} size={compactIconSize(14)} className="shrink-0" />

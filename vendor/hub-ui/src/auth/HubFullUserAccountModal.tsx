@@ -1,33 +1,44 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { KeyRound, LogOut, Mail, RefreshCcw, User } from "lucide-react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { KeyRound, LogOut, Mail, RefreshCcw, User, UserRound } from "lucide-react";
 import type { HubSessionLike } from "@tool-workspace/hub-identity";
 import { canUseEmailPasswordRecovery, hubSessionLabels } from "@tool-workspace/hub-identity";
+import { HubChangeLogList } from "../content/HubChangeLogList";
+import type { HubEntityLogEntry, HubEntityLogFieldMeta } from "../lib/hub-entity-log";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
-  HUB_TOOL_DETAIL_SCROLL_ROOT,
 } from "../shell/HubToolDetailModal";
-import {
-  HubToolDetailSection,
-  HUB_TOOL_DETAIL_SECTIONS_CLASS,
-} from "../shell/HubToolDetailSection";
+import { HubAccountDetailAdmScaffold } from "../shell/HubAccountDetailAdmScaffold";
+import { HubAccountDetailHeaderSearch } from "../shell/HubAccountDetailHeaderSearch";
+import { HubAccountDetailSearchProvider } from "../shell/hubAccountDetailSearch";
+import { HubToolDetailRail } from "../shell/HubToolDetailSplitLayout";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
+import {
+  HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
+  HUB_ADM_ACTIVITY_LOG_EMPTY_MESSAGE,
+  hubAccountDetailShellClass,
+} from "../shell/hubAccountDetailModal";
+import {
+  hubAccountDetailSectionIcon,
+  hubAccountDetailSectionIconClass,
+} from "../shell/hubAccountDetailSectionIcons";
 import type { HubWorkspaceUserProfileRow } from "./HubWorkspaceUserModal";
 import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
 import { HubUserChangeEmailModal } from "./HubUserChangeEmailModal";
 import { HubUserChangePasswordModal } from "./HubUserChangePasswordModal";
+import { HubUserChangeUsernameModal } from "./HubUserChangeUsernameModal";
 import { HubUserFieldActionButton } from "./HubUserFieldActionButton";
 import {
   HUB_FULL_USER_ACCOUNT_TOC,
-  hubUserAccountSectionIcon,
   hubUserAccountTocItems,
 } from "./hub-user-account-toc";
 import { resolveWorkspaceRoleIcon, workspaceRoleLabel } from "./hub-workspace-role-icon";
 
 export { HUB_FULL_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
-export type HubFullUserAccountTocId = "hub-user-account";
+export type HubFullUserAccountTocId = "hub-user-account" | "hub-user-log";
 
 const FIELD_ICON_CLASS: Record<string, string> = {
+  Username: "text-violet-300",
   "User ID": "text-violet-300",
   Email: "text-sky-300",
   Password: "text-amber-300",
@@ -36,6 +47,17 @@ const FIELD_ICON_CLASS: Record<string, string> = {
   Created: "text-slate-400",
   "Last sign in": "text-emerald-300",
 };
+
+const ACCOUNT_LOG_FIELD_META: Record<string, HubEntityLogFieldMeta> = {
+  username: { label: "Username", emoji: "👤" },
+  email: { label: "Email", emoji: "✉️" },
+  password: { label: "Password", emoji: "🔑" },
+  session: { label: "Session", emoji: "🟢" },
+};
+
+function accountLogFieldMeta(field: string): HubEntityLogFieldMeta {
+  return ACCOUNT_LOG_FIELD_META[field] ?? { label: field };
+}
 
 export type HubFullUserAccountResult = { ok: boolean; message: string };
 
@@ -53,11 +75,20 @@ export type HubFullUserAccountModalProps = {
   onLinkEmail: (email: string) => Promise<HubFullUserAccountResult>;
   onSendOtp: (email: string) => Promise<HubFullUserAccountResult>;
   onConfirmPassword: (email: string, code: string, password: string) => Promise<HubFullUserAccountResult>;
+  /** Update profiles.login_id / User ID (Design V1). */
+  onUpdateUsername?: (username: string) => Promise<HubFullUserAccountResult>;
   onSignOut: () => Promise<HubFullUserAccountResult>;
   onSignOutError?: (title: string, message: string) => void;
 };
 
-/** Full account modal — profile + inline change email/password sub-modals (P0004). */
+function pushAccountLog(
+  setLogs: Dispatch<SetStateAction<HubEntityLogEntry[]>>,
+  entry: HubEntityLogEntry,
+) {
+  setLogs((prev) => [entry, ...prev].slice(0, 40));
+}
+
+/** Full account modal — Layout 3 (TOC · Main · Log) SSOT with P0020 Service Log rail. */
 export function HubFullUserAccountModal({
   open,
   onClose,
@@ -72,6 +103,7 @@ export function HubFullUserAccountModal({
   onLinkEmail,
   onSendOtp,
   onConfirmPassword,
+  onUpdateUsername,
   onSignOut,
   onSignOutError,
 }: HubFullUserAccountModalProps) {
@@ -79,24 +111,38 @@ export function HubFullUserAccountModal({
   const [resolvedRole, setResolvedRole] = useState<string | null>(null);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [usernameModalOpen, setUsernameModalOpen] = useState(false);
+  const [activityLog, setActivityLog] = useState<HubEntityLogEntry[]>([]);
+  const [usernameOverride, setUsernameOverride] = useState<string | null>(null);
+  const [emailOverride, setEmailOverride] = useState<string | null>(null);
 
   const user = session?.user ?? null;
   const labels = hubSessionLabels(session);
   const provider = String(user?.app_metadata?.provider ?? "email");
   const createdAt = user?.created_at ? new Date(user.created_at).toLocaleString("vi-VN") : "—";
   const lastSignIn = user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString("vi-VN") : "—";
-  const displayName = title ?? labels.loginId ?? labels.email ?? user?.id?.slice(0, 8) ?? "User";
+  const loginDisplay = (usernameOverride ?? labels.loginId) || "—";
+  const displayName =
+    title ??
+    (loginDisplay !== "—" ? loginDisplay : labels.email) ??
+    user?.id?.slice(0, 8) ??
+    "User";
 
   const emailDisplay =
-    labels.email || (labels.hasSyntheticAuth ? "Not linked" : labels.authEmail) || "—";
+    emailOverride ||
+    labels.email ||
+    (labels.hasSyntheticAuth ? "Not linked" : labels.authEmail) ||
+    "—";
 
   const recoveryEmail = useMemo(() => {
+    if (emailOverride) return emailOverride;
     if (labels.email) return labels.email;
     if (canUseEmailPasswordRecovery(labels.authEmail)) return labels.authEmail;
     return "";
-  }, [labels.authEmail, labels.email]);
+  }, [emailOverride, labels.authEmail, labels.email]);
 
   const canRecover = Boolean(recoveryEmail);
+  const canEditUsername = Boolean(onUpdateUsername && session);
 
   const tocItems = useMemo(() => hubUserAccountTocItems(HUB_FULL_USER_ACCOUNT_TOC), []);
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
@@ -105,7 +151,7 @@ export function HubFullUserAccountModal({
     const roleValue = resolvedRole ?? roleLabel;
     const roleMeta = resolveWorkspaceRoleIcon(roleValue);
     return [
-      { label: "User ID", value: labels.loginId || "—", icon: User },
+      { label: "Username", value: loginDisplay, icon: UserRound },
       { label: "Email", value: emailDisplay, icon: Mail },
       { label: "Password", value: session ? "••••••••" : "—", icon: KeyRound },
       {
@@ -119,7 +165,7 @@ export function HubFullUserAccountModal({
       { label: "Last sign in", value: lastSignIn, icon: RefreshCcw },
     ];
   }, [
-    labels.loginId,
+    loginDisplay,
     emailDisplay,
     session,
     resolvedRole,
@@ -149,6 +195,10 @@ export function HubFullUserAccountModal({
     if (!open) {
       setEmailModalOpen(false);
       setPasswordModalOpen(false);
+      setUsernameModalOpen(false);
+      setActivityLog([]);
+      setUsernameOverride(null);
+      setEmailOverride(null);
     }
   }, [open]);
 
@@ -165,7 +215,58 @@ export function HubFullUserAccountModal({
     })();
   };
 
+  const wrapLinkEmail = async (email: string) => {
+    const before = emailDisplay;
+    const result = await onLinkEmail(email);
+    if (result.ok) {
+      setEmailOverride(email);
+      pushAccountLog(setActivityLog, {
+        at: new Date().toISOString(),
+        message: `Email: ${before} → ${email}`,
+        changes: [{ field: "email", before, after: email }],
+      });
+    }
+    return result;
+  };
+
+  const wrapConfirmPassword = async (email: string, code: string, password: string) => {
+    const result = await onConfirmPassword(email, code, password);
+    if (result.ok) {
+      pushAccountLog(setActivityLog, {
+        at: new Date().toISOString(),
+        message: "Password changed",
+        changes: [{ field: "password", before: "••••••••", after: "••••••••" }],
+      });
+    }
+    return result;
+  };
+
+  const wrapUpdateUsername = async (username: string) => {
+    if (!onUpdateUsername) return { ok: false, message: "Username update is not available." };
+    const before = loginDisplay;
+    const result = await onUpdateUsername(username);
+    if (result.ok) {
+      setUsernameOverride(username);
+      pushAccountLog(setActivityLog, {
+        at: new Date().toISOString(),
+        message: `Username: ${before} → ${username}`,
+        changes: [{ field: "username", before, after: username }],
+      });
+    }
+    return result;
+  };
+
   const renderFieldValue = (row: HubWorkspaceUserProfileRow) => {
+    if (row.label === "Username" && canEditUsername) {
+      return (
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="truncate font-medium" title={row.value}>
+            {row.value}
+          </span>
+          <HubUserFieldActionButton label="Change username" onClick={() => setUsernameModalOpen(true)} />
+        </div>
+      );
+    }
     if (row.label === "Email" && session) {
       return (
         <div className="flex min-w-0 items-center justify-between gap-2">
@@ -195,77 +296,104 @@ export function HubFullUserAccountModal({
     );
   };
 
+  const avatarNode = headerLeading ?? (
+    <span
+      className="user-access-modal__avatar grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/30 bg-indigo-500/25 text-sm font-bold text-indigo-50"
+      aria-hidden
+      title="Avatar"
+    >
+      {initials}
+    </span>
+  );
+
   return (
     <>
-      <HubToolDetailModal
-        open={open}
-        onClose={onClose}
-        title={displayName}
-        titleId="hub-user-modal-title"
-        headerLeading={
-          headerLeading ?? (
-            <span
-              className="user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-indigo-300/25 bg-indigo-500/20 text-xs font-bold text-indigo-100"
-              aria-hidden
-            >
-              {initials}
-            </span>
-          )
-        }
-        headerTrailing={
-          headerTrailing ?? (
-            <span className="truncate font-mono text-[10px] text-[var(--muted)]">
-              {labels.loginId ? `ID: ${labels.loginId}` : user?.id?.slice(0, 8) ?? "—"}
-            </span>
-          )
-        }
-        shellClassName="hub-header-panel-modal"
-        sectionIds={sectionIds}
-        toc={
-          <div className="hub-toc-nav">
-            <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
-          </div>
-        }
-        footer={
-          <HubToolDetailModalPrimaryAction
-            label={signingOut ? "Signing out…" : "Sign Out"}
-            onClick={handleSignOut}
-            disabled={!session || signingOut}
-            busy={signingOut}
-            danger
-            icon={LogOut}
+      <HubAccountDetailSearchProvider>
+        <HubToolDetailModal
+          open={open}
+          onClose={onClose}
+          title={displayName}
+          titleId="hub-user-modal-title"
+          headerLeading={avatarNode}
+          headerTrailing={
+            headerTrailing ?? (
+              <span className="truncate font-mono text-[10px] text-[var(--muted)]">
+                {loginDisplay !== "—" ? loginDisplay : user?.id?.slice(0, 8) ?? "—"}
+              </span>
+            )
+          }
+          headerCenter={<HubAccountDetailHeaderSearch />}
+          shellClassName={hubAccountDetailShellClass()}
+          scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
+          sectionIds={sectionIds}
+          toc={
+            <div className="hub-toc-nav">
+              <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT} />
+            </div>
+          }
+          footer={
+            <HubToolDetailModalPrimaryAction
+              label={signingOut ? "Signing out…" : "Sign Out"}
+              onClick={handleSignOut}
+              disabled={!session || signingOut}
+              busy={signingOut}
+              danger
+              icon={LogOut}
+            />
+          }
+          ariaLabelledBy="hub-user-modal-title"
+        >
+          <HubAccountDetailAdmScaffold
+            panelId="hub-user-account"
+            panelTitle="Account"
+            panelSectionKey="credentials"
+            panelTitleEmoji={undefined}
+            main={
+              <HubUserModalFieldTable>
+                {rows.map((row) => (
+                  <HubUserModalFieldRow
+                    key={row.label}
+                    icon={row.icon}
+                    iconClassName={row.iconClassName ?? FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
+                    label={row.label}
+                  >
+                    {renderFieldValue(row)}
+                  </HubUserModalFieldRow>
+                ))}
+              </HubUserModalFieldTable>
+            }
+            rail={
+              <HubToolDetailRail
+                id="hub-user-log"
+                title="Log"
+                icon={hubAccountDetailSectionIcon("log")}
+                iconClassName={hubAccountDetailSectionIconClass("log")}
+                className="twofa-adm-rail--log hub-adm-rail--log"
+                ariaLabel="Log"
+              >
+                <HubChangeLogList
+                  entries={activityLog}
+                  fieldMeta={accountLogFieldMeta}
+                  emptyLabel={HUB_ADM_ACTIVITY_LOG_EMPTY_MESSAGE}
+                />
+              </HubToolDetailRail>
+            }
           />
-        }
-        ariaLabelledBy="hub-user-modal-title"
-      >
-        <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>
-          <HubToolDetailSection
-            id="hub-user-account"
-            title="Account"
-            icon={hubUserAccountSectionIcon(HUB_FULL_USER_ACCOUNT_TOC, "hub-user-account")}
-          >
-            <HubUserModalFieldTable>
-              {rows.map((row) => (
-                <HubUserModalFieldRow
-                  key={row.label}
-                  icon={row.icon}
-                  iconClassName={row.iconClassName ?? FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
-                  label={row.label}
-                >
-                  {renderFieldValue(row)}
-                </HubUserModalFieldRow>
-              ))}
-            </HubUserModalFieldTable>
-          </HubToolDetailSection>
-        </div>
-      </HubToolDetailModal>
+        </HubToolDetailModal>
+      </HubAccountDetailSearchProvider>
 
+      <HubUserChangeUsernameModal
+        open={usernameModalOpen}
+        onClose={() => setUsernameModalOpen(false)}
+        initialUsername={loginDisplay !== "—" ? loginDisplay : ""}
+        onSubmit={wrapUpdateUsername}
+      />
       <HubUserChangeEmailModal
         open={emailModalOpen}
         onClose={() => setEmailModalOpen(false)}
         initialEmail={labels.email || recoveryEmail}
-        hasLinkedEmail={Boolean(labels.email)}
-        onSubmit={onLinkEmail}
+        hasLinkedEmail={Boolean(labels.email || emailOverride)}
+        onSubmit={wrapLinkEmail}
       />
       <HubUserChangePasswordModal
         open={passwordModalOpen}
@@ -273,7 +401,7 @@ export function HubFullUserAccountModal({
         recoveryEmail={recoveryEmail}
         canRecover={canRecover}
         onSendOtp={onSendOtp}
-        onConfirmPassword={onConfirmPassword}
+        onConfirmPassword={wrapConfirmPassword}
       />
     </>
   );

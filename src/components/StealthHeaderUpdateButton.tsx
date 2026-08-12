@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Download, RefreshCw } from "lucide-react";
-import { HUB_HEADER_PANEL_BTN_CLASS, compactIconSize } from "@tool-workspace/hub-ui";
+import { HubVersionUpdateStatusIcon, type HubVersionUpdateState } from "@tool-workspace/hub-ui";
 import type { StealthUpdateStatus } from "../types";
 
+/** Icon beside header version meta — not next to Notify/Log. */
 export function StealthHeaderUpdateButton() {
   const [status, setStatus] = useState<StealthUpdateStatus | null>(null);
   const [hasDesktopApi, setHasDesktopApi] = useState(false);
@@ -26,22 +26,8 @@ export function StealthHeaderUpdateButton() {
 
   if (!hasDesktopApi) return null;
 
-  const currentState = status?.state ?? "idle";
+  const currentState = (status?.state ?? "idle") as HubVersionUpdateState;
   const progress = Math.round(status?.progress?.percent ?? 0);
-  const label =
-    currentState === "available"
-      ? "Update"
-      : currentState === "downloaded"
-        ? "Install"
-        : currentState === "downloading"
-          ? `${progress}%`
-          : currentState === "checking"
-            ? "Checking"
-            : currentState === "latest"
-              ? "Latest"
-              : currentState === "dev"
-                ? "Dev"
-                : "Update";
   const title =
     status?.message ||
     (currentState === "available"
@@ -55,9 +41,6 @@ export function StealthHeaderUpdateButton() {
     currentState === "downloading" ||
     currentState === "installing" ||
     currentState === "dev";
-  const isActive = currentState === "available" || currentState === "downloaded";
-  const isSuccess = currentState === "latest";
-  const isError = currentState === "error";
 
   const runUpdateAction = async () => {
     const api = window.stealthApi;
@@ -83,35 +66,12 @@ export function StealthHeaderUpdateButton() {
   };
 
   return (
-    <button
-      type="button"
-      onClick={() => void runUpdateAction()}
-      disabled={disabled}
-      className={`${HUB_HEADER_PANEL_BTN_CLASS} text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-65 ${
-        isActive
-          ? "text-amber-100"
-          : isSuccess
-            ? "text-emerald-100"
-            : isError
-              ? "text-rose-100"
-              : "text-[var(--muted)] hover:text-[var(--text)]"
-      }`}
-      aria-label={title}
+    <HubVersionUpdateStatusIcon
+      state={currentState}
+      progress={progress}
       title={title}
-    >
-      {currentState === "latest" ? (
-        <CheckCircle2 size={compactIconSize(13)} className="shrink-0 text-emerald-200" />
-      ) : currentState === "error" ? (
-        <AlertTriangle size={compactIconSize(13)} className="shrink-0 text-rose-200" />
-      ) : currentState === "available" || currentState === "downloaded" ? (
-        <Download size={compactIconSize(13)} className="shrink-0 text-amber-200" />
-      ) : (
-        <RefreshCw
-          size={compactIconSize(13)}
-          className={`shrink-0 ${currentState === "checking" || busy ? "animate-spin text-indigo-200" : ""}`}
-        />
-      )}
-      <span>{label}</span>
-    </button>
+      disabled={disabled}
+      onClick={() => void runUpdateAction()}
+    />
   );
 }

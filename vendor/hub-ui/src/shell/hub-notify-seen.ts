@@ -29,3 +29,18 @@ export function hasUnreadNotifyAlerts(scopeKey: string, alertIds: string[]): boo
   const seen = readNotifySeenIds(scopeKey);
   return alertIds.some((id) => !seen.has(id));
 }
+
+export function markNotifySeenId(scopeKey: string, id: string): Set<string> {
+  const seen = readNotifySeenIds(scopeKey);
+  if (!id || seen.has(id)) return seen;
+  const next = new Set(seen);
+  next.add(id);
+  writeNotifySeenIds(scopeKey, [...next]);
+  return next;
+}
+
+export function markAllNotifySeen(scopeKey: string, ids: readonly string[]): Set<string> {
+  const next = new Set(ids);
+  writeNotifySeenIds(scopeKey, [...next]);
+  return next;
+}

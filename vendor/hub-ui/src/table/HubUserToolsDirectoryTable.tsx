@@ -22,6 +22,8 @@ export type HubUserToolsDirectoryTableProps<TRow> = {
   getToolName: (row: TRow) => string;
   renderCategoryCell: (row: TRow) => ReactNode;
   renderAccessCell: (row: TRow) => ReactNode;
+  /** Override Tool code cell (e.g. catalog icon + code). */
+  renderToolCode?: (row: TRow) => ReactNode;
   renderCodeSuffix?: (row: TRow) => ReactNode;
   showSelectColumn?: boolean;
   isSelected?: (row: TRow) => boolean;
@@ -44,6 +46,7 @@ export function HubUserToolsDirectoryTable<TRow>({
   getToolName,
   renderCategoryCell,
   renderAccessCell,
+  renderToolCode,
   renderCodeSuffix,
   showSelectColumn = false,
   isSelected,
@@ -121,10 +124,16 @@ export function HubUserToolsDirectoryTable<TRow>({
                 </td>
               ) : null}
               <td className={`${HUB_USER_TOOLS_COL.code} font-mono text-indigo-200/90`}>
-                <span className="block truncate" title={getToolCode(row)}>
-                  {getToolCode(row)}
-                </span>
-                {renderCodeSuffix?.(row)}
+                {renderToolCode ? (
+                  renderToolCode(row)
+                ) : (
+                  <>
+                    <span className="block truncate" title={getToolCode(row)}>
+                      {getToolCode(row)}
+                    </span>
+                    {renderCodeSuffix?.(row)}
+                  </>
+                )}
               </td>
               <td className={`${HUB_USER_TOOLS_COL.name} font-medium`}>
                 <span className="block truncate" title={getToolName(row)}>

@@ -45,6 +45,8 @@ export type HubPeriodSelectProps<T extends string = string> = {
   triggerTypoClass?: string;
   /** Native tooltip on period trigger. */
   title?: string;
+  /** Optional micro meta after label (e.g. Performance “Weekly” when axis buckets by week). */
+  triggerMeta?: string;
 };
 
 type PanelView = "list" | "month" | "range";
@@ -177,6 +179,7 @@ export function HubPeriodSelect<T extends string>({
   className = "",
   triggerTypoClass,
   title = "Filter by creation date",
+  triggerMeta,
 }: HubPeriodSelectProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -248,6 +251,7 @@ export function HubPeriodSelect<T extends string>({
   const isActive = !inactiveKeys.includes(value);
 
   const triggerIconColor = workspacePeriodTriggerIconColor(value as WorkspacePeriodKey);
+  const displayLabel = triggerMeta ? `${triggerValueLabel} · ${triggerMeta}` : triggerValueLabel;
 
   const handleSelectPeriod = (range: T) => {
     onChange(range);
@@ -384,7 +388,7 @@ export function HubPeriodSelect<T extends string>({
       <HubFilterDropdownTrigger
         active={isActive}
         open={open}
-        label={triggerValueLabel}
+        label={displayLabel}
         Icon={Calendar}
         iconColor={triggerIconColor}
         typoClass={triggerTypoClass}

@@ -9,6 +9,20 @@ export const HUB_TWOfA_ACCOUNT_DETAIL_SHELL_CLASS = "twofa-account-detail-modal"
  * Applied by `.hub-account-detail-modal` in hub-account-detail-modal.css.
  * Every Layout 3 modal must use `hubAccountDetailShellClass()` — do not invent per-product TOC/rail widths.
  */
+/**
+ * ONE modal shell size for every Layout 2 / Layout 3 tool modal (detail, Log, Notify,
+ * Update Release, Settings, Add). Reference box = P0005 CRM Service detail.
+ * Mirrored by `.modal-shell.hub-tool-detail-modal:not(--fit)` in `styles/hub-modal.css`
+ * (asserted in hubLayout3DetailTokens.test.ts) — tools must NOT re-declare
+ * `--hub-modal-max-w/h/vh`; ask for a content-sized shell with `--fit` instead.
+ */
+export const HUB_TOOL_MODAL_SIZE_TOKENS = {
+  maxW: "min(88rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)))",
+  maxH: "768px",
+  maxVh: "73.6vh",
+  minH: "min(512px, var(--hub-modal-max-vh))",
+} as const;
+
 export const HUB_LAYOUT3_DETAIL_TOKENS = {
   tocW: "10.5rem",
   railW: "min(22rem, 34%)",
@@ -100,6 +114,20 @@ export const HUB_ADM_GRID_SLOT_SPACER_MID_CLASS = "hub-adm-grid-slot-spacer hub-
 
 /** Preserve 3-col grid height when only slot 3 empty (2 fields in row). */
 export const HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS = "hub-adm-grid-slot-spacer hub-adm-grid-slot-spacer--tail";
+
+/**
+ * Class for the single trailing pad after `filledCount` fields in a 3-slot ADM row.
+ * - 1 → spacer (cols 3 / -1)
+ * - 2 → tail (cols 5 / -1)
+ * - 0 / 3+ → null (no pad / full row)
+ * Never stack spacers — a second pad wraps into an empty min-height row above the next form line.
+ */
+export function hubAdmGridSlotPadClass(filledCount: number): string | null {
+  const n = Math.floor(Number(filledCount));
+  if (n === 1) return HUB_ADM_GRID_SLOT_SPACER_CLASS;
+  if (n === 2) return HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS;
+  return null;
+}
 
 /** Main column scroll container inside HubToolDetailSplitLayout. */
 export const HUB_ACCOUNT_DETAIL_MAIN_SCROLL_CLASS = "hub-account-detail-modal__main-scroll hub-scrollbar";

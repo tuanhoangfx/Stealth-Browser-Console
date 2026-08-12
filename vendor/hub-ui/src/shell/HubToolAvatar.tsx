@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { compactIconSize } from "../ui-scale";
 
 export type HubToolAvatarSize = "sm" | "md" | "lg";
@@ -21,7 +21,7 @@ export type HubToolAvatarProps = {
   scaled?: boolean;
 };
 
-/** Directory/tool identity avatar — initials + optional icon overlay. */
+/** Directory/tool identity avatar — SVG catalog mark, else initials + optional glyph. */
 export function HubToolAvatar({
   code,
   icon: Icon,
@@ -31,6 +31,7 @@ export function HubToolAvatar({
   size = "md",
   scaled = false,
 }: HubToolAvatarProps) {
+  const [svgFailed, setSvgFailed] = useState(false);
   const dim = (n: number) => {
     if (!scaled) return n;
     if (size === "sm") return n;
@@ -40,13 +41,19 @@ export function HubToolAvatar({
   const glyphPx = dim(GLYPH[size]);
   const iconPx = dim(ICON[size]);
 
-  if (svgSrc) {
+  if (svgSrc && !svgFailed) {
     return (
       <div
         className={`tool-avatar tool-avatar-${size} tool-avatar-svg`}
         style={{ width: px, height: px }}
       >
-        <img src={svgSrc} alt={code} width={px} height={px} />
+        <img
+          src={svgSrc}
+          alt={code}
+          width={px}
+          height={px}
+          onError={() => setSvgFailed(true)}
+        />
       </div>
     );
   }

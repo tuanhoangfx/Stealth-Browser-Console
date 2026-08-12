@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { HubListChromeHeader, buildConsoleVersionMetaItems, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
-import { APP_VERSION } from "../../lib/app-meta";
-import toolManifest from "../../../tool.manifest.json";
+import { HubListChromeHeader, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
 import { stealthScreenChrome } from "../../lib/stealth-nav-structure";
+import { useStealthVersionMetaItems } from "../../hooks/useStealthVersionMetaItems";
 
 type ScriptsListChromeHeaderProps = {
   centerStats?: TabHeaderStatItem[];
@@ -13,13 +12,14 @@ const workflowChrome = stealthScreenChrome("workflow");
 
 /** Workflow tab header — label/icon SSOT from sidebar nav (search lives in directory frame). */
 export function ScriptsListChromeHeader({ centerStats, actions }: ScriptsListChromeHeaderProps) {
+  const metaItems = useStealthVersionMetaItems();
   return (
     <HubListChromeHeader
       ariaLabel="Workflow header"
       titleIcon={workflowChrome.icon}
       titleIconClass={workflowChrome.titleIconClass}
       title={workflowChrome.label}
-      metaItems={buildConsoleVersionMetaItems(APP_VERSION, toolManifest)}
+      metaItems={metaItems}
       centerStats={centerStats ?? []}
       actions={actions}
     />

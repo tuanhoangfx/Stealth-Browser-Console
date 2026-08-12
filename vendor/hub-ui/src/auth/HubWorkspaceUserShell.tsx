@@ -11,6 +11,11 @@ import {
   workspaceUserFooterLabel,
   workspaceUserInitials,
 } from "./workspace-user-session";
+import {
+  HUB_WORKSPACE_USER_EMPTY_EMAIL,
+  HUB_WORKSPACE_USER_FOOTER_TITLE,
+  HUB_WORKSPACE_USER_MODAL_TITLE,
+} from "../shell/hub-chrome-messages";
 
 export type HubWorkspaceUserModalRenderContext = {
   open: boolean;
@@ -56,12 +61,12 @@ export function HubWorkspaceUserShell({
   anonymous = false,
   onSignOut,
   modalTitle,
-  footerTitle = "Account & sign out",
+  footerTitle = HUB_WORKSPACE_USER_FOOTER_TITLE,
   footerGuestLabel,
   anonymousFooterLabel,
   workspaceNote,
   includeLoginId = false,
-  emptyEmailLabel,
+  emptyEmailLabel = HUB_WORKSPACE_USER_EMPTY_EMAIL,
   labels: labelsProp,
   roleKey: roleKeyProp,
   onResolveRoleKey,

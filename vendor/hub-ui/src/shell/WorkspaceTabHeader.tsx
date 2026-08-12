@@ -1,4 +1,4 @@
-﻿import { useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Tag } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubGlyphComponent } from "../types/filter-badge";
@@ -6,9 +6,9 @@ import {
   AppTabHeader,
   type TabHeaderMetaItem,
   type TabHeaderStatItem,
-  type TabTitleMenuItem,
-} from "./AppTabHeader";
+  type TabTitleMenuItem, hubMetaActivityAtString } from "./AppTabHeader";
 import { buildVersionMetaItems } from "./workspace-tab-header-meta";
+import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
 
 export type WorkspaceTabHeaderProps = {
   ariaLabel: string;
@@ -28,6 +28,16 @@ export type WorkspaceTabHeaderProps = {
   /** ISO release/deploy time — activity dot + relative/stale label in header meta */
   publishedAt?: string | null;
   versionLive?: boolean;
+  /** Update / freshness icon beside version label (HubVersionUpdateStatusIcon). */
+  versionAfter?: ReactNode;
+  /**
+   * Tool code (e.g. "P0020") — HubVersionReleaseNotes beside version meta.
+   * When set, this is the single Latest/Update/Download affordance (prefer over `versionAfter`).
+   */
+  versionReleaseNotesCode?: string;
+  /** Web bundle behind running tab — Download icon + reload (merged into release-notes trigger). */
+  versionReleaseNotesBundleStale?: boolean;
+  versionReleaseNotesOnBundleReload?: () => void;
   extraMetaItems?: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
   /** Sparse vault/sync status before center stats — idle null. */
@@ -46,25 +56,59 @@ export function WorkspaceTabHeader({
   versionLine,
   publishedAt,
   versionLive,
+  versionAfter,
+  versionReleaseNotesCode,
+  versionReleaseNotesBundleStale = false,
+  versionReleaseNotesOnBundleReload,
   extraMetaItems = [],
   centerStats,
   statusSlot,
   ...header
 }: WorkspaceTabHeaderProps) {
   const metaItems = useMemo(() => {
+    let items: TabHeaderMetaItem[];
     if (publishedAt) {
       const semver = versionLine.match(/^v[\d.]+/i)?.[0]?.replace(/^v/i, "") ?? versionLine.replace(/^v/i, "");
-      return buildVersionMetaItems(semver, publishedAt, versionLive, extraMetaItems);
+      items = buildVersionMetaItems(semver, publishedAt, versionLive, extraMetaItems);
+    } else {
+      items = [
+        {
+          icon: Tag,
+          value: versionLine,
+          live: versionLive,
+        } as TabHeaderMetaItem,
+        ...extraMetaItems,
+      ];
     }
-    return [
-      {
-        icon: Tag,
-        value: versionLine,
-        live: versionLive,
-      } as TabHeaderMetaItem,
-      ...extraMetaItems,
-    ];
-  }, [extraMetaItems, publishedAt, versionLine, versionLive]);
+    const releaseNotesBadge =
+      versionReleaseNotesCode && items[0] ? (
+        <HubVersionReleaseNotes
+          code={versionReleaseNotesCode}
+          version={items[0].value}
+          publishedAt={hubMetaActivityAtString(publishedAt ?? items[0].activityAt)}
+          bundleStale={versionReleaseNotesBundleStale}
+          onBundleReload={versionReleaseNotesOnBundleReload}
+        />
+      ) : null;
+    // Single icon SSOT: release-notes owns Latest/Update/Download when present.
+    const afterNode = releaseNotesBadge ?? versionAfter;
+    const after = afterNode ? (
+      <span className="inline-flex shrink-0 items-center gap-1">{afterNode}</span>
+    ) : undefined;
+    if (after && items[0]) {
+      items = [{ ...items[0], after }, ...items.slice(1)];
+    }
+    return items;
+  }, [
+    extraMetaItems,
+    publishedAt,
+    versionAfter,
+    versionLine,
+    versionLive,
+    versionReleaseNotesBundleStale,
+    versionReleaseNotesCode,
+    versionReleaseNotesOnBundleReload,
+  ]);
 
   return (
     <AppTabHeader {...header} metaItems={metaItems} centerStats={centerStats} statusSlot={statusSlot} />

@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   HubAdmSectionBlock,
-  HUB_ADM_GRID_SLOT_SPACER_CLASS,
-  HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS,
+  HubAdmGridSlotPad,
 } from "@tool-workspace/hub-ui";
 import { randomFingerprintSeed } from "../../lib/stealth-profile-utils";
 import {
@@ -97,8 +96,7 @@ export function ProfileFormFields({
           value={device.devicePreset}
           onChange={(presetId) => onDeviceChange(applyDevicePreset(device, presetId))}
         />
-        <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden />
-        <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+        <HubAdmGridSlotPad filledCount={1} />
       </div>
 
       <label className="stealth-settings-form__check self-start">
@@ -152,7 +150,7 @@ export function ProfileFormFields({
               value={device.windowMode}
               onChange={(value) => editDevice({ windowMode: value as DeviceConfig["windowMode"] })}
             />
-            <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
+            <HubAdmGridSlotPad filledCount={2} />
           </div>
 
           <div className={`${PROFILE_DETAIL_FORM_ROW_DETAIL_LINE} hub-adm-inline-field min-w-0`}>
@@ -229,8 +227,6 @@ export function ProfileFormFields({
                 onChange={(value) => editDevice({ userAgent: value })}
                 placeholder="Mozilla/5.0 …"
               />
-              <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden />
-              <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden />
             </div>
           ) : null}
         </>

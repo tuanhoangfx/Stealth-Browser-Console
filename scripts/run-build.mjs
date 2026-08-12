@@ -9,6 +9,9 @@ import { resolveNodeExe, winSpawnOpts } from "./lib/win-spawn.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const node = resolveNodeExe();
 const toolScriptsDir = path.join(root, "..", "scripts");
+/** Fast Release: skip hub-ui/identity/brand mirrors — Vite only (budget <2m). */
+const fastBuild =
+  process.argv.includes("--fast") || process.env.DESKTOP_RELEASE_FAST === "1";
 
 function findBin(pkg, bins) {
   let dir = root;
@@ -30,32 +33,36 @@ function run(bin, args) {
 }
 
 spawnSync(node, [path.join(root, "scripts", "sync-app-version.mjs")], winSpawnOpts({ cwd: root, stdio: "inherit" }));
-const syncVendor = spawnSync(
-  node,
-  [path.join(toolScriptsDir, "sync-hub-ui-vendor.cjs")],
-  winSpawnOpts({ cwd: root, stdio: "inherit" }),
-);
-if ((syncVendor.status ?? 1) !== 0) process.exit(syncVendor.status ?? 1);
-const syncIdentity = spawnSync(
-  node,
-  [path.join(toolScriptsDir, "sync-hub-identity-vendor.cjs")],
-  winSpawnOpts({ cwd: root, stdio: "inherit" }),
-);
-if ((syncIdentity.status ?? 1) !== 0) process.exit(syncIdentity.status ?? 1);
-const syncBrand = spawnSync(
-  node,
-  [path.join(root, "..", "scripts", "sync-hub-brand-icons.mjs"), "--code", "P0003"],
-  winSpawnOpts({ cwd: root, stdio: "inherit" }),
-);
-if ((syncBrand.status ?? 1) !== 0) {
-  console.warn("run-build: sync-hub-brand-icons failed (CDN 404s) — continuing with existing local icons");
+if (fastBuild) {
+  console.log("run-build: Fast — skip hub-ui/identity/brand vendor sync");
+} else {
+  const syncVendor = spawnSync(
+    node,
+    [path.join(toolScriptsDir, "sync-hub-ui-vendor.cjs")],
+    winSpawnOpts({ cwd: root, stdio: "inherit" }),
+  );
+  if ((syncVendor.status ?? 1) !== 0) process.exit(syncVendor.status ?? 1);
+  const syncIdentity = spawnSync(
+    node,
+    [path.join(toolScriptsDir, "sync-hub-identity-vendor.cjs")],
+    winSpawnOpts({ cwd: root, stdio: "inherit" }),
+  );
+  if ((syncIdentity.status ?? 1) !== 0) process.exit(syncIdentity.status ?? 1);
+  const syncBrand = spawnSync(
+    node,
+    [path.join(root, "..", "scripts", "sync-hub-brand-icons.mjs"), "--code", "P0003"],
+    winSpawnOpts({ cwd: root, stdio: "inherit" }),
+  );
+  if ((syncBrand.status ?? 1) !== 0) {
+    console.warn("run-build: sync-hub-brand-icons failed (CDN 404s) — continuing with existing local icons");
+  }
+  const syncToolIcons = spawnSync(
+    node,
+    [path.join(root, "..", "scripts", "sync-hub-tool-icons.mjs"), "--code", "P0003"],
+    winSpawnOpts({ cwd: root, stdio: "inherit" }),
+  );
+  if ((syncToolIcons.status ?? 1) !== 0) process.exit(syncToolIcons.status ?? 1);
 }
-const syncToolIcons = spawnSync(
-  node,
-  [path.join(root, "..", "scripts", "sync-hub-tool-icons.mjs"), "--code", "P0003"],
-  winSpawnOpts({ cwd: root, stdio: "inherit" }),
-);
-if ((syncToolIcons.status ?? 1) !== 0) process.exit(syncToolIcons.status ?? 1);
 run(findBin("typescript", ["bin/tsc"]), ["--noEmit"]);
 run(findBin("vite", ["bin/vite.js"]), ["build"]);
 const verifyAssets = spawnSync(node, [path.join(root, "scripts", "verify-brand-assets.mjs"), "--dist"], winSpawnOpts({ cwd: root, stdio: "inherit" }));

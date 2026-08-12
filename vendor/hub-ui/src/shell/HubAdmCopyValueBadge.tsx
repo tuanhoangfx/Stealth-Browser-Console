@@ -31,6 +31,8 @@ export type HubAdmCopyValueBadgeProps = {
   tone?: HubAdmCopyValueBadgeTone;
   className?: string;
   emptyFallback?: ReactNode;
+  /** Full Info: fingerprint nhãn only — hide trailing Copy (dropdown parity). */
+  showTrailingCopy?: boolean;
 };
 
 /** Colours live in `styles/hub-adm-copy-value-badge.css` (compound selector beats base utilities). */
@@ -58,6 +60,7 @@ export function HubAdmCopyValueBadge({
   tone = "default",
   className = "",
   emptyFallback,
+  showTrailingCopy = true,
 }: HubAdmCopyValueBadgeProps) {
   const text = String(value ?? "").trim();
   if (!text) {
@@ -77,6 +80,7 @@ export function HubAdmCopyValueBadge({
           label={label}
           title={`Copy ${title}`}
           copyToastLabel={copyToastLabel}
+          showTrailingCopy={showTrailingCopy}
           className={`hub-adm-type-mono max-w-full${toneClass ? ` ${toneClass}` : ""}`}
         />
       </HubDirectoryValuePopover>

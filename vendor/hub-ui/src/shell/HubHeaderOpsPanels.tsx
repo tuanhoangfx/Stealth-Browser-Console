@@ -21,7 +21,7 @@ export function HubHeaderOpsPanels({ log, notify, trailing, className }: HubHead
     <div className={`flex shrink-0 items-center gap-1.5${className ? ` ${className}` : ""}`}>
       {notify ? <HubNotifyPanel {...notify} /> : null}
       {showLog ? (
-        <HubLogButton variant="tab" emptyMessage="Chưa có thao tác trong phiên này." {...logProps} />
+        <HubLogButton variant="tab" {...logProps} />
       ) : null}
       {trailing}
     </div>

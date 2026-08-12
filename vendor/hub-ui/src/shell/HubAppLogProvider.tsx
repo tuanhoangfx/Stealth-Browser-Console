@@ -9,10 +9,13 @@ import {
 } from "react";
 import type { HubLogEntry } from "./HubUsageLogPanel";
 
+/** Session lines visible on every tab (boot, cross-tab notices). */
+export const HUB_APP_LOG_GLOBAL_SCREEN = "*";
+
 export type HubAppLogBoot = {
   scope: string;
   message: string;
-  /** Screen id when boot log is recorded (defaults to activeScreen). */
+  /** Screen id — omit or `*` for all tabs (SSOT boot). */
   screen?: string;
 };
 
@@ -45,7 +48,16 @@ function nextLogId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** Per-tab session log — header shows active tab; footer shows all tabs. */
+export function isHubAppLogVisibleOnTab(
+  log: Pick<HubLogEntry, "screen">,
+  activeScreen: string,
+): boolean {
+  const s = String(log.screen ?? "").trim();
+  if (!s || s === HUB_APP_LOG_GLOBAL_SCREEN) return true;
+  return s === activeScreen;
+}
+
+/** Per-tab session log — header shows active tab (+ global); footer shows all tabs. */
 export function HubAppLogProvider({
   children,
   activeScreen,
@@ -59,13 +71,17 @@ export function HubAppLogProvider({
       at: Date.now(),
       scope: bootLog?.scope ?? "App",
       message: bootLog?.message ?? "Application started",
-      screen: bootLog?.screen ?? activeScreen,
+      screen: bootLog?.screen?.trim() || HUB_APP_LOG_GLOBAL_SCREEN,
     },
   ]);
 
   const pushLog = useCallback(
     (scope: string, message: string, screen?: string) => {
-      const targetScreen = (screen ?? activeScreen).trim() || activeScreen;
+      const raw = String(screen ?? "").trim();
+      const targetScreen =
+        raw === HUB_APP_LOG_GLOBAL_SCREEN
+          ? HUB_APP_LOG_GLOBAL_SCREEN
+          : raw || activeScreen;
       setLogs((prev) =>
         [
           {
@@ -96,7 +112,7 @@ export function HubAppLogProvider({
   }, [logEventName, pushLog]);
 
   const tabLogs = useMemo(
-    () => logs.filter((log) => (log.screen ?? activeScreen) === activeScreen),
+    () => logs.filter((log) => isHubAppLogVisibleOnTab(log, activeScreen)),
     [activeScreen, logs],
   );
 

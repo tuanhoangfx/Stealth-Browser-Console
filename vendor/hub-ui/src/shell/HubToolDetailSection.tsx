@@ -14,6 +14,8 @@ export type HubToolDetailSectionProps = {
   icon?: ReactNode;
   /** Optional actions aligned to the section header (e.g. Reset columns). */
   headerActions?: ReactNode;
+  /** Timeline / custom chrome — section still participates in TOC spy via `id`. */
+  hideHeader?: boolean;
   children: ReactNode;
   className?: string;
 };
@@ -24,6 +26,7 @@ export function HubToolDetailSection({
   title,
   icon,
   headerActions,
+  hideHeader = false,
   children,
   className = "",
 }: HubToolDetailSectionProps) {
@@ -32,25 +35,27 @@ export function HubToolDetailSection({
   return (
     <section
       id={id}
-      className={`hub-tool-detail-section${className ? ` ${className}` : ""}`}
+      className={`hub-tool-detail-section${hideHeader ? " hub-tool-detail-section--flush" : ""}${className ? ` ${className}` : ""}`}
       onMouseEnter={() => highlightCtx?.setHighlightedSectionId(id)}
       onMouseLeave={() => {
         if (highlightCtx?.highlightedSectionId === id) highlightCtx.setHighlightedSectionId(null);
       }}
     >
-      <header className="hub-tool-detail-section__header">
-        <h3 className="hub-tool-detail-section__title">
-          {icon ? (
-            <span className="hub-tool-detail-section__title-icon" aria-hidden>
-              {icon}
-            </span>
+      {hideHeader ? null : (
+        <header className="hub-tool-detail-section__header">
+          <h3 className="hub-tool-detail-section__title">
+            {icon ? (
+              <span className="hub-tool-detail-section__title-icon" aria-hidden>
+                {icon}
+              </span>
+            ) : null}
+            <span>{title}</span>
+          </h3>
+          {headerActions ? (
+            <div className="hub-tool-detail-section__header-actions">{headerActions}</div>
           ) : null}
-          <span>{title}</span>
-        </h3>
-        {headerActions ? (
-          <div className="hub-tool-detail-section__header-actions">{headerActions}</div>
-        ) : null}
-      </header>
+        </header>
+      )}
       <div className="hub-tool-detail-section__body">{children}</div>
     </section>
   );

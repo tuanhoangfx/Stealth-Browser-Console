@@ -1,5 +1,11 @@
 import { HubUsageLogPanel, type HubLogQuickAction } from "./HubUsageLogPanel";
 import { useHubAppLog } from "./HubAppLogProvider";
+import {
+  HUB_LOG_EMPTY_MESSAGE,
+  HUB_LOG_SUBTITLE_GLOBAL,
+  HUB_LOG_SUBTITLE_TAB,
+  HUB_LOG_TITLE,
+} from "./hub-chrome-messages";
 
 export type { HubLogQuickAction, HubLogExtraSection } from "./HubUsageLogPanel";
 
@@ -18,7 +24,7 @@ export type HubLogButtonProps = {
 /** Golden Log trigger — pairs with `HubAppLogProvider` (header tab log + footer session log). */
 export function HubLogButton({
   variant = "tab",
-  emptyMessage = "Chưa có thao tác trong phiên này.",
+  emptyMessage = HUB_LOG_EMPTY_MESSAGE,
   title,
   subtitle,
   quickActions,
@@ -33,8 +39,8 @@ export function HubLogButton({
       logs={logs}
       compact={false}
       sidebarRow={isGlobal}
-      title={title ?? "Log"}
-      subtitle={subtitle ?? (isGlobal ? "All tabs in this session" : "Actions on this tab")}
+      title={title ?? HUB_LOG_TITLE}
+      subtitle={subtitle ?? (isGlobal ? HUB_LOG_SUBTITLE_GLOBAL : HUB_LOG_SUBTITLE_TAB)}
       emptyMessage={emptyMessage}
       quickActions={quickActions}
       extraSections={extraSections}

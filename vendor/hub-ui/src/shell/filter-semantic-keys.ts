@@ -20,6 +20,8 @@ export const FILTER_BAR_SEMANTIC_KEY: Record<string, SemanticIconLookupKey> = {
   health: "filter.health",
   status: "filter.status",
   role: "filter.role",
+  sales: "filter.sales",
+  revenue: "filter.revenue",
   permission: "filter.permission",
   access: "filter.access",
   note: "filter.note",

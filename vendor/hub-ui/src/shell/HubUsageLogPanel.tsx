@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { FileText } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
@@ -6,6 +6,15 @@ import { HubHeaderPanelButton } from "./HubHeaderPanelButton";
 import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
+import {
+  HubActivityFeedToolbar,
+  HubOpsFeedFilterProvider,
+  type HubActivityKindFilter,
+} from "./HubActivityFeed";
+import {
+  HUB_LOG_EMPTY_MESSAGE,
+  HUB_LOG_TITLE,
+} from "./hub-chrome-messages";
 
 export type HubLogEntry = {
   id: string;
@@ -29,6 +38,9 @@ export type HubLogExtraSection = {
   label: string;
   icon?: ReactNode;
   content: ReactNode;
+  /** Unread count for badge + Mark all read (Vault Live). */
+  unreadCount?: number;
+  onMarkAllRead?: () => void;
 };
 
 export type HubUsageLogPanelProps = {
@@ -38,7 +50,7 @@ export type HubUsageLogPanelProps = {
   emptyMessage?: string;
   compact?: boolean;
   sidebarRow?: boolean;
-  /** Optional count badge on trigger (defaults to logs.length). */
+  /** Optional count badge on trigger (defaults to logs.length + extra unread). */
   badge?: number;
   /** Tab-specific shortcuts above session log (e.g. Todo activity log). */
   quickActions?: HubLogQuickAction[];
@@ -70,9 +82,9 @@ function LogRows({ logs, formatter }: { logs: HubLogEntry[]; formatter: Intl.Dat
 /** Usage log — same HubToolDetailModal shell as Settings (TOC · sections · fixed size). */
 export function HubUsageLogPanel({
   logs,
-  title = "Log",
+  title = HUB_LOG_TITLE,
   subtitle = "Runtime actions in this session",
-  emptyMessage = "No actions logged in this session yet.",
+  emptyMessage = HUB_LOG_EMPTY_MESSAGE,
   compact = false,
   sidebarRow = false,
   badge,
@@ -80,6 +92,8 @@ export function HubUsageLogPanel({
   extraSections = [],
 }: HubUsageLogPanelProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<HubActivityKindFilter>("all");
   const logPanelIcon = FileText;
 
   useEffect(() => {
@@ -98,16 +112,39 @@ export function HubUsageLogPanel({
     [],
   );
 
+  const extraUnread = useMemo(
+    () => extraSections.reduce((sum, s) => sum + Math.max(0, s.unreadCount ?? 0), 0),
+    [extraSections],
+  );
+
+  const markAllExtraRead = useCallback(() => {
+    for (const section of extraSections) {
+      section.onMarkAllRead?.();
+    }
+  }, [extraSections]);
+
+  const filteredLogs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return logs;
+    return logs.filter((log) => {
+      const hay = `${log.scope} ${log.message}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [logs, query]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, HubLogEntry[]>();
-    for (const log of logs) {
+    for (const log of filteredLogs) {
       const key = log.scope.trim() || "General";
       const list = map.get(key) ?? [];
       list.push(log);
       map.set(key, list);
     }
     return [...map.entries()];
-  }, [logs]);
+  }, [filteredLogs]);
+
+  const headerBadge = badge ?? logs.length + extraUnread;
+  const showMarkAll = extraUnread > 0;
 
   const { tocItems, sectionIds, body } = useMemo(() => {
     const toc: HubTocNavItem[] = [];
@@ -159,7 +196,7 @@ export function HubUsageLogPanel({
       );
     }
 
-    if (grouped.length === 0) {
+    if (grouped.length === 0 && extraSections.length === 0) {
       const id = "log-empty";
       toc.push({ id, label: "Session", icon: buildSemanticTocIcon("log.session") });
       ids.push(id);
@@ -178,6 +215,19 @@ export function HubUsageLogPanel({
       return { tocItems: toc, sectionIds: ids, body: sections };
     }
 
+    if (grouped.length === 0 && filteredLogs.length === 0 && logs.length > 0) {
+      const id = "log-session-filtered";
+      toc.push({ id, label: "Session", icon: buildSemanticTocIcon("log.session") });
+      ids.push(id);
+      sections.push(
+        <HubToolDetailSection key={id} id={id} title="Session" icon={buildSemanticTocIcon("log.session")}>
+          <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)]">
+            No session logs match the current search.
+          </div>
+        </HubToolDetailSection>,
+      );
+    }
+
     for (const [scope, rows] of grouped) {
       const id = scopeSectionId(scope);
       toc.push({ id, label: scope, icon: scopeIcon });
@@ -190,18 +240,32 @@ export function HubUsageLogPanel({
     }
 
     return { tocItems: toc, sectionIds: ids, body: sections };
-  }, [emptyMessage, extraSections, formatter, grouped, quickActions]);
+  }, [
+    emptyMessage,
+    extraSections,
+    filteredLogs.length,
+    formatter,
+    grouped,
+    logs.length,
+    quickActions,
+  ]);
 
   /** Always show TOC rail — same contract as Settings / User access modals. */
   const showToc = tocItems.length > 0;
+  const showKindFilters = extraSections.length > 0;
+  const feedFilter = useMemo(
+    () => ({ query, setQuery, kindFilter, setKindFilter }),
+    [query, kindFilter],
+  );
 
   return (
     <>
       <HubHeaderPanelButton
         icon={logPanelIcon}
-        iconClassName="text-cyan-300"
+        iconClassName={`text-cyan-300${extraUnread > 0 ? " animate-notify-shake" : ""}`}
         label="Log"
-        title={title}
+        title={extraUnread > 0 ? "Unread vault activity" : title}
+        badge={headerBadge}
         compact={compact}
         sidebarRow={sidebarRow}
         onClick={() => setOpen(true)}
@@ -215,9 +279,31 @@ export function HubUsageLogPanel({
         headerIcon={logPanelIcon}
         headerIconClassName="text-cyan-300"
         headerTrailing={
-          <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-cyan-200">
-            {logs.length}
-          </span>
+          <div className="flex items-center gap-2">
+            {showMarkAll ? (
+              <button
+                type="button"
+                className="rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)]"
+                onClick={markAllExtraRead}
+              >
+                Mark all read
+              </button>
+            ) : null}
+            <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-cyan-200">
+              {headerBadge}
+            </span>
+          </div>
+        }
+        headerCenter={
+          <HubActivityFeedToolbar
+            query={query}
+            onQueryChange={setQuery}
+            kindFilter={kindFilter}
+            onKindFilterChange={setKindFilter}
+            showKindFilters={showKindFilters}
+            searchPlaceholder="Search logs…"
+            variant="header"
+          />
         }
         shellClassName="hub-header-panel-modal"
         sectionIds={showToc ? sectionIds : undefined}
@@ -229,7 +315,9 @@ export function HubUsageLogPanel({
           ) : undefined
         }
       >
-        <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>{body}</div>
+        <HubOpsFeedFilterProvider value={feedFilter}>
+          <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>{body}</div>
+        </HubOpsFeedFilterProvider>
       </HubToolDetailModal>
     </>
   );

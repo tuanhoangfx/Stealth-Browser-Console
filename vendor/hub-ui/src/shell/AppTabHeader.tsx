@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Clock } from "lucide-react";
-import {
-  formatHubActivityRelativeAge,
-  formatHubActivityStaleLabel,
-  hubActivityAgeHubTone,
-  hubActivityAgeTone,
-  hubActivityAgeUsesCalendarLabel,
-  parseHubActivityMs,
-} from "../lib/format-hub-activity-time";
-import { formatHubTimestampFull } from "../lib/format-hub-timestamp-compact";
-import { useRelativeNow } from "../lib/use-relative-now";
+import { HubChromeActivityAge } from "./HubChromeActivityAge";
 import { usePageSessionSeconds } from "../hooks/usePageSessionSeconds";
 import { compactIconSize, HUB_CHROME_ICON_PX } from "../ui-scale";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
@@ -29,6 +20,13 @@ export type TabTitleMenuItem = {
   icon?: HubGlyphComponent;
 };
 
+/** Meta `activityAt` accepts epoch ms or ISO; release-notes/age consumers want an ISO string. */
+export function hubMetaActivityAtString(at: string | number | null | undefined): string | null {
+  if (at == null) return null;
+  if (typeof at === "number") return Number.isFinite(at) ? new Date(at).toISOString() : null;
+  return at.trim() || null;
+}
+
 export type TabHeaderMetaItem = {
   icon: HubGlyphComponent;
   /** Native tooltip on the meta chip — not rendered as visible label text. */
@@ -37,6 +35,8 @@ export type TabHeaderMetaItem = {
   live?: boolean;
   /** ISO or epoch — activity dot + relative/stale label after version. */
   activityAt?: string | number | null;
+  /** Optional control after version/activity (e.g. HubVersionUpdateStatusIcon). */
+  after?: ReactNode;
 };
 
 export type TabHeaderStatItem = {
@@ -58,6 +58,8 @@ export type TabHeaderStatItem = {
   active?: boolean;
   /** Popover hint for stat label (hover). */
   labelHint?: HubDirectoryColumnHintContent;
+  /** Optional wrapper class on the center-stat chip (e.g. fade-out). */
+  className?: string;
 };
 
 type AppTabHeaderProps = {
@@ -74,7 +76,8 @@ type AppTabHeaderProps = {
   activeTitleMenuId?: string;
   onTitleMenuSelect?: (id: string) => void;
   metaItems: TabHeaderMetaItem[];
-  centerStats: TabHeaderStatItem[];
+  /** Optional — defaults to `[]`; the header renders the center rail only when non-empty. */
+  centerStats?: TabHeaderStatItem[];
   /** Custom center rail (live tickers, tool-specific KPI). Takes precedence over `centerStats`. */
   centerContent?: ReactNode;
   /**
@@ -189,44 +192,7 @@ function Rule({ visibleFrom = "sm" }: { visibleFrom?: "sm" | "md" | "lg" }) {
   return <span className={`h-3.5 w-px shrink-0 self-center bg-white/10 ${vis}`} aria-hidden />;
 }
 
-function metaActivityDotClass(hubTone: ReturnType<typeof hubActivityAgeHubTone>): string {
-  if (hubTone === "age-fresh") return "bg-[var(--hub-activity-age-fresh)]";
-  if (hubTone === "age-recent") return "bg-[var(--hub-activity-age-recent)]";
-  if (hubTone === "age-aging") return "bg-[var(--hub-activity-age-aging)]";
-  if (hubTone === "age-days") return "bg-[var(--hub-activity-age-days)]";
-  if (hubTone === "age-week") return "bg-[var(--hub-activity-age-week)]";
-  return "bg-[var(--hub-activity-age-stale)]";
-}
-
-/** Release activity — dot + label uses the same value span as SessionLine. */
-function MetaActivityAt({ at }: { at: string | number }) {
-  const now = useRelativeNow();
-  const ms = parseHubActivityMs(at);
-  if (ms == null) return null;
-
-  const ageTone = hubActivityAgeTone(ms, now);
-  const hubTone = hubActivityAgeHubTone(ageTone);
-  const label = hubActivityAgeUsesCalendarLabel(ageTone)
-    ? formatHubActivityStaleLabel(ms)
-    : formatHubActivityRelativeAge(ms, now);
-  const resolvedTitle =
-    formatHubTimestampFull(typeof at === "string" ? at : new Date(ms).toISOString()) ||
-    new Date(ms).toLocaleString();
-
-  return (
-    <>
-      <span
-        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${metaActivityDotClass(hubTone)}`}
-        aria-hidden
-      />
-      <span className="tabular-nums text-[var(--text)]/90" title={resolvedTitle}>
-        {label}
-      </span>
-    </>
-  );
-}
-
-function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaItem) {
+function MetaLine({ icon: Icon, title, value, live, activityAt, after }: TabHeaderMetaItem) {
   const showActivity = activityAt != null && activityAt !== "";
   const showLiveDot = live !== undefined && !showActivity;
 
@@ -243,7 +209,8 @@ function MetaLine({ icon: Icon, title, value, live, activityAt }: TabHeaderMetaI
         />
       ) : null}
       <span className="truncate tabular-nums text-[var(--text)]/90">{value}</span>
-      {showActivity ? <MetaActivityAt at={activityAt} /> : null}
+      {showActivity ? <HubChromeActivityAge at={activityAt!} /> : null}
+      {after ? <span className="inline-flex shrink-0 items-center">{after}</span> : null}
     </div>
   );
 }
@@ -387,7 +354,7 @@ export function AppTabHeader({
   activeTitleMenuId,
   onTitleMenuSelect,
   metaItems,
-  centerStats,
+  centerStats = [],
   centerContent,
   statusSlot = null,
   pinSticky = true,
@@ -460,9 +427,12 @@ export function AppTabHeader({
         {statusSlot && hasCenterStats ? <Rule /> : null}
         {centerContent ??
           centerStats.map((stat, index) => {
-            const { key, ...statProps } = stat;
+            const { key, className: statClassName, ...statProps } = stat;
             return (
-              <span key={key} className="inline-flex min-w-0 shrink items-center gap-x-2.5">
+              <span
+                key={key}
+                className={`inline-flex min-w-0 shrink items-center gap-x-2.5${statClassName ? ` ${statClassName}` : ""}`}
+              >
                 {index > 0 ? <Rule /> : null}
                 <StatLine {...statProps} />
               </span>

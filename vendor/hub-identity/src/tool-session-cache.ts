@@ -39,6 +39,8 @@ function snapshotFromSession(session: Session): ToolSessionSnapshot {
 
 function sessionFromSnapshot(snap: ToolSessionSnapshot | null): Session | null {
   if (!snap?.access_token?.trim()) return null;
+  // Orphan JWT rows (token without user_id) must not block auth gates after sign-out.
+  if (!snap.user_id?.trim()) return null;
   return {
     access_token: snap.access_token,
     refresh_token: snap.refresh_token ?? "",
@@ -53,6 +55,13 @@ function sessionFromSnapshot(snap: ToolSessionSnapshot | null): Session | null {
       created_at: "",
     },
   } as Session;
+}
+
+/** Drop orphan sessions (JWT without user id) — must not block auth gates after sign-out. */
+export function normalizeToolSession(session: Session | null | undefined): Session | null {
+  if (!session?.access_token?.trim()) return null;
+  if (!session.user?.id?.trim()) return null;
+  return session;
 }
 
 /** Workspace data-plane JWT cache — localStorage SSOT with legacy sessionStorage migration. */

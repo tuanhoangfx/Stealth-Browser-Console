@@ -60,10 +60,28 @@ function heapMB(): number | null {
   }
 }
 
+function entryIdentity(entry: HubBlackboxEntry): string {
+  return `${entry.t}|${entry.kind}|${String(entry.ms ?? "")}|${String(entry.screen ?? "")}`;
+}
+
 function flush(): void {
   flushTimer = null;
   try {
-    localStorage.setItem(storageKey, JSON.stringify(buf.slice(-maxEntries)));
+    // MERGE-on-flush — the key is multi-writer (PWA window + tabs share the origin);
+    // a plain overwrite made a long-lived idle tab clobber the interesting entries
+    // from the window the user actually works in.
+    let merged = buf;
+    try {
+      const existing = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as HubBlackboxEntry[];
+      if (Array.isArray(existing) && existing.length) {
+        const seen = new Set(buf.map(entryIdentity));
+        const foreign = existing.filter((e) => e && typeof e.t === "number" && !seen.has(entryIdentity(e)));
+        merged = [...foreign, ...buf].sort((a, b) => a.t - b.t);
+      }
+    } catch {
+      /* corrupted existing — overwrite with own buffer */
+    }
+    localStorage.setItem(storageKey, JSON.stringify(merged.slice(-maxEntries)));
   } catch {
     /* quota — drop oldest half and retry once */
     buf = buf.slice(-Math.floor(maxEntries / 2));

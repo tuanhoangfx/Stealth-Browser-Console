@@ -162,7 +162,7 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
         {showDefaultRow ? (
           <button type="button" onClick={pickDefault} className={HUB_FILTER_DROPDOWN_ROW_CLASS}>
             <HubFilterDropdownCircle checked={label === "Default"} />
-            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center text-[11px] leading-none" aria-hidden>
+            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center text-xs leading-none" aria-hidden>
               📌
             </span>
             <span className="min-w-0 flex-1 truncate text-left">Default</span>
@@ -177,7 +177,7 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
             >
               <HubFilterDropdownCircle checked={activePresetName === preset.name} />
               {preset.emoji ? (
-                <span className="grid h-3.5 w-3.5 shrink-0 place-items-center text-[11px] leading-none" aria-hidden>
+                <span className="grid h-3.5 w-3.5 shrink-0 place-items-center text-xs leading-none" aria-hidden>
                   {preset.emoji}
                 </span>
               ) : (

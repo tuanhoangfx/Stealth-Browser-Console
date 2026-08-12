@@ -39,8 +39,6 @@ export type HubDirectoryDisplayPanelProps = Pick<
   | "headerStatLabel"
   | "filterParam"
   | "filtersFromUrl"
-  | "readPrefs"
-  | "patchPrefs"
   | "getScreen"
   | "getSystemTab"
   | "systemDisplay"
@@ -54,7 +52,12 @@ export type HubDirectoryDisplayPanelProps = Pick<
   | "tableSectionFirst"
   | "tableActiveCount"
   | "sectionHints"
->;
+> &
+  /**
+   * Defaulted below (`DEFAULT_READ_PREFS` / `DEFAULT_PATCH_PREFS`) — optional here so callers
+   * that want the shared hub-list-prefs store can just omit them (P0010, P0014).
+   */
+  Partial<Pick<HubDisplayPrefsProps, "readPrefs" | "patchPrefs">>;
 
 function parseSet(raw: string | null): Set<string> | null {
   if (raw === null) return null;
@@ -231,7 +234,8 @@ export function HubDirectoryDisplayPanel({
   const headerStatDefaults = defaultHeaderStatKeys ?? new Set(headerStatsProp.map((item) => item.key));
 
   const visKpiCount = countVisiblePrefs(kpis, visKpiEffective, kpiDefaults);
-  const kpiAtMax = visKpiCount >= MAX_VISIBLE_KPI;
+  const kpiCap = Math.min(MAX_VISIBLE_KPI, Math.max(kpis.length, 1));
+  const kpiAtMax = visKpiCount >= kpiCap;
   const visChartsCount = countVisiblePrefs(charts, visChartsEffective, chartsDefaults);
   const chartAtMax = visChartsCount >= MAX_VISIBLE_CHART;
 
@@ -361,7 +365,7 @@ export function HubDirectoryDisplayPanel({
   const kpiSection =
     kpis.length > 0 ? (
       <PanelSection
-        label={`KPI (${visKpiCount}/${MAX_VISIBLE_KPI})`}
+        label={`KPI (${visKpiCount}/${kpiCap})`}
         icon={buildSemanticTocIcon("settings.kpi")}
         labelHint={sectionHints?.kpi}
       >
@@ -381,9 +385,9 @@ export function HubDirectoryDisplayPanel({
                 on={selected}
                 disabled={kpiAtMax && !selected}
                 onDisabledClick={() =>
-                  emitLog(`KPI limit: maximum ${MAX_VISIBLE_KPI} — turn one off to add another`)
+                  emitLog(`KPI limit: maximum ${kpiCap} — turn one off to add another`)
                 }
-                onChange={() => toggle("kpi", kpis, kpiDefaults, item.key, MAX_VISIBLE_KPI)}
+                onChange={() => toggle("kpi", kpis, kpiDefaults, item.key, kpiCap)}
               />
             );
           })}

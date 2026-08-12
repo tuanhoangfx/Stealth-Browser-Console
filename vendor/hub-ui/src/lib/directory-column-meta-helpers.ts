@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubBrandIconId } from "./resolve-hub-brand-icon";
 import type { HubDirectoryColumnHintContent } from "../table/HubDirectoryColumnHint";
 import type { HubDirectoryColumnMetaInput } from "../table/hub-directory-table-meta";
@@ -13,10 +13,15 @@ export type DirectoryColumnMetaOptions = {
   headerHint?: HubDirectoryColumnHintContent;
   /** Sheet-parity emoji sticker — takes precedence over Lucide in table headers. */
   headerEmoji?: string;
+  /** Tool catalog SVG / asset URL — preferred over Lucide for P00xx product columns. */
+  headerImageSrc?: string;
   /** Predictable cell shape — header align via buildDirectoryColumns (code→left, date/compact→center). */
   columnKind?: "code" | "date" | "compact";
   /** Override buildDirectoryColumns default header align (code→start, date→center). */
   headerAlign?: "start" | "center";
+  /** Prefer Display-pref / product icon over semantic registry (P0004 Users Tools / P000x). */
+  headerIcon?: HubGlyphComponent;
+  headerIconClassName?: string;
 };
 
 export type DirectoryColumnHeaderMeta = {
@@ -24,10 +29,11 @@ export type DirectoryColumnHeaderMeta = {
   colClass: string;
   role: HubTableColumnRole;
   width: string;
-  headerIcon: LucideIcon;
+  headerIcon: HubGlyphComponent;
   headerIconClassName: string;
   headerBrandIcon?: HubBrandIconId;
   headerEmoji?: string;
+  headerImageSrc?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
   columnKind?: "code" | "date" | "compact";
@@ -45,15 +51,18 @@ export function createDirectoryColumnMetaHelpers() {
     options?: DirectoryColumnMetaOptions,
   ): DirectoryColumnHeaderMeta {
     const icon = semanticDirectoryColumnIcon(semanticKey);
+    const useImage = Boolean(options?.headerImageSrc);
+    const useLucideOverride = Boolean(options?.headerIcon) && !useImage;
     return {
       label,
       colClass,
       role,
       width,
-      headerIcon: icon.headerIcon as LucideIcon,
-      headerIconClassName: icon.headerIconClassName,
-      headerBrandIcon: icon.headerBrandIcon,
+      headerIcon: options?.headerIcon ?? icon.headerIcon,
+      headerIconClassName: options?.headerIconClassName ?? icon.headerIconClassName,
+      headerBrandIcon: useImage || useLucideOverride ? undefined : icon.headerBrandIcon,
       headerEmoji: options?.headerEmoji,
+      headerImageSrc: options?.headerImageSrc,
       headerTooltip: options?.headerTooltip,
       headerHint: options?.headerHint,
       columnKind: options?.columnKind,
@@ -76,6 +85,7 @@ export function createDirectoryColumnMetaHelpers() {
           headerIconClassName: def.headerIconClassName,
           headerBrandIcon: def.headerBrandIcon,
           headerEmoji: def.headerEmoji,
+          headerImageSrc: def.headerImageSrc,
           headerTooltip: def.headerTooltip,
           headerHint: def.headerHint,
           columnKind: def.columnKind,

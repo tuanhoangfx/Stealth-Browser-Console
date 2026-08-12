@@ -1,0 +1,8 @@
+{
+  "$schema": "./hub-login-id-aliases.schema.json",
+  "description": "User ID typo aliases → canonical login_id. Edit here; run sync-hub-identity-vendor.cjs to fan-out.",
+  "aliases": {
+    "enzyadmin": "enzy.admin",
+    "crpgo": "czpgo"
+  }
+}

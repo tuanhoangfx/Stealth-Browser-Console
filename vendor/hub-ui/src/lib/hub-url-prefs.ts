@@ -12,8 +12,8 @@ export {
 export type { TimeRange };
 export { TIME_RANGES, LIMIT_OPTIONS };
 
-/** P0004 golden defaults when URL omits `range` / `limit`. */
-export const HUB_URL_DEFAULT_RANGE: TimeRange = "30d";
+/** P0004 golden defaults when URL omits `range` / `limit`. Prefer All (workspace-period parity). */
+export const HUB_URL_DEFAULT_RANGE: TimeRange = "all";
 export const HUB_URL_DEFAULT_LIMIT = 100;
 
 export type HubListPrefsCore = {

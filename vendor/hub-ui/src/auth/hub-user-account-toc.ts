@@ -15,6 +15,7 @@ export const HUB_WORKSPACE_USER_ACCOUNT_TOC: HubUserAccountTocEntry[] = [
 
 export const HUB_FULL_USER_ACCOUNT_TOC: HubUserAccountTocEntry[] = [
   { id: "hub-user-account", label: "Account", semanticKey: "user.account" },
+  { id: "hub-user-log", label: "Log", semanticKey: "log.panel" },
 ];
 
 export function hubUserAccountTocItems(entries: readonly HubUserAccountTocEntry[]): HubTocNavItem[] {

@@ -90,7 +90,7 @@ function DirectorySortRow({
 
   return (
 
-    <li className="flex min-w-0 items-center gap-1.5 text-[11px] leading-relaxed">
+    <li className="flex min-w-0 items-center gap-1.5 text-xs leading-relaxed">
 
       {index != null ? (
 
@@ -108,7 +108,7 @@ function DirectorySortRow({
 
       ) : row.emoji ? (
 
-        <span className="hub-users-th-emoji shrink-0 text-[11px] leading-none" aria-hidden>
+        <span className="hub-users-th-emoji shrink-0 text-xs leading-none" aria-hidden>
 
           {row.emoji}
 
@@ -230,7 +230,7 @@ export function DirectoryDefaultSortHint({
 
       ) : null}
 
-      {footnote ? <p className="text-[11px] leading-relaxed text-[var(--muted)]">{footnote}</p> : null}
+      {footnote ? <p className="text-xs leading-relaxed text-[var(--muted)]">{footnote}</p> : null}
 
     </div>
 

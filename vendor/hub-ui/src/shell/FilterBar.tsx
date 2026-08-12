@@ -141,6 +141,8 @@ const FILTER_ICONS: Record<string, HubGlyphComponent> = {
   share: Share2,
   folder: FolderOpen,
   service: KeyRound,
+  access: KeyRound,
+  grant: KeyRound,
   usage: Clock,
 };
 
@@ -155,7 +157,7 @@ export type FilterBarProps = {
   queryPending?: boolean;
   values: FilterValues;
   onValuesChange: (next: FilterValues) => void;
-  /** Row 1 — immediately after search (selection chip `x/y`). */
+  /** Row 1 — immediately after search (legacy / custom trailing; table selection chip uses toolbar leading). */
   searchTrailing?: React.ReactNode;
   /** Row 1 trailing (view toggle, counts) — used with layout="hub". */
   toolbar?: React.ReactNode;
@@ -177,6 +179,12 @@ export type FilterBarProps = {
   shortcutScope?: string;
   /** Hub dashboard-style row: filters only, no search field or F shortcut. */
   hideSearch?: boolean;
+  /**
+   * Searchbar Lite — single row when `hideSearch` (report dashboards).
+   * Left: toolbar · filters · Clear · Right: bulk actions.
+   * Default true when `hideSearch` so Staff Performance / report screens stay one line.
+   */
+  searchbarLite?: boolean;
   /** Debounce directory filter query — draft stays in HubSearchField (large vault perf). */
   searchDebounceMs?: number;
   /** Inside HubSplitDirectoryPane — parent owns border/bg; no nested panel chrome. */
@@ -203,11 +211,13 @@ export function FilterBar({
   embedded = false,
   shortcutScope = "default",
   hideSearch = false,
+  searchbarLite,
   searchDebounceMs = 0,
   frameless = false,
 }: FilterBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const clearAllRef = useRef<() => void>(() => {});
+  const lite = hideSearch && (searchbarLite ?? true);
 
   function setFilter(key: string, selected: string[]) {
     const next = { ...values };
@@ -287,20 +297,40 @@ export function FilterBar({
 
   if (layout === "hub") {
     const stickyTop = headerPinned ? "top-[var(--app-tab-header-sticky-h)]" : "top-0";
-    const panel = (
-      <div
-        className={
-          frameless
-            ? "hub-filter-bar space-y-2"
-            : "hub-filter-bar space-y-2 rounded-2xl border border-white/5 bg-[var(--panel)] p-3"
-        }
-      >
-        <div className="hub-filter-bar__row-search flex w-full min-w-0 items-center hub-inline-gap-name">
-          <div className="hub-filter-bar__search-main flex min-w-0 flex-1 items-center hub-inline-gap-name">
-            {hideSearch ? null : searchField}
+    const panelClass = frameless
+      ? `hub-filter-bar${lite ? " hub-filter-bar--lite" : " space-y-2"}`
+      : `hub-filter-bar${lite ? " hub-filter-bar--lite py-1.5 px-2" : " space-y-2 p-3"} rounded-2xl border border-white/5 bg-[var(--panel)]`;
+
+    const panel = lite ? (
+      <div className={panelClass}>
+        <div className="hub-filter-bar__lite-row flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center hub-inline-gap-name">
+            {toolbar}
+            {row2Leading ? (
+              <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div>
+            ) : null}
+            {filterDropdowns}
+            {clearFiltersBtn}
             {searchTrailing}
           </div>
+          {row2Actions || row2Trailing ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-end hub-inline-gap-name">
+              {row2Actions}
+              {row2Trailing}
+            </div>
+          ) : null}
         </div>
+      </div>
+    ) : (
+      <div className={panelClass}>
+        {hideSearch && !searchTrailing ? null : (
+          <div className="hub-filter-bar__row-search flex w-full min-w-0 items-center hub-inline-gap-name">
+            <div className="hub-filter-bar__search-main flex min-w-0 flex-1 items-center hub-inline-gap-name">
+              {hideSearch ? null : searchField}
+              {searchTrailing}
+            </div>
+          </div>
+        )}
         {toolbar ? (
           <div className="hub-filter-bar__toolbar flex min-h-[var(--hub-control-h)] shrink-0 flex-wrap items-center hub-inline-gap-name">
             {toolbar}
@@ -321,7 +351,7 @@ export function FilterBar({
     );
 
     if (embedded) {
-      return <div className="px-6 pb-3 pt-0">{panel}</div>;
+      return <div className={lite ? "px-6 pb-1.5 pt-0" : "px-6 pb-3 pt-0"}>{panel}</div>;
     }
 
     if (!pinSticky) return panel;
@@ -796,7 +826,9 @@ export function HubMultiFilterDropdown({
         })()}
         <FilterTriggerLabel label={buttonLabel} filter={filter} triggerIcon={triggerIcon} />
         {showTotalOnTrigger ? (
-          <span className="shrink-0 tabular-nums text-[10px] font-medium text-[var(--muted)]">{filter.totalCount}</span>
+          <span className="hub-filter-trigger__count ml-1 shrink-0 tabular-nums text-[10px] font-medium text-[var(--muted)]">
+            {` ${filter.totalCount}`}
+          </span>
         ) : null}
 
         <ChevronDown size={compactIconSize(glyphPx)} className={`transition-transform ${open ? "rotate-180" : ""}`} />

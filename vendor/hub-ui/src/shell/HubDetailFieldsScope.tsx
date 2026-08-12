@@ -1,8 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import {
-  HUB_ADM_GRID_SLOT_SPACER_CLASS,
-  HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS,
-} from "./hubAccountDetailModal";
+import { hubAdmGridSlotPadClass } from "./hubAccountDetailModal";
 
 /**
  * Detail-modal field scope for Settings surfaces — Layout 3 HubAdm SSOT.
@@ -67,6 +64,7 @@ export function HubDetailFieldRow({
   slots?: 1 | 2 | 3 | "full";
 }) {
   const full = slots === "full";
+  const padClass = !full && slots !== 3 ? hubAdmGridSlotPadClass(slots) : null;
   return (
     <div
       className={`hub-adm-form-row hub-adm-form-row--aligned${
@@ -74,8 +72,7 @@ export function HubDetailFieldRow({
       }`}
     >
       {children}
-      {!full && slots === 1 ? <span className={HUB_ADM_GRID_SLOT_SPACER_CLASS} aria-hidden /> : null}
-      {!full && slots === 2 ? <span className={HUB_ADM_GRID_SLOT_SPACER_TAIL_CLASS} aria-hidden /> : null}
+      {padClass ? <span className={padClass} aria-hidden /> : null}
     </div>
   );
 }

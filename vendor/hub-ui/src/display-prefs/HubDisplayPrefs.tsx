@@ -20,6 +20,7 @@ import { HubToolDetailModal, HubToolDetailModalSecondaryAction, HUB_TOOL_DETAIL_
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "../shell/HubTocSectionNav";
 import { registerHubSettingsOpen } from "../keyboard/hub-keyboard-shortcuts";
+import { HUB_SETTINGS_TITLE } from "../shell/hub-chrome-messages";
 import { HubDirectoryTableColumnPresetMenu } from "../prefs/HubDirectoryTableColumnPresetMenu";
 import { patchHubTablePageSizeValue } from "../table/hub-table-page-size";
 
@@ -76,7 +77,7 @@ export function HubDisplayPrefs({
   tableActiveCount = 0,
   headerStatLabel = (isSystem) => (isSystem ? "System header" : "Hub header"),
   onLog,
-  title = "Settings",
+  title = HUB_SETTINGS_TITLE,
   extraTabs = [],
   toolSections = [],
 }: HubDisplayPrefsProps) {

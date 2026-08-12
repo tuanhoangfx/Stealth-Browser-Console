@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hubAuthEmailFromLogin,
+  hubAuthEmailFromLoginOrEmail,
   hubAuthEmailsForSignIn,
   hubAuthEmailsFromLogin,
   hubDisplayEmail,
@@ -23,6 +24,11 @@ describe("hub-login", () => {
     expect(r.authEmail).toBe("enzy.admin@infix1.io.vn");
     expect(r.loginId).toBe("enzy.admin");
     expect(hubAuthEmailsForSignIn("enzyadmin")[0]).toBe("enzy.admin@infix1.io.vn");
+  });
+
+  it("aliases crpgo → czpgo auth email", () => {
+    expect(resolveHubLogin("crpgo").loginId).toBe("czpgo");
+    expect(hubAuthEmailsForSignIn("crpgo")[0]).toBe("czpgo@infix1.io.vn");
   });
 
   it("keeps real email logins unchanged", () => {
@@ -77,6 +83,14 @@ describe("hub-login", () => {
     });
     expect(resolveHubLogin("oi0906029").loginId).toBe("oi0906029");
     expect(resolveHubLogin("OI0906029").loginId).not.toBe("oi09006029");
+  });
+
+  it("derives login_id from real email on create", () => {
+    expect(hubAuthEmailFromLoginOrEmail({ email: "alice@corp.com" })).toEqual({
+      authEmail: "alice@corp.com",
+      loginId: "alice",
+      contactEmail: "alice@corp.com",
+    });
   });
 
   it("shows synthetic @infix1.io.vn in directory email until contact is linked", () => {

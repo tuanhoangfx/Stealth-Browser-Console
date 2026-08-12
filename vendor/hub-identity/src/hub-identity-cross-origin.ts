@@ -11,7 +11,7 @@ export const HUB_IDENTITY_BRIDGE_PATH = "/hub-identity-bridge.html";
 
 type BridgeMessage = {
   type: typeof HUB_IDENTITY_BRIDGE_MESSAGE_TYPE;
-  action: "get" | "set" | "get-result" | "set-result";
+  action: "get" | "set" | "clear" | "get-result" | "set-result" | "clear-result";
   snapshot?: Omit<HubIdentitySnapshot, "cached_at"> | null;
   ok?: boolean;
 };
@@ -173,4 +173,23 @@ export function startHubIdentityCrossOriginBridge(opts?: {
       unsubLocal();
     },
   };
+}
+
+/** Push cleared identity to Hub bridge iframe (cross-origin sign-out SSOT). */
+export async function pushHubIdentityClearToBridge(opts?: {
+  hubOrigin?: string;
+}): Promise<void> {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const hubOrigin = (opts?.hubOrigin ?? resolveDefaultHubOrigin()).replace(/\/$/, "");
+  if (window.location.origin === hubOrigin) return;
+  const iframe = document.querySelector(`iframe[data-hub-identity-bridge="1"]`) as HTMLIFrameElement | null;
+  if (!iframe?.contentWindow) return;
+  try {
+    iframe.contentWindow.postMessage(
+      { type: HUB_IDENTITY_BRIDGE_MESSAGE_TYPE, action: "clear" } satisfies BridgeMessage,
+      hubOrigin,
+    );
+  } catch {
+    /* ignore */
+  }
 }
