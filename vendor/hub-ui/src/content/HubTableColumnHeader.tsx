@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import type { LucideIcon } from "lucide-react";
+import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { compactIconSize, HUB_DIRECTORY_HEADER_GLYPH_PX } from "../ui-scale";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
@@ -18,7 +19,8 @@ export type HubTableColumnHeaderProps = {
   headerImageSrc?: string;
   /** Semantic role — preferred; pulls icon + color from shared registry. */
   role?: HubTableColumnRole;
-  icon?: LucideIcon;
+  /** Widened to HubGlyphComponent — column meta headerIcon may be a React 19 memo/forwardRef object. */
+  icon?: HubGlyphComponent;
   iconClassName?: string;
   brandIcon?: HubBrandIconId;
   /**
