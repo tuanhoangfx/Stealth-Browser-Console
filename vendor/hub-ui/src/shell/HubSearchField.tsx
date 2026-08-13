@@ -12,7 +12,7 @@ export type HubSearchFieldProps = {
   inputRef?: Ref<HTMLInputElement>;
   /** Show `F` focus hint when empty (directory FilterBar). Off in modals. */
   showShortcutHint?: boolean;
-  /** Ignored — P0020 shell never animates the search icon. */
+  /** Debounce / fetch pending — subtle spin on the search glyph (directory FilterBar SSOT). */
   queryPending?: boolean;
   /** Keyboard focus scope — FilterBar registers shortcuts when embedded. */
   shortcutScope?: string;
@@ -30,6 +30,7 @@ export function HubSearchField({
   className = "",
   inputRef,
   showShortcutHint = true,
+  queryPending = false,
   debounceMs = 0,
   modalSearch = false,
 }: HubSearchFieldProps) {
@@ -94,7 +95,9 @@ export function HubSearchField({
     <div className={`relative min-w-[var(--hub-search-min-w)] flex-1 ${className}`.trim()}>
       <Search
         size={compactIconSize(14)}
-        className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]"
+        className={`pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 ${
+          queryPending ? "animate-spin text-indigo-300" : "text-[var(--muted)]"
+        }`}
         aria-hidden
       />
       <input

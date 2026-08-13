@@ -351,7 +351,6 @@ function refreshUnpackedAppAsar(unpackedDir) {
   rmDir(distDest);
   copyDir(path.join(root, "dist"), distDest);
   // Always seed shell icons — BrowserWindow reads build/icons/app.ico from asar root.
-  // Historical Fast trees omitted this path → blank title-bar / taskbar glyph.
   const iconsSrc = path.join(root, "build", "icons");
   if (fs.existsSync(path.join(iconsSrc, "app.ico"))) {
     const iconsDest = path.join(tmp, "build", "icons");
@@ -371,8 +370,10 @@ function refreshUnpackedAppAsar(unpackedDir) {
       console.log(`run-electron-package: patched app.asar package.json → ${version}`);
     }
   }
-  // UI-only Fast: refresh dist. Main/shared need DESKTOP_RELEASE_REFRESH_MAIN=1 (or full pack).
-  if (process.env.DESKTOP_RELEASE_REFRESH_MAIN === "1") {
+  // Fast prepackaged used to refresh dist only — electron/main.cjs stayed stale (1.0.186 boot IPC bug).
+  // Always sync electron+shared when rebuilding asar; skip only when DESKTOP_RELEASE_UI_ONLY=1.
+  const uiOnly = process.env.DESKTOP_RELEASE_UI_ONLY === "1";
+  if (!uiOnly) {
     for (const rel of ["electron", "shared"]) {
       const src = path.join(root, rel);
       if (!fs.existsSync(src)) continue;
@@ -381,6 +382,15 @@ function refreshUnpackedAppAsar(unpackedDir) {
       copyDir(src, dest);
     }
     console.log("run-electron-package: refreshed electron+shared inside app.asar");
+  } else if (process.env.DESKTOP_RELEASE_REFRESH_MAIN === "1") {
+    for (const rel of ["electron", "shared"]) {
+      const src = path.join(root, rel);
+      if (!fs.existsSync(src)) continue;
+      const dest = path.join(tmp, rel);
+      rmDir(dest);
+      copyDir(src, dest);
+    }
+    console.log("run-electron-package: refreshed electron+shared (DESKTOP_RELEASE_REFRESH_MAIN=1)");
   }
   // @electron/asar createPackage is async — run via nested node so callers stay sync.
   const create = spawnSync(

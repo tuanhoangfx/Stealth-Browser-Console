@@ -2,6 +2,22 @@
 
 ## 2026-08-13 - Boot IPC before window (empty Profiles after update)
 
+- Version: `1.0.187`
+- Timestamp: 2026-08-13 15:51 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-13 - Boot IPC before window (empty Profiles after update)
+
 - Version: `1.0.186`
 - Timestamp: 2026-08-13 15:35 (UTC+7)
 - Type: Patch

@@ -13,7 +13,10 @@
  * WARNING: Most "5000 profile" catalogs are name stubs without Chromium folders.
  * --apply deletes DB rows whose profiles/{id} folder is missing — irreversible for names
  * unless you keep pre-orphan-prune bak. Prefer --dry-run first.
-import fs from "node:fs";
+ *
+ * Incident 2026-08-13: bulk --apply wiped 4543 catalog stubs (folders never existed —
+ * migrate only moved ~500). Guard: worker requires --force when orphans >> keep.
+ */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,7 +24,7 @@ import { spawnElectronNode } from "./lib/spawn-electron-node.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apply = process.argv.includes("--apply");
-const dryRun = process.argv.includes("--dry-run") || !apply;
+const force = process.argv.includes("--force");
 
 if (!apply && !process.argv.includes("--dry-run")) {
   console.log("prune-catalog-orphans: pass --dry-run or --apply");
@@ -29,7 +32,9 @@ if (!apply && !process.argv.includes("--dry-run")) {
 }
 
 const worker = path.join(root, "scripts", "lib", "prune-catalog-orphans-worker.cjs");
-const result = spawnElectronNode(worker, apply ? ["--apply"] : ["--dry-run"], {
+const args = apply ? ["--apply"] : ["--dry-run"];
+if (force) args.push("--force");
+const result = spawnElectronNode(worker, args, {
   cwd: root,
   env: {
     STEALTH_DEV_ISOLATED: "0",

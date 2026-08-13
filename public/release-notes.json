@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-08-13T08:40:16.130Z",
+  "generatedAt": "2026-08-13T09:22:29.807Z",
   "entries": [
+    {
+      "version": "1.0.187",
+      "date": "2026-08-13",
+      "at": "2026-08-13T09:22:29.806Z",
+      "title": "chore: release v1.0.187",
+      "bullets": [
+        "Maintenance and polish since the last documented release."
+      ],
+      "kind": "improve",
+      "userTitle": "Release v1.0.187",
+      "userSummary": "",
+      "userHighlights": [
+        "Maintenance and polish since the last documented release."
+      ]
+    },
     {
       "version": "1.0.186",
       "date": "2026-08-13",
@@ -191,25 +206,6 @@
       "userSummary": "",
       "userHighlights": [
         "Replace custom More dropdown with Hub Directory Bulk More Menu ."
-      ]
-    },
-    {
-      "version": "1.0.154",
-      "date": "2026-07-27",
-      "at": "2026-07-27",
-      "title": "Note column one-shot promote + Detail CDP smoke",
-      "bullets": [
-        "Promote Note column once for any Display prefs that still hide it (custom sets included)",
-        "Add scripts/smoke-profile-note-detail.mjs Stealth CDP proof (Note column + Detail Note rail)",
-        "verify-agent-smoke-headless: skip (not fail) when CloakBrowser exit 21 / launch env busy during release"
-      ],
-      "kind": "improve",
-      "userTitle": "Note column one-shot promote + Detail CDP smoke",
-      "userSummary": "",
-      "userHighlights": [
-        "Promote Note column once for any Display prefs that still hide it",
-        "Add Stealth CDP proof",
-        "Verify-agent-smoke-headless: skip when Cloak Browser exit 21 launch env busy during release"
       ]
     }
   ]

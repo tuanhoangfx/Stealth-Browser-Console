@@ -24,6 +24,8 @@ export type HubBlackboxEntry = {
   /** epoch ms */
   t: number;
   kind: string;
+  /** App version of the tab that wrote this — a session can mix builds after a deploy. */
+  v?: string;
   [key: string]: unknown;
 };
 
@@ -95,8 +97,23 @@ function flush(): void {
   }
 }
 
+/**
+ * The build this tab is running, read once from the meta tag the deploy stamps.
+ *
+ * Every record needs it. Tabs keep the bundle they loaded with, so after a deploy a session mixes
+ * several builds — and a record from a stale tab is indistinguishable from a record proving the
+ * fix did not work. That cost a full day of P0020 diagnosis: 34-minute vault pulls kept being
+ * recorded after the fix shipped, with no way to tell which build produced them.
+ */
+const appVersion = (() => {
+  if (typeof document === "undefined") return undefined;
+  const meta = document.querySelector('meta[name="app-version"]');
+  return meta?.getAttribute("content") ?? undefined;
+})();
+
 function push(entry: HubBlackboxEntry): void {
   if (!installed) return;
+  if (appVersion && entry.v === undefined) entry.v = appVersion;
   buf.push(entry);
   if (buf.length > maxEntries + 50) buf = buf.slice(-maxEntries);
   if (flushTimer == null && typeof window !== "undefined") {

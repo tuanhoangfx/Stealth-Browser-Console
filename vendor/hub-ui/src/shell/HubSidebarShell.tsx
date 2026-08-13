@@ -4,7 +4,7 @@ import { PanelLeft } from "lucide-react";
 import "../styles/hub-mobile.css";
 
 export const HUB_SIDEBAR_SHELL_ASIDE_CLASS =
-  "hub-sidebar-shell flex h-full min-h-0 w-60 shrink-0 flex-col overflow-visible border-r border-white/5 bg-[var(--panel)] p-4";
+  "hub-sidebar-shell flex h-full min-h-0 w-60 shrink-0 flex-col overflow-visible border-r border-white/5 bg-[var(--panel)] px-4 pt-4 pb-2";
 
 export const HUB_SIDEBAR_SHELL_BRAND_TITLE_CLASS =
   "truncate text-sm font-semibold leading-tight";
@@ -14,8 +14,9 @@ export const HUB_SIDEBAR_SHELL_BRAND_TAGLINE_CLASS = "text-[10px] text-[var(--mu
 
 export const HUB_SIDEBAR_SHELL_NAV_CLASS = "hub-scrollbar min-h-0 flex-1 space-y-0.5 overflow-y-auto";
 
+/** `mt-auto` pins footer to the last line when aside fills the viewport. */
 export const HUB_SIDEBAR_SHELL_FOOTER_CLASS =
-  "mt-2 shrink-0 space-y-0.5 overflow-visible border-t border-white/5 pt-2.5";
+  "mt-auto shrink-0 space-y-0.5 overflow-visible border-t border-white/5 pt-2.5";
 
 export type HubSidebarShellProps = {
   /** Tool avatar or product mark — left of title block. */

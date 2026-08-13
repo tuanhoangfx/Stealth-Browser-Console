@@ -27,7 +27,8 @@ export type HubDirectoryTableVariant =
   | "tool-links"
   | "dense"
   | "folders"
-  | "cookie-routes";
+  | "cookie-routes"
+  | "sheet";
 
 export const HUB_DIRECTORY_TABLE_BASE_CLASS = "hub-users-table hub-users-table--directory";
 

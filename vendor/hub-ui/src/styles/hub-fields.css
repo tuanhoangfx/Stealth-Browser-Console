@@ -144,3 +144,25 @@ select.hub-filter-select-native option,
   color: inherit;
   font-weight: 500;
 }
+
+/* Clear filters — rose SSOT (do not inherit --text from host theme overrides). */
+.hub-filter-clear-btn {
+  color: #fecdd3 !important; /* rose-200 */
+  border-color: rgb(244 63 94 / 0.3) !important;
+  background-color: rgb(244 63 94 / 0.1) !important;
+}
+
+.hub-filter-clear-btn:hover {
+  background-color: rgb(244 63 94 / 0.2) !important;
+}
+
+.hub-filter-clear-btn__count {
+  color: #fff !important;
+  background-color: rgb(244 63 94 / 0.8) !important;
+}
+
+/* Active multi-filter trigger — keep indigo text when host forces --text on buttons. */
+.hub-filter-trigger.border-indigo-500\/40,
+button.hub-filter-trigger[class*="border-indigo-500"] {
+  color: #c7d2fe; /* indigo-200 */
+}
