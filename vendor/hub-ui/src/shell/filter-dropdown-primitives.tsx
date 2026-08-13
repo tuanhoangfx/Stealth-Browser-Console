@@ -149,18 +149,18 @@ export const HUB_SCROLLBAR_CLASS = "hub-scrollbar";
 export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list hub-scrollbar max-h-72 overflow-y-auto overflow-x-hidden p-1 min-w-0";
 
 export const HUB_FILTER_DROPDOWN_PANEL_CLASS =
-  "anim-pop absolute top-full z-30 mt-1 w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
+  "anim-pop absolute top-full z-30 mt-1 w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] text-[var(--text)] shadow-xl shadow-black/40";
 
-/** Portaled panel — fixed position, escapes modal/rail overflow clipping. */
+/** Portaled panel — fixed position, escapes modal/rail overflow clipping. Explicit --text (portals inherit body, not .hub-app). */
 export const HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS =
-  "anim-pop fixed z-[10050] w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl shadow-black/40";
+  "anim-pop fixed z-[10050] w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] text-[var(--text)] shadow-xl shadow-black/40";
 
 /** Golden filter panel row — All {label} + options share one weight (P0004 Group filter). */
 export const HUB_FILTER_DROPDOWN_ROW_CLASS =
-  "flex w-full min-w-0 items-center hub-inline-gap-name rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-white/5";
+  "flex w-full min-w-0 items-center hub-inline-gap-name rounded-md px-2 py-1.5 text-sm font-medium text-[var(--text)] transition-colors hover:bg-white/5";
 
 export const HUB_FILTER_DROPDOWN_ROW_COMPACT_CLASS =
-  "flex w-full min-w-0 items-center hub-inline-gap-comfort rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-white/5";
+  "flex w-full min-w-0 items-center hub-inline-gap-comfort rounded-md px-2 py-1 text-xs font-medium text-[var(--text)] transition-colors hover:bg-white/5";
 
 /** Filter panel row — value text mirrors directory table body (twofa vault). */
 export const HUB_FILTER_DROPDOWN_ROW_DIRECTORY_VALUE_CLASS = `flex w-full min-w-0 items-center hub-inline-gap-comfort rounded-md px-2 py-1 ${HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT} transition-colors hover:bg-white/5`;

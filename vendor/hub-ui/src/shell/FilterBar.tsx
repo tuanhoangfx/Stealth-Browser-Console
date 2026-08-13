@@ -117,6 +117,17 @@ export type FilterDef = {
    * - `visible-options`: toggle only rows currently visible after panel search.
    */
   multiSelectAllMode?: "all-options" | "visible-options";
+  /**
+   * Always-on default (e.g. Todo Scope = My Tasks). Not counted as an active filter;
+   * Clear filters resets to this value instead of removing the key.
+   */
+  stickyDefault?: string;
+  /**
+   * Escape hatch only — **not** golden FilterBar SSOT.
+   * - `multi` (default): checkbox panel + **Select shown** row (Hub SSOT for all facets).
+   * - `single`: hides select-all row; prefer stickyDefault + domain normalize instead.
+   */
+  selectionMode?: "multi" | "single";
 };
 
 const FILTER_ICONS: Record<string, HubGlyphComponent> = {
@@ -228,7 +239,11 @@ export function FilterBar({
 
   function clearAll() {
     onQueryChange("");
-    onValuesChange({});
+    const next: FilterValues = {};
+    for (const f of filters) {
+      if (f.stickyDefault) next[f.key] = [f.stickyDefault];
+    }
+    onValuesChange(next);
   }
 
   clearAllRef.current = clearAll;
@@ -251,9 +266,22 @@ export function FilterBar({
     };
   }, [shortcutScope, hideSearch]);
 
-  const hasActive = query !== "" || filters.some((f) => (values[f.key]?.length ?? 0) > 0);
+  const hasActive =
+    query !== "" ||
+    filters.some((f) => {
+      const vals = values[f.key] ?? [];
+      if (vals.length === 0) return false;
+      if (f.stickyDefault && vals.length === 1 && vals[0] === f.stickyDefault) return false;
+      return true;
+    });
   const activeCount =
-    (query ? 1 : 0) + filters.reduce((n, f) => n + (values[f.key]?.length ?? 0), 0);
+    (query ? 1 : 0) +
+    filters.reduce((n, f) => {
+      const vals = values[f.key] ?? [];
+      if (vals.length === 0) return n;
+      if (f.stickyDefault && vals.length === 1 && vals[0] === f.stickyDefault) return n;
+      return n + vals.length;
+    }, 0);
 
   const searchField = (
     <HubSearchField
@@ -271,11 +299,11 @@ export function FilterBar({
     <button
       type="button"
       onClick={clearAll}
-      className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center hub-inline-gap-comfort rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/20"
+      className="hub-filter-clear-btn inline-flex h-[var(--hub-control-h)] shrink-0 items-center hub-inline-gap-comfort rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/20"
       title="Clear search and all filters"
     >
       Clear filters
-      <span className="grid h-4 min-w-[var(--hub-count-badge-min-w)] place-items-center rounded-full bg-rose-500/80 px-1 text-[9px] font-bold text-white">
+      <span className="hub-filter-clear-btn__count grid h-4 min-w-[var(--hub-count-badge-min-w)] place-items-center rounded-full bg-rose-500/80 px-1 text-[9px] font-bold text-white">
         {activeCount}
       </span>
     </button>
@@ -671,6 +699,7 @@ export function HubMultiFilterDropdown({
     // SSOT: the "first row" (select/unselect) should operate on what the user can see
     // after panel search filters the option list.
     "visible-options";
+  const exclusive = filter.selectionMode === "single";
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   // Panel math is O(options) on large facets (Orders customer facet ~1.8k options) —
   // compute only while the panel is open so closed dropdowns cost nothing per render.
@@ -707,11 +736,20 @@ export function HubMultiFilterDropdown({
   }, [open, search, filter, selected, selectedSet, allMode]);
 
   function toggle(v: string) {
+    if (exclusive) {
+      if (selectedSet.has(v)) {
+        if (filter.stickyDefault) return;
+        onChange([]);
+        return;
+      }
+      onChange([v]);
+      return;
+    }
     if (selectedSet.has(v)) onChange(selected.filter((x) => x !== v));
     else onChange([...selected, v]);
   }
   function toggleAll() {
-    if (!panel) return;
+    if (exclusive || !panel) return;
     if (allMode === "visible-options") {
       if (panel.filtered.length === 0) return;
       if (panel.allVisibleSelected) {
@@ -861,13 +899,17 @@ export function HubMultiFilterDropdown({
                 placeholder={filterDropdownPanelSearchPlaceholder(filter.label)}
               />
               <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-                <button type="button" onClick={toggleAll} className={rowClass}>
-                  <HubFilterDropdownCircle checked={panel.allRowChecked} indeterminate={panel.allRowIndeterminate} />
-                  <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                  <span className="min-w-0 flex-1 truncate text-left">{panel.allRowLabel}</span>
-                  <FilterOptionCount value={panel.allRowCount} />
-                </button>
-                <div className="my-1 border-t border-white/5" />
+                {!exclusive ? (
+                  <>
+                    <button type="button" onClick={toggleAll} className={rowClass}>
+                      <HubFilterDropdownCircle checked={panel.allRowChecked} indeterminate={panel.allRowIndeterminate} />
+                      <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
+                      <span className="min-w-0 flex-1 truncate text-left">{panel.allRowLabel}</span>
+                      <FilterOptionCount value={panel.allRowCount} />
+                    </button>
+                    <div className="my-1 border-t border-white/5" />
+                  </>
+                ) : null}
                 {panel.filtered.map((o) => (
                   <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
                     <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
@@ -895,13 +937,17 @@ export function HubMultiFilterDropdown({
               placeholder={filterDropdownPanelSearchPlaceholder(filter.label)}
             />
             <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-              <button type="button" onClick={toggleAll} className={rowClass}>
-                <HubFilterDropdownCircle checked={panel.allRowChecked} indeterminate={panel.allRowIndeterminate} />
-                <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                <span className="min-w-0 flex-1 truncate text-left">{panel.allRowLabel}</span>
-                <FilterOptionCount value={panel.allRowCount} />
-              </button>
-              <div className="my-1 border-t border-white/5" />
+              {!exclusive ? (
+                <>
+                  <button type="button" onClick={toggleAll} className={rowClass}>
+                    <HubFilterDropdownCircle checked={panel.allRowChecked} indeterminate={panel.allRowIndeterminate} />
+                    <FilterAllRowGlyph filter={filter} directoryParity={directoryValueTypo} compact={compactDropdown} />
+                    <span className="min-w-0 flex-1 truncate text-left">{panel.allRowLabel}</span>
+                    <FilterOptionCount value={panel.allRowCount} />
+                  </button>
+                  <div className="my-1 border-t border-white/5" />
+                </>
+              ) : null}
               {panel.filtered.map((o) => (
                 <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
                   <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
