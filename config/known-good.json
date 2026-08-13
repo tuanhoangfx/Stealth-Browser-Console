@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.185-stable",
-  "version": "1.0.185",
-  "gitCommit": "68545734448186198a895783aedd8da800a0af05",
-  "gitTag": "v1.0.185-stable",
+  "label": "v1.0.186-stable",
+  "version": "1.0.186",
+  "gitCommit": null,
+  "gitTag": "v1.0.186-stable",
   "packagedFrom": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
   "notes": "v1.0.184: FilterBar row-tools flex (search fills past actions col). Installer + win-unpacked pinned.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.185.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.186.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "67StInX5wYxBOiZlTwdiCPcq7ra2Tt9Gj0fipXWjDuqZeVMq4oaXdZRRUXTAq0LcCeuzyCf6w1dyRZc3rHFZSg==",
-    "capturedAt": "2026-08-13T05:47:50.804Z"
+    "sha512": "EAchKaupJnIJ58EeUtIyZtvVyvt1t0YADFQyGDRjfyP6C5XmrIRt1pnBMeuZha2lyvUJHzCF0VShJoO7ygQ56w==",
+    "capturedAt": "2026-08-13T08:40:13.436Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
