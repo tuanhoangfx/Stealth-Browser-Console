@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.183-stable",
-  "version": "1.0.183",
-  "gitCommit": null,
-  "gitTag": "v1.0.183-stable",
-  "packagedFrom": "30569896deee5201d2b87c866afedd0eec8e79eb",
-  "notes": "v1.0.169: digit gap spaced8, orphan kill fix, runtime console SSOT lock. Installer pinned.",
+  "label": "v1.0.184-stable",
+  "version": "1.0.184",
+  "gitCommit": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
+  "gitTag": "v1.0.184-stable",
+  "packagedFrom": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
+  "notes": "v1.0.184: FilterBar row-tools flex (search fills past actions col). Installer + win-unpacked pinned.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.183.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.184.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "tX4fi7EXi/unBapUsUHYAtI75xqF+SNnqUuJLdfoCZqZ2tzdftYq3CgLzM4aAc6kPqo1kgoRtKoxjPYxcbspWA==",
-    "capturedAt": "2026-08-13T04:12:19.056Z"
+    "sha512": "SSZUa9aVLN/es6CO+1qDLe2od3/5Lwalm86cU1YkAlAnmT8TNzzxAh48Z2k922qmuGaHaKkqsJomm5YMPLOTVw==",
+    "capturedAt": "2026-08-13T04:33:39.685Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
