@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-08-13T04:12:21.537Z",
+  "generatedAt": "2026-08-13T04:23:27.873Z",
   "entries": [
+    {
+      "version": "1.0.184",
+      "date": "2026-08-13",
+      "at": "2026-08-13T11:22:00+07:00",
+      "title": "FilterBar row-tools flex (search fills past actions col)",
+      "bullets": [
+        "hub-ui FilterBar: row-tools / row-band flex rows - desktop no longer shares a 2-col grid with bulk actions (actions inflated col2 to ~180px search gap)."
+      ],
+      "kind": "improve",
+      "userTitle": "Filter Bar row-tools flex",
+      "userSummary": "",
+      "userHighlights": [
+        "Hub-ui Filter Bar: row-tools row-band flex rows - desktop no longer shares a 2-col grid with bulk…"
+      ]
+    },
     {
       "version": "1.0.183",
       "date": "2026-08-13",
@@ -187,21 +202,6 @@
       "userSummary": "",
       "userHighlights": [
         "Pre Ship shared UI: verify-untracked + verify"
-      ]
-    },
-    {
-      "version": "1.0.151",
-      "date": "2026-07-24",
-      "at": "2026-07-24",
-      "title": "preShip SSOT: verify-untracked-imports gate",
-      "bullets": [
-        "preShip SSOT: verify-untracked-imports gate"
-      ],
-      "kind": "improve",
-      "userTitle": "Pre Ship shared UI: verify-untracked-imports gate",
-      "userSummary": "",
-      "userHighlights": [
-        "Pre Ship shared UI: verify-untracked-imports gate"
       ]
     }
   ]

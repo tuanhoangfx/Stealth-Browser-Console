@@ -34,9 +34,9 @@ describe("createWorkspaceAuthGatePreset", () => {
 
   it("gives P0012 its own tagline, not another tool's", () => {
     const preset = createWorkspaceAuthGatePreset({ code: "P0012" });
-    expect(preset.title).toBe("Welcome to Todo");
-    expect(preset.toolInfo.name).toBe("Todo");
-    expect(preset.toolInfo.tagline).toBe("Tasks, boards & team workload");
+    expect(preset.title).toBe("Welcome to Performance");
+    expect(preset.toolInfo.name).toBe("Performance");
+    expect(preset.toolInfo.tagline).toBe("Work performance, boards & team workload");
   });
 
   it("never falls back to another tool's tagline", () => {

@@ -214,6 +214,12 @@
     margin-top: 0 !important;
   }
 
+  /* Flatten row wrappers so search / toolbar / filters / actions participate in one grid */
+  .hub-filter-bar__row-tools,
+  .hub-filter-bar__row-band {
+    display: contents !important;
+  }
+
   .hub-filter-bar__row-search {
     width: 100%;
     min-width: 0;
@@ -241,8 +247,8 @@
     justify-content: flex-end !important;
   }
 
-  /* Shared tools band: toolbar left · actions right (same row) */
-  .hub-filter-bar:has(> .hub-filter-bar__toolbar):has(> .hub-filter-bar__actions) {
+  /* Shared tools band: toolbar left · actions right (same row) — descendant (wrappers use contents) */
+  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     grid-template-rows: auto auto auto !important;
@@ -251,13 +257,13 @@
     align-items: center !important;
   }
 
-  .hub-filter-bar:has(> .hub-filter-bar__toolbar):has(> .hub-filter-bar__actions) > .hub-filter-bar__row-search {
+  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__row-search {
     grid-column: 1 / -1;
     grid-row: 1;
     order: unset;
   }
 
-  .hub-filter-bar:has(> .hub-filter-bar__toolbar):has(> .hub-filter-bar__actions) > .hub-filter-bar__toolbar {
+  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__toolbar {
     grid-column: 1;
     grid-row: 2;
     width: auto !important;
@@ -265,7 +271,7 @@
     margin-top: 0 !important;
   }
 
-  .hub-filter-bar:has(> .hub-filter-bar__toolbar):has(> .hub-filter-bar__actions) > .hub-filter-bar__actions {
+  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__actions {
     grid-column: 2;
     grid-row: 2;
     order: unset;
@@ -275,12 +281,12 @@
     justify-self: end;
   }
 
-  .hub-filter-bar:has(> .hub-filter-bar__toolbar):has(> .hub-filter-bar__actions) > .hub-filter-bar__row-filters {
+  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__row-filters {
     grid-column: 1 / -1;
     grid-row: 3;
   }
 
-  .hub-filter-bar:has(> .hub-filter-bar__toolbar):has(> .hub-filter-bar__actions) > .hub-filter-bar__trailing {
+  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__trailing {
     grid-column: 2;
     grid-row: 3;
     justify-self: end;
@@ -575,29 +581,36 @@
   }
 }
 
-/* Desktop ≥768 — classic 2-row FilterBar (search|toolbar / filters|actions) — must win over Tailwind */
+/* Desktop ≥768 — two flex rows (search|toolbar · filters|actions).
+   Forbidden: one 2-col grid for both rows — actions max-content inflates col2 and
+   leaves a dead gap after a ~180px search (P0003 Profiles 1.0.182). */
 @media (min-width: 768px) {
   .hub-filter-bar {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    grid-template-rows: auto auto !important;
-    column-gap: 0.5rem !important;
-    row-gap: 0.5rem !important;
-    align-items: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+    min-width: 0 !important;
   }
 
   .hub-filter-bar.space-y-2 > :not([hidden]) ~ :not([hidden]) {
     margin-top: 0 !important;
   }
 
-  /* Must fill 1fr column — `width:auto` + grid `align-items:center` shrink-wraps to
-     input intrinsic ~20ch and leaves a dead gap before toolbar (P0003 Profiles row-1). */
-  .hub-filter-bar__row-search {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
+  .hub-filter-bar__row-tools,
+  .hub-filter-bar__row-band {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
     width: 100% !important;
     min-width: 0 !important;
-    justify-self: stretch !important;
+  }
+
+  .hub-filter-bar__row-search {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: auto !important;
     order: unset !important;
   }
 
@@ -605,26 +618,23 @@
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
-    grid-column: 2 !important;
-    grid-row: 1 !important;
-    justify-self: end !important;
+    flex: 0 0 auto !important;
     width: auto !important;
     order: unset !important;
     margin-top: 0 !important;
+    margin-left: auto !important;
   }
 
   .hub-filter-bar__row-filters {
-    grid-column: 1 !important;
-    grid-row: 2 !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
     width: auto !important;
     order: unset !important;
   }
 
   .hub-filter-bar__actions {
-    grid-column: 2 !important;
-    grid-row: 2 !important;
-    justify-self: end !important;
-    margin-left: 0 !important;
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
     margin-top: 0 !important;
     width: auto !important;
     order: unset !important;
@@ -632,14 +642,8 @@
   }
 
   .hub-filter-bar__trailing {
-    grid-column: 2 !important;
-    grid-row: 2 !important;
-    justify-self: end !important;
+    flex: 0 0 auto !important;
+    margin-left: 0 !important;
     order: unset !important;
-  }
-
-  /* Legacy wrapper (if any host still mounts row-tools) */
-  .hub-filter-bar__row-tools {
-    display: contents !important;
   }
 }

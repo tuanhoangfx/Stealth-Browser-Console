@@ -87,8 +87,8 @@ const BASE: Record<WorkspaceAuthToolCode, WorkspaceAuthGatePreset> = {
     forgotPassword: {},
   },
   P0012: {
-    title: "Welcome to Todo",
-    toolInfo: { name: "Todo", tagline: "Tasks, boards & team workload" },
+    title: "Welcome to Performance",
+    toolInfo: { name: "Performance", tagline: "Work performance, boards & team workload" },
     errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },

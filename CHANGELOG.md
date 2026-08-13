@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-13 - FilterBar row-tools flex (search fills past actions col)
+
+- Version: `1.0.184`
+- Timestamp: 2026-08-13 11:22 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- hub-ui FilterBar: `row-tools` / `row-band` flex rows - desktop no longer shares a 2-col grid with bulk actions (actions inflated col2 to ~180px search gap).
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-13 - FilterBar row-1 search fills 1fr (no mid-gap)
 
 - Version: `1.0.183`

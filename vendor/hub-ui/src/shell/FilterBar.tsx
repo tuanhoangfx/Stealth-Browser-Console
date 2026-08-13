@@ -323,30 +323,36 @@ export function FilterBar({
       </div>
     ) : (
       <div className={panelClass}>
-        {hideSearch && !searchTrailing ? null : (
-          <div className="hub-filter-bar__row-search flex w-full min-w-0 items-center hub-inline-gap-name">
-            <div className="hub-filter-bar__search-main flex min-w-0 flex-1 items-center hub-inline-gap-name">
-              {hideSearch ? null : searchField}
-              {searchTrailing}
+        {/* Row wrappers — desktop flex rows (search|toolbar · filters|actions). Do NOT share a
+            2-col grid across both rows: actions max-content inflate col2 and shrink search (~180px). */}
+        <div className="hub-filter-bar__row-tools">
+          {hideSearch && !searchTrailing ? null : (
+            <div className="hub-filter-bar__row-search flex min-w-0 flex-1 items-center hub-inline-gap-name">
+              <div className="hub-filter-bar__search-main flex min-w-0 flex-1 items-center hub-inline-gap-name">
+                {hideSearch ? null : searchField}
+                {searchTrailing}
+              </div>
             </div>
-          </div>
-        )}
-        {toolbar ? (
-          <div className="hub-filter-bar__toolbar flex min-h-[var(--hub-control-h)] shrink-0 flex-wrap items-center hub-inline-gap-name">
-            {toolbar}
-          </div>
-        ) : null}
-        <div className="hub-filter-bar__row-filters flex min-h-[var(--hub-control-h)] min-w-0 flex-wrap items-center hub-inline-gap-name">
-          {row2Leading ? <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div> : null}
-          {filterDropdowns}
-          {clearFiltersBtn}
+          )}
+          {toolbar ? (
+            <div className="hub-filter-bar__toolbar flex min-h-[var(--hub-control-h)] shrink-0 flex-wrap items-center hub-inline-gap-name">
+              {toolbar}
+            </div>
+          ) : null}
         </div>
-        {row2Actions ? (
-          <div className="hub-filter-bar__actions flex min-h-[var(--hub-control-h)] min-w-0 flex-wrap items-center justify-end hub-inline-gap-name">
-            {row2Actions}
+        <div className="hub-filter-bar__row-band">
+          <div className="hub-filter-bar__row-filters flex min-h-[var(--hub-control-h)] min-w-0 flex-1 flex-wrap items-center hub-inline-gap-name">
+            {row2Leading ? <div className="flex shrink-0 flex-wrap items-center hub-inline-gap-name">{row2Leading}</div> : null}
+            {filterDropdowns}
+            {clearFiltersBtn}
           </div>
-        ) : null}
-        {row2Trailing ? <div className="hub-filter-bar__trailing shrink-0">{row2Trailing}</div> : null}
+          {row2Actions ? (
+            <div className="hub-filter-bar__actions flex min-h-[var(--hub-control-h)] min-w-0 shrink-0 flex-wrap items-center justify-end hub-inline-gap-name">
+              {row2Actions}
+            </div>
+          ) : null}
+          {row2Trailing ? <div className="hub-filter-bar__trailing shrink-0">{row2Trailing}</div> : null}
+        </div>
       </div>
     );
 
