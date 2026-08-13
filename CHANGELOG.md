@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-13 - Boot IPC before window (empty Profiles after update)
+
+- Version: `1.0.186`
+- Timestamp: 2026-08-13 15:35 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- main: bindIpc + API before createWindow; defer second-instance/activate until mainBootReady.
+- Runtime repair dialog no longer blocks boot (post-update --updated empty catalog UI).
+- Catalog note: 2026-08-13 disk cleanup pruned 4543 orphan DB rows (no folder); restore from pre-orphan-prune recovers 5013 list (folders on disk still ~470).
+
+### Verification
+
+- packaged asar hot-patch validated mainBootReady; restore catalog 5013 from pre-orphan-prune bak
+
+---
 ## 2026-08-13 - ProcessSingleton reverse-junction + PWA orphan repair
 
 - Version: `1.0.185`

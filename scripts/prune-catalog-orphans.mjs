@@ -6,9 +6,13 @@
  * Usage:
  *   node scripts/prune-catalog-orphans.mjs --dry-run
  *   node scripts/prune-catalog-orphans.mjs --apply
+ *   node scripts/prune-catalog-orphans.mjs --apply --force   # required when orphans >> keep
  *
  * Close packaged Stealth (:6003) before --apply. Escape close: STEALTH_ALLOW_CLOSE_PROD=1
- */
+ *
+ * WARNING: Most "5000 profile" catalogs are name stubs without Chromium folders.
+ * --apply deletes DB rows whose profiles/{id} folder is missing — irreversible for names
+ * unless you keep pre-orphan-prune bak. Prefer --dry-run first.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

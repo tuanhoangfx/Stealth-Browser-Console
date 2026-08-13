@@ -76,6 +76,29 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
     if (!session) {
       // Supabase may emit INITIAL_SESSION null before hub-cache setSession finishes.
       if (event === "INITIAL_SESSION") return;
+      // Only an explicit sign-out ends the session.
+      //
+      // Supabase also emits null-session events when a token REFRESH fails — a network blip is
+      // enough — and treating those as a sign-out dropped the user to the login screen while
+      // their refresh token was still perfectly valid. P0020 hit this repeatedly: its vault pull
+      // issues dozens of requests over minutes, and a refresh racing that traffic fails often.
+      // For anything that is not a real sign-out, ask the client before giving up.
+      if (event !== "SIGNED_OUT") {
+        void config.client?.auth
+          .getSession()
+          .then(({ data }) => {
+            if (!data.session) {
+              config.onSession(null);
+              return;
+            }
+            config.cacheSession?.(data.session);
+            config.onSession(data.session);
+          })
+          .catch(() => {
+            /* transient — keep the session and let the next event decide */
+          });
+        return;
+      }
       config.onSession(null);
       return;
     }

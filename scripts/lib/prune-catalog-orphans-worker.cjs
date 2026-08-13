@@ -67,6 +67,17 @@ async function main() {
     return;
   }
 
+  // Safety: bulk stub prune (catalog >> disk) needs --force. Disk cleanup once wiped 4543 names.
+  const force = process.argv.includes("--force");
+  if (orphanIds.length > Math.max(50, keepIds.length) && !force) {
+    console.error(
+      `prune-catalog-orphans: refusing to delete ${orphanIds.length} orphan rows (keep=${keepIds.length}). ` +
+        `Pass --force if you intentionally want a disk-matched catalog only.`,
+    );
+    closeDatabase();
+    process.exit(3);
+  }
+
   // Wrapper getDb() may not expose better-sqlite3 .transaction — loop is fine for one-shot prune.
   const delRuns = getDb().prepare("DELETE FROM runs WHERE profile_id = ?");
   let runsDeleted = 0;

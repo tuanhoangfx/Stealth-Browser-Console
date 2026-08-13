@@ -1,6 +1,25 @@
 {
-  "generatedAt": "2026-08-13T05:47:06.884Z",
+  "generatedAt": "2026-08-13T08:36:13.682Z",
   "entries": [
+    {
+      "version": "1.0.186",
+      "date": "2026-08-13",
+      "at": "2026-08-13T15:35:00+07:00",
+      "title": "Boot IPC before window (empty Profiles after update)",
+      "bullets": [
+        "main: bindIpc + API before createWindow; defer second-instance/activate until mainBootReady.",
+        "Runtime repair dialog no longer blocks boot (post-update --updated empty catalog UI).",
+        "Catalog note: 2026-08-13 disk cleanup pruned 4543 orphan DB rows (no folder); restore from pre-orphan-prune recovers 5013 list (folders on disk still ~470)."
+      ],
+      "kind": "improve",
+      "userTitle": "Boot IPC before window",
+      "userSummary": "",
+      "userHighlights": [
+        "Main: bind Ipc + API before create Window",
+        "Runtime repair dialog no longer blocks boot .",
+        "Catalog note: 2026-08-13 disk cleanup pruned 4543 orphan DB rows"
+      ]
+    },
     {
       "version": "1.0.185",
       "date": "2026-08-13",
@@ -191,23 +210,6 @@
         "Promote Note column once for any Display prefs that still hide it",
         "Add Stealth CDP proof",
         "Verify-agent-smoke-headless: skip when Cloak Browser exit 21 launch env busy during release"
-      ]
-    },
-    {
-      "version": "1.0.153",
-      "date": "2026-07-27",
-      "at": "2026-07-27",
-      "title": "Profiles Note column + detail Note rail",
-      "bullets": [
-        "Profiles directory: Note column visible by default (wider flex width)",
-        "Profile detail: replace History rail with editable Note rail (Create modal parity); bulk detail applies shared note when touched"
-      ],
-      "kind": "improve",
-      "userTitle": "Profiles Note column + detail Note rail",
-      "userSummary": "",
-      "userHighlights": [
-        "Profiles directory: Note column visible by default",
-        "Profile detail: replace History rail with editable Note rail"
       ]
     }
   ]

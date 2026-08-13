@@ -73,6 +73,10 @@ const {
 const sessionManager = new SessionManager();
 const sessionTray = createSessionTray(sessionManager);
 let appShutdownDone = false;
+/** Set true only after bindIpc() — second-instance/activate must not open a window earlier. */
+let mainBootReady = false;
+/** Queued when second-instance arrives during DB/boot before IPC handlers exist. */
+let pendingBootWindow = false;
 const DEFAULT_DEV_SERVER_URL = "http://127.0.0.1:5175/";
 
 function userDataRoot() {
@@ -959,39 +963,71 @@ if (gotSingleInstanceLock) {
       existing.focus();
       return;
     }
+    // Never open a renderer before bindIpc — empty Profiles + "No handler registered for profile:bootstrap".
+    if (!mainBootReady) {
+      pendingBootWindow = true;
+      console.warn("[boot] second-instance before IPC ready — defer createWindow");
+      return;
+    }
     void createWindow();
   });
 }
 
 app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
-  if (app.isPackaged) {
-    const runtime = verifyPackagedRuntime();
-    if (!runtime.ok) {
-      const detail = formatPackagedRuntimeRepairMessage(runtime);
-      console.error("[runtime-check]", detail);
-      const { response } = await dialog.showMessageBox({
-        type: "error",
-        title: "Installation repair required",
-        message: "Required modules are missing after update.",
-        detail,
-        buttons: ["Download installer", "Continue anyway"],
-        defaultId: 0,
-        noLink: true,
-      });
-      if (response === 0) {
-        await shell.openExternal(RELEASE_URL);
-      }
-    }
-  }
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
-  await openDatabase(userDataRoot());
+
+  try {
+    await openDatabase(userDataRoot());
+  } catch (error) {
+    console.error("[boot] openDatabase failed:", error instanceof Error ? error.message : error);
+    const detail = error instanceof Error ? error.message : String(error);
+    await dialog.showMessageBox({
+      type: "error",
+      title: "Catalog database failed to open",
+      message: "Stealth could not open the profile catalog.",
+      detail,
+      buttons: ["OK"],
+      noLink: true,
+    });
+    app.quit();
+    return;
+  }
+
   try {
     require("./lib/profiles-location.cjs").ensureProfilesLocationInitialized(userDataRoot());
   } catch (error) {
     console.warn("[profiles-location] init failed:", error instanceof Error ? error.message : error);
   }
+
+  // Bind IPC + API before any BrowserWindow. A blocking runtime-repair modal used to run
+  // first; second-instance could then createWindow with zero profile handlers.
+  bindContentSecurityPolicy();
+  bindIpc();
+  mainBootReady = true;
+  const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
+  const { startApiServer } = require("./api-server.cjs");
+  const apiPort = resolveStealthApiPort({ packaged: app.isPackaged });
+  if (!app.isPackaged) {
+    console.log(`[user-data] path=${userDataRoot()} isolated=${isDevIsolated() ? "1" : "0"} apiPort=${apiPort}`);
+  }
+  startApiServer({ sessionManager, profileService, userDataRoot: userDataRoot(), port: apiPort });
+  sessionManager.setOnSessionChange((_id, profile, event) => {
+    broadcastProfileSession(profile, event);
+    sessionTray.refresh();
+  });
+  sessionTray.start();
+  bindRouterApi();
+  sessionManager.setUserDataRoot(userDataRoot());
+
+  await createWindow();
+  if (pendingBootWindow && BrowserWindow.getAllWindows().every((win) => win.isDestroyed())) {
+    pendingBootWindow = false;
+    await createWindow();
+  }
+  pendingBootWindow = false;
+
   const catalogCount = profileService.listProfilesLite().length;
   const { tryAutoRestoreCatalogIfEmpty } = require("./lib/catalog-backup-recovery.cjs");
   const { closeDatabase } = require("./db/init.cjs");
@@ -999,6 +1035,9 @@ app.whenReady().then(async () => {
   if (recovery.restored) {
     closeDatabase();
     await openDatabase(userDataRoot());
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.reload();
+    }
   }
   require("./lib/stealth-sync-outbox.cjs").startStealthSyncWorker();
   profileService.backfillProfileEvents();
@@ -1013,9 +1052,8 @@ app.whenReady().then(async () => {
     getDbBackend,
     getNativeDb,
     isDatabaseReady,
-    checkpointDatabase,
   } = require("./db/init.cjs");
-  const { scheduleStartupLastOpenedMaintenance, flushScheduledLastOpenedCheckpoint } = require("./db/last-opened-durability.cjs");
+  const { scheduleStartupLastOpenedMaintenance } = require("./db/last-opened-durability.cjs");
   scheduleStartupLastOpenedMaintenance({
     userDataPath: userDataRoot(),
     getDb,
@@ -1023,7 +1061,6 @@ app.whenReady().then(async () => {
     getNativeDb,
     isDatabaseReady,
   });
-  sessionManager.setUserDataRoot(userDataRoot());
   setImmediate(() => {
     void sessionManager.reconcileOrphansOnStartup().catch(() => undefined);
     if (process.platform === "win32") {
@@ -1073,22 +1110,29 @@ app.whenReady().then(async () => {
       // fast sync — block Surfshark load-extension path before first profile launch
     }
   }
-  bindContentSecurityPolicy();
-  bindIpc();
-  const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
-  const { startApiServer } = require("./api-server.cjs");
-  const apiPort = resolveStealthApiPort({ packaged: app.isPackaged });
-  if (!app.isPackaged) {
-    console.log(`[user-data] path=${userDataRoot()} isolated=${isDevIsolated() ? "1" : "0"} apiPort=${apiPort}`);
+
+  // Non-blocking: never await a modal before IPC/window (post-update --updated race).
+  if (app.isPackaged) {
+    const runtime = verifyPackagedRuntime();
+    if (!runtime.ok) {
+      const detail = formatPackagedRuntimeRepairMessage(runtime);
+      console.error("[runtime-check]", detail);
+      void dialog
+        .showMessageBox({
+          type: "error",
+          title: "Installation repair required",
+          message: "Required modules are missing after update.",
+          detail,
+          buttons: ["Download installer", "Continue anyway"],
+          defaultId: 0,
+          noLink: true,
+        })
+        .then(async ({ response }) => {
+          if (response === 0) await shell.openExternal(RELEASE_URL);
+        })
+        .catch(() => undefined);
+    }
   }
-  startApiServer({ sessionManager, profileService, userDataRoot: userDataRoot(), port: apiPort });
-  sessionManager.setOnSessionChange((_id, profile, event) => {
-    broadcastProfileSession(profile, event);
-    sessionTray.refresh();
-  });
-  sessionTray.start();
-  bindRouterApi();
-  await createWindow();
 
   if (!app.isPackaged && String(process.env.STEALTH_DIST_WATCH || "") === "1") {
     const { bindDistUiWatch } = require("./lib/dist-ui-watch.cjs");
@@ -1164,8 +1208,16 @@ app.whenReady().then(async () => {
   });
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      if (!mainBootReady) {
+        pendingBootWindow = true;
+        return;
+      }
+      createWindow();
+    }
   });
+}).catch((error) => {
+  console.error("[boot] whenReady failed:", error instanceof Error ? error.stack || error.message : error);
 });
 
 app.on("before-quit", (event) => {
