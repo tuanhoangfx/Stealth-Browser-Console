@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v1.0.184-stable",
-  "version": "1.0.184",
-  "gitCommit": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
-  "gitTag": "v1.0.184-stable",
+  "label": "v1.0.185-stable",
+  "version": "1.0.185",
+  "gitCommit": "72610cddab3c25fdd6d706960c70ee54e699cf07",
+  "gitTag": "v1.0.185-stable",
   "packagedFrom": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
   "notes": "v1.0.184: FilterBar row-tools flex (search fills past actions col). Installer + win-unpacked pinned.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-1.0.184.exe",
+    "installer": "Stealth-Browser-Console-Setup-1.0.185.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "SSZUa9aVLN/es6CO+1qDLe2od3/5Lwalm86cU1YkAlAnmT8TNzzxAh48Z2k922qmuGaHaKkqsJomm5YMPLOTVw==",
-    "capturedAt": "2026-08-13T04:33:39.685Z"
+    "sha512": "67StInX5wYxBOiZlTwdiCPcq7ra2Tt9Gj0fipXWjDuqZeVMq4oaXdZRRUXTAq0LcCeuzyCf6w1dyRZc3rHFZSg==",
+    "capturedAt": "2026-08-13T05:47:50.804Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
@@ -24,5 +24,6 @@
     "Profile Run opens in <5s typical",
     "Taskbar shows profile code digits on Chromium icon (OK_ICON)",
     "gitCommit matches packaged source or snapshot label recorded"
-  ]
+  ],
+  "gitDirty": false
 }
