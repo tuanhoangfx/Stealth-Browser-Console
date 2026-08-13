@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "label": "v1.0.185-stable",
   "version": "1.0.185",
-  "gitCommit": "72610cddab3c25fdd6d706960c70ee54e699cf07",
+  "gitCommit": "68545734448186198a895783aedd8da800a0af05",
   "gitTag": "v1.0.185-stable",
   "packagedFrom": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
   "notes": "v1.0.184: FilterBar row-tools flex (search fills past actions col). Installer + win-unpacked pinned.",
