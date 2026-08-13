@@ -207,6 +207,11 @@ export {
 } from "./loading/hub-loader-dom";
 export { useHubTabLeader } from "./loading/useHubTabLeader";
 export {
+  HUB_LABEL_COLLATOR,
+  HUB_LABEL_NUMERIC_COLLATOR,
+  HUB_NUMERIC_COLLATOR,
+} from "./lib/hub-collators";
+export {
   HubToolLoadingProvider,
   useHubToolLoading,
   useHubToolLoadingOptional,

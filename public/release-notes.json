@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-08-12T22:27:56.846Z",
+  "generatedAt": "2026-08-13T04:06:29.158Z",
   "entries": [
     {
-      "version": "1.0.182",
-      "date": "2026-08-12",
-      "at": "2026-08-12T22:27:56.846Z",
-      "title": "chore: release v1.0.182",
+      "version": "1.0.183",
+      "date": "2026-08-13",
+      "at": "2026-08-13T11:05:00+07:00",
+      "title": "FilterBar row-1 search fills 1fr (no mid-gap)",
       "bullets": [
-        "Maintenance and polish since the last documented release."
+        "hub-ui desktop FilterBar: .hub-filter-bar__row-search uses width: 100% so Profiles search fills the 1fr column (fixes mid-row gap before Display/Current)."
       ],
       "kind": "improve",
-      "userTitle": "Release v1.0.182",
+      "userTitle": "Filter Bar row-1 search fills 1fr",
       "userSummary": "",
       "userHighlights": [
-        "Maintenance and polish since the last documented release."
+        "Hub-ui desktop Filter Bar: .hub-filter-bar row-search uses width: 100% so Profiles search fills t…"
       ]
     },
     {

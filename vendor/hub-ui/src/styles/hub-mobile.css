@@ -590,10 +590,14 @@
     margin-top: 0 !important;
   }
 
+  /* Must fill 1fr column — `width:auto` + grid `align-items:center` shrink-wraps to
+     input intrinsic ~20ch and leaves a dead gap before toolbar (P0003 Profiles row-1). */
   .hub-filter-bar__row-search {
     grid-column: 1 !important;
     grid-row: 1 !important;
-    width: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
     order: unset !important;
   }
 

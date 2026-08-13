@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-13 - FilterBar row-1 search fills 1fr (no mid-gap)
+
+- Version: `1.0.183`
+- Timestamp: 2026-08-13 11:05 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- hub-ui desktop FilterBar: `.hub-filter-bar__row-search` uses `width: 100%` so Profiles search fills the 1fr column (fixes mid-row gap before Display/Current).
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-13 - Shell icon pack gate (no Electron atom regress)
 
 - Version: `1.0.182`
