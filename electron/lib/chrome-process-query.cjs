@@ -4,11 +4,18 @@
  *
  * Dev `-dev` profiles may be a junction to prod — Chrome cmdline uses the *resolved*
  * prod path. Needles must include realpath + sibling root alias or attach/focus/badge miss.
+ *
+ * Custom profilesRoot (e.g. D:\\StealthBrowser\\profiles) keeps an AppData junction for
+ * back-compat. Chrome App / PWA shortcuts (--app-id / --source-shortcut) often launch with
+ * the *logical* AppData path while Stealth launches with the physical D: path — both must
+ * match or ProcessSingleton Error 32 (lock held by an "invisible" orphan).
  */
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { PROD_DIR, DEV_DIR } = require("./user-data-root.cjs");
+const { PROD_DIR, DEV_DIR, roamingAppData } = require("./user-data-root.cjs");
+
+const PROFILE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function escapePsSingleQuoted(value) {
   return String(value).replace(/'/g, "''");
@@ -49,6 +56,18 @@ function siblingStealthRootPath(dir) {
 }
 
 /**
+ * Logical AppData\\{prod|dev}\\profiles\\{uuid} paths (junction sources after D: migrate).
+ * @param {string} profileId
+ * @returns {string[]}
+ */
+function logicalAppDataProfileDirs(profileId) {
+  const id = String(profileId || "").trim();
+  if (!PROFILE_UUID_RE.test(id)) return [];
+  const roaming = roamingAppData();
+  return [PROD_DIR, DEV_DIR].map((product) => path.join(roaming, product, "profiles", id));
+}
+
+/**
  * All path aliases that may appear in Chrome --user-data-dir for this profile.
  * @param {string} userDataDir
  * @returns {string[]}
@@ -67,6 +86,15 @@ function expandProfileDirAliases(userDataDir) {
   add(userDataDir);
   const sibling = siblingStealthRootPath(userDataDir);
   if (sibling) add(sibling);
+
+  // Reverse junction: physical D:\\...\\profiles\\{uuid} must also match AppData logical path.
+  const resolved = path.resolve(String(userDataDir || ""));
+  const profileId = path.basename(resolved);
+  if (path.basename(path.dirname(resolved)) === "profiles" && PROFILE_UUID_RE.test(profileId)) {
+    for (const logical of logicalAppDataProfileDirs(profileId)) {
+      add(logical);
+    }
+  }
 
   return [...out];
 }
@@ -166,6 +194,7 @@ function buildListLiveCloakWindowsPs({ firstOnly = false } = {}) {
 module.exports = {
   escapePsSingleQuoted,
   expandProfileDirAliases,
+  logicalAppDataProfileDirs,
   siblingStealthRootPath,
   profileDirNeedles,
   buildProfileBrowserPidsPs,

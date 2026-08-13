@@ -16,7 +16,7 @@ const {
 } = require("../lib/profile-browser-orphan.cjs");
 const { purgeLegacyProfileIdentityChrome } = require("../lib/profile-chrome-cleanup.cjs");
 const { markProfileChromeCleanExit } = require("../lib/profile-chrome-session.cjs");
-const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks, writeSidecarPid, readSidecarPid, removeSidecarPid } = require("../lib/profile-user-data-repair.cjs");
+const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks, writeSidecarPid, readSidecarPid, removeSidecarPid, waitForProfileUnlock } = require("../lib/profile-user-data-repair.cjs");
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
 
@@ -757,6 +757,12 @@ class SessionManager {
     }
     if (attached) return attached;
 
+    // Live orphan found (often Chrome App/PWA on AppData junction path) but attach failed —
+    // must repair before first launch or ProcessSingleton Error 32 aborts immediately.
+    if (prep?.live || profileDirHasLock(userDataDir)) {
+      await repairProfileUserDataDir(userDataDir);
+    }
+
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         if (attempt > 0) {
@@ -826,8 +832,13 @@ class SessionManager {
         await killOrphanProfileBrowser(session.userDataDir);
       } else {
         await closeContext(session.context);
+        // PWA / Chrome App children (--app-id) can survive Playwright close and keep
+        // ProcessSingleton on the AppData junction path — sweep before UI says closed.
+        await killOrphanProfileBrowser(session.userDataDir);
       }
       removeStaleProfileLocks(session.userDataDir);
+      removeSidecarPid(session.userDataDir);
+      await waitForProfileUnlock(session.userDataDir);
     }
     const next = profileService.setProfileStatus(id, "closed");
     this.#emitSessionChange(id, next, "closed");

@@ -43,4 +43,22 @@ describe("expandProfileDirAliases", () => {
     assert.ok(ps.includes(PROD_DIR));
     assert.ok(ps.includes(DEV_DIR));
   });
+
+  it("includes AppData logical path for physical custom profilesRoot (reverse junction)", () => {
+    const uid = "921d6e41-eae6-4663-a2a8-6a27bb1bc708";
+    const physical = path.join("D:\\StealthBrowser\\profiles", uid);
+    const aliases = expandProfileDirAliases(physical);
+    const joined = aliases.join("\n");
+    assert.ok(joined.includes("StealthBrowser"), "keeps physical root");
+    assert.ok(joined.includes(PROD_DIR), "adds AppData prod logical path for PWA orphans");
+    assert.ok(
+      aliases.some((d) => d.includes(path.join(PROD_DIR, "profiles", uid))),
+      "must include AppData\\\\stealth-browser-console\\\\profiles\\\\{uuid}",
+    );
+    const { needles } = profileDirNeedles(physical);
+    assert.ok(
+      needles.some((n) => n.includes(PROD_DIR) && n.includes(uid)),
+      "WMI needles must see AppData path so --user-data-dir=AppData... matches",
+    );
+  });
 });

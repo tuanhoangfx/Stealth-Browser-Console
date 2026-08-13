@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-08-13 - ProcessSingleton reverse-junction + PWA orphan repair
+
+- Version: `1.0.185`
+- Timestamp: 2026-08-13 12:41 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- chrome-process-query: expandProfileDirAliases adds AppData logical path for custom profilesRoot (D:\\StealthBrowser) so Chrome App/PWA orphans (--app-id / --source-shortcut) match.
+- profile-browser-orphan: hasProfileBrowserProcess no longer trusts sidecar PID alone (PID reuse false live).
+- session-manager close: kill orphan PWAs + removeSidecarPid + waitForProfileUnlock; repair before first launch when attach fails after prep.live.
+- waitForProfileUnlock default timeout raised to 3200ms.
+
+### Verification
+
+- node --test electron/lib/chrome-process-query.test.cjs (+ orphan/repair/prepare-launch) - pass
+- one-shot repair released 5 locked profile dirs (AppData PWA holders)
+
+---
 ## 2026-08-13 - FilterBar row-tools flex (search fills past actions col)
 
 - Version: `1.0.184`

@@ -146,16 +146,8 @@ function invalidateProfileBrowserPidCache(userDataDir) {
 }
 
 async function hasProfileBrowserProcess(userDataDir) {
-  const { readSidecarPid } = require("./profile-user-data-repair.cjs");
-  const sidecar = readSidecarPid(userDataDir);
-  if (sidecar?.pid > 0) {
-    try {
-      process.kill(sidecar.pid, 0);
-      return true;
-    } catch {
-      // PID gone — fall through to full scan
-    }
-  }
+  // Never trust sidecar PID alone — Windows PID reuse can mark a dead session "live",
+  // skip repair, then ProcessSingleton fails on the real lock holder (often a PWA).
   const pids = await listProfileBrowserPids(userDataDir);
   return pids.length > 0;
 }

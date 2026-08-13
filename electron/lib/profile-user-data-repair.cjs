@@ -31,7 +31,7 @@ function removeStaleProfileArtifacts(userDataDir) {
   }
 }
 
-async function waitForProfileUnlock(userDataDir, { timeoutMs = 1400, intervalMs = 70 } = {}) {
+async function waitForProfileUnlock(userDataDir, { timeoutMs = 3200, intervalMs = 80 } = {}) {
   const start = Date.now();
   while (Date.now() - start <= timeoutMs) {
     removeStaleProfileArtifacts(userDataDir);

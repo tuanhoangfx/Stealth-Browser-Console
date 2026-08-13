@@ -1,6 +1,27 @@
 {
-  "generatedAt": "2026-08-13T04:33:42.216Z",
+  "generatedAt": "2026-08-13T05:42:24.126Z",
   "entries": [
+    {
+      "version": "1.0.185",
+      "date": "2026-08-13",
+      "at": "2026-08-13T12:41:00+07:00",
+      "title": "ProcessSingleton reverse-junction + PWA orphan repair",
+      "bullets": [
+        "chrome-process-query: expandProfileDirAliases adds AppData logical path for custom profilesRoot (D:\\\\StealthBrowser) so Chrome App/PWA orphans (--app-id / --source-shortcut) match.",
+        "profile-browser-orphan: hasProfileBrowserProcess no longer trusts sidecar PID alone (PID reuse false live).",
+        "session-manager close: kill orphan PWAs + removeSidecarPid + waitForProfileUnlock; repair before first launch when attach fails after prep.live.",
+        "waitForProfileUnlock default timeout raised to 3200ms."
+      ],
+      "kind": "improve",
+      "userTitle": "Process Singleton reverse-junction + PWA orphan repair",
+      "userSummary": "",
+      "userHighlights": [
+        "Chrome-process-query: expand Profile Dir Aliases adds App Data logical path for custom profiles R…",
+        "Profile-browser-orphan: has Profile Browser Process no longer trusts sidecar PID alone .",
+        "Session-manager close: kill orphan PWAs + remove Sidecar Pid + wait For Profile Unlock",
+        "Wait For Profile Unlock default timeout raised to 3200ms."
+      ]
+    },
     {
       "version": "1.0.184",
       "date": "2026-08-13",
@@ -187,21 +208,6 @@
       "userHighlights": [
         "Profiles directory: Note column visible by default",
         "Profile detail: replace History rail with editable Note rail"
-      ]
-    },
-    {
-      "version": "1.0.152",
-      "date": "2026-07-24",
-      "at": "2026-07-24",
-      "title": "preShip SSOT: verify-untracked + verify-no-sibling-tool-imports",
-      "bullets": [
-        "preShip SSOT: verify-untracked + verify-no-sibling-tool-imports"
-      ],
-      "kind": "improve",
-      "userTitle": "Pre Ship shared UI: verify-untracked + verify",
-      "userSummary": "",
-      "userHighlights": [
-        "Pre Ship shared UI: verify-untracked + verify"
       ]
     }
   ]
