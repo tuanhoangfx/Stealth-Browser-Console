@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  DirectoryTableColumnsSettings,
+  DirectoryTableLegacyDisplaySettings,
   patchHubListPrefs,
   readHubListPrefsCore,
   type HubDirectoryDisplayPanelProps,
@@ -181,33 +181,59 @@ export function useStealthDisplayPanelConfig(
   const tablePanel: ReactNode = useMemo(() => {
     if (screen === "profiles") {
       return (
-        <DirectoryTableColumnsSettings items={profileColumnItems} prefs={profileDirectoryColumnPrefs} />
+        <DirectoryTableLegacyDisplaySettings
+          id="p0003-profiles"
+          items={profileColumnItems}
+          prefs={profileDirectoryColumnPrefs}
+          primaryDefault={{ sortKey: "name", sortDir: "asc" }}
+          sortRows={[{ id: "name", label: "Name", directionHint: "A → Z" }]}
+        />
       );
     }
     if (systemTab === "backup") {
       return (
-        <DirectoryTableColumnsSettings items={BACKUP_DIRECTORY_COLUMN_ITEMS} prefs={backupDirectoryColumnPrefs} />
+        <DirectoryTableLegacyDisplaySettings
+          id="p0003-backup"
+          items={BACKUP_DIRECTORY_COLUMN_ITEMS}
+          prefs={backupDirectoryColumnPrefs}
+          primaryDefault={{ sortKey: "name", sortDir: "asc" }}
+          sortRows={[{ id: "name", label: "Name", directionHint: "A → Z" }]}
+        />
       );
     }
     if (systemTab === "extensions") {
       return (
-        <DirectoryTableColumnsSettings
+        <DirectoryTableLegacyDisplaySettings
+          id="p0003-extensions"
           items={EXTENSION_DIRECTORY_COLUMN_ITEMS}
           prefs={extensionDirectoryColumnPrefs}
+          primaryDefault={{ sortKey: "name", sortDir: "asc" }}
+          sortRows={[{ id: "name", label: "Name", directionHint: "A → Z" }]}
         />
       );
     }
     if (isWorkflowStore) {
       return (
-        <DirectoryTableColumnsSettings
+        <DirectoryTableLegacyDisplaySettings
+          id="p0003-workflow-store"
           items={WORKFLOW_STORE_DIRECTORY_COLUMN_ITEMS}
           prefs={workflowStoreDirectoryColumnPrefs}
+          primaryDefault={{ sortKey: "name", sortDir: "asc" }}
+          sortRows={[{ id: "name", label: "Name", directionHint: "A → Z" }]}
         />
       );
     }
     if (isWorkflowRail || isWorkflowPanel) {
       const prefs = isWorkflowRail ? workflowRailDirectoryColumnPrefs : workflowPanelDirectoryColumnPrefs;
-      return <DirectoryTableColumnsSettings items={WORKFLOW_DIRECTORY_COLUMN_ITEMS} prefs={prefs} />;
+      return (
+        <DirectoryTableLegacyDisplaySettings
+          id={isWorkflowRail ? "p0003-workflow-rail" : "p0003-workflow-panel"}
+          items={WORKFLOW_DIRECTORY_COLUMN_ITEMS}
+          prefs={prefs}
+          primaryDefault={{ sortKey: "name", sortDir: "asc" }}
+          sortRows={[{ id: "name", label: "Name", directionHint: "A → Z" }]}
+        />
+      );
     }
     return undefined;
   }, [isWorkflowPanel, isWorkflowRail, isWorkflowStore, profileColumnItems, screen, systemTab]);

@@ -58,9 +58,7 @@ export function ChartLegendLabelContent({
       ) : (
         <span className="hub-chart-legend-label__glyph" aria-hidden />
       )}
-      <span className="hub-chart-legend-label__text" style={colorDot ? { color: colorDot } : undefined}>
-        {display}
-      </span>
+      <span className="hub-chart-legend-label__text">{display}</span>
     </>
   );
 }

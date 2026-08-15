@@ -100,6 +100,13 @@
   min-height: 0.875rem;
 }
 
+.hub-directory-popover__tool-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
 .hub-directory-popover__emoji {
   font-size: 0.75rem;
   line-height: 1;
@@ -112,6 +119,11 @@
   line-height: 1.35;
   color: var(--text, #e2e8f0);
   white-space: nowrap;
+}
+
+.hub-directory-popover__access {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .hub-directory-popover__body {
@@ -175,4 +187,35 @@
 
 .hub-directory-popover .hint-tone-accent {
   color: #a78bfa;
+}
+
+.hub-directory-popover__row--action {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hub-directory-popover__row--action:hover .hub-directory-popover__line {
+  color: var(--accent, #38bdf8);
+}
+
+.hub-directory-popover__icon--with-heat {
+  position: relative;
+  gap: 0.15rem;
+}
+
+.hub-directory-popover__icon--with-heat .hub-directory-metric-heat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
 }

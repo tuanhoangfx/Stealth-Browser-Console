@@ -4,33 +4,40 @@ import type { ReactNode } from "react";
 import {
   HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
-  HUB_TOOL_DETAIL_SCROLL_ROOT,
 } from "../shell/HubToolDetailModal";
-import {
-  HubToolDetailSection,
-  HUB_TOOL_DETAIL_SECTIONS_CLASS,
-} from "../shell/HubToolDetailSection";
+import { HubToolDetailModalAccountFooter } from "../shell/HubToolDetailModalAccountFooter";
+import { HubAccountDetailAdmScaffold } from "../shell/HubAccountDetailAdmScaffold";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
-import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
+import {
+  HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
+  hubAccountDetailShellClass,
+} from "../shell/hubAccountDetailModal";
 import {
   HUB_WORKSPACE_USER_ACCOUNT_TOC,
-  hubUserAccountSectionIcon,
   hubUserAccountTocItems,
 } from "./hub-user-account-toc";
+import {
+  HubUserAccountSections,
+  hubUserAccountVisibleSectionIds,
+  type HubUserAccountSectionsProps,
+} from "./HubUserAccountSections";
 
 export { HUB_WORKSPACE_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
 
 const FIELD_ICON_CLASS: Record<string, string> = {
   Email: "text-sky-300",
   Role: "text-purple-300",
-  Provider: "text-amber-300",
   Created: "text-slate-400",
-  "Last sign in": "text-emerald-300",
+  "Last active": "text-emerald-300",
+  Update: "text-emerald-300",
+  "Vault ID": "text-violet-300",
 };
 
 export type HubWorkspaceUserProfileRow = {
   label: string;
   value: string;
+  /** Original ISO value for SSOT timestamp rendering; `value` remains a backward-compatible fallback. */
+  timestamp?: string | null;
   icon: LucideIcon;
   iconClassName?: string;
 };
@@ -41,6 +48,10 @@ export type HubWorkspaceUserModalProps = {
   title: string;
   headerLeading?: ReactNode;
   userId?: string | null;
+  /** Record meta frame — Created (ISO). Prefer over injecting Created rows. */
+  createdAt?: string | null;
+  /** Record meta frame — Last active (ISO). Prefer over injecting Update/Last active rows. */
+  lastActiveAt?: string | null;
   rows: HubWorkspaceUserProfileRow[];
   workspaceNote?: string;
   signingOut?: boolean;
@@ -48,25 +59,61 @@ export type HubWorkspaceUserModalProps = {
   /** When false, footer Sign Out is hidden (local console / guest). Default true. */
   showSignOut?: boolean;
   onSignOut: () => void;
+  /** Override the standard Sign Out footer for an admin User Detail action set. */
+  footer?: ReactNode;
+  /** Optional Layout-3 rail (e.g. access audit log). */
+  rail?: ReactNode;
+  /** Allows the host to replace a canonical profile field with an ADM editor. */
+  renderField?: HubUserAccountSectionsProps["renderField"];
   children?: ReactNode;
 };
 
-/** Workspace user account modal — Header · TOC · Main · Footer (P0020 / P0016). */
+/**
+ * Thin account / admin User Detail modal (directory row editors).
+ * Sidebar account SSOT is `HubFullUserAccountModal` via `HubWorkspaceUserShell`.
+ */
 export function HubWorkspaceUserModal({
   open,
   onClose,
   title,
   headerLeading,
   userId,
+  createdAt,
+  lastActiveAt,
   rows,
   workspaceNote,
   signingOut = false,
   sessionActive = true,
   showSignOut = true,
   onSignOut,
+  footer,
+  rail,
+  renderField,
   children,
 }: HubWorkspaceUserModalProps) {
-  const tocItems = hubUserAccountTocItems(HUB_WORKSPACE_USER_ACCOUNT_TOC);
+  const accountRows = [
+    ...rows,
+    {
+      label: "Vault ID",
+      value: userId?.trim() || "—",
+      icon: KeyRound,
+      iconClassName: "text-violet-300",
+    },
+    ...(workspaceNote
+      ? [
+          {
+            label: "Note",
+            value: workspaceNote,
+            icon: StickyNote,
+            iconClassName: "text-slate-400",
+          },
+        ]
+      : []),
+  ];
+  const visibleSections = new Set(hubUserAccountVisibleSectionIds(accountRows, Boolean(children)));
+  const tocItems = hubUserAccountTocItems(
+    HUB_WORKSPACE_USER_ACCOUNT_TOC.filter((entry) => visibleSections.has(entry.id)),
+  );
   const sectionIds = tocItems.map((item) => item.id);
 
   return (
@@ -76,70 +123,53 @@ export function HubWorkspaceUserModal({
       title={title}
       titleId="hub-workspace-user-modal-title"
       headerLeading={headerLeading}
-      shellClassName="hub-header-panel-modal"
+      shellClassName={hubAccountDetailShellClass()}
       ariaLabelledBy="hub-workspace-user-modal-title"
+      scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
       sectionIds={sectionIds}
       toc={
         <div className="hub-toc-nav">
-          <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_TOOL_DETAIL_SCROLL_ROOT} />
+          <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT} />
         </div>
       }
       footer={
-        showSignOut ? (
-          <HubToolDetailModalPrimaryAction
-            label={signingOut ? "Signing out…" : "Sign Out"}
-            onClick={onSignOut}
-            disabled={!sessionActive || signingOut}
-            busy={signingOut}
-            danger
-            icon={LogOut}
+        footer ??
+        (showSignOut ? (
+          <HubToolDetailModalAccountFooter
+            onClose={onClose}
+            leading={
+              <HubToolDetailModalPrimaryAction
+                label={signingOut ? "Signing out…" : "Sign Out"}
+                onClick={onSignOut}
+                disabled={!sessionActive || signingOut}
+                busy={signingOut}
+                danger
+                icon={LogOut}
+              />
+            }
           />
-        ) : null
+        ) : null)
       }
     >
-      <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>
-        <HubToolDetailSection
-          id="hub-user-account"
-          title="Account"
-          icon={hubUserAccountSectionIcon(HUB_WORKSPACE_USER_ACCOUNT_TOC, "hub-user-account")}
-        >
-          <HubUserModalFieldTable>
-            {rows.map((row) => (
-              <HubUserModalFieldRow
-                key={row.label}
-                icon={row.icon}
-                iconClassName={row.iconClassName ?? FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
-                label={row.label}
-              >
-                <span className="truncate font-medium" title={row.value}>
-                  {row.value}
-                </span>
-              </HubUserModalFieldRow>
-            ))}
-          </HubUserModalFieldTable>
-          {children}
-        </HubToolDetailSection>
-        <HubToolDetailSection
-          id="hub-user-session"
-          title="Session"
-          icon={hubUserAccountSectionIcon(HUB_WORKSPACE_USER_ACCOUNT_TOC, "hub-user-session")}
-        >
-          <HubUserModalFieldTable>
-            <HubUserModalFieldRow icon={KeyRound} iconClassName="text-violet-300" label="User ID">
-              {userId ? (
-                <span className="font-mono text-xs break-all">{userId}</span>
-              ) : (
-                <span className="text-[var(--muted)]">No active session</span>
-              )}
-            </HubUserModalFieldRow>
-            {workspaceNote ? (
-              <HubUserModalFieldRow icon={StickyNote} iconClassName="text-slate-400" label="Note">
-                <span className="text-[var(--muted)]">{workspaceNote}</span>
-              </HubUserModalFieldRow>
-            ) : null}
-          </HubUserModalFieldTable>
-        </HubToolDetailSection>
-      </div>
+      <HubAccountDetailAdmScaffold
+        panelId="hub-user-account"
+        panelTitle="Account"
+        panelSectionKey="credentials"
+        main={
+          <HubUserAccountSections
+            rows={accountRows}
+            recordMeta={{
+              createdAt,
+              lastActiveAt,
+              vaultId: userId,
+            }}
+            iconClassNameFor={(row) => row.iconClassName ?? FIELD_ICON_CLASS[row.label] ?? "text-indigo-300"}
+            renderField={renderField}
+            statusTrailing={children}
+          />
+        }
+        rail={rail}
+      />
     </HubToolDetailModal>
   );
 }

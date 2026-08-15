@@ -1,0 +1,24 @@
+{
+  "id": "stealth-health-probe",
+  "name": "Stealth Health Probe",
+  "description": "Fixture workflow for Hub directory card typography smoke (≥4 Store titles).",
+  "icon": "globe",
+  "group": "Smoke Fixture",
+  "platform": "Generic",
+  "action": "open-url",
+  "targetUrl": "http://127.0.0.1:6003/api/health",
+  "takeScreenshot": false,
+  "closeWhenDone": true,
+  "inspectMode": false,
+  "concurrency": 1,
+  "steps": [
+    {
+      "id": "step-navigate",
+      "kind": "navigate",
+      "name": "Open Stealth health",
+      "value": "http://127.0.0.1:6003/api/health",
+      "enabled": true,
+      "timeoutMs": 15000
+    }
+  ]
+}

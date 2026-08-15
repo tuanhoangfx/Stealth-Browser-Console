@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   HubAppLogProvider,
   HubToolLoadingProvider,
+  HubToastShell,
   hideBootLoader,
   useHubActiveScreenSync,
 } from "@tool-workspace/hub-ui";
@@ -24,14 +25,16 @@ export function App() {
       toolName={STEALTH_PRODUCT.name}
       iconSrc={STEALTH_BRAND_ICON}
     >
-      <ToastProvider>
-        <RunLogsProvider>
-          <AuthSessionProvider>
-            <StealthAppRoot />
-          </AuthSessionProvider>
-        </RunLogsProvider>
-        <ToastContainer />
-      </ToastProvider>
+      <HubToastShell>
+        <ToastProvider>
+          <RunLogsProvider>
+            <AuthSessionProvider>
+              <StealthAppRoot />
+            </AuthSessionProvider>
+          </RunLogsProvider>
+          <ToastContainer />
+        </ToastProvider>
+      </HubToastShell>
     </HubToolLoadingProvider>
   );
 }
@@ -70,9 +73,11 @@ function StealthAppRoot() {
   );
   const activeScreenId = resolveStealthActiveScreenId(view, { systemTab, workflowTab });
   const effectiveVisited = useMemo(() => new Set(visited).add(view), [visited, view]);
+  const logPersistKey = "P0003:anon";
 
   return (
     <HubAppLogProvider
+      persistKey={logPersistKey}
       activeScreen={activeScreenId}
       bootLog={{ scope: "Stealth", message: "Stealth Browser Console started", screen: "profiles" }}
     >

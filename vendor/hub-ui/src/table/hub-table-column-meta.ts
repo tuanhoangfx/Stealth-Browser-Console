@@ -105,7 +105,7 @@ export const HUB_TABLE_COLUMN_META: Record<HubTableColumnRole, HubTableColumnMet
   role: { icon: ShieldCheck, iconClassName: "hub-users-th-icon--role" },
   tools: { icon: Package, iconClassName: "hub-users-th-icon--tools" },
   created: { icon: CalendarClock, iconClassName: "hub-users-th-icon--created" },
-  activity: { icon: Activity, iconClassName: "hub-users-th-icon--activity" },
+  activity: { icon: Clock, iconClassName: "hub-users-th-icon--activity" },
   actions: { icon: Hash, iconClassName: "hub-users-th-icon--actions" },
   status: { icon: Radio, iconClassName: "hub-users-th-icon--role" },
   version: { icon: GitBranch, iconClassName: "hub-users-th-icon--created" },

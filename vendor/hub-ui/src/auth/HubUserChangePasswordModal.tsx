@@ -11,7 +11,7 @@ import {
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
 } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
-import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
+import { HubUserModalAdmField, HubUserModalAdmFields } from "./HubUserModalAdmField";
 import type { HubFullUserAccountResult } from "./HubFullUserAccountModal";
 import {
   HUB_CHANGE_PASSWORD_TOC,
@@ -120,8 +120,8 @@ export function HubUserChangePasswordModal({
           title="Email"
           icon={hubUserChangeSectionIcon(HUB_CHANGE_PASSWORD_TOC, "hub-change-password-email")}
         >
-          <HubUserModalFieldTable>
-            <HubUserModalFieldRow icon={Mail} iconClassName="text-sky-300" label="Linked email">
+          <HubUserModalAdmFields>
+            <HubUserModalAdmField icon={Mail} iconClassName="text-sky-300" label="Linked email">
               <input
                 className="field w-full text-xs"
                 type="email"
@@ -132,13 +132,13 @@ export function HubUserChangePasswordModal({
                 autoComplete="email"
                 {...HUB_NO_SPELLCHECK_PROPS}
               />
-            </HubUserModalFieldRow>
+            </HubUserModalAdmField>
             {!canRecover ? (
-              <HubUserModalFieldRow icon={StickyNote} iconClassName="text-amber-300" label="Note">
+              <HubUserModalAdmField icon={StickyNote} iconClassName="text-amber-300" label="Note">
                 <span className="text-amber-100/90">Link an email first, then use it here.</span>
-              </HubUserModalFieldRow>
+              </HubUserModalAdmField>
             ) : null}
-          </HubUserModalFieldTable>
+          </HubUserModalAdmFields>
         </HubToolDetailSection>
 
         <HubToolDetailSection
@@ -146,16 +146,16 @@ export function HubUserChangePasswordModal({
           title="Verify"
           icon={hubUserChangeSectionIcon(HUB_CHANGE_PASSWORD_TOC, "hub-change-password-verify")}
         >
-          <HubUserModalFieldTable>
+          <HubUserModalAdmFields>
             {step === "idle" ? (
-              <HubUserModalFieldRow icon={StickyNote} iconClassName="text-slate-400" label="Note">
+              <HubUserModalAdmField icon={StickyNote} iconClassName="text-slate-400" label="Note">
                 <span className="text-[var(--muted)]">
                   We email a 6-digit code to your linked address. Click Send code in the footer.
                 </span>
-              </HubUserModalFieldRow>
+              </HubUserModalAdmField>
             ) : (
               <>
-                <HubUserModalFieldRow icon={ShieldCheck} iconClassName="text-emerald-300" label="Code">
+                <HubUserModalAdmField icon={ShieldCheck} iconClassName="text-emerald-300" label="Code">
                   <input
                     className="field w-full text-xs"
                     placeholder="6-digit code"
@@ -165,8 +165,8 @@ export function HubUserChangePasswordModal({
                     autoComplete="one-time-code"
                     {...HUB_NO_SPELLCHECK_PROPS}
                   />
-                </HubUserModalFieldRow>
-                <HubUserModalFieldRow icon={KeyRound} iconClassName="text-amber-300" label="Password">
+                </HubUserModalAdmField>
+                <HubUserModalAdmField icon={KeyRound} iconClassName="text-amber-300" label="Password">
                   <input
                     className="field w-full text-xs"
                     type="password"
@@ -176,15 +176,15 @@ export function HubUserChangePasswordModal({
                     autoComplete="new-password"
                     {...HUB_NO_SPELLCHECK_PROPS}
                   />
-                </HubUserModalFieldRow>
+                </HubUserModalAdmField>
               </>
             )}
             {message ? (
-              <HubUserModalFieldRow icon={StickyNote} iconClassName="text-amber-300" label="Status">
+              <HubUserModalAdmField icon={StickyNote} iconClassName="text-amber-300" label="Status">
                 <span className="text-amber-100">{message}</span>
-              </HubUserModalFieldRow>
+              </HubUserModalAdmField>
             ) : null}
-          </HubUserModalFieldTable>
+          </HubUserModalAdmFields>
         </HubToolDetailSection>
       </div>
     </HubToolDetailModal>

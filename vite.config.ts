@@ -26,6 +26,19 @@ export default defineConfig(async () => {
     }
   }
 
+  // Dev `/api/hub/auth/*` (User ID → auth email). Same monorepo-only guard as above.
+  const authApiPluginPath = path.resolve(rootDir, "../scripts/lib/hub-auth-dev-api-vite-plugin.mjs");
+  if (fs.existsSync(authApiPluginPath)) {
+    try {
+      const mod = await import(pathToFileURL(authApiPluginPath).href);
+      if (typeof mod?.hubAuthDevApiPlugin === "function") {
+        plugins.push(mod.hubAuthDevApiPlugin({ toolRoot: rootDir, devRoot, code: "P0003" }));
+      }
+    } catch {
+      // Non-fatal: sign-in falls back to the synthetic email path.
+    }
+  }
+
   return {
     base: "./",
     plugins,

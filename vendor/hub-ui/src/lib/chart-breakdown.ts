@@ -21,7 +21,7 @@ function rowsFromCounts(
         return {
           label,
           value,
-          emojiGlyph: opts?.emojiFor?.(label) ?? CHART_OTHERS_EMOJI,
+          emojiGlyph: CHART_OTHERS_EMOJI,
         };
       }
       const emojiGlyph = opts?.emojiFor?.(label);

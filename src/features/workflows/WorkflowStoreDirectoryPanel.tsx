@@ -129,17 +129,13 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
             }
             row2Actions={
               <HubDirectoryBulkActionBar
-                selectAll={
-                  viewMode === "card"
-                    ? {
-                        visibleCount: filteredEntries.length,
-                        selectedCount: bulkSelectedIds.size,
-                        allVisibleSelected: bulkAllVisibleSelected,
-                        onToggleSelectAll: toggleBulkSelectAll,
-                        noun: "workflows",
-                      }
-                    : null
-                }
+                selectAll={{
+                  visibleCount: filteredEntries.length,
+                  selectedCount: bulkSelectedIds.size,
+                  allVisibleSelected: bulkAllVisibleSelected,
+                  onToggleSelectAll: toggleBulkSelectAll,
+                  noun: "workflows",
+                }}
               >
                 {bulkActions}
               </HubDirectoryBulkActionBar>

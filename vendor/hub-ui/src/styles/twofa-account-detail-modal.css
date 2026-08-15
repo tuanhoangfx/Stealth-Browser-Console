@@ -484,6 +484,7 @@
   padding: 0 0.15rem;
 }
 
+.hub-adm-plain-time,
 .twofa-adm-plain-time {
   font-family: inherit;
   font-size: var(--hub-adm-type-size, 12px);

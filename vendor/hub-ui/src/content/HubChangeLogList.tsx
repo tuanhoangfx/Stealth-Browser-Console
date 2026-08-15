@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode, type Ref } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode, type Ref } from "react";
 import { HubDirectoryLogLabel } from "./HubDirectoryLogLabel";
 import { HubAdmSearchHighlightText } from "../shell/HubAdmSearchHighlightText";
 import { HubTwofaCopyControl } from "../shell/HubTwofaCopyControl";
@@ -19,6 +19,8 @@ import {
  * Timeline · relative time · field glyph + action label · old → new delta with
  * click-to-copy on each side + row tooltip (`time · Label: before → after`).
  * Shared `twofa-adm-log-*` classes keep the visual identical across every tool.
+ * Flatten is newest-first (Status/Own above secrets in the same stamp). After Save
+ * the rail scrolls to top so the new rows are visible without a manual pull.
  *
  * Tool-local concerns (masking, Lucide glyphs, bulk flash) plug in via optional
  * render/resolve hooks — keep `TwofaChangeLogList` as a thin wrapper.
@@ -204,6 +206,9 @@ export type HubChangeLogListProps = {
    * Use for audit stamps (e.g. “Notified by …”) without adding a visible label.
    */
   resolveTimeTitle?: (row: HubEntityLogRow) => string | undefined;
+  newestFirst?: FlattenHubEntityLogOptions["newestFirst"];
+  fieldRank?: FlattenHubEntityLogOptions["fieldRank"];
+  preserveFieldOrder?: FlattenHubEntityLogOptions["preserveFieldOrder"];
 };
 
 export function HubChangeLogList({
@@ -219,23 +224,42 @@ export function HubChangeLogList({
   renderNote,
   decorateRow,
   resolveTimeTitle,
+  newestFirst,
+  fieldRank,
+  preserveFieldOrder,
 }: HubChangeLogListProps) {
+  const listRef = useRef<HTMLOListElement>(null);
   const rows = useMemo(
     () =>
       flattenHubEntityLog(entries, {
         parseMessage,
         isNoOpChange,
         labelFor: (c) => fieldMeta(c.field).label,
+        newestFirst,
+        fieldRank,
+        preserveFieldOrder,
       }),
-    [entries, fieldMeta, isNoOpChange, parseMessage],
+    [entries, fieldMeta, fieldRank, isNoOpChange, newestFirst, parseMessage, preserveFieldOrder],
   );
+  const newestKey = rows[0]?.key ?? "";
+
+  useLayoutEffect(() => {
+    if (!newestKey) return;
+    const list = listRef.current;
+    if (!list) return;
+    list.scrollTop = 0;
+    const railBody = list
+      .closest(".hub-adm-rail--log")
+      ?.querySelector<HTMLElement>(".hub-tool-detail-rail__body--scroll");
+    if (railBody) railBody.scrollTop = 0;
+  }, [newestKey]);
 
   if (!rows.length) {
     return <p className={HUB_ADM_LOG_MUTED_CLASS}>{emptyLabel}</p>;
   }
 
   return (
-    <ol className="twofa-adm-log-list">
+    <ol ref={listRef} className="twofa-adm-log-list">
       {rows.map((row) => {
         const deco = decorateRow?.(row);
         const title = deco?.title ?? formatHubChangeLogRowTooltip(row, fieldMeta);

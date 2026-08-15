@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -24,7 +25,9 @@ import {
   Package,
   Star,
   LayoutTemplate,
+  Users,
 } from "lucide-react";
+import { HubDirectoryMetricBadge } from "./HubDirectoryMetricBadge";
 import type { FilterIconMeta, HubGlyphComponent } from "./filter-icons";
 import { resolveFilterAllIcon, resolveFilterOptionIcon } from "./filter-icons";
 import { resolveDirectoryFilterColumnIcon } from "./filter-directory-column-roles";
@@ -53,6 +56,7 @@ import {
   HUB_FILTER_DROPDOWN_TRIGGER_COMPACT_TYPO_CLASS,
   multiFilterTriggerTitle,
 } from "./filter-dropdown-primitives";
+import { hubPortalPanelPosition } from "./hub-portal-panel-position";
 import { compactIconSize } from "../ui-scale";
 import { registerHubSearchClear, registerHubSearchFocus } from "../keyboard/hub-keyboard-shortcuts";
 import { HubSearchField } from "./HubSearchField";
@@ -61,12 +65,25 @@ import {
   type HubDirectoryColumnHintContent,
   type HubDirectoryColumnHintGlyph,
 } from "../table/HubDirectoryColumnHint";
+import { HubUsersStatusLabel, type HubUsersStatusTone } from "./HubUsersStatusLabel";
 
 export type FilterOption = {
   value: string;
   label: string;
+  /**
+   * Leading glyph color-dot — only when there is no `emoji` / `iconSrc` / role fallback.
+   * For presence beside a status word, use `status` (HubUsersStatusLabel) so the user/avatar
+   * icon stays on the left.
+   */
   color?: string;
   count?: number;
+  /**
+   * Number badge beside the label (Hub Number SSOT `HubDirectoryMetricBadge`) — e.g. Team member count.
+   * Independent of `count`, which stays the muted facet total on the right.
+   */
+  labelCount?: number;
+  /** Icon for `labelCount` — defaults to Users (team roster). */
+  labelCountIcon?: LucideIcon;
   iconSrc?: string;
   /** Brand img shell — bare (colored), tile (dark mark), darkInk (white mono). Default bare. */
   iconShell?: HubBrandIconShell;
@@ -77,23 +94,33 @@ export type FilterOption = {
    */
   detail?: string;
   /**
+   * Presence/status after label · detail — HubUsersStatusLabel (color-dot + text).
+   * Does not replace the leading glyph (emoji / avatar / role icon).
+   */
+  status?: { tone: HubUsersStatusTone; label: string };
+  /**
    * Full hover tip for the selected value (HubDirectoryColumnHint description).
    * Falls back to `detail` when omitted.
    */
   tip?: string;
+  /** Rich hover popover — parity directory column header hints. */
+  labelHint?: HubDirectoryColumnHintContent;
 };
 
-/** Panel row label — `Name · detail` when detail is set (single truncate + native title). */
-export function filterOptionRowLabel(option: Pick<FilterOption, "label" | "detail" | "tip">): {
+/** Panel row label — `Name · detail · status` when set (single truncate + native title). */
+export function filterOptionRowLabel(
+  option: Pick<FilterOption, "label" | "detail" | "tip" | "status">,
+): {
   text: string;
   title: string;
 } {
   const detail = option.detail?.trim() || "";
-  const tip = option.tip?.trim() || detail;
-  if (!detail) return { text: option.label, title: tip || option.label };
+  const status = option.status?.label?.trim() || "";
+  const body = [option.label, detail, status].filter(Boolean).join(" · ");
+  const tip = option.tip?.trim() || [detail, status].filter(Boolean).join(" · ");
   return {
-    text: `${option.label} · ${detail}`,
-    title: tip ? `${option.label} · ${tip}` : `${option.label} · ${detail}`,
+    text: body,
+    title: tip && tip !== option.label ? `${option.label} · ${tip}` : body || option.label,
   };
 }
 export type FilterDef = {
@@ -439,6 +466,19 @@ function FilterOptionCount({ value }: { value?: number }) {
   );
 }
 
+/** Roster Number badge beside the label — Team member count (Hub Number SSOT). */
+function FilterOptionLabelCount({ option }: { option: FilterOption }) {
+  if (option.labelCount === undefined) return null;
+  return (
+    <HubDirectoryMetricBadge
+      count={option.labelCount}
+      icon={option.labelCountIcon ?? Users}
+      display="tool"
+      className="shrink-0"
+    />
+  );
+}
+
 function FilterBrandImg({
   src,
   iconShell,
@@ -575,12 +615,17 @@ function filterAllRowLabel(filter: FilterDef): string {
   return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
 }
 
+function isStickyDefaultOnly(filter: FilterDef, selected: string[]): boolean {
+  return Boolean(filter.stickyDefault) && selected.length === 1 && selected[0] === filter.stickyDefault;
+}
+
 function resolveFilterTriggerIcon(
   filter: FilterDef,
   selected: string[],
   directoryParity = false,
 ): FilterIconMeta | null {
-  if (selected.length === 1) {
+  /** Sticky default keeps the facet glyph (e.g. Assign 👥), not the option sticker. */
+  if (!isStickyDefaultOnly(filter, selected) && selected.length === 1) {
     const opt = filter.options.find((o) => o.value === selected[0]);
     if (opt) {
       const icon = resolveFilterOptionIcon(filter.key, opt.value);
@@ -632,6 +677,64 @@ function FilterTriggerLabel({
   );
 }
 
+function resolveFilterOptionHintGlyph(option: FilterOption): HubDirectoryColumnHintGlyph | undefined {
+  if (option.labelHint?.titleGlyph) return option.labelHint.titleGlyph;
+  if (option.emoji) return { emoji: option.emoji };
+  const lineEmoji = option.labelHint?.lines?.[0]?.emoji;
+  if (lineEmoji) return { emoji: lineEmoji };
+  return undefined;
+}
+
+function FilterOptionRowLabel({ option }: { option: FilterOption }) {
+  const display = filterOptionRowLabel(option);
+  const content =
+    option.labelHint ??
+    (option.tip?.trim()
+      ? { title: option.label, description: option.tip.trim(), lines: [] }
+      : null);
+
+  const detail = option.detail?.trim() || "";
+  const status = option.status;
+  const primaryText = status || detail ? [option.label, detail].filter(Boolean).join(" · ") : option.label;
+  const labelNode = (
+    <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-left">
+      <span className="min-w-0 truncate">{primaryText}</span>
+      {status ? (
+        <>
+          <span className="shrink-0 text-[var(--muted)]" aria-hidden>
+            ·
+          </span>
+          <HubUsersStatusLabel
+            label={status.label}
+            tone={status.tone}
+            capitalize={false}
+            className="shrink-0"
+          />
+        </>
+      ) : null}
+    </span>
+  );
+  const badgeNode = <FilterOptionLabelCount option={option} />;
+
+  if (!content) {
+    return (
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left" title={display.title}>
+        {labelNode}
+        {badgeNode}
+      </span>
+    );
+  }
+
+  return (
+    <span className="hub-directory-popover-anchor flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+      <HubDirectoryColumnHint content={content} titleGlyph={resolveFilterOptionHintGlyph(option)}>
+        {labelNode}
+      </HubDirectoryColumnHint>
+      {badgeNode}
+    </span>
+  );
+}
+
 export type HubMultiFilterDropdownProps = {
   filter: FilterDef;
   selected: string[];
@@ -675,12 +778,14 @@ export function HubMultiFilterDropdown({
   useLayoutEffect(() => {
     if (!open || !usePortal || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setPanelPos({
-      top: rect.bottom + 4,
-      left: rect.left,
+    // Multi panels can be much taller than their Task Detail trigger. Flip above the
+    // trigger when the modal footer / viewport would otherwise cover the roster.
+    const { top, left, width } = hubPortalPanelPosition(rect, {
       width: Math.max(rect.width, 288),
+      estimatedHeight: Math.min(340, 86 + filter.options.length * 36),
     });
-  }, [open, usePortal]);
+    setPanelPos({ top, left, width });
+  }, [open, usePortal, filter.options.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -767,15 +872,8 @@ export function HubMultiFilterDropdown({
   }
 
   const buttonLabel = (() => {
-    if (triggerFormat === "value") {
-      if (selected.length === 0) return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
-      if (selected.length === 1) {
-        const opt = filter.options.find((o) => o.value === selected[0]);
-        return opt?.label ?? selected[0];
-      }
-      return `${selected.length} selected`;
-    }
-    if (selected.length === 0) return filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
+    const idleLabel = filter.showAllLabel === true ? `All ${filter.label}` : filter.label;
+    if (selected.length === 0 || isStickyDefaultOnly(filter, selected)) return idleLabel;
     if (selected.length === 1) {
       const opt = filter.options.find((o) => o.value === selected[0]);
       return opt?.label ?? selected[0];
@@ -784,14 +882,17 @@ export function HubMultiFilterDropdown({
   })();
 
   const triggerIcon = resolveFilterTriggerIcon(filter, selected, directoryValueTypo);
-  const selectedOpt = selected.length === 1 ? filter.options.find((o) => o.value === selected[0]) : undefined;
+  const selectedOpt =
+    selected.length === 1 && !isStickyDefaultOnly(filter, selected)
+      ? filter.options.find((o) => o.value === selected[0])
+      : undefined;
   const triggerIconSrc = selectedOpt?.iconSrc;
   const showTotalOnTrigger = selected.length === 0 && filter.totalCount !== undefined;
   const resolvedTriggerTitle =
     triggerTitle ??
     (selected.length > 1
       ? multiFilterTriggerTitle(selected, filter.options)
-      : selected.length === 1
+      : selected.length === 1 && !isStickyDefaultOnly(filter, selected)
         ? filter.options.find((o) => o.value === selected[0])?.label
         : (filter.labelHint?.description ?? `Filter by ${filter.label}`));
 
@@ -914,9 +1015,7 @@ export function HubMultiFilterDropdown({
                   <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
                     <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
                     <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                    <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
-                      {o.label}
-                    </span>
+                    <FilterOptionRowLabel option={o} />
                     <FilterOptionCount value={o.count} />
                   </button>
                 ))}
@@ -952,9 +1051,7 @@ export function HubMultiFilterDropdown({
                 <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
                   <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
                   <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                  <span className="min-w-0 flex-1 truncate text-left" title={o.label}>
-                    {o.label}
-                  </span>
+                  <FilterOptionRowLabel option={o} />
                   <FilterOptionCount value={o.count} />
                 </button>
               ))}
@@ -1071,18 +1168,10 @@ export function HubSingleFilterDropdown({
     if (!open || !usePortal || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const hasDetail = options.some((o) => Boolean(o.detail?.trim()));
-    const width = Math.max(rect.width, hasDetail ? 360 : 288);
-    const estimatedHeight = Math.min(320, 52 + options.length * 36);
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    const spaceAbove = rect.top - 8;
-    const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
-    const top = openUp
-      ? Math.max(8, rect.top - estimatedHeight - 4)
-      : rect.bottom + 4;
-    const left = Math.min(
-      Math.max(8, rect.left),
-      Math.max(8, window.innerWidth - width - 8),
-    );
+    const { top, left, width } = hubPortalPanelPosition(rect, {
+      width: Math.max(rect.width, hasDetail ? 360 : 288),
+      estimatedHeight: Math.min(320, 52 + options.length * 36),
+    });
     setPanelPos({ top, left, width });
   }, [open, usePortal, options]);
 
@@ -1174,9 +1263,7 @@ export function HubSingleFilterDropdown({
         createActionAriaLabel={panelCreateAriaLabel}
       />
       <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-        {filtered.map((o) => {
-          const row = filterOptionRowLabel(o);
-          return (
+        {filtered.map((o) => (
             <button
               key={o.value}
               type="button"
@@ -1188,13 +1275,10 @@ export function HubSingleFilterDropdown({
             >
               <HubFilterDropdownCircle checked={o.value === value} />
               <FilterOptionGlyph filterKey={filterKey} option={o} />
-              <span className="min-w-0 flex-1 truncate text-left" title={row.title}>
-                {row.text}
-              </span>
+              <FilterOptionRowLabel option={o} />
               <FilterOptionCount value={o.count} />
             </button>
-          );
-        })}
+          ))}
         {showRename ? (
           <button
             type="button"

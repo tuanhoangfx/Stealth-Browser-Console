@@ -174,6 +174,11 @@ table.hub-users-table {
   min-width: 11rem;
   text-align: left;
 }
+.hub-users-col--hub-enterprise {
+  width: 5.5rem;
+  min-width: 4.5rem;
+  text-align: left;
+}
 
 table.hub-users-table.hub-users-table--users-credentials th {
   font-size: 12px;
@@ -202,12 +207,19 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--role 
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tools .hub-users-tool-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0003 .hub-users-role-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0004 .hub-users-role-badge,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0012 .hub-users-role-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0016 .hub-users-role-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0020 .hub-users-role-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0003 .hub-directory-tool-access-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0004 .hub-directory-tool-access-badge,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0012 .hub-directory-tool-access-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0016 .hub-directory-tool-access-badge,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0020 .hub-directory-tool-access-badge,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0003 .hub-directory-tool-access-glyph,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0004 .hub-directory-tool-access-glyph,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0012 .hub-directory-tool-access-glyph,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0016 .hub-directory-tool-access-glyph,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0020 .hub-directory-tool-access-glyph,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0004 .hub-users-directory-access-muted,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0016 .hub-users-directory-access-muted,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0020 .hub-users-directory-access-muted {
@@ -227,29 +239,61 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--creat
   font-variant-numeric: tabular-nums;
 }
 
-/* Users credentials bulk — col widths (directory-column-meta SSOT; no inline colgroup when showSelect) */
+/* Users credentials — rem + min-width only (P0020 scroll SSOT; % crushed tool badges). */
+table.hub-users-table.hub-users-table--users-credentials {
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+}
+
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--user-id,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--user-id,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--user-id {
-  width: 12%;
+  width: 9rem;
+  min-width: 9rem;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--twofa-account,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--twofa-account,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--twofa-account {
-  width: 14%;
+  width: 14rem;
+  min-width: 14rem;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--twofa-password,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--twofa-password,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--twofa-password {
-  width: 10%;
+  width: 8rem;
+  min-width: 8rem;
+}
+
+/*
+ * Contact channels — Phone / Zalo / Tele / Meta must share one track.
+ * Under `width:max-content`, `<col>` alone redistributes text-label vs brand-image
+ * headers differently; lock col+th+td (P0004 Users + every sibling embed).
+ */
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--phone,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--phone,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--phone,
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--od-phone,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--od-phone,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--od-phone,
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--od-tele,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--od-tele,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--od-tele,
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--od-meta,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--od-meta,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--od-meta {
+  width: 9rem !important;
+  min-width: 9rem !important;
+  max-width: 9rem !important;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--id,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--id,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--id {
-  width: 12%;
+  width: 10rem;
+  min-width: 10rem;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--enterprise,
@@ -260,10 +304,19 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--enter
   text-align: left;
 }
 
+table.hub-users-table col.hub-users-col--team,
+table.hub-users-table th.hub-users-col--team,
+table.hub-users-table td.hub-users-col--team {
+  width: 8.5rem;
+  min-width: 8.5rem;
+  text-align: left;
+}
+
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--role,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--role,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--role {
-  width: 8%;
+  width: 6.5rem;
+  min-width: 6.5rem;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tool-p0003,
@@ -272,35 +325,51 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tool-p0004,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--tool-p0004,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0004,
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tool-p0012,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--tool-p0012,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0012,
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tool-p0015,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--tool-p0015,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0015,
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tool-p0016,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--tool-p0016,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0016,
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tool-p0020,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--tool-p0020,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tool-p0020 {
-  width: 8rem;
-  min-width: 8rem;
+  width: 6.75rem !important;
+  min-width: 6.75rem !important;
+  max-width: 6.75rem !important;
   text-align: center;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--tools,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--tools,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--tools {
-  width: 8rem;
-  min-width: 8rem;
+  width: 6.5rem;
+  min-width: 6.5rem;
   text-align: center;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--created,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--created,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--created {
-  width: 11%;
+  width: 7.5rem;
+  min-width: 7.5rem;
 }
 
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--activity,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--activity,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--activity {
-  width: 14%;
+  width: 6.5rem;
+  min-width: 6.5rem;
+}
+
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--last-active,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--last-active,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--last-active {
+  width: 10.5rem;
+  min-width: 10.5rem;
 }
 
 .hub-users-col--agent-kind {
@@ -511,10 +580,10 @@ table.hub-users-table--hub-tools td {
   vertical-align: middle;
 }
 
-/* User Access modal — compact tool access (no horizontal scroll; overrides 74rem min-width) */
+/* User Access modal — fixed columns with horizontal scroll when the detail panel is narrow. */
 table.hub-users-table.hub-users-table--hub-tools-modal {
   width: 100%;
-  min-width: 0;
+  min-width: 46rem;
   table-layout: fixed;
 }
 
@@ -535,21 +604,29 @@ table.hub-users-table.hub-users-table--hub-tools-modal td.hub-users-col--hub-cod
 
 table.hub-users-table.hub-users-table--hub-tools-modal th.hub-users-col--hub-project,
 table.hub-users-table.hub-users-table--hub-tools-modal td.hub-users-col--hub-project {
-  width: auto;
-  min-width: 0;
+  width: 18rem;
+  min-width: 18rem;
+  max-width: 18rem;
+}
+
+table.hub-users-table.hub-users-table--hub-tools-modal th.hub-users-col--hub-enterprise,
+table.hub-users-table.hub-users-table--hub-tools-modal td.hub-users-col--hub-enterprise {
+  width: 4.75rem;
+  min-width: 4.75rem;
+  max-width: 4.75rem;
 }
 
 table.hub-users-table.hub-users-table--hub-tools-modal th.hub-users-col--hub-status,
 table.hub-users-table.hub-users-table--hub-tools-modal td.hub-users-col--hub-status {
   width: 5.5rem;
-  min-width: 0;
+  min-width: 5.5rem;
   max-width: 5.5rem;
 }
 
 table.hub-users-table.hub-users-table--hub-tools-modal th.hub-users-col--hub-version,
 table.hub-users-table.hub-users-table--hub-tools-modal td.hub-users-col--hub-version {
   width: 5.25rem;
-  min-width: 0;
+  min-width: 5.25rem;
   max-width: 5.25rem;
 }
 
@@ -614,7 +691,7 @@ table.hub-users-table.hub-users-table--hub-tools-modal .hub-table-cell-access-ba
 }
 
 table.hub-users-table.hub-users-table--hub-tools-modal td.hub-users-col--hub-version {
-  text-align: left;
+  text-align: center;
 }
 
 table.hub-users-table.hub-users-table--hub-tools-modal .hub-table-cell-access-badge,
@@ -649,9 +726,29 @@ table.hub-users-table.hub-users-table--hub-tools-modal .hub-table-cell-filter--t
   line-height: 1;
 }
 
+/* Users directory P000x cells — bare emoji, no bordered chip. */
+.hub-directory-tool-access-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.hub-directory-tool-access-badge--icon-only {
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 3px;
+  gap: 0;
+}
+
 .hub-directory-tool-access-badge__label {
-  font-size: 10px;
+  font-size: var(--hub-table-body-size, 12px);
   font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
   white-space: nowrap;
 }
 
@@ -1055,6 +1152,52 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
   color: #bbf7d0;
 }
 
+/* Enterprise badge — P0004 Users / Hub tools SSOT (promoted for P0015+). */
+.hub-users-enterprise-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.hub-users-enterprise-badge-icon {
+  flex-shrink: 0;
+}
+
+.hub-users-enterprise-badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-users-enterprise-badge-extra {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--muted) 40%, var(--text));
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.hub-users-enterprise-badge--infi .hub-users-enterprise-badge-label {
+  color: color-mix(in srgb, #7dd3fc 80%, var(--text));
+}
+
+.hub-users-enterprise-badge--enzy .hub-users-enterprise-badge-label {
+  color: color-mix(in srgb, #c4b5fd 80%, var(--text));
+}
+
+.hub-users-enterprise-badge--mie .hub-users-enterprise-badge-label {
+  color: color-mix(in srgb, #fda4af 80%, var(--text));
+}
+
 .hub-users-cell-stack {
   display: flex;
   flex-direction: column;
@@ -1274,6 +1417,27 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 
 .hub-users-status--plain {
   text-transform: none;
+}
+
+/*
+ * FilterBar presence chips (Assign / Creators) — match Users directory Status body
+ * (12px / --text), not the 10px chrome default used in compact rails.
+ */
+.hub-filter-dropdown-list .hub-users-status,
+[data-hub-multi-filter-panel] .hub-users-status,
+[data-hub-single-filter-panel] .hub-users-status {
+  font-size: var(--hub-table-body-size, 12px);
+  font-weight: 400;
+  line-height: var(--hub-table-body-line-height, 1.45);
+  color: var(--text);
+  text-transform: none;
+}
+
+.hub-filter-dropdown-list .hub-users-status-dot,
+[data-hub-multi-filter-panel] .hub-users-status-dot,
+[data-hub-single-filter-panel] .hub-users-status-dot {
+  width: 7px;
+  height: 7px;
 }
 
 .hub-users-status-dot {

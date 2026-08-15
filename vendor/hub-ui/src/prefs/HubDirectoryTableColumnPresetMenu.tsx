@@ -11,6 +11,7 @@ import {
   filterDropdownPanelSearchPlaceholder,
   HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
 } from "../shell/filter-dropdown-primitives";
+import { hubPortalPanelPosition } from "../shell/hub-portal-panel-position";
 import { HubConfirmDialog } from "../shell/HubConfirmDialog";
 import { HubPromptDialog } from "../shell/HubPromptDialog";
 import { useHubToast } from "../toast/HubToastContext";
@@ -64,16 +65,11 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
     const reposition = () => {
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      const width = Math.max(rect.width, 288);
-      let left = rect.left;
-      if (left + width > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - width - 8);
-      }
-      setPanelPos({
-        top: rect.bottom + 4,
-        left,
-        width,
+      const { top, left, width } = hubPortalPanelPosition(rect, {
+        width: Math.max(rect.width, 288),
+        estimatedHeight: Math.min(320, 86 + presets.length * 36),
       });
+      setPanelPos({ top, left, width });
     };
     reposition();
     window.addEventListener("scroll", reposition, true);

@@ -181,6 +181,14 @@
     ]
   },
   {
+    "id": "cloudfly",
+    "label": "CloudFly",
+    "match": "cloudfly|cloud\\s*fly",
+    "src": "/assets/brand-icons/cloudfly.png",
+    "shell": "bare",
+    "faviconDomain": "cloudfly.vn"
+  },
+  {
     "id": "coingecko",
     "label": "CoinGecko",
     "match": "coingecko",
@@ -195,6 +203,22 @@
     "src": "/assets/brand-icons/cursor.png",
     "shell": "bare",
     "faviconDomain": "cursor.com"
+  },
+  {
+    "id": "dataz",
+    "label": "DataZ",
+    "match": "dataz|data\\s*z",
+    "src": "/assets/brand-icons/dataz.png",
+    "shell": "bare",
+    "faviconDomain": "dataz.vn"
+  },
+  {
+    "id": "decrypt",
+    "label": "Decrypt",
+    "match": "decrypt",
+    "src": "/assets/brand-icons/decrypt.png",
+    "shell": "bare",
+    "faviconDomain": "decrypt.co"
   },
   {
     "id": "deepseek",

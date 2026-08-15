@@ -7,6 +7,8 @@ export type HubDirectoryValuePopoverProps = {
   /** Full text shown in the popover body. */
   value: string;
   title?: string;
+  /** Rich popover body for structured directory metadata. */
+  content?: ReactNode;
   children: ReactNode;
   className?: string;
   /** When false, children render without hover popover. */
@@ -17,6 +19,7 @@ export type HubDirectoryValuePopoverProps = {
 export function HubDirectoryValuePopover({
   value,
   title,
+  content,
   children,
   className = "",
   enabled = true,
@@ -60,7 +63,7 @@ export function HubDirectoryValuePopover({
             onMouseLeave={hide}
           >
             {title ? <p className="hub-directory-popover__title">{title}</p> : null}
-            <p className="hub-directory-popover__body">{text}</p>
+            {content ?? <p className="hub-directory-popover__body">{text}</p>}
           </div>,
           document.body,
         )

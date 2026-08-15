@@ -14,6 +14,7 @@ export function WorkflowStoreChromeHeader({ actions }: { actions?: ReactNode }) 
       titleIconClass={storeChrome.titleIconClass}
       title={storeChrome.label}
       metaItems={metaItems}
+      versionReleaseNotesCode="P0003"
       actions={actions}
     />
   );

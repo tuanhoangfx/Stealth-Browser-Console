@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { HubModalFrame } from "./HubModalFrame";
 import {
   acquireHubDetailModalStackLayer,
+  hubDetailModalPendingLayer,
   hubDetailModalStackBackdropStyle,
   isTopHubDetailModalStackLayer,
   releaseHubDetailModalStackLayer,
@@ -80,10 +81,14 @@ export function HubDetailModal({
       onClose();
     };
     window.addEventListener("keydown", onKey);
-    document.body.classList.add("hub-modal-open");
+    if (stackLayer === 1) {
+      document.body.classList.add("hub-modal-open");
+    }
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.classList.remove("hub-modal-open");
+      if (stackLayer === 1) {
+        document.body.classList.remove("hub-modal-open");
+      }
     };
   }, [embedded, open, onClose, stackLayer]);
 
@@ -119,7 +124,7 @@ export function HubDetailModal({
   if (embedded) return shell;
 
   const resolvedFrameClass = frameClassName ?? (isCompact ? "w-full max-w-md" : "");
-  const effectiveLayer = stackLayer > 0 ? stackLayer : stacked ? 2 : 1;
+  const effectiveLayer = hubDetailModalPendingLayer(stacked, stackLayer);
   const backdropStyle = hubDetailModalStackBackdropStyle(effectiveLayer);
 
   const onBackdropClick = () => {

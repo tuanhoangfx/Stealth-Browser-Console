@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HUB_DIRECTORY_CARD_TITLE_TYPO_SSOT } from "../shell/hub-typography";
 
 export type HubDirectoryCardHeaderProps = {
   /** Avatar, icon box, or HubCardAvatar — shrink-0. */
@@ -17,7 +18,7 @@ export type HubDirectoryCardHeaderProps = {
 function titleNode(title: ReactNode) {
   if (typeof title === "string") {
     return (
-      <span className="min-w-0 line-clamp-2 text-sm font-medium leading-snug text-[var(--text)]">{title}</span>
+      <span className={`min-w-0 line-clamp-2 ${HUB_DIRECTORY_CARD_TITLE_TYPO_SSOT}`}>{title}</span>
     );
   }
   return title;

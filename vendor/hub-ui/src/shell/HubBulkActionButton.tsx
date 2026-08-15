@@ -6,6 +6,7 @@ import {
 import { HUB_DIRECTORY_TOOLBAR_TYPO_CLASS } from "./hub-typography";
 
 export type HubBulkActionTone = "indigo" | "amber" | "emerald" | "rose" | "sky" | "neutral";
+export type HubBulkActionVariant = "filled" | "ghost";
 
 const TONE_CLASS: Record<HubBulkActionTone, string> = {
   indigo:
@@ -22,6 +23,21 @@ const TONE_CLASS: Record<HubBulkActionTone, string> = {
     "border-white/10 bg-[var(--panel-2)] text-[var(--text)] hover:bg-white/5 disabled:border-white/8 disabled:bg-white/[0.03] disabled:text-[var(--muted)]",
 };
 
+const GHOST_TONE_CLASS: Record<HubBulkActionTone, string> = {
+  indigo:
+    "border-0 bg-transparent px-0 text-indigo-200 hover:bg-indigo-500/10 disabled:bg-transparent disabled:text-indigo-200/70",
+  amber:
+    "border-0 bg-transparent px-0 text-amber-200 hover:bg-amber-500/10 disabled:bg-transparent disabled:text-amber-200/70",
+  emerald:
+    "border-0 bg-transparent px-0 text-emerald-200 hover:bg-emerald-500/10 disabled:bg-transparent disabled:text-emerald-200/70",
+  rose:
+    "border-0 bg-transparent px-0 text-rose-200 hover:bg-rose-500/10 disabled:bg-transparent disabled:text-rose-200/70",
+  sky:
+    "border-0 bg-transparent px-0 text-sky-200 hover:bg-sky-500/10 disabled:bg-transparent disabled:text-sky-200/70",
+  neutral:
+    "border-0 bg-transparent px-0 text-[var(--text)] hover:bg-white/5 disabled:bg-transparent disabled:text-[var(--muted)]",
+};
+
 const BADGE_CLASS: Record<HubBulkActionTone, string> = {
   indigo: "bg-indigo-400",
   amber: "bg-amber-400",
@@ -32,6 +48,8 @@ const BADGE_CLASS: Record<HubBulkActionTone, string> = {
 };
 
 export const HUB_BULK_ACTION_BTN_CLASS = `hub-bulk-action-btn relative inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border px-3 ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} transition-colors disabled:cursor-not-allowed`;
+
+export const HUB_BULK_ACTION_GHOST_BTN_CLASS = `hub-bulk-action-btn hub-bulk-action-btn--ghost relative inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-md ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} transition-colors disabled:cursor-not-allowed`;
 
 export type HubBulkActionCountBadgeProps = {
   count: number;
@@ -53,6 +71,7 @@ export type HubBulkActionButtonProps = {
   label: string;
   title: string;
   tone?: HubBulkActionTone;
+  variant?: HubBulkActionVariant;
   disabled?: boolean;
   selectedCount?: number;
   iconSpinning?: boolean;
@@ -69,6 +88,7 @@ export function HubBulkActionButton({
   label,
   title,
   tone = "indigo",
+  variant = "filled",
   disabled = false,
   selectedCount,
   iconSpinning = false,
@@ -86,6 +106,9 @@ export function HubBulkActionButton({
       )}
     </span>
   );
+  const isGhost = variant === "ghost";
+  const toneClass = isGhost ? GHOST_TONE_CLASS[tone] : TONE_CLASS[tone];
+  const shellClass = isGhost ? HUB_BULK_ACTION_GHOST_BTN_CLASS : HUB_BULK_ACTION_BTN_CLASS;
 
   return (
     <button
@@ -94,7 +117,7 @@ export function HubBulkActionButton({
       onClick={onClick}
       title={labelHint ? undefined : title}
       aria-label={label}
-      className={`${HUB_BULK_ACTION_BTN_CLASS} ${TONE_CLASS[tone]}`}
+      className={`${shellClass} ${toneClass}`}
     >
       <span
         className={`shrink-0 [&_svg]:size-[13px] [&_svg]:opacity-100 ${disabled ? "" : "opacity-90"} ${iconSpinning ? "[&_svg]:animate-spin" : ""}`}

@@ -17,6 +17,7 @@ export type HubUsersStatusLabelProps = {
   /** @deprecated Body cells use no hover tooltip — header hints only. */
   title?: string;
   capitalize?: boolean;
+  className?: string;
 };
 
 /** Directory table/card status — `hub-users-status` SSOT (Channels, Groups, Personalities). */
@@ -24,10 +25,11 @@ export function HubUsersStatusLabel({
   label,
   tone,
   capitalize = true,
+  className = "",
 }: HubUsersStatusLabelProps) {
   return (
     <span
-      className={`hub-users-status${capitalize ? "" : " hub-users-status--plain"}`}
+      className={`hub-users-status${capitalize ? "" : " hub-users-status--plain"}${className ? ` ${className}` : ""}`}
     >
       <span className={`hub-users-status-dot hub-users-status-dot--${tone}`} aria-hidden />
       {label}

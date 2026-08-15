@@ -21,33 +21,32 @@ export type ConfirmHubOtpPasswordWithMirrorSyncOptions = {
 
 export type HubPasswordChangeResult = { ok: boolean; message: string };
 
-/**
- * OTP verify + Hub password update + workspace mirror sync (Data Box RLS planes).
- * SSOT for Hub account modal change-password flow (P0004 golden).
- */
-export async function confirmHubOtpPasswordWithMirrorSync(
-  options: ConfirmHubOtpPasswordWithMirrorSyncOptions,
-): Promise<HubPasswordChangeResult> {
-  const email = options.email.trim().toLowerCase();
-  const code = options.code.trim();
-  const password = options.password;
-  if (!code || password.length < 6) {
-    return { ok: false, message: "Enter the email code and a password (min 6 characters)." };
-  }
+export type UpdateHubPasswordWithMirrorSyncOptions = {
+  hubClient: SupabaseClient;
+  password: string;
+  syncApiUrl?: string;
+  loginInput?: string;
+  onSyncError?: (message: string) => void;
+};
 
-  const { error: verifyErr } = await options.hubClient.auth.verifyOtp({
-    email,
-    token: code,
-    type: "email",
-  });
-  if (verifyErr) return { ok: false, message: verifyErr.message };
+/**
+ * Direct Hub password update (signed-in session) + workspace mirror sync.
+ * SSOT for Hub account modal — no OTP / email confirm step.
+ */
+export async function updateHubPasswordWithMirrorSync(
+  options: UpdateHubPasswordWithMirrorSyncOptions,
+): Promise<HubPasswordChangeResult> {
+  const password = options.password;
+  if (password.length < 6) {
+    return { ok: false, message: "Password must be at least 6 characters." };
+  }
 
   const { error: pwdErr } = await options.hubClient.auth.updateUser({ password });
   if (pwdErr) return { ok: false, message: pwdErr.message };
 
   const session = (await options.hubClient.auth.getSession()).data.session;
   const labels = hubSessionLabels(session);
-  const mirrorEmail = session?.user?.email ?? labels.authEmail ?? email;
+  const mirrorEmail = session?.user?.email ?? labels.authEmail ?? "";
 
   const synced = await syncWorkspaceMirrorAfterHubPasswordChange({
     getHubClient: () => options.hubClient,
@@ -66,6 +65,36 @@ export async function confirmHubOtpPasswordWithMirrorSync(
   }
 
   return { ok: true, message: "Password updated across Workspace." };
+}
+
+/**
+ * OTP verify + Hub password update + workspace mirror sync (legacy recovery path).
+ * Prefer `updateHubPasswordWithMirrorSync` for signed-in account modal.
+ */
+export async function confirmHubOtpPasswordWithMirrorSync(
+  options: ConfirmHubOtpPasswordWithMirrorSyncOptions,
+): Promise<HubPasswordChangeResult> {
+  const email = options.email.trim().toLowerCase();
+  const code = options.code.trim();
+  const password = options.password;
+  if (!code || password.length < 6) {
+    return { ok: false, message: "Enter the email code and a password (min 6 characters)." };
+  }
+
+  const { error: verifyErr } = await options.hubClient.auth.verifyOtp({
+    email,
+    token: code,
+    type: "email",
+  });
+  if (verifyErr) return { ok: false, message: verifyErr.message };
+
+  return updateHubPasswordWithMirrorSync({
+    hubClient: options.hubClient,
+    password,
+    syncApiUrl: options.syncApiUrl,
+    loginInput: options.loginInput,
+    onSyncError: options.onSyncError,
+  });
 }
 
 /**

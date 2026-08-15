@@ -44,6 +44,11 @@ export function resolveHubDirectoryMetricTier(count: number): HubDirectoryMetric
   return "hot";
 }
 
+export function hubDirectoryMetricHeatDotClass(count: number): string {
+  const tier = resolveHubDirectoryMetricTier(count);
+  return `${HEAT_DOT} ${HEAT_DOT}--${tier}`;
+}
+
 export function hubDirectoryMetricTierClass(tier: HubDirectoryMetricTier): string {
   return `hub-directory-metric-badge--${tier}`;
 }

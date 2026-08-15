@@ -864,30 +864,45 @@ body.hub-modal-open {
   padding: 0.55rem 0.85rem;
 }
 
-/* Layout 2 ops (Log · Notify · Update Release) — pin search in headerCenter. */
+/* Layout 2 ops (Log · Notify · Update Release) — title left · search center · actions right. */
 .hub-header-panel-modal .user-access-modal__header:has(.user-access-modal__header-center) {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(12rem, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 42rem) minmax(0, 1fr);
   align-items: center;
   column-gap: 0.75rem;
 }
 
 .hub-header-panel-modal .user-access-modal__header:has(.user-access-modal__header-center) .user-access-modal__header-main {
-  flex: 0 1 auto;
+  grid-column: 1;
+  justify-self: start;
+  flex: unset;
   min-width: 0;
 }
 
 .hub-header-panel-modal .user-access-modal__header-center {
+  grid-column: 2;
+  justify-self: center;
   min-width: 0;
   width: 100%;
-  max-width: 28rem;
-  justify-self: stretch;
+  max-width: 42rem;
 }
 
 /* Right-corner header actions (Mark all read) — third column before the frame close X. */
 .hub-header-panel-modal
   .user-access-modal__header:has(.user-access-modal__header-center):has(.user-access-modal__header-actions) {
-  grid-template-columns: minmax(0, auto) minmax(12rem, 1fr) minmax(0, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 42rem) minmax(0, 1fr);
+}
+
+.hub-header-panel-modal
+  .user-access-modal__header:has(.user-access-modal__header-center):has(.user-access-modal__header-actions)
+  .user-access-modal__header-actions {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.hub-ops-panel-search {
+  display: flex;
+  justify-content: center;
 }
 
 .user-access-modal__header-actions {
@@ -1006,19 +1021,79 @@ body.hub-modal-open {
 }
 
 .hub-release-headline {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+/** Inline scope + open-detail + copyable entity id (Log · Notify timeline SSOT). */
+.hub-ops-timeline-headline-group {
+  display: inline-flex;
   flex: 1 1 8rem;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.hub-ops-timeline-open-detail {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0.35rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.hub-ops-timeline-open-detail:hover {
+  color: rgb(125, 211, 252);
+  background: rgb(14 165 233 / 0.12);
+  border-color: rgb(56 189 248 / 0.35);
+}
+
+.hub-ops-timeline-headline-sep {
+  flex-shrink: 0;
+  color: rgb(255 255 255 / 0.22);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.hub-ops-timeline-entity-id-copy.hub-directory-copy-control {
+  min-width: 0;
+  max-width: 9rem;
+}
+
+.hub-ops-timeline-entity-id-copy .hub-ops-timeline-entity-id {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.hub-ops-timeline-entity-id-copy:hover .hub-ops-timeline-entity-id {
+  color: rgb(186 230 253);
 }
 
 .hub-release-header-version {
   max-width: min(100%, 20rem);
 }
 
-/* Match hub header chrome scale inside Update Release modal. */
+/* Match hub header chrome scale inside ops panels (Update · Log · Notify). */
+.hub-header-panel-modal.hub-ops-panel-modal,
 .hub-release-notes-modal {
   --hub-header-chrome-font-size: 12px;
   --hub-header-chrome-font-weight: 500;
 }
 
+.hub-header-panel-modal.hub-ops-panel-modal .user-access-modal__header-name,
+.hub-header-panel-modal.hub-ops-panel-modal .app-tab-header__chrome-text,
+.hub-header-panel-modal.hub-ops-panel-modal .hub-activity-feed-toolbar input[type="search"],
+.hub-header-panel-modal.hub-ops-panel-modal .hub-toc-nav,
 .hub-release-notes-modal .user-access-modal__header-name,
 .hub-release-notes-modal .app-tab-header__chrome-text,
 .hub-release-notes-modal .hub-activity-feed-toolbar input[type="search"],

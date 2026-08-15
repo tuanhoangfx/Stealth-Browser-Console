@@ -1,4 +1,4 @@
-import { KeyRound, Mail, RefreshCcw, User } from "lucide-react";
+import { Clock, Mail, User } from "lucide-react";
 import { hubSessionLabels, type HubSessionLike } from "@tool-workspace/hub-identity";
 import type { HubAuthSessionMode } from "./HubAuthSessionBadge";
 import type { HubWorkspaceUserProfileRow } from "./HubWorkspaceUserModal";
@@ -56,14 +56,13 @@ export function buildWorkspaceUserProfileRows(
 ): HubWorkspaceUserProfileRow[] {
   const labels = opts.labels ?? hubSessionLabels(opts.session);
   const user = opts.session?.user;
-  const locale = opts.locale ?? "vi-VN";
-  const createdAt = user?.created_at ? new Date(user.created_at).toLocaleString(locale) : "—";
-  const lastSignIn = user?.last_sign_in_at
-    ? new Date(user.last_sign_in_at).toLocaleString(locale)
-    : "—";
+  const createdAt = user?.created_at ?? null;
+  const lastActiveAt =
+    user?.last_sign_in_at ??
+    (user as { updated_at?: string | null } | null | undefined)?.updated_at ??
+    null;
   const roleKey = opts.roleKey ?? String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "user");
   const roleMeta = resolveWorkspaceRoleIcon(roleKey);
-  const provider = String(user?.app_metadata?.provider ?? "email");
 
   const rows: HubWorkspaceUserProfileRow[] = [];
   if (opts.includeLoginId) {
@@ -84,9 +83,8 @@ export function buildWorkspaceUserProfileRows(
       icon: roleMeta.icon,
       iconClassName: roleMeta.className,
     },
-    { label: "Provider", value: provider, icon: KeyRound },
-    { label: "Created", value: createdAt, icon: User },
-    { label: "Last sign in", value: lastSignIn, icon: RefreshCcw },
+    { label: "Created", value: createdAt ?? "—", timestamp: createdAt, icon: User },
+    { label: "Last active", value: lastActiveAt ?? "—", timestamp: lastActiveAt, icon: Clock },
   );
   return rows;
 }

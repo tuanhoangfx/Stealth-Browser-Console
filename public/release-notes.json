@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-08-13T09:27:59.401Z",
+  "generatedAt": "2026-08-15T14:50:01.987Z",
   "entries": [
     {
-      "version": "1.0.187",
-      "date": "2026-08-13",
-      "at": "2026-08-13T09:27:59.401Z",
-      "title": "chore: release v1.0.187",
+      "version": "1.1.1",
+      "date": "2026-08-15",
+      "at": "2026-08-15T21:50:00+07:00",
+      "title": "Boot IPC before window (empty Profiles after update) (git)",
       "bullets": [
-        "Maintenance and polish since the last documented release."
+        "Git/Commit Minor bump (P0003): 1.0.188 → 1.1.1 (MINOR+1, PATCH=1)."
       ],
       "kind": "improve",
-      "userTitle": "Release v1.0.187",
+      "userTitle": "Boot IPC before window",
       "userSummary": "",
       "userHighlights": [
-        "Maintenance and polish since the last documented release."
+        "Git Commit Minor bump : 1.0.188 → 1.1.1 ."
       ]
     },
     {

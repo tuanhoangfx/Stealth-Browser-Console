@@ -11,7 +11,7 @@ import {
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
 } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
-import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
+import { HubUserModalAdmField, HubUserModalAdmFields } from "./HubUserModalAdmField";
 import type { HubFullUserAccountResult } from "./HubFullUserAccountModal";
 import {
   HUB_CHANGE_EMAIL_TOC,
@@ -94,8 +94,8 @@ export function HubUserChangeEmailModal({
           title="Address"
           icon={hubUserChangeSectionIcon(HUB_CHANGE_EMAIL_TOC, "hub-change-email-address")}
         >
-          <HubUserModalFieldTable>
-            <HubUserModalFieldRow icon={Mail} iconClassName="text-sky-300" label="New email">
+          <HubUserModalAdmFields>
+            <HubUserModalAdmField icon={Mail} iconClassName="text-sky-300" label="New email">
               <input
                 className="field w-full text-xs"
                 type="email"
@@ -105,8 +105,8 @@ export function HubUserChangeEmailModal({
                 autoComplete="email"
                 {...HUB_NO_SPELLCHECK_PROPS}
               />
-            </HubUserModalFieldRow>
-          </HubUserModalFieldTable>
+            </HubUserModalAdmField>
+          </HubUserModalAdmFields>
         </HubToolDetailSection>
 
         <HubToolDetailSection
@@ -114,18 +114,18 @@ export function HubUserChangeEmailModal({
           title="Confirmation"
           icon={hubUserChangeSectionIcon(HUB_CHANGE_EMAIL_TOC, "hub-change-email-confirm")}
         >
-          <HubUserModalFieldTable>
-            <HubUserModalFieldRow icon={StickyNote} iconClassName="text-slate-400" label="Note">
+          <HubUserModalAdmFields>
+            <HubUserModalAdmField icon={StickyNote} iconClassName="text-slate-400" label="Note">
               <span className="text-[var(--muted)]">
                 A confirmation link is sent before the new address becomes active.
               </span>
-            </HubUserModalFieldRow>
+            </HubUserModalAdmField>
             {message ? (
-              <HubUserModalFieldRow icon={Mail} iconClassName="text-indigo-300" label="Status">
+              <HubUserModalAdmField icon={Mail} iconClassName="text-indigo-300" label="Status">
                 <span className="text-indigo-200">{message}</span>
-              </HubUserModalFieldRow>
+              </HubUserModalAdmField>
             ) : null}
-          </HubUserModalFieldTable>
+          </HubUserModalAdmFields>
         </HubToolDetailSection>
       </div>
     </HubToolDetailModal>

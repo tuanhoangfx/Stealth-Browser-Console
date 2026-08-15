@@ -51,9 +51,15 @@ export function withChartLegendIcon<T extends ChartRow>(row: T): T {
   if (isChartOthersLabel(row.label)) {
     return { ...row, emojiGlyph: row.emojiGlyph ?? CHART_OTHERS_EMOJI, iconMeta: null } as T;
   }
+  /** Directory sticker wins — legend keeps the same glyph the table cell shows. */
+  if (row.emojiGlyph) {
+    return { ...row, iconMeta: null } as T;
+  }
+  /** Heat / status / quantity dots win — never force the folder sticker over an explicit color. */
+  if (row.color) {
+    return { ...row, iconMeta: null } as T;
+  }
   if (row.emojiGlyph) return row;
-  /** Heat bands carry `color` — skip Lucide (e.g. Full → Shield) so colorDot wins. */
-  if (row.color) return { ...row, iconMeta: null } as T;
   const iconMeta = row.iconMeta ?? legendFor(row.label);
   return iconMeta ? { ...row, iconMeta } : row;
 }

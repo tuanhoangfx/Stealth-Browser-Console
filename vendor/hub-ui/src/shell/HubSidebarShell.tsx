@@ -7,7 +7,7 @@ export const HUB_SIDEBAR_SHELL_ASIDE_CLASS =
   "hub-sidebar-shell flex h-full min-h-0 w-60 shrink-0 flex-col overflow-visible border-r border-white/5 bg-[var(--panel)] px-4 pt-4 pb-2";
 
 export const HUB_SIDEBAR_SHELL_BRAND_TITLE_CLASS =
-  "truncate text-sm font-semibold leading-tight";
+  "hub-sidebar-chrome-type truncate font-semibold leading-tight";
 
 /** @deprecated Sidebar brand is logo + title only — do not use for new UI. */
 export const HUB_SIDEBAR_SHELL_BRAND_TAGLINE_CLASS = "text-[10px] text-[var(--muted)]";

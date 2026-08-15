@@ -14,7 +14,7 @@ export type CreateHubForgotPasswordHandlerOptions = {
 
 const DEFAULT_MESSAGES = {
   syntheticHint: "Link email on Tool Hub (Account), or ask an admin to reset your password.",
-  notConfiguredMessage: "Tool Hub Supabase is not configured.",
+  notConfiguredMessage: "Tool Hub identity is not configured.",
   successMessage: "Check your inbox for a Hub password reset link.",
 };
 

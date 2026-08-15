@@ -20,6 +20,7 @@ export function ScriptsListChromeHeader({ centerStats, actions }: ScriptsListChr
       titleIconClass={workflowChrome.titleIconClass}
       title={workflowChrome.label}
       metaItems={metaItems}
+      versionReleaseNotesCode="P0003"
       centerStats={centerStats ?? []}
       actions={actions}
     />

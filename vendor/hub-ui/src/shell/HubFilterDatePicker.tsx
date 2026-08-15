@@ -7,6 +7,7 @@ import {
   HUB_FILTER_OPTION_EMOJI_CLASS,
   HubFilterDropdownTrigger,
 } from "./filter-dropdown-primitives";
+import { hubPortalPanelPosition } from "./hub-portal-panel-position";
 
 /** Account detail + vault date fields — muted placeholder tone (not column label). */
 export const HUB_DATE_PICKER_PLACEHOLDER = "dd/mm/yy";
@@ -41,7 +42,12 @@ function formatDateCompact(dateString: string) {
   return `${d}/${m}/${y.slice(-2)}`;
 }
 
-/** Todo golden calendar picker — portal panel + HubFilterDropdownTrigger (P0020 SSOT). */
+/**
+ * P0012 Todo New Modal calendar — the single date-picker SSOT for every Hub tool.
+ *
+ * Keep its portal panel, ISO `YYYY-MM-DD` value contract, and Clear/Today actions
+ * aligned here; P0005 and P0020 consume it through their detail-field adapters.
+ */
 export function HubFilterDatePicker({
   value,
   onChange,
@@ -72,12 +78,12 @@ export function HubFilterDatePicker({
     }
     const update = () => {
       const rect = containerRef.current!.getBoundingClientRect();
-      const width = 250;
-      let left = rect.left;
-      if (left + width > window.innerWidth - 8) {
-        left = window.innerWidth - width - 8;
-      }
-      setPanelPos({ top: rect.bottom + 4, left, width });
+      // Calendar panel is fixed-height (~month grid + Clear/Today).
+      const { top, left, width } = hubPortalPanelPosition(rect, {
+        width: 250,
+        estimatedHeight: 300,
+      });
+      setPanelPos({ top, left, width });
     };
     update();
     window.addEventListener("scroll", update, true);

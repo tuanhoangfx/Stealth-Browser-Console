@@ -9,6 +9,7 @@ import {
   HubFilterDropdownCircle,
   HubFilterDropdownTrigger,
 } from "./filter-dropdown-primitives";
+import { hubPortalPanelPosition } from "./hub-portal-panel-position";
 import { workspacePeriodDotColor, workspacePeriodTriggerIconColor } from "../lib/workspace-period-dot-color";
 import type { WorkspacePeriodKey } from "../lib/hub-workspace-period";
 import { HubFilterDatePicker } from "./HubFilterDatePicker";
@@ -193,12 +194,10 @@ export function HubPeriodSelect<T extends string>({
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const width = view === "month" ? 256 : view === "range" ? 300 : Math.max(rect.width, 288);
-    let left = rect.left;
-    if (left + width > window.innerWidth - 8) {
-      left = Math.max(8, window.innerWidth - width - 8);
-    }
-    setPanelPos({ top: rect.bottom + 4, left, width });
-  }, [view]);
+    const estimatedHeight = view === "list" ? Math.min(320, 52 + options.length * 36) : 320;
+    const { top, left } = hubPortalPanelPosition(rect, { width, estimatedHeight });
+    setPanelPos({ top, left, width });
+  }, [view, options.length]);
 
   useLayoutEffect(() => {
     if (!open) {

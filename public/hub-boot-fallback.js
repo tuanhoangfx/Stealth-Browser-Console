@@ -6,7 +6,10 @@
  */
 (function () {
   var BOOT_ID = "hub-boot-loader";
-  var SERVER_PROBE_MS = 2000;
+  // Cold sibling embeds compile a deep P0004 screen graph on first navigation.
+  // A 2s probe races that compilation and can falsely claim a healthy Vite
+  // server is offline before the app has a chance to mount.
+  var SERVER_PROBE_MS = 10000;
   var PREBUNDLE_HINT_MS = 28000;
   var FINAL_TIMEOUT_MS = 120000;
   var DEP_PROBE_INTERVAL_MS = 15000;

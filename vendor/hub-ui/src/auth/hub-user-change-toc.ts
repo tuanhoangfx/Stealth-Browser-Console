@@ -2,25 +2,21 @@ import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
 import type { HubTocNavItem } from "../shell/HubTocSectionNav";
 import type { SemanticIconKey } from "../types/semantic-icon";
 
+/** @deprecated Email/Password change sub-modals removed — Full account modal edits inline. */
 export type HubUserChangeTocEntry = {
   id: string;
   label: string;
   semanticKey: SemanticIconKey;
 };
 
-export const HUB_CHANGE_EMAIL_TOC: HubUserChangeTocEntry[] = [
-  { id: "hub-change-email-address", label: "Address", semanticKey: "user.linkEmail" },
-  { id: "hub-change-email-confirm", label: "Confirmation", semanticKey: "user.session" },
-];
+/** @deprecated Inline email edit in HubFullUserAccountModal. */
+export const HUB_CHANGE_EMAIL_TOC: HubUserChangeTocEntry[] = [];
 
-export const HUB_CHANGE_PASSWORD_TOC: HubUserChangeTocEntry[] = [
-  { id: "hub-change-password-email", label: "Email", semanticKey: "user.linkEmail" },
-  { id: "hub-change-password-verify", label: "Verify", semanticKey: "user.security" },
-];
+/** @deprecated Inline password edit in HubFullUserAccountModal (no OTP). */
+export const HUB_CHANGE_PASSWORD_TOC: HubUserChangeTocEntry[] = [];
 
-export const HUB_CHANGE_USERNAME_TOC: HubUserChangeTocEntry[] = [
-  { id: "hub-change-username-id", label: "User ID", semanticKey: "user.account" },
-];
+/** @deprecated Inline username edit in HubFullUserAccountModal. */
+export const HUB_CHANGE_USERNAME_TOC: HubUserChangeTocEntry[] = [];
 
 export function hubUserChangeTocItems(entries: readonly HubUserChangeTocEntry[]): HubTocNavItem[] {
   return entries.map(({ id, label, semanticKey }) => ({

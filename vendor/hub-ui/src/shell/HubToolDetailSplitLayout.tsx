@@ -1,7 +1,21 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import type { HubGlyphComponent } from "../types/filter-badge";
 import { HUB_ADM_TYPE_NAV_CLASS } from "./hubAccountDetailModal";
 import { resolveHubToolDetailRailHead } from "./hubToolDetailTitleWithEmoji";
+
+function renderHubToolDetailGlyph(
+  Icon: HubGlyphComponent | ReactNode | undefined,
+  iconClassName?: string,
+): ReactNode {
+  if (!Icon) return null;
+  // Call sites sometimes pass JSX (`<span>📋</span>`) — never treat elements as components.
+  if (isValidElement(Icon)) return Icon;
+  if (typeof Icon === "function" || (typeof Icon === "object" && Icon !== null)) {
+    const Glyph = Icon as HubGlyphComponent;
+    return <Glyph size={12} className={iconClassName} aria-hidden />;
+  }
+  return null;
+}
 
 /**
  * Main + right rail grid — generic split (non–account-detail tools).
@@ -40,7 +54,7 @@ export function HubToolDetailPanel({
 }: {
   id?: string;
   title: ReactNode;
-  icon?: HubGlyphComponent;
+  icon?: HubGlyphComponent | ReactNode;
   iconClassName?: string;
   /** Slot below panel head — meta row, filters, etc. */
   headExtra?: ReactNode;
@@ -56,7 +70,7 @@ export function HubToolDetailPanel({
       aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
     >
       <div className={`hub-tool-detail-panel__head ${HUB_ADM_TYPE_NAV_CLASS}`}>
-        {Icon ? <Icon size={12} className={iconClassName} aria-hidden /> : null}
+        {renderHubToolDetailGlyph(Icon, iconClassName)}
         {title}
       </div>
       {headExtra ? <div className="hub-tool-detail-panel__head-extra">{headExtra}</div> : null}
@@ -81,7 +95,7 @@ export function HubToolDetailRail({
   title: ReactNode;
   /** Sheet sticker — replaces Lucide rail icon when set (📜 Note · 📋 Console). */
   titleEmoji?: string;
-  icon?: HubGlyphComponent;
+  icon?: HubGlyphComponent | ReactNode;
   iconClassName?: string;
   children: ReactNode;
   scroll?: boolean;
@@ -89,8 +103,12 @@ export function HubToolDetailRail({
   bodyClassName?: string;
   ariaLabel?: string;
 }) {
-  const head = resolveHubToolDetailRailHead({ title, titleEmoji, icon: Icon, iconClassName });
-  const RailIcon = head.icon;
+  const head = resolveHubToolDetailRailHead({
+    title,
+    titleEmoji,
+    icon: isValidElement(Icon) ? undefined : (Icon as HubGlyphComponent | undefined),
+    iconClassName: isValidElement(Icon) ? undefined : iconClassName,
+  });
 
   return (
     <aside
@@ -99,7 +117,7 @@ export function HubToolDetailRail({
       aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
     >
       <div className={`hub-tool-detail-rail__head ${HUB_ADM_TYPE_NAV_CLASS}`}>
-        {RailIcon ? <RailIcon size={12} className={head.iconClassName} aria-hidden /> : null}
+        {titleEmoji ? null : renderHubToolDetailGlyph(head.icon ?? Icon, head.iconClassName ?? iconClassName)}
         {head.titleNode}
       </div>
       <div

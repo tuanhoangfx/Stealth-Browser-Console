@@ -28,15 +28,20 @@ export function normalizeHubAuthError(raw: unknown, opts: NormalizeHubAuthErrorO
       : "Incorrect user ID/email or password.";
   }
   if (lower.includes("user already registered")) return "This user ID or email is already registered.";
+  if (lower.includes("auth_timeout")) {
+    return opts.dualWorkspace
+      ? "Sign-in timed out — Tool Hub or workspace data plane is slow. Wait a moment and try again."
+      : "Sign-in timed out. Please try again.";
+  }
   if (opts.dualWorkspace) {
     if (lower.includes("exceed_egress_quota") || lower.includes("egress_quota")) {
-      return "Workspace Supabase is paused (egress quota exceeded). Restore the project in Supabase Dashboard → Billing.";
+      return "Workspace data API quota exceeded on Home Server. Check hub-api / sb-api status.";
     }
     if (msg === "Failed to fetch" || lower.includes("networkerror") || lower.includes("load failed")) {
-      return "Cannot reach Tool Hub or workspace Supabase. Check env URLs and project status.";
+      return "Cannot reach Tool Hub or workspace data API (Home Server). Check hub-api / sb-api and Cloudflare tunnel.";
     }
   } else if (msg === "Failed to fetch" || lower.includes("networkerror")) {
-    return "Cannot reach Tool Hub identity. Check network and Supabase project status.";
+    return "Cannot reach Tool Hub identity (hub-api). Check network and Cloudflare tunnel.";
   }
   return msg || "Sign-in failed. Please try again.";
 }

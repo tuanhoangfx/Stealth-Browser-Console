@@ -5,6 +5,7 @@ import type { HubActivityKindFilter } from "./HubActivityFeed";
 import {
   HubOpsPanelSearch,
   HubOpsTypeTocNav,
+  HubOpsKindBadge,
   useHubOpsTypeToc,
   type HubOpsTypeTocChrome,
 } from "./HubOpsPanelChrome";
@@ -108,20 +109,6 @@ function releaseTypeTocChrome(kind: HubActivityKindFilter): HubOpsTypeTocChrome 
   return { label: meta.label, Icon: meta.Icon, className: meta.className };
 }
 
-/** Kind badge — primary change type for the release (before version + age). */
-function ReleaseKindBadge({ kind }: { kind: HubReleaseNoteKind }) {
-  const meta = KIND_META[kind];
-  const Icon = meta.Icon;
-  return (
-    <span
-      className={`hub-release-kind-badge inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 font-semibold tracking-wide ${meta.chip}`}
-    >
-      <Icon size={12} className={meta.className} aria-hidden />
-      {meta.label}
-    </span>
-  );
-}
-
 function freshnessTocIcon(isLatest: boolean) {
   if (isLatest) {
     return <CheckCircle2 size={14} className="text-emerald-400" aria-hidden />;
@@ -166,7 +153,7 @@ function ReleaseTimelineCard({ entry }: { entry: HubReleaseNoteEntry }) {
   return (
     <article className="hub-release-timeline-card">
       <div className="hub-release-timeline-card__head app-tab-header__chrome-text">
-        <ReleaseKindBadge kind={entry.kind} />
+        <HubOpsKindBadge kind={entry.kind} />
         <ReleaseVersionMeta version={entry.version} date={entry.date} at={entry.at} />
         {headline ? (
           <span className="hub-release-headline min-w-0 truncate font-semibold text-[var(--text)]">

@@ -22,7 +22,7 @@ export function HubAdmNoteReadonlyBody({
 }: HubAdmNoteReadonlyBodyProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const text = note.trim();
+  const text = (note ?? "").trim();
   const modalSearch = useHubAccountDetailSearchOptional();
   const [noteActiveIndex, setNoteActiveIndex] = useState(-1);
 

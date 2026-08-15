@@ -6,14 +6,14 @@ export type HubDirectoryEllipsisCellProps = {
   className?: string;
   /** Collapse internal whitespace (notes). */
   normalizeWhitespace?: boolean;
-  /** @deprecated Cell tooltips removed — header hints only. */
+  /** @deprecated Prefer `hoverPopover` — richTooltip ignored. */
   richTooltip?: boolean;
   /** Hover popover with full value (multiline notes / plan fields). */
   hoverPopover?: boolean;
   popoverTitle?: string;
 };
 
-/** Read-only truncated directory cell — optional hover popover for long multiline values. */
+/** Read-only truncated directory cell — optional `hoverPopover` for Note/multiline (hub-tooltip-ssot). */
 export function HubDirectoryEllipsisCell({
   value,
   className = "",

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isDevAutoLoginEnabled, readDevAutoLoginCreds, withDevAuthTimeout } from "./dev-auto-login";
 import { signInWithHubPassword } from "./hub-auth-submit";
 
-/** Dev localhost: sign in to Tool Hub Supabase using env credentials. */
+/** Dev localhost: sign in to Tool Hub identity (Home Server GoTrue) using env credentials. */
 export async function devHubAutoSignIn(client: SupabaseClient): Promise<boolean> {
   if (!isDevAutoLoginEnabled()) return false;
   const creds = readDevAutoLoginCreds();

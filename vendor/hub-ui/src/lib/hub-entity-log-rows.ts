@@ -29,7 +29,78 @@ export type FlattenHubEntityLogOptions = {
   isNoOpChange?: (change: HubEntityLogChange) => boolean;
   /** Resolve the human label for a change's field (column/entity label). */
   labelFor?: (change: HubEntityLogChange) => string;
+  /**
+   * Rail order. Default `true` (newest `at` first). Persist/merge stays chronological;
+   * callers must not pre-reverse or the stamp order is still corrected here.
+   */
+  newestFirst?: boolean;
+  /** Lower rank = higher on the rail within the same stamp. Default: hubEntityLogFieldDisplayRank. */
+  fieldRank?: (field: string) => number;
+  /** Keep `changes[]` persist order (Header Log session line). Default false. */
+  preserveFieldOrder?: boolean;
 };
+
+/**
+ * Same-Save display rank — Status/Own first, credentials last.
+ * Unknown fields sit in the middle (identity / plan / notes) so tools do not need a local sort.
+ */
+export function hubEntityLogFieldDisplayRank(field: string): number {
+  const key = field.trim();
+  const rank = HUB_ENTITY_LOG_FIELD_DISPLAY_RANK[key];
+  if (rank != null) return rank;
+  const lower = key.toLowerCase();
+  if (lower.includes("password") || lower.includes("secret") || lower.includes("backup")) return 900;
+  if (lower.includes("status") || lower.includes("ownership") || lower === "own") return 10;
+  return 500;
+}
+
+const HUB_ENTITY_LOG_FIELD_DISPLAY_RANK: Record<string, number> = {
+  status: 10,
+  listing_status: 10,
+  orderStatus: 10,
+  ownership: 20,
+  payStatus: 15,
+  planStatus: 16,
+  notifyStatus: 18,
+  fbPaymentStatus: 19,
+  access: 25,
+  service: 30,
+  category: 30,
+  orderId: 35,
+  product: 38,
+  account: 40,
+  customer: 40,
+  grantee: 40,
+  uid: 45,
+  browser: 50,
+  mailRecover: 55,
+  phone: 60,
+  mailState: 65,
+  planPackage: 100,
+  planTier: 105,
+  planDate: 110,
+  planDays: 115,
+  planExpiresAt: 120,
+  planNotes: 125,
+  price: 130,
+  qty: 135,
+  discount: 140,
+  list_price_cents: 130,
+  productPrice: 130,
+  note: 200,
+  notes: 200,
+  remark: 205,
+  password: 900,
+  secret: 910,
+  backupCode: 920,
+};
+
+function compareHubEntityLogAtDesc(a: string, b: string): number {
+  const da = Date.parse(a);
+  const db = Date.parse(b);
+  if (Number.isFinite(da) && Number.isFinite(db) && da !== db) return db - da;
+  return a < b ? 1 : a > b ? -1 : 0;
+}
 
 const defaultIsNoOp = (change: HubEntityLogChange): boolean =>
   (change.before?.trim() ?? "") === (change.after?.trim() ?? "");
@@ -51,9 +122,27 @@ export function flattenHubEntityLog(
   entries: HubEntityLogEntry[],
   options: FlattenHubEntityLogOptions = {},
 ): HubEntityLogRow[] {
+  const newestFirst = options.newestFirst !== false;
+  const fieldRank = options.fieldRank ?? hubEntityLogFieldDisplayRank;
+  const ordered = entries.map((entry, sourceIndex) => ({ entry, sourceIndex }));
+  if (newestFirst) {
+    ordered.sort((a, b) => {
+      const byAt = compareHubEntityLogAtDesc(a.entry.at, b.entry.at);
+      if (byAt !== 0) return byAt;
+      return b.sourceIndex - a.sourceIndex;
+    });
+  }
+
   const rows: HubEntityLogRow[] = [];
-  entries.forEach((entry, entryIndex) => {
-    const changes = resolveHubEntityLogEntryChanges(entry, options);
+  ordered.forEach(({ entry }, entryIndex) => {
+    const resolved = resolveHubEntityLogEntryChanges(entry, options);
+    const changes =
+      options.preserveFieldOrder || resolved.length <= 1
+        ? resolved
+        : [...resolved].sort((x, y) => {
+            const d = fieldRank(x.field) - fieldRank(y.field);
+            return d !== 0 ? d : x.field.localeCompare(y.field);
+          });
     if (changes.length) {
       changes.forEach((change, changeIndex) => {
         rows.push({
@@ -77,6 +166,30 @@ export function flattenHubEntityLog(
     });
   });
   return rows;
+}
+
+const DIRECTORY_SUMMARY_CREDENTIAL_FIELDS = ["password", "secret", "backupCode"] as const;
+
+/** True when the field is a credential (rail ranks these last). */
+export function isHubEntityLogCredentialField(field: string): boolean {
+  const key = field.trim();
+  if ((DIRECTORY_SUMMARY_CREDENTIAL_FIELDS as readonly string[]).includes(key)) return true;
+  return hubEntityLogFieldDisplayRank(key) >= 900;
+}
+
+/**
+ * Directory Log chip — prefer a credential delta when the Save has one,
+ * else the top rail row (Status/Own). Rail flatten stays Status-first.
+ */
+export function pickHubEntityLogDirectorySummaryRow<T extends { change?: { field?: string } }>(
+  rows: readonly T[],
+): T | undefined {
+  for (const field of DIRECTORY_SUMMARY_CREDENTIAL_FIELDS) {
+    const hit = rows.find((row) => row.change?.field === field);
+    if (hit) return hit;
+  }
+  const cred = rows.find((row) => row.change?.field && isHubEntityLogCredentialField(row.change.field));
+  return cred ?? rows[0];
 }
 
 /** `Field added | removed | updated` (or the raw message for event-only rows). */

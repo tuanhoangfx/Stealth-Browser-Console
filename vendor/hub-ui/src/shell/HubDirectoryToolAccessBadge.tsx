@@ -1,6 +1,7 @@
 import { KeyRound, ShieldCheck, ShieldOff } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
-import { normalizeWorkspaceRoleKey, resolveWorkspaceRoleIcon, workspaceRoleLabel } from "../auth/hub-workspace-role-icon";
+import { hubFilterOptionEmojiClass } from "./filter-dropdown-primitives";
+import { normalizeWorkspaceRoleKey, workspaceRoleEmoji, workspaceRoleLabel } from "../auth/hub-workspace-role-icon";
 
 export type HubDirectoryToolAccessBadgeKind =
   | { type: "role"; role: string }
@@ -13,6 +14,8 @@ export type HubDirectoryToolAccessBadgeProps = {
   title: string;
   /** Directory / modal tables — icon only (Users tool columns parity). */
   iconOnly?: boolean;
+  /** Override visible label (enterprise Member vs Hub User). */
+  label?: string;
 };
 
 /** Tool access badge — icon-only in directory tables; full label optional. */
@@ -20,11 +23,10 @@ export function HubDirectoryToolAccessBadge({
   kind,
   title,
   iconOnly = true,
+  label,
 }: HubDirectoryToolAccessBadgeProps) {
   if (kind.type === "role") {
     const roleKey = normalizeWorkspaceRoleKey(kind.role);
-    const meta = resolveWorkspaceRoleIcon(kind.role);
-    const Icon = meta.icon;
     return (
       <span
         className={`hub-users-role-badge hub-users-role-badge--${roleKey}${
@@ -32,8 +34,12 @@ export function HubDirectoryToolAccessBadge({
         }`}
         title={title}
       >
-        <Icon size={compactIconSize(12)} className={`hub-users-role-badge-icon ${meta.className}`} aria-hidden />
-        {!iconOnly ? <span className="hub-users-role-badge-label">{workspaceRoleLabel(kind.role)}</span> : null}
+        <span className={`${hubFilterOptionEmojiClass()} hub-users-role-badge-icon`} aria-hidden>
+          {workspaceRoleEmoji(kind.role)}
+        </span>
+        {!iconOnly ? (
+          <span className="hub-users-role-badge-label">{label ?? workspaceRoleLabel(kind.role)}</span>
+        ) : null}
       </span>
     );
   }

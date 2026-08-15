@@ -11,9 +11,10 @@ function isDonutChartKey(key: string): boolean {
 
 /**
  * Allowlist only — `topN > CHART_TOP_N` (3) is forbidden unless the facet is a
- * fixed enum with ≤4 values (fits `--hub-chart-bar-rows: 4` with no empty Other).
+ * fixed band that fills exactly `--hub-chart-bar-rows: 4`, either as 4 real
+ * buckets (contact channels) or as 3 buckets + an always-rendered `Other`
+ * rollup emitted by the aggregate (P0005 order status SSOT).
  * Slot / Price / open vocab → default `CHART_TOP_N` (3 + Other).
- * Current allowlist: `contact_bar: 4` (exactly 4 contact channels).
  */
 const BAR_CHART_TOP_N: Record<string, number> = {
   contact_bar: 4,
@@ -22,14 +23,34 @@ const BAR_CHART_TOP_N: Record<string, number> = {
   notify_bar: 4,
   order_status_bar: 4,
   pay_status_bar: 4,
+  // Todo board — fixed 3 buckets + always-rendered Other (P0005 order band SSOT).
+  status_bar: 4,
+  priority_bar: 4,
+  deadline_bar: 4,
+  // Users directory — fixed 4-bucket facets (Role+Other · Status+Other · Tools · Created · Last active+Other).
+  role_bar: 4,
+  activity_bar: 4,
+  tool_bar: 4,
+  distribution_bar: 4,
+  last_active_bar: 4,
 };
 
 /** Fixed-bucket facets — keep aggregate row order (not value-rank). */
 const BAR_CHART_PRESERVE_ORDER = new Set([
+  "contact_bar",
+  "customers_bar",
   "day_bar",
   "notify_bar",
   "order_status_bar",
   "pay_status_bar",
+  "status_bar",
+  "priority_bar",
+  "deadline_bar",
+  "role_bar",
+  "activity_bar",
+  "tool_bar",
+  "distribution_bar",
+  "last_active_bar",
 ]);
 
 export type DirectoryChartBandProps = {

@@ -31,12 +31,11 @@ export function shouldShowHubDirectoryResultCount(opts: {
   return true;
 }
 
-/** Auto-guard — table mode + registered selection toolbar hides duplicate HubResultCount. */
+/** Auto-guard — registered selection toolbar hides duplicate HubResultCount (table + card). */
 export function resolveDirectorySearchResultCountGuard(
   input: DirectorySearchResultCountGuardInput,
 ): { showResultCount?: boolean; hasSearchSelectionChip: boolean } {
-  const mode = input.viewMode ?? "table";
-  const autoChip = Boolean(input.filterSelectionToolbarActive) && mode === "table";
+  const autoChip = Boolean(input.filterSelectionToolbarActive);
   return {
     showResultCount: input.showResultCount,
     hasSearchSelectionChip: Boolean(input.hasSearchSelectionChip) || autoChip,
@@ -46,7 +45,7 @@ export function resolveDirectorySearchResultCountGuard(
 /**
  * Route V2 selection chip —
  * table: FilterBar toolbar leading (next to ViewToggle; avoids 1fr gap after search) ·
- * card: row-2 after bulk actions.
+ * card: search trailing (same x/y slot — no duplicate HubResultCount).
  */
 export function buildHubDirectorySelectionSlots(
   props: HubDirectoryToolbarSelectionProps | undefined,
@@ -54,6 +53,6 @@ export function buildHubDirectorySelectionSlots(
 ): HubDirectorySelectionSlots {
   if (!props) return {};
   const chip = <HubDirectoryToolbarSelection {...props} />;
-  if (viewMode === "card") return { row2Trailing: chip };
+  if (viewMode === "card") return { searchTrailing: chip };
   return { toolbarLeading: chip };
 }

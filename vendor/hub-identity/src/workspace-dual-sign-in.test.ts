@@ -54,4 +54,39 @@ describe("runWorkspaceDualSignIn parallel planes", () => {
     expect(Math.abs(started[0] - started[1])).toBeLessThan(delayMs);
     expect(elapsed).toBeLessThan(delayMs * 2);
   });
+
+  it("never touches a data plane when the Hub password grant fails", async () => {
+    const plane = vi.fn(async () => ({ session: mockSession("data"), error: null }));
+    const cacheHubIdentityFromSession = vi.fn();
+    // Resolve User ID → real auth email so the rejection is a credential deny, not a lookup outage.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, authEmails: ["czpgo@outlook.com"] }),
+      })),
+    );
+    const hub = {
+      auth: {
+        signInWithPassword: vi.fn(async () => ({
+          data: { session: null },
+          error: { message: "Invalid login credentials" },
+        })),
+      },
+    };
+
+    await expect(
+      runWorkspaceDualSignIn("czpgo", "wrong-password", "signin", {
+        getHubClient: () => hub as never,
+        cacheHubIdentityFromSession,
+        planes: [{ authenticate: plane }],
+      }),
+    ).rejects.toMatchObject({ message: "Invalid login credentials" });
+
+    // A mirror sign-in here would leave a Data JWT for an identity Hub just rejected.
+    expect(plane).not.toHaveBeenCalled();
+    expect(cacheHubIdentityFromSession).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });

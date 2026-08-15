@@ -1,4 +1,4 @@
-import { HubUsageLogPanel, type HubLogQuickAction } from "./HubUsageLogPanel";
+import { HubUsageLogPanel, type HubLogEntry, type HubLogQuickAction } from "./HubUsageLogPanel";
 import { useHubAppLog } from "./HubAppLogProvider";
 import {
   HUB_LOG_EMPTY_MESSAGE,
@@ -19,6 +19,10 @@ export type HubLogButtonProps = {
   subtitle?: string;
   quickActions?: HubLogQuickAction[];
   extraSections?: import("./HubUsageLogPanel").HubLogExtraSection[];
+  scopeKey?: string;
+  showUnreadChrome?: boolean;
+  trackUnread?: boolean;
+  onLogOpenDetail?: (log: HubLogEntry) => void;
 };
 
 /** Golden Log trigger — pairs with `HubAppLogProvider` (header tab log + footer session log). */
@@ -29,6 +33,10 @@ export function HubLogButton({
   subtitle,
   quickActions,
   extraSections,
+  scopeKey,
+  showUnreadChrome,
+  trackUnread,
+  onLogOpenDetail,
 }: HubLogButtonProps) {
   const { tabLogs, allLogs } = useHubAppLog();
   const logs = variant === "global" ? allLogs : tabLogs;
@@ -44,6 +52,10 @@ export function HubLogButton({
       emptyMessage={emptyMessage}
       quickActions={quickActions}
       extraSections={extraSections}
+      scopeKey={scopeKey}
+      showUnreadChrome={showUnreadChrome}
+      trackUnread={trackUnread}
+      onLogOpenDetail={onLogOpenDetail}
     />
   );
 }

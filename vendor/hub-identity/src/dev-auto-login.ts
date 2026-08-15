@@ -1,5 +1,9 @@
 /** Dev-only silent sign-in on localhost — credentials via VITE_* or NEXT_PUBLIC_* in .env.local */
 
+// Browser-only TypeScript projects consume this module too. Keep the runtime `typeof process`
+// guards below, but declare the minimal Next.js replacement surface without requiring @types/node.
+declare const process: { env: Record<string, string | undefined> };
+
 export const DEV_AUTO_LOGIN_TIMEOUT_MS = 15_000;
 
 /** Default allowlist when DEV_AUTO_LOGIN_ALLOWED_EMAIL is unset. */
@@ -70,8 +74,27 @@ export function isDevLocalHost(hostname = typeof window !== "undefined" ? window
   return hostname === "127.0.0.1" || hostname === "localhost";
 }
 
+/** `?devAutoLogin=off` — sticky per tab so a smoke can exercise the real sign-in form. */
+export const DEV_AUTO_LOGIN_PARAM = "devAutoLogin";
+export const DEV_AUTO_LOGIN_SESSION_KEY = "hub:dev-auto-login";
+
+export function isDevAutoLoginOptedOut(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const param = new URLSearchParams(window.location.search).get(DEV_AUTO_LOGIN_PARAM);
+    if (param != null) {
+      const off = /^(0|off|false|no)$/i.test(param.trim());
+      window.sessionStorage?.setItem(DEV_AUTO_LOGIN_SESSION_KEY, off ? "off" : "on");
+      return off;
+    }
+    return window.sessionStorage?.getItem(DEV_AUTO_LOGIN_SESSION_KEY) === "off";
+  } catch {
+    return false;
+  }
+}
+
 export function isDevAutoLoginEnabled(hostname?: string): boolean {
-  return isBundlerDev() && isDevLocalHost(hostname);
+  return isBundlerDev() && isDevLocalHost(hostname) && !isDevAutoLoginOptedOut();
 }
 
 /** Optional override — synced from DEV_AUTO_LOGIN_ALLOWED_EMAIL in .env.shared. */

@@ -7,6 +7,7 @@ import type { HubUsersStatusTone } from "../shell/HubUsersStatusLabel";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
 import { measureHubDirectoryPopoverPosition } from "../lib/hub-directory-popover";
 import { compactIconSize } from "../ui-scale";
+import { hubDirectoryMetricHeatDotClass } from "../lib/directory-metric-tier";
 import "../styles/hub-directory-popover.css";
 
 export type HubDirectoryColumnHintGlyph = {
@@ -28,6 +29,10 @@ export type HubDirectoryColumnHintLine = {
   icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   toneClass?: string;
+  /** Heat tier dot count for metric columns. */
+  metricHeatCount?: number;
+  /** When set with onLineAction, line renders as a button. */
+  actionKey?: string;
 };
 
 export type HubDirectoryColumnHintContent = {
@@ -41,6 +46,8 @@ export type HubDirectoryColumnHintContent = {
 
 type Props = {
   content: HubDirectoryColumnHintContent;
+  /** When set, lines with actionKey render as buttons. */
+  onLineAction?: (actionKey: string) => void;
   titleGlyph?: HubDirectoryColumnHintGlyph;
   children: ReactNode;
 };
@@ -116,7 +123,7 @@ function HintLineGlyph({ line }: { line: HubDirectoryColumnHintLine }) {
 }
 
 /** Rich multi-line column header hint — hub-directory-popover SSOT (below anchor). */
-export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props) {
+export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAction }: Props) {
   const anchorRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -172,12 +179,37 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children }: Props)
             <ul className="hub-directory-popover__list">
               {content.lines.map((line, index) => {
                 const text = line.detail ? `${line.label} · ${line.detail}` : line.label;
-                return (
-                  <li key={`${line.label}-${index}`} className="hub-directory-popover__row">
-                    <span className="hub-directory-popover__icon" aria-hidden>
+                const rowBody = (
+                  <>
+                    <span className="hub-directory-popover__icon hub-directory-popover__icon--with-heat" aria-hidden>
                       <HintLineGlyph line={line} />
+                      {line.metricHeatCount != null ? (
+                        <span className={hubDirectoryMetricHeatDotClass(line.metricHeatCount)} aria-hidden />
+                      ) : null}
                     </span>
                     <span className="hub-directory-popover__line">{text}</span>
+                  </>
+                );
+                const key = `${line.label}-${index}`;
+                if (line.actionKey && onLineAction) {
+                  return (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        className="hub-directory-popover__row hub-directory-popover__row--action"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onLineAction(line.actionKey!);
+                        }}
+                      >
+                        {rowBody}
+                      </button>
+                    </li>
+                  );
+                }
+                return (
+                  <li key={key} className="hub-directory-popover__row">
+                    {rowBody}
                   </li>
                 );
               })}

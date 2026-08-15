@@ -11,8 +11,8 @@ export type HubDirectorySelectAllChipProps = {
   /** When true, chip title refers to filtered set (modal tables), not paginated page. */
   filteredScope?: boolean;
   /**
-   * `select-all` — "Select all (n)" / "Clear selection" (card golden).
-   * `select-unselect` — "Select" / "Unselect" with fixed label width (table row2 SSOT).
+   * `select-unselect` — **default SSOT** — fixed-width **Select** / **Unselect** (table + card row2).
+   * `select-all` — legacy card “Select all (n)” / “Clear selection”.
    */
   labelMode?: "select-all" | "select-unselect";
 };
@@ -41,7 +41,7 @@ export function HubDirectorySelectAllChip({
   onToggleSelectAll,
   noun = "items",
   filteredScope = false,
-  labelMode = "select-all",
+  labelMode = "select-unselect",
 }: HubDirectorySelectAllChipProps) {
   if (visibleCount === 0 && labelMode === "select-all") return null;
 

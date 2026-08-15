@@ -12,7 +12,7 @@ async function resolveAuthUserId(client: SupabaseClient): Promise<string | null 
   return authData.user?.id?.trim() || null;
 }
 
-/** Client-side tool grant check against Hub identity DB (P0003 / P0004 / P0016 / P0020). */
+/** Client-side tool grant check against Hub identity DB (integrated login tools). */
 export async function verifyHubIntegratedToolAccess(
   client: SupabaseClient,
   toolCode: string,
@@ -22,7 +22,8 @@ export async function verifyHubIntegratedToolAccess(
 
   const userId = await resolveAuthUserId(client);
   if (userId === undefined) return null;
-  if (!userId) return false;
+  // No Hub JWT on the identity client — uncertain, not a proven deny.
+  if (!userId) return null;
 
   const { data: rpcOk, error: rpcError } = await client.rpc("hub_user_has_tool_access", {
     p_user_id: userId,

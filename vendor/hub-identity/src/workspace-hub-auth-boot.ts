@@ -36,7 +36,7 @@ export type WorkspaceHubAuthBootState = {
 
 /**
  * Shared Hub-auth boot lifecycle — policy gate, relay, cross-tab sync,
- * Supabase listener, API 401 refresh, token scheduler.
+ * GoTrue listener, API 401 refresh, token scheduler.
  */
 export function useWorkspaceHubAuthBoot(config: WorkspaceHubAuthBootConfig): WorkspaceHubAuthBootState {
   const [authRequired, setAuthRequired] = useState(false);

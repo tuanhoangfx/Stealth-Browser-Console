@@ -1,5 +1,6 @@
-import { Copy, Package, Pencil, RefreshCw, SquareStack, Trash2 } from "lucide-react";
+import { Copy, Package, Pencil, RefreshCw, SquareStack } from "lucide-react";
 import { HubBulkActionButton } from "./HubBulkActionButton";
+import { HubDirectoryDeleteBulkAction } from "./HubDirectoryDeleteBulkAction";
 import { HubDirectoryNewBulkAction } from "./HubDirectoryNewBulkAction";
 
 /** Optional Hub tools bulk refresh — P0004 golden Hub uses auto-sync; card select-all only. */
@@ -95,7 +96,7 @@ export function HubScreensDirectoryBulkActions({
   );
 }
 
-/** Golden Users directory — CRUD row-2 actions. */
+/** Golden Users directory — New / Edit / Delete (SSOT). Clear access → Edit tools; vault export → Settings. */
 export type HubUsersDirectoryBulkActionsProps = {
   hasSelection: boolean;
   roleLoading: boolean;
@@ -103,7 +104,6 @@ export type HubUsersDirectoryBulkActionsProps = {
   isManager: boolean;
   onAdd: () => void;
   onEdit: () => void;
-  onClearAccess: () => void;
   onDeleteUsers: () => void;
 };
 
@@ -114,12 +114,10 @@ export function HubUsersDirectoryBulkActions({
   isManager,
   onAdd,
   onEdit,
-  onClearAccess,
   onDeleteUsers,
 }: HubUsersDirectoryBulkActionsProps) {
   const canEdit = isAdmin || isManager;
   const editEnabled = canEdit && hasSelection && !roleLoading;
-  const clearEnabled = isAdmin && hasSelection && !roleLoading;
   const deleteEnabled = isAdmin && hasSelection && !roleLoading;
   const addEnabled = isAdmin && !roleLoading;
 
@@ -152,23 +150,7 @@ export function HubUsersDirectoryBulkActions({
         disabled={!editEnabled}
         onClick={onEdit}
       />
-      <HubBulkActionButton
-        icon={<Trash2 size={14} aria-hidden />}
-        label="Clear access"
-        title={
-          roleLoading
-            ? "Loading your role…"
-            : isAdmin
-              ? "Clear Hub tool access for selected users (keep profiles + auth accounts)"
-              : "Admin only"
-        }
-        tone="rose"
-        disabled={!clearEnabled}
-        onClick={onClearAccess}
-      />
-      <HubBulkActionButton
-        icon={<Trash2 size={14} aria-hidden />}
-        label="Delete users"
+      <HubDirectoryDeleteBulkAction
         title={
           roleLoading
             ? "Loading your role…"
@@ -176,7 +158,6 @@ export function HubUsersDirectoryBulkActions({
               ? "Delete selected users (7-day grace, then permanent purge)"
               : "Admin only"
         }
-        tone="rose"
         disabled={!deleteEnabled}
         onClick={onDeleteUsers}
       />

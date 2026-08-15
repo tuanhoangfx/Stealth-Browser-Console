@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-08-15 - Boot IPC before window (empty Profiles after update) (git)
+
+- Version: `1.1.1`
+- Timestamp: 2026-08-15 21:50 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Git/Commit Minor bump (P0003): 1.0.188 → 1.1.1 (MINOR+1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-14 — v1.0.188 — Electron dev reload
+
+- Version: `1.0.188`
+- Timestamp: 2026-08-14 03:08 (UTC+7)
+- Type: Patch
+- Status: Dev
+
+### Changes
+
+- Auto patch bump + Electron reload gate (identity extension purge, `--disable-extensions`, prefs wipe).
+
 ## 2026-08-13 - Boot IPC before window (empty Profiles after update)
 
 - Version: `1.0.187`

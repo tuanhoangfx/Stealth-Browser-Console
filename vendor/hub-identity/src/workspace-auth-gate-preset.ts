@@ -5,8 +5,10 @@ export type WorkspaceAuthToolCode =
   | "P0003"
   | "P0004"
   | "P0005"
+  | "P0006"
   | "P0012"
   | "P0013"
+  | "P0015"
   | "P0016"
   | "P0020"
   | "P0021"
@@ -86,9 +88,24 @@ const BASE: Record<WorkspaceAuthToolCode, WorkspaceAuthGatePreset> = {
     toolInfo: { name: "CRM", tagline: "CRM · customers & orders" },
     forgotPassword: {},
   },
+  P0006: {
+    title: "Welcome to Content Studio",
+    toolInfo: { name: "Content Studio", tagline: "Auto reup TikTok · Douyin · YouTube" },
+    forgotPassword: {
+      syntheticHint:
+        "Link your email in Account after sign-in, or ask an admin to reset your password.",
+      successMessage: "Check your inbox for a reset link.",
+    },
+  },
   P0012: {
     title: "Welcome to Performance",
     toolInfo: { name: "Performance", tagline: "Work performance, boards & team workload" },
+    errorOptions: { toolHubHint: true, dualWorkspace: true },
+    forgotPassword: {},
+  },
+  P0015: {
+    title: "Welcome to ENZY Portal",
+    toolInfo: { name: "ENZY Portal", tagline: "Tasks, customers, places & portal access" },
     errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },

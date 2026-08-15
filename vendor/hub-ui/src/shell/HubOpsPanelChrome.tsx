@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Layers, Pencil, ScrollText, Trash2, UserPlus } from "lucide-react";
 import {
   HubActivityFeedToolbar,
   resolveHubActivityKindMeta,
@@ -22,16 +21,104 @@ export const HUB_OPS_CRUD_KINDS = ["create", "update", "delete"] as const;
 
 export type HubOpsTypeTocChrome = {
   label: string;
-  Icon: LucideIcon;
+  /** Emoji is the Log/Release default; `Icon` is kept for tool-specific Notify severity chrome. */
+  emoji?: string;
+  Icon?: LucideIcon;
   className: string;
 };
 
 const HUB_OPS_TYPE_TOC_CHROME: Record<string, HubOpsTypeTocChrome> = {
-  all: { label: "All", Icon: Layers, className: "text-indigo-300" },
-  create: { label: "Create", Icon: UserPlus, className: "text-emerald-400" },
-  update: { label: "Update", Icon: Pencil, className: "text-sky-300" },
-  delete: { label: "Delete", Icon: Trash2, className: "text-rose-400" },
+  all: { label: "All", emoji: "◉", className: "text-indigo-300" },
+  create: { label: "Create", emoji: "✳️", className: "text-emerald-400" },
+  update: { label: "Update", emoji: "⚡", className: "text-violet-300" },
+  delete: { label: "Delete", emoji: "🗑️", className: "text-rose-400" },
 };
+
+/** Timeline row kind badges — same chip chrome as Update Release (`ReleaseKindBadge`). */
+export type HubOpsKindBadgeMeta = {
+  label: string;
+  emoji: string;
+  className: string;
+  chip: string;
+};
+
+const HUB_OPS_KIND_BADGE_META: Record<string, HubOpsKindBadgeMeta> = {
+  create: {
+    label: "Create",
+    emoji: "✳️",
+    className: "text-emerald-300",
+    chip: "border-emerald-400/35 bg-emerald-500/15 text-emerald-100",
+  },
+  new: {
+    label: "New",
+    emoji: "✳️",
+    className: "text-emerald-300",
+    chip: "border-emerald-400/35 bg-emerald-500/15 text-emerald-100",
+  },
+  update: {
+    label: "Update",
+    emoji: "⚡",
+    className: "text-violet-300",
+    chip: "border-violet-400/40 bg-violet-500/15 text-violet-100",
+  },
+  improve: {
+    label: "Update",
+    emoji: "⚡",
+    className: "text-violet-300",
+    chip: "border-violet-400/40 bg-violet-500/15 text-violet-100",
+  },
+  delete: {
+    label: "Removed",
+    emoji: "🗑️",
+    className: "text-rose-400",
+    chip: "border-rose-400/35 bg-rose-500/15 text-rose-100",
+  },
+  fix: {
+    label: "Fixed",
+    emoji: "🛠️",
+    className: "text-amber-300",
+    chip: "border-amber-400/35 bg-amber-500/15 text-amber-100",
+  },
+  system: {
+    label: "System",
+    emoji: "📋",
+    className: "text-cyan-300",
+    chip: "border-cyan-400/35 bg-cyan-500/15 text-cyan-100",
+  },
+  sync: {
+    label: "Sync",
+    emoji: "🔄",
+    className: "text-indigo-300",
+    chip: "border-indigo-400/35 bg-indigo-500/15 text-indigo-100",
+  },
+};
+
+export function resolveHubOpsKindBadgeMeta(kind: string | undefined): HubOpsKindBadgeMeta | null {
+  if (!kind) return null;
+  const key = kind.trim().toLowerCase();
+  if (key in HUB_OPS_KIND_BADGE_META) return HUB_OPS_KIND_BADGE_META[key]!;
+  const toc = resolveHubOpsTypeTocChrome(key);
+  return {
+    label: toc.label,
+    emoji: toc.emoji ?? "📋",
+    className: toc.className,
+    chip: "border-white/15 bg-white/[.04] text-[var(--text)]/90",
+  };
+}
+
+/** Kind badge — Log · Notify · Release timeline row SSOT. */
+export function HubOpsKindBadge({ kind }: { kind?: string }) {
+  const meta = resolveHubOpsKindBadgeMeta(kind);
+  if (!meta) return null;
+  return (
+    <span
+      className={`hub-release-kind-badge inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${meta.chip}`}
+    >
+      <span className={`text-[11px] leading-none ${meta.className}`} aria-hidden>{meta.emoji}</span>
+      {meta.label}
+    </span>
+  );
+}
 
 /** TOC glyph/label for a kind — CRUD verbs first, then activity kind meta. */
 export function resolveHubOpsTypeTocChrome(kind: HubActivityKindFilter): HubOpsTypeTocChrome {
@@ -40,14 +127,15 @@ export function resolveHubOpsTypeTocChrome(kind: HubActivityKindFilter): HubOpsT
   const meta = resolveHubActivityKindMeta(kind);
   return {
     label: meta?.label ?? String(kind),
-    Icon: meta?.Icon ?? ScrollText,
+    emoji: meta?.label ? "📋" : "•",
     className: meta?.className ?? "text-slate-300",
   };
 }
 
 export function hubOpsTypeTocIcon(kind: HubActivityKindFilter): ReactNode {
-  const { Icon, className } = resolveHubOpsTypeTocChrome(kind);
-  return <Icon size={11} className={className} aria-hidden />;
+  const { emoji, Icon, className } = resolveHubOpsTypeTocChrome(kind);
+  if (emoji) return <span className={`text-[11px] leading-none ${className}`} aria-hidden>{emoji}</span>;
+  return Icon ? <Icon size={11} className={className} aria-hidden /> : null;
 }
 
 export function hubOpsTypeTocLabel(kind: HubActivityKindFilter): string {
@@ -92,8 +180,17 @@ export function buildHubOpsTypeTocEntries({
   const chrome = (kind: HubActivityKindFilter): HubOpsTypeTocChrome =>
     chromeOf?.(kind) ?? resolveHubOpsTypeTocChrome(kind);
   const toEntry = (kind: HubActivityKindFilter, count?: number): HubOpsTypeTocEntry => {
-    const { label, Icon, className } = chrome(kind);
-    return { kind, label, icon: <Icon size={11} className={className} aria-hidden />, count };
+    const { label, emoji, Icon, className } = chrome(kind);
+    return {
+      kind,
+      label,
+      icon: emoji ? (
+        <span className={`text-[11px] leading-none ${className}`} aria-hidden>{emoji}</span>
+      ) : Icon ? (
+        <Icon size={11} className={className} aria-hidden />
+      ) : null,
+      count,
+    };
   };
 
   const ownCounts = new Map<string, number>();
@@ -220,7 +317,7 @@ export function HubOpsTypeTocNav({
   );
 }
 
-/** Header-center search — chips live in the TOC now, so they are always off. */
+/** Header-center search — centered in the ops modal header (Update · Log · Notify SSOT). */
 export function HubOpsPanelSearch({
   query,
   onQueryChange,
@@ -231,15 +328,17 @@ export function HubOpsPanelSearch({
   placeholder?: string;
 }) {
   return (
-    <HubActivityFeedToolbar
-      query={query}
-      onQueryChange={onQueryChange}
-      kindFilter="all"
-      onKindFilterChange={() => {}}
-      showKindFilters={false}
-      searchPlaceholder={placeholder}
-      variant="header"
-    />
+    <div className="hub-ops-panel-search mx-auto w-full max-w-2xl">
+      <HubActivityFeedToolbar
+        query={query}
+        onQueryChange={onQueryChange}
+        kindFilter="all"
+        onKindFilterChange={() => {}}
+        showKindFilters={false}
+        searchPlaceholder={placeholder}
+        variant="header"
+      />
+    </div>
   );
 }
 

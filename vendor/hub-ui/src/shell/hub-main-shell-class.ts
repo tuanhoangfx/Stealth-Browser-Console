@@ -36,7 +36,7 @@ export type ToolManifestUiShell = {
 
 /**
  * Raw `tool.manifest.json` shape. A JSON import widens literals to `string`, so hosts that pass
- * `toolManifest.uiShell` straight through cannot satisfy `ToolManifestUiShell` (P0005, P0026).
+ * `toolManifest.uiShell` straight through cannot satisfy `ToolManifestUiShell` (P0005, P0015).
  */
 export type ToolManifestUiShellInput = {
   golden?: string;
@@ -70,7 +70,7 @@ export function hubMainShellClassFromManifest(
  * direct root children stacks them: the sidebar takes the full viewport height and main lands
  * below the fold. P0012 shipped exactly that. This row wrapper is what keeps them side by side.
  *
- * Shared because P0020 and P0026 each spelled the same class string out by hand.
+ * Shared because P0020 and P0015 each spelled the same class string out by hand.
  */
 export function hubAppShellClassName(extraClassName = ""): string {
   return ["hub-app theme-hub flex h-full min-h-0 min-h-dvh w-full overflow-hidden", extraClassName]

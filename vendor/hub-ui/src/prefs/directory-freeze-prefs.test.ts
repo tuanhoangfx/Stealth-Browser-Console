@@ -1,5 +1,50 @@
-import { describe, expect, it } from "vitest";
-import { createScopedDirectoryFreezePrefs } from "./directory-freeze-prefs";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  createDirectoryFreezePrefs,
+  createScopedDirectoryFreezePrefs,
+} from "./directory-freeze-prefs";
+
+describe("createDirectoryFreezePrefs legacy migrate", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("copies v1 into v2 once and drops legacy key", () => {
+    localStorage.setItem("tool-hub:users-table-freeze:v1", "3");
+    const prefs = createDirectoryFreezePrefs({
+      storageKey: "tool-hub:users-table-freeze:v2",
+      changeEvent: "user-table-freeze-change",
+      defaultCount: 2,
+      legacyStorageKeys: ["tool-hub:users-table-freeze:v1"],
+    });
+    expect(prefs.read()).toBe(3);
+    expect(localStorage.getItem("tool-hub:users-table-freeze:v2")).toBe("3");
+    expect(localStorage.getItem("tool-hub:users-table-freeze:v1")).toBeNull();
+  });
+
+  it("keeps v2 when both keys exist and purges legacy", () => {
+    localStorage.setItem("tool-hub:users-table-freeze:v1", "1");
+    localStorage.setItem("tool-hub:users-table-freeze:v2", "4");
+    const prefs = createDirectoryFreezePrefs({
+      storageKey: "tool-hub:users-table-freeze:v2",
+      changeEvent: "user-table-freeze-change",
+      defaultCount: 2,
+      legacyStorageKeys: ["tool-hub:users-table-freeze:v1"],
+    });
+    expect(prefs.read()).toBe(4);
+    expect(localStorage.getItem("tool-hub:users-table-freeze:v1")).toBeNull();
+  });
+
+  it("uses defaultCount when no keys exist", () => {
+    const prefs = createDirectoryFreezePrefs({
+      storageKey: "tool-hub:users-table-freeze:v2",
+      changeEvent: "user-table-freeze-change",
+      defaultCount: 2,
+      legacyStorageKeys: ["tool-hub:users-table-freeze:v1"],
+    });
+    expect(prefs.read()).toBe(2);
+  });
+});
 
 describe("createScopedDirectoryFreezePrefs", () => {
   it("returns a stable prefs object per scope", () => {

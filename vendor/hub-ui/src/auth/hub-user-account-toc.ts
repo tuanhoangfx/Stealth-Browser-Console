@@ -8,13 +8,16 @@ export type HubUserAccountTocEntry = {
   semanticKey: SemanticIconKey;
 };
 
+/** Matches `HubUserAccountSections` anchors — P0020 ADM grouping. */
 export const HUB_WORKSPACE_USER_ACCOUNT_TOC: HubUserAccountTocEntry[] = [
-  { id: "hub-user-account", label: "Account", semanticKey: "user.account" },
-  { id: "hub-user-session", label: "Session", semanticKey: "user.session" },
+  { id: "hub-user-credentials", label: "Credentials", semanticKey: "user.security" },
+  { id: "hub-user-identity", label: "Identity", semanticKey: "user.account" },
+  { id: "hub-user-status", label: "Status", semanticKey: "user.session" },
 ];
 
 export const HUB_FULL_USER_ACCOUNT_TOC: HubUserAccountTocEntry[] = [
-  { id: "hub-user-account", label: "Account", semanticKey: "user.account" },
+  ...HUB_WORKSPACE_USER_ACCOUNT_TOC,
+  { id: "hub-user-note", label: "Note", semanticKey: "filter.note" },
   { id: "hub-user-log", label: "Log", semanticKey: "log.panel" },
 ];
 

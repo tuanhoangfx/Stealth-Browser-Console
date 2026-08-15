@@ -9,13 +9,14 @@ import {
   useHubIdentityRelayRequest,
   useWorkspaceHubAuthBoot,
   verifyHubIntegratedToolAccess,
+  verifyHubToolAccessFromSnapshot,
   WORKSPACE_AUTH_BOOT_TIMEOUT_MS,
 } from "@tool-workspace/hub-identity";
 import { API_UNAUTHORIZED_EVENT } from "../../lib/api-auth-token";
 import { ensureHubAuth, signInHubIdentity } from "../../lib/hub-auth-client";
 import { isToolHubOrigin, resolveToolHubOrigin } from "../../lib/hub-identity-urls";
 import { isHubSupabaseConfigured } from "../../lib/hub-supabase-env";
-import { cacheHubIdentity, clearHubIdentity } from "../../lib/hub-identity-session";
+import { cacheHubIdentity, clearHubIdentity, readHubIdentity } from "../../lib/hub-identity-session";
 import {
   startHubTokenRefreshScheduler,
   stopHubTokenRefreshScheduler,
@@ -98,6 +99,18 @@ export function useStealthAuthState(): StealthAuthState {
     // cross-tab identity sync, token refresh) keep the last confirmed value so
     // the console never flashes back to the loading screen for a signed-in user.
     if (!toolAccessConfirmedRef.current) setToolAccess(null);
+    // A shared Hub snapshot already has the JWT + user id needed by the grant RPC. Use it
+    // directly before falling back to the Supabase client path, which may need to restore its
+    // own session first. This keeps the same null/uncertain contract as the existing checker.
+    const snapshot = readHubIdentity();
+    if (snapshot?.access_token?.trim() && snapshot.access_token === _accessToken) {
+      const fast = await verifyHubToolAccessFromSnapshot(snapshot, "P0003");
+      if (gen !== toolCheckGen.current) return fast;
+      if (typeof fast === "boolean") {
+        commitToolAccess(fast);
+        return fast;
+      }
+    }
     const client = getIdentitySupabase();
     if (!client) {
       if (gen === toolCheckGen.current) commitToolAccess(true);

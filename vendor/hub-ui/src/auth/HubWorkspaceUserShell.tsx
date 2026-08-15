@@ -1,11 +1,15 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hubSessionLabels, type HubSessionLike } from "@tool-workspace/hub-identity";
+import {
+  createHubFullAccountAuthHandlers,
+  hubSessionLabels,
+  type HubSessionLike,
+} from "@tool-workspace/hub-identity";
 import { HubSidebarUserFooter } from "./HubSidebarUserFooter";
-import { HubWorkspaceUserModal } from "./HubWorkspaceUserModal";
+import { HubFullUserAccountModal } from "./HubFullUserAccountModal";
+import { createHubProfilesActivityLogHandlers } from "./hub-profiles-activity-log";
 import { useWorkspaceRoleKey } from "./useWorkspaceRoleKey";
-import { resolveWorkspaceRoleIcon } from "./hub-workspace-role-icon";
-import { compactIconSize } from "../ui-scale";
+import { workspaceRoleLabel } from "./hub-workspace-role-icon";
 import {
   buildWorkspaceUserProfileRows,
   workspaceUserFooterLabel,
@@ -14,7 +18,6 @@ import {
 import {
   HUB_WORKSPACE_USER_EMPTY_EMAIL,
   HUB_WORKSPACE_USER_FOOTER_TITLE,
-  HUB_WORKSPACE_USER_MODAL_TITLE,
 } from "../shell/hub-chrome-messages";
 
 export type HubWorkspaceUserModalRenderContext = {
@@ -32,10 +35,24 @@ export type HubWorkspaceUserModalRenderContext = {
 export type HubWorkspaceUserShellProps = {
   session: HubSessionLike;
   anonymous?: boolean;
-  /** Return false to keep modal open (e.g. sign-out error toast). Omit when using `renderModal`. */
+  /** Return false to keep modal open (e.g. sign-out error toast). */
   onSignOut?: () => boolean | void | Promise<boolean | void>;
-  /** P0004 — swap in HubFullUserAccountModal while keeping shared footer. */
+  /**
+   * Escape hatch only (dual-auth custom modal, rare host overrides).
+   * Default sidebar account UI is `HubFullUserAccountModal` via shared handlers.
+   */
   renderModal?: (ctx: HubWorkspaceUserModalRenderContext) => ReactNode;
+  /** Hub identity client for Full account auth + activity log (preferred over `renderModal`). */
+  getHubClient?: () => SupabaseClient | null;
+  /** Await before each Hub auth/DB call (apply Hub identity session, etc.). */
+  prepareHubClient?: () => Promise<void>;
+  /** Mirror password sync API — defaults to hub-identity route helper. */
+  syncApiUrl?: string | (() => string);
+  onSignOutError?: (title: string, message: string) => void;
+  /** Extra content under Status (e.g. Sign in to Hub CTA). */
+  statusTrailing?: ReactNode;
+  /** Force Full modal open (dev smoke query params). */
+  forceModalOpen?: boolean;
   modalTitle?: string;
   footerTitle?: string;
   footerGuestLabel?: string;
@@ -55,7 +72,7 @@ export type HubWorkspaceUserShellProps = {
   onPrepareProfileRoleClient?: (client: SupabaseClient) => Promise<void>;
 };
 
-/** Sidebar User footer + workspace account modal — single config (P0020 / P0016). */
+/** Sidebar User footer + Full User Account modal — single config for every Hub host. */
 export function HubWorkspaceUserShell({
   session,
   anonymous = false,
@@ -75,9 +92,14 @@ export function HubWorkspaceUserShell({
   profileRoleEmail,
   onPrepareProfileRoleClient,
   renderModal,
+  getHubClient,
+  prepareHubClient,
+  syncApiUrl,
+  onSignOutError,
+  statusTrailing,
+  forceModalOpen = false,
 }: HubWorkspaceUserShellProps) {
   const [open, setOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
 
   const labels = labelsProp ?? hubSessionLabels(session);
   const { roleKey, roleIconPending } = useWorkspaceRoleKey(session, {
@@ -117,13 +139,42 @@ export function HubWorkspaceUserShell({
       }),
     [session, labels, includeLoginId, emptyEmailLabel, roleKey],
   );
-  const roleMeta = useMemo(() => resolveWorkspaceRoleIcon(roleKey), [roleKey]);
-  const RoleIcon = roleMeta.icon;
 
+  const resolveClient = useMemo(
+    () => getHubClient ?? (() => profileRoleClient ?? null),
+    [getHubClient, profileRoleClient],
+  );
+  const prepareClient = useMemo(() => {
+    if (prepareHubClient) return prepareHubClient;
+    if (onPrepareProfileRoleClient) {
+      return async () => {
+        const client = resolveClient();
+        if (client) await onPrepareProfileRoleClient(client);
+      };
+    }
+    return undefined;
+  }, [prepareHubClient, onPrepareProfileRoleClient, resolveClient]);
+
+  const accountHandlers = useMemo(
+    () =>
+      createHubFullAccountAuthHandlers({
+        getClient: resolveClient,
+        prepareClient,
+        syncApiUrl,
+        getLoginId: () => labels.loginId,
+      }),
+    [resolveClient, prepareClient, syncApiUrl, labels.loginId],
+  );
+  const activityLog = useMemo(
+    () => createHubProfilesActivityLogHandlers(resolveClient),
+    [resolveClient],
+  );
+
+  const modalOpen = forceModalOpen || open;
   const modalCtx: HubWorkspaceUserModalRenderContext = {
-    open,
+    open: modalOpen,
     onClose: () => setOpen(false),
-    signingOut,
+    signingOut: false,
     displayTitle,
     initials,
     profileRows,
@@ -132,17 +183,15 @@ export function HubWorkspaceUserShell({
     labels,
   };
 
-  const handleSignOut = () => {
-    if (!onSignOut) return;
-    void (async () => {
-      setSigningOut(true);
-      try {
-        const ok = await onSignOut();
-        if (ok !== false) setOpen(false);
-      } finally {
-        setSigningOut(false);
-      }
-    })();
+  const handleFullModalSignOut = async () => {
+    if (!onSignOut) return { ok: true, message: "" };
+    try {
+      const ok = await onSignOut();
+      if (ok === false) return { ok: false, message: "Sign out failed." };
+      return { ok: true, message: "" };
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : String(err) };
+    }
   };
 
   return (
@@ -157,24 +206,25 @@ export function HubWorkspaceUserShell({
       {renderModal ? (
         renderModal(modalCtx)
       ) : (
-        <HubWorkspaceUserModal
-          open={open}
+        <HubFullUserAccountModal
+          open={modalOpen}
           onClose={() => setOpen(false)}
+          session={session}
           title={displayTitle}
-          userId={session?.user?.id ?? null}
-          sessionActive={Boolean(session?.user?.id?.trim()) && !anonymous}
-          signingOut={signingOut}
-          onSignOut={handleSignOut}
+          initials={initials}
+          roleLabel={workspaceRoleLabel(roleKey)}
           workspaceNote={workspaceNote}
-          headerLeading={
-            <span
-              className={`user-access-modal__avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-indigo-300/25 bg-indigo-500/20 transition-opacity ${roleIconPending ? "opacity-0" : ""}`}
-              aria-hidden
-            >
-              <RoleIcon size={compactIconSize(16)} className={roleMeta.className} />
-            </span>
-          }
-          rows={profileRows}
+          statusTrailing={statusTrailing}
+          onResolveRole={accountHandlers.onResolveRole}
+          onUpdateUsername={accountHandlers.onUpdateUsername}
+          onLinkEmail={accountHandlers.onLinkEmail}
+          onUpdatePassword={accountHandlers.onUpdatePassword}
+          onLoadOwnProfile={accountHandlers.fetchOwnProfileFields}
+          onUpdateOwnProfile={accountHandlers.onUpdateOwnProfile}
+          onSignOut={handleFullModalSignOut}
+          onSignOutError={onSignOutError}
+          onLoadActivityLog={activityLog.fetchUserActivityLog}
+          onPersistActivityLog={activityLog.persistUserActivityLog}
         />
       )}
     </>

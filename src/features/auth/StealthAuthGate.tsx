@@ -1,9 +1,18 @@
-import { useMemo } from "react";
 import { WorkspaceAuthGate, createWorkspaceAuthGate, HubAuthBrandIcon } from "@tool-workspace/hub-ui";
+import {
+  createWorkspaceAuthGateHubEnvPartial,
+  createWorkspaceAuthGateHubForgotPasswordFromEnv,
+} from "@tool-workspace/hub-identity";
 import { STEALTH_BRAND_ICON } from "../../lib/stealth-product";
-import { isHubSupabaseConfigured } from "../../lib/hub-supabase-env";
+import {
+  HUB_SUPABASE_ANON_KEY,
+  HUB_SUPABASE_URL,
+  isHubSupabaseConfigured,
+} from "../../lib/hub-supabase-env";
 import { getIdentitySupabase, applyHubIdentitySession } from "../../lib/supabase-identity";
 import { useStealthAuth } from "./AuthSessionProvider";
+
+const hubEnv = { HUB_SUPABASE_URL, HUB_SUPABASE_ANON_KEY, isHubSupabaseConfigured };
 
 type Props = {
   onAuthed?: () => void;
@@ -11,10 +20,6 @@ type Props = {
 
 export function StealthAuthGate({ onAuthed }: Props) {
   const { signIn, prepareHubSignIn } = useStealthAuth();
-  const profileRoleClient = useMemo(
-    () => (isHubSupabaseConfigured ? (getIdentitySupabase() as ReturnType<typeof getIdentitySupabase>) : null),
-    [],
-  );
 
   return (
     <WorkspaceAuthGate
@@ -23,10 +28,11 @@ export function StealthAuthGate({ onAuthed }: Props) {
         tagline: "",
         headerLeading: <HubAuthBrandIcon src={STEALTH_BRAND_ICON} />,
         onAuthed,
-        profileRoleClient: profileRoleClient as never,
-        onPrepareProfileRoleClient: async () => {
-          await applyHubIdentitySession();
-        },
+        ...createWorkspaceAuthGateHubEnvPartial({
+          env: hubEnv,
+          getHubClient: getIdentitySupabase,
+          prepareHubIdentitySession: applyHubIdentitySession,
+        }),
         onSubmit: async (login, password, mode) => {
           try {
             prepareHubSignIn();
@@ -35,14 +41,7 @@ export function StealthAuthGate({ onAuthed }: Props) {
             return { error: err instanceof Error ? err.message : String(err) };
           }
         },
-        forgotPassword: {
-          isHubConfigured: () => isHubSupabaseConfigured,
-          resetPasswordForEmail: async (authEmail, redirectTo) => {
-            const hub = getIdentitySupabase();
-            if (!hub) throw new Error("Tool Hub Supabase is not configured.");
-            return hub.auth.resetPasswordForEmail(authEmail, { redirectTo });
-          },
-        },
+        forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubEnv }),
       })}
     />
   );

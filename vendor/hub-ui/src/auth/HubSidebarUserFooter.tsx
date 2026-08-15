@@ -35,6 +35,7 @@ export function HubSidebarUserFooter({
         label={footerUserLabel}
         title={title}
         onClick={onOpenUser}
+        dataHubSidebarUser
       />
     );
   }
@@ -46,6 +47,7 @@ export function HubSidebarUserFooter({
       label={label}
       title={title}
       onClick={onOpenUser}
+      dataHubSidebarUser
       trailing={
         footerUserLabel && footerUserLabel !== label ? (
           <span className="max-w-[140px] truncate text-xs font-medium text-[var(--text)]/80">{footerUserLabel}</span>

@@ -11,7 +11,7 @@ import {
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
 } from "../shell/HubToolDetailSection";
 import { HubTocSectionNav } from "../shell/HubTocSectionNav";
-import { HubUserModalFieldRow, HubUserModalFieldTable } from "./HubUserModalFieldTable";
+import { HubUserModalAdmField, HubUserModalAdmFields } from "./HubUserModalAdmField";
 import type { HubFullUserAccountResult } from "./HubFullUserAccountModal";
 import {
   HUB_CHANGE_USERNAME_TOC,
@@ -91,8 +91,8 @@ export function HubUserChangeUsernameModal({
           title="User ID"
           icon={hubUserChangeSectionIcon(HUB_CHANGE_USERNAME_TOC, "hub-change-username-id")}
         >
-          <HubUserModalFieldTable>
-            <HubUserModalFieldRow icon={UserRound} iconClassName="text-violet-300" label="Username">
+          <HubUserModalAdmFields>
+            <HubUserModalAdmField icon={UserRound} iconClassName="text-violet-300" label="Username">
               <input
                 className="field w-full text-xs"
                 type="text"
@@ -102,8 +102,8 @@ export function HubUserChangeUsernameModal({
                 autoComplete="username"
                 {...HUB_NO_SPELLCHECK_PROPS}
               />
-            </HubUserModalFieldRow>
-          </HubUserModalFieldTable>
+            </HubUserModalAdmField>
+          </HubUserModalAdmFields>
           {message ? <p className="auth-gate-message mt-3 text-xs">{message}</p> : null}
         </HubToolDetailSection>
       </div>

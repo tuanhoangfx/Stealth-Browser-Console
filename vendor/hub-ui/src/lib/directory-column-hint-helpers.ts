@@ -188,6 +188,47 @@ export function withFilterLabelHints(
   });
 }
 
+/** Attach native `tip` on each filter option — hover parity with facet labelHint. */
+export function withFilterOptionTips(
+  filters: readonly FilterDef[],
+  resolveTip: (filterKey: string, filterLabel: string, option: FilterDef["options"][number]) => string | undefined,
+): FilterDef[] {
+  return filters.map((filter) => ({
+    ...filter,
+    options: filter.options.map((option) => {
+      const tip = option.tip?.trim() || resolveTip(filter.key, filter.label, option)?.trim();
+      return tip ? { ...option, tip } : option;
+    }),
+  }));
+}
+
+/** Attach rich `labelHint` popover on each filter option (uses existing `tip` when resolver omits). */
+export function withFilterOptionLabelHints(
+  filters: readonly FilterDef[],
+  resolveHint: (
+    filterKey: string,
+    filterLabel: string,
+    option: FilterDef["options"][number],
+  ) => HubDirectoryColumnHintContent | undefined,
+): FilterDef[] {
+  return filters.map((filter) => ({
+    ...filter,
+    options: filter.options.map((option) => {
+      const labelHint =
+        option.labelHint ??
+        resolveHint(filter.key, filter.label, option) ??
+        (option.tip?.trim()
+          ? {
+              title: option.label,
+              description: option.tip.trim(),
+              lines: [],
+            }
+          : undefined);
+      return labelHint ? { ...option, labelHint } : option;
+    }),
+  }));
+}
+
 /** Attach sheet-parity emoji stickers to directory column meta (table header SSOT). */
 export function withDirectoryColumnStickers<M extends Record<string, DirectoryColumnHeaderMeta>>(
   meta: M,

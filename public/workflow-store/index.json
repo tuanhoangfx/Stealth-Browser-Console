@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-04",
+  "updatedAt": "2026-08-15",
   "workflows": [
     {
       "id": "gmail-login",
@@ -25,6 +25,30 @@
       "sortOrder": 20,
       "updatedAt": "2026-07-04T00:00:00.000Z",
       "payloadUrl": "/workflow-store/workflows/google-one-ai.json"
+    },
+    {
+      "id": "meta-session-warm",
+      "name": "Meta Session Warm",
+      "description": "Fixture workflow — open Meta and wait for session chrome (card typography smoke).",
+      "version": "1.0.0",
+      "platform": "Meta",
+      "group": "Smoke Fixture",
+      "source": "drive",
+      "sortOrder": 30,
+      "updatedAt": "2026-08-15T00:00:00.000Z",
+      "payloadUrl": "/workflow-store/workflows/meta-session-warm.json"
+    },
+    {
+      "id": "stealth-health-probe",
+      "name": "Stealth Health Probe",
+      "description": "Fixture workflow — open local Stealth health endpoint for directory card samples.",
+      "version": "1.0.0",
+      "platform": "Generic",
+      "group": "Smoke Fixture",
+      "source": "drive",
+      "sortOrder": 40,
+      "updatedAt": "2026-08-15T00:00:00.000Z",
+      "payloadUrl": "/workflow-store/workflows/stealth-health-probe.json"
     }
   ]
 }

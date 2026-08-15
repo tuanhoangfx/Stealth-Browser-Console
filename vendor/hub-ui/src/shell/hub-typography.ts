@@ -1,8 +1,11 @@
 /** Golden shell control label — filter triggers, analytics row labels. */
 export const HUB_SHELL_LABEL_TYPO_CLASS = "text-sm font-medium";
 
-/** Sidebar nav — top-level rows + group headers + tree subnav (same size). */
-export const HUB_SIDEBAR_NAV_LABEL_CLASS = "text-sm";
+/**
+ * Sidebar nav — top-level rows + group headers + tree subnav (same size).
+ * Size from CSS token `--hub-sidebar-chrome-size` (0.875rem ≡ text-sm → 12.6px @ 90% zoom).
+ */
+export const HUB_SIDEBAR_NAV_LABEL_CLASS = "hub-sidebar-chrome-type";
 
 /** Settings trigger + modal header icon — titanium gray (not amber). */
 export const HUB_SETTINGS_ICON_CLASS = "text-zinc-400";
@@ -27,6 +30,27 @@ export const HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT = "hub-directory-body-value";
  * CSS: `.hub-directory-header-label` ≡ `.hub-users-th-text` in hub-directory-frame-table.css
  */
 export const HUB_DIRECTORY_HEADER_LABEL_TYPO_SSOT = "hub-directory-header-label";
+
+/**
+ * Directory card metric strip value — Hours / Sales / Shifts (12px / 600 / tabular-nums).
+ * Keeps card tiles on the same size tier as the directory table body.
+ * CSS: `.hub-directory-card-metric-value` in hub-shell-layout.css
+ */
+export const HUB_DIRECTORY_CARD_METRIC_VALUE_TYPO_SSOT = "hub-directory-card-metric-value";
+
+/**
+ * Directory card metadata rows — table body tier (12px / 400 / muted).
+ * Use for card descriptions and field rows; badge labels retain their dedicated compact tier.
+ * CSS: `.hub-directory-card-meta` in hub-shell-layout.css
+ */
+export const HUB_DIRECTORY_CARD_META_TYPO_SSOT = "hub-directory-card-meta";
+
+/**
+ * Directory card title — table header tier (12px / 600).
+ * Used by HubDirectoryCardHeader string titles; matches Todo Kanban card titles.
+ * CSS: `.hub-directory-card-title` in hub-shell-layout.css
+ */
+export const HUB_DIRECTORY_CARD_TITLE_TYPO_SSOT = "hub-directory-card-title";
 
 /** Filter option/trigger value when it must mirror directory table body (P0020 twofa vault). */
 export const HUB_FILTER_DIRECTORY_VALUE_TYPO_SSOT = HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT;

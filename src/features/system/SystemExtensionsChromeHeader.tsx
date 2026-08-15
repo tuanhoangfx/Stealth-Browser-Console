@@ -18,6 +18,7 @@ export function SystemExtensionsChromeHeader({
       titleIconClass="text-cyan-300"
       title="Extensions"
       metaItems={metaItems}
+      versionReleaseNotesCode="P0003"
       centerStats={centerStats ?? []}
       actions={actions}
     />

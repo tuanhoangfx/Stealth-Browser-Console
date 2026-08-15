@@ -5,6 +5,7 @@ import {
   HubDirectoryCardHeader,
   HubDirectoryCardLeadingIcon,
   HubDirectoryInteractiveCard,
+  HUB_DIRECTORY_CARD_META_TYPO_SSOT,
 } from "@tool-workspace/hub-ui";
 import { resolveHubBrandIconByMatch } from "@tool-workspace/hub-ui";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
@@ -33,7 +34,7 @@ function formatStoreUpdatedLabel(entry: WorkflowStoreEntry) {
 
 function StoreCardStickerMeta({ emoji, children }: { emoji: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+    <div className={`flex items-center gap-2 ${HUB_DIRECTORY_CARD_META_TYPO_SSOT}`}>
       <span className="hub-users-th-emoji shrink-0 leading-none" aria-hidden>
         {emoji}
       </span>
@@ -111,7 +112,7 @@ export function WorkflowStoreCard({
           subtitle={entry.description || entry.id}
         />
 
-        <div className="min-h-[var(--hub-card-meta-min-h)] shrink-0 space-y-1.5 text-xs text-[var(--muted)]">
+        <div className={`min-h-[var(--hub-card-meta-min-h)] shrink-0 space-y-1.5 ${HUB_DIRECTORY_CARD_META_TYPO_SSOT}`}>
           {visible.has("platform") ? (
             <StoreCardStickerMeta emoji={STEALTH_WORKFLOW_STORE_COLUMN_STICKER.platform}>
               {entry.platform}

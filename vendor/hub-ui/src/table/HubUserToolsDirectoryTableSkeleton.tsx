@@ -8,6 +8,7 @@ import {
 export type HubUserToolsDirectoryTableSkeletonProps = {
   rows?: number;
   showSelect?: boolean;
+  showEnterprise?: boolean;
   ariaLabel?: string;
 };
 
@@ -15,9 +16,10 @@ export type HubUserToolsDirectoryTableSkeletonProps = {
 export function HubUserToolsDirectoryTableSkeleton({
   rows = 5,
   showSelect = false,
+  showEnterprise = false,
   ariaLabel = "Loading tools table",
 }: HubUserToolsDirectoryTableSkeletonProps) {
-  const colCount = hubUserToolsModalColumnCount(showSelect);
+  const colCount = hubUserToolsModalColumnCount(showSelect, showEnterprise);
   return (
     <div className={HUB_USER_TOOLS_SKELETON_WRAP_CLASS} aria-busy="true" aria-label={ariaLabel}>
       <table className={HUB_USER_TOOLS_MODAL_TABLE_CLASS}>
@@ -44,6 +46,11 @@ export function HubUserToolsDirectoryTableSkeleton({
               <td className={HUB_USER_TOOLS_COL.name}>
                 <span className="skeleton block h-3.5 w-[85%] max-w-[12rem]" />
               </td>
+              {showEnterprise ? (
+                <td className={HUB_USER_TOOLS_COL.enterprise}>
+                  <span className="skeleton mx-auto block h-3.5 w-12" />
+                </td>
+              ) : null}
               <td className={HUB_USER_TOOLS_COL.category}>
                 <span className="skeleton mx-auto block h-3.5 w-16" />
               </td>

@@ -40,7 +40,7 @@ export type SignInHubIdentityResult = {
   resolvedLoginId: string | null;
 };
 
-/** Sign in / sign up on Tool Hub identity Supabase (with User ID email fallback). */
+/** Sign in / sign up on Tool Hub identity (Home Server GoTrue, User ID email fallback). */
 export async function signInHubIdentityPlane(
   loginInput: string,
   password: string,
@@ -50,7 +50,7 @@ export async function signInHubIdentityPlane(
   const hub = config.getHubClient();
   if (!hub) {
     throw new Error(
-      config.hubNotConfiguredError ?? "Tool Hub Supabase is not configured (VITE_HUB_SUPABASE_ANON_KEY).",
+      config.hubNotConfiguredError ?? "Tool Hub identity is not configured.",
     );
   }
 

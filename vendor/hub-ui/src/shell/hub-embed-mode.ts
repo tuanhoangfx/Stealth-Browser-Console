@@ -1,5 +1,5 @@
 /**
- * Host iframe mode (P0026 Enzy Portal Phase B): `?embed=1` hides the embedded
+ * Host iframe mode (P0015 Enzy Portal Phase B): `?embed=1` hides the embedded
  * tool's sidebar so only the attached screen content shows inside the host chrome.
  *
  * Optional query: `hostVersion` / `hostCode` — display the **host** portal semver
@@ -42,7 +42,7 @@ export function readHubEmbedHostCode(
 }
 
 /**
- * Version shown in tab chrome: host portal (P0026) when embedding, else tool package.
+ * Version shown in tab chrome: host portal (P0015) when embedding, else tool package.
  */
 export function resolveHubDisplayAppVersion(toolVersion: string): string {
   const fromUrl = readHubEmbedHostVersion();

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { TABLE_PAGE_SIZE_OPTIONS } from "./constants";
 import { buildSemanticTocIcon, resolveSemanticIcon } from "../lib/semantic-icon-registry";
@@ -139,6 +140,9 @@ export function HubDirectoryDisplayPanel({
 }: HubDirectoryDisplayPanelProps & { showPageSize?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [prefs, setPrefs] = useState(readPrefs);
   const [screen, setScreen] = useState(getScreen);
   const [systemTab, setSystemTab] = useState(() => getSystemTab?.() ?? "");
@@ -171,13 +175,41 @@ export function HubDirectoryDisplayPanel({
     return () => window.removeEventListener("popstate", sync);
   }, [readPrefs]);
 
+  const repositionPanel = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const width = Math.min(288, window.innerWidth * 0.92);
+    let left = rect.right - width;
+    if (left < 8) left = Math.max(8, rect.left);
+    if (left + width > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - width - 8);
+    }
+    setPanelPos({ top: rect.bottom + 4, left, width });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPanelPos(null);
+      return;
+    }
+    repositionPanel();
+    window.addEventListener("scroll", repositionPanel, true);
+    window.addEventListener("resize", repositionPanel);
+    return () => {
+      window.removeEventListener("scroll", repositionPanel, true);
+      window.removeEventListener("resize", repositionPanel);
+    };
+  }, [open, repositionPanel]);
+
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      const target = e.target as Element | null;
+      const target = e.target as Node;
       // Keep the panel open when interacting with a portaled child dropdown (e.g. Frozen columns).
-      if (target?.closest?.("[data-hub-single-filter-panel]")) return;
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (target instanceof Element && target.closest("[data-hub-single-filter-panel]")) return;
+      if (ref.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -490,9 +522,44 @@ export function HubDirectoryDisplayPanel({
     </PanelSection>
   ) : null;
 
+  const panelInner = (
+    <>
+      <div className="hub-directory-display-panel__body">
+        {showTableFirst ? tableSection : null}
+        {kpiSection}
+        {chartsSection}
+        {headerStatsSection}
+        {filtersSection}
+        {!showTableFirst ? tableSection : null}
+        {pageSizeSection}
+      </div>
+      <div className="hub-directory-display-panel__footer">
+        <button type="button" className="hub-directory-display-panel__reset" onClick={resetDisplay}>
+          Reset display
+        </button>
+      </div>
+    </>
+  );
+
+  const panelEl =
+    open && panelPos && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={panelRef}
+            data-hub-directory-display-panel
+            className="hub-directory-display-panel anim-pop fixed z-[10050]"
+            style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
+          >
+            {panelInner}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <div ref={ref} className="relative flex shrink-0 items-center gap-1.5">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={`inline-flex h-[var(--hub-control-h)] items-center gap-1.5 rounded-lg border border-white/10 bg-[var(--panel-2)] px-3 ${HUB_DIRECTORY_TOOLBAR_TYPO_CLASS} text-[var(--text)] transition-colors hover:bg-white/5`}
@@ -510,24 +577,7 @@ export function HubDirectoryDisplayPanel({
           onLog={emitLog}
         />
       ) : null}
-      {open ? (
-        <div className="hub-directory-display-panel anim-pop absolute right-0 top-full z-30 mt-1">
-          <div className="hub-directory-display-panel__body">
-            {showTableFirst ? tableSection : null}
-            {kpiSection}
-            {chartsSection}
-            {headerStatsSection}
-            {filtersSection}
-            {!showTableFirst ? tableSection : null}
-            {pageSizeSection}
-          </div>
-          <div className="hub-directory-display-panel__footer">
-            <button type="button" className="hub-directory-display-panel__reset" onClick={resetDisplay}>
-              Reset display
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {panelEl}
     </div>
   );
 }

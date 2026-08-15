@@ -22,6 +22,8 @@ export type HubUserToolsDirectoryTableProps<TRow> = {
   getToolName: (row: TRow) => string;
   renderCategoryCell: (row: TRow) => ReactNode;
   renderAccessCell: (row: TRow) => ReactNode;
+  /** Tool owning brand (Hub enterprise) — optional column. */
+  renderEnterpriseCell?: (row: TRow) => ReactNode;
   /** Override Tool code cell (e.g. catalog icon + code). */
   renderToolCode?: (row: TRow) => ReactNode;
   renderCodeSuffix?: (row: TRow) => ReactNode;
@@ -46,6 +48,7 @@ export function HubUserToolsDirectoryTable<TRow>({
   getToolName,
   renderCategoryCell,
   renderAccessCell,
+  renderEnterpriseCell,
   renderToolCode,
   renderCodeSuffix,
   showSelectColumn = false,
@@ -65,7 +68,8 @@ export function HubUserToolsDirectoryTable<TRow>({
   const isRowSelected = (row: TRow) => isSelected?.(row) ?? false;
   const allPageSelected = hubPageAllSelectedByPredicate(pageItems, isRowSelected, canSelectRow);
 
-  const columns = buildHubUserToolsModalColumns(showSelectColumn).map((col) => {
+  const showEnterprise = Boolean(renderEnterpriseCell);
+  const columns = buildHubUserToolsModalColumns(showSelectColumn, showEnterprise).map((col) => {
     if (col.key !== "select") return col;
     return {
       ...col,
@@ -140,6 +144,11 @@ export function HubUserToolsDirectoryTable<TRow>({
                   {getToolName(row)}
                 </span>
               </td>
+              {showEnterprise ? (
+                <td className={HUB_USER_TOOLS_COL.enterprise}>
+                  <div className="min-w-0 truncate">{renderEnterpriseCell?.(row)}</div>
+                </td>
+              ) : null}
               <td className={HUB_USER_TOOLS_COL.category}>
                 <div className="min-w-0 truncate">{renderCategoryCell(row)}</div>
               </td>

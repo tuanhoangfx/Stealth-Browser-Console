@@ -6,6 +6,21 @@ import { subscribeHubIdentity } from "./hub-identity-cache";
 /** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
 export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
 
+/** Dual sign-in (Hub + data plane) — User ID may resolve + try several auth emails sequentially. */
+export const WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS = 30_000;
+
+/** Refresh margin — a token this close to expiry is treated as stale. */
+export const WORKSPACE_SESSION_FRESH_BUFFER_MS = 60_000;
+
+/** `expires_at` (seconds, GoTrue) still valid past the refresh margin. */
+export function isWorkspaceSessionExpiryFresh(
+  expiresAt: number | null | undefined,
+  bufferMs = WORKSPACE_SESSION_FRESH_BUFFER_MS,
+): boolean {
+  if (!expiresAt) return false;
+  return expiresAt * 1000 > Date.now() + bufferMs;
+}
+
 export function sessionsEqual(a: Session | null | undefined, b: Session | null | undefined): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
@@ -67,7 +82,7 @@ export type SupabaseAuthListenerConfig = {
   onAfterSession?: (session: Session) => void;
 };
 
-/** Bind Supabase auth listener — returns unsubscribe. */
+/** Bind Hub identity (GoTrue) auth listener — returns unsubscribe. */
 export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): () => void {
   if (!config.isConfigured() || !config.client) return () => {};
   const {

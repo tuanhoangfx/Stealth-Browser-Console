@@ -607,6 +607,11 @@
     min-width: 0 !important;
   }
 
+  /* Row 1 — search grows · toolbar (All/Display/preset) stays on same line, flush right */
+  .hub-filter-bar__row-tools {
+    flex-wrap: nowrap !important;
+  }
+
   .hub-filter-bar__row-search {
     flex: 1 1 0% !important;
     min-width: 0 !important;

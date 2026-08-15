@@ -84,6 +84,14 @@ describe("verifyHubIntegratedToolAccess", () => {
     await expect(verifyHubIntegratedToolAccess(client, "P0003")).resolves.toBe(true);
   });
 
+  it("returns null when no session user (not a proven deny)", async () => {
+    const client = mockClient({
+      sessionUserId: null,
+      getUserId: null,
+    });
+    await expect(verifyHubIntegratedToolAccess(client, "P0012")).resolves.toBeNull();
+  });
+
   it("returns false when user has no grant", async () => {
     const client = mockClient({
       sessionUserId: "u1",

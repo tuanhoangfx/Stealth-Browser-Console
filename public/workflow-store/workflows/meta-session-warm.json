@@ -1,0 +1,32 @@
+{
+  "id": "meta-session-warm",
+  "name": "Meta Session Warm",
+  "description": "Fixture workflow for Hub directory card typography smoke (≥4 Store titles).",
+  "icon": "globe",
+  "group": "Smoke Fixture",
+  "platform": "Meta",
+  "action": "open-url",
+  "targetUrl": "https://www.facebook.com/",
+  "takeScreenshot": false,
+  "closeWhenDone": true,
+  "inspectMode": false,
+  "concurrency": 1,
+  "steps": [
+    {
+      "id": "step-navigate",
+      "kind": "navigate",
+      "name": "Open Meta",
+      "value": "https://www.facebook.com/",
+      "enabled": true,
+      "timeoutMs": 60000
+    },
+    {
+      "id": "step-delay",
+      "kind": "delay",
+      "name": "Wait for chrome",
+      "value": "2000",
+      "enabled": true,
+      "timeoutMs": 5000
+    }
+  ]
+}

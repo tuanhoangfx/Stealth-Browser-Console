@@ -19,11 +19,36 @@ export function createDirectoryFreezePrefs(config: {
   storageKey: string;
   changeEvent: string;
   defaultCount?: number;
+  /** Older keys — copy first hit into `storageKey` once, then remove legacy. */
+  legacyStorageKeys?: readonly string[];
 }): DirectoryFreezePrefs {
   const defaultCount = Math.max(0, Math.floor(config.defaultCount ?? 0));
+  const legacyStorageKeys = config.legacyStorageKeys ?? [];
+  let migrated = false;
+
+  function migrateLegacy(): void {
+    if (migrated || typeof window === "undefined" || legacyStorageKeys.length === 0) return;
+    migrated = true;
+    try {
+      if (window.localStorage.getItem(config.storageKey) != null) {
+        for (const key of legacyStorageKeys) window.localStorage.removeItem(key);
+        return;
+      }
+      for (const key of legacyStorageKeys) {
+        const raw = window.localStorage.getItem(key);
+        if (raw == null) continue;
+        window.localStorage.setItem(config.storageKey, raw);
+        window.localStorage.removeItem(key);
+        return;
+      }
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
 
   function read(): number {
     if (typeof window === "undefined") return defaultCount;
+    migrateLegacy();
     const raw = window.localStorage.getItem(config.storageKey);
     if (raw == null) return defaultCount;
     const n = Number.parseInt(raw, 10);
@@ -32,6 +57,7 @@ export function createDirectoryFreezePrefs(config: {
 
   function write(count: number) {
     if (typeof window === "undefined") return;
+    migrateLegacy();
     const next = Math.max(0, Math.floor(count));
     window.localStorage.setItem(config.storageKey, String(next));
     window.dispatchEvent(new CustomEvent(config.changeEvent));
@@ -39,7 +65,9 @@ export function createDirectoryFreezePrefs(config: {
 
   function reset() {
     if (typeof window === "undefined") return;
+    migrateLegacy();
     window.localStorage.removeItem(config.storageKey);
+    for (const key of legacyStorageKeys) window.localStorage.removeItem(key);
     window.dispatchEvent(new CustomEvent(config.changeEvent));
   }
 

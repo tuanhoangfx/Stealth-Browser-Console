@@ -10,6 +10,12 @@
 :root,
 .theme-hub {
   --hub-user-zoom-pct: 90;
+  /* Chrome typography — Hub density 90% (P0020/P0005 golden). See hub-typography-ssot.md */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --hub-sidebar-chrome-size: 0.875rem; /* ≡ text-sm → 12.6px @ 90% zoom */
+  --hub-header-chrome-font-size: 12px;
+  --hub-header-chrome-font-weight: 500;
+  --hub-section-rule-size: 0.8125rem;
   --hub-compact-scale: 0.9;
   --hub-control-h: 31px;
   --hub-card-min-h: 198px;

@@ -8,8 +8,6 @@ import {
   HubSidebarNavList,
   HubSidebarShell,
   HubUiZoomControl,
-  HubWorkspaceUserAvatar,
-  HubWorkspaceUserModal,
   HubWorkspaceUserShell,
   useNavGroupOpenState,
   useWorkspaceRoleKey,
@@ -118,6 +116,7 @@ export function StealthHubShellSidebar({
             anonymous={showAnonymous}
             labels={labels}
             roleKey={roleKey}
+            getHubClient={() => getIdentitySupabase() as never}
             profileRoleClient={getIdentitySupabase() as never}
             profileRoleUserId={session?.user?.id}
             profileRoleEmail={session?.user?.email}
@@ -125,64 +124,33 @@ export function StealthHubShellSidebar({
             footerGuestLabel="Local console"
             emptyEmailLabel={hubAuthEnabled ? "Not signed in" : "Local console"}
             workspaceNote={
-              showAnonymous
-                ? "Anonymous mode — Stealth runs locally. Hub sign-in links workspace identity."
-                : hubAuthEnabled && isHubSupabaseConfigured
-                  ? "Stealth Browser Console — signed-in Hub workspace identity."
-                  : undefined
+              !hubAuthEnabled
+                ? "Local console — Hub login is off (VITE_STEALTH_HUB_AUTH). Enable it in .env.local to use workspace sign-in."
+                : showAnonymous
+                  ? "Anonymous mode — Stealth runs locally. Hub sign-in links workspace identity."
+                  : hubAuthEnabled && isHubSupabaseConfigured
+                    ? "Stealth Browser Console — signed-in Hub workspace identity."
+                    : undefined
+            }
+            statusTrailing={
+              hubAuthEnabled && onRequestHubSignIn && (showAnonymous || !session) ? (
+                <div className="auth-inline-actions mt-3">
+                  <button
+                    type="button"
+                    className="auth-inline-btn"
+                    onClick={() => onRequestHubSignIn()}
+                  >
+                    <LogIn size={14} aria-hidden />
+                    <span>Sign in to Hub</span>
+                  </button>
+                </div>
+              ) : undefined
             }
             onSignOut={async () => {
               setOfflineMode(false);
               await signOut();
               return true;
             }}
-            renderModal={(ctx) => (
-              <HubWorkspaceUserModal
-                open={ctx.open}
-                onClose={ctx.onClose}
-                title={ctx.displayTitle}
-                userId={session?.user?.id ?? null}
-                sessionActive={Boolean(session) && !showAnonymous}
-                showSignOut={hubAuthEnabled && Boolean(session) && !showAnonymous}
-                signingOut={ctx.signingOut}
-                onSignOut={() => {
-                  if (!ctx.signingOut) {
-                    void (async () => {
-                      setOfflineMode(false);
-                      await signOut();
-                      ctx.onClose();
-                    })();
-                  }
-                }}
-                workspaceNote={
-                  !hubAuthEnabled
-                    ? "Local console — Hub login is off (VITE_STEALTH_HUB_AUTH). Enable it in .env.local to use workspace sign-in."
-                    : showAnonymous
-                    ? "Anonymous mode — Stealth runs locally. Hub sign-in links workspace identity."
-                    : hubAuthEnabled && isHubSupabaseConfigured
-                      ? "Stealth Browser Console — signed-in Hub workspace identity."
-                      : undefined
-                }
-                headerLeading={<HubWorkspaceUserAvatar initials={ctx.initials} />}
-                rows={ctx.profileRows}
-              >
-                {hubAuthEnabled && onRequestHubSignIn && (showAnonymous || !session) ? (
-                  <div className="auth-inline-actions mt-3">
-                    <button
-                      type="button"
-                      className="auth-inline-btn"
-                      onClick={() => {
-                        ctx.onClose();
-                        onRequestHubSignIn();
-                      }}
-                    >
-                      <LogIn size={14} aria-hidden />
-                      <span>Sign in to Hub</span>
-                    </button>
-                  </div>
-                ) : null}
-              </HubWorkspaceUserModal>
-            )}
           />
           <HubSidebarFooterButton
             icon={RefreshCcw}

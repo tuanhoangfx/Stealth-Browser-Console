@@ -61,7 +61,7 @@ export type KpiTileData = {
   labelHint?: HubDirectoryColumnHintContent;
   /** When set, tile is a button — directory FilterBar / drill-down. */
   onClick?: () => void;
-  /** Marks the tile as an active filter (ring + aria-pressed). */
+  /** Marks the tile as an active filter (aria-pressed). */
   active?: boolean;
 };
 
@@ -153,10 +153,11 @@ function KpiTile({
     .join(" ");
   const interactive = typeof onClick === "function";
   const shellClass = [
-    "hub-kpi-tile anim-slide relative z-0 min-w-0 overflow-visible rounded-2xl border border-white/5 bg-[var(--panel)] transition-[box-shadow,border-color] hover:z-[1] hover:ring-2",
-    t.ring,
-    interactive ? "hub-kpi-tile--interactive cursor-pointer text-left" : "",
-    active ? "hub-kpi-tile--active ring-2" : "",
+    "hub-kpi-tile anim-slide relative z-0 min-w-0 overflow-visible rounded-2xl bg-[var(--panel)] transition-[box-shadow,background-color,ring-width,ring-color] hover:z-[1]",
+    interactive
+      ? `hub-kpi-tile--interactive cursor-pointer text-left outline-none hover:ring-2 focus-visible:ring-2 ${t.ring}`
+      : "",
+    active ? "hub-kpi-tile--active" : "",
   ]
     .filter(Boolean)
     .join(" ");

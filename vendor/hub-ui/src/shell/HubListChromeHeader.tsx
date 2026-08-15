@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import type { HubGlyphComponent } from "../types/filter-badge";
 import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem, hubMetaActivityAtString } from "./AppTabHeader";
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
+import { applyHubListVersionReleaseNotesMeta } from "./hub-list-chrome-version-meta";
 import { useHubChromePrefs } from "./HubTabChrome";
 
 export type HubListChromeHeaderProps = {
@@ -16,6 +17,8 @@ export type HubListChromeHeaderProps = {
   versionReleaseNotesOnBundleReload?: () => void;
   centerStats?: TabHeaderStatItem[];
   centerContent?: ReactNode;
+  /** Sparse status before center stats (e.g. Start Shift toolbar). */
+  statusSlot?: ReactNode;
   actions?: ReactNode;
 };
 
@@ -31,6 +34,7 @@ export function HubListChromeHeader({
   versionReleaseNotesOnBundleReload,
   centerStats = [],
   centerContent,
+  statusSlot,
   actions,
 }: HubListChromeHeaderProps) {
   const { searchPin, headerPin, stackChrome } = useHubChromePrefs();
@@ -46,8 +50,7 @@ export function HubListChromeHeader({
         onBundleReload={versionReleaseNotesOnBundleReload}
       />
     );
-    // Single icon SSOT — release notes owns Latest/Update/Download.
-    return [{ ...metaItems[0], after: badge }, ...metaItems.slice(1)];
+    return applyHubListVersionReleaseNotesMeta(metaItems, badge);
   }, [
     metaItems,
     versionReleaseNotesBundleStale,
@@ -64,6 +67,7 @@ export function HubListChromeHeader({
       metaItems={resolvedMetaItems}
       centerStats={centerStats}
       centerContent={centerContent}
+      statusSlot={statusSlot}
       pinSticky={stackChrome ? false : headerPin}
       dividerBelow={stackChrome ? false : !searchPin}
       embedded={stackChrome}

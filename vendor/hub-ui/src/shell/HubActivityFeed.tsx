@@ -7,6 +7,39 @@ import {
 } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ExternalLink, Pencil, ScrollText, Search, Trash2, UserPlus } from "lucide-react";
+import type { HubLogEntityChip, HubLogEntityRef } from "../lib/hub-session-log-emit";
+import { HubChromeActivityAge } from "./HubChromeActivityAge";
+import { HubOpsKindBadge } from "./HubOpsPanelChrome";
+import { HubTwofaCopyControl } from "./HubTwofaCopyControl";
+
+/** Primary entity id shown inline beside scope headline (Order ID · Product ID · …). */
+const TIMELINE_PRIMARY_ID_LABELS = ["Order ID", "Product ID", "Buyer ID", "Service ID"] as const;
+
+function findTimelinePrimaryIdChip(
+  chips?: readonly HubLogEntityChip[],
+): HubLogEntityChip | null {
+  if (!chips?.length) return null;
+  for (const label of TIMELINE_PRIMARY_ID_LABELS) {
+    const hit = chips.find((chip) => chip.label === label && chip.value.trim());
+    if (hit) return hit;
+  }
+  return chips.find((chip) => / ID$/i.test(chip.label) && chip.value.trim()) ?? null;
+}
+
+function timelineBodyChips(
+  chips: readonly HubLogEntityChip[] | undefined,
+  primary: HubLogEntityChip | null,
+): string[] {
+  return (
+    chips
+      ?.filter((chip) => {
+        if (!chip.value.trim()) return false;
+        if (!primary) return true;
+        return !(chip.label === primary.label && chip.value === primary.value);
+      })
+      .map((chip) => `${chip.label}: ${chip.value}`) ?? []
+  );
+}
 
 export type HubActivityFeedKind = "create" | "update" | "delete";
 
@@ -22,6 +55,10 @@ export type HubActivityFeedItem = {
   label: string;
   detail?: string;
   at?: number;
+  /** Order ID / Product ID / SKU chips under the row label. */
+  entityChips?: readonly HubLogEntityChip[];
+  /** Passed to `onOpenDetail` for tool-specific modal navigation. */
+  entityRef?: HubLogEntityRef;
   /** When false, hide ExternalLink (e.g. delete rows). Default true when onOpenDetail set. */
   canOpenDetail?: boolean;
   body?: ReactNode;
@@ -71,7 +108,7 @@ export function filterHubActivityFeedItems(
   return items.filter((item) => {
     if (kindFilter !== "all" && item.kind !== kindFilter) return false;
     if (!q) return true;
-    const hay = `${item.label} ${item.detail ?? ""}`.toLowerCase();
+    const hay = `${item.label} ${item.detail ?? ""} ${(item.entityChips ?? []).map((c) => `${c.label} ${c.value}`).join(" ")}`.toLowerCase();
     return hay.includes(q);
   });
 }
@@ -188,98 +225,156 @@ export type HubActivityFeedRowsProps = {
   trackUnread?: boolean;
   onMarkRead?: (id: string) => void;
   onOpenDetail?: (item: HubActivityFeedItem) => void;
-  onClose?: () => void;
   emptyMessage?: string;
   formatTime?: (at: number) => string;
   /** Extra leading glyph when kind is absent (e.g. severity icon). */
   resolveLeadingIcon?: (item: HubActivityFeedItem) => { Icon: LucideIcon; className: string } | null;
 };
 
-/** Shared activity row chrome — kind badge · unread · ExternalLink (Notify + Vault Live). */
+/** Shared activity row chrome — Update Release timeline SSOT (Log · Notify). */
 export function HubActivityFeedRows({
   items,
   seenIds,
   trackUnread = false,
   onMarkRead,
   onOpenDetail,
-  onClose,
   emptyMessage = "No entries.",
-  formatTime,
+  formatTime: _formatTime,
   resolveLeadingIcon,
 }: HubActivityFeedRowsProps) {
   if (!items.length) {
     return (
-      <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)]">
+      <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)] app-tab-header__chrome-text">
         {emptyMessage}
       </div>
     );
   }
 
   return (
-    <div className="hub-activity-feed-rows space-y-1">
-      {items.map((item) => {
-        const kindMeta = resolveHubActivityKindMeta(item.kind);
-        const leading = kindMeta
-          ? { Icon: kindMeta.Icon, className: kindMeta.className }
-          : resolveLeadingIcon?.(item) ?? null;
-        const LeadingIcon = leading?.Icon;
+    <div className="hub-release-timeline hub-ops-timeline-feed">
+      {items.map((item, index) => {
         const isRead = trackUnread && seenIds ? seenIds.has(item.id) : false;
-        const canOpen = Boolean(onOpenDetail) && item.canOpenDetail !== false && item.kind !== "delete";
-        const shellClass =
-          "hub-notify-alert-row flex-1 rounded-lg border border-white/5 bg-white/[.02] px-2.5 py-2 text-left transition-colors hover:bg-white/[.04]";
+        /** Notify may open via alert.id without entityRef; Log still passes entityRef when available. */
+        const canOpen =
+          Boolean(onOpenDetail) &&
+          item.canOpenDetail !== false &&
+          item.kind !== "delete";
+        const headline = item.label.trim();
+        const primaryIdChip = findTimelinePrimaryIdChip(item.entityChips);
+        const chipLines = timelineBodyChips(item.entityChips, primaryIdChip);
 
         return (
           <div
             key={item.id}
-            className={`hub-notify-alert-item flex items-stretch gap-1.5${isRead ? " hub-notify-alert-item--read" : ""}`}
+            className={`hub-release-timeline-item hub-ops-timeline-item${isRead ? " hub-notify-alert-item--read" : ""}`}
           >
-            <button
-              type="button"
-              className={shellClass}
-              onClick={() => onMarkRead?.(item.id)}
+            <div className="hub-release-timeline-rail" aria-hidden>
+              <span className="hub-release-timeline-dot" />
+              {index < items.length - 1 ? <span className="hub-release-timeline-line" /> : null}
+            </div>
+            <div
+              className={`hub-release-timeline-card min-w-0 flex-1 text-left transition-opacity hover:opacity-95${onMarkRead ? " cursor-pointer" : ""}`}
+              role={onMarkRead ? "button" : undefined}
+              tabIndex={onMarkRead ? 0 : undefined}
+              onClick={onMarkRead ? () => onMarkRead(item.id) : undefined}
+              onKeyDown={
+                onMarkRead
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onMarkRead(item.id);
+                      }
+                    }
+                  : undefined
+              }
             >
-              <div className="flex items-start gap-2">
-                {LeadingIcon ? (
-                  <LeadingIcon size={14} className={`mt-0.5 shrink-0 ${leading!.className}`} aria-hidden />
+              <div className="hub-release-timeline-card__head app-tab-header__chrome-text">
+                {item.kind ? (
+                  <HubOpsKindBadge kind={item.kind} />
+                ) : resolveLeadingIcon?.(item) ? (
+                  (() => {
+                    const leading = resolveLeadingIcon(item)!;
+                    const LeadingIcon = leading.Icon;
+                    return (
+                      <span className="hub-release-kind-badge inline-flex shrink-0 items-center gap-1 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--text)]/90">
+                        <LeadingIcon size={12} className={leading.className} aria-hidden />
+                      </span>
+                    );
+                  })()
                 ) : null}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {kindMeta ? (
-                      <span
-                        className={`rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide ${kindMeta.className} bg-white/[.04]`}
+                {headline || primaryIdChip || canOpen ? (
+                  <span className="hub-ops-timeline-headline-group min-w-0">
+                    {headline ? (
+                      <span className="hub-release-headline min-w-0 truncate font-semibold text-[var(--text)]">
+                        {headline}
+                      </span>
+                    ) : null}
+                    {canOpen ? (
+                      <button
+                        type="button"
+                        className="hub-ops-timeline-open-detail"
+                        title="Open detail"
+                        aria-label={`Open detail for ${item.label}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onMarkRead?.(item.id);
+                          onOpenDetail?.(item);
+                        }}
                       >
-                        {kindMeta.label}
-                      </span>
+                        <ExternalLink size={11} className="text-sky-300" aria-hidden />
+                      </button>
                     ) : null}
-                    <span className="text-xs font-semibold text-[var(--text)]">{item.label}</span>
-                    {item.at != null && formatTime ? (
-                      <span className="ml-auto text-[10px] tabular-nums text-[var(--muted)]">
-                        {formatTime(item.at)}
-                      </span>
+                    {primaryIdChip ? (
+                      <>
+                        <span className="hub-ops-timeline-headline-sep" aria-hidden>
+                          ·
+                        </span>
+                        <HubTwofaCopyControl
+                          value={primaryIdChip.value}
+                          display={
+                            <span className="hub-ops-timeline-entity-id tabular-nums text-[var(--muted)]">
+                              {primaryIdChip.value}
+                            </span>
+                          }
+                          copyToastLabel={`Copy ${primaryIdChip.label}`}
+                          copyFeedback="inline"
+                          className="hub-ops-timeline-entity-id-copy"
+                        />
+                      </>
                     ) : null}
-                  </div>
-                  {item.body ??
-                    (item.detail ? (
-                      <div className="mt-0.5 text-[10px] leading-snug text-[var(--muted)]">{item.detail}</div>
-                    ) : null)}
-                </div>
+                  </span>
+                ) : null}
+                {item.at != null ? <HubChromeActivityAge at={item.at} className="ml-auto" /> : null}
               </div>
-            </button>
-            {canOpen ? (
-              <button
-                type="button"
-                className="hub-notify-alert-open shrink-0 rounded-lg border border-white/10 bg-white/[.03] px-2 transition-colors hover:bg-white/[.06]"
-                title="Open detail"
-                aria-label={`Open detail for ${item.label}`}
-                onClick={() => {
-                  onMarkRead?.(item.id);
-                  onClose?.();
-                  onOpenDetail?.(item);
-                }}
-              >
-                <ExternalLink size={14} className="text-sky-300" aria-hidden />
-              </button>
-            ) : null}
+              <div className="app-tab-header__chrome-text mt-2 space-y-1.5">
+                {item.body ??
+                  (item.detail || chipLines.length ? (
+                    <ul className="space-y-1">
+                      {chipLines.map((line) => (
+                        <li
+                          key={line}
+                          className="flex items-start gap-1.5 leading-snug text-[var(--muted)]"
+                        >
+                          <span
+                            className="mt-[5px] inline-block h-1 w-1 shrink-0 rounded-full bg-cyan-300/50"
+                            aria-hidden
+                          />
+                          <span className="min-w-0 tabular-nums">{line}</span>
+                        </li>
+                      ))}
+                      {item.detail ? (
+                        <li className="flex items-start gap-1.5 leading-snug text-[var(--muted)]">
+                          <span
+                            className="mt-[5px] inline-block h-1 w-1 shrink-0 rounded-full bg-cyan-300/50"
+                            aria-hidden
+                          />
+                          <span className="min-w-0">{item.detail}</span>
+                        </li>
+                      ) : null}
+                    </ul>
+                  ) : null)}
+              </div>
+            </div>
           </div>
         );
       })}

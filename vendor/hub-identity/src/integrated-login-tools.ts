@@ -1,5 +1,5 @@
 /** Hub-integrated tools with workspace login (identity DB SSOT). */
-export const HUB_INTEGRATED_LOGIN_TOOL_CODES = ["P0003", "P0004", "P0016", "P0020"] as const;
+export const HUB_INTEGRATED_LOGIN_TOOL_CODES = ["P0003", "P0004", "P0012", "P0015", "P0016", "P0020"] as const;
 
 export type HubIntegratedLoginToolCode = (typeof HUB_INTEGRATED_LOGIN_TOOL_CODES)[number];
 
@@ -14,6 +14,8 @@ export const HUB_INTEGRATED_LOGIN_TOOLS: ReadonlyArray<{
 }> = [
   { code: "P0003", label: "P0003", inheritedRole: false },
   { code: "P0004", label: "P0004", inheritedRole: true },
+  { code: "P0012", label: "P0012", inheritedRole: false },
+  { code: "P0015", label: "P0015", inheritedRole: false },
   { code: "P0016", label: "P0016", inheritedRole: true },
   { code: "P0020", label: "P0020", inheritedRole: true },
 ] as const;

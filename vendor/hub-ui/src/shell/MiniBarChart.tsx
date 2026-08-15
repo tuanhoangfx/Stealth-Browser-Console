@@ -77,7 +77,6 @@ export function MiniBarChart({
           const pct = Math.max(2, (it.value / m) * 100);
           const color = resolveBarColor(it, i, m, colorMode);
           const othersRow = isChartOthersLabel(it.label);
-          const heat = Boolean(it.color) && !othersRow;
           return (
             <li key={`${it.label}-${i}`} className="hub-chart-row anim-slide">
               <ChartLegendRowLabel
@@ -101,7 +100,7 @@ export function MiniBarChart({
               </div>
               <span
                 className="hub-chart-row__value tabular-nums"
-                style={heat || colorMode === "value-band" ? { color } : undefined}
+                style={colorMode === "value-band" ? { color } : undefined}
               >
                 {fmt(it.value)}
               </span>

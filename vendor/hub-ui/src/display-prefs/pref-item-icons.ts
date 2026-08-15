@@ -15,18 +15,22 @@ export type PrefIconMeta = {
 export type PrefIconMap = Record<string, PrefIconMeta>;
 
 /** Attach per-key Lucide icons to KPI / header / filter pref rows (Display panel SSOT). */
-export function withPrefItemIcons<T extends { key: string; label: string }>(
+export function withPrefItemIcons<T extends { key: string; label: string; emoji?: string }>(
   items: readonly T[],
   icons: PrefIconMap,
 ): PrefItem[] {
-  return items.map((item) => ({
-    ...item,
-    icon: icons[item.key]?.icon,
-    iconClassName: icons[item.key]?.iconClassName,
-    emoji: icons[item.key]?.emoji,
-    brandIcon: icons[item.key]?.brandIcon,
-    imageSrc: icons[item.key]?.imageSrc,
-  }));
+  return items.map((item) => {
+    const meta = icons[item.key];
+    return {
+      ...item,
+      icon: meta?.icon ?? (item as PrefItem).icon,
+      iconClassName: meta?.iconClassName ?? (item as PrefItem).iconClassName,
+      /** Keep sticker emoji when icon map only supplies Lucide (Hub chart band / Display share defs). */
+      emoji: meta?.emoji ?? item.emoji,
+      brandIcon: meta?.brandIcon ?? (item as PrefItem).brandIcon,
+      imageSrc: meta?.imageSrc ?? (item as PrefItem).imageSrc,
+    };
+  });
 }
 
 /** Attach icons to directory table column toggles (Display → Table columns). */

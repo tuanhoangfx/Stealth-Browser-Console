@@ -73,6 +73,10 @@ export type HubNotifyPanelProps = {
   renderAlertBody?: (alert: HubNotifyAlert) => ReactNode;
   /** Open linked account / row detail (separate from mark-read row click). */
   onAlertOpenDetail?: (alert: HubNotifyAlert) => void;
+  /** Fired when a row is marked read (sessionStorage + optional product sync). */
+  onMarkRead?: (alertId: string) => void;
+  /** Fired when Mark all read is clicked. */
+  onMarkAllRead?: (alertIds: readonly string[]) => void;
   /** @deprecated Use onAlertOpenDetail — row click now marks read only. */
   onAlertAction?: (alert: HubNotifyAlert) => void;
   /**
@@ -175,6 +179,27 @@ function alertToFeedItem(
   const kindRaw = typeof alert.meta?.kind === "string" ? alert.meta.kind : undefined;
   const kind =
     kindRaw === "create" || kindRaw === "update" || kindRaw === "delete" ? kindRaw : undefined;
+  const entityIdRaw = alert.meta?.entityId ?? alert.meta?.taskId;
+  const entityId =
+    typeof entityIdRaw === "string" || typeof entityIdRaw === "number"
+      ? String(entityIdRaw)
+      : undefined;
+  const screen =
+    typeof alert.meta?.screen === "string" && alert.meta.screen.trim()
+      ? alert.meta.screen.trim()
+      : typeof alert.meta?.entityType === "string" && alert.meta.entityType.trim()
+        ? alert.meta.entityType.trim()
+        : entityId
+          ? "row"
+          : undefined;
+  const idLabel =
+    typeof alert.meta?.entityIdLabel === "string" && alert.meta.entityIdLabel.trim()
+      ? alert.meta.entityIdLabel.trim()
+      : screen === "task"
+        ? "Task ID"
+        : entityId
+          ? "ID"
+          : null;
   return {
     id: alert.id,
     kind,
@@ -182,6 +207,12 @@ function alertToFeedItem(
     detail: alert.detail,
     canOpenDetail: kind !== "delete",
     body: renderAlertBody?.(alert),
+    ...(entityId && screen
+      ? {
+          entityRef: { screen, entityId },
+          entityChips: idLabel ? [{ label: idLabel, value: entityId }] : undefined,
+        }
+      : {}),
   };
 }
 
@@ -200,6 +231,8 @@ export function HubNotifyPanel({
   quickActions = [],
   renderAlertBody,
   onAlertOpenDetail,
+  onMarkRead,
+  onMarkAllRead,
   onAlertAction,
   typeToc,
 }: HubNotifyPanelProps) {
@@ -264,9 +297,20 @@ export function HubNotifyPanel({
     chromeOf: tocChromeOf,
   });
 
+  /** Typed alerts under active type + search filters — single timeline feed (Release parity). */
+  const notifyFeedItems = useMemo(() => {
+    if (!typeTocEnabled) return [];
+    const items = activeAlerts
+      .filter((a) => kindFilter === "all" || alertKinds.get(a.id) === kindFilter)
+      .map((a) => alertToFeedItem(a, renderAlertBody));
+    return filterHubActivityFeedItems(items, query, "all");
+  }, [activeAlerts, alertKinds, kindFilter, query, renderAlertBody, typeTocEnabled]);
+
+  /** Re-read when scope or alert ids change so products can seed DB-read ids before setState. */
+  const activeIdsKey = activeIds.join("\0");
   useEffect(() => {
     setSeenIds(readNotifySeenIds(scopeKey));
-  }, [scopeKey]);
+  }, [scopeKey, activeIdsKey]);
 
   useEffect(() => {
     if (open) return;
@@ -277,13 +321,15 @@ export function HubNotifyPanel({
   const markRead = useCallback(
     (id: string) => {
       setSeenIds(markNotifySeenId(scopeKey, id));
+      onMarkRead?.(id);
     },
-    [scopeKey],
+    [onMarkRead, scopeKey],
   );
 
   const markAllRead = useCallback(() => {
     setSeenIds(markAllNotifySeen(scopeKey, activeIds));
-  }, [activeIds, scopeKey]);
+    onMarkAllRead?.(activeIds);
+  }, [activeIds, onMarkAllRead, scopeKey]);
 
   const { tocItems, sectionIds, body } = useMemo(() => {
     const toc: HubTocNavItem[] = [];
@@ -328,16 +374,63 @@ export function HubNotifyPanel({
 
     if (activeAlerts.length === 0) {
       const id = "notify-empty";
-      toc.push({ id, label: "Alerts", icon: alertIcon });
-      ids.push(id);
+      if (!typeTocEnabled) {
+        toc.push({ id, label: "Alerts", icon: alertIcon });
+        ids.push(id);
+      }
       sectionNodes.push(
-        <HubToolDetailSection key={id} id={id} title="Alerts" icon={alertIcon}>
-          <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)]">
+        <HubToolDetailSection
+          key={id}
+          id={id}
+          title="Recent"
+          icon={alertIcon}
+          hideHeader={typeTocEnabled}
+        >
+          <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)] app-tab-header__chrome-text">
             {emptyMessage}
           </div>
-          {subtitle ? <p className="mt-3 text-center text-[10px] text-[var(--muted)]">{subtitle}</p> : null}
+          {subtitle && !typeTocEnabled ? (
+            <p className="mt-3 text-center text-[10px] text-[var(--muted)]">{subtitle}</p>
+          ) : null}
         </HubToolDetailSection>,
       );
+      return { tocItems: toc, sectionIds: ids, body: sectionNodes };
+    }
+
+    if (typeTocEnabled) {
+      if (notifyFeedItems.length > 0) {
+        sectionNodes.push(
+          <HubToolDetailSection key="notify-recent" id="notify-recent" title="Recent" hideHeader>
+            <HubActivityFeedRows
+              items={notifyFeedItems}
+              seenIds={seenIds}
+              trackUnread={trackUnread}
+              onMarkRead={markRead}
+              onOpenDetail={
+                openDetail
+                  ? (item) => {
+                      const alert = activeAlerts.find((a) => a.id === item.id);
+                      if (alert) openDetail(alert);
+                    }
+                  : undefined
+              }
+              emptyMessage="No alerts match the current filters."
+              resolveLeadingIcon={(item) => {
+                const alert = activeAlerts.find((a) => a.id === item.id);
+                return alert ? resolveHubNotifyAlertIcon(alert) : null;
+              }}
+            />
+          </HubToolDetailSection>,
+        );
+      } else {
+        sectionNodes.push(
+          <HubToolDetailSection key="notify-empty" id="notify-empty" title="Recent" hideHeader>
+            <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-[var(--muted)] app-tab-header__chrome-text">
+              No alerts match the current filters.
+            </div>
+          </HubToolDetailSection>,
+        );
+      }
       return { tocItems: toc, sectionIds: ids, body: sectionNodes };
     }
 
@@ -372,7 +465,6 @@ export function HubNotifyPanel({
                   }
                 : undefined
             }
-            onClose={() => setOpen(false)}
             emptyMessage="No alerts match the current filters."
             resolveLeadingIcon={(item) => {
               const alert = rows.find((a) => a.id === item.id);
@@ -412,6 +504,7 @@ export function HubNotifyPanel({
     subtitle,
     trackUnread,
     typeTocEnabled,
+    notifyFeedItems,
   ]);
 
   const showToc = typeTocEnabled || tocItems.length > 0;
@@ -451,7 +544,7 @@ export function HubNotifyPanel({
         headerActions={
           unreadCount > 0 ? <HubOpsMarkAllReadButton onClick={markAllRead} /> : undefined
         }
-        shellClassName="hub-header-panel-modal"
+        shellClassName="hub-header-panel-modal hub-ops-panel-modal"
         sectionIds={showToc && !typeTocEnabled ? sectionIds : undefined}
         toc={
           showToc ? (
@@ -471,7 +564,7 @@ export function HubNotifyPanel({
         }
       >
         <HubOpsFeedFilterProvider value={feedFilter}>
-          <div className={HUB_TOOL_DETAIL_SECTIONS_CLASS}>{body}</div>
+          <div className={`${HUB_TOOL_DETAIL_SECTIONS_CLASS} hub-release-timeline`}>{body}</div>
         </HubOpsFeedFilterProvider>
       </HubToolDetailModal>
     </>

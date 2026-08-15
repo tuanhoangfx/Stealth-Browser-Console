@@ -18,6 +18,12 @@ describe("createWorkspaceAuthGatePreset", () => {
     expect(preset.toolInfo.tagline).toMatch(/password reset/i);
   });
 
+  it("returns P0006 Content Studio preset", () => {
+    const preset = createWorkspaceAuthGatePreset({ code: "P0006" });
+    expect(preset.toolInfo.name).toBe("Content Studio");
+    expect(preset.toolInfo.tagline).toMatch(/TikTok/i);
+  });
+
   it("returns P0016 preset without product code", () => {
     const preset = createWorkspaceAuthGatePreset({ code: "P0016" });
     expect(preset.toolInfo.code).toBeUndefined();
@@ -39,11 +45,18 @@ describe("createWorkspaceAuthGatePreset", () => {
     expect(preset.toolInfo.tagline).toBe("Work performance, boards & team workload");
   });
 
+  it("gives P0015 its own portal tagline", () => {
+    const preset = createWorkspaceAuthGatePreset({ code: "P0015" });
+    expect(preset.title).toBe("Welcome to ENZY Portal");
+    expect(preset.toolInfo.name).toBe("ENZY Portal");
+    expect(preset.toolInfo.tagline).toMatch(/portal access/i);
+  });
+
   it("never falls back to another tool's tagline", () => {
     // The old resolution chain ended in P0016's copy, so any code missing from it shipped
     // "Multi-channel inbox & fanpages" on its login screen. P0012 did exactly that.
     const codes = [
-      "P0001", "P0003", "P0004", "P0005", "P0012", "P0013", "P0016", "P0020", "P0021", "P0022",
+      "P0001", "P0003", "P0004", "P0005", "P0006", "P0012", "P0013", "P0015", "P0016", "P0020", "P0021", "P0022",
     ] as const;
     const p0016 = createWorkspaceAuthGatePreset({ code: "P0016" }).toolInfo.tagline;
     for (const code of codes) {

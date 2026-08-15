@@ -2,6 +2,7 @@
  * Hub-UI component styles — bundled for embed gateway hosts.
  */
 @import "./hub-fonts.css";
+/* Material Symbols: opt-in via hub-material-symbols.css in product hub-ui-styles (not bundle — ~450KB). */
 @import "./hub-check-indicator.css";
 @import "./hub-fields.css";
 @import "./hub-shell-layout.css";
@@ -24,6 +25,10 @@
 @import "./hub-split-directory-pane.css";
 @import "./hub-directory-frame-table.css";
 @import "./hub-modal.css";
+@import "./hub-add-modal.css";
+/* Layout 3 Task/Account detail — required for Todo embed hosts (P0015). Without this,
+ * HubAccountDetailAdmScaffold rail stacks under main ("Comments" under Attachments). */
+@import "./hub-account-detail-modal.css";
 @import "./hub-toast.css";
 @import "./hub-auth-gate.css";
 @import "./hub-clone-confirm.css";

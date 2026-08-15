@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Crown, ShieldCheck, UserRound } from "lucide-react";
 import type { HubSessionLike } from "@tool-workspace/hub-identity";
+import { hubRoleEmoji } from "./hub-directory-stickers";
 
 export type HubWorkspaceRoleKey = "admin" | "manager" | "user" | "anonymous";
 
@@ -37,4 +38,13 @@ export function resolveWorkspaceRoleKey(session: HubSessionLike, fallback: HubWo
 export function resolveWorkspaceRoleIcon(roleKey: string): HubWorkspaceRoleIconMeta {
   const key = normalizeRoleKey(roleKey);
   return HUB_WORKSPACE_ROLE_ICON[key];
+}
+
+/**
+ * Native directory sticker for a workspace role.
+ * Use this in data-dense rows; retain `resolveWorkspaceRoleIcon` for chrome
+ * controls that deliberately use Lucide icons.
+ */
+export function workspaceRoleEmoji(roleKey: string): string {
+  return hubRoleEmoji(normalizeRoleKey(roleKey));
 }
