@@ -3,6 +3,7 @@ import {
   DEV_AUTO_LOGIN_SESSION_KEY,
   isDevAutoLoginEnabled,
   isDevAutoLoginOptedOut,
+  optOutDevAutoLogin,
   readDevAutoLoginCreds,
 } from "./dev-auto-login";
 
@@ -64,5 +65,14 @@ describe("dev-auto-login opt-out", () => {
   it("stays enabled without the param", () => {
     stubWindow("");
     expect(isDevAutoLoginOptedOut()).toBe(false);
+  });
+
+  it("optOutDevAutoLogin sticks Sign Out for the tab", () => {
+    const store = stubWindow("");
+    expect(isDevAutoLoginOptedOut()).toBe(false);
+    optOutDevAutoLogin();
+    expect(store.get(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("off");
+    expect(isDevAutoLoginOptedOut()).toBe(true);
+    expect(isDevAutoLoginEnabled("127.0.0.1")).toBe(false);
   });
 });

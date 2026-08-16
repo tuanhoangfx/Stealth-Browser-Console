@@ -31,6 +31,78 @@ export function sanitizeHubLoginInput(input: string): string {
     .trim();
 }
 
+/**
+ * E.164-compatible digits for Hub phone login resolve (no leading +).
+ * VN local `0xxxxxxxxx` → `84xxxxxxxxx`. Returns null when not dialable.
+ */
+export function normalizeHubPhoneForLookup(input: string): string | null {
+  const sanitized = sanitizeHubLoginInput(input);
+  if (!sanitized || looksLikeEmail(sanitized)) return null;
+  let digits = sanitized.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0") && digits.length >= 9 && digits.length <= 11) {
+    digits = `84${digits.slice(1)}`;
+  }
+  if (digits.length < 8 || digits.length > 15) return null;
+  return digits;
+}
+
+/**
+ * Phone-shaped login (not email). Pure digit strings of length 9–15 count as phone
+ * so resolve runs server-side instead of inventing a synthetic username email.
+ */
+export function looksLikePhoneLogin(input: string): boolean {
+  const sanitized = sanitizeHubLoginInput(input);
+  if (!sanitized || looksLikeEmail(sanitized)) return false;
+  const compact = sanitized.replace(/[\s()./-]/g, "");
+  if (/^\+?\d{9,15}$/.test(compact)) {
+    return normalizeHubPhoneForLookup(sanitized) != null;
+  }
+  if (/^[+\d][\d\s()./-]*$/.test(sanitized) && /[+\s()./-]/.test(sanitized)) {
+    return normalizeHubPhoneForLookup(sanitized) != null;
+  }
+  return false;
+}
+
+export type HubLoginIdentifierKind = "email" | "username" | "phone" | "empty" | "invalid";
+
+export type ClassifiedHubLoginIdentifier = {
+  kind: HubLoginIdentifierKind;
+  sanitized: string;
+  loginId: string | null;
+  phoneNormalized: string | null;
+};
+
+/** Classify username / email / registered phone before resolve + password grant. */
+export function classifyHubLoginIdentifier(input: string): ClassifiedHubLoginIdentifier {
+  const sanitized = sanitizeHubLoginInput(input);
+  if (!sanitized) {
+    return { kind: "empty", sanitized: "", loginId: null, phoneNormalized: null };
+  }
+  if (looksLikeEmail(sanitized)) {
+    return {
+      kind: "email",
+      sanitized: sanitized.toLowerCase(),
+      loginId: null,
+      phoneNormalized: null,
+    };
+  }
+  if (looksLikePhoneLogin(sanitized)) {
+    return {
+      kind: "phone",
+      sanitized,
+      loginId: null,
+      phoneNormalized: normalizeHubPhoneForLookup(sanitized),
+    };
+  }
+  const loginId = canonicalLoginId(sanitized);
+  if (loginId) {
+    return { kind: "username", sanitized, loginId, phoneNormalized: null };
+  }
+  return { kind: "invalid", sanitized, loginId: null, phoneNormalized: null };
+}
+
 /** Workspace user ID: 3–32 chars, lowercase letter/digit/._- */
 export function normalizeLoginId(raw: string): string | null {
   const id = sanitizeHubLoginInput(raw).toLowerCase();
@@ -74,23 +146,34 @@ export function hubAuthEmailFromLogin(input: string): string {
 
 /** Primary + legacy synthetic emails for sign-in fallback on migrated Hub accounts. */
 export function hubAuthEmailsFromLogin(input: string): string[] {
-  const trimmed = sanitizeHubLoginInput(input).toLowerCase();
-  if (!trimmed) throw new Error("Enter your user ID or email");
-  if (looksLikeEmail(trimmed)) return hubAuthEmailsForSignIn(trimmed);
-  const loginId = canonicalLoginId(trimmed);
-  if (!loginId) throw new Error("Invalid user ID (use 3–32 letters, numbers, . _ -)");
-  return [`${loginId}${HUB_ID_EMAIL_DOMAIN}`, `${loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
+  const classified = classifyHubLoginIdentifier(input);
+  if (classified.kind === "empty") throw new Error("Enter your username, email, or phone");
+  if (classified.kind === "phone") {
+    throw new Error("Use username or email to create an account — phone is sign-in only.");
+  }
+  if (classified.kind === "email") return hubAuthEmailsForSignIn(classified.sanitized);
+  if (classified.kind !== "username" || !classified.loginId) {
+    throw new Error("Invalid username (use 3–32 letters, numbers, . _ -)");
+  }
+  return [
+    `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
+    `${classified.loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`,
+  ];
 }
 
-/** All auth emails to try for password sign-in (User ID, synthetic, or real email). */
+/** All auth emails to try for password sign-in (username synthetics or real email). Phone → []. */
 export function hubAuthEmailsForSignIn(input: string): string[] {
-  const trimmed = sanitizeHubLoginInput(input).toLowerCase();
-  if (!trimmed) return [];
-  if (!looksLikeEmail(trimmed)) {
-    const loginId = canonicalLoginId(trimmed);
-    if (!loginId) return [];
-    return [`${loginId}${HUB_ID_EMAIL_DOMAIN}`, `${loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
+  const classified = classifyHubLoginIdentifier(input);
+  if (classified.kind === "empty" || classified.kind === "invalid" || classified.kind === "phone") {
+    return [];
   }
+  if (classified.kind === "username" && classified.loginId) {
+    return [
+      `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
+      `${classified.loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`,
+    ];
+  }
+  const trimmed = classified.sanitized.toLowerCase();
   const loginId = loginIdFromSyntheticEmail(trimmed);
   if (loginId) {
     const canonical = canonicalLoginId(loginId) ?? loginId;
@@ -103,20 +186,37 @@ export type ResolvedLogin = {
   authEmail: string;
   loginId: string | null;
   isEmailLogin: boolean;
+  /** username | email | phone — phone has empty authEmail until gateway resolve. */
+  kind: Exclude<HubLoginIdentifierKind, "empty" | "invalid">;
 };
 
 export function resolveHubLogin(input: string): ResolvedLogin {
-  const trimmed = sanitizeHubLoginInput(input).toLowerCase();
-  if (!trimmed) throw new Error("Enter your user ID or email");
-  if (looksLikeEmail(trimmed)) {
-    return { authEmail: trimmed, loginId: null, isEmailLogin: true };
+  const classified = classifyHubLoginIdentifier(input);
+  if (classified.kind === "empty") throw new Error("Enter your username, email, or phone");
+  if (classified.kind === "invalid") {
+    throw new Error("Invalid username (use 3–32 letters, numbers, . _ -)");
   }
-  const loginId = canonicalLoginId(trimmed);
-  if (!loginId) throw new Error("Invalid user ID (use 3–32 letters, numbers, . _ -)");
+  if (classified.kind === "email") {
+    return {
+      authEmail: classified.sanitized,
+      loginId: null,
+      isEmailLogin: true,
+      kind: "email",
+    };
+  }
+  if (classified.kind === "phone") {
+    return {
+      authEmail: "",
+      loginId: null,
+      isEmailLogin: false,
+      kind: "phone",
+    };
+  }
   return {
-    authEmail: `${loginId}${HUB_ID_EMAIL_DOMAIN}`,
-    loginId,
+    authEmail: `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
+    loginId: classified.loginId,
     isEmailLogin: false,
+    kind: "username",
   };
 }
 

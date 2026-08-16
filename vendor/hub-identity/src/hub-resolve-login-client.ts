@@ -1,5 +1,8 @@
 import { hubResolveLoginApiUrl } from "./hub-api-routes";
-import { canonicalLoginId, looksLikeEmail, sanitizeHubLoginInput } from "./hub-login";
+import {
+  classifyHubLoginIdentifier,
+  sanitizeHubLoginInput,
+} from "./hub-login";
 
 export type FetchResolvedHubAuthEmailsOptions = {
   /** Same-origin Tool Hub API — default `/api/hub/auth/resolve-login`. */
@@ -14,14 +17,20 @@ export type HubResolveLoginResult = {
   httpStatus?: number;
 };
 
-/** Map User ID → real auth.users email via Hub profiles (server-side API). */
+/**
+ * Map username or registered phone → real auth.users email via Hub gateway.
+ * Email input skips (client already has the auth email).
+ */
 export async function resolveHubLoginEmails(
   loginInput: string,
   options: FetchResolvedHubAuthEmailsOptions = {},
 ): Promise<HubResolveLoginResult> {
-  const login = sanitizeHubLoginInput(loginInput);
-  if (!login || looksLikeEmail(login)) return { emails: [], lookup: "skipped" };
-  const loginId = canonicalLoginId(login);
+  const classified = classifyHubLoginIdentifier(sanitizeHubLoginInput(loginInput));
+  if (classified.kind !== "username" && classified.kind !== "phone") {
+    return { emails: [], lookup: "skipped" };
+  }
+  const loginId =
+    classified.kind === "phone" ? classified.phoneNormalized : classified.loginId;
   if (!loginId) return { emails: [], lookup: "skipped" };
 
   const apiUrl = hubResolveLoginApiUrl(options.resolveLoginApiUrl);
@@ -29,7 +38,10 @@ export async function resolveHubLoginEmails(
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ loginId }),
+      body: JSON.stringify({
+        loginId,
+        identifierKind: classified.kind,
+      }),
     });
     if (!res.ok) {
       return { emails: [], lookup: "unavailable", httpStatus: res.status };

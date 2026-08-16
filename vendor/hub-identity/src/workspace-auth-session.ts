@@ -6,8 +6,9 @@ import { subscribeHubIdentity } from "./hub-identity-cache";
 /** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
 export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
 
-/** Dual sign-in (Hub + data plane) — User ID may resolve + try several auth emails sequentially. */
-export const WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS = 30_000;
+/** Dual sign-in (Hub + data plane) — User ID may resolve + try several auth emails sequentially.
+ * Home Server GoTrue password grants often take 5–8s each; dual identity→data needs headroom. */
+export const WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS = 45_000;
 
 /** Refresh margin — a token this close to expiry is treated as stale. */
 export const WORKSPACE_SESSION_FRESH_BUFFER_MS = 60_000;

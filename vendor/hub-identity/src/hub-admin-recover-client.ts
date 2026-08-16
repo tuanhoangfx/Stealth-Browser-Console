@@ -72,7 +72,13 @@ export async function recoverHubSessionViaApi(
 
   let signInRes: Response;
   try {
-    signInRes = await fetch(apiUrl("/api/auth/hub/sign-in"), { method: "POST", headers, body });
+    // Chat Hub SPA can be up while /api/* hangs — fail fast so dual sign-in stays under budget.
+    signInRes = await fetch(apiUrl("/api/auth/hub/sign-in"), {
+      method: "POST",
+      headers,
+      body,
+      signal: AbortSignal.timeout(3_500),
+    });
   } catch {
     return null;
   }

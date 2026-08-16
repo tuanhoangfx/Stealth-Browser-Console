@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyHubLoginIdentifier,
   hubAuthEmailFromLogin,
   hubAuthEmailFromLoginOrEmail,
   hubAuthEmailsForSignIn,
@@ -7,6 +8,8 @@ import {
   hubDisplayEmail,
   hubDisplayLoginId,
   isHubSyntheticEmail,
+  looksLikePhoneLogin,
+  normalizeHubPhoneForLookup,
   resolveHubLogin,
   sanitizeHubLoginInput,
 } from "./hub-login";
@@ -73,6 +76,31 @@ describe("hub-login", () => {
 
   it("sanitizes invisible characters from login input", () => {
     expect(sanitizeHubLoginInput(" CS00761\u200B ")).toBe("CS00761");
+  });
+
+  it("classifies phone identifiers and normalizes VN local numbers", () => {
+    expect(classifyHubLoginIdentifier("+84 901 234 567")).toMatchObject({
+      kind: "phone",
+      phoneNormalized: "84901234567",
+    });
+    expect(normalizeHubPhoneForLookup("0901 234 567")).toBe("84901234567");
+    expect(looksLikePhoneLogin("0901234567")).toBe(true);
+    expect(hubAuthEmailsForSignIn("0901234567")).toEqual([]);
+    expect(resolveHubLogin("0901234567")).toMatchObject({
+      kind: "phone",
+      authEmail: "",
+      isEmailLogin: false,
+    });
+  });
+
+  it("keeps alphanumeric usernames out of the phone path", () => {
+    expect(classifyHubLoginIdentifier("oi0906029").kind).toBe("username");
+    expect(looksLikePhoneLogin("oi0906029")).toBe(false);
+  });
+
+  it("rejects malformed short digit strings as phone", () => {
+    expect(normalizeHubPhoneForLookup("12345")).toBeNull();
+    expect(looksLikePhoneLogin("12345")).toBe(false);
   });
 
   it("OI0906029 normalizes to oi0906029 without digit corruption", () => {

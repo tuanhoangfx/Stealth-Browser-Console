@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   isRealHubWorkspaceSession,
+  performWorkspaceSignOut,
   resolveWithBootTimeout,
   sessionsEqual,
   startHubIdentityCrossOriginBridge,
@@ -208,12 +209,15 @@ export function useStealthAuthState(): StealthAuthState {
     toolCheckGen.current += 1;
     setOfflineMode(false);
     setOffline(false);
-    clearHubIdentity();
     const client = getIdentitySupabase();
-    if (client) await client.auth.signOut();
-    setSession(null);
-    resetToolAccess();
-    setLoading(false);
+    await performWorkspaceSignOut({
+      planes: [{ getClient: () => client, clearCache: clearHubIdentity }],
+      onAfterSignOut: () => {
+        setSession(null);
+        resetToolAccess();
+        setLoading(false);
+      },
+    });
   }, [resetToolAccess]);
 
   const handleOfflineChange = useCallback(() => {

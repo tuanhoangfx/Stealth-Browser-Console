@@ -93,6 +93,30 @@ export function isDevAutoLoginOptedOut(): boolean {
   }
 }
 
+/**
+ * Sticky per-tab opt-out after an explicit Sign Out.
+ * Without this, `onSignedOut` no-ops while `VITE_DEV_AUTO_LOGIN_*` is set, and F5
+ * re-runs silent password grant — the UI looks like Sign Out did nothing.
+ */
+export function optOutDevAutoLogin(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage?.setItem(DEV_AUTO_LOGIN_SESSION_KEY, "off");
+  } catch {
+    /* ignore — private mode / blocked storage */
+  }
+}
+
+/** Clear sticky Sign Out opt-out so the next manual Sign In / Hub relay can proceed. */
+export function clearDevAutoLoginOptOut(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage?.removeItem(DEV_AUTO_LOGIN_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function isDevAutoLoginEnabled(hostname?: string): boolean {
   return isBundlerDev() && isDevLocalHost(hostname) && !isDevAutoLoginOptedOut();
 }
