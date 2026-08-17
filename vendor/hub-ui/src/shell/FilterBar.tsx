@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   Search,
@@ -37,6 +37,7 @@ import {
   HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
+  HUB_FILTER_DROPDOWN_ROW_OPTION_DISABLED_CLASS,
   hubFilterDropdownRowClass,
   hubFilterUsesDirectoryValueTypo,
   hubFilterDirectoryTriggerTypoClass,
@@ -105,6 +106,11 @@ export type FilterOption = {
   tip?: string;
   /** Rich hover popover — parity directory column header hints. */
   labelHint?: HubDirectoryColumnHintContent;
+  /**
+   * Controlled enum — keep the row visible (same label/emoji color), mute radio only,
+   * block pick. Never omit catalog values. Directory filters leave this unset.
+   */
+  disabled?: boolean;
 };
 
 /** Panel row label — `Name · detail · status` when set (single truncate + native title). */
@@ -685,13 +691,30 @@ function resolveFilterOptionHintGlyph(option: FilterOption): HubDirectoryColumnH
   return undefined;
 }
 
-function FilterOptionRowLabel({ option }: { option: FilterOption }) {
+function filterOptionHintContent(
+  option: FilterOption,
+): HubDirectoryColumnHintContent | null {
+  if (option.labelHint) return option.labelHint;
+  const tip = option.tip?.trim();
+  if (!tip) return null;
+  return {
+    title: option.label,
+    titleGlyph: option.emoji ? { emoji: option.emoji } : undefined,
+    description: tip,
+    lines: [],
+  };
+}
+
+function FilterOptionRowLabel({
+  option,
+  suppressHint = false,
+}: {
+  option: FilterOption;
+  /** Parent already wraps the row in HubDirectoryColumnHint. */
+  suppressHint?: boolean;
+}) {
   const display = filterOptionRowLabel(option);
-  const content =
-    option.labelHint ??
-    (option.tip?.trim()
-      ? { title: option.label, description: option.tip.trim(), lines: [] }
-      : null);
+  const content = suppressHint ? null : filterOptionHintContent(option);
 
   const detail = option.detail?.trim() || "";
   const status = option.status;
@@ -726,12 +749,28 @@ function FilterOptionRowLabel({ option }: { option: FilterOption }) {
   }
 
   return (
-    <span className="hub-directory-popover-anchor flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
       <HubDirectoryColumnHint content={content} titleGlyph={resolveFilterOptionHintGlyph(option)}>
         {labelNode}
       </HubDirectoryColumnHint>
       {badgeNode}
     </span>
+  );
+}
+
+function FilterOptionRowWithHint({
+  option,
+  children,
+}: {
+  option: FilterOption;
+  children: ReactNode;
+}) {
+  const content = filterOptionHintContent(option);
+  if (!content) return <>{children}</>;
+  return (
+    <HubDirectoryColumnHint content={content} titleGlyph={resolveFilterOptionHintGlyph(option)}>
+      <span className="flex min-w-0 w-full flex-1 items-center hub-inline-gap-name">{children}</span>
+    </HubDirectoryColumnHint>
   );
 }
 
@@ -841,6 +880,7 @@ export function HubMultiFilterDropdown({
   }, [open, search, filter, selected, selectedSet, allMode]);
 
   function toggle(v: string) {
+    if (filter.options.find((o) => o.value === v)?.disabled) return;
     if (exclusive) {
       if (selectedSet.has(v)) {
         if (filter.stickyDefault) return;
@@ -857,18 +897,21 @@ export function HubMultiFilterDropdown({
     if (exclusive || !panel) return;
     if (allMode === "visible-options") {
       if (panel.filtered.length === 0) return;
+      const selectableVisible = panel.filtered.filter((o) => !o.disabled);
+      if (selectableVisible.length === 0) return;
       if (panel.allVisibleSelected) {
-        const visible = new Set(panel.filtered.map((o) => o.value));
+        const visible = new Set(selectableVisible.map((o) => o.value));
         onChange(selected.filter((v) => !visible.has(v)));
         return;
       }
       const next = new Set(selected);
-      for (const o of panel.filtered) next.add(o.value);
+      for (const o of selectableVisible) next.add(o.value);
       onChange([...next]);
       return;
     }
+    const selectable = filter.options.filter((o) => !o.disabled);
     if (panel.allSelected) onChange([]);
-    else onChange(filter.options.map((o) => o.value));
+    else onChange(selectable.map((o) => o.value));
   }
 
   const buttonLabel = (() => {
@@ -1012,11 +1055,19 @@ export function HubMultiFilterDropdown({
                   </>
                 ) : null}
                 {panel.filtered.map((o) => (
-                  <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
-                    <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
-                    <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                    <FilterOptionRowLabel option={o} />
-                    <FilterOptionCount value={o.count} />
+                  <button
+                    key={o.value}
+                    type="button"
+                    aria-disabled={o.disabled || undefined}
+                    onClick={() => toggle(o.value)}
+                    className={`${rowClass}${o.disabled ? ` ${HUB_FILTER_DROPDOWN_ROW_OPTION_DISABLED_CLASS}` : ""}`}
+                  >
+                    <FilterOptionRowWithHint option={o}>
+                      <HubFilterDropdownCircle checked={selectedSet.has(o.value)} disabled={Boolean(o.disabled)} />
+                      <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
+                      <FilterOptionRowLabel option={o} suppressHint />
+                      <FilterOptionCount value={o.count} />
+                    </FilterOptionRowWithHint>
                   </button>
                 ))}
                 {panel.filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
@@ -1048,11 +1099,19 @@ export function HubMultiFilterDropdown({
                 </>
               ) : null}
               {panel.filtered.map((o) => (
-                <button key={o.value} type="button" onClick={() => toggle(o.value)} className={rowClass}>
-                  <HubFilterDropdownCircle checked={selectedSet.has(o.value)} />
-                  <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
-                  <FilterOptionRowLabel option={o} />
-                  <FilterOptionCount value={o.count} />
+                <button
+                  key={o.value}
+                  type="button"
+                  aria-disabled={o.disabled || undefined}
+                  onClick={() => toggle(o.value)}
+                  className={`${rowClass}${o.disabled ? ` ${HUB_FILTER_DROPDOWN_ROW_OPTION_DISABLED_CLASS}` : ""}`}
+                >
+                  <FilterOptionRowWithHint option={o}>
+                    <HubFilterDropdownCircle checked={selectedSet.has(o.value)} disabled={Boolean(o.disabled)} />
+                    <FilterOptionGlyph filterKey={filter.key} option={o} directoryParity={directoryValueTypo} compact={compactDropdown} />
+                    <FilterOptionRowLabel option={o} suppressHint />
+                    <FilterOptionCount value={o.count} />
+                  </FilterOptionRowWithHint>
                 </button>
               ))}
               {panel.filtered.length === 0 ? <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div> : null}
@@ -1267,16 +1326,20 @@ export function HubSingleFilterDropdown({
             <button
               key={o.value}
               type="button"
+              aria-disabled={o.disabled || undefined}
               onClick={() => {
+                if (o.disabled) return;
                 onChange(o.value);
                 setOpen(false);
               }}
-              className={HUB_FILTER_DROPDOWN_ROW_CLASS}
+              className={`${HUB_FILTER_DROPDOWN_ROW_CLASS}${o.disabled ? ` ${HUB_FILTER_DROPDOWN_ROW_OPTION_DISABLED_CLASS}` : ""}`}
             >
-              <HubFilterDropdownCircle checked={o.value === value} />
-              <FilterOptionGlyph filterKey={filterKey} option={o} />
-              <FilterOptionRowLabel option={o} />
-              <FilterOptionCount value={o.count} />
+              <FilterOptionRowWithHint option={o}>
+                <HubFilterDropdownCircle checked={o.value === value} disabled={Boolean(o.disabled)} />
+                <FilterOptionGlyph filterKey={filterKey} option={o} />
+                <FilterOptionRowLabel option={o} suppressHint />
+                <FilterOptionCount value={o.count} />
+              </FilterOptionRowWithHint>
             </button>
           ))}
         {showRename ? (

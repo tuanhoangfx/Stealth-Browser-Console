@@ -56,6 +56,14 @@ export function hubJobTitleLabel(slug: HubJobTitleSlug | null | undefined): stri
   return HUB_JOB_TITLE_BY_SLUG[slug]?.label ?? slug;
 }
 
+/** Seniority rank for sorting rows — CEO → Manager → Employee, unassigned last. */
+export function hubJobTitleRank(value: string | null | undefined): number {
+  const slug = cleanHubJobTitleSlug(value);
+  if (!slug) return Number.MAX_SAFE_INTEGER;
+  const index = HUB_JOB_TITLES.findIndex((title) => title.slug === slug);
+  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 export function hubJobTitleDef(slug: HubJobTitleSlug | null | undefined): HubJobTitleDef | null {
   if (!slug) return null;
   return HUB_JOB_TITLE_BY_SLUG[slug] ?? null;

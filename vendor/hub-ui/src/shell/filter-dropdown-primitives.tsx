@@ -121,23 +121,37 @@ export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterD
   },
 );
 
-export function HubFilterDropdownCircle({ checked, indeterminate }: { checked: boolean; indeterminate?: boolean }) {
+export function HubFilterDropdownCircle({
+  checked,
+  indeterminate,
+  disabled = false,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  /** Mute radio only — label/emoji stay full opacity (controlled enum SSOT). */
+  disabled?: boolean;
+}) {
+  const showMark = checked || indeterminate;
   return (
     <div
       className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border transition-all ${
-        checked
-          ? "border-indigo-400 bg-indigo-500"
-          : indeterminate
-            ? "border-indigo-400 bg-indigo-500/30"
-            : "border-white/25"
+        disabled
+          ? showMark
+            ? "border-white/20 bg-white/10 opacity-45"
+            : "border-white/15 bg-transparent opacity-40"
+          : checked
+            ? "border-indigo-400 bg-indigo-500"
+            : indeterminate
+              ? "border-indigo-400 bg-indigo-500/30"
+              : "border-white/25"
       }`}
       aria-hidden
     >
-      {checked || indeterminate ? (
+      {showMark ? (
         indeterminate ? (
-          <div className="h-1 w-2 rounded-full bg-white" />
+          <div className={`h-1 w-2 rounded-full ${disabled ? "bg-white/50" : "bg-white"}`} />
         ) : (
-          <Check size={9} className="text-white" />
+          <Check size={9} className={disabled ? "text-white/50" : "text-white"} />
         )
       ) : null}
     </div>
@@ -164,6 +178,9 @@ export const HUB_FILTER_DROPDOWN_ROW_COMPACT_CLASS =
 
 /** Filter panel row — value text mirrors directory table body (twofa vault). */
 export const HUB_FILTER_DROPDOWN_ROW_DIRECTORY_VALUE_CLASS = `flex w-full min-w-0 items-center hub-inline-gap-comfort rounded-md px-2 py-1 ${HUB_DIRECTORY_BODY_VALUE_TYPO_SSOT} transition-colors hover:bg-white/5`;
+
+/** Controlled option — keep label/emoji full color; mute radio via `HubFilterDropdownCircle disabled`. */
+export const HUB_FILTER_DROPDOWN_ROW_OPTION_DISABLED_CLASS = "cursor-not-allowed hover:bg-transparent";
 
 export function hubFilterUsesDirectoryValueTypo(panelScope?: string): boolean {
   return panelScope === "twofa";

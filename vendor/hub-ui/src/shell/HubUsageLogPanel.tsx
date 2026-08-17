@@ -69,8 +69,12 @@ export type HubLogExtraSection = {
   label: string;
   icon?: ReactNode;
   content: ReactNode;
-  /** Unread count for badge + Mark all read (Vault Live). */
+  /**
+   * Optional unread hint for opaque sections. Does **not** drive Log header
+   * "Mark all read" — that control is Notify-only (`showUnreadChrome`).
+   */
   unreadCount?: number;
+  /** Optional per-section clear; Log header never surfaces this as Mark all read. */
   onMarkAllRead?: () => void;
   /**
    * Optional per-kind entry counts (e.g. `{ create: 2, update: 5 }`) so the
@@ -290,7 +294,8 @@ export function HubUsageLogPanel({
 
   const triggerBadge = badge ?? (showUnreadChrome ? sessionUnread + extraUnread : 0);
   const modalHeaderBadge = showUnreadChrome ? triggerBadge : undefined;
-  const showMarkAll = extraUnread > 0 || (showUnreadChrome && sessionUnread > 0);
+  // Log SSOT: never show Mark all read — Notify owns that chrome via showUnreadChrome.
+  const showMarkAll = showUnreadChrome && sessionUnread > 0;
 
   const markAllSessionRead = useCallback(() => {
     markAllExtraRead();
@@ -524,20 +529,18 @@ export function HubUsageLogPanel({
         headerIcon={logPanelIcon}
         headerIconClassName="text-cyan-300"
         headerTrailing={
-          modalHeaderBadge != null && modalHeaderBadge > 0 ? (
-            <HubOpsPanelBadge count={modalHeaderBadge} tone="cyan" />
+          (modalHeaderBadge != null && modalHeaderBadge > 0) || (showMarkAll && sessionUnread > 0) ? (
+            <>
+              {modalHeaderBadge != null && modalHeaderBadge > 0 ? (
+                <HubOpsPanelBadge count={modalHeaderBadge} tone="cyan" />
+              ) : null}
+              {showMarkAll && sessionUnread > 0 ? (
+                <HubOpsMarkAllReadButton onClick={markAllSessionRead} />
+              ) : null}
+            </>
           ) : undefined
         }
-        headerCenter={
-          <HubOpsPanelSearch
-            query={query}
-            onQueryChange={setQuery}
-            placeholder="Search logs…"
-          />
-        }
-        headerActions={
-          showMarkAll ? <HubOpsMarkAllReadButton onClick={markAllSessionRead} /> : undefined
-        }
+        headerCenter={<HubOpsPanelSearch query={query} onQueryChange={setQuery} placeholder="Search logs…" />}
         shellClassName="hub-header-panel-modal hub-ops-panel-modal"
         sectionIds={showToc && !typeTocEnabled ? sectionIds : undefined}
         toc={

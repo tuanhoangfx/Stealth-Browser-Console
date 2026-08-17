@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createHubFullAccountAuthHandlers,
@@ -12,6 +12,7 @@ import { useWorkspaceRoleKey } from "./useWorkspaceRoleKey";
 import { workspaceRoleLabel } from "./hub-workspace-role-icon";
 import {
   buildWorkspaceUserProfileRows,
+  isUnstableWorkspaceFooterLabel,
   workspaceUserFooterLabel,
   workspaceUserInitials,
 } from "./workspace-user-session";
@@ -19,6 +20,11 @@ import {
   HUB_WORKSPACE_USER_EMPTY_EMAIL,
   HUB_WORKSPACE_USER_FOOTER_TITLE,
 } from "../shell/hub-chrome-messages";
+
+type FooterProfileFields = { fullName: string | null; loginId: string | null };
+
+/** Remount-safe cache — footer label must not re-hit profiles on every shell paint. */
+const footerProfileCache = new Map<string, FooterProfileFields>();
 
 export type HubWorkspaceUserModalRenderContext = {
   open: boolean;
@@ -100,6 +106,8 @@ export function HubWorkspaceUserShell({
   forceModalOpen = false,
 }: HubWorkspaceUserShellProps) {
   const [open, setOpen] = useState(false);
+  const [footerDisplayName, setFooterDisplayName] = useState<string | null>(null);
+  const [footerUsername, setFooterUsername] = useState<string | null>(null);
 
   const labels = labelsProp ?? hubSessionLabels(session);
   const { roleKey, roleIconPending } = useWorkspaceRoleKey(session, {
@@ -111,35 +119,6 @@ export function HubWorkspaceUserShell({
     profileRoleEmail,
     onPrepareProfileRoleClient,
   });
-  const footerUserLabel = workspaceUserFooterLabel({
-    labels,
-    session,
-    anonymous,
-    anonymousLabel: anonymousFooterLabel,
-    guestLabel: footerGuestLabel,
-  });
-  const displayTitle =
-    modalTitle ??
-    (labels.loginId ||
-      labels.email ||
-      session?.user?.email?.trim() ||
-      footerUserLabel);
-  const initials = useMemo(
-    () => workspaceUserInitials(labels.email || session?.user?.email, session?.user?.id),
-    [labels.email, session?.user?.email, session?.user?.id],
-  );
-  const profileRows = useMemo(
-    () =>
-      buildWorkspaceUserProfileRows({
-        session,
-        labels,
-        includeLoginId,
-        emptyEmailLabel,
-        roleKey,
-      }),
-    [session, labels, includeLoginId, emptyEmailLabel, roleKey],
-  );
-
   const resolveClient = useMemo(
     () => getHubClient ?? (() => profileRoleClient ?? null),
     [getHubClient, profileRoleClient],
@@ -164,6 +143,94 @@ export function HubWorkspaceUserShell({
         getLoginId: () => labels.loginId,
       }),
     [resolveClient, prepareClient, syncApiUrl, labels.loginId],
+  );
+  const fetchOwnProfileFieldsRef = useRef(accountHandlers.fetchOwnProfileFields);
+  fetchOwnProfileFieldsRef.current = accountHandlers.fetchOwnProfileFields;
+
+  const profileUserId = profileRoleUserId?.trim() || session?.user?.id?.trim() || "";
+  const stickyFooterLabelRef = useRef("");
+
+  useEffect(() => {
+    stickyFooterLabelRef.current = "";
+  }, [profileUserId]);
+
+  useEffect(() => {
+    if (anonymous || !profileUserId) {
+      setFooterDisplayName(null);
+      setFooterUsername(null);
+      return;
+    }
+    const cached = footerProfileCache.get(profileUserId);
+    if (cached) {
+      setFooterDisplayName(cached.fullName);
+      setFooterUsername(cached.loginId);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fields = await fetchOwnProfileFieldsRef.current(profileUserId);
+        if (cancelled) return;
+        const next: FooterProfileFields = {
+          fullName: fields?.fullName?.trim() || null,
+          loginId: fields?.loginId?.trim() || null,
+        };
+        footerProfileCache.set(profileUserId, next);
+        setFooterDisplayName(next.fullName);
+        setFooterUsername(next.loginId);
+      } catch {
+        if (!cancelled) {
+          setFooterDisplayName(null);
+          setFooterUsername(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [anonymous, profileUserId]);
+
+  const rawFooterLabel = workspaceUserFooterLabel({
+    labels,
+    session,
+    anonymous,
+    anonymousLabel: anonymousFooterLabel,
+    guestLabel: footerGuestLabel,
+    displayName: footerDisplayName,
+    username: footerUsername,
+  });
+  if (!anonymous && !isUnstableWorkspaceFooterLabel(rawFooterLabel)) {
+    stickyFooterLabelRef.current = rawFooterLabel;
+  }
+  const footerUserLabel =
+    anonymous || !isUnstableWorkspaceFooterLabel(rawFooterLabel)
+      ? rawFooterLabel
+      : stickyFooterLabelRef.current || footerGuestLabel || "Sign in";
+  const displayTitle =
+    modalTitle ??
+    (footerUserLabel ||
+      labels.loginId ||
+      labels.displayName ||
+      labels.email ||
+      "User");
+  const initials = useMemo(
+    () =>
+      workspaceUserInitials(
+        footerDisplayName || labels.displayName || labels.email || labels.loginId,
+        session?.user?.id,
+      ),
+    [footerDisplayName, labels.displayName, labels.email, labels.loginId, session?.user?.id],
+  );
+  const profileRows = useMemo(
+    () =>
+      buildWorkspaceUserProfileRows({
+        session,
+        labels,
+        includeLoginId,
+        emptyEmailLabel,
+        roleKey,
+      }),
+    [session, labels, includeLoginId, emptyEmailLabel, roleKey],
   );
   const activityLog = useMemo(
     () => createHubProfilesActivityLogHandlers(resolveClient),
@@ -210,6 +277,7 @@ export function HubWorkspaceUserShell({
           open={modalOpen}
           onClose={() => setOpen(false)}
           session={session}
+          identityUserId={profileRoleUserId}
           title={displayTitle}
           initials={initials}
           roleLabel={workspaceRoleLabel(roleKey)}

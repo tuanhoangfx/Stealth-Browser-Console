@@ -107,13 +107,16 @@ export function optOutDevAutoLogin(): void {
   }
 }
 
-/** Clear sticky Sign Out opt-out so the next manual Sign In / Hub relay can proceed. */
+/**
+ * Clear sticky opt-out after a successful manual Sign In / accepted Hub relay.
+ * Same effect as `?devAutoLogin=on` for the rest of the tab.
+ */
 export function clearDevAutoLoginOptOut(): void {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage?.removeItem(DEV_AUTO_LOGIN_SESSION_KEY);
+    window.sessionStorage?.setItem(DEV_AUTO_LOGIN_SESSION_KEY, "on");
   } catch {
-    /* ignore */
+    /* ignore — private mode / blocked storage */
   }
 }
 

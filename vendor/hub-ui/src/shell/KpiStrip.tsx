@@ -127,7 +127,6 @@ function KpiTileIcon({
         icon={Icon}
         brandIcon={brandIcon}
         size={20}
-        compact={false}
         className={iconClasses}
       />
     );

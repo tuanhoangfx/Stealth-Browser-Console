@@ -1,4 +1,5 @@
 import { resolveHubCountry } from "../lib/country-catalog";
+import { HubDirectoryEmptyCell } from "../lib/directory-empty-label";
 import { flagsApiUrl, type FlagsApiSize, type FlagsApiStyle } from "../lib/locale-flag";
 
 export type HubCountryFlagBadgeProps = {
@@ -55,7 +56,9 @@ export function HubCountryInline({
   flagSize = 24,
 }: HubCountryInlineProps) {
   const meta = resolveHubCountry(value);
-  if (!meta.raw) return <span className={`hub-users-cell-muted${className ? ` ${className}` : ""}`}>—</span>;
+  if (!meta.raw) {
+    return <HubDirectoryEmptyCell className={`hub-users-cell-muted${className ? ` ${className}` : ""}`} />;
+  }
 
   const text = variant === "code" && meta.code ? meta.code : meta.label;
 

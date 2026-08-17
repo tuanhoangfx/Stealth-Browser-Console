@@ -1,8 +1,10 @@
 /** CF Worker gateway — static SPA hosts (Lenovo/nginx) have no /api serverless. */
 export const HUB_API_GATEWAY_ORIGIN = "https://api.infi.io.vn";
 
+type HubApiImportMetaEnv = { VITE_HUB_API_ORIGIN?: string };
+
 function bakedHubApiOrigin(): string {
-  return String(import.meta.env.VITE_HUB_API_ORIGIN ?? "")
+  return String((import.meta as ImportMeta & { env?: HubApiImportMetaEnv }).env?.VITE_HUB_API_ORIGIN ?? "")
     .trim()
     .replace(/\/$/, "");
 }

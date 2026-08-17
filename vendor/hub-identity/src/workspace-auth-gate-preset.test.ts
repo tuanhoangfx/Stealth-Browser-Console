@@ -47,8 +47,8 @@ describe("createWorkspaceAuthGatePreset", () => {
 
   it("gives P0015 its own portal tagline", () => {
     const preset = createWorkspaceAuthGatePreset({ code: "P0015" });
-    expect(preset.title).toBe("Welcome to ENZY Portal");
-    expect(preset.toolInfo.name).toBe("ENZY Portal");
+    expect(preset.title).toBe("Welcome to ENZY Energy");
+    expect(preset.toolInfo.name).toBe("ENZY Energy");
     expect(preset.toolInfo.tagline).toMatch(/portal access/i);
   });
 

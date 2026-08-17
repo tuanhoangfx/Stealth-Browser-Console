@@ -1,4 +1,5 @@
 import { DIRECTORY_CELL_TRUNCATE } from "../lib/directory-cell-hover";
+import { HubDirectoryEmptyCell, isDirectoryEmptyLabel } from "../lib/directory-empty-label";
 import { HubDirectoryValuePopover } from "../table/HubDirectoryValuePopover";
 
 export type HubDirectoryEllipsisCellProps = {
@@ -22,8 +23,8 @@ export function HubDirectoryEllipsisCell({
   popoverTitle,
 }: HubDirectoryEllipsisCellProps) {
   const raw = String(value ?? "").trim();
-  if (!raw) {
-    return <span className="hub-users-cell-muted">—</span>;
+  if (isDirectoryEmptyLabel(raw)) {
+    return <HubDirectoryEmptyCell className="hub-users-cell-muted" />;
   }
 
   const text = normalizeWhitespace ? raw.replace(/\s+/g, " ") : raw;

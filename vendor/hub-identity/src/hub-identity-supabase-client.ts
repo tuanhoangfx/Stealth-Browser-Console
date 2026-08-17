@@ -5,19 +5,21 @@ import {
   readHubIdentity,
   type HubIdentitySnapshot,
 } from "./hub-identity-cache";
+import {
+  isWorkspaceSessionExpiryFresh,
+  WORKSPACE_SESSION_FRESH_BUFFER_MS,
+} from "./workspace-auth-session";
 
 export type HubIdentitySupabaseClientConfig = {
   defaultUrl: string;
   defaultAnonKey: string;
 };
 
-const SESSION_VALID_BUFFER_MS = 60_000;
-
 function sessionStillValid(session: Session | null | undefined): boolean {
   if (!session?.access_token) return false;
-  const exp = session.expires_at;
-  if (!exp) return true;
-  return exp * 1000 > Date.now() + SESSION_VALID_BUFFER_MS;
+  // Snapshots without expires_at stay usable until apply/refresh proves otherwise.
+  if (!session.expires_at) return true;
+  return isWorkspaceSessionExpiryFresh(session.expires_at, WORKSPACE_SESSION_FRESH_BUFFER_MS);
 }
 
 export function createHubIdentitySupabaseClient(config: HubIdentitySupabaseClientConfig) {
@@ -73,7 +75,7 @@ export function createHubIdentitySupabaseClient(config: HubIdentitySupabaseClien
     // After Lenovo cutover, stale cache may still point at cloud (*.supabase.co).
     // Never prefer a mismatched snap URL — that makes password login hit the wrong GoTrue.
     const urlMismatch = Boolean(snapUrl && defaultUrl && snapUrl.replace(/\/$/, "") !== defaultUrl.replace(/\/$/, ""));
-    if (urlMismatch) {
+    if (urlMismatch && snap?.access_token?.trim()) {
       clearHubIdentity("hub_url_mismatch");
     }
     const url = urlMismatch ? defaultUrl : snapUrl || defaultUrl;

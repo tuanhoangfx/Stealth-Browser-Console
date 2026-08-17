@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { HubIdentitySnapshot } from "./hub-identity-cache";
+import { shouldAcceptHubIdentityRelay } from "./workspace-sign-out";
 
 export const HUB_IDENTITY_RELAY_MESSAGE_TYPE = "P0004_HUB_IDENTITY_SESSION" as const;
 export const HUB_IDENTITY_RELAY_REQUEST_TYPE = "P0004_HUB_IDENTITY_SESSION_REQUEST" as const;
@@ -86,6 +87,31 @@ export function requestHubIdentityFromOpener(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Ask the embedding host for a Hub session. Popup tools have `window.opener`;
+ * iframe tools (ENZY host) only have `window.parent`.
+ */
+export function requestHubIdentityFromHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const targets: Window[] = [];
+  if (window.opener && window.opener !== window) targets.push(window.opener as Window);
+  if (window.parent && window.parent !== window) targets.push(window.parent);
+
+  let sent = false;
+  for (const target of targets) {
+    try {
+      target.postMessage(
+        { type: HUB_IDENTITY_RELAY_REQUEST_TYPE } satisfies HubIdentityRelayRequestMessage,
+        "*",
+      );
+      sent = true;
+    } catch {
+      // ignore cross-origin post failures
+    }
+  }
+  return sent;
 }
 
 export function createHubIdentityRelayRespondHandler(
@@ -209,6 +235,8 @@ export function createHubIdentityRelayMessageHandler(
   onReceived: (snapshot: HubIdentityRelaySnapshot) => void,
 ): (event: MessageEvent) => void {
   return (event: MessageEvent) => {
+    // Explicit Sign Out opts out of Hub relay until the next manual sign-in.
+    if (!shouldAcceptHubIdentityRelay()) return;
     if (!isToolHubOrigin(event.origin)) return;
     const snapshot = parseHubIdentityRelayMessage(event.data);
     if (!snapshot) return;

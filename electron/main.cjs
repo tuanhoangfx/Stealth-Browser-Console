@@ -1068,6 +1068,17 @@ app.whenReady().then(async () => {
         const { warmRecentBadgeIcosOnStartup, warmTaskbarApplyRuntime } = require("./lib/profile-taskbar-native.cjs");
         void warmTaskbarApplyRuntime();
         warmRecentBadgeIcosOnStartup((limit) => profileService.listRecentlyOpenedProfiles(limit), { limit: 16 });
+
+        const { startTaskbarBadgeGuard } = require("./lib/taskbar-badge-guard.cjs");
+        const {
+          scheduleProfileTaskbarBadgeApply,
+          formatProfileWindowLabel,
+        } = require("./lib/profile-window-title.cjs");
+        startTaskbarBadgeGuard({
+          listRunning: () => sessionManager.listRunning(),
+          schedule: scheduleProfileTaskbarBadgeApply,
+          formatLabel: formatProfileWindowLabel,
+        });
       } catch (error) {
         console.warn("[taskbar-badge] warm recent:", error instanceof Error ? error.message : error);
       }

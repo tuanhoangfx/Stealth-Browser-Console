@@ -18,6 +18,20 @@ export const HUB_UNKNOWN_USER_ID_MESSAGE =
 export const HUB_UNKNOWN_PHONE_MESSAGE =
   "Phone number not found — check the number or sign in with username/email.";
 
+/**
+ * Returned when resolve-login finds a profile for the phone but password grant fails.
+ * Avoids the generic invalid-credentials copy that implies the phone itself is wrong.
+ */
+export const HUB_PHONE_WRONG_PASSWORD_MESSAGE =
+  "Incorrect password for the account linked to this phone. Sign in with username/email if this number belongs to a different account.";
+
+/**
+ * Returned when resolve-login finds a profile for the username but password grant fails.
+ * Avoids the generic invalid-credentials copy that implies the username itself is wrong.
+ */
+export const HUB_USERNAME_WRONG_PASSWORD_MESSAGE =
+  "Incorrect password for this username. If you recently changed your Tool Hub password, use the new one.";
+
 /** Returned when resolve-login API is unreachable or returns a non-OK response. */
 export const HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE =
   "Sign-in service unavailable. Try again in a moment or sign in with your email.";
@@ -83,7 +97,15 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
     extraEmails = resolved.emails;
     resolveLookup = resolved.lookup;
   }
-  const baseEmails = classified.kind === "phone" ? [] : hubAuthEmailsForSignIn(login);
+  // Resolve-login already mapped username/phone → real auth.users email(s).
+  // Do not also hammer synthetic @infix1 / legacy fallbacks — each GoTrue attempt
+  // costs ~5–8s and turns a wrong password into a long "Please wait…" hang.
+  const baseEmails =
+    resolveLookup === "ok" && extraEmails.length > 0
+      ? []
+      : classified.kind === "phone"
+        ? []
+        : hubAuthEmailsForSignIn(login);
   const authEmails = [...new Set([...extraEmails, ...baseEmails])];
   if (!authEmails.length) {
     if (classified.kind === "phone") {
@@ -145,6 +167,20 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
           authEmail: authEmails[0] ?? null,
         };
       }
+    }
+    if (classified.kind === "phone" && extraEmails.length > 0) {
+      return {
+        data: null,
+        error: new Error(HUB_PHONE_WRONG_PASSWORD_MESSAGE),
+        authEmail: authEmails[0] ?? null,
+      };
+    }
+    if (classified.kind === "username" && extraEmails.length > 0) {
+      return {
+        data: null,
+        error: new Error(HUB_USERNAME_WRONG_PASSWORD_MESSAGE),
+        authEmail: authEmails[0] ?? null,
+      };
     }
   }
 

@@ -176,6 +176,54 @@
     if (el) el.remove();
   });
 
+  /**
+   * Post-mount crash watchdog. An uncaught render throw makes React unmount the whole
+   * root, and every timer above has already bailed via bootSettled() — the tab is left
+   * as a silent black screen. An emptied root after a successful mount is that crash.
+   */
+  (function watchPostMountCrash() {
+    var CRASH_ID = "hub-boot-crash";
+    var SETTLE_MS = 750;
+    var root = document.getElementById("root");
+    if (!root || typeof MutationObserver !== "function") return;
+    var mounted = false;
+    var timer = null;
+
+    function showCrash() {
+      if (document.getElementById(CRASH_ID)) return;
+      var el = document.createElement("div");
+      el.id = CRASH_ID;
+      el.setAttribute("role", "alert");
+      el.style.cssText =
+        "position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#0b1220";
+      el.innerHTML =
+        '<div style="max-width:32rem;padding:1.5rem;text-align:center;font-family:Inter,system-ui,sans-serif;color:#e8ecff">' +
+        '<p style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600">This screen stopped rendering</p>' +
+        '<p style="margin:0 0 1rem;font-size:0.75rem;line-height:1.5;color:#94a3b8">An unexpected error unmounted the app. Reload to continue; the browser console holds the stack trace.</p>' +
+        '<button type="button" onclick="location.reload()" style="cursor:pointer;border:1px solid rgba(129,140,248,0.4);border-radius:0.5rem;background:rgba(99,102,241,0.15);color:#c7d2fe;padding:0.45rem 1rem;font-size:0.75rem">Reload</button>' +
+        "</div>";
+      document.body.appendChild(el);
+    }
+
+    new MutationObserver(function () {
+      if (root.childElementCount > 0) {
+        mounted = true;
+        if (timer) {
+          window.clearTimeout(timer);
+          timer = null;
+        }
+        var existing = document.getElementById(CRASH_ID);
+        if (existing) existing.remove();
+        return;
+      }
+      if (!mounted || timer) return;
+      timer = window.setTimeout(function () {
+        timer = null;
+        if (root.childElementCount === 0) showCrash();
+      }, SETTLE_MS);
+    }).observe(root, { childList: true });
+  })();
+
   window.addEventListener("error", function (event) {
     if (bootSettled()) return;
     var msg = event.message || "Script error";

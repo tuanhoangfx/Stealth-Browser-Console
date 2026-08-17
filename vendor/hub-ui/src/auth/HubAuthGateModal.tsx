@@ -6,6 +6,7 @@ import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
 import { formatHubAuthErrorMessage, normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
+import { HubAuthSysProgress } from "./HubAuthSysProgress";
 
 type AuthMode = "signin" | "signup" | "anonymous";
 
@@ -55,6 +56,7 @@ export function HubAuthGateModal({
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<AuthMode>("signin");
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -75,19 +77,30 @@ export function HubAuthGateModal({
     if (mode === "anonymous") return;
     if (submitDisabled) return;
     setBusy(true);
+    // Hub GoTrue password grant is often 4–7s even for wrong password — do not
+    // claim "workspace data" until that window has passed (was 1s → false hang UX).
+    setBusyLabel("Checking account…");
     setMessage("");
+    const checkingTimer = window.setTimeout(() => {
+      setBusyLabel("Verifying password with Hub…");
+    }, 350);
+    const workspaceTimer = window.setTimeout(() => {
+      setBusyLabel("Connecting workspace data…");
+    }, 7_000);
     try {
       const result = await onSubmit(login, password, mode);
       if (result && "error" in result && result.error) {
         setMessage(normalizeHubAuthError(result.error, errorOptions));
-        setBusy(false);
         return;
       }
-      setBusy(false);
       onAuthed?.();
     } catch (err) {
-      setBusy(false);
       setMessage(normalizeHubAuthError(err, errorOptions));
+    } finally {
+      window.clearTimeout(checkingTimer);
+      window.clearTimeout(workspaceTimer);
+      setBusy(false);
+      setBusyLabel("");
     }
   };
 
@@ -193,7 +206,7 @@ export function HubAuthGateModal({
               className="field auth-gate-field w-full"
               type="text"
               name="login"
-              placeholder="User ID or email"
+              placeholder="Username, email, or phone"
               autoComplete="username"
               {...HUB_NO_SPELLCHECK_PROPS}
               value={login}
@@ -226,15 +239,10 @@ export function HubAuthGateModal({
               ) : null}
             </div>
             {message ? <p className="auth-gate-message">{message}</p> : null}
+            {busyLabel ? <HubAuthSysProgress label={busyLabel} /> : null}
             <button type="submit" className="auth-gate-submit" disabled={busy || submitDisabled}>
               <SubmitIcon size={compactIconSize(16)} aria-hidden />
-              <span>
-                {busy || submitDisabled
-                  ? "Please wait…"
-                  : mode === "signin"
-                    ? "Sign In"
-                    : "Sign Up"}
-              </span>
+              <span>{mode === "signin" ? "Sign In" : "Sign Up"}</span>
             </button>
           </form>
         )}

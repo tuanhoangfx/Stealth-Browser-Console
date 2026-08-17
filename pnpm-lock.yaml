@@ -29,6 +29,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.108.2
         version: 2.108.2
+      '@tool-workspace/hub-identity':
+        specifier: file:vendor/hub-identity
+        version: file:vendor/hub-identity
       '@tool-workspace/hub-ui':
         specifier: file:vendor/hub-ui
         version: file:vendor/hub-ui(lucide-react@0.561.0(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

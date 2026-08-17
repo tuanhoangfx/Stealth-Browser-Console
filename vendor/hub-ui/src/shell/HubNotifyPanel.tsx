@@ -14,7 +14,7 @@ import { HubHeaderPanelButton } from "./HubHeaderPanelButton";
 import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
-import { markAllNotifySeen, markNotifySeenId, readNotifySeenIds } from "./hub-notify-seen";
+import { markAllNotifySeen, markNotifySeenId, mergeNotifySeenIds, pruneNotifySeenIds, readNotifySeenIds } from "./hub-notify-seen";
 import type { HubLogQuickAction } from "./HubUsageLogPanel";
 import {
   HubActivityFeedRows,
@@ -24,9 +24,9 @@ import {
   type HubActivityKindFilter,
 } from "./HubActivityFeed";
 import {
-  HubOpsMarkAllReadButton,
   HubOpsPanelBadge,
   HubOpsPanelSearch,
+  HubOpsTitleReadActions,
   HubOpsTypeTocNav,
   useHubOpsTypeToc,
   type HubOpsTypeTocChrome,
@@ -55,7 +55,7 @@ export type HubNotifySeveritySectionOverride = {
 
 export type HubNotifyPanelProps = {
   alerts: HubNotifyAlert[];
-  /** sessionStorage key for unread persistence across reloads. */
+  /** localStorage key for unread persistence across visits (migrates sessionStorage). */
   scopeKey?: string;
   title?: string;
   /** Hover title on the header bell — defaults to `title` / unread copy. */
@@ -64,7 +64,7 @@ export type HubNotifyPanelProps = {
   emptyMessage?: string;
   compact?: boolean;
   sidebarRow?: boolean;
-  /** Shake bell when unread alerts exist (sessionStorage when scopeKey set). */
+  /** Shake bell when unread alerts exist (localStorage when scopeKey set). */
   trackUnread?: boolean;
   /** Override severity TOC / section chrome (e.g. Updates · Removed for vault Live sync). */
   severitySections?: Partial<Record<HubNotifyAlertSeverity, HubNotifySeveritySectionOverride>>;
@@ -73,7 +73,7 @@ export type HubNotifyPanelProps = {
   renderAlertBody?: (alert: HubNotifyAlert) => ReactNode;
   /** Open linked account / row detail (separate from mark-read row click). */
   onAlertOpenDetail?: (alert: HubNotifyAlert) => void;
-  /** Fired when a row is marked read (sessionStorage + optional product sync). */
+  /** Fired when a row is marked read (localStorage + optional product sync). */
   onMarkRead?: (alertId: string) => void;
   /** Fired when Mark all read is clicked. */
   onMarkAllRead?: (alertIds: readonly string[]) => void;
@@ -269,14 +269,27 @@ export function HubNotifyPanel({
     return map;
   }, [activeAlerts]);
 
-  /** Search-filtered alerts drive TOC counts (kind filter excluded, like Log). */
-  const searchedKinds = useMemo(() => {
+  /** Search-filtered alerts drive TOC rows; unread subset drives Notify counts. */
+  const searchedAlerts = useMemo(() => {
     if (!typeTocEnabled) return [];
     const q = query.trim().toLowerCase();
-    return activeAlerts
-      .filter((a) => !q || `${a.label} ${a.detail ?? ""}`.toLowerCase().includes(q))
-      .map((a) => alertKinds.get(a.id) ?? "info");
-  }, [activeAlerts, alertKinds, query, typeTocEnabled]);
+    return activeAlerts.filter(
+      (a) => !q || `${a.label} ${a.detail ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [activeAlerts, query, typeTocEnabled]);
+
+  const searchedKinds = useMemo(
+    () => searchedAlerts.map((a) => alertKinds.get(a.id) ?? "info"),
+    [alertKinds, searchedAlerts],
+  );
+
+  const unreadSearchedKinds = useMemo(
+    () =>
+      trackUnread
+        ? searchedAlerts.filter((a) => !seenIds.has(a.id)).map((a) => alertKinds.get(a.id) ?? "info")
+        : searchedKinds,
+    [alertKinds, searchedAlerts, searchedKinds, seenIds, trackUnread],
+  );
 
   /** Severity buckets inherit the consumer's section chrome (Updates / Removed). */
   const tocChromeOf = useCallback(
@@ -293,6 +306,7 @@ export function HubNotifyPanel({
   const typeTocEntries = useHubOpsTypeToc({
     enabled: typeTocEnabled,
     kinds: searchedKinds,
+    countKinds: trackUnread ? unreadSearchedKinds : undefined,
     order: NOTIFY_TYPE_ORDER,
     chromeOf: tocChromeOf,
   });
@@ -308,9 +322,19 @@ export function HubNotifyPanel({
 
   /** Re-read when scope or alert ids change so products can seed DB-read ids before setState. */
   const activeIdsKey = activeIds.join("\0");
+  const dbReadKey = useMemo(
+    () =>
+      activeAlerts
+        .filter((a) => a.meta?.isRead === true)
+        .map((a) => a.id)
+        .join("\0"),
+    [activeAlerts],
+  );
   useEffect(() => {
-    setSeenIds(readNotifySeenIds(scopeKey));
-  }, [scopeKey, activeIdsKey]);
+    const dbReadIds = dbReadKey ? dbReadKey.split("\0") : [];
+    mergeNotifySeenIds(scopeKey, dbReadIds);
+    setSeenIds(pruneNotifySeenIds(scopeKey, activeIds));
+  }, [scopeKey, activeIds, activeIdsKey, dbReadKey]);
 
   useEffect(() => {
     if (open) return;
@@ -320,14 +344,16 @@ export function HubNotifyPanel({
 
   const markRead = useCallback(
     (id: string) => {
-      setSeenIds(markNotifySeenId(scopeKey, id));
+      markNotifySeenId(scopeKey, id);
+      setSeenIds(pruneNotifySeenIds(scopeKey, activeIds));
       onMarkRead?.(id);
     },
-    [onMarkRead, scopeKey],
+    [activeIds, onMarkRead, scopeKey],
   );
 
   const markAllRead = useCallback(() => {
-    setSeenIds(markAllNotifySeen(scopeKey, activeIds));
+    markAllNotifySeen(scopeKey, activeIds);
+    setSeenIds(pruneNotifySeenIds(scopeKey, activeIds));
     onMarkAllRead?.(activeIds);
   }, [activeIds, onMarkAllRead, scopeKey]);
 
@@ -533,16 +559,15 @@ export function HubNotifyPanel({
         titleId="hub-notify-panel-title"
         headerIcon={Bell}
         headerIconClassName="text-amber-300"
-        headerTrailing={badge > 0 ? <HubOpsPanelBadge count={badge} tone="amber" /> : undefined}
-        headerCenter={
-          <HubOpsPanelSearch
-            query={query}
-            onQueryChange={setQuery}
-            placeholder="Search alerts…"
-          />
+        headerTrailing={
+          trackUnread ? (
+            <HubOpsTitleReadActions unreadCount={unreadCount} onMarkAllRead={markAllRead} />
+          ) : badge > 0 ? (
+            <HubOpsPanelBadge count={badge} tone="amber" />
+          ) : undefined
         }
-        headerActions={
-          unreadCount > 0 ? <HubOpsMarkAllReadButton onClick={markAllRead} /> : undefined
+        headerCenter={
+          <HubOpsPanelSearch query={query} onQueryChange={setQuery} placeholder="Search alerts…" />
         }
         shellClassName="hub-header-panel-modal hub-ops-panel-modal"
         sectionIds={showToc && !typeTocEnabled ? sectionIds : undefined}

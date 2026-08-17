@@ -44,7 +44,10 @@ async function dropGhostSession(
   }
 }
 
-/** Restore or verify a workspace Supabase JWT — prefers live client session over cache. */
+/** Restore or verify a workspace Supabase JWT.
+ * Live GoTrue wins when it matches the Hub snapshot user; a leftover persistSession
+ * account is replaced by the dual-sign-in snapshot (Enzy Todo: see board, cannot PATCH).
+ */
 export function createEnsureSupabaseAuth(config: EnsureSupabaseAuthConfig): () => Promise<Session | null> {
   const nearMs =
     config.refreshNearExpiryMs === undefined
@@ -58,8 +61,22 @@ export function createEnsureSupabaseAuth(config: EnsureSupabaseAuthConfig): () =
 
     const { data: existing } = await client.auth.getSession();
     let session = existing.session;
+    const snap = config.readSnapshot();
+    // persistSession can keep a leftover GoTrue user while Hub dual-sign-in
+    // already wrote a different Data Box snapshot (Enzy Todo: see tasks, cannot PATCH).
+    if (session && snap?.access_token && snap.user_id && snap.user_id !== session.user?.id) {
+      const { data, error } = await client.auth.setSession({
+        access_token: snap.access_token,
+        refresh_token: snap.refresh_token || "",
+      });
+      if (!error && data.session) {
+        session = data.session;
+        config.cacheSession(session);
+      } else if (!isAuthNetworkError(error)) {
+        session = null;
+      }
+    }
     if (!session) {
-      const snap = config.readSnapshot();
       if (!snap?.access_token) return null;
 
       const { data, error } = await client.auth.setSession({

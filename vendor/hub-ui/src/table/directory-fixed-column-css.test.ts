@@ -66,7 +66,7 @@ describe("generateDirectoryFixedColumnCss", () => {
   it("verifyDirectoryColumnMetaKeys checks width and optional columnKind", () => {
     const metaSource = `
       order_date: orderSheetColumnMeta("📅", "Date", "hub-users-col--od-order-date", "5.75rem", hints, { columnKind: "date" }),
-      product_name: orderSheetColumnMeta("📛", "Product", "hub-users-col--od-product", "16rem"),
+      product_name: orderSheetColumnMeta("🏷️", "Product", "hub-users-col--od-product", "16rem"),
     `;
     const entries = [
       { colClass: "hub-users-col--od-order-date", width: "5.75rem", kind: "date" as const, keys: ["order_date"] },

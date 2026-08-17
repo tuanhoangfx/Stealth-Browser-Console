@@ -1,5 +1,9 @@
 import { Clock, Mail, User } from "lucide-react";
-import { hubSessionLabels, type HubSessionLike } from "@tool-workspace/hub-identity";
+import {
+  hubSessionLabels,
+  isHubOpaqueAuthEmail,
+  type HubSessionLike,
+} from "@tool-workspace/hub-identity";
 import type { HubAuthSessionMode } from "./HubAuthSessionBadge";
 import type { HubWorkspaceUserProfileRow } from "./HubWorkspaceUserModal";
 import { resolveWorkspaceRoleIcon, workspaceRoleLabel } from "./hub-workspace-role-icon";
@@ -20,23 +24,48 @@ export function workspaceUserInitials(
   return base.slice(0, 2).toUpperCase();
 }
 
+/** Opaque GoTrue locals (`u_<uuid>`) must never paint as the sidebar account label. */
+export function isUnstableWorkspaceFooterLabel(label: string | null | undefined): boolean {
+  const v = String(label ?? "").trim();
+  if (!v) return true;
+  if (v.includes("@")) return true;
+  if (/^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return true;
+  if (/^u_[0-9a-f-]{20,}$/i.test(v)) return true;
+  return false;
+}
+
+/**
+ * Sidebar User footer label — never show email.
+ * Priority: Display name → Username (login_id) → auth local-part → id/guest.
+ * Never surface opaque `u_<uuid>` auth locals (Hub GoTrue technical address).
+ */
 export function workspaceUserFooterLabel(opts: {
   labels?: ReturnType<typeof hubSessionLabels>;
   session?: HubSessionLike;
   anonymous?: boolean;
   anonymousLabel?: string;
   guestLabel?: string;
+  /** Live profiles.full_name (or host override) — wins over session metadata. */
+  displayName?: string | null;
+  /** Live profiles.login_id (or host override). */
+  username?: string | null;
 }): string {
   if (opts.anonymous) return opts.anonymousLabel ?? "Anonymous";
   const labels = opts.labels ?? hubSessionLabels(opts.session ?? null);
-  return (
-    labels.email ||
-    labels.loginId ||
-    opts.session?.user?.email?.trim() ||
-    (opts.session?.user?.id ? opts.session.user.id.slice(0, 8) : null) ||
-    opts.guestLabel ||
-    "guest"
-  );
+  const displayName = String(opts.displayName ?? labels.displayName ?? "").trim();
+  if (displayName && !isUnstableWorkspaceFooterLabel(displayName)) return displayName;
+
+  const username = String(opts.username ?? labels.loginId ?? "").trim();
+  if (username && !isUnstableWorkspaceFooterLabel(username)) return username;
+
+  const authEmail = String(opts.session?.user?.email ?? labels.authEmail ?? "").trim();
+  if (authEmail && !isHubOpaqueAuthEmail(authEmail)) {
+    const authLocal = authEmail.split("@")[0]?.trim() ?? "";
+    if (authLocal && !isUnstableWorkspaceFooterLabel(authLocal)) return authLocal;
+  }
+
+  if (opts.session?.user?.id) return opts.session.user.id.slice(0, 8);
+  return opts.guestLabel || "guest";
 }
 
 export type BuildWorkspaceUserProfileRowsOptions = {
@@ -68,9 +97,14 @@ export function buildWorkspaceUserProfileRows(
   if (opts.includeLoginId) {
     rows.push({ label: "User ID", value: labels.loginId || "—", icon: User });
   }
-  const emailValue = opts.includeLoginId
-    ? labels.email || (labels.hasSyntheticAuth ? "Not linked" : labels.authEmail) || "—"
-    : labels.email || user?.email?.trim() || opts.emptyEmailLabel || "—";
+  // profiles.email SSOT (Users detail) — never paint opaque/synthetic auth.users.email.
+  const emailValue =
+    labels.email ||
+    (labels.hasTechnicalAuth || labels.hasSyntheticAuth
+      ? opts.emptyEmailLabel || "Not linked"
+      : "") ||
+    opts.emptyEmailLabel ||
+    "—";
   rows.push({
     label: "Email",
     value: emailValue,

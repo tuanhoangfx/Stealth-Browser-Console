@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEV_AUTO_LOGIN_SESSION_KEY,
+  clearDevAutoLoginOptOut,
   isDevAutoLoginEnabled,
   isDevAutoLoginOptedOut,
   optOutDevAutoLogin,
@@ -74,5 +75,15 @@ describe("dev-auto-login opt-out", () => {
     expect(store.get(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("off");
     expect(isDevAutoLoginOptedOut()).toBe(true);
     expect(isDevAutoLoginEnabled("127.0.0.1")).toBe(false);
+  });
+
+  it("clearDevAutoLoginOptOut restores silent auto-login for the tab", () => {
+    const store = stubWindow("");
+    optOutDevAutoLogin();
+    expect(isDevAutoLoginOptedOut()).toBe(true);
+    clearDevAutoLoginOptOut();
+    expect(store.get(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("on");
+    expect(isDevAutoLoginOptedOut()).toBe(false);
+    expect(isDevAutoLoginEnabled("127.0.0.1")).toBe(true);
   });
 });

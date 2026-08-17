@@ -1,18 +1,20 @@
 import { useMemo, type ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import { Bell, CheckCheck, type LucideIcon } from "lucide-react";
+import { compactIconSize } from "../ui-scale";
 import {
   HubActivityFeedToolbar,
   resolveHubActivityKindMeta,
   type HubActivityKindFilter,
 } from "./HubActivityFeed";
+import { HubDirectoryMetricBadge } from "./HubDirectoryMetricBadge";
 
 /**
  * Shared chrome for the Layout 2 ops panels (Log · Notify).
  *
- * Both modals render the same shell: search in `headerCenter`, count badge in
- * `headerTrailing`, "Mark all read" in `headerActions`, and a **type-first TOC**
- * on the left whose rows filter the feed (they replaced the old header kind
- * chips). Everything shared between `HubUsageLogPanel` and `HubNotifyPanel`
+ * Both modals render the same shell: search-only `headerCenter` (fixed center
+ * column), Notify unread metric + "Mark all read" beside the title
+ * (`headerTrailing`), and a **type-first TOC** on the left whose rows filter
+ * the feed. Everything shared between `HubUsageLogPanel` and `HubNotifyPanel`
  * lives here — the panels only supply their own data shaping.
  */
 
@@ -165,6 +167,11 @@ export type HubOpsTypeTocInput = {
   hasExtraSections?: boolean;
   /** Override TOC chrome per kind (e.g. Notify severity buckets). */
   chromeOf?: (kind: HubActivityKindFilter) => HubOpsTypeTocChrome | null | undefined;
+  /**
+   * When set, TOC numbers come from this list (Notify unread) while `kinds`
+   * still decides which type rows stay visible.
+   */
+  countKinds?: readonly string[];
 };
 
 /** Type-first TOC entries — `All` head row, then kinds with data (or pinned). */
@@ -176,6 +183,7 @@ export function buildHubOpsTypeTocEntries({
   extraCountsComplete = true,
   hasExtraSections = false,
   chromeOf,
+  countKinds,
 }: HubOpsTypeTocInput): HubOpsTypeTocEntry[] {
   const chrome = (kind: HubActivityKindFilter): HubOpsTypeTocChrome =>
     chromeOf?.(kind) ?? resolveHubOpsTypeTocChrome(kind);
@@ -196,6 +204,10 @@ export function buildHubOpsTypeTocEntries({
   const ownCounts = new Map<string, number>();
   for (const kind of kinds) ownCounts.set(kind, (ownCounts.get(kind) ?? 0) + 1);
 
+  const countSource = countKinds ?? kinds;
+  const displayCounts = new Map<string, number>();
+  for (const kind of countSource) displayCounts.set(kind, (displayCounts.get(kind) ?? 0) + 1);
+
   const extras = new Map<string, number>();
   let extraTotal = 0;
   for (const [kind, count] of Object.entries(extraCounts ?? {})) {
@@ -215,14 +227,15 @@ export function buildHubOpsTypeTocEntries({
   visible.push(...[...customs].sort());
 
   const entries: HubOpsTypeTocEntry[] = [
-    toEntry("all", extraCountsComplete ? kinds.length + extraTotal : undefined),
+    toEntry("all", extraCountsComplete ? countSource.length + extraTotal : undefined),
   ];
   for (const kind of visible) {
     const own = ownCounts.get(kind) ?? 0;
+    const shown = (displayCounts.get(kind) ?? 0) + (extras.get(kind) ?? 0);
     const total = own + (extras.get(kind) ?? 0);
     const isPinned = pinnedKinds.includes(kind);
     const ownOnly = !hasExtraSections || (!isPinned && own === total);
-    entries.push(toEntry(kind, extraCountsComplete || ownOnly ? total : undefined));
+    entries.push(toEntry(kind, extraCountsComplete || ownOnly ? shown : undefined));
   }
   return entries;
 }
@@ -239,6 +252,7 @@ export function useHubOpsTypeToc(
     extraCountsComplete,
     hasExtraSections,
     chromeOf,
+    countKinds,
     enabled = true,
   } = input;
   return useMemo(
@@ -252,10 +266,12 @@ export function useHubOpsTypeToc(
             extraCountsComplete,
             hasExtraSections,
             chromeOf,
+            countKinds,
           })
         : [],
     [
       chromeOf,
+      countKinds,
       enabled,
       extraCounts,
       extraCountsComplete,
@@ -298,7 +314,7 @@ export function HubOpsTypeTocNav({
           >
             <span className="hub-toc-nav__label flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 font-medium text-[var(--muted)] transition-all duration-200 group-hover:text-[var(--text)]">
               <span
-                className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[.03] text-[var(--muted)] group-hover:text-indigo-200 [&>svg]:size-[11px]"
+                className="hub-toc-nav__icon hub-toc-nav__icon--plain shrink-0 text-[var(--muted)] group-hover:text-indigo-200"
                 aria-hidden
               >
                 {entry.icon}
@@ -328,7 +344,7 @@ export function HubOpsPanelSearch({
   placeholder?: string;
 }) {
   return (
-    <div className="hub-ops-panel-search mx-auto w-full max-w-2xl">
+    <div className="hub-ops-panel-search mx-auto w-full">
       <HubActivityFeedToolbar
         query={query}
         onQueryChange={onQueryChange}
@@ -341,6 +357,26 @@ export function HubOpsPanelSearch({
     </div>
   );
 }
+
+/** Title-adjacent unread chrome — Assign roster badge SSOT + Mark all read. */
+export function HubOpsTitleReadActions({
+  unreadCount,
+  onMarkAllRead,
+}: {
+  unreadCount: number;
+  onMarkAllRead: () => void;
+}) {
+  if (unreadCount <= 0) return null;
+  return (
+    <div className="hub-ops-title-read-actions">
+      <HubDirectoryMetricBadge count={unreadCount} icon={Bell} className="shrink-0" />
+      <HubOpsMarkAllReadButton onClick={onMarkAllRead} />
+    </div>
+  );
+}
+
+/** @deprecated Alias — unread chrome sits beside the title, not the search box. */
+export const HubOpsSearchReadActions = HubOpsTitleReadActions;
 
 const HUB_OPS_BADGE_TONE = {
   cyan: "bg-cyan-500/10 text-cyan-200",
@@ -366,7 +402,7 @@ export function HubOpsPanelBadge({
   );
 }
 
-/** Right-corner header action — shared by Log (vault activity) and Notify. */
+/** Mark all read — sits beside the ops-panel title (not the search box). */
 export function HubOpsMarkAllReadButton({
   onClick,
   label = "Mark all read",
@@ -379,8 +415,13 @@ export function HubOpsMarkAllReadButton({
       type="button"
       className="hub-ops-mark-all-read rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)]"
       onClick={onClick}
+      aria-label={label}
+      title={label}
     >
-      {label}
+      <CheckCheck size={compactIconSize(14)} className="hub-ops-mark-all-read__icon shrink-0" aria-hidden />
+      <span className="hub-ops-mark-all-read__label" aria-hidden>
+        {label}
+      </span>
     </button>
   );
 }

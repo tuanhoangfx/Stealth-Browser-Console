@@ -91,8 +91,12 @@ function installProfileTitlePrefix(label) {
   }
 }
 
-/** Chromium wipes WM_SETICON on title/nav — keep re-stamping after open. */
-const BADGE_RECOVER_DELAYS_MS = Object.freeze([800, 1800, 3500, 6000, 10_000, 16_000]);
+/** Chromium wipes WM_SETICON on title/nav — keep re-stamping after open.
+ * Late passes (25s+) cover profiles that render their first page slowly and get their
+ * icon reset well after the early chain finished. */
+const BADGE_RECOVER_DELAYS_MS = Object.freeze([
+  800, 1800, 3500, 6000, 10_000, 16_000, 25_000, 40_000, 60_000,
+]);
 
 function queueBadgeRecoverPasses(dir, title, digits, browserPid, headless) {
   for (const ms of BADGE_RECOVER_DELAYS_MS) {

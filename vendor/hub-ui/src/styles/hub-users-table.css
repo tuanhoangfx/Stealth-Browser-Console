@@ -253,6 +253,17 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--user-
   min-width: 9rem;
 }
 
+table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--display-name,
+table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--display-name,
+table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--display-name,
+table.hub-users-table col.hub-users-col--display-name,
+table.hub-users-table th.hub-users-col--display-name,
+table.hub-users-table td.hub-users-col--display-name {
+  width: 14rem;
+  min-width: 14rem;
+  text-align: left;
+}
+
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--twofa-account,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--twofa-account,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--twofa-account {
@@ -301,6 +312,14 @@ table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--enter
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--enterprise {
   width: 7.5rem;
   min-width: 7.5rem;
+  text-align: left;
+}
+
+table.hub-users-table col.hub-users-col--job-title,
+table.hub-users-table th.hub-users-col--job-title,
+table.hub-users-table td.hub-users-col--job-title {
+  width: 10.4rem;
+  min-width: 10.4rem;
   text-align: left;
 }
 
@@ -1416,6 +1435,15 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 }
 
 .hub-users-status--plain {
+  text-transform: none;
+}
+
+/* Explicit detail variant — same tier as ADM field values (not 10px table chrome). */
+.hub-users-status--detail {
+  font-size: var(--hub-adm-type-size, var(--hub-table-body-size, 12px));
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  line-height: var(--hub-adm-type-line, var(--hub-table-body-line-height, 1.45));
+  color: var(--hub-adm-type-value-color, var(--text));
   text-transform: none;
 }
 

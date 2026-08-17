@@ -1,11 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { HubIdentityRelaySnapshot } from "./hub-identity-relay";
-import { useHubIdentityRelayReceive } from "./hub-identity-relay";
-import {
-  bindSupabaseAuthListener,
-  useHubIdentityRefreshEffect,
-} from "./workspace-auth-session";
+import { useWorkspaceAuthBootCore } from "./workspace-auth-boot-core";
+import { bindSupabaseAuthListener } from "./workspace-auth-session";
 
 export type WorkspaceDataAuthBootConfig = {
   isConfigured: () => boolean;
@@ -36,20 +33,15 @@ export function useWorkspaceDataAuthBoot(config: WorkspaceDataAuthBootConfig): v
   const configRef = useRef(config);
   configRef.current = config;
 
-  useHubIdentityRelayReceive({
+  useWorkspaceAuthBootCore({
     isToolHubOrigin: config.isToolHubOrigin,
-    onReceived: config.onHubRelayReceived,
-  });
-
-  useHubIdentityRefreshEffect(
-    () => {
+    onHubRelayReceived: config.onHubRelayReceived,
+    onIdentityRefresh: () => {
       void configRef.current.refreshSession();
     },
-    {
-      debounceMs: config.identityRefreshDebounceMs ?? 400,
-      syncLabels: config.syncHubIdentityLabels,
-    },
-  );
+    identityRefreshDebounceMs: config.identityRefreshDebounceMs,
+    syncHubIdentityLabels: config.syncHubIdentityLabels,
+  });
 
   useEffect(() => {
     const eventName = config.offlineEventName;

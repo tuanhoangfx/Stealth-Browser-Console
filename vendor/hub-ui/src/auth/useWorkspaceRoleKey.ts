@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HubSessionLike } from "@tool-workspace/hub-identity";
 import {
+  cacheWorkspaceProfileRoleForUsers,
   fetchWorkspaceProfileRole,
   readCachedWorkspaceProfileRole,
   subscribeWorkspaceProfileRole,
@@ -74,6 +75,12 @@ export function useWorkspaceRoleKey(
   const [roleIconPending, setRoleIconPending] = useState(() => usesProfileSsot && !initialCached);
   const prepareClientRef = useRef(onPrepareProfileRoleClient);
   prepareClientRef.current = onPrepareProfileRoleClient;
+  const resolvedRoleRef = useRef<string | null>(initialCached);
+  const inflightUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    resolvedRoleRef.current = resolvedRoleKey;
+  }, [resolvedRoleKey]);
 
   useEffect(() => {
     if (roleKeyProp) {
@@ -89,8 +96,13 @@ export function useWorkspaceRoleKey(
 
     let cancelled = false;
     const cached = readCachedRoleForIds(roleUserId, sessionUserId);
-    setResolvedRoleKey(cached);
-    setRoleIconPending(Boolean(profileRoleClient && !cached));
+    if (cached) {
+      setResolvedRoleKey((prev) => (prev ? strongerRoleKey(prev, cached) : cached));
+      setRoleIconPending(false);
+    } else if (!resolvedRoleRef.current) {
+      // First resolve only — never flash opacity-0 after we already know a role.
+      setRoleIconPending(Boolean(profileRoleClient));
+    }
 
     const applyRole = (role: string | null | undefined) => {
       if (!cancelled && role) {
@@ -104,21 +116,36 @@ export function useWorkspaceRoleKey(
     const unsubCache = cacheUserIds.map((id) => subscribeWorkspaceProfileRoleCache(id, applyRole));
 
     if (profileRoleClient) {
-      const load = () => {
+      const load = (reason: "mount" | "auth" = "mount") => {
+        if (reason === "auth" && inflightUserIdRef.current === roleUserId && resolvedRoleRef.current) {
+          return;
+        }
+        inflightUserIdRef.current = roleUserId;
         void fetchWorkspaceProfileRole(profileRoleClient, roleUserId, {
           email: roleEmail,
           prepareClient: prepareClientRef.current,
         }).then((role) => {
-          applyRole(role);
-          if (!cancelled) setRoleIconPending(false);
+          if (cancelled) return;
+          if (role) {
+            cacheWorkspaceProfileRoleForUsers(cacheUserIds, role);
+            applyRole(role);
+          }
+          setRoleIconPending(false);
+          if (inflightUserIdRef.current === roleUserId) inflightUserIdRef.current = null;
         });
       };
-      load();
+      load("mount");
       const unsubscribeRole = subscribeWorkspaceProfileRole(profileRoleClient, roleUserId, applyRole);
       const {
         data: { subscription },
-      } = profileRoleClient.auth.onAuthStateChange(() => {
-        load();
+      } = profileRoleClient.auth.onAuthStateChange((event, nextSession) => {
+        const nextId = nextSession?.user?.id?.trim() || "";
+        // TOKEN_REFRESHED / same user must not re-hide the icon or spam Hub JWT apply.
+        if (event === "TOKEN_REFRESHED" && (!nextId || nextId === roleUserId || nextId === sessionUserId)) {
+          return;
+        }
+        if (event === "INITIAL_SESSION") return;
+        load("auth");
       });
       return () => {
         cancelled = true;

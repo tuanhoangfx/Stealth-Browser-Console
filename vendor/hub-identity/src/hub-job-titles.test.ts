@@ -4,6 +4,7 @@ import {
   cleanHubJobTitleSlug,
   hubJobTitleFilterOptions,
   hubJobTitleLabel,
+  hubJobTitleRank,
   hubJobTitleStickerFilterOptions,
   isHubJobTitleSlug,
 } from "./hub-job-titles";
@@ -13,6 +14,14 @@ describe("hub-job-titles", () => {
     expect(HUB_JOB_TITLES).toHaveLength(3);
     expect(HUB_JOB_TITLES.map((t) => t.slug)).toEqual(["ceo", "manager", "employee"]);
     expect(HUB_JOB_TITLES.map((t) => t.label)).toEqual(["CEO", "Manager", "Employee"]);
+  });
+
+  it("ranks positions CEO → Manager → Employee, unassigned last", () => {
+    expect(hubJobTitleRank("ceo")).toBe(0);
+    expect(hubJobTitleRank("Manager")).toBe(1);
+    expect(hubJobTitleRank("employee")).toBe(2);
+    expect(hubJobTitleRank(null)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(hubJobTitleRank("intern")).toBe(Number.MAX_SAFE_INTEGER);
   });
 
   it("cleans and labels slugs", () => {

@@ -38,6 +38,8 @@ export const HUB_USER_STATUS_DOT_COLOR = {
 /** P0004 Users header contract, reused by tool-scoped directories. */
 export const HUB_DIRECTORY_HEADER_EMOJI = {
   username: "👤",
+  /** Label tag — do not use 📛 (Name Badge); Windows Segoe often renders it as tofu. */
+  displayName: "🏷️",
   email: "📧",
   password: "🔑",
   id: "🆔",

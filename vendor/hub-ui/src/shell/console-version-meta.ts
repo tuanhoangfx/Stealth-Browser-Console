@@ -1,9 +1,11 @@
-import { resolveHubDisplayAppVersion } from "./hub-embed-mode";
+import {
+  getHubHostVersionPublishedAtOverride,
+  resolveHubDisplayAppVersion,
+} from "./hub-embed-mode";
 import { Tag } from "lucide-react";
 import { resolveAppVersionReleaseMeta, type ToolManifestReleaseSlice } from "../lib/app-version-release-meta";
 import type { TabHeaderMetaItem } from "./AppTabHeader";
 import { buildVersionMetaItems } from "./workspace-tab-header-meta";
-// readHubEmbedHostVersion unused after simplify — keep import only resolve
 
 /** `vX.Y.Z · activity timestamp` — thin wrapper over manifest + build meta. */
 export function buildConsoleVersionMetaItems(
@@ -19,10 +21,11 @@ export function buildConsoleVersionMetaItems(
 ): TabHeaderMetaItem[] {
   const toolSemver = String(appVersion).replace(/^v/i, "").trim();
   const displayVersion = resolveHubDisplayAppVersion(appVersion);
+  const hostPublishedAt = getHubHostVersionPublishedAtOverride();
   // Host portal (P0015) version inside embed — one clock for every ENZY screen.
   let items: TabHeaderMetaItem[];
   if (displayVersion !== toolSemver) {
-    items = buildVersionMetaItems(displayVersion, null, true, options?.extra ?? []);
+    items = buildVersionMetaItems(displayVersion, hostPublishedAt, true, options?.extra ?? []);
   } else {
     const release = resolveAppVersionReleaseMeta({
       appVersion: displayVersion,
@@ -30,7 +33,12 @@ export function buildConsoleVersionMetaItems(
       builtAtIso: options?.builtAtIso,
       changelogPublishedAt: options?.changelogPublishedAt,
     });
-    items = buildVersionMetaItems(displayVersion, release.publishedAt, release.live, options?.extra ?? []);
+    items = buildVersionMetaItems(
+      displayVersion,
+      hostPublishedAt || release.publishedAt,
+      release.live,
+      options?.extra ?? [],
+    );
   }
   if (options?.versionAfter && items[0]) {
     items = [{ ...items[0], after: options.versionAfter }, ...items.slice(1)];

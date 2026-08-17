@@ -8,6 +8,8 @@
 
 /** In-process host (local ENZY embed) — set by portal shell, not by URL. */
 let hostVersionOverride: string | null = null;
+let hostCodeOverride: string | null = null;
+let hostVersionPublishedAtOverride: string | null = null;
 
 export function setHubHostVersionOverride(version: string | null): void {
   hostVersionOverride = version ? String(version).replace(/^v/i, "").trim() || null : null;
@@ -15,6 +17,24 @@ export function setHubHostVersionOverride(version: string | null): void {
 
 export function getHubHostVersionOverride(): string | null {
   return hostVersionOverride;
+}
+
+/** In-process host release/build timestamp for embedded tab header version meta. */
+export function setHubHostVersionPublishedAtOverride(publishedAt: string | null): void {
+  hostVersionPublishedAtOverride = publishedAt ? String(publishedAt).trim() || null : null;
+}
+
+export function getHubHostVersionPublishedAtOverride(): string | null {
+  return hostVersionPublishedAtOverride;
+}
+
+/** In-process host tool code (e.g. P0015) — mirrors `?hostCode=` for local embeds. */
+export function setHubHostCodeOverride(code: string | null): void {
+  hostCodeOverride = code ? String(code).trim().toUpperCase() || null : null;
+}
+
+export function getHubHostCodeOverride(): string | null {
+  return hostCodeOverride;
 }
 
 export function isHubEmbedMode(search = typeof window !== "undefined" ? window.location.search : ""): boolean {
@@ -36,9 +56,10 @@ export function readHubEmbedHostVersion(
 export function readHubEmbedHostCode(
   search = typeof window !== "undefined" ? window.location.search : "",
 ): string | null {
+  if (hostCodeOverride) return hostCodeOverride;
   const raw = search.startsWith("?") ? search.slice(1) : search;
   const value = new URLSearchParams(raw).get("hostCode");
-  return value?.trim() || null;
+  return value?.trim().toUpperCase() || null;
 }
 
 /**

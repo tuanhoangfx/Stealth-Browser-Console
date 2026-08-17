@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-17 - Patch bump for completed agent task
+
+- Version: `1.1.3`
+- Timestamp: 2026-08-17 23:27 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-17 - Patch bump for completed agent task
+
+- Version: `1.1.2`
+- Timestamp: 2026-08-17 22:24 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-15 - Boot IPC before window (empty Profiles after update) (git)
 
 - Version: `1.1.1`

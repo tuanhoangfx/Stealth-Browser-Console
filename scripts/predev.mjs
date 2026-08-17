@@ -29,10 +29,12 @@ function runToolScript(name, extraArgs = []) {
 
 const devActive = await isDevPortListening();
 if (devActive) {
+  // Hub-UI vendor copy mid-HMR is noisy; identity still must stay byte-sync for Login SSOT.
   console.warn(
-    "[predev] :5175 dev active — skip vendor sync, sync-hub-env write, electron-dev-gate kill " +
-      "(close dev or run sync-hub-ui-vendor after ship)",
+    "[predev] :5175 dev active — skip hub-ui vendor sync + electron-dev-gate kill; " +
+      "still sync hub-identity (login/auth SSOT)",
   );
+  runToolScript("sync-hub-identity-vendor.cjs");
 } else {
   runToolScript("sync-hub-ui-vendor.cjs");
   runToolScript("sync-hub-identity-vendor.cjs");

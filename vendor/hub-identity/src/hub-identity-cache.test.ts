@@ -5,6 +5,8 @@ import {
   HUB_IDENTITY_STORAGE_KEY,
   cacheHubIdentity,
   clearHubIdentity,
+  isHubIdentitySignOutFresh,
+  markHubIdentitySignedOut,
   readHubIdentity,
   subscribeHubIdentity,
 } from "./hub-identity-cache";
@@ -60,6 +62,35 @@ describe("hub-identity-cache", () => {
     clearHubIdentity("signout");
     expect(readHubIdentity()).toBeNull();
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ type: "cleared" }));
+  });
+
+  it("stays silent when clearing an already empty cache", () => {
+    const handler = vi.fn();
+    subscribeHubIdentity(handler);
+    clearHubIdentity("boot");
+    clearHubIdentity("boot");
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("ignores a cross-origin snapshot inside the sign-out window", () => {
+    markHubIdentitySignedOut();
+    cacheHubIdentity(BASE, "cross-origin");
+    expect(readHubIdentity()).toBeNull();
+    expect(isHubIdentitySignOutFresh()).toBe(true);
+  });
+
+  it("clears the sign-out mark on a local sign-in write", () => {
+    markHubIdentitySignedOut();
+    cacheHubIdentity(BASE, "p0015");
+    expect(readHubIdentity()?.access_token).toBe("access-1");
+    expect(isHubIdentitySignOutFresh()).toBe(false);
+  });
+
+  it("expires the sign-out mark after the ttl", () => {
+    markHubIdentitySignedOut(Date.now() - 120_000);
+    expect(isHubIdentitySignOutFresh()).toBe(false);
+    cacheHubIdentity(BASE, "cross-origin");
+    expect(readHubIdentity()?.access_token).toBe("access-1");
   });
 
   it("dispatches canonical hub identity event", () => {

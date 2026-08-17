@@ -39,7 +39,7 @@ export function AnalyticsCaptionLabel({
   const Icon = iconMeta?.icon;
   const body = (
     <span
-      className={`inline-flex min-w-0 max-w-full items-center gap-[var(--hub-inline-gap-name,8px)] truncate text-[var(--muted)] ${HUB_ANALYTICS_CAPTION_TYPO_CLASS} ${className}`.trim()}
+      className={`inline-flex min-w-0 max-w-full items-center gap-[var(--hub-inline-gap-name,8px)] truncate ${HUB_ANALYTICS_CAPTION_TYPO_CLASS} ${className}`.trim()}
     >
       {emojiGlyph ? (
         <span className={hubFilterOptionEmojiClass()} aria-hidden>

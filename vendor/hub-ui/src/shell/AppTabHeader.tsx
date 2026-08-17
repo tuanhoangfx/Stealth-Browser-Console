@@ -403,7 +403,7 @@ export function AppTabHeader({
             </h1>
           </>
         )}
-        <span className="app-tab-header__session inline-flex items-center gap-x-2.5">
+        <span className="inline-flex items-center gap-x-2.5">
           <Rule visibleFrom="sm" />
           <SessionLine sessionMmSs={sessionMmSs} />
         </span>

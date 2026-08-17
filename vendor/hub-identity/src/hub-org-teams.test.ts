@@ -2,17 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   HUB_ORG_TEAMS,
   cleanHubOrgTeamSlug,
+  effectiveHubOrgTeamSlug,
   hubOrgTeamFilterOptions,
   hubOrgTeamLabel,
+  hubOrgTeamRank,
   hubOrgTeamStickerFilterOptions,
   isHubOrgTeamSlug,
 } from "./hub-org-teams";
 
 describe("hub-org-teams", () => {
-  it("exports six org teams including CEO", () => {
-    expect(HUB_ORG_TEAMS).toHaveLength(6);
+  it("orders seven org teams by seniority — CEO then Technology", () => {
+    expect(HUB_ORG_TEAMS).toHaveLength(7);
     expect(HUB_ORG_TEAMS.map((t) => t.slug)).toEqual([
       "ceo",
+      "technology",
       "sales",
       "marketing",
       "warehouse",
@@ -21,19 +24,35 @@ describe("hub-org-teams", () => {
     ]);
   });
 
-  it("keeps executive, revenue, and marketing stickers distinct", () => {
+  it("ranks teams by catalog order, unknown last", () => {
+    expect(hubOrgTeamRank("ceo")).toBe(0);
+    expect(hubOrgTeamRank(" Technology ")).toBe(1);
+    expect(hubOrgTeamRank("sales")).toBe(2);
+    expect(hubOrgTeamRank(null)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(hubOrgTeamRank("unknown")).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("keeps executive, technology, and revenue stickers distinct", () => {
     expect(HUB_ORG_TEAMS.slice(0, 3)).toMatchObject([
       { slug: "ceo", label: "CEO", emoji: "🧭" },
+      { slug: "technology", label: "Technology", emoji: "💻" },
       { slug: "sales", label: "Sales", emoji: "📈" },
-      { slug: "marketing", label: "Marketing", emoji: "🎯" },
     ]);
   });
 
   it("cleans and labels slugs", () => {
     expect(isHubOrgTeamSlug("marketing")).toBe(true);
     expect(cleanHubOrgTeamSlug(" Engineering ")).toBe("engineering");
+    expect(cleanHubOrgTeamSlug(" Technology ")).toBe("technology");
     expect(cleanHubOrgTeamSlug("unknown")).toBeNull();
     expect(hubOrgTeamLabel("accounting")).toBe("Accounting");
+  });
+
+  it("implies Team CEO from Position CEO when team_slug is empty", () => {
+    expect(effectiveHubOrgTeamSlug(null, "ceo")).toBe("ceo");
+    expect(effectiveHubOrgTeamSlug("sales", "ceo")).toBe("sales");
+    expect(effectiveHubOrgTeamSlug(null, "manager")).toBeNull();
+    expect(effectiveHubOrgTeamSlug("  CEO  ", "employee")).toBe("ceo");
   });
 
   it("builds filter options with emoji labels", () => {

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { HubIdentityRelaySnapshot } from "./hub-identity-relay";
-import { useHubIdentityRelayReceive } from "./hub-identity-relay";
+import { useWorkspaceAuthBootCore } from "./workspace-auth-boot-core";
 import {
   bindSupabaseAuthListener,
   sessionsEqual,
-  useHubIdentityRefreshEffect,
 } from "./workspace-auth-session";
 
 export type WorkspaceHubAuthBootConfig = {
@@ -44,13 +43,12 @@ export function useWorkspaceHubAuthBoot(config: WorkspaceHubAuthBootConfig): Wor
   const configRef = useRef(config);
   configRef.current = config;
 
-  useHubIdentityRelayReceive({
+  useWorkspaceAuthBootCore({
     isToolHubOrigin: config.isToolHubOrigin,
-    onReceived: config.onHubRelayReceived,
-  });
-
-  useHubIdentityRefreshEffect(() => {
-    void configRef.current.refreshSession();
+    onHubRelayReceived: config.onHubRelayReceived,
+    onIdentityRefresh: () => {
+      void configRef.current.refreshSession();
+    },
   });
 
   useEffect(() => {

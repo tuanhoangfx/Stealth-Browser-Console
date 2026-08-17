@@ -16,7 +16,7 @@ import type {
   HubOwnProfilePatch,
   HubSessionLike,
 } from "@tool-workspace/hub-identity";
-import { hubSessionLabels } from "@tool-workspace/hub-identity";
+import { hubAccountEmailLabel, hubDisplayEmail, hubSessionLabels } from "@tool-workspace/hub-identity";
 import { HubChangeLogList } from "../content/HubChangeLogList";
 import {
   appendHubEntityLogEntry,
@@ -24,10 +24,10 @@ import {
   pushHubEntityLogChange,
   type HubEntityLogChange,
   type HubEntityLogEntry,
-  type HubEntityLogFieldMeta,
 } from "../lib/hub-entity-log";
 import { HubContactOpenAction } from "../shell/HubContactOpenAction";
 import { hubZaloValueFromPhone } from "../lib/hub-zalo-from-phone";
+import { hubAccountFieldBaseline, hubAccountFieldDirty } from "./hub-account-field-baseline";
 import { readUserAccountLog, writeUserAccountLog } from "./hub-user-account-log-persist";
 import { HubToolDetailModal, HubToolDetailModalPrimaryAction } from "../shell/HubToolDetailModal";
 import { HubToolDetailModalAccountFooter } from "../shell/HubToolDetailModalAccountFooter";
@@ -55,6 +55,7 @@ import {
   hubUserAccountTocItems,
 } from "./hub-user-account-toc";
 import { resolveWorkspaceRoleIcon, workspaceRoleLabel } from "./hub-workspace-role-icon";
+import { hubUserLogFieldMeta } from "./hub-user-log-field-meta";
 
 export { HUB_FULL_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
 export type HubFullUserAccountTocId = "hub-user-account" | "hub-user-log";
@@ -75,20 +76,10 @@ const FIELD_ICON_CLASS: Record<string, string> = {
   "Vault ID": "text-violet-300",
 };
 
-const ACCOUNT_LOG_FIELD_META: Record<string, HubEntityLogFieldMeta> = {
-  username: { label: "Username", emoji: "👤" },
-  email: { label: "Email", emoji: "✉️" },
-  password: { label: "Password", emoji: "🔑" },
-  fullName: { label: "Display name", emoji: "📛" },
-  phone: { label: "Phone", emoji: "📱" },
-  zalo: { label: "Zalo", emoji: "💬" },
-  telegram: { label: "Tele", emoji: "✈️" },
-  meta: { label: "Meta", emoji: "🔵" },
-  note: { label: "Note", emoji: "📝" },
-  session: { label: "Session", emoji: "🟢" },
-};
-
 const EMPTY_OWN_PROFILE: HubOwnProfileFields = {
+  loginId: "",
+  email: "",
+  contactEmail: "",
   fullName: "",
   phone: "",
   zalo: "",
@@ -103,16 +94,17 @@ const CHANNEL_BRAND: Record<"Zalo" | "Tele" | "Meta", HubBrandIconId> = {
   Meta: "facebook",
 };
 
-function accountLogFieldMeta(field: string): HubEntityLogFieldMeta {
-  return ACCOUNT_LOG_FIELD_META[field] ?? { label: field };
-}
-
 export type HubFullUserAccountResult = { ok: boolean; message: string };
 
 export type HubFullUserAccountModalProps = {
   open: boolean;
   onClose: () => void;
   session: HubSessionLike;
+  /**
+   * Hub identity user id when `session` is a Data Box / tool-local JWT (dual-auth hosts).
+   * Used for profiles fetch, role resolve, activity log, and Vault ID display.
+   */
+  identityUserId?: string | null;
   title?: string;
   headerLeading?: ReactNode;
   headerTrailing?: ReactNode;
@@ -150,6 +142,7 @@ export function HubFullUserAccountModal({
   open,
   onClose,
   session,
+  identityUserId = null,
   title,
   headerLeading,
   headerTrailing,
@@ -187,7 +180,8 @@ export function HubFullUserAccountModal({
   const [emailOverride, setEmailOverride] = useState<string | null>(null);
 
   const user = session?.user ?? null;
-  const userId = user?.id?.trim() ?? "";
+  const sessionUserId = user?.id?.trim() ?? "";
+  const userId = identityUserId?.trim() || sessionUserId;
   const labels = hubSessionLabels(session);
   const createdAt = user?.created_at ?? null;
   const lastActiveAt =
@@ -200,11 +194,15 @@ export function HubFullUserAccountModal({
       user?.id?.slice(0, 8) ||
       "User");
 
+  // Same SSOT as Users directory detail — profiles.email / contact_email only.
+  // Never seed from labels.email (may still be synthetic @infix1 until profile hydrates).
   const emailDisplay =
     emailOverride ||
-    labels.email ||
-    (labels.hasSyntheticAuth ? "Not linked" : labels.authEmail) ||
-    "—";
+    hubAccountEmailLabel({
+      authEmail: labels.authEmail,
+      contactEmail: initialProfile.contactEmail || String(user?.user_metadata?.contact_email ?? ""),
+      profileEmail: initialProfile.email,
+    });
 
   const canEditUsername = Boolean(onUpdateUsername && session);
   const canEditOwnProfile = Boolean(onUpdateOwnProfile && session);
@@ -270,18 +268,18 @@ export function HubFullUserAccountModal({
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
 
   useEffect(() => {
-    if (!open || !user?.id || !onResolveRole) {
+    if (!open || !userId || !onResolveRole) {
       setResolvedRole(null);
       return;
     }
     let cancelled = false;
-    void onResolveRole(user.id).then((r) => {
+    void onResolveRole(userId).then((r) => {
       if (!cancelled && r) setResolvedRole(r);
     });
     return () => {
       cancelled = true;
     };
-  }, [open, user?.id, onResolveRole]);
+  }, [open, userId, onResolveRole]);
 
   useEffect(() => {
     if (!open || !userId) {
@@ -316,8 +314,8 @@ export function HubFullUserAccountModal({
       setInitialProfile(EMPTY_OWN_PROFILE);
       return;
     }
-    setUsernameDraft(loginDisplay === "—" ? "" : loginDisplay);
-    setEmailDraft(emailDisplay === "—" || emailDisplay === "Not linked" ? "" : emailDisplay);
+    setUsernameDraft(hubAccountFieldBaseline(loginDisplay));
+    setEmailDraft(hubAccountFieldBaseline(emailDisplay));
     setPasswordDraft("");
   }, [emailDisplay, loginDisplay, open]);
 
@@ -336,11 +334,25 @@ export function HubFullUserAccountModal({
         ...fields,
         zalo: hubZaloValueFromPhone(fields.zalo, fields.phone),
       });
+      const fromProfile = hubDisplayEmail({
+        authEmail: labels.authEmail,
+        contactEmail: fields.contactEmail,
+        profileEmail: fields.email,
+      });
+      if (fromProfile) {
+        setEmailOverride(fromProfile);
+        setEmailDraft(fromProfile);
+      }
+      if (fields.loginId.trim()) {
+        const login = fields.loginId.trim();
+        setUsernameOverride(login);
+        setUsernameDraft(login);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [open, userId, onLoadOwnProfile]);
+  }, [open, userId, onLoadOwnProfile, labels.authEmail]);
 
   const commitAccountLog = (entry: HubEntityLogEntry) => {
     setActivityLog((prev) => {
@@ -360,13 +372,16 @@ export function HubFullUserAccountModal({
   const handleSignOut = () => {
     void (async () => {
       setSigningOut(true);
-      const result = await onSignOut();
-      setSigningOut(false);
-      if (!result.ok) {
-        onSignOutError?.("Sign out failed", result.message);
-        return;
+      try {
+        const result = await onSignOut();
+        if (!result.ok) {
+          onSignOutError?.("Sign out failed", result.message);
+          return;
+        }
+        onClose();
+      } finally {
+        setSigningOut(false);
       }
-      onClose();
     })();
   };
 
@@ -411,8 +426,13 @@ export function HubFullUserAccountModal({
     return result;
   };
 
-  const usernameDirty = canEditUsername && usernameDraft.trim() !== loginDisplay;
-  const emailDirty = Boolean(session) && emailDraft.trim().toLowerCase() !== emailDisplay.toLowerCase();
+  // Drafts seed empty when chrome shows "—" / "Not linked". Compare against the same
+  // baseline — otherwise Save lights up on open with no user edits (P0005 footer modal).
+  const usernameDirty = canEditUsername && hubAccountFieldDirty(usernameDraft, loginDisplay);
+  // Baseline sentinels first, then case-fold — never lower-case display before baseline
+  // (that turned "Not linked" into a false dirty Save on open).
+  const emailDirty =
+    Boolean(session) && hubAccountFieldDirty(emailDraft, emailDisplay, { normalizeCase: true });
   const passwordDirty = Boolean(session) && passwordDraft.length > 0;
   const profileDirty =
     canEditOwnProfile &&
@@ -480,7 +500,7 @@ export function HubFullUserAccountModal({
             at: new Date().toISOString(),
             message: changes
               .map((change) => {
-                const meta = accountLogFieldMeta(change.field);
+                const meta = hubUserLogFieldMeta(change.field);
                 return `${meta.label}: ${change.before || "—"} → ${change.after || "—"}`;
               })
               .join(" · "),
@@ -488,6 +508,9 @@ export function HubFullUserAccountModal({
           });
         }
         setInitialProfile({
+          loginId: initialProfile.loginId,
+          email: initialProfile.email,
+          contactEmail: initialProfile.contactEmail,
           fullName: fullNameDraft.trim(),
           phone: phoneDraft.trim(),
           zalo: zaloDraft.trim(),
@@ -753,7 +776,7 @@ export function HubFullUserAccountModal({
               >
                 <HubChangeLogList
                   entries={activityLog}
-                  fieldMeta={accountLogFieldMeta}
+                  fieldMeta={hubUserLogFieldMeta}
                   emptyLabel={HUB_ADM_ACTIVITY_LOG_EMPTY_MESSAGE}
                 />
               </HubToolDetailRail>

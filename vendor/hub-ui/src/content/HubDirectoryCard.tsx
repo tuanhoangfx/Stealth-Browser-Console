@@ -13,7 +13,7 @@ export function HubDirectoryCard({
   footer?: ReactNode;
 }) {
   return (
-    <article className="group flex h-full min-h-[var(--hub-card-min-h,140px)] flex-col rounded-xl border border-white/5 bg-[var(--panel)] p-4 transition-[border-color,box-shadow,background-color] duration-200 hover:border-indigo-500/40 hover:bg-white/[0.02] hover:shadow-[0_8px_24px_rgba(99,102,241,0.12)]">
+    <article className="hub-directory-card-surface group flex h-full min-h-[var(--hub-card-min-h,140px)] flex-col rounded-xl border bg-[var(--panel)] p-4 transition-[border-color,box-shadow,background-color] duration-200">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[var(--text)]">{title}</h3>
         {badge}

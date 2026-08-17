@@ -14,6 +14,9 @@ export type HubIdentitySnapshot = {
 export const HUB_IDENTITY_STORAGE_KEY = "x1z10:hub-identity-v2";
 export const HUB_IDENTITY_BC_CHANNEL = "x1z10:hub-identity";
 export const HUB_IDENTITY_EVENT = "x1z10:hub-identity";
+export const HUB_IDENTITY_SIGNED_OUT_KEY = "x1z10:hub-identity-signed-out";
+/** Sign-out intent window — cross-origin pulls must not re-adopt the token we just dropped. */
+export const HUB_IDENTITY_SIGN_OUT_TTL_MS = 60_000;
 
 const LEGACY_STORAGE_KEYS = ["p0016:hub-identity-v1", "p0020:hub-identity-v1"] as const;
 
@@ -79,10 +82,43 @@ export function readHubIdentity(): HubIdentitySnapshot | null {
   }
 }
 
+/** Record a deliberate sign-out so a stale cross-origin snapshot cannot restore the session. */
+export function markHubIdentitySignedOut(at: number = Date.now()): void {
+  try {
+    localStorage.setItem(HUB_IDENTITY_SIGNED_OUT_KEY, String(at));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+export function clearHubIdentitySignOutMark(): void {
+  try {
+    localStorage.removeItem(HUB_IDENTITY_SIGNED_OUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isHubIdentitySignOutFresh(ttlMs: number = HUB_IDENTITY_SIGN_OUT_TTL_MS): boolean {
+  try {
+    const raw = localStorage.getItem(HUB_IDENTITY_SIGNED_OUT_KEY);
+    if (!raw) return false;
+    const at = Number(raw);
+    if (!Number.isFinite(at)) return false;
+    if (Date.now() - at <= ttlMs) return true;
+    localStorage.removeItem(HUB_IDENTITY_SIGNED_OUT_KEY);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function cacheHubIdentity(
   payload: Omit<HubIdentitySnapshot, "cached_at">,
   source?: string,
 ): void {
+  if (source === "cross-origin" && isHubIdentitySignOutFresh()) return;
+  if (source !== "cross-origin" && payload.access_token?.trim()) clearHubIdentitySignOutMark();
   const prev = readHubIdentity();
   const snapshot: HubIdentitySnapshot = { ...payload, cached_at: Date.now() };
   if (
@@ -97,12 +133,27 @@ export function cacheHubIdentity(
   broadcastChange({ type: "updated", source });
 }
 
+function hasStoredHubIdentity(): boolean {
+  try {
+    if (localStorage.getItem(HUB_IDENTITY_STORAGE_KEY)) return true;
+    return LEGACY_STORAGE_KEYS.some(
+      (key) => sessionStorage.getItem(key) || localStorage.getItem(key),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function clearHubIdentity(source?: string): void {
+  // Repeat clears on an already-empty cache would broadcast `cleared` on every
+  // caller render and flicker every subscriber (footer label, host embeds).
+  const hadIdentity = hasStoredHubIdentity();
   localStorage.removeItem(HUB_IDENTITY_STORAGE_KEY);
   for (const key of LEGACY_STORAGE_KEYS) {
     sessionStorage.removeItem(key);
     localStorage.removeItem(key);
   }
+  if (!hadIdentity) return;
   broadcastChange({ type: "cleared", source });
 }
 

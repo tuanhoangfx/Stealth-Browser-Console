@@ -1,5 +1,6 @@
 import { useId, useRef, type ReactNode } from "react";
 import { PanelLeft } from "lucide-react";
+import { compactIconSize } from "../ui-scale";
 
 import "../styles/hub-mobile.css";
 
@@ -73,7 +74,7 @@ export function HubSidebarShell({
         aria-label="Open navigation"
         title="Menu"
       >
-        <PanelLeft size={16} strokeWidth={2} aria-hidden />
+        <PanelLeft size={compactIconSize(18)} strokeWidth={2} aria-hidden />
       </label>
       <label htmlFor={toggleId} className="hub-sidebar-backdrop" aria-hidden />
       <aside className={asideClass}>

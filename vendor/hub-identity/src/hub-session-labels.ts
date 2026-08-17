@@ -2,6 +2,7 @@ import {
   hubDisplayEmail,
   hubDisplayLoginId,
   isHubSyntheticEmail,
+  isHubTechnicalAuthEmail,
 } from "./hub-login";
 
 export type HubSessionLike = {
@@ -18,13 +19,26 @@ export type HubSessionLike = {
 /** Labels for account modal from Hub session */
 export function hubSessionLabels(session: HubSessionLike) {
   const authEmail = session?.user.email ?? "";
+  const meta = session?.user.user_metadata ?? {};
   const loginId = hubDisplayLoginId({
-    loginId: String(session?.user.user_metadata?.login_id ?? ""),
+    loginId: String(meta.login_id ?? ""),
     authEmail,
   });
   const email = hubDisplayEmail({
     authEmail,
-    contactEmail: String(session?.user.user_metadata?.contact_email ?? ""),
+    contactEmail: String(meta.contact_email ?? ""),
+    profileEmail: String(meta.email ?? ""),
   });
-  return { authEmail, loginId, email, hasSyntheticAuth: isHubSyntheticEmail(authEmail) };
+  const displayName = String(meta.full_name ?? meta.display_name ?? meta.name ?? "").trim();
+  const hasTechnicalAuth = isHubTechnicalAuthEmail(authEmail);
+  return {
+    authEmail,
+    loginId,
+    email,
+    displayName,
+    /** @deprecated Prefer `hasTechnicalAuth` — opaque Hub emails are not synthetic. */
+    hasSyntheticAuth: isHubSyntheticEmail(authEmail) || hasTechnicalAuth,
+    /** True when auth.users.email is opaque/synthetic — UI must use profiles.email instead. */
+    hasTechnicalAuth,
+  };
 }

@@ -33,24 +33,53 @@
   display: none;
 }
 
+html.hub-embed {
+  --hub-loader-inset-left: 0px;
+}
+
+html.hub-embed #hub-boot-loader.hub-boot-loader--pane,
+html.hub-embed .hub-tab-loader-fill {
+  left: 0 !important;
+}
+
+html.hub-embed #hub-boot-loader.hub-boot-loader--pane::before {
+  display: none !important;
+}
+
 @media (max-width: 767.98px) {
+  html {
+    --hub-loader-inset-left: 0px;
+  }
+
+  /* Drawer is overlay — pin fill to the viewport even if an older hub-boot.css
+     still uses left: var(--hub-sidebar-width) (15rem ≈ half a 390px phone). */
+  #hub-boot-loader.hub-boot-loader--pane,
+  .hub-tab-loader-fill {
+    left: 0 !important;
+  }
+
+  #hub-boot-loader.hub-boot-loader--pane::before {
+    display: none !important;
+  }
+
   /* —— Sidebar drawer —— */
   .hub-app:not(.hub-app--embed) .hub-sidebar-menu-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: 0.65rem;
-    left: 0.65rem;
+    top: 0.4rem;
+    left: 0.4rem;
     z-index: 70;
-    width: 2.25rem;
-    height: 2.25rem;
-    min-width: 2.25rem;
-    min-height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 0.45rem;
-    background: rgba(15, 23, 42, 0.92);
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     color: var(--text, #e8eaef);
     cursor: pointer;
     touch-action: manipulation;
@@ -59,13 +88,13 @@
 
   .hub-app:not(.hub-app--embed) .hub-sidebar-menu-btn:hover,
   .hub-app:not(.hub-app--embed) .hub-sidebar-menu-btn:focus-visible {
-    border-color: rgba(56, 189, 248, 0.45);
+    background: transparent;
     color: #e0f2fe;
     outline: none;
   }
 
   .hub-app:not(.hub-app--embed) .app-tab-header {
-    padding-left: 3rem;
+    padding-left: 3.1rem;
   }
 
   .hub-app:not(.hub-app--embed) > aside.hub-sidebar-shell,
@@ -87,6 +116,14 @@
     .hub-sidebar-toggle-input:checked
     ~ aside.hub-sidebar-shell {
     transform: translateX(0);
+  }
+
+  /* Drawer open — hide the menu glyph so it does not sit on the brand mark. Close via backdrop / nav. */
+  .hub-app:not(.hub-app--embed)
+    .hub-sidebar-toggle-input:checked
+    ~ .hub-sidebar-menu-btn {
+    display: none !important;
+    pointer-events: none;
   }
 
   .hub-app:not(.hub-app--embed) .hub-sidebar-backdrop {
@@ -394,10 +431,11 @@
     display: none !important;
   }
 
-  /* —— Tool / account detail modal (Phase C) —— */
+  /* —— Tool / account detail modal (Phase C) ——
+     Inset card — 64dvh on phone (desktop Layout 2/3 stays 73.6vh). */
   .modal-backdrop--tool-detail {
     --app-sidebar-width: 0px;
-    padding: 0 !important;
+    padding: 1rem 0.85rem !important;
   }
 
   .modal-shell.modal-shell--tool-detail,
@@ -405,35 +443,39 @@
   .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
   .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split,
   .modal-shell.hub-tool-detail-modal.hub-account-detail-modal.hub-tool-detail-modal--split {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-    --hub-modal-max-w: 100vw;
-    --hub-modal-max-h: 100dvh;
-    --hub-modal-max-vh: 100dvh;
+    width: calc(100vw - 1.7rem) !important;
+    max-width: calc(100vw - 1.7rem) !important;
+    height: min(64dvh, calc(100dvh - 2rem)) !important;
+    min-height: 0 !important;
+    max-height: min(64dvh, calc(100dvh - 2rem)) !important;
+    border-radius: 0.85rem !important;
+    --hub-modal-max-w: calc(100vw - 1.7rem);
+    --hub-modal-max-h: min(64dvh, calc(100dvh - 2rem));
+    --hub-modal-max-vh: min(64dvh, calc(100dvh - 2rem));
     --hub-adm-toc-w: 100%;
     --overview-toc-w: 100%;
     --hub-tool-detail-rail-w: 100%;
     --hub-tool-detail-split-min-h: 0;
   }
 
+  .hub-modal-frame {
+    overflow: visible !important;
+  }
+
   .hub-modal-close {
-    top: 0.5rem !important;
-    right: 0.5rem !important;
+    top: -0.55rem !important;
+    right: -0.55rem !important;
     z-index: 40;
   }
 
   .user-access-modal__header {
-    padding: 0.5rem 2.75rem 0.5rem 0.65rem !important;
+    padding: 0.5rem 0.85rem 0.5rem 0.65rem !important;
     gap: 0.45rem !important;
   }
 
-  /* Ops / detail headers with search: title + actions on row 1, search full-width row 2.
-     Desktop keeps title | search | Mark all read. minmax(18rem) search must not stay on
-     the title row or it covers the label and the close X covers Mark all read. */
+  /* Ops / detail headers with search: title + unread chrome on row 1, search full-width row 2.
+     Desktop keeps title | search | empty right column. minmax(18rem) search must not stay on
+     the title row or it covers the label and the close X. */
   .user-access-modal__header:has(.user-access-modal__header-center) {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
@@ -468,6 +510,20 @@
   .hub-ops-mark-all-read {
     white-space: nowrap;
     flex-shrink: 0;
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
+
+  .hub-ops-mark-all-read__label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
   }
 
   /* Stack Navigate TOC above content (all tool-detail shells) */

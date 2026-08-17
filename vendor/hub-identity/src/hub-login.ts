@@ -8,9 +8,37 @@ export const HUB_ID_EMAIL_LEGACY_DOMAIN = "@id.hub.x1z10.local";
 
 export const HUB_ID_EMAIL_DOMAINS = [HUB_ID_EMAIL_DOMAIN, HUB_ID_EMAIL_LEGACY_DOMAIN] as const;
 
+/**
+ * Immutable GoTrue address bound to auth.users.id (not username-derived).
+ * Format: `u_<uuid>@auth.infi.internal`
+ */
+export const HUB_OPAQUE_AUTH_EMAIL_DOMAIN = "@auth.infi.internal";
+
 export function isHubSyntheticEmail(email: string | null | undefined): boolean {
   const v = String(email ?? "").trim().toLowerCase();
   return HUB_ID_EMAIL_DOMAINS.some((domain) => v.endsWith(domain));
+}
+
+/** Username-derived synthetics only (`@infix1.io.vn` / legacy) — migrate script filter. */
+export function isHubDeterministicSyntheticEmail(email: string | null | undefined): boolean {
+  return isHubSyntheticEmail(email);
+}
+
+export function isHubOpaqueAuthEmail(email: string | null | undefined): boolean {
+  const v = String(email ?? "").trim().toLowerCase();
+  return Boolean(v) && v.endsWith(HUB_OPAQUE_AUTH_EMAIL_DOMAIN);
+}
+
+/** Synthetic or opaque — never treat as a user-linked contact / recovery inbox. */
+export function isHubTechnicalAuthEmail(email: string | null | undefined): boolean {
+  return isHubSyntheticEmail(email) || isHubOpaqueAuthEmail(email);
+}
+
+/** Bind auth.users.email to the immutable user id (signup / admin create). */
+export function hubOpaqueAuthEmailFromUserId(userId: string): string {
+  const id = String(userId ?? "").trim().toLowerCase();
+  if (!id) throw new Error("Invalid Hub user id");
+  return `u_${id}${HUB_OPAQUE_AUTH_EMAIL_DOMAIN}`;
 }
 
 export function loginIdFromSyntheticEmail(email: string | null | undefined): string | null {
@@ -220,21 +248,43 @@ export function resolveHubLogin(input: string): ResolvedLogin {
   };
 }
 
-/** Email shown in UI — real contact first; synthetic @infix1.io.vn until user links another. */
+/** Email shown in UI — real contact first; never surface opaque `u_<uuid>@auth.infi.internal`. */
 export function hubDisplayEmail(opts: {
   authEmail?: string | null;
   contactEmail?: string | null;
   profileEmail?: string | null;
 }): string {
   const contact = (opts.contactEmail ?? "").trim().toLowerCase();
-  if (contact && !isHubSyntheticEmail(contact)) return contact;
+  if (contact && !isHubTechnicalAuthEmail(contact)) return contact;
   const profileMail = (opts.profileEmail ?? "").trim().toLowerCase();
-  if (profileMail && !isHubSyntheticEmail(profileMail)) return profileMail;
+  if (profileMail && !isHubTechnicalAuthEmail(profileMail)) return profileMail;
   const auth = (opts.authEmail ?? "").trim().toLowerCase();
-  if (auth && !isHubSyntheticEmail(auth)) return auth;
+  if (auth && !isHubTechnicalAuthEmail(auth)) return auth;
+  // Legacy synthetic @infix1 stand-in until contact is linked — never opaque GoTrue locals.
   if (auth && isHubSyntheticEmail(auth)) return auth;
   if (profileMail && isHubSyntheticEmail(profileMail)) return profileMail;
   return "";
+}
+
+/**
+ * Account modal / footer Credentials email — same SSOT as Users directory (`profiles.email`).
+ * Never paints opaque or synthetic Hub auth addresses (`u_…@auth.infi.internal`, `@infix1.io.vn`).
+ */
+export function hubAccountEmailLabel(
+  opts: {
+    authEmail?: string | null;
+    contactEmail?: string | null;
+    profileEmail?: string | null;
+  },
+  emptyLabel = "Not linked",
+): string {
+  const contact = (opts.contactEmail ?? "").trim().toLowerCase();
+  if (contact && !isHubTechnicalAuthEmail(contact)) return contact;
+  const profileMail = (opts.profileEmail ?? "").trim().toLowerCase();
+  if (profileMail && !isHubTechnicalAuthEmail(profileMail)) return profileMail;
+  const auth = (opts.authEmail ?? "").trim().toLowerCase();
+  if (auth && !isHubTechnicalAuthEmail(auth)) return auth;
+  return emptyLabel;
 }
 
 export function hubDisplayLoginId(opts: {
@@ -253,7 +303,7 @@ export function hubAuthEmailFromLoginOrEmail(opts: {
   const id = canonicalLoginId(String(opts.loginId ?? "").trim());
   const mail = sanitizeHubLoginInput(String(opts.email ?? "")).toLowerCase();
   if (id) {
-    const contactEmail = mail && !isHubSyntheticEmail(mail) ? mail : null;
+    const contactEmail = mail && !isHubTechnicalAuthEmail(mail) ? mail : null;
     return {
       authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`,
       loginId: id,
@@ -261,6 +311,9 @@ export function hubAuthEmailFromLoginOrEmail(opts: {
     };
   }
   if (mail) {
+    if (isHubOpaqueAuthEmail(mail)) {
+      return { error: "Opaque Hub auth email cannot be used as contact" };
+    }
     if (isHubSyntheticEmail(mail)) {
       const fromMail = loginIdFromSyntheticEmail(mail);
       if (!fromMail) return { error: "Invalid synthetic email" };
@@ -277,5 +330,5 @@ export function hubAuthEmailFromLoginOrEmail(opts: {
 
 export function canUseEmailPasswordRecovery(email: string | null | undefined): boolean {
   const v = (email ?? "").trim();
-  return Boolean(v) && !isHubSyntheticEmail(v) && looksLikeEmail(v);
+  return Boolean(v) && !isHubTechnicalAuthEmail(v) && looksLikeEmail(v);
 }

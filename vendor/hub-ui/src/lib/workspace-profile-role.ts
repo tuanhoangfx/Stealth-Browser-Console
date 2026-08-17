@@ -49,15 +49,40 @@ export type FetchWorkspaceProfileRoleOptions = {
 
 type DirectoryRow = { id?: string; role?: string | null; email?: string | null };
 
+type RoleCachePayload = {
+  /** Legacy single-slot shape — kept for read migration. */
+  userId?: string;
+  role?: string;
+  /** Dual-auth: Hub identity id + tool-local auth id share one role. */
+  byUserId?: Record<string, HubWorkspaceRoleKey>;
+};
+
 function parseRoleCache(raw: string | null, userId: string): HubWorkspaceRoleKey | null {
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as { userId?: string; role?: string };
-    if (parsed.userId !== userId || !parsed.role) return null;
-    return normalizeWorkspaceRoleKey(parsed.role);
+    const parsed = JSON.parse(raw) as RoleCachePayload;
+    const mapped = parsed.byUserId?.[userId];
+    if (mapped) return normalizeWorkspaceRoleKey(mapped);
+    if (parsed.userId === userId && parsed.role) return normalizeWorkspaceRoleKey(parsed.role);
+    return null;
   } catch {
     return null;
   }
+}
+
+function readRoleCacheBlob(): RoleCachePayload {
+  if (typeof window === "undefined") return {};
+  for (const store of [window.sessionStorage, window.localStorage]) {
+    try {
+      const raw = store.getItem(ROLE_CACHE_KEY);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as RoleCachePayload;
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      /* ignore */
+    }
+  }
+  return {};
 }
 
 function readRoleCache(userId: string): HubWorkspaceRoleKey | null {
@@ -79,11 +104,19 @@ function dispatchRoleCacheUpdated(userId: string, role: HubWorkspaceRoleKey): vo
 
 function writeRoleCache(userId: string, role: HubWorkspaceRoleKey): void {
   if (typeof window === "undefined") return;
-  const payload = JSON.stringify({ userId, role });
+  const prev = readRoleCacheBlob();
+  const unchanged = (prev.byUserId?.[userId] ?? null) === role;
+  const byUserId: Record<string, HubWorkspaceRoleKey> = { ...(prev.byUserId ?? {}) };
+  if (prev.userId && prev.role) {
+    byUserId[prev.userId] = normalizeWorkspaceRoleKey(prev.role);
+  }
+  byUserId[userId] = role;
+  const payload = JSON.stringify({ userId, role, byUserId });
   try {
     window.sessionStorage.setItem(ROLE_CACHE_KEY, payload);
     window.localStorage.setItem(ROLE_CACHE_KEY, payload);
-    dispatchRoleCacheUpdated(userId, role);
+    // Re-announcing the same role re-renders every sidebar listener (role icon flicker).
+    if (!unchanged) dispatchRoleCacheUpdated(userId, role);
   } catch {
     /* ignore quota */
   }

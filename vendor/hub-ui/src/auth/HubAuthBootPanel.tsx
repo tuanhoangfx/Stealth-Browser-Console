@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
+import { HubAuthSysProgress } from "./HubAuthSysProgress";
 
 export type HubAuthBootPanelProps = {
   status?: string;
@@ -45,7 +46,7 @@ export function HubAuthBootPanel({
         <span className="auth-gate-boot__field" />
         <span className="auth-gate-boot__submit" />
       </div>
-      <p className="auth-gate-boot__status">{status}</p>
+      <HubAuthSysProgress label={status} className="auth-gate-boot__status-row" />
     </div>
   );
 

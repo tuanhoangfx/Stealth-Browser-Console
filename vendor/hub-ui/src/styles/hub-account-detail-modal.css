@@ -1210,6 +1210,16 @@
   color: var(--hub-adm-type-muted-color, rgb(100, 116, 139));
 }
 
+/* ADM detail fields — status chip matches adjacent Job title/Team values (not 10px chrome). */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value .hub-users-status,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value .hub-users-status {
+  font-size: var(--hub-adm-type-size, var(--hub-table-body-size, 12px));
+  font-weight: var(--hub-adm-type-value-weight, 400);
+  line-height: var(--hub-adm-type-line, var(--hub-table-body-line-height, 1.45));
+  color: var(--hub-adm-type-value-color, rgb(203 213 225));
+  text-transform: none;
+}
+
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-type-mono,
 :is(.hub-account-detail-modal, .hub-add-modal) .twofa-code-badge,
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-copy-badge {
@@ -1654,4 +1664,44 @@
 .hub-adm-note-textarea--searching::selection {
   color: transparent;
   background: rgba(129, 140, 248, 0.45);
+}
+
+/* Tablet: search under title — same stack as ops panels (Log / Notify). */
+@media (max-width: 1099.98px) {
+  :is(
+      .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
+      .hub-overview-adm-scaffold__shell.hub-account-detail-modal.twofa-account-detail-modal
+    )
+    .user-access-modal__header:has(.user-access-modal__header-center) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.45rem;
+    row-gap: 0.45rem;
+    padding-right: 0.85rem;
+  }
+
+  :is(
+      .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
+      .hub-overview-adm-scaffold__shell.hub-account-detail-modal.twofa-account-detail-modal
+    )
+    .user-access-modal__header:has(.user-access-modal__header-center)
+    .user-access-modal__header-main {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    min-width: 0;
+  }
+
+  :is(
+      .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
+      .hub-overview-adm-scaffold__shell.hub-account-detail-modal.twofa-account-detail-modal
+    )
+    .user-access-modal__header:has(.user-access-modal__header-center)
+    .user-access-modal__header-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
 }

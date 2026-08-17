@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeLoginId } from "./hub-login";
+import { isHubTechnicalAuthEmail, normalizeLoginId } from "./hub-login";
 import { hubSessionLabels } from "./hub-session-labels";
 import { hubSyncMirrorPasswordApiUrl } from "./hub-api-routes";
 import { updateHubPasswordWithMirrorSync } from "./workspace-mirror-password-recovery-sync";
@@ -8,6 +8,12 @@ export type HubFullAccountAuthResult = { ok: boolean; message: string };
 
 /** Self-edit profile fields — never mutates role / login_id / email / password. */
 export type HubOwnProfileFields = {
+  /** profiles.login_id — Hub Username */
+  loginId: string;
+  /** profiles.email — directory contact (Users detail SSOT). */
+  email: string;
+  /** profiles.contact_email — recovery/contact when distinct from email. */
+  contactEmail: string;
   fullName: string;
   phone: string;
   zalo: string;
@@ -47,6 +53,22 @@ function resolveSyncApiUrl(options: CreateHubFullAccountAuthHandlersOptions): st
   return hubSyncMirrorPasswordApiUrl();
 }
 
+function publicIdentifierError(error: unknown, fallback: string): string {
+  const detail = error as { code?: string; message?: string } | null;
+  if (detail?.code !== "23505" && !/duplicate key|unique constraint/i.test(detail?.message ?? "")) {
+    return detail?.message || fallback;
+  }
+  const source = `${detail?.message ?? ""}`.toLowerCase();
+  if (source.includes("phone")) return "This phone number is already linked to another user.";
+  if (source.includes("contact_email") || source.includes("email")) {
+    return "This contact email is already linked to another user.";
+  }
+  if (source.includes("login") || source.includes("username")) {
+    return "This username is already in use.";
+  }
+  return "This identifier is already linked to another user.";
+}
+
 /**
  * Shared Full User Account modal auth callbacks — SSOT for every Hub sidebar host.
  * Password = direct update (no OTP). Email/username update profiles when signed in.
@@ -73,7 +95,7 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
       .from("profiles")
       .update({ login_id: next, updated_at: new Date().toISOString() })
       .eq("id", id);
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: publicIdentifierError(error, "Username update failed.") };
     return { ok: true, message: "Username updated." };
   }
 
@@ -81,18 +103,22 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
     if (!email || !email.includes("@")) {
       return { ok: false, message: "Enter a valid email address." };
     }
+    const trimmed = email.trim().toLowerCase();
+    if (isHubTechnicalAuthEmail(trimmed)) {
+      return { ok: false, message: "Enter a real contact email — technical Hub addresses cannot be linked." };
+    }
     const client = await readyClient(options);
     if (!client) return { ok: false, message: "Hub identity is not configured." };
     const session = (await client.auth.getSession()).data.session;
-    const { error } = await client.auth.updateUser({ email });
-    if (!error && session?.user?.id) {
-      await client
-        .from("profiles")
-        .update({ contact_email: email, email, updated_at: new Date().toISOString() })
-        .eq("id", session.user.id);
-    }
-    if (error) return { ok: false, message: error.message };
-    return { ok: true, message: "Email updated." };
+    const id = session?.user?.id?.trim();
+    if (!id) return { ok: false, message: "Sign in again to link an email." };
+    // Contact/recovery only — never replace opaque auth.users.email (username login stays stable).
+    const { error } = await client
+      .from("profiles")
+      .update({ contact_email: trimmed, email: trimmed, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return { ok: false, message: publicIdentifierError(error, "Email link failed.") };
+    return { ok: true, message: "Contact email linked." };
   }
 
   async function onUpdatePassword(password: string): Promise<HubFullAccountAuthResult> {
@@ -110,17 +136,36 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
 
   async function fetchOwnProfileFields(userId: string): Promise<HubOwnProfileFields | null> {
     const id = userId.trim();
-    if (!id) return null;
+    const loginHint = String(options.getLoginId?.() ?? "")
+      .trim()
+      .toLowerCase();
+    if (!id && !loginHint) return null;
     const client = await readyClient(options);
     if (!client) return null;
-    const { data, error } = await client
-      .from("profiles")
-      .select("full_name, phone, zalo, telegram, meta, notes")
-      .eq("id", id)
-      .maybeSingle();
-    if (error || !data) return null;
-    const row = data as Record<string, unknown>;
+
+    const selectCols =
+      "login_id, email, contact_email, full_name, phone, zalo, telegram, meta, notes";
+
+    let row: Record<string, unknown> | null = null;
+    if (id) {
+      const byId = await client.from("profiles").select(selectCols).eq("id", id).maybeSingle();
+      if (!byId.error && byId.data) row = byId.data as Record<string, unknown>;
+    }
+    // Dual-auth hosts may pass a Data Box user id — fall back to Hub login_id SSOT.
+    if (!row && loginHint) {
+      const byLogin = await client
+        .from("profiles")
+        .select(selectCols)
+        .eq("login_id", loginHint)
+        .maybeSingle();
+      if (!byLogin.error && byLogin.data) row = byLogin.data as Record<string, unknown>;
+    }
+    if (!row) return null;
+
     return {
+      loginId: typeof row.login_id === "string" ? row.login_id.trim() : "",
+      email: typeof row.email === "string" ? row.email.trim() : "",
+      contactEmail: typeof row.contact_email === "string" ? row.contact_email.trim() : "",
       fullName: typeof row.full_name === "string" ? row.full_name : "",
       phone: typeof row.phone === "string" ? row.phone : "",
       zalo: typeof row.zalo === "string" ? row.zalo : "",
@@ -150,7 +195,7 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
     }
 
     const { error } = await client.from("profiles").update(row).eq("id", id);
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: publicIdentifierError(error, "Profile update failed.") };
     return { ok: true, message: "Profile updated." };
   }
 

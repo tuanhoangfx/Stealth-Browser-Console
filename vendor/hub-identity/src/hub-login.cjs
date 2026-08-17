@@ -6,10 +6,30 @@ const path = require("node:path");
 const HUB_ID_EMAIL_DOMAIN = "@infix1.io.vn";
 const HUB_ID_EMAIL_LEGACY_DOMAIN = "@id.hub.x1z10.local";
 const HUB_ID_EMAIL_DOMAINS = [HUB_ID_EMAIL_DOMAIN, HUB_ID_EMAIL_LEGACY_DOMAIN];
+const HUB_OPAQUE_AUTH_EMAIL_DOMAIN = "@auth.infi.internal";
 
 function isHubSyntheticEmail(email) {
   const v = String(email ?? "").trim().toLowerCase();
   return HUB_ID_EMAIL_DOMAINS.some((domain) => v.endsWith(domain));
+}
+
+function isHubDeterministicSyntheticEmail(email) {
+  return isHubSyntheticEmail(email);
+}
+
+function isHubOpaqueAuthEmail(email) {
+  const v = String(email ?? "").trim().toLowerCase();
+  return Boolean(v) && v.endsWith(HUB_OPAQUE_AUTH_EMAIL_DOMAIN);
+}
+
+function isHubTechnicalAuthEmail(email) {
+  return isHubSyntheticEmail(email) || isHubOpaqueAuthEmail(email);
+}
+
+function hubOpaqueAuthEmailFromUserId(userId) {
+  const id = String(userId ?? "").trim().toLowerCase();
+  if (!id) throw new Error("Invalid Hub user id");
+  return `u_${id}${HUB_OPAQUE_AUTH_EMAIL_DOMAIN}`;
 }
 
 function looksLikeEmail(input) {
@@ -181,10 +201,13 @@ function hubAuthEmailFromLoginOrEmail({ loginId, email }) {
   const id = canonicalLoginId(String(loginId ?? "").trim()) ?? normalizeLoginId(String(loginId ?? "").trim());
   const mail = sanitizeHubLoginInput(String(email ?? "")).toLowerCase();
   if (id) {
-    const contactEmail = mail && !isHubSyntheticEmail(mail) ? mail : null;
+    const contactEmail = mail && !isHubTechnicalAuthEmail(mail) ? mail : null;
     return { authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`, loginId: id, contactEmail };
   }
   if (mail) {
+    if (isHubOpaqueAuthEmail(mail)) {
+      return { error: "Opaque Hub auth email cannot be used as contact" };
+    }
     if (isHubSyntheticEmail(mail)) {
       const fromMail = loginIdFromSyntheticEmail(mail);
       if (!fromMail) return { error: "Invalid synthetic email" };
@@ -199,8 +222,13 @@ module.exports = {
   HUB_ID_EMAIL_DOMAIN,
   HUB_ID_EMAIL_LEGACY_DOMAIN,
   HUB_ID_EMAIL_DOMAINS,
+  HUB_OPAQUE_AUTH_EMAIL_DOMAIN,
   HUB_LOGIN_ID_ALIASES,
   isHubSyntheticEmail,
+  isHubDeterministicSyntheticEmail,
+  isHubOpaqueAuthEmail,
+  isHubTechnicalAuthEmail,
+  hubOpaqueAuthEmailFromUserId,
   sanitizeHubLoginInput,
   normalizeLoginId,
   canonicalLoginId,

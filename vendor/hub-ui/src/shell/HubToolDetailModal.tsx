@@ -133,7 +133,7 @@ export type HubToolDetailModalProps = {
   headerTrailing?: ReactNode;
   /** Center slot — account-detail global search (golden Mail modal). */
   headerCenter?: ReactNode;
-  /** Right-corner slot before the frame close X (e.g. Log "Mark all read"). */
+  /** Right-corner slot before the frame close X (optional; Notify Mark all read sits beside search). */
   headerActions?: ReactNode;
   /** Full header override (User access, etc.). */
   header?: ReactNode;

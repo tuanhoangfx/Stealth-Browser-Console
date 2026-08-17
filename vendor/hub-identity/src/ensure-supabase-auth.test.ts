@@ -63,6 +63,40 @@ describe("createEnsureSupabaseAuth", () => {
     expect(session?.access_token).toBe("restored");
   });
 
+  it("replaces persistSession user when Hub dual-sign-in snapshot is a different account", async () => {
+    const live = makeSession({ access_token: "stale-persist", user: { ...makeSession().user, id: "stale-user" } });
+    const restored = makeSession({ access_token: "hub-mirror", user: { ...makeSession().user, id: "duy-id" } });
+    const setSession = vi.fn(async () => ({ data: { session: restored }, error: null }));
+    const ensure = createEnsureSupabaseAuth({
+      isConfigured: () => true,
+      getClient: () =>
+        ({
+          auth: {
+            getSession: async () => ({ data: { session: live }, error: null }),
+            setSession,
+            refreshSession: vi.fn(),
+          },
+        }) as never,
+      readSnapshot: () => ({
+        access_token: "cached-duy",
+        refresh_token: "cached-refresh",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user_id: "duy-id",
+        user_email: "duy@example.com",
+        cached_at: Date.now(),
+      }),
+      cacheSession: vi.fn(),
+      refreshNearExpiryMs: null,
+    });
+
+    const session = await ensure();
+    expect(setSession).toHaveBeenCalledWith({
+      access_token: "cached-duy",
+      refresh_token: "cached-refresh",
+    });
+    expect(session?.user.id).toBe("duy-id");
+  });
+
   it("clears ghost session when hard-expired and refresh is auth-invalid", async () => {
     const expired = makeSession({
       access_token: "expired",

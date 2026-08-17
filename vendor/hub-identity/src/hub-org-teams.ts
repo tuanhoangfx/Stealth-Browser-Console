@@ -2,7 +2,16 @@
  * P0012 Users/Attendance Team consume this catalog. P0005 CRM / P0020 Data-Box have no
  * local Users access directory (`/users` → Tool Hub P0004); import here when those tools add grant UI.
  */
-export type HubOrgTeamSlug = "ceo" | "sales" | "marketing" | "warehouse" | "engineering" | "accounting";
+import { cleanHubJobTitleSlug } from "./hub-job-titles";
+
+export type HubOrgTeamSlug =
+  | "ceo"
+  | "sales"
+  | "marketing"
+  | "warehouse"
+  | "engineering"
+  | "technology"
+  | "accounting";
 
 export type HubOrgTeamDef = {
   slug: HubOrgTeamSlug;
@@ -16,12 +25,21 @@ export type HubOrgTeamDef = {
 /** Shared header/filter glyph for a team membership field. */
 export const HUB_TEAM_FIELD_EMOJI = "🤝";
 
+/** Catalog order is the org seniority ladder: CEO → Technology → … → Accounting.
+ * Users directory sort + FilterBar option order both read this rank, so keep them in sync here.
+ */
 export const HUB_ORG_TEAMS: readonly HubOrgTeamDef[] = [
   {
     slug: "ceo",
     label: "CEO",
     description: "Lead company strategy and executive decisions.",
     emoji: "🧭",
+  },
+  {
+    slug: "technology",
+    label: "Technology",
+    description: "Build, operate, and evolve the technology platform.",
+    emoji: "💻",
   },
   {
     slug: "sales",
@@ -74,9 +92,28 @@ export function hubOrgTeamLabel(slug: HubOrgTeamSlug | null | undefined): string
   return HUB_ORG_TEAM_BY_SLUG[slug]?.label ?? slug;
 }
 
+/** Seniority rank for sorting rows — unknown/unassigned teams sort last. */
+export function hubOrgTeamRank(value: string | null | undefined): number {
+  const slug = cleanHubOrgTeamSlug(value);
+  if (!slug) return Number.MAX_SAFE_INTEGER;
+  const index = HUB_ORG_TEAMS.findIndex((team) => team.slug === slug);
+  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 export function hubOrgTeamDef(slug: HubOrgTeamSlug | null | undefined): HubOrgTeamDef | null {
   if (!slug) return null;
   return HUB_ORG_TEAM_BY_SLUG[slug] ?? null;
+}
+
+/**
+ * Position CEO implies Team CEO when `tool_access.team_slug` is still empty.
+ * Todo board / Org chart / Data Box `profiles.team_slug` mirror all read this.
+ */
+export function effectiveHubOrgTeamSlug(
+  teamSlug: string | null | undefined,
+  jobTitle?: string | null,
+): HubOrgTeamSlug | null {
+  return cleanHubOrgTeamSlug(teamSlug) ?? (cleanHubJobTitleSlug(jobTitle) === "ceo" ? "ceo" : null);
 }
 
 /** FilterBar / HubAdmClickFilterField options. */

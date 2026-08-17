@@ -104,8 +104,8 @@ const BASE: Record<WorkspaceAuthToolCode, WorkspaceAuthGatePreset> = {
     forgotPassword: {},
   },
   P0015: {
-    title: "Welcome to ENZY Portal",
-    toolInfo: { name: "ENZY Portal", tagline: "Tasks, customers, places & portal access" },
+    title: "Welcome to ENZY Energy",
+    toolInfo: { name: "ENZY Energy", tagline: "Tasks, customers, places & portal access" },
     errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },

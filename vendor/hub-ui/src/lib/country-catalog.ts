@@ -195,7 +195,7 @@ export function resolveHubCountry(raw: string | null | undefined): {
   raw: string;
 } {
   const text = raw?.trim() ?? "";
-  if (!text) return { code: null, label: "—", raw: "" };
+  if (!text) return { code: null, label: "", raw: "" };
   const code = normalizeHubCountryCode(text);
   if (code) {
     return { code, label: HUB_COUNTRY_BY_CODE[code]?.name ?? code, raw: text };

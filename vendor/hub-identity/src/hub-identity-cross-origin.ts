@@ -1,5 +1,6 @@
 import {
   cacheHubIdentity,
+  isHubIdentitySignOutFresh,
   readHubIdentity,
   subscribeHubIdentity,
   type HubIdentitySnapshot,
@@ -126,12 +127,31 @@ export function startHubIdentityCrossOriginBridge(opts?: {
     }
   };
 
+  const pushClearToHub = async () => {
+    if (!iframe?.contentWindow) return;
+    const ok = await whenReady();
+    if (!ok) return;
+    try {
+      iframe.contentWindow.postMessage(
+        { type: HUB_IDENTITY_BRIDGE_MESSAGE_TYPE, action: "clear" } satisfies BridgeMessage,
+        hubOrigin,
+      );
+    } catch {
+      /* ignore */
+    }
+  };
+
   const onMessage = (event: MessageEvent) => {
     if (event.origin !== hubOrigin) return;
     if (!isBridgeMessage(event.data)) return;
     if (event.data.action !== "get-result") return;
     const remote = event.data.snapshot;
     if (!remote?.access_token?.trim()) return;
+    if (isHubIdentitySignOutFresh()) {
+      // We signed out here; the Hub copy is the stale one — drop it instead of adopting it.
+      void pushClearToHub();
+      return;
+    }
     const local = readHubIdentity();
     const remoteExp = remote.expires_at ?? 0;
     const localExp = local?.expires_at ?? 0;
@@ -175,21 +195,35 @@ export function startHubIdentityCrossOriginBridge(opts?: {
   };
 }
 
-/** Push cleared identity to Hub bridge iframe (cross-origin sign-out SSOT). */
+/**
+ * Push cleared identity to Hub bridge iframe (cross-origin sign-out SSOT).
+ *
+ * Posted more than once on purpose: a `clear` that lands before the bridge iframe finishes
+ * loading is dropped, and the Hub copy then re-seeds this origin on the next focus pull —
+ * the "signed out but still signed in" flip-flop.
+ */
 export async function pushHubIdentityClearToBridge(opts?: {
   hubOrigin?: string;
+  retries?: number;
+  retryDelayMs?: number;
 }): Promise<void> {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   const hubOrigin = (opts?.hubOrigin ?? resolveDefaultHubOrigin()).replace(/\/$/, "");
   if (window.location.origin === hubOrigin) return;
   const iframe = document.querySelector(`iframe[data-hub-identity-bridge="1"]`) as HTMLIFrameElement | null;
-  if (!iframe?.contentWindow) return;
-  try {
-    iframe.contentWindow.postMessage(
-      { type: HUB_IDENTITY_BRIDGE_MESSAGE_TYPE, action: "clear" } satisfies BridgeMessage,
-      hubOrigin,
-    );
-  } catch {
-    /* ignore */
+  if (!iframe) return;
+  const retries = Math.max(1, opts?.retries ?? 3);
+  const retryDelayMs = Math.max(0, opts?.retryDelayMs ?? 400);
+  const message: BridgeMessage = { type: HUB_IDENTITY_BRIDGE_MESSAGE_TYPE, action: "clear" };
+
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
+    }
+    try {
+      iframe.contentWindow?.postMessage(message, hubOrigin);
+    } catch {
+      /* ignore — retry below */
+    }
   }
 }

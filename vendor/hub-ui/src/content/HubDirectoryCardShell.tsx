@@ -2,15 +2,16 @@ import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Pin } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
 
-/** Golden directory card surface — shared by Dashboard / Hub / Users card grids. */
+/** Golden directory card surface — shared by Dashboard / Hub / Users card grids.
+ * Rest border = former hover indigo; hover glow is `.hub-directory-card-surface:hover`. */
 export const HUB_DIRECTORY_CARD_SURFACE =
-  "relative flex h-full min-h-[var(--hub-card-min-h)] w-full flex-col rounded-xl border border-white/5 bg-[var(--panel)] transition-[border-color,box-shadow,background-color] duration-200 hover:border-indigo-500/40 hover:bg-white/[0.02] hover:shadow-[0_8px_24px_rgba(99,102,241,0.12)]";
+  "hub-directory-card-surface relative flex h-full min-h-[var(--hub-card-min-h)] w-full flex-col rounded-xl border bg-[var(--panel)] transition-[border-color,box-shadow,background-color] duration-200";
 export const HUB_DIRECTORY_CARD_SELECTED = "ring-2 ring-inset ring-indigo-400/35 bg-indigo-500/5";
 export const HUB_DIRECTORY_CARD_PINNED =
   "border-amber-400/40 shadow-[0_0_0_1px_rgba(251,191,36,0.28),0_8px_28px_rgba(245,158,11,0.14)] hub-directory-card--pinned";
 
 const PANEL_SURFACE =
-  "relative flex h-full min-h-[var(--hub-card-min-h)] w-full flex-col anim-slide rounded-2xl border border-white/5 bg-[var(--panel)] p-4 pr-10 transition-all hover:-translate-y-0.5 hover:ring-2 hover:ring-emerald-500/25";
+  "hub-directory-card-surface hub-directory-card-surface--panel relative flex h-full min-h-[var(--hub-card-min-h)] w-full flex-col anim-slide rounded-2xl border bg-[var(--panel)] p-4 pr-10 transition-[border-color,box-shadow,background-color,transform] duration-200 hover:-translate-y-0.5";
 
 export type HubDirectoryCardShellVariant = "grid" | "panel";
 

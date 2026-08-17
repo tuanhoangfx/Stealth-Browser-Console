@@ -13,7 +13,7 @@ export type HubSidebarUserFooterProps = {
   title?: string;
 };
 
-/** Sidebar User row — signed-in: role icon + user ID/email only (no "User" label). */
+/** Sidebar User row — signed-in: role icon + Display name / Username (never email). */
 export function HubSidebarUserFooter({
   footerUserLabel,
   onOpenUser,

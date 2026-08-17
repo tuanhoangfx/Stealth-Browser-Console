@@ -127,13 +127,31 @@ function compareSemver(a: string, b: string): number {
   return 0;
 }
 
+function parseStampMs(value: string | null | undefined): number {
+  const ms = Date.parse(String(value ?? "").trim());
+  return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY;
+}
+
+/** Prefer the newer ISO stamp so tab chrome and Update Release modal share one clock. */
+export function pickNewerReleaseNoteStamp(
+  a?: string | null,
+  b?: string | null,
+): string | undefined {
+  const left = String(a ?? "").trim();
+  const right = String(b ?? "").trim();
+  if (!left) return right || undefined;
+  if (!right) return left || undefined;
+  return parseStampMs(right) > parseStampMs(left) ? right : left;
+}
+
 /**
  * Header may show package version newer than the last *documented* changelog entry
  * (auto bump-noise drops). Prepend a Latest stub so TOC/main match the header chip.
  *
- * Prefer `currentPublishedAt` (hub tab version meta / CHANGELOG Timestamp) for the stub
- * age chip so modal header · card · hub chrome share one stamp — never `Date.now()` alone
- * (that made cards show "4m ago" while header stayed on date-noon / changelog hours).
+ * Prefer `currentPublishedAt` (hub tab version meta / CHANGELOG Timestamp / Vite builtAt)
+ * for the current row age chip so modal header · card · hub chrome share one stamp —
+ * never leave a stale `/release-notes.json` deploy stamp when chrome already shows a
+ * fresher builtAt (local: "4m ago" vs modal "3h ago").
  */
 export function ensureHubReleaseNotesIncludeCurrent(
   entries: readonly HubReleaseNoteEntry[],
@@ -142,11 +160,26 @@ export function ensureHubReleaseNotesIncludeCurrent(
 ): HubReleaseNoteEntry[] {
   const cur = normalizeReleaseNotesVersion(currentVersion);
   if (!cur) return [...entries];
-  if (entries.some((e) => e.version === cur)) return [...entries];
 
-  const top = entries[0];
-  // Only stub when current is strictly newer than feed head (or feed empty).
-  if (top && compareSemver(cur, top.version) <= 0) return [...entries];
+  // Drop feed rows newer than the running bundle (stale Vite bake vs Deploy regen).
+  const notNewerThanCurrent = entries.filter((e) => compareSemver(e.version, cur) <= 0);
+
+  const withFresherCurrent = (list: readonly HubReleaseNoteEntry[]): HubReleaseNoteEntry[] =>
+    list.map((entry) => {
+      if (entry.version !== cur) return entry;
+      const nextAt = pickNewerReleaseNoteStamp(entry.at, currentPublishedAt);
+      if (!nextAt || nextAt === entry.at) return entry;
+      const nextDate = nextAt.slice(0, 10) || entry.date;
+      return { ...entry, at: nextAt, date: nextDate || entry.date };
+    });
+
+  if (notNewerThanCurrent.some((e) => e.version === cur)) {
+    return withFresherCurrent(notNewerThanCurrent);
+  }
+
+  const top = notNewerThanCurrent[0];
+  // Only stub when current is strictly newer than filtered feed head (or feed empty).
+  if (top && compareSemver(cur, top.version) <= 0) return withFresherCurrent(notNewerThanCurrent);
 
   const activityAt = hubReleaseNoteActivityAt(
     new Date().toISOString().slice(0, 10),
@@ -164,7 +197,7 @@ export function ensureHubReleaseNotesIncludeCurrent(
     userSummary: "",
     userHighlights: ["Maintenance and polish since the last documented release."],
   };
-  return [stub, ...entries];
+  return [stub, ...notNewerThanCurrent];
 }
 
 /**
