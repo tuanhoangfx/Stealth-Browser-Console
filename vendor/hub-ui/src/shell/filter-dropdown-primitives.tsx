@@ -109,7 +109,7 @@ export const HubFilterDropdownTrigger = forwardRef<HTMLButtonElement, HubFilterD
             </span>
           )
         ) : null}
-        <span className="min-w-0 max-w-[12rem] truncate leading-none">{label}</span>
+        <span className="hub-filter-trigger__label min-w-0 max-w-[12rem] truncate leading-none">{label}</span>
 
         <ChevronDown
           size={compactIconSize(12)}

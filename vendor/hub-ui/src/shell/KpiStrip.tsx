@@ -113,8 +113,6 @@ function KpiTileIcon({
       <img
         src={iconSrc}
         alt=""
-        width={18}
-        height={18}
         className={[hubBrandIconImgClass("bare"), iconClasses].filter(Boolean).join(" ")}
         draggable={false}
         decoding="async"
@@ -124,7 +122,15 @@ function KpiTileIcon({
     );
   }
   if (brandIcon || Icon) {
-    return <HubSemanticGlyph icon={Icon} brandIcon={brandIcon} size={18} className={iconClasses} />;
+    return (
+      <HubSemanticGlyph
+        icon={Icon}
+        brandIcon={brandIcon}
+        size={20}
+        compact={false}
+        className={iconClasses}
+      />
+    );
   }
   return null;
 }

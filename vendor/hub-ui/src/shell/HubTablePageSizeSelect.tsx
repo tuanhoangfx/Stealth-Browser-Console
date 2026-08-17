@@ -51,7 +51,7 @@ export function HubTablePageSizeSelect({
         title="Rows per page"
       >
         <Rows3 size={compactIconSize(13)} className="shrink-0 opacity-80" />
-        <span>{label}</span>
+        <span className="hub-filter-trigger__label">{label}</span>
         <ChevronDown size={compactIconSize(12)} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (

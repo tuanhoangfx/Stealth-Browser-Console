@@ -124,7 +124,7 @@
   /* —— KPI: 4 per row, icon + value only —— */
   .hub-kpi-strip {
     --hub-kpi-strip-min-h: 2.75rem;
-    --hub-kpi-icon: 1.35rem;
+    --hub-kpi-icon: calc(var(--hub-kpi-sticker-size) + 0.5rem);
     --hub-kpi-value-size: 0.8125rem;
     --hub-kpi-pad-x: 0.35rem;
     --hub-kpi-pad-y: 0.3rem;
@@ -180,9 +180,10 @@
   }
 
   .hub-kpi-strip .hub-kpi-tile__icon {
-    width: var(--hub-kpi-icon);
-    height: var(--hub-kpi-icon);
+    width: max(var(--hub-kpi-icon), calc(var(--hub-kpi-sticker-size) + 0.5rem));
+    height: max(var(--hub-kpi-icon), calc(var(--hub-kpi-sticker-size) + 0.5rem));
     border-radius: 0.4rem;
+    overflow: visible;
   }
 
   .hub-kpi-strip .hub-kpi-tile > .pointer-events-none {
@@ -200,7 +201,35 @@
     --hub-charts-band-min-h: 0px;
   }
 
-  /* —— FilterBar mobile: search → toolbar+actions → filters —— */
+  /* —— Header: hide session + center stats; title optically centered —— */
+  .app-tab-header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+    row-gap: 0 !important;
+  }
+
+  .app-tab-header__start {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: center !important;
+  }
+
+  .app-tab-header__end {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    max-width: none !important;
+  }
+
+  .app-tab-header-center-stats,
+  .app-tab-header__session {
+    display: none !important;
+  }
+
+  /* —— FilterBar mobile = desktop two rows, icon-only chrome ——
+     Row 1: search | All / Display / count
+     Row 2: filters left | bulk actions right
+     Forbidden: 3-row stack (search → toolbar+actions → filters). */
   .hub-filter-bar {
     display: flex !important;
     flex-direction: column !important;
@@ -214,98 +243,75 @@
     margin-top: 0 !important;
   }
 
-  /* Flatten row wrappers so search / toolbar / filters / actions participate in one grid */
   .hub-filter-bar__row-tools,
   .hub-filter-bar__row-band {
-    display: contents !important;
-  }
-
-  .hub-filter-bar__row-search {
-    width: 100%;
-    min-width: 0;
-    order: 1;
-  }
-
-  /* ViewToggle + All/Display/Current left · bulk actions flush right */
-  .hub-filter-bar__toolbar {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
     gap: 0.35rem !important;
     width: 100% !important;
     min-width: 0 !important;
-    order: 2;
+  }
+
+  .hub-filter-bar__row-search {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: auto !important;
+    order: unset !important;
+  }
+
+  .hub-filter-bar__toolbar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-top: 0 !important;
+    order: unset !important;
+  }
+
+  .hub-filter-bar__row-filters {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: auto !important;
+    order: unset !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .hub-filter-bar__actions {
-    order: 2;
+    order: unset;
     margin-left: auto !important;
+    margin-top: 0 !important;
     width: auto !important;
     max-width: 100%;
     flex: 0 0 auto !important;
     flex-wrap: nowrap !important;
     justify-content: flex-end !important;
-  }
-
-  /* Shared tools band: toolbar left · actions right (same row) — descendant (wrappers use contents) */
-  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    grid-template-rows: auto auto auto !important;
-    column-gap: 0.35rem !important;
-    row-gap: 0.5rem !important;
-    align-items: center !important;
-  }
-
-  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__row-search {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    order: unset;
-  }
-
-  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__toolbar {
-    grid-column: 1;
-    grid-row: 2;
-    width: auto !important;
-    order: unset;
-    margin-top: 0 !important;
-  }
-
-  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__actions {
-    grid-column: 2;
-    grid-row: 2;
-    order: unset;
-    margin-top: 0 !important;
-    margin-left: 0 !important;
     align-self: center !important;
-    justify-self: end;
   }
 
-  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__row-filters {
-    grid-column: 1 / -1;
-    grid-row: 3;
-  }
-
-  .hub-filter-bar:has(.hub-filter-bar__toolbar):has(.hub-filter-bar__actions) .hub-filter-bar__trailing {
-    grid-column: 2;
-    grid-row: 3;
-    justify-self: end;
-  }
-
-  .hub-filter-bar__row-filters {
-    width: 100% !important;
-    min-width: 0 !important;
-    order: 3;
+  .hub-filter-bar__trailing {
+    flex: 0 0 auto !important;
+    margin-left: 0 !important;
   }
 
   .hub-directory-bulk-rail {
     justify-content: flex-end !important;
   }
 
-  /* Icon-only bulk + view toggle — keep All / Display / Current labels (desktop parity) */
+  /* Icon-only: All / Display / count / filters / bulk / view toggle */
   .hub-bulk-action-btn__label,
   .hub-view-toggle__label,
-  .hub-directory-bulk-more__label {
+  .hub-directory-bulk-more__label,
+  .hub-filter-bar .hub-filter-trigger__label,
+  .hub-filter-bar .hub-filter-trigger__count,
+  .hub-filter-bar .hub-result-count__text {
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
@@ -319,29 +325,20 @@
 
   button.hub-bulk-action-btn,
   .hub-directory-bulk-rail > button,
-  .hub-filter-bar__actions > button {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-    gap: 0 !important;
+  .hub-filter-bar__actions > button,
+  .hub-filter-bar .hub-filter-trigger,
+  .hub-filter-bar .hub-result-count,
+  .hub-filter-bar__toolbar > .relative > button,
+  .hub-filter-bar__toolbar > button {
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+    gap: 0.2rem !important;
   }
 
   .hub-view-toggle button {
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
     gap: 0 !important;
-  }
-
-  /* Compact Display / period / Current triggers — labels stay visible */
-  .hub-filter-bar__toolbar .hub-filter-trigger,
-  .hub-filter-bar__toolbar > .relative > button {
-    max-width: none;
-    min-width: 0;
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-  }
-
-  .hub-filter-bar__toolbar .hub-filter-trigger .tabular-nums {
-    display: none !important;
   }
 
   /* Table header ? icon only */
@@ -432,6 +429,45 @@
   .user-access-modal__header {
     padding: 0.5rem 2.75rem 0.5rem 0.65rem !important;
     gap: 0.45rem !important;
+  }
+
+  /* Ops / detail headers with search: title + actions on row 1, search full-width row 2.
+     Desktop keeps title | search | Mark all read. minmax(18rem) search must not stay on
+     the title row or it covers the label and the close X covers Mark all read. */
+  .user-access-modal__header:has(.user-access-modal__header-center) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: auto auto !important;
+    column-gap: 0.45rem !important;
+    row-gap: 0.45rem !important;
+    align-items: center !important;
+  }
+
+  .user-access-modal__header:has(.user-access-modal__header-center) .user-access-modal__header-main {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    justify-self: start !important;
+    min-width: 0 !important;
+  }
+
+  .user-access-modal__header:has(.user-access-modal__header-center) .user-access-modal__header-actions {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    flex-shrink: 0 !important;
+  }
+
+  .user-access-modal__header:has(.user-access-modal__header-center) .user-access-modal__header-center {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    max-width: none !important;
+    justify-self: stretch !important;
+  }
+
+  .hub-ops-mark-all-read {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Stack Navigate TOC above content (all tool-detail shells) */

@@ -914,6 +914,11 @@ body.hub-modal-open {
   justify-self: end;
 }
 
+.hub-ops-mark-all-read {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .hub-activity-feed-toolbar--header input[type="search"] {
   min-height: 1.75rem;
   padding-top: 0.3rem;

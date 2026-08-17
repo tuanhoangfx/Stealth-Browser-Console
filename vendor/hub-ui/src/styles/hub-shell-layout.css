@@ -31,7 +31,9 @@
   --hub-kpi-pad-y: 0.75rem;
   --hub-kpi-pad-x: 0.625rem;
   --hub-kpi-inner-gap: 0.625rem;
-  --hub-kpi-icon: 2.125rem;
+  /* Tile sticker (emoji + Lucide/brand). Independent of KPI caption size. */
+  --hub-kpi-sticker-size: 1.25rem;
+  --hub-kpi-icon: calc(var(--hub-kpi-sticker-size) + 1rem);
   --hub-kpi-value-size: 1.1875rem;
   --hub-chrome-micro-size: 0.625rem;
   /* Section rule pill (Board / Customer / Order) — above KPI micro; scales with Hub zoom. */
@@ -44,7 +46,9 @@
   --hub-inline-emoji-size: var(--hub-directory-header-glyph-px, 13px);
   --hub-analytics-caption-emoji-size: var(--hub-inline-emoji-size);
   --hub-chart-label-size: var(--hub-table-body-size);
-  --hub-chart-caption-block: 0.8125rem;
+  /* Chart panel title = 80% of directory header (12px → 9.6px); keep 600 / --text. */
+  --hub-chart-panel-title-size: calc(var(--hub-table-header-size, 12px) * 0.8);
+  --hub-chart-caption-block: calc(var(--hub-chart-panel-title-size) * 1.25);
   --hub-kpi-body-gap: 0.3125rem;
   --hub-chart-bar-rows: 4;
   --hub-chart-row-gap: 0.375rem;
@@ -109,6 +113,50 @@
   font-size: var(--hub-analytics-caption-size);
   font-weight: 600;
   line-height: 1.25;
+  color: var(--muted);
+}
+
+/* Chart panel titles (STATUS / PRIORITY…) — header weight/color, 80% of 12px title size.
+ * Emoji inherits --hub-inline-emoji-size so 🚦 matches 9.6px type (not 13px filter glyph). */
+.hub-chart-panel-title,
+.hub-chart-card:not(.hub-chart-card--hero) .hub-analytics-caption {
+  --hub-inline-emoji-size: var(--hub-chart-panel-title-size, 9.6px);
+  --hub-analytics-caption-emoji-size: var(--hub-chart-panel-title-size, 9.6px);
+  font-size: var(--hub-chart-panel-title-size, 9.6px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+/* Directory / Kanban card surface — rest = former hover indigo ring; hover glows more. */
+.hub-directory-card-surface {
+  border-color: rgb(99 102 241 / 0.4);
+}
+.hub-directory-card-surface:hover {
+  border-color: rgb(129 140 248 / 0.78);
+  background-color: rgb(255 255 255 / 0.03);
+  box-shadow:
+    0 0 0 1px rgb(99 102 241 / 0.32),
+    0 10px 28px rgb(99 102 241 / 0.28);
+}
+.hub-directory-card-surface.hub-directory-card--pinned {
+  border-color: rgb(251 191 36 / 0.4);
+}
+.hub-directory-card-surface.hub-directory-card--pinned:hover {
+  border-color: rgb(251 191 36 / 0.7);
+  box-shadow:
+    0 0 0 1px rgb(251 191 36 / 0.28),
+    0 8px 28px rgb(245 158 11 / 0.22);
+}
+
+/* Users panel cards — rest indigo ring; hover = emerald lift (distinct from grid glow). */
+.hub-directory-card-surface.hub-directory-card-surface--panel:hover {
+  border-color: rgb(16 185 129 / 0.55);
+  background-color: rgb(16 185 129 / 0.06);
+  box-shadow:
+    0 0 0 1px rgb(16 185 129 / 0.28),
+    0 10px 28px rgb(16 185 129 / 0.18);
 }
 
 .hub-app {
@@ -285,6 +333,8 @@ html.hub-embed .hub-main {
   align-items: stretch;
   gap: var(--hub-kpi-gap);
   grid-template-columns: repeat(1, minmax(0, 1fr));
+  /* Caption-adjacent filter emoji inherit KPI micro caption; tile sticker stays 1.125rem. */
+  --hub-inline-emoji-size: var(--hub-analytics-caption-size);
   /* Room for hover ring-2 — tile must stay overflow:visible; pad strip so parents do not clip */
   padding: 4px;
   margin: -4px;
@@ -323,7 +373,6 @@ html.hub-embed .hub-main {
 .hub-kpi-strip[data-kpi-count="6"],
 .hub-kpi-strip[data-kpi-count="7"],
 .hub-kpi-strip[data-kpi-count="8"] {
-  --hub-kpi-icon: 1.875rem;
   --hub-kpi-value-size: 1.0625rem;
   --hub-kpi-pad-x: 0.5rem;
   --hub-kpi-gap: 0.5rem;
@@ -346,15 +395,20 @@ html.hub-embed .hub-main {
 }
 
 .hub-kpi-strip .hub-kpi-tile__icon {
-  width: var(--hub-kpi-icon);
-  height: var(--hub-kpi-icon);
+  width: max(var(--hub-kpi-icon), calc(var(--hub-kpi-sticker-size) + 0.5rem));
+  height: max(var(--hub-kpi-icon), calc(var(--hub-kpi-sticker-size) + 0.5rem));
   flex-shrink: 0;
   align-self: center;
+  overflow: visible;
 }
 
-.hub-kpi-strip .hub-kpi-tile__emoji {
-  font-size: 1.125rem;
+.hub-kpi-strip .hub-kpi-tile__emoji,
+.hub-kpi-strip .hub-kpi-tile__icon-svg {
+  width: var(--hub-kpi-sticker-size);
+  height: var(--hub-kpi-sticker-size);
+  font-size: var(--hub-kpi-sticker-size);
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .hub-kpi-strip .hub-kpi-tile__body {
@@ -592,6 +646,7 @@ html.hub-embed .hub-main {
   font-size: var(--hub-chart-label-size);
   font-weight: 400;
   line-height: var(--hub-table-body-line-height, 1.45);
+  --hub-inline-emoji-size: var(--hub-chart-label-size, 12px);
 }
 
 .hub-chart-row__value {
@@ -630,8 +685,8 @@ html.hub-embed .hub-main {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
-  height: var(--hub-inline-emoji-size, var(--hub-directory-header-glyph-px, 13px));
+  width: var(--hub-inline-emoji-size, var(--hub-chart-label-size, 12px));
+  height: var(--hub-inline-emoji-size, var(--hub-chart-label-size, 12px));
 }
 
 .hub-chart-legend-label__glyph--emoji {

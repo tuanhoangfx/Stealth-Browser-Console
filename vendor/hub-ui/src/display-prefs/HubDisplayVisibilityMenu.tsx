@@ -61,7 +61,7 @@ export function HubDisplayVisibilityMenu({
         title={`${label} visibility`}
       >
         {icon ? <span className="grid h-3.5 w-3.5 shrink-0 place-items-center [&>svg]:h-3 [&>svg]:w-3">{icon}</span> : null}
-        <span>
+        <span className="hub-filter-trigger__label">
           {label} {visibleCount}/{maxVisible ?? items.length}
         </span>
         <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />

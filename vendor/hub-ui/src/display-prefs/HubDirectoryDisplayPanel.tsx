@@ -567,7 +567,7 @@ export function HubDirectoryDisplayPanel({
         aria-expanded={open}
       >
         <DisplayTriggerIcon size={compactIconSize(13)} className={`shrink-0 opacity-90 ${displayIconClass}`} aria-hidden />
-        <span>Display</span>
+        <span className="hub-filter-trigger__label">Display</span>
         <ChevronDown size={compactIconSize(12)} className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {tableColumnPresets ? (

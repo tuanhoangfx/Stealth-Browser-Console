@@ -13,8 +13,20 @@ export const HUB_SETTINGS_ICON_CLASS = "text-zinc-400";
 /** Directory toolbar CTAs — Display panel, bulk actions, time range, page size. */
 export const HUB_DIRECTORY_TOOLBAR_TYPO_CLASS = "text-xs font-medium";
 
-/** KPI tile labels + chart band titles — micro caption, semibold uppercase. */
+/** KPI tile labels — micro caption, semibold uppercase, muted. */
 export const HUB_ANALYTICS_CAPTION_TYPO_CLASS = "hub-analytics-caption uppercase tracking-wider";
+
+/**
+ * KPI tile sticker (emoji + Lucide/brand SVG). Size from `--hub-kpi-sticker-size` (1.25rem).
+ * Do not inherit `--hub-analytics-caption-size`.
+ */
+export const HUB_KPI_STICKER_TYPO_SSOT = "hub-kpi-tile__emoji";
+
+/**
+ * Chart panel titles (STATUS / PRIORITY…) — 80% of directory header size, 600 / `--text`.
+ * Size/color from `.hub-chart-card .hub-analytics-caption` (`--hub-chart-panel-title-size`).
+ */
+export const HUB_CHART_PANEL_TITLE_TYPO_SSOT = "hub-chart-panel-title";
 
 /** Chart row label/value — typography from hub-shell-layout.css only; do not add text-sm here. */
 export const HUB_CHART_ROW_TYPO_SSOT = "hub-chart-legend-label";
