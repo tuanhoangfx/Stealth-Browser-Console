@@ -4,15 +4,9 @@ import {
   createWorkspaceAuthGateHubForgotPasswordFromEnv,
 } from "@tool-workspace/hub-identity";
 import { STEALTH_BRAND_ICON } from "../../lib/stealth-product";
-import {
-  HUB_SUPABASE_ANON_KEY,
-  HUB_SUPABASE_URL,
-  isHubSupabaseConfigured,
-} from "../../lib/hub-supabase-env";
+import { hubAuthEnv } from "../../lib/hub-supabase-env";
 import { getIdentitySupabase, applyHubIdentitySession } from "../../lib/supabase-identity";
 import { useStealthAuth } from "./AuthSessionProvider";
-
-const hubEnv = { HUB_SUPABASE_URL, HUB_SUPABASE_ANON_KEY, isHubSupabaseConfigured };
 
 type Props = {
   onAuthed?: () => void;
@@ -29,7 +23,7 @@ export function StealthAuthGate({ onAuthed }: Props) {
         headerLeading: <HubAuthBrandIcon src={STEALTH_BRAND_ICON} />,
         onAuthed,
         ...createWorkspaceAuthGateHubEnvPartial({
-          env: hubEnv,
+          env: hubAuthEnv,
           getHubClient: getIdentitySupabase,
           prepareHubIdentitySession: applyHubIdentitySession,
         }),
@@ -41,7 +35,7 @@ export function StealthAuthGate({ onAuthed }: Props) {
             return { error: err instanceof Error ? err.message : String(err) };
           }
         },
-        forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubEnv }),
+        forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubAuthEnv }),
       })}
     />
   );
