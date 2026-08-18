@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "code": "P0003",
+  "id": "stealth-browser-console",
+  "name": "Stealth Browser Console",
+  "deployTarget": "github-release",
+  "release": {
+    "version": "1.1.4",
+    "updatedAt": "2026-07-17",
+    "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
+    "latestPublished": {
+      "tag": "v1.1.4",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v1.1.4",
+      "publishedAt": "2026-08-18T05:24:16.290Z"
+    }
+  },
+  "urls": {
+    "local": "http://127.0.0.1:5175"
+  },
+  "manifestUpdatedAt": "2026-08-18T05:24:16.290Z"
+}
