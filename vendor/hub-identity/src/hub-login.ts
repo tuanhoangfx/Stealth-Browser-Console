@@ -160,53 +160,58 @@ export function canonicalLoginId(raw: string): string | null {
   return HUB_LOGIN_ID_ALIASES[id] ?? id;
 }
 
-/** Canonical @infix1.io.vn inbox for a normalized User ID. */
+/** @deprecated Detector for leftover `@infix1` rows — do not use for new auth. */
 export function hubSyntheticEmailFromLoginId(loginId: string): string {
   const id = canonicalLoginId(loginId);
   if (!id) throw new Error("Invalid user ID");
   return `${id}${HUB_ID_EMAIL_DOMAIN}`;
 }
 
-/** Canonical synthetic auth email for a User ID or email input. */
+/** Canonical synthetic auth email for a User ID or email input — LEGACY detector only. */
 export function hubAuthEmailFromLogin(input: string): string {
-  return hubAuthEmailsFromLogin(input)[0];
+  const emails = hubAuthEmailsFromLogin(input);
+  if (!emails.length) {
+    throw new Error("Username sign-in requires resolve-login (no @infix1 synthetic).");
+  }
+  return emails[0];
 }
 
-/** Primary + legacy synthetic emails for sign-in fallback on migrated Hub accounts. */
+/**
+ * @deprecated Leftover @infix1 / legacy rows only — do not use for new sign-in.
+ * Prefer resolve-login → Hub opaque `u_<uuid>@auth.infi.internal`.
+ */
 export function hubAuthEmailsFromLogin(input: string): string[] {
   const classified = classifyHubLoginIdentifier(input);
   if (classified.kind === "empty") throw new Error("Enter your username, email, or phone");
   if (classified.kind === "phone") {
     throw new Error("Use username or email to create an account — phone is sign-in only.");
   }
-  if (classified.kind === "email") return hubAuthEmailsForSignIn(classified.sanitized);
+  if (classified.kind === "email") {
+    if (isHubSyntheticEmail(classified.sanitized)) return [];
+    return [classified.sanitized];
+  }
   if (classified.kind !== "username" || !classified.loginId) {
     throw new Error("Invalid username (use 3–32 letters, numbers, . _ -)");
   }
-  return [
-    `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
-    `${classified.loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`,
-  ];
+  // Kept for migrate/audit detectors only — empty for live sign-in paths.
+  return [];
 }
 
-/** All auth emails to try for password sign-in (username synthetics or real email). Phone → []. */
+/**
+ * Auth emails to try for password sign-in.
+ * Username/phone → [] (caller must use resolve-login). Registered email → [email].
+ * Never invents @infix1 / legacy synthetics.
+ */
 export function hubAuthEmailsForSignIn(input: string): string[] {
   const classified = classifyHubLoginIdentifier(input);
   if (classified.kind === "empty" || classified.kind === "invalid" || classified.kind === "phone") {
     return [];
   }
-  if (classified.kind === "username" && classified.loginId) {
-    return [
-      `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
-      `${classified.loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`,
-    ];
+  if (classified.kind === "username") {
+    return [];
   }
   const trimmed = classified.sanitized.toLowerCase();
-  const loginId = loginIdFromSyntheticEmail(trimmed);
-  if (loginId) {
-    const canonical = canonicalLoginId(loginId) ?? loginId;
-    return [`${canonical}${HUB_ID_EMAIL_DOMAIN}`, `${canonical}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
-  }
+  if (isHubSyntheticEmail(trimmed)) return [];
   return [trimmed];
 }
 
@@ -241,28 +246,27 @@ export function resolveHubLogin(input: string): ResolvedLogin {
     };
   }
   return {
-    authEmail: `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
+    authEmail: "",
     loginId: classified.loginId,
     isEmailLogin: false,
     kind: "username",
   };
 }
 
-/** Email shown in UI — real contact first; never surface opaque `u_<uuid>@auth.infi.internal`. */
+/** Email shown in UI — real contact first; never surface opaque or `@infix1.io.vn` synthetics. */
 export function hubDisplayEmail(opts: {
   authEmail?: string | null;
   contactEmail?: string | null;
   profileEmail?: string | null;
 }): string {
   const contact = (opts.contactEmail ?? "").trim().toLowerCase();
-  if (contact && !isHubTechnicalAuthEmail(contact)) return contact;
+  if (contact && !isHubTechnicalAuthEmail(contact) && !isHubSyntheticEmail(contact)) return contact;
   const profileMail = (opts.profileEmail ?? "").trim().toLowerCase();
-  if (profileMail && !isHubTechnicalAuthEmail(profileMail)) return profileMail;
+  if (profileMail && !isHubTechnicalAuthEmail(profileMail) && !isHubSyntheticEmail(profileMail)) {
+    return profileMail;
+  }
   const auth = (opts.authEmail ?? "").trim().toLowerCase();
-  if (auth && !isHubTechnicalAuthEmail(auth)) return auth;
-  // Legacy synthetic @infix1 stand-in until contact is linked — never opaque GoTrue locals.
-  if (auth && isHubSyntheticEmail(auth)) return auth;
-  if (profileMail && isHubSyntheticEmail(profileMail)) return profileMail;
+  if (auth && !isHubTechnicalAuthEmail(auth) && !isHubSyntheticEmail(auth)) return auth;
   return "";
 }
 
@@ -278,13 +282,8 @@ export function hubAccountEmailLabel(
   },
   emptyLabel = "Not linked",
 ): string {
-  const contact = (opts.contactEmail ?? "").trim().toLowerCase();
-  if (contact && !isHubTechnicalAuthEmail(contact)) return contact;
-  const profileMail = (opts.profileEmail ?? "").trim().toLowerCase();
-  if (profileMail && !isHubTechnicalAuthEmail(profileMail)) return profileMail;
-  const auth = (opts.authEmail ?? "").trim().toLowerCase();
-  if (auth && !isHubTechnicalAuthEmail(auth)) return auth;
-  return emptyLabel;
+  const shown = hubDisplayEmail(opts);
+  return shown || emptyLabel;
 }
 
 export function hubDisplayLoginId(opts: {
@@ -302,28 +301,23 @@ export function hubAuthEmailFromLoginOrEmail(opts: {
 }): { authEmail: string; loginId: string | null; contactEmail: string | null } | { error: string } {
   const id = canonicalLoginId(String(opts.loginId ?? "").trim());
   const mail = sanitizeHubLoginInput(String(opts.email ?? "")).toLowerCase();
-  if (id) {
-    const contactEmail = mail && !isHubTechnicalAuthEmail(mail) ? mail : null;
-    return {
-      authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`,
-      loginId: id,
-      contactEmail,
-    };
-  }
   if (mail) {
     if (isHubOpaqueAuthEmail(mail)) {
       return { error: "Opaque Hub auth email cannot be used as contact" };
     }
     if (isHubSyntheticEmail(mail)) {
-      const fromMail = loginIdFromSyntheticEmail(mail);
-      if (!fromMail) return { error: "Invalid synthetic email" };
-      return {
-        authEmail: `${fromMail}${HUB_ID_EMAIL_DOMAIN}`,
-        loginId: fromMail,
-        contactEmail: null,
-      };
+      return { error: "Synthetic @infix1 emails are retired — use username + contact email" };
     }
-    return { authEmail: mail, loginId: loginIdFromContactEmail(mail), contactEmail: mail };
+    return { authEmail: mail, loginId: id ?? loginIdFromContactEmail(mail), contactEmail: mail };
+  }
+  if (id) {
+    const contactEmail = mail && !isHubTechnicalAuthEmail(mail) ? mail : null;
+    // Provisional GoTrue email until createUser returns id → bind u_<uuid>@auth.infi.internal.
+    return {
+      authEmail: `pending_${id}_${Date.now().toString(36)}@auth.infi.internal`,
+      loginId: id,
+      contactEmail,
+    };
   }
   return { error: "login_id or email required" };
 }

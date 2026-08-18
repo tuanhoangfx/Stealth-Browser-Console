@@ -148,10 +148,10 @@ export function HubCloneConfirmDialog({
             {keepProfile
               ? count === 1
                 ? "Keeps the source Profile — Account gets a +clone tag only if that Profile+email already exists."
-                : "The first copy keeps the source Profile; remaining copies use the next free Profile slots."
+                : "The first copy keeps the source Profile; remaining copies use the smallest free Profile (fills gaps from 0001)."
               : count === 1
-                ? "Assigns the next free Profile after the current max (same Account email)."
-                : "Each clone gets the next free Profile slot."}
+                ? "Assigns the smallest free Profile for this provider (fills gaps from 0001)."
+                : "Each clone gets the smallest free Profile (fills gaps from 0001)."}
           </p>
         ) : null}
       </div>

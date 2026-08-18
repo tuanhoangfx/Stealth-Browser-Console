@@ -103,7 +103,10 @@ describe("runWorkspaceDualSignIn parallel planes", () => {
         cacheHubIdentityFromSession,
         planes: [{ authenticate: plane }],
       }),
-    ).rejects.toMatchObject({ message: "Invalid login credentials" });
+    ).rejects.toMatchObject({
+      message:
+        "Incorrect password for this username. If you recently changed your Tool Hub password, use the new one.",
+    });
 
     // A mirror sign-in here would leave a Data JWT for an identity Hub just rejected.
     expect(plane).not.toHaveBeenCalled();
@@ -238,10 +241,64 @@ describe("runWorkspaceDualSignIn parallel planes", () => {
         cacheHubIdentityFromSession: vi.fn(),
         planes: [plane],
       }),
-    ).rejects.toMatchObject({ message: "Invalid login credentials" });
+    ).rejects.toMatchObject({
+      message:
+        "Incorrect password for this username. If you recently changed your Tool Hub password, use the new one.",
+    });
 
     // Data Box accepted a password Hub refused (drift) — that JWT must not survive.
     expect(plane.revokeSpeculativeSession).toHaveBeenCalledWith(dataSession);
+    vi.unstubAllGlobals();
+  });
+
+  it("overlaps Hub and Data Box even when resolve-login returns two emails", async () => {
+    const grantMs = 50;
+    const startedAt: Record<string, number> = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          authEmails: ["u_hub-id@auth.infi.internal"],
+        }),
+      })),
+    );
+    const hub = {
+      auth: {
+        signInWithPassword: vi.fn(async () => {
+          startedAt.hub = Date.now();
+          await new Promise((r) => setTimeout(r, grantMs));
+          return {
+            data: { session: mockSession("hub", "u_hub-id@auth.infi.internal") },
+            error: null,
+          };
+        }),
+      },
+    };
+    const plane = {
+      authenticate: vi.fn(async () => {
+        startedAt.plane = Date.now();
+        await new Promise((r) => setTimeout(r, grantMs));
+        return { session: mockSession("data", "u_hub-id@auth.infi.internal"), error: null };
+      }),
+      revokeSpeculativeSession: vi.fn(),
+    };
+
+    const t0 = Date.now();
+    const result = await runWorkspaceDualSignIn("duyceo01", "secret", "signin", {
+      getHubClient: () => hub as never,
+      cacheHubIdentityFromSession: vi.fn(),
+      planes: [plane],
+    });
+
+    expect(result.planes[0]?.session?.user?.email).toBe("u_hub-id@auth.infi.internal");
+    expect(plane.revokeSpeculativeSession).not.toHaveBeenCalled();
+    expect(plane.authenticate).toHaveBeenCalledOnce();
+    expect(Math.abs(startedAt.hub - startedAt.plane)).toBeLessThan(grantMs);
+    expect(Date.now() - t0).toBeLessThan(grantMs * 2);
+    expect(result.timings.parallel).toBe(true);
     vi.unstubAllGlobals();
   });
 });

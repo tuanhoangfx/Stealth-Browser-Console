@@ -145,15 +145,9 @@ function hubAuthEmailsForSignIn(input) {
   if (classified.kind === "empty" || classified.kind === "invalid" || classified.kind === "phone") {
     return [];
   }
-  if (classified.kind === "username" && classified.loginId) {
-    return [`${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`, `${classified.loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
-  }
+  if (classified.kind === "username") return [];
   const trimmed = classified.sanitized.toLowerCase();
-  const loginId = loginIdFromSyntheticEmail(trimmed);
-  if (loginId) {
-    const canonical = canonicalLoginId(loginId) ?? loginId;
-    return [`${canonical}${HUB_ID_EMAIL_DOMAIN}`, `${canonical}${HUB_ID_EMAIL_LEGACY_DOMAIN}`];
-  }
+  if (isHubSyntheticEmail(trimmed)) return [];
   return [trimmed];
 }
 
@@ -163,18 +157,28 @@ function hubAuthEmailsFromLogin(input) {
   if (classified.kind === "phone") {
     throw new Error("Use username or email to create an account — phone is sign-in only.");
   }
-  if (classified.kind === "email") return hubAuthEmailsForSignIn(classified.sanitized);
+  if (classified.kind === "email") {
+    if (isHubSyntheticEmail(classified.sanitized)) return [];
+    return [classified.sanitized];
+  }
   if (classified.kind !== "username" || !classified.loginId) {
     throw new Error("Invalid username (use 3–32 letters, numbers, . _ -)");
   }
-  return [
-    `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
-    `${classified.loginId}${HUB_ID_EMAIL_LEGACY_DOMAIN}`,
-  ];
+  return [];
 }
 
 function hubAuthEmailFromLogin(input) {
-  return hubAuthEmailsFromLogin(input)[0];
+  const emails = hubAuthEmailsFromLogin(input);
+  if (!emails.length) {
+    throw new Error("Username sign-in requires resolve-login (no @infix1 synthetic).");
+  }
+  return emails[0];
+}
+
+function hubSyntheticEmailFromLoginId(loginId) {
+  const id = canonicalLoginId(loginId);
+  if (!id) throw new Error("Invalid user ID");
+  return `${id}${HUB_ID_EMAIL_DOMAIN}`;
 }
 
 function resolveHubLogin(input) {
@@ -190,7 +194,7 @@ function resolveHubLogin(input) {
     return { authEmail: "", loginId: null, isEmailLogin: false, kind: "phone" };
   }
   return {
-    authEmail: `${classified.loginId}${HUB_ID_EMAIL_DOMAIN}`,
+    authEmail: "",
     loginId: classified.loginId,
     isEmailLogin: false,
     kind: "username",
@@ -200,20 +204,22 @@ function resolveHubLogin(input) {
 function hubAuthEmailFromLoginOrEmail({ loginId, email }) {
   const id = canonicalLoginId(String(loginId ?? "").trim()) ?? normalizeLoginId(String(loginId ?? "").trim());
   const mail = sanitizeHubLoginInput(String(email ?? "")).toLowerCase();
-  if (id) {
-    const contactEmail = mail && !isHubTechnicalAuthEmail(mail) ? mail : null;
-    return { authEmail: `${id}${HUB_ID_EMAIL_DOMAIN}`, loginId: id, contactEmail };
-  }
   if (mail) {
     if (isHubOpaqueAuthEmail(mail)) {
       return { error: "Opaque Hub auth email cannot be used as contact" };
     }
     if (isHubSyntheticEmail(mail)) {
-      const fromMail = loginIdFromSyntheticEmail(mail);
-      if (!fromMail) return { error: "Invalid synthetic email" };
-      return { authEmail: `${fromMail}${HUB_ID_EMAIL_DOMAIN}`, loginId: fromMail, contactEmail: null };
+      return { error: "Synthetic @infix1 emails are retired — use username + contact email" };
     }
-    return { authEmail: mail, loginId: loginIdFromContactEmail(mail), contactEmail: mail };
+    return { authEmail: mail, loginId: id ?? loginIdFromContactEmail(mail), contactEmail: mail };
+  }
+  if (id) {
+    const contactEmail = null;
+    return {
+      authEmail: `pending_${id}_${Date.now().toString(36)}@auth.infi.internal`,
+      loginId: id,
+      contactEmail,
+    };
   }
   return { error: "login_id or email required" };
 }
@@ -237,6 +243,7 @@ module.exports = {
   classifyHubLoginIdentifier,
   loginIdFromSyntheticEmail,
   loginIdFromContactEmail,
+  hubSyntheticEmailFromLoginId,
   hubAuthEmailsForSignIn,
   hubAuthEmailFromLogin,
   hubAuthEmailsFromLogin,

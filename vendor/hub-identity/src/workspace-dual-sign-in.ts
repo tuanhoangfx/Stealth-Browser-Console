@@ -1,8 +1,12 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { isHubAuthRateLimitError } from "./hub-auth-rate-limit";
 import { hubOpaqueAuthEmailFromUserId, resolveHubLogin, sanitizeHubLoginInput } from "./hub-login";
+import {
+  adoptGrantedGoTrueSession,
+  grantGoTruePasswordSession,
+  readSupabaseGoTrueTarget,
+} from "./gotrue-password-grant";
 import { signInWithHubPassword } from "./hub-auth-submit";
-import { resolveHubLoginEmails } from "./hub-resolve-login-client";
 import type { MirrorSupabaseAuthResult } from "./mirror-supabase-auth";
 
 export type { MirrorSupabaseAuthResult };
@@ -66,19 +70,31 @@ export async function signInHubIdentityPlane(
   const login = sanitizeHubLoginInput(loginInput);
   const resolved = resolveHubLogin(login);
   const identityAttempt = async (authEmail: string) => {
-    const result =
-      mode === "signup"
-        ? await hub.auth.signUp({
-            email: authEmail,
-            password,
-            options: {
-              data: {
-                full_name: resolved.loginId ?? authEmail.split("@")[0],
-                login_id: resolved.loginId ?? undefined,
-              },
-            },
-          })
-        : await hub.auth.signInWithPassword({ email: authEmail, password });
+    if (mode === "signup") {
+      const result = await hub.auth.signUp({
+        email: authEmail,
+        password,
+        options: {
+          data: {
+            full_name: resolved.loginId ?? authEmail.split("@")[0],
+            login_id: resolved.loginId ?? undefined,
+          },
+        },
+      });
+      return { data: { session: result.data.session }, error: result.error };
+    }
+    // Token-only grant (P0004 parity) — skip supabase-js /auth/v1/user.
+    const target = readSupabaseGoTrueTarget(hub);
+    if (target) {
+      const granted = await grantGoTruePasswordSession({
+        ...target,
+        email: authEmail,
+        password,
+      });
+      if (granted.session) adoptGrantedGoTrueSession(hub, granted.session);
+      return { data: { session: granted.session }, error: granted.error };
+    }
+    const result = await hub.auth.signInWithPassword({ email: authEmail, password });
     return { data: { session: result.data.session }, error: result.error };
   };
 
@@ -191,24 +207,12 @@ function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
-/**
- * Both planes authenticate with the same opaque auth email, so resolving it once up front
- * lets Hub and the data planes run concurrently. Sequentially they cost one password grant
- * each (~0.5s per plane when healthy, seconds when GoTrue is under load).
- */
-async function resolvePlaneEmailHint(
-  loginInput: string,
-  mode: "signin" | "signup",
-  config: RunWorkspaceDualSignInConfig,
-): Promise<string[]> {
-  if (mode !== "signin" || !config.planes.length) return [];
-  if (!config.planes.every((plane) => typeof plane.revokeSpeculativeSession === "function")) {
-    return [];
-  }
-  const resolved = await resolveHubLoginEmails(loginInput, {
-    resolveLoginApiUrl: config.resolveLoginApiUrl,
-  }).catch(() => null);
-  return resolved?.lookup === "ok" ? resolved.emails : [];
+function planesAreRevocable(planes: WorkspaceDataPlane[], mode: string): boolean {
+  return (
+    mode === "signin" &&
+    planes.length > 0 &&
+    planes.every((plane) => typeof plane.revokeSpeculativeSession === "function")
+  );
 }
 
 /** Hub rejected the password after a parallel plane already signed in — drop those sessions. */
@@ -289,29 +293,25 @@ export async function runWorkspaceDualSignIn(
       : undefined,
   };
 
-  const tResolve = nowMs();
-  const hintEmails = await resolvePlaneEmailHint(loginInput, mode, config);
-  resolveLoginMs = Math.max(0, Math.round(nowMs() - tResolve));
-  const hintEmail = hintEmails.length === 1 ? hintEmails[0] : "";
-
+  // P0004 parity: Hub starts immediately (resolve-login lives inside the grant).
+  // Revocable data planes start at t=0 from loginInput — do not wait for a unique
+  // resolve-login email (multi-email CEO accounts used to serialize Hub then Data Box).
   const tHubStart = nowMs();
-  const identityPromise = signInHubIdentityPlane(loginInput, password, mode, {
-    ...wrappedConfig,
-    resolvedAuthEmails: hintEmails.length ? hintEmails : wrappedConfig.resolvedAuthEmails,
-  }).then((value) => {
-    hubMs = Math.max(0, Math.round(nowMs() - tHubStart));
-    return value;
-  });
+  const identityPromise = signInHubIdentityPlane(loginInput, password, mode, wrappedConfig).then(
+    (value) => {
+      hubMs = Math.max(0, Math.round(nowMs() - tHubStart));
+      return value;
+    },
+  );
   let speculativePlanes: Promise<MirrorSupabaseAuthResult[]> | null = null;
-  if (hintEmail) {
+  if (planesAreRevocable(config.planes, mode)) {
     parallel = true;
-    const speculativeCtx = { loginInput, password, mode, mirrorEmail: hintEmail };
+    const speculativeCtx = { loginInput, password, mode, mirrorEmail: "" };
     speculativePlanes = Promise.all(
       config.planes.map((plane, index) =>
         measurePlaneAuthenticate(plane, speculativeCtx, index, true, planeTimings),
       ),
     );
-    // Hub decides the outcome; a rejected speculative plane must not surface as unhandled.
     speculativePlanes.catch(() => []);
   }
 
@@ -327,23 +327,16 @@ export async function runWorkspaceDualSignIn(
   const { identitySession, mirrorEmail } = identity;
 
   const planeCtx = { loginInput, password, mode, mirrorEmail };
-  const authenticateAllPlanes = () =>
-    Promise.all(
-      config.planes.map((plane, index) =>
-        measurePlaneAuthenticate(plane, planeCtx, index, false, planeTimings),
-      ),
-    );
-  let planeResults: MirrorSupabaseAuthResult[];
-  if (speculativePlanes && hintEmail === mirrorEmail.trim().toLowerCase()) {
-    planeResults = await speculativePlanes.catch(() => authenticateAllPlanes());
-  } else {
-    // Hub bound the session to a different auth email than the hint — the speculative
-    // sessions belong to another identity, so drop them before signing in again.
-    if (speculativePlanes) {
-      await revokeSpeculativePlaneSessions(config.planes, speculativePlanes);
-    }
-    planeResults = await authenticateAllPlanes();
+  let planeResults: MirrorSupabaseAuthResult[] = [];
+  if (speculativePlanes) {
+    planeResults = await speculativePlanes.catch(() => [] as MirrorSupabaseAuthResult[]);
   }
+  planeResults = await Promise.all(
+    config.planes.map(async (plane, index) => {
+      if (planeResults[index]?.session) return planeResults[index];
+      return measurePlaneAuthenticate(plane, planeCtx, index, false, planeTimings);
+    }),
+  );
 
   const planes: MirrorSupabaseAuthResult[] = [];
   let recovered = recoveredPlaneSession;

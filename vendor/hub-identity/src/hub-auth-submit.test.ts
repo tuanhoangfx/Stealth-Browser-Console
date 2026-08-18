@@ -90,6 +90,22 @@ describe("signInWithHubPassword", () => {
     expect(attempt).toHaveBeenCalledWith("czpgo@outlook.com");
   });
 
+  it("skips synthetic fallbacks when caller already provided extraAuthEmails", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: null },
+      error: new Error("Invalid login credentials"),
+    });
+
+    const result = await signInWithHubPassword("duyceo01", attempt, "signin", {
+      extraAuthEmails: ["u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal"],
+    });
+    expect(result.error?.message).toMatch(/invalid login credentials/i);
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(attempt).toHaveBeenCalledWith(
+      "u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal",
+    );
+  });
+
   it("skips synthetic fallbacks once resolve-login returns opaque auth email", async () => {
     vi.stubGlobal(
       "fetch",

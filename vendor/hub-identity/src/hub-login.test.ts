@@ -19,23 +19,23 @@ import {
 } from "./hub-login";
 
 describe("hub-login", () => {
-  it("resolves user ID to canonical infix1 synthetic email", () => {
+  it("resolves user ID without inventing @infix1 (resolve-login fills auth email)", () => {
     const r = resolveHubLogin("alice");
-    expect(r.authEmail).toBe("alice@infix1.io.vn");
+    expect(r.authEmail).toBe("");
     expect(r.loginId).toBe("alice");
     expect(r.isEmailLogin).toBe(false);
   });
 
-  it("aliases enzyadmin → enzy.admin auth email", () => {
+  it("aliases enzyadmin → enzy.admin loginId; sign-in emails empty until resolve-login", () => {
     const r = resolveHubLogin("enzyadmin");
-    expect(r.authEmail).toBe("enzy.admin@infix1.io.vn");
+    expect(r.authEmail).toBe("");
     expect(r.loginId).toBe("enzy.admin");
-    expect(hubAuthEmailsForSignIn("enzyadmin")[0]).toBe("enzy.admin@infix1.io.vn");
+    expect(hubAuthEmailsForSignIn("enzyadmin")).toEqual([]);
   });
 
-  it("aliases crpgo → czpgo auth email", () => {
+  it("aliases crpgo → czpgo loginId", () => {
     expect(resolveHubLogin("crpgo").loginId).toBe("czpgo");
-    expect(hubAuthEmailsForSignIn("crpgo")[0]).toBe("czpgo@infix1.io.vn");
+    expect(hubAuthEmailsForSignIn("crpgo")).toEqual([]);
   });
 
   it("aliases phuongkt01 → phuongkd01 for resolve-login username", () => {
@@ -80,23 +80,14 @@ describe("hub-login", () => {
     expect(hubDisplayLoginId({ authEmail: "x@id.hub.x1z10.local" })).toBe("x");
   });
 
-  it("returns primary + legacy auth emails for user IDs", () => {
-    expect(hubAuthEmailFromLogin("abc")).toBe("abc@infix1.io.vn");
-    expect(hubAuthEmailsFromLogin("abc")).toEqual([
-      "abc@infix1.io.vn",
-      "abc@id.hub.x1z10.local",
-    ]);
+  it("does not invent @infix1 auth emails for usernames", () => {
+    expect(() => hubAuthEmailFromLogin("abc")).toThrow(/resolve-login/);
+    expect(hubAuthEmailsFromLogin("abc")).toEqual([]);
   });
 
-  it("CS00761 resolves same emails as explicit synthetic address", () => {
-    expect(hubAuthEmailsForSignIn("CS00761")).toEqual([
-      "cs00761@infix1.io.vn",
-      "cs00761@id.hub.x1z10.local",
-    ]);
-    expect(hubAuthEmailsForSignIn("CS00761@infix1.io.vn")).toEqual([
-      "cs00761@infix1.io.vn",
-      "cs00761@id.hub.x1z10.local",
-    ]);
+  it("CS00761 username needs resolve-login; synthetic address is rejected for sign-in", () => {
+    expect(hubAuthEmailsForSignIn("CS00761")).toEqual([]);
+    expect(hubAuthEmailsForSignIn("CS00761@infix1.io.vn")).toEqual([]);
   });
 
   it("sanitizes invisible characters from login input", () => {
@@ -130,7 +121,7 @@ describe("hub-login", () => {
 
   it("OI0906029 normalizes to oi0906029 without digit corruption", () => {
     expect(resolveHubLogin("OI0906029")).toMatchObject({
-      authEmail: "oi0906029@infix1.io.vn",
+      authEmail: "",
       loginId: "oi0906029",
       isEmailLogin: false,
     });
@@ -146,14 +137,21 @@ describe("hub-login", () => {
     });
   });
 
-  it("shows synthetic @infix1.io.vn in directory email until contact is linked", () => {
+  it("username-only create uses pending@auth.infi.internal then opaque bind", () => {
+    const resolved = hubAuthEmailFromLoginOrEmail({ loginId: "alice" });
+    expect(resolved).toMatchObject({ loginId: "alice", contactEmail: null });
+    expect("authEmail" in resolved && resolved.authEmail.startsWith("pending_alice_")).toBe(true);
+    expect("authEmail" in resolved && resolved.authEmail.endsWith("@auth.infi.internal")).toBe(true);
+  });
+
+  it("never paints synthetic @infix1.io.vn — contact/profile email only", () => {
     expect(
       hubDisplayEmail({
         authEmail: "oi0906029@infix1.io.vn",
         contactEmail: null,
         profileEmail: null,
       }),
-    ).toBe("oi0906029@infix1.io.vn");
+    ).toBe("");
     expect(
       hubDisplayEmail({
         authEmail: "oi0906029@infix1.io.vn",

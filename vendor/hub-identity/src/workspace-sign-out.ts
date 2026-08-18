@@ -74,8 +74,8 @@ export function resolveWorkspaceShellSession<T>(
 /**
  * Canonical handler for an explicit user Sign Out.
  *
- * Product-owned state (Data Box, 2FA, tool access, etc.) belongs in each plane's
- * `clearCache`; this shared layer only guarantees opt-out + local GoTrue clearing.
+ * Returns as soon as local UI/cache is cleared (P0004 / dual-plane <1s).
+ * GoTrue `signOut({ scope: "local" })` and Hub bridge clear run in the background.
  */
 export async function performWorkspaceSignOut({
   planes,
@@ -95,30 +95,24 @@ export async function performWorkspaceSignOut({
   // Auth host; waiting for it left HubFullUserAccountModal on "Signing out…".
   onAfterSignOut?.();
 
-  try {
-    // Retries inside the bridge push must not extend the visible Sign Out.
-    await Promise.race([
-      Promise.resolve(pushBridgeClear?.()),
-      new Promise<void>((resolve) => {
-        setTimeout(resolve, 600);
-      }),
-    ]);
-  } catch {
+  void Promise.race([
+    Promise.resolve(pushBridgeClear?.()),
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 600);
+    }),
+  ]).catch(() => {
     /* bridge clear must never block local Sign Out */
-  }
+  });
 
-  const timeoutMs = Math.max(500, signOutTimeoutMs);
-  let error: unknown | null = null;
-  try {
-    const results = await Promise.all(
-      planes.map(async ({ getClient }) => {
-        const client = getClient();
-        return client ? signOutPlaneLocal(client, timeoutMs) : { error: null };
-      }),
-    );
-    error = results.find((result) => result.error)?.error ?? null;
-  } catch (err) {
-    error = err;
-  }
-  return { ok: !error, error };
+  const timeoutMs = Math.max(250, signOutTimeoutMs);
+  void Promise.all(
+    planes.map(async ({ getClient }) => {
+      const client = getClient();
+      return client ? signOutPlaneLocal(client, timeoutMs) : { error: null };
+    }),
+  ).catch(() => {
+    /* GoTrue local signOut is best-effort after UI already left */
+  });
+
+  return { ok: true, error: null };
 }

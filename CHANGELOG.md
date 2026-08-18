@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-18 - Patch bump for completed agent task
+
+- Version: `1.1.4`
+- Timestamp: 2026-08-18 02:37 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-17 - Patch bump for completed agent task
 
 - Version: `1.1.3`

@@ -1,9 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasEffectiveHubToolAccess } from "./hub-default-tool-access";
+import { hubJwtSubject } from "./hub-tool-access-fast-check";
 
 async function resolveAuthUserId(client: SupabaseClient): Promise<string | null | undefined> {
   // Prefer local session — avoids false deny when getUser() network/proxy fails.
   const { data: sessionData } = await client.auth.getSession();
+  const fromJwt = hubJwtSubject(sessionData.session?.access_token);
+  if (fromJwt) return fromJwt;
   const fromSession = sessionData.session?.user?.id?.trim();
   if (fromSession) return fromSession;
 

@@ -11,6 +11,23 @@
 
 export const HUB_TOOL_ACCESS_FAST_CHECK_TIMEOUT_MS = 4_000;
 
+/** Hub `auth.users.id` from a GoTrue access token (`sub`). Dual-plane must not use the Data Box UUID. */
+export function hubJwtSubject(accessToken: string | null | undefined): string | null {
+  const token = String(accessToken ?? "").trim();
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  try {
+    const padded = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+    const json = atob(padded + pad);
+    const parsed = JSON.parse(json) as { sub?: unknown };
+    const sub = String(parsed.sub ?? "").trim();
+    return sub || null;
+  } catch {
+    return null;
+  }
+}
+
 export type HubToolAccessFastCheckInput = {
   supabaseUrl?: string | null;
   anonKey?: string | null;
@@ -29,7 +46,7 @@ export async function verifyHubToolAccessFast(
   const url = String(input.supabaseUrl ?? "").trim().replace(/\/$/, "");
   const anonKey = String(input.anonKey ?? "").trim();
   const accessToken = String(input.accessToken ?? "").trim();
-  const userId = String(input.userId ?? "").trim();
+  const userId = hubJwtSubject(accessToken) || String(input.userId ?? "").trim();
   const toolCode = String(input.toolCode ?? "").trim();
   if (!url || !anonKey || !accessToken || !userId || !toolCode) return null;
 

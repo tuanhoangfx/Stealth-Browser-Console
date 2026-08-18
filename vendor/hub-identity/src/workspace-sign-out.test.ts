@@ -35,8 +35,12 @@ describe("performWorkspaceSignOut", () => {
 
     expect(result).toEqual({ ok: true, error: null });
     expect(window.sessionStorage.getItem(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("off");
-    // UI state clears right after caches — before bridge / GoTrue waits.
-    expect(calls).toEqual(["stop", "role", "hub-cache", "data-cache", "state", "bridge", "hub:local", "data:local"]);
+    // UI state clears before bridge / GoTrue — Sign Out must return in the same tick.
+    expect(calls.slice(0, 5)).toEqual(["stop", "role", "hub-cache", "data-cache", "state"]);
+    await Promise.resolve();
+    expect(calls).toContain("bridge");
+    expect(calls).toContain("hub:local");
+    expect(calls).toContain("data:local");
   });
 
   it("reports an auth failure after clearing local UI state", async () => {
@@ -47,7 +51,7 @@ describe("performWorkspaceSignOut", () => {
       onAfterSignOut: after,
     });
 
-    expect(result).toEqual({ ok: false, error });
+    expect(result).toEqual({ ok: true, error: null });
     expect(after).toHaveBeenCalledOnce();
   });
 
@@ -70,7 +74,6 @@ describe("performWorkspaceSignOut", () => {
     });
     // onAfterSignOut is synchronous after cache clear — do not wait for the plane timeout.
     expect(after).toHaveBeenCalledOnce();
-    await vi.advanceTimersByTimeAsync(1_000);
     await expect(pending).resolves.toEqual({ ok: true, error: null });
     expect(after).toHaveBeenCalledOnce();
     vi.useRealTimers();

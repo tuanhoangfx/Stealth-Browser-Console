@@ -50,7 +50,7 @@ function authErrorMessage(error: unknown): string {
 }
 
 export type SignInWithHubPasswordOptions = {
-  /** Real auth emails from profiles.login_id lookup — tried before synthetic @infix1.io.vn. */
+  /** Real auth emails from resolve-login — required for username/phone (no @infix1 invent). */
   extraAuthEmails?: string[];
   /** Same-origin resolve-login API when extraAuthEmails omitted for User ID sign-in. */
   resolveLoginApiUrl?: string;
@@ -101,7 +101,7 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
   // Do not also hammer synthetic @infix1 / legacy fallbacks — each GoTrue attempt
   // costs ~5–8s and turns a wrong password into a long "Please wait…" hang.
   const baseEmails =
-    resolveLookup === "ok" && extraEmails.length > 0
+    extraEmails.length > 0
       ? []
       : classified.kind === "phone"
         ? []
@@ -117,6 +117,16 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
         };
       }
       return { data: null, error: new Error(HUB_UNKNOWN_PHONE_MESSAGE), authEmail: null };
+    }
+    if (classified.kind === "username" && resolveLookupUsed) {
+      if (resolveLookup === "unavailable") {
+        return {
+          data: null,
+          error: new Error(HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE),
+          authEmail: null,
+        };
+      }
+      return { data: null, error: new Error(HUB_UNKNOWN_USER_ID_MESSAGE), authEmail: null };
     }
     return {
       data: null,
