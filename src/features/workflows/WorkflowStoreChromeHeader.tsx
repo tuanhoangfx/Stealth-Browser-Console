@@ -6,7 +6,7 @@ import { useStealthVersionMetaItems } from "../../hooks/useStealthVersionMetaIte
 const storeChrome = stealthWorkflowTabChrome("store");
 
 export function WorkflowStoreChromeHeader({ actions }: { actions?: ReactNode }) {
-  const metaItems = useStealthVersionMetaItems();
+  const { metaItems, desktopUpdate } = useStealthVersionMetaItems();
   return (
     <HubListChromeHeader
       ariaLabel="Store header"
@@ -15,6 +15,7 @@ export function WorkflowStoreChromeHeader({ actions }: { actions?: ReactNode }) 
       title={storeChrome.label}
       metaItems={metaItems}
       versionReleaseNotesCode="P0003"
+      versionReleaseNotesDesktopUpdate={desktopUpdate}
       actions={actions}
     />
   );

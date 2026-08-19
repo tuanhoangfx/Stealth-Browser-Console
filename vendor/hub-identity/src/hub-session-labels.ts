@@ -75,7 +75,7 @@ export function hubSignedInAsLabel(
   return labels.loginId || undefined;
 }
 
-/** Live `profiles.email` / `contact_email` for dual-plane hosts (Data Box session email is often leftover @infix1). */
+/** Live `profiles.email` / `contact_email` for dual-plane hosts (Data Box session email may be opaque). */
 export async function fetchHubProfileSignedInAs(
   snapshot: Pick<
     HubIdentitySnapshot,

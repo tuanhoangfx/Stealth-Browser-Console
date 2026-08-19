@@ -21,7 +21,8 @@ describe("hubApiOrigin", () => {
     expect(hubResolveLoginApiUrl()).toBe(`${HUB_API_GATEWAY_ORIGIN}/hub/auth/resolve-login`);
   });
 
-  it("uses same-origin resolve-login on localhost dev", () => {
+  it("uses same-origin resolve-login on localhost even when VITE_HUB_API_ORIGIN is baked", () => {
+    vi.stubEnv("VITE_HUB_API_ORIGIN", "https://api.infi.io.vn");
     vi.stubGlobal("window", { location: { hostname: "127.0.0.1" } });
     expect(hubApiOrigin()).toBe("");
     expect(hubResolveLoginApiUrl()).toBe("/api/hub/auth/resolve-login");

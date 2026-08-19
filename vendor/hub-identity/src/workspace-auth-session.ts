@@ -79,6 +79,8 @@ export type SupabaseAuthListenerConfig = {
   client: SupabaseClient | null;
   isConfigured: () => boolean;
   cacheSession?: (session: Session) => void;
+  /** Disk/JWT snapshot — keep the shell when getSession() is null after a refresh blip. */
+  readCachedSession?: () => Session | null;
   onSession: (session: Session | null) => void;
   onAfterSession?: (session: Session) => void;
 };
@@ -104,6 +106,11 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
           .getSession()
           .then(({ data }) => {
             if (!data.session) {
+              const cached = config.readCachedSession?.() ?? null;
+              if (cached) {
+                config.onSession(cached);
+                return;
+              }
               config.onSession(null);
               return;
             }

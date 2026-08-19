@@ -9,6 +9,7 @@ import {
   type TabTitleMenuItem, hubMetaActivityAtString } from "./AppTabHeader";
 import { buildVersionMetaItems } from "./workspace-tab-header-meta";
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
+import type { HubVersionDesktopUpdate } from "./HubVersionUpdateStatusIcon";
 
 export type WorkspaceTabHeaderProps = {
   ariaLabel: string;
@@ -38,6 +39,8 @@ export type WorkspaceTabHeaderProps = {
   /** Web bundle behind running tab — Download icon + reload (merged into release-notes trigger). */
   versionReleaseNotesBundleStale?: boolean;
   versionReleaseNotesOnBundleReload?: () => void;
+  /** Desktop electron-updater — folded into the single release-notes trigger. */
+  versionReleaseNotesDesktopUpdate?: HubVersionDesktopUpdate | null;
   extraMetaItems?: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
   /** Sparse vault/sync status before center stats — idle null. */
@@ -60,6 +63,7 @@ export function WorkspaceTabHeader({
   versionReleaseNotesCode,
   versionReleaseNotesBundleStale = false,
   versionReleaseNotesOnBundleReload,
+  versionReleaseNotesDesktopUpdate = null,
   extraMetaItems = [],
   centerStats,
   statusSlot,
@@ -88,6 +92,7 @@ export function WorkspaceTabHeader({
           publishedAt={hubMetaActivityAtString(publishedAt ?? items[0].activityAt)}
           bundleStale={versionReleaseNotesBundleStale}
           onBundleReload={versionReleaseNotesOnBundleReload}
+          desktopUpdate={versionReleaseNotesDesktopUpdate}
         />
       ) : null;
     // Single icon SSOT: release-notes owns Latest/Update/Download when present.
@@ -108,6 +113,7 @@ export function WorkspaceTabHeader({
     versionReleaseNotesBundleStale,
     versionReleaseNotesCode,
     versionReleaseNotesOnBundleReload,
+    versionReleaseNotesDesktopUpdate,
   ]);
 
   return (

@@ -130,11 +130,7 @@ function HubMonthPickerPanel({
                 onChange(`${currentYear}-${(index + 1).toString().padStart(2, "0")}`);
                 onClose?.();
               }}
-              className={`rounded-md p-2 text-sm transition-colors ${
-                selected
-                  ? "bg-[var(--accent-color)] font-bold text-white"
-                  : "text-[var(--text)] hover:bg-white/5"
-              }`}
+              className={`hub-period-month${selected ? " hub-period-month--selected" : ""}`}
             >
               {month}
             </button>
@@ -148,7 +144,7 @@ function HubMonthPickerPanel({
             onChange(new Date().toISOString().slice(0, 7));
             onClose?.();
           }}
-          className="text-xs font-semibold text-[var(--accent-color)] hover:underline"
+          className="hub-period-month-footer text-xs font-semibold hover:underline"
         >
           {thisMonthLabel}
         </button>

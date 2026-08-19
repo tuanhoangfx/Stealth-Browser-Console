@@ -5,8 +5,15 @@ import { HubModalCloseButton } from "../shell/HubModalCloseButton";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
-import { formatHubAuthErrorMessage, normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
+import { normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
 import { HubAuthSysProgress } from "./HubAuthSysProgress";
+import {
+  isHubTechnicalAuthEmail,
+  looksLikeEmail,
+  prefetchHubResolveLogin,
+  sanitizeHubLoginInput,
+  warmHubAuthConnections,
+} from "@tool-workspace/hub-identity";
 
 type AuthMode = "signin" | "signup" | "anonymous";
 
@@ -32,6 +39,7 @@ export type HubAuthGateModalProps = {
     login: string,
     password: string,
     mode: Exclude<AuthMode, "anonymous">,
+    extras?: { contactEmail?: string },
   ) => Promise<void | { error?: string }>;
   onForgotPassword?: (login: string) => Promise<string | void>;
 };
@@ -54,10 +62,26 @@ export function HubAuthGateModal({
 }: HubAuthGateModalProps) {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [mode, setMode] = useState<AuthMode>("signin");
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    warmHubAuthConnections();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || mode === "anonymous") return;
+    const value = login.trim();
+    if (value.length < 3) return;
+    const timer = window.setTimeout(() => {
+      void prefetchHubResolveLogin(value);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [open, mode, login]);
 
   useEffect(() => {
     if (!open || !dismissible) return;
@@ -77,8 +101,6 @@ export function HubAuthGateModal({
     if (mode === "anonymous") return;
     if (submitDisabled) return;
     setBusy(true);
-    // Hub GoTrue password grant is often 4–7s even for wrong password — do not
-    // claim "workspace data" until that window has passed (was 1s → false hang UX).
     setBusyLabel("Checking account…");
     setMessage("");
     const checkingTimer = window.setTimeout(() => {
@@ -86,16 +108,27 @@ export function HubAuthGateModal({
     }, 350);
     const workspaceTimer = window.setTimeout(() => {
       setBusyLabel("Connecting workspace data…");
-    }, 7_000);
+    }, 800);
     try {
-      const result = await onSubmit(login, password, mode);
+      const contact = sanitizeHubLoginInput(contactEmail).toLowerCase();
+      if (mode === "signup" && !looksLikeEmail(login) && !contact) {
+        setMessage("Enter a contact email for recovery.");
+        return;
+      }
+      if (mode === "signup" && contact && (isHubTechnicalAuthEmail(contact) || !looksLikeEmail(contact))) {
+        setMessage("Use a real contact email — @infix1.io.vn is retired.");
+        return;
+      }
+      const result = await onSubmit(login, password, mode, contact ? { contactEmail: contact } : undefined);
+      const intent = mode === "signup" ? "signup" : "signin";
       if (result && "error" in result && result.error) {
-        setMessage(normalizeHubAuthError(result.error, errorOptions));
+        setMessage(normalizeHubAuthError(result.error, { ...errorOptions, intent }));
         return;
       }
       onAuthed?.();
     } catch (err) {
-      setMessage(normalizeHubAuthError(err, errorOptions));
+      const intent = mode === "signup" ? "signup" : "signin";
+      setMessage(normalizeHubAuthError(err, { ...errorOptions, intent }));
     } finally {
       window.clearTimeout(checkingTimer);
       window.clearTimeout(workspaceTimer);
@@ -214,6 +247,20 @@ export function HubAuthGateModal({
               disabled={busy || submitDisabled}
               required
             />
+            {mode === "signup" && !looksLikeEmail(login) ? (
+              <input
+                className="field auth-gate-field w-full"
+                type="email"
+                name="contact"
+                placeholder="Contact email"
+                autoComplete="email"
+                {...HUB_NO_SPELLCHECK_PROPS}
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                disabled={busy || submitDisabled}
+                required
+              />
+            ) : null}
             <div className="auth-gate-password-wrap">
               <input
                 className="field auth-gate-field w-full"

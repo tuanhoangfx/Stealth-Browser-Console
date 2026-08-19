@@ -1073,11 +1073,13 @@ app.whenReady().then(async () => {
         const {
           scheduleProfileTaskbarBadgeApply,
           formatProfileWindowLabel,
+          lastTaskbarBadgeOkAt,
         } = require("./lib/profile-window-title.cjs");
         startTaskbarBadgeGuard({
           listRunning: () => sessionManager.listRunning(),
           schedule: scheduleProfileTaskbarBadgeApply,
           formatLabel: formatProfileWindowLabel,
+          lastOkAt: lastTaskbarBadgeOkAt,
         });
       } catch (error) {
         console.warn("[taskbar-badge] warm recent:", error instanceof Error ? error.message : error);

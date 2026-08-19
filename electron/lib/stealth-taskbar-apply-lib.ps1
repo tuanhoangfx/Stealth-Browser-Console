@@ -131,9 +131,10 @@ function Invoke-StealthTaskbarApply {
   $wmiSkipped = $false
   $pids = @()
   if ($HintPid -gt 0) {
-    # Wait briefly for Chrome to create MainWindowHandle — early open often has PID but HWND=0.
+    # HintPid is often a utility/zygote with HWND=0 forever. Short poll only —
+    # a 2s hold here serialized the worker and starved later profiles.
     $hasHwnd = $false
-    for ($i = 0; $i -lt 50; $i++) {
+    for ($i = 0; $i -lt 8; $i++) {
       $p = Get-Process -Id $HintPid -ErrorAction SilentlyContinue
       if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) {
         $hasHwnd = $true

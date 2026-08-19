@@ -387,8 +387,8 @@ table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--activ
 table.hub-users-table.hub-users-table--users-credentials col.hub-users-col--last-active,
 table.hub-users-table.hub-users-table--users-credentials th.hub-users-col--last-active,
 table.hub-users-table.hub-users-table--users-credentials td.hub-users-col--last-active {
-  width: 10.5rem;
-  min-width: 10.5rem;
+  width: 7.5rem;
+  min-width: 7.5rem;
 }
 
 .hub-users-col--agent-kind {
@@ -1469,10 +1469,12 @@ table.hub-users-table--hub-tools .hub-users-col--hub-code > span {
 }
 
 .hub-users-status-dot {
+  display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 999px;
   flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .hub-users-status-dot--online { background: #22c55e; }

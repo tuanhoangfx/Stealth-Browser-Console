@@ -12,6 +12,8 @@ export type HubTwofaCopyControlProps = {
   className?: string;
   wrapClassName?: string;
   copyToastLabel?: string;
+  /** Native hover — e.g. `Task ID #0141` on Notify/Log headline chips. */
+  title?: string;
   onCopied?: () => void;
   copyFeedback?: HubCopyFeedback;
 };
@@ -27,6 +29,7 @@ export function HubTwofaCopyControl({
   className = "",
   wrapClassName = "",
   copyToastLabel = "Copied",
+  title,
   onCopied,
   copyFeedback = "auto",
 }: HubTwofaCopyControlProps) {
@@ -56,6 +59,7 @@ export function HubTwofaCopyControl({
         type="button"
         className={`hub-directory-copy-control twofa-copy-control ${className}`.trim()}
         aria-label={copyToastLabel}
+        title={title}
         onClick={runCopy}
       >
         <span className="hub-directory-copy-control__value twofa-copy-control__value min-w-0">{display}</span>

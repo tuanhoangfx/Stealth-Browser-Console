@@ -92,16 +92,26 @@ export const COOKIE_BRIDGE_ROUTE_TABLE_COLUMN_HINTS = {
  * @param {(name: string, className?: string) => string} [renderIcon]
  */
 function renderHintLineGlyphHtml(line, renderIcon) {
+  const imageSrc = typeof line.imageSrc === "string" ? line.imageSrc.trim() : "";
+  if (imageSrc) {
+    return `<img class="hub-directory-popover__image" src="${escapeHtml(imageSrc)}" alt="" width="12" height="12" draggable="false" />`;
+  }
+  if (line.brandIcon) {
+    return `<span class="hub-directory-popover__brand" data-brand="${escapeHtml(String(line.brandIcon))}" aria-hidden="true"></span>`;
+  }
   if (line.statusDot) {
     return `<span class="hub-users-status-dot hub-users-status-dot--${escapeHtml(line.statusDot)}" aria-hidden="true"></span>`;
   }
-  if (line.emoji) {
-    return `<span class="hub-directory-popover__emoji">${escapeHtml(line.emoji)}</span>`;
+  if (line.dotClassName) {
+    return `<span class="${escapeHtml(line.dotClassName)}" aria-hidden="true"></span>`;
   }
   if (line.icon && typeof renderIcon === "function") {
     return renderIcon(line.icon, `hub-directory-popover__glyph ui-icon ${line.toneClass ?? ""}`.trim());
   }
-  return `<span class="hub-directory-popover__emoji" aria-hidden="true">•</span>`;
+  if (line.emoji) {
+    return `<span class="hub-directory-popover__emoji">${escapeHtml(line.emoji)}</span>`;
+  }
+  return `<span class="hub-directory-popover__emoji" aria-hidden="true">⭕</span>`;
 }
 
 /**

@@ -102,7 +102,7 @@ export function HubBulkDetailField({ def, value, onChange, disabled = false }: H
           onChange={onChange}
           disabled={disabled}
           panelSearchAsync={def.panelSearchAsync}
-          allowClear={def.allowClear}
+          allowClear={def.allowClear !== false}
           clearLabel={def.clearLabel}
         />
       );

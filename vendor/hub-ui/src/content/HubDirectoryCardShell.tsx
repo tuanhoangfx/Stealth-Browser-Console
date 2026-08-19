@@ -2,8 +2,8 @@ import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Pin } from "lucide-react";
 import { compactIconSize } from "../ui-scale";
 
-/** Golden directory card surface — shared by Dashboard / Hub / Users card grids.
- * Rest border = former hover indigo; hover glow is `.hub-directory-card-surface:hover`. */
+/** Golden directory card surface — shared by Dashboard / Hub / Users / Todo Kanban.
+ * Rest border = former hover indigo; hover = border glow only (keep `--panel`). */
 export const HUB_DIRECTORY_CARD_SURFACE =
   "hub-directory-card-surface relative flex h-full min-h-[var(--hub-card-min-h)] w-full flex-col rounded-xl border bg-[var(--panel)] transition-[border-color,box-shadow,background-color] duration-200";
 export const HUB_DIRECTORY_CARD_SELECTED = "ring-2 ring-inset ring-indigo-400/35 bg-indigo-500/5";

@@ -110,6 +110,15 @@ export function createHubIdentitySupabaseClient(config: HubIdentitySupabaseClien
       refresh_token: snap.refresh_token || "",
     });
     if (error) {
+      // Expired access_token: try refresh before wiping the Hub cache (Enzy/Todo still has Data Box).
+      const refreshToken = snap.refresh_token?.trim() || "";
+      if (refreshToken) {
+        const refreshed = await client.auth.refreshSession({ refresh_token: refreshToken });
+        if (!refreshed.error && refreshed.data.session) {
+          persistHubSession(refreshed.data.session);
+          return refreshed.data.session;
+        }
+      }
       if (readHubIdentity()?.access_token === snap.access_token) {
         clearHubIdentity("restore_failed");
       }

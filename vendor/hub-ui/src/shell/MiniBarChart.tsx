@@ -14,6 +14,7 @@ export type BarItem = {
   iconMeta?: FilterIconMeta | null;
   emojiGlyph?: string;
   iconSrc?: string;
+  iconSrcs?: string[];
   iconShell?: HubBrandIconShell;
   labelHint?: HubDirectoryColumnHintContent;
 };
@@ -82,6 +83,7 @@ export function MiniBarChart({
               <ChartLegendRowLabel
                 label={it.label}
                 iconSrc={it.iconSrc}
+                iconSrcs={it.iconSrcs}
                 iconShell={it.iconShell}
                 iconMeta={it.iconMeta}
                 emojiGlyph={it.emojiGlyph}

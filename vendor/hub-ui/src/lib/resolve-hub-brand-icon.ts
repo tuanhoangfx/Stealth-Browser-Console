@@ -41,6 +41,27 @@ export function resolveHubBrandIcon(id: HubBrandIconId): HubBrandIconMeta | null
   return hit ? withShell(hit) : null;
 }
 
+/**
+ * Dedicated match plus hyphen-family fallbacks (`google-one` → `google`,
+ * `github-copilot` → `github`, `capcut-*` → `capcut`) so a missing PNG
+ * can still render a sibling brand before the empty glyph.
+ */
+export function resolveHubBrandFamilyHits(primary: HubBrandIconMeta | null): HubBrandIconMeta[] {
+  const hits: HubBrandIconMeta[] = [];
+  const seen = new Set<string>();
+  const push = (hit: HubBrandIconMeta | null) => {
+    if (!hit?.src || seen.has(hit.src)) return;
+    seen.add(hit.src);
+    hits.push(hit);
+  };
+  push(primary);
+  const root = primary?.id?.split("-")[0];
+  if (root && root !== primary?.id) {
+    push(resolveHubBrandIcon(root as HubBrandIconId));
+  }
+  return hits;
+}
+
 /** Resolve brand icon by service/platform label (Account vault, filters). */
 export function resolveHubBrandIconByMatch(service: string): HubBrandIconMeta | null {
   const key = service.trim().toLowerCase();

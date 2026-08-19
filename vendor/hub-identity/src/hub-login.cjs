@@ -136,7 +136,7 @@ function classifyHubLoginIdentifier(input) {
 
 function loginIdFromContactEmail(email) {
   const mail = sanitizeHubLoginInput(String(email ?? "")).toLowerCase();
-  if (!mail || !looksLikeEmail(mail) || isHubSyntheticEmail(mail)) return null;
+  if (!mail || !looksLikeEmail(mail) || isHubTechnicalAuthEmail(mail)) return null;
   return normalizeLoginId(mail.split("@")[0] ?? "");
 }
 
@@ -175,10 +175,8 @@ function hubAuthEmailFromLogin(input) {
   return emails[0];
 }
 
-function hubSyntheticEmailFromLoginId(loginId) {
-  const id = canonicalLoginId(loginId);
-  if (!id) throw new Error("Invalid user ID");
-  return `${id}${HUB_ID_EMAIL_DOMAIN}`;
+function hubSyntheticEmailFromLoginId() {
+  throw new Error("Synthetic username-derived auth emails are retired — use username + contact email");
 }
 
 function resolveHubLogin(input) {

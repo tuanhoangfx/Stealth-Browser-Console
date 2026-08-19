@@ -24,13 +24,16 @@ export function workspaceUserInitials(
   return base.slice(0, 2).toUpperCase();
 }
 
-/** Opaque GoTrue locals (`u_<uuid>`) must never paint as the sidebar account label. */
+/** Opaque GoTrue locals / UUID prefixes must never paint as the sidebar account label. */
 export function isUnstableWorkspaceFooterLabel(label: string | null | undefined): boolean {
   const v = String(label ?? "").trim();
   if (!v) return true;
   if (v.includes("@")) return true;
   if (/^u_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return true;
   if (/^u_[0-9a-f-]{20,}$/i.test(v)) return true;
+  // Data Box / Hub auth UUID (full or first-8 fallback) — not a human account label.
+  if (/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v)) return true;
+  if (/^[0-9a-f]{8}$/i.test(v)) return true;
   return false;
 }
 
@@ -64,8 +67,8 @@ export function workspaceUserFooterLabel(opts: {
     if (authLocal && !isUnstableWorkspaceFooterLabel(authLocal)) return authLocal;
   }
 
-  if (opts.session?.user?.id) return opts.session.user.id.slice(0, 8);
-  return opts.guestLabel || "guest";
+  // Never paint auth UUID (full or first-8) — wait for profiles.login_id / sticky label.
+  return opts.guestLabel || "Account";
 }
 
 export type BuildWorkspaceUserProfileRowsOptions = {

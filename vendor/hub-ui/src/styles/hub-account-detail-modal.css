@@ -774,6 +774,27 @@
   -webkit-line-clamp: 1;
 }
 
+/* Readonly copy cells (Contact / Customer Group) — `multilineHover` adds pre-wrap +
+ * -webkit-box inside an inline-flex copy control, so line-clamp does not bound width.
+ * Force one visual line + ellipsis; hover popover still shows the full value. */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-1 :is(.hub-directory-copy-wrap, .twofa-copy-control-wrap, .hub-directory-copy-control, .twofa-copy-control) {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-1 :is(.hub-directory-copy-control__value, .twofa-copy-control__value, .hub-adm-click-edit__text--multiline) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
+}
+
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-2 .hub-adm-click-edit__text--multiline {
   -webkit-line-clamp: 2;
 }

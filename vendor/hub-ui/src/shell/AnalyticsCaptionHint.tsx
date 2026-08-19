@@ -68,6 +68,7 @@ export function AnalyticsCaptionLabel({
 export function ChartLegendRowLabel({
   label,
   iconSrc,
+  iconSrcs,
   iconShell,
   iconMeta,
   emojiGlyph,
@@ -78,6 +79,7 @@ export function ChartLegendRowLabel({
 }: {
   label: string;
   iconSrc?: string;
+  iconSrcs?: string[];
   iconShell?: HubBrandIconShell;
   iconMeta?: FilterIconMeta | null;
   emojiGlyph?: string;
@@ -91,6 +93,7 @@ export function ChartLegendRowLabel({
       <ChartLegendLabelContent
         label={label}
         iconSrc={iconSrc}
+        iconSrcs={iconSrcs}
         iconShell={iconShell}
         iconMeta={iconMeta}
         emojiGlyph={emojiGlyph}

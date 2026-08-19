@@ -4,6 +4,7 @@ import { AppTabHeader, type TabHeaderMetaItem, type TabHeaderStatItem, hubMetaAc
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
 import { applyHubListVersionReleaseNotesMeta } from "./hub-list-chrome-version-meta";
 import { useHubChromePrefs } from "./HubTabChrome";
+import type { HubVersionDesktopUpdate } from "./HubVersionUpdateStatusIcon";
 
 export type HubListChromeHeaderProps = {
   ariaLabel: string;
@@ -15,6 +16,8 @@ export type HubListChromeHeaderProps = {
   versionReleaseNotesCode?: string;
   versionReleaseNotesBundleStale?: boolean;
   versionReleaseNotesOnBundleReload?: () => void;
+  /** Desktop electron-updater — folded into the single release-notes trigger. */
+  versionReleaseNotesDesktopUpdate?: HubVersionDesktopUpdate | null;
   centerStats?: TabHeaderStatItem[];
   centerContent?: ReactNode;
   /** Sparse status before center stats (e.g. Start Shift toolbar). */
@@ -32,6 +35,7 @@ export function HubListChromeHeader({
   versionReleaseNotesCode,
   versionReleaseNotesBundleStale = false,
   versionReleaseNotesOnBundleReload,
+  versionReleaseNotesDesktopUpdate = null,
   centerStats = [],
   centerContent,
   statusSlot,
@@ -48,6 +52,7 @@ export function HubListChromeHeader({
         publishedAt={hubMetaActivityAtString(metaItems[0].activityAt)}
         bundleStale={versionReleaseNotesBundleStale}
         onBundleReload={versionReleaseNotesOnBundleReload}
+        desktopUpdate={versionReleaseNotesDesktopUpdate}
       />
     );
     return applyHubListVersionReleaseNotesMeta(metaItems, badge);
@@ -56,6 +61,7 @@ export function HubListChromeHeader({
     versionReleaseNotesBundleStale,
     versionReleaseNotesCode,
     versionReleaseNotesOnBundleReload,
+    versionReleaseNotesDesktopUpdate,
   ]);
 
   return (

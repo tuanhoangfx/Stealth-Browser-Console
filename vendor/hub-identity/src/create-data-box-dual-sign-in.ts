@@ -165,7 +165,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     });
     const primaryEmail = mirrorEmails[0];
     if (!primaryEmail) {
-      return { session: null, error: "Data Box mirror identity missing (Hub opaque required)." };
+      return { session: null, error: "Workspace data identity missing (Hub opaque required)." };
     }
     const extraAuthEmails = mirrorEmails.slice(0, 2);
     const hubMirrorEmail = String(mirrorEmail ?? "").trim().toLowerCase();
@@ -177,7 +177,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
         password,
         mode,
         cacheSession: config.cacheDataSession,
-        planeLabel: "Data Box",
+        planeLabel: "workspace data",
       });
     }
 
@@ -216,7 +216,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     const lastError = signIn.error?.message ?? null;
     if (lastError?.startsWith("AUTH_TIMEOUT:")) {
       console.warn(`${log} databox signin timeout`, { ms: Math.round(nowMs() - t0) });
-      return { session: null, error: "Data Box sign-in timed out. Please try again." };
+      return { session: null, error: "Workspace data sign-in timed out. Please try again." };
     }
     if (lastError && isHubAuthRateLimitError(lastError)) {
       console.warn(`${log} databox signin rate-limited`, { ms: Math.round(nowMs() - t0), err: lastError });
@@ -224,7 +224,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     }
     if (!lastError || !HUB_INVALID_LOGIN.test(lastError)) {
       console.warn(`${log} databox signin failed`, { ms: Math.round(nowMs() - t0), err: lastError });
-      return { session: null, error: lastError ?? "Data Box sign-in failed." };
+      return { session: null, error: lastError ?? "Workspace data sign-in failed." };
     }
 
     for (const syncEmail of mirrorEmails) {
@@ -274,7 +274,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
         password,
         mode: "signup",
         cacheSession: config.cacheDataSession,
-        planeLabel: "Data Box",
+        planeLabel: "workspace data",
       }),
       dataTimeoutMs,
     ).catch((err) => {

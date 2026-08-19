@@ -115,6 +115,7 @@ export function HubCloneConfirmDialog({
               options={countOptions}
               value={String(count)}
               onChange={(value) => setCount(Number(value))}
+              allowClear={false}
               disabled={busy}
             />
             {showKeepProfile ? (

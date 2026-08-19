@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { CheckCircle2, Download, RefreshCw, Sparkles, Wrench, Zap } from "lucide-react";
 import type { HubActivityKindFilter } from "./HubActivityFeed";
 import {
+  HubOpsMarkAllReadButton,
   HubOpsPanelSearch,
   HubOpsTypeTocNav,
   HubOpsKindBadge,
@@ -14,6 +15,12 @@ import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetail
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { compactIconSize } from "../ui-scale";
+import {
+  HubVersionUpdateStatusIcon,
+  hubDesktopUpdateActionLabel,
+  hubDesktopUpdateOwnsTrigger,
+  type HubVersionDesktopUpdate,
+} from "./HubVersionUpdateStatusIcon";
 import {
   HUB_RELEASE_NOTES_URL,
   ensureHubReleaseNotesIncludeCurrent,
@@ -198,6 +205,11 @@ export type HubVersionReleaseNotesProps = {
    */
   bundleStale?: boolean;
   onBundleReload?: () => void;
+  /**
+   * Desktop electron-updater — same trigger as Latest/Update/Download.
+   * Owns the icon only while checking / available / downloading / error.
+   */
+  desktopUpdate?: HubVersionDesktopUpdate | null;
 };
 
 /**
@@ -219,6 +231,7 @@ export function HubVersionReleaseNotes({
   className = "",
   bundleStale = false,
   onBundleReload,
+  desktopUpdate = null,
 }: HubVersionReleaseNotesProps) {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<HubReleaseNoteEntry[] | null>(hubReleaseNotesCache);
@@ -338,17 +351,31 @@ export function HubVersionReleaseNotes({
   }, [currentVersion, filtered, resolvedEntries?.length]);
 
   const headerEntry = resolvedEntries?.[0];
+  const desktopOwnsTrigger = Boolean(
+    desktopUpdate && hubDesktopUpdateOwnsTrigger(desktopUpdate.state),
+  );
+  const desktopActionLabel = desktopUpdate
+    ? hubDesktopUpdateActionLabel(desktopUpdate.state, desktopUpdate.progress)
+    : null;
   const triggerTitle = bundleStale
     ? `Older bundle — reload for v${currentVersion || version}`
-    : unseen
-      ? "Update available — open release notes"
-      : "You are on the latest version — open release notes";
+    : desktopOwnsTrigger
+      ? desktopUpdate!.state === "downloaded"
+        ? "Update ready — open release notes to install"
+        : desktopUpdate!.state === "available"
+          ? "New version available — open release notes"
+          : desktopUpdate!.title || "Open release notes"
+      : unseen
+        ? "Update available — open release notes"
+        : "You are on the latest version — open release notes";
   const TriggerIcon = bundleStale ? Download : unseen ? RefreshCw : CheckCircle2;
   const triggerIconClass = bundleStale
     ? "text-amber-300"
     : unseen
       ? "text-amber-300"
       : "text-emerald-400";
+  const desktopActionIcon =
+    desktopUpdate?.state === "error" ? RefreshCw : Download;
 
   return (
     <span className={`relative inline-flex shrink-0 items-center ${className}`.trim()}>
@@ -368,7 +395,15 @@ export function HubVersionReleaseNotes({
         }}
         className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm transition-opacity hover:opacity-90"
       >
-        <TriggerIcon size={compactIconSize(13)} className={`shrink-0 ${triggerIconClass}`} aria-hidden />
+        {desktopOwnsTrigger && desktopUpdate ? (
+          <HubVersionUpdateStatusIcon
+            state={desktopUpdate.state}
+            progress={desktopUpdate.progress}
+            title={triggerTitle}
+          />
+        ) : (
+          <TriggerIcon size={compactIconSize(13)} className={`shrink-0 ${triggerIconClass}`} aria-hidden />
+        )}
       </button>
 
       <HubToolDetailModal
@@ -376,7 +411,15 @@ export function HubVersionReleaseNotes({
         onClose={() => setOpen(false)}
         ariaLabel="Update Release"
         headerTrailing={
-          <div className="hub-release-header-version app-tab-header__chrome-text">
+          <div className="hub-release-header-version app-tab-header__chrome-text inline-flex min-w-0 items-center gap-2">
+            {desktopActionLabel && desktopUpdate ? (
+              <HubOpsMarkAllReadButton
+                label={desktopActionLabel}
+                icon={desktopActionIcon}
+                disabled={desktopUpdate.disabled}
+                onClick={desktopUpdate.onAction}
+              />
+            ) : null}
             <ReleaseVersionMeta
               version={currentVersion || headerEntry?.version || "—"}
               date={headerEntry?.date || ""}

@@ -1,5 +1,10 @@
 import {
+  extractAuthErrorText,
+  fallbackAuthErrorText,
+} from "./extract-auth-error-text";
+import {
   classifyHubLoginIdentifier,
+  hubAuthEmailFromLoginOrEmail,
   hubAuthEmailsForSignIn,
   sanitizeHubLoginInput,
 } from "./hub-login";
@@ -36,6 +41,20 @@ export const HUB_USERNAME_WRONG_PASSWORD_MESSAGE =
 export const HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE =
   "Sign-in service unavailable. Try again in a moment or sign in with your email.";
 
+export const HUB_INVALID_USERNAME_MESSAGE =
+  "Invalid username (use 3–32 letters, numbers, . _ -)";
+
+/** GoTrue needs an email for username Sign Up; rebound to `u_<uuid>@auth.infi.internal` after create. */
+function signupAuthEmails(login: string, loginId: string | null, kind: string): string[] {
+  if (kind === "email") return hubAuthEmailsForSignIn(login);
+  if (kind === "username" && loginId) {
+    const resolved = hubAuthEmailFromLoginOrEmail({ loginId });
+    if ("error" in resolved) return [];
+    return [resolved.authEmail];
+  }
+  return [];
+}
+
 export type HubPasswordAuthResult<T> = {
   data: T | null;
   error: Error | null;
@@ -43,10 +62,7 @@ export type HubPasswordAuthResult<T> = {
 };
 
 function authErrorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error) {
-    return String((error as { message: unknown }).message ?? "");
-  }
-  return String(error ?? "");
+  return extractAuthErrorText(error);
 }
 
 export type SignInWithHubPasswordOptions = {
@@ -69,6 +85,13 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
     return {
       data: null,
       error: new Error("Enter your username, email, or phone"),
+      authEmail: null,
+    };
+  }
+  if (classified.kind === "invalid") {
+    return {
+      data: null,
+      error: new Error(HUB_INVALID_USERNAME_MESSAGE),
       authEmail: null,
     };
   }
@@ -105,7 +128,9 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
       ? []
       : classified.kind === "phone"
         ? []
-        : hubAuthEmailsForSignIn(login);
+        : mode === "signup"
+          ? signupAuthEmails(login, classified.loginId, classified.kind)
+          : hubAuthEmailsForSignIn(login);
   const authEmails = [...new Set([...extraEmails, ...baseEmails])];
   if (!authEmails.length) {
     if (classified.kind === "phone") {
@@ -142,8 +167,8 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
     if (!result.error && result.data.session) {
       return { data: result.data, error: null, authEmail };
     }
-    const message = authErrorMessage(result.error);
-    lastError = result.error instanceof Error ? result.error : new Error(message);
+    const message = authErrorMessage(result.error) || fallbackAuthErrorText(result.error, mode);
+    lastError = result.error instanceof Error && extractAuthErrorText(result.error) ? result.error : new Error(message);
     if (mode === "signup" || !message || !HUB_INVALID_LOGIN.test(message)) {
       break;
     }

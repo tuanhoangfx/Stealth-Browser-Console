@@ -1,9 +1,10 @@
 /** Internal auth email domain for User ID sign-in (Supabase requires an email). */
 import aliasRegistry from "../data/hub-login-id-aliases.json";
 
+/** Retired username-derived domain — reject/hide only. Never invent. */
 export const HUB_ID_EMAIL_DOMAIN = "@infix1.io.vn";
 
-/** Legacy synthetic domain — kept for matching existing auth.users rows. */
+/** Retired legacy synthetic — reject/hide only. Never invent. */
 export const HUB_ID_EMAIL_LEGACY_DOMAIN = "@id.hub.x1z10.local";
 
 export const HUB_ID_EMAIL_DOMAINS = [HUB_ID_EMAIL_DOMAIN, HUB_ID_EMAIL_LEGACY_DOMAIN] as const;
@@ -149,7 +150,7 @@ export const HUB_LOGIN_ID_ALIASES: Readonly<Record<string, string>> = Object.fre
 /** Derive login_id from real contact email local-part (before @). */
 export function loginIdFromContactEmail(email: string | null | undefined): string | null {
   const mail = sanitizeHubLoginInput(String(email ?? "")).toLowerCase();
-  if (!mail || !looksLikeEmail(mail) || isHubSyntheticEmail(mail)) return null;
+  if (!mail || !looksLikeEmail(mail) || isHubTechnicalAuthEmail(mail)) return null;
   return normalizeLoginId(mail.split("@")[0] ?? "");
 }
 
@@ -160,11 +161,9 @@ export function canonicalLoginId(raw: string): string | null {
   return HUB_LOGIN_ID_ALIASES[id] ?? id;
 }
 
-/** @deprecated Detector for leftover `@infix1` rows — do not use for new auth. */
-export function hubSyntheticEmailFromLoginId(loginId: string): string {
-  const id = canonicalLoginId(loginId);
-  if (!id) throw new Error("Invalid user ID");
-  return `${id}${HUB_ID_EMAIL_DOMAIN}`;
+/** Retired — never invent username-derived GoTrue addresses. */
+export function hubSyntheticEmailFromLoginId(_loginId: string): never {
+  throw new Error("Synthetic username-derived auth emails are retired — use username + contact email");
 }
 
 /** Canonical synthetic auth email for a User ID or email input — LEGACY detector only. */
@@ -292,7 +291,7 @@ export function hubDisplayLoginId(opts: {
 }): string {
   const explicit = (opts.loginId ?? "").trim().toLowerCase();
   if (explicit) return explicit;
-  return loginIdFromSyntheticEmail(opts.authEmail) ?? "";
+  return loginIdFromContactEmail(opts.authEmail) ?? "";
 }
 
 export function hubAuthEmailFromLoginOrEmail(opts: {

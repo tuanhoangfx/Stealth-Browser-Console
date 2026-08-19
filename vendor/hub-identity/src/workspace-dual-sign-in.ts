@@ -1,6 +1,13 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { isHubAuthRateLimitError } from "./hub-auth-rate-limit";
-import { hubOpaqueAuthEmailFromUserId, resolveHubLogin, sanitizeHubLoginInput } from "./hub-login";
+import {
+  classifyHubLoginIdentifier,
+  hubOpaqueAuthEmailFromUserId,
+  isHubOpaqueAuthEmail,
+  resolveHubLogin,
+  sanitizeHubLoginInput,
+} from "./hub-login";
+import { resolveHubLoginEmails } from "./hub-resolve-login-client";
 import {
   adoptGrantedGoTrueSession,
   grantGoTruePasswordSession,
@@ -207,12 +214,12 @@ function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
-function planesAreRevocable(planes: WorkspaceDataPlane[], mode: string): boolean {
-  return (
-    mode === "signin" &&
-    planes.length > 0 &&
-    planes.every((plane) => typeof plane.revokeSpeculativeSession === "function")
-  );
+function planeIsRevocable(plane: WorkspaceDataPlane): boolean {
+  return typeof plane.revokeSpeculativeSession === "function";
+}
+
+function anyPlaneRevocable(planes: WorkspaceDataPlane[], mode: string): boolean {
+  return mode === "signin" && planes.some(planeIsRevocable);
 }
 
 /** Hub rejected the password after a parallel plane already signed in — drop those sessions. */
@@ -293,9 +300,28 @@ export async function runWorkspaceDualSignIn(
       : undefined,
   };
 
-  // P0004 parity: Hub starts immediately (resolve-login lives inside the grant).
-  // Revocable data planes start at t=0 from loginInput — do not wait for a unique
-  // resolve-login email (multi-email CEO accounts used to serialize Hub then Data Box).
+  const login = sanitizeHubLoginInput(loginInput);
+  const classified = classifyHubLoginIdentifier(login);
+  if (
+    mode === "signin" &&
+    !wrappedConfig.resolvedAuthEmails?.length &&
+    (classified.kind === "username" || classified.kind === "phone")
+  ) {
+    const tResolve = nowMs();
+    const resolved = await resolveHubLoginEmails(login, {
+      resolveLoginApiUrl: wrappedConfig.resolveLoginApiUrl,
+    });
+    resolveLoginMs = Math.max(0, Math.round(nowMs() - tResolve));
+    if (resolved.emails.length) wrappedConfig.resolvedAuthEmails = resolved.emails;
+  }
+  const speculativeMirrorEmail =
+    (wrappedConfig.resolvedAuthEmails ?? []).find((email) => isHubOpaqueAuthEmail(email)) ||
+    (wrappedConfig.resolvedAuthEmails ?? [])[0] ||
+    "";
+
+  // P0004 parity: Hub grant starts immediately after one resolve-login.
+  // Revocable data planes start in the same tick with the opaque Hub email so
+  // Data Box is not serialized behind Hub (empty mirrorEmail used to no-op).
   const tHubStart = nowMs();
   const identityPromise = signInHubIdentityPlane(loginInput, password, mode, wrappedConfig).then(
     (value) => {
@@ -304,13 +330,16 @@ export async function runWorkspaceDualSignIn(
     },
   );
   let speculativePlanes: Promise<MirrorSupabaseAuthResult[]> | null = null;
-  if (planesAreRevocable(config.planes, mode)) {
+  if (anyPlaneRevocable(config.planes, mode)) {
     parallel = true;
-    const speculativeCtx = { loginInput, password, mode, mirrorEmail: "" };
+    const speculativeCtx = { loginInput, password, mode, mirrorEmail: speculativeMirrorEmail };
     speculativePlanes = Promise.all(
-      config.planes.map((plane, index) =>
-        measurePlaneAuthenticate(plane, speculativeCtx, index, true, planeTimings),
-      ),
+      config.planes.map((plane, index) => {
+        if (!planeIsRevocable(plane)) {
+          return Promise.resolve({ session: null, error: null } as MirrorSupabaseAuthResult);
+        }
+        return measurePlaneAuthenticate(plane, speculativeCtx, index, true, planeTimings);
+      }),
     );
     speculativePlanes.catch(() => []);
   }

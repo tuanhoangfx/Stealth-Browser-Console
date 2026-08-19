@@ -13,6 +13,7 @@ export type EntityRankRow = {
   color?: string;
   iconMeta?: FilterIconMeta | null;
   iconSrc?: string;
+  iconSrcs?: string[];
   iconShell?: HubBrandIconShell;
   statusLabel?: string;
   statusTone?: MetricBadgeTone;
@@ -63,6 +64,7 @@ export function EntityRankMiniChart({ title, rows, footer, emptyLabel = "—" }:
                   <ChartLegendLabelContent
                     label={row.label}
                     iconSrc={row.iconSrc}
+                    iconSrcs={row.iconSrcs}
                     iconShell={row.iconShell}
                     iconMeta={row.iconMeta}
                   />

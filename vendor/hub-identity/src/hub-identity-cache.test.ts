@@ -86,6 +86,32 @@ describe("hub-identity-cache", () => {
     expect(isHubIdentitySignOutFresh()).toBe(false);
   });
 
+  it("reopens host-embed relay after Sign Out sticky opt-out", async () => {
+    const { optOutDevAutoLogin, isDevAutoLoginOptedOut, DEV_AUTO_LOGIN_SESSION_KEY } =
+      await import("./dev-auto-login");
+    const { shouldAcceptHubIdentityRelay } = await import("./workspace-sign-out");
+    optOutDevAutoLogin();
+    expect(isDevAutoLoginOptedOut()).toBe(true);
+    expect(shouldAcceptHubIdentityRelay()).toBe(false);
+    const handler = vi.fn();
+    subscribeHubIdentity(handler);
+    cacheHubIdentity(BASE, "dual-sign-in");
+    expect(isDevAutoLoginOptedOut()).toBe(false);
+    expect(shouldAcceptHubIdentityRelay()).toBe(true);
+    expect(sessionStorage.getItem(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("on");
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ type: "updated" }));
+  });
+
+  it("re-broadcasts when the same JWT is written after Sign Out opt-out", async () => {
+    const { optOutDevAutoLogin } = await import("./dev-auto-login");
+    cacheHubIdentity(BASE, "first");
+    optOutDevAutoLogin();
+    const handler = vi.fn();
+    subscribeHubIdentity(handler);
+    cacheHubIdentity(BASE, "after-sign-in");
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ type: "updated" }));
+  });
+
   it("expires the sign-out mark after the ttl", () => {
     markHubIdentitySignedOut(Date.now() - 120_000);
     expect(isHubIdentitySignOutFresh()).toBe(false);

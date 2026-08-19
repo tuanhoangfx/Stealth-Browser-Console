@@ -337,6 +337,7 @@ export function HubActivityFeedRows({
                             </span>
                           }
                           copyToastLabel={`Copy ${primaryIdChip.label}`}
+                          title={`${primaryIdChip.label} ${primaryIdChip.value}`}
                           copyFeedback="inline"
                           className="hub-ops-timeline-entity-id-copy"
                         />

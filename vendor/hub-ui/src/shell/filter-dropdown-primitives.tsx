@@ -1,4 +1,4 @@
-import { Check, ChevronDown, FolderOpen, Plus, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, FolderOpen, Plus, X, type LucideIcon } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
@@ -269,12 +269,24 @@ type HubFilterDropdownPanelSearchProps = {
   clearSelectionLabel?: string;
   clearSelectionEnabled?: boolean;
   /**
-   * Optional — panel header “+” (replaces Clear when set).
+   * Optional — panel header “+” (sits beside Clear when both are set).
    * Services Plan Package → open Add Material.
    */
   onCreateAction?: () => void;
   createActionAriaLabel?: string;
 };
+
+const HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE =
+  "grid h-[var(--hub-control-h)] w-[var(--hub-control-h)] shrink-0 place-items-center rounded-md";
+
+/** Clear (X) — rose, same family as FilterBar clear / HubFilterRowButton rose. */
+export const HUB_FILTER_PANEL_CLEAR_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-rose-400/30 bg-rose-400/10 text-rose-200 hover:bg-rose-400/16 hover:text-rose-100`;
+
+/** Add (+) — emerald, same family as HubFilterRowButton emerald / directory New. */
+export const HUB_FILTER_PANEL_CREATE_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/16 hover:text-emerald-100`;
+
+/** Plus glyph on “Create …” rows — matches search-bar Add. */
+export const HUB_FILTER_CREATE_GLYPH_CLASS = "shrink-0 text-emerald-300";
 
 /** Compact search row at top of filter dropdown panels (multi-select + portal). */
 export function HubFilterDropdownPanelSearch({
@@ -288,7 +300,7 @@ export function HubFilterDropdownPanelSearch({
   createActionAriaLabel = "Add",
 }: HubFilterDropdownPanelSearchProps) {
   const showCreate = Boolean(onCreateAction);
-  const showClear = !showCreate && Boolean(onClearSelection) && clearSelectionEnabled;
+  const showClear = Boolean(onClearSelection) && clearSelectionEnabled;
   const showTrailing = showCreate || showClear;
   return (
     <div className="border-b border-white/5 p-2">
@@ -304,23 +316,26 @@ export function HubFilterDropdownPanelSearch({
             {...HUB_NO_SPELLCHECK_PROPS}
           />
         </div>
+        {showClear ? (
+          <button
+            type="button"
+            onClick={onClearSelection}
+            aria-label={clearSelectionLabel}
+            title={clearSelectionLabel}
+            className={HUB_FILTER_PANEL_CLEAR_BTN_CLASS}
+          >
+            <X size={compactIconSize(14)} aria-hidden />
+          </button>
+        ) : null}
         {showCreate ? (
           <button
             type="button"
             onClick={onCreateAction}
             aria-label={createActionAriaLabel}
             title={createActionAriaLabel}
-            className="grid h-[var(--hub-control-h)] w-[var(--hub-control-h)] shrink-0 place-items-center rounded-md text-[var(--muted)] hover:bg-white/[0.06] hover:text-[var(--text)]"
+            className={HUB_FILTER_PANEL_CREATE_BTN_CLASS}
           >
             <Plus size={compactIconSize(14)} aria-hidden />
-          </button>
-        ) : showClear ? (
-          <button
-            type="button"
-            onClick={onClearSelection}
-            className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:underline"
-          >
-            {clearSelectionLabel}
           </button>
         ) : null}
       </div>

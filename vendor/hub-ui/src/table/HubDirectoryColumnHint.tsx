@@ -2,12 +2,15 @@ import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "
 import { createPortal } from "react-dom";
 import { ListChecks } from "lucide-react";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
+import { HUB_DIRECTORY_BRAND_EMPTY_GLYPH } from "../lib/resolve-hub-brand-icon";
 import type { HubGlyphComponent } from "../types/filter-badge";
 import type { HubUsersStatusTone } from "../shell/HubUsersStatusLabel";
 import { HubSemanticGlyph } from "../shell/HubSemanticGlyph";
 import { measureHubDirectoryPopoverPosition } from "../lib/hub-directory-popover";
 import { compactIconSize } from "../ui-scale";
 import { hubDirectoryMetricHeatDotClass } from "../lib/directory-metric-tier";
+import type { HubBrandIconShell } from "../shell/filter-dropdown-primitives";
+import { hubDirectoryTableBrandImgClass } from "../shell/filter-dropdown-primitives";
 import "../styles/hub-directory-popover.css";
 
 export type HubDirectoryColumnHintGlyph = {
@@ -29,6 +32,9 @@ export type HubDirectoryColumnHintLine = {
   icon?: HubGlyphComponent;
   brandIcon?: HubBrandIconId;
   toneClass?: string;
+  /** Platform PNG / extension icon — same slot as brandIcon (Services name cell). */
+  imageSrc?: string;
+  imageShell?: HubBrandIconShell;
   /** Heat tier dot count for metric columns. */
   metricHeatCount?: number;
   /** When set with onLineAction, line renders as a button. */
@@ -100,24 +106,64 @@ function HintSectionHeading({
   );
 }
 
+export type HubDirectoryHintLineGlyph =
+  | { kind: "image"; src: string; shell: HubBrandIconShell }
+  | { kind: "semantic"; brandIcon?: HubBrandIconId; icon?: HubGlyphComponent; toneClass?: string }
+  | { kind: "statusDot"; tone: HubUsersStatusTone }
+  | { kind: "heatDot"; className: string }
+  | { kind: "emoji"; emoji: string };
+
+/**
+ * Leading glyph for a popover Option row.
+ * Brand / platform image wins over emoji fallback (⭕) — Mail Sub must not paint heat-empty
+ * circles in front of service labels.
+ */
+export function pickHubDirectoryHintLineGlyph(line: HubDirectoryColumnHintLine): HubDirectoryHintLineGlyph {
+  const imageSrc = line.imageSrc?.trim();
+  if (imageSrc) return { kind: "image", src: imageSrc, shell: line.imageShell ?? "bare" };
+  if (line.brandIcon || line.icon) {
+    return {
+      kind: "semantic",
+      brandIcon: line.brandIcon,
+      icon: line.icon,
+      toneClass: line.toneClass,
+    };
+  }
+  if (line.statusDot) return { kind: "statusDot", tone: line.statusDot };
+  if (line.dotClassName) return { kind: "heatDot", className: line.dotClassName };
+  return { kind: "emoji", emoji: line.emoji?.trim() || HUB_DIRECTORY_BRAND_EMPTY_GLYPH };
+}
+
 function HintLineGlyph({ line }: { line: HubDirectoryColumnHintLine }) {
-  if (line.statusDot) {
+  const glyph = pickHubDirectoryHintLineGlyph(line);
+  if (glyph.kind === "statusDot") {
+    return <span className={`hub-users-status-dot hub-users-status-dot--${glyph.tone}`} aria-hidden />;
+  }
+  if (glyph.kind === "heatDot") {
+    return <span className={glyph.className} aria-hidden />;
+  }
+  if (glyph.kind === "emoji") {
+    return <span className="hub-directory-popover__emoji">{glyph.emoji}</span>;
+  }
+  if (glyph.kind === "image") {
+    const px = compactIconSize(12);
     return (
-      <span className={`hub-users-status-dot hub-users-status-dot--${line.statusDot}`} aria-hidden />
+      <img
+        src={glyph.src}
+        alt=""
+        width={px}
+        height={px}
+        className={`hub-directory-popover__image shrink-0 ${hubDirectoryTableBrandImgClass(glyph.shell)}`}
+        draggable={false}
+      />
     );
-  }
-  if (line.dotClassName) {
-    return <span className={line.dotClassName} aria-hidden />;
-  }
-  if (line.emoji) {
-    return <span className="hub-directory-popover__emoji">{line.emoji}</span>;
   }
   return (
     <HubSemanticGlyph
-      icon={line.icon}
-      brandIcon={line.brandIcon}
+      icon={glyph.icon}
+      brandIcon={glyph.brandIcon}
       size={compactIconSize(12)}
-      className={line.toneClass ?? "text-[var(--muted)]"}
+      className={glyph.toneClass ?? "text-[var(--muted)]"}
     />
   );
 }
@@ -181,7 +227,14 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
                 const text = line.detail ? `${line.label} · ${line.detail}` : line.label;
                 const rowBody = (
                   <>
-                    <span className="hub-directory-popover__icon hub-directory-popover__icon--with-heat" aria-hidden>
+                    <span
+                      className={
+                        line.metricHeatCount != null
+                          ? "hub-directory-popover__icon hub-directory-popover__icon--with-heat"
+                          : "hub-directory-popover__icon"
+                      }
+                      aria-hidden
+                    >
                       <HintLineGlyph line={line} />
                       {line.metricHeatCount != null ? (
                         <span className={hubDirectoryMetricHeatDotClass(line.metricHeatCount)} aria-hidden />

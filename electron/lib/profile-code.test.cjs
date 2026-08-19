@@ -5,6 +5,7 @@ const {
   normalizeProfileNameOrThrow,
   extractFourDigitCode,
   extractProfileCode,
+  isUuidFolderId,
   badgeLast3,
   badgeThousands,
   digitHexForCode,
@@ -54,6 +55,15 @@ describe("profile-code", () => {
   it("extractFourDigitCode prefers trailing 4 digits", () => {
     assert.equal(extractFourDigitCode("1731"), "1731");
     assert.equal(extractFourDigitCode("0009"), "0009");
+  });
+
+  it("does not mint a badge code from a UUID folder id", () => {
+    const uuid = "f47ac10b-58cc-4372-a567-0e02b2c3d708";
+    assert.equal(isUuidFolderId(uuid), true);
+    assert.equal(extractFourDigitCode(uuid, uuid), "0000");
+    assert.equal(badgeLast3(uuid), "000");
+    assert.equal(extractFourDigitCode("0010", uuid), "0010");
+    assert.equal(badgeLast3("0010"), "010");
   });
 
   it("digit gap SSOT (+10% vs spaced7)", () => {

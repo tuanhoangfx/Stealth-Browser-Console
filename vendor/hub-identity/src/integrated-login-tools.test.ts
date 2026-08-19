@@ -3,6 +3,8 @@ import {
   HUB_INTEGRATED_LOGIN_TOOL_CODES,
   HUB_INTEGRATED_LOGIN_TOOLS,
   hasIntegratedLoginToolAccess,
+  integratedLoginRoleTitle,
+  integratedLoginToolStatusLabel,
   isHubIntegratedLoginTool,
 } from "./integrated-login-tools";
 
@@ -32,5 +34,13 @@ describe("integrated-login-tools", () => {
     expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: [] }, "P0015")).toBe(false);
     expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: ["P0015"] }, "P0015")).toBe(true);
     expect(hasIntegratedLoginToolAccess({ role: "user", toolRoles: { P0015: "manager" } }, "P0015")).toBe(true);
+  });
+
+  it("labels tool cells Access / Denied — never Hub Role", () => {
+    expect(integratedLoginToolStatusLabel("admin")).toBe("Access");
+    expect(integratedLoginToolStatusLabel("user")).toBe("Access");
+    expect(integratedLoginToolStatusLabel("none")).toBe("Denied");
+    expect(integratedLoginRoleTitle("P0004", "user")).toBe("P0004: access");
+    expect(integratedLoginRoleTitle("P0004", "none")).toBe("P0004: denied");
   });
 });

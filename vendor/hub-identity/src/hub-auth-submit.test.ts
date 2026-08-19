@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { HUB_SIGNUP_FAILED_MESSAGE } from "./extract-auth-error-text";
 import {
   HUB_PHONE_WRONG_PASSWORD_MESSAGE,
   HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE,
@@ -7,10 +8,12 @@ import {
   HUB_USERNAME_WRONG_PASSWORD_MESSAGE,
   signInWithHubPassword,
 } from "./hub-auth-submit";
+import { clearHubResolveLoginPrefetch } from "./hub-resolve-login-client";
 
 describe("signInWithHubPassword", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    clearHubResolveLoginPrefetch();
   });
 
   it("returns unknown username hint when resolve-login finds no profile", async () => {
@@ -169,5 +172,39 @@ describe("signInWithHubPassword", () => {
     expect(result.error?.message).toBe(HUB_PHONE_WRONG_PASSWORD_MESSAGE);
     expect(result.authEmail).toBe("008@inp");
     expect(attempt).toHaveBeenCalledWith("008@inp");
+  });
+
+  it("uses a provisional opaque email for username Sign Up (no resolve-login)", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: { access_token: "t" } },
+      error: null,
+    });
+
+    const result = await signInWithHubPassword("CS01333", attempt, "signup");
+    expect(result.error).toBeNull();
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(attempt.mock.calls[0][0]).toMatch(/^pending_cs01333_[a-z0-9]+@auth\.infi\.internal$/);
+  });
+
+  it("does not treat a filled username Sign Up as an empty login", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: { access_token: "t" } },
+      error: null,
+    });
+
+    const result = await signInWithHubPassword("CS01333", attempt, "signup");
+    expect(result.error?.message ?? "").not.toMatch(/Enter your username, email, or phone/i);
+    expect(attempt).toHaveBeenCalled();
+  });
+
+  it("replaces empty GoTrue {} on username Sign Up with English copy", async () => {
+    const attempt = vi.fn().mockResolvedValue({
+      data: { session: null },
+      error: new Error("{}"),
+    });
+
+    const result = await signInWithHubPassword("CS00962", attempt, "signup");
+    expect(result.error?.message).toBe(HUB_SIGNUP_FAILED_MESSAGE);
+    expect(result.error?.message).not.toBe("{}");
   });
 });

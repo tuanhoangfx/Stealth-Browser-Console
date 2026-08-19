@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Session } from "@supabase/supabase-js";
 import { runWorkspaceDualSignIn } from "./workspace-dual-sign-in";
+import { clearHubResolveLoginPrefetch } from "./hub-resolve-login-client";
 
-function mockSession(label: string, email = `${label}@infix1.io.vn`): Session {
+function mockSession(label: string, email = `u_${label}@auth.infi.internal`): Session {
   return {
     access_token: `${label}-token`,
     refresh_token: `${label}-refresh`,
@@ -13,6 +14,11 @@ function mockSession(label: string, email = `${label}@infix1.io.vn`): Session {
 }
 
 describe("runWorkspaceDualSignIn parallel planes", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearHubResolveLoginPrefetch();
+  });
+
   it("authenticates data planes in parallel", async () => {
     const delayMs = 40;
     const started: number[] = [];
@@ -296,9 +302,55 @@ describe("runWorkspaceDualSignIn parallel planes", () => {
     expect(result.planes[0]?.session?.user?.email).toBe("u_hub-id@auth.infi.internal");
     expect(plane.revokeSpeculativeSession).not.toHaveBeenCalled();
     expect(plane.authenticate).toHaveBeenCalledOnce();
+    expect(plane.authenticate.mock.calls[0]?.[0]?.mirrorEmail).toBe("u_hub-id@auth.infi.internal");
     expect(Math.abs(startedAt.hub - startedAt.plane)).toBeLessThan(grantMs);
     expect(Date.now() - t0).toBeLessThan(grantMs * 2);
     expect(result.timings.parallel).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("does not speculative-start a vault plane without revoke — waits for Hub email", async () => {
+    const grantMs = 40;
+    let vaultMirrorEmail = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, authEmails: ["u_hub-id@auth.infi.internal"] }),
+      })),
+    );
+    const hub = {
+      auth: {
+        signInWithPassword: vi.fn(async () => {
+          await new Promise((r) => setTimeout(r, grantMs));
+          return {
+            data: { session: mockSession("hub", "u_hub-id@auth.infi.internal") },
+            error: null,
+          };
+        }),
+      },
+    };
+    const dataPlane = {
+      authenticate: vi.fn(async () => ({ session: mockSession("data"), error: null })),
+      revokeSpeculativeSession: vi.fn(),
+    };
+    const vaultPlane = {
+      authenticate: vi.fn(async ({ mirrorEmail }: { mirrorEmail: string }) => {
+        vaultMirrorEmail = mirrorEmail;
+        return { session: mockSession("vault"), error: null };
+      }),
+    };
+
+    const result = await runWorkspaceDualSignIn("czpgo", "secret", "signin", {
+      getHubClient: () => hub as never,
+      cacheHubIdentityFromSession: vi.fn(),
+      planes: [dataPlane, vaultPlane],
+    });
+
+    expect(result.planes[1]?.session).toBeTruthy();
+    expect(vaultMirrorEmail).toBe("u_hub-id@auth.infi.internal");
+    expect(vaultPlane.authenticate).toHaveBeenCalledOnce();
     vi.unstubAllGlobals();
   });
 });

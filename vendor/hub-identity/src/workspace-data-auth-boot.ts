@@ -64,6 +64,7 @@ export function useWorkspaceDataAuthBoot(config: WorkspaceDataAuthBootConfig): v
         client: c().getClient(),
         isConfigured: c().isConfigured,
         cacheSession: c().persistSession,
+        readCachedSession: c().readCachedSession,
         onSession: (session) => {
           if (cancelled) return;
           if (!session) {

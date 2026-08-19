@@ -70,17 +70,13 @@ export function getIntegratedLoginToolStatus(
 }
 
 export function integratedLoginToolStatusLabel(status: HubIntegratedToolStatus): string {
-  if (status === "admin") return "Admin";
-  if (status === "manager") return "Manager";
-  if (status === "user" || status === "employee") return "User";
-  return "No access";
+  return status === "none" ? "Denied" : "Access";
 }
 
 export function integratedLoginRoleTitle(
   code: HubIntegratedLoginToolCode,
   status: HubIntegratedToolStatus,
-  inheritedRole = true,
+  _inheritedRole = true,
 ): string {
-  const base = `${code} tool role: ${integratedLoginToolStatusLabel(status)}`;
-  return inheritedRole && status !== "none" ? `${base} (inherited from Hub role)` : base;
+  return status === "none" ? `${code}: denied` : `${code}: access`;
 }

@@ -1,33 +1,33 @@
+import {
+  extractAuthErrorText,
+  HUB_SIGNIN_FAILED_MESSAGE,
+  HUB_SIGNUP_ALREADY_REGISTERED_MESSAGE,
+  HUB_SIGNUP_FAILED_MESSAGE,
+} from "@tool-workspace/hub-identity";
+
 export type NormalizeHubAuthErrorOptions = {
   /** Mention Tool Hub (P0004) in invalid-credentials copy */
   toolHubHint?: boolean;
   /** Extra network / quota messages for dual-workspace tools */
   dualWorkspace?: boolean;
+  /** Sign Up uses a different empty-body fallback than Sign In */
+  intent?: "signin" | "signup";
 };
 
 export function formatHubAuthErrorMessage(raw: unknown): string {
-  // Bare status codes (e.g. 0 from a failed XHR) must not surface in the gate UI.
-  if (typeof raw === "number") return "";
-  if (raw instanceof Error) return raw.message.trim();
-  if (typeof raw === "string") {
-    const text = raw.trim();
-    return /^\d+$/.test(text) ? "" : text;
-  }
-  if (raw && typeof raw === "object" && "message" in raw) {
-    const msg = (raw as { message?: unknown }).message;
-    if (typeof msg === "string" && msg.trim()) {
-      const text = msg.trim();
-      return /^\d+$/.test(text) ? "" : text;
-    }
-  }
-  const text = String(raw ?? "").trim();
-  if (text === "[object Object]" || /^\d+$/.test(text)) return "";
-  return text;
+  return extractAuthErrorText(raw);
 }
 
 export function normalizeHubAuthError(raw: unknown, opts: NormalizeHubAuthErrorOptions = {}) {
   const msg = formatHubAuthErrorMessage(raw);
   const lower = msg.toLowerCase();
+  if (
+    /already registered|already been registered|user already exists|email_exists|user_already_exists/.test(
+      lower,
+    )
+  ) {
+    return HUB_SIGNUP_ALREADY_REGISTERED_MESSAGE;
+  }
   if (lower.includes("rate limit")) return "Temporary sign-in issue. Please try again in a moment.";
   if (lower.includes("sign-in service unavailable")) return msg;
   if (lower.includes("user id not found") || lower.includes("username not found")) {
@@ -51,8 +51,10 @@ export function normalizeHubAuthError(raw: unknown, opts: NormalizeHubAuthErrorO
       ? "Incorrect username/email/phone or password. Use the same credentials as Tool Hub (P0004)."
       : "Incorrect username/email/phone or password.";
   }
-  if (lower.includes("user already registered")) {
-    return "This username or email is already registered.";
+  if (lower.includes("user is banned") || lower.includes("user banned")) {
+    return opts.dualWorkspace
+      ? "Workspace data account is banned, not Tool Hub identity. Ask an admin to unban the workspace data user, then retry Sign In."
+      : "This account is banned. Contact an admin to restore access.";
   }
   if (lower.includes("auth_timeout")) {
     return opts.dualWorkspace
@@ -63,11 +65,22 @@ export function normalizeHubAuthError(raw: unknown, opts: NormalizeHubAuthErrorO
     if (lower.includes("exceed_egress_quota") || lower.includes("egress_quota")) {
       return "Workspace data API quota exceeded on Home Server. Check hub-api / sb-api status.";
     }
-    if (msg === "Failed to fetch" || lower.includes("networkerror") || lower.includes("load failed")) {
-      return "Cannot reach Tool Hub or workspace data API (Home Server). Check hub-api / sb-api and Cloudflare tunnel.";
+    if (isHubApiUnreachableMessage(msg, lower)) {
+      return "Cannot reach Tool Hub or workspace data API (Home Server). Cloudflare tunnel or hub-api may be down — retry in a moment.";
     }
-  } else if (msg === "Failed to fetch" || lower.includes("networkerror")) {
-    return "Cannot reach Tool Hub identity (hub-api). Check network and Cloudflare tunnel.";
+  } else if (isHubApiUnreachableMessage(msg, lower)) {
+    return "Cannot reach Tool Hub identity (hub-api). Cloudflare tunnel may be disconnected — retry in a moment.";
   }
-  return msg || "Sign-in failed. Please try again.";
+  return msg || (opts.intent === "signup" ? HUB_SIGNUP_FAILED_MESSAGE : HUB_SIGNIN_FAILED_MESSAGE);
+}
+
+function isHubApiUnreachableMessage(msg: string, lower: string): boolean {
+  if (msg === "Failed to fetch" || lower.includes("networkerror") || lower.includes("load failed")) {
+    return true;
+  }
+  // Cloudflare Error 1033 / HTTP 502·530 HTML bodies sometimes surface via GoTrue fetch.
+  if (/\b(502|530)\b/.test(lower) || lower.includes("error code: 1033") || lower.includes("cloudflare")) {
+    return true;
+  }
+  return false;
 }

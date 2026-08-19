@@ -8,6 +8,7 @@ import {
   HubFilterDropdownTrigger,
 } from "./filter-dropdown-primitives";
 import { hubPortalPanelPosition } from "./hub-portal-panel-position";
+import { formatHubCalendarDateCompact } from "../lib/format-hub-timestamp-compact";
 
 /** Account detail + vault date fields — muted placeholder tone (not column label). */
 export const HUB_DATE_PICKER_PLACEHOLDER = "dd/mm/yy";
@@ -37,9 +38,7 @@ function formatDateFull(dateString: string) {
 }
 
 function formatDateCompact(dateString: string) {
-  const [y, m, d] = dateString.split("-");
-  if (!y || !m || !d) return dateString;
-  return `${d}/${m}/${y.slice(-2)}`;
+  return formatHubCalendarDateCompact(dateString);
 }
 
 /**
@@ -47,6 +46,10 @@ function formatDateCompact(dateString: string) {
  *
  * Keep its portal panel, ISO `YYYY-MM-DD` value contract, and Clear/Today actions
  * aligned here; P0005 and P0020 consume it through their detail-field adapters.
+ *
+ * Selected day = solid `--accent` circle (not `--accent-color`). That Todo alias
+ * only existed under P0012 `.theme-hub` / `.todo-board-root`; the portal mounts
+ * on `document.body` and P0020 never defined it — selected looked like a ring.
  */
 export function HubFilterDatePicker({
   value,
@@ -216,12 +219,12 @@ export function HubFilterDatePicker({
                   key={day.toISOString()}
                   type="button"
                   onClick={() => handleDayClick(day)}
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs transition-all ${
+                  className={`hub-date-picker-day${
                     selected
-                      ? "scale-105 bg-[var(--accent-color)] font-bold text-white shadow-md"
+                      ? " hub-date-picker-day--selected"
                       : today
-                        ? "bg-[var(--accent-color)]/10 font-bold text-[var(--accent-color)] hover:bg-white/5"
-                        : "text-[var(--text)] hover:bg-white/5"
+                        ? " hub-date-picker-day--today"
+                        : ""
                   }`}
                 >
                   {day.getDate()}
@@ -242,7 +245,7 @@ export function HubFilterDatePicker({
             <button
               type="button"
               onClick={() => handleDayClick(new Date())}
-              className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-color)] hover:underline"
+              className="hub-date-picker-footer-today text-[10px] font-bold uppercase tracking-wider hover:underline"
             >
               {todayLabel}
             </button>

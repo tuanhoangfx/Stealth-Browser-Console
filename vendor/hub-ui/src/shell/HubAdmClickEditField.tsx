@@ -367,10 +367,10 @@ export type HubAdmClickFilterFieldProps = {
   className?: string;
   disabled?: boolean;
   panelSearchAsync?: HubSingleFilterDropdownProps["panelSearchAsync"];
-  /** Reset selection to empty — Clear beside panel search (no fake “None” option). */
+  /** Reset selection to empty — Clear beside panel search (true blank, not a fake “None” option). Default on. */
   allowClear?: boolean;
   clearLabel?: string;
-  /** Panel header “+” — replaces Clear (e.g. Plan Package → Add Material). */
+  /** Panel header “+” — sits beside Clear (e.g. Plan Package → Add Material). */
   onPanelCreate?: () => void;
   panelCreateAriaLabel?: string;
   /** Allow creating a brand-new value from the panel search (free-text combobox). */
@@ -403,7 +403,7 @@ export function HubAdmClickFilterField({
   className = "",
   disabled = false,
   panelSearchAsync,
-  allowClear = false,
+  allowClear = true,
   clearLabel,
   onPanelCreate,
   panelCreateAriaLabel,
@@ -422,7 +422,9 @@ export function HubAdmClickFilterField({
   /** Parity with directory table brand glyphs (`HubDirectoryBrandNameCell` 16px). */
   const glyphPx = compactIconSize(HUB_DIRECTORY_TABLE_BRAND_ICON_PX);
   const slotStyle = { width: glyphPx, height: glyphPx };
+  const empty = !value.trim();
   const displayLabel = opt?.label ?? (value.trim() || fieldLabel);
+  const valueTextClass = `hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate${empty ? " hub-adm-click-edit__text--empty" : ""}`;
   const tipText = (opt?.tip || opt?.detail || "").trim();
   const valueHint: HubDirectoryColumnHintContent | undefined = tipText
     ? {
@@ -482,7 +484,7 @@ export function HubAdmClickFilterField({
                 titleGlyph={valueHint.titleGlyph}
               >
                 <span
-                  className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
+                  className={valueTextClass}
                   data-testid="hub-adm-filter-value-tip"
                 >
                   {renderValue ? (
@@ -513,8 +515,8 @@ export function HubAdmClickFilterField({
               </HubDirectoryColumnHint>
             ) : (
               <span
-                className="hub-adm-click-edit__text inline-flex min-w-0 items-center gap-1.5 truncate"
-                title={displayLabel}
+                className={valueTextClass}
+                title={empty ? undefined : displayLabel}
               >
                 {renderValue ? (
                   renderValue(value, displayLabel)

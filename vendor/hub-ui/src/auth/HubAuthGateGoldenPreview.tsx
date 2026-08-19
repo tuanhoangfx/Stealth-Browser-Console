@@ -109,7 +109,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
         </h3>
         <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/8 bg-white/[.02] px-4 py-5">
           <HubAuthLogoutChip
-            email="user@infix1.io.vn"
+            email="user@example.com"
             roleKey="admin"
             linked
             onOpenUser={() => undefined}
@@ -198,7 +198,7 @@ export function HubAuthGateGoldenPreview({ tool = "P0016", compare = true }: Hub
         <HubAccessDeniedPanel
           title={cfg.deniedTitle}
           toolInfo={cfg.toolInfo}
-          signedInAs="preview@infix1.io.vn"
+          signedInAs="preview@example.com"
           message={cfg.deniedMessage}
           headerLeading={<HubAuthBrandIcon src={PREVIEW_BRAND_SRC[activeTool]} />}
           onSignOut={() => setDeniedOpen(false)}

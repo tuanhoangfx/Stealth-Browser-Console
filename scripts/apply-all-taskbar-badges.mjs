@@ -16,8 +16,10 @@ const {
   shouldSkipTaskbarBadge,
 } = require("../electron/lib/profile-taskbar-native.cjs");
 const { listLiveCloakWindows } = require("../electron/lib/list-live-cloak-windows.cjs");
-const { extractProfileCode } = require("../electron/lib/profile-code.cjs");
+const { extractProfileCode, isUuidFolderId } = require("../electron/lib/profile-code.cjs");
 const { formatProfileWindowLabel } = require("../electron/lib/profile-window-title.cjs");
+
+const noFocus = process.argv.includes("--no-focus");
 
 const apiBase = String(process.argv[2] || process.env.STEALTH_API || "http://127.0.0.1:6003").replace(/\/$/, "");
 
@@ -61,7 +63,12 @@ let failed = 0;
 
 for (const { dir, browserPid: listedPid } of live) {
   const id = path.basename(dir);
-  const profile = byId.get(id) || { id, name: id.slice(0, 4) };
+  const profile = byId.get(id);
+  if (!profile?.name || isUuidFolderId(profile.name)) {
+    skipped += 1;
+    console.log(JSON.stringify({ id, skipped: true, reason: "catalog-name-required" }));
+    continue;
+  }
   const code = extractProfileCode(profile.name, profile.id);
   const label = formatProfileWindowLabel(profile);
   if (shouldSkipTaskbarBadge(code)) {
@@ -81,7 +88,10 @@ for (const { dir, browserPid: listedPid } of live) {
     }
   }
   const t0 = Date.now();
-  const result = await applyTaskbarBadgeWithRetry(dir, label, code, { browserPid, focusRetry: true });
+  const result = await applyTaskbarBadgeWithRetry(dir, label, code, {
+    browserPid,
+    focusRetry: !noFocus,
+  });
   if (isOkIcon(result)) okIcon += 1;
   else failed += 1;
   console.log(

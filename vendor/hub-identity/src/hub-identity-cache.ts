@@ -1,3 +1,5 @@
+import { clearDevAutoLoginOptOut, isDevAutoLoginOptedOut } from "./dev-auto-login";
+
 /** Cross-tab Tool Hub JWT cache — localStorage SSOT + BroadcastChannel sync (same origin). */
 
 export type HubIdentitySnapshot = {
@@ -118,15 +120,24 @@ export function cacheHubIdentity(
   source?: string,
 ): void {
   if (source === "cross-origin" && isHubIdentitySignOutFresh()) return;
-  if (source !== "cross-origin" && payload.access_token?.trim()) clearHubIdentitySignOutMark();
+  let reopenedRelay = false;
+  if (source !== "cross-origin" && payload.access_token?.trim()) {
+    // Manual / dual Sign In must reopen host-embed relay after explicit Sign Out
+    // (`optOutDevAutoLogin`). Clear before broadcast so subscribers accept this update.
+    clearHubIdentitySignOutMark();
+    reopenedRelay = isDevAutoLoginOptedOut();
+    clearDevAutoLoginOptOut();
+  }
   const prev = readHubIdentity();
   const snapshot: HubIdentitySnapshot = { ...payload, cached_at: Date.now() };
-  if (
+  const unchanged =
     prev?.access_token === snapshot.access_token &&
     prev?.refresh_token === snapshot.refresh_token &&
     prev?.user_id === snapshot.user_id &&
-    prev?.expires_at === snapshot.expires_at
-  ) {
+    prev?.expires_at === snapshot.expires_at;
+  if (unchanged) {
+    // Same JWT after Sign Out opt-out — still notify so host embeds re-apply the session.
+    if (reopenedRelay) broadcastChange({ type: "updated", source });
     return;
   }
   localStorage.setItem(HUB_IDENTITY_STORAGE_KEY, JSON.stringify(snapshot));

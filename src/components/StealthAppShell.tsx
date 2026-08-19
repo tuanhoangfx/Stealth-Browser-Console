@@ -7,6 +7,7 @@ import { lazy, memo, Suspense, useMemo, useState, type ReactNode, type RefObject
 import { StealthHubShellSidebar } from "./StealthHubShellSidebar";
 import { StealthScreenLoadingView } from "./StealthScreenLoadingView";
 import { StealthTabHeaderActions } from "./StealthTabHeaderActions";
+import { resolveWorkspaceAuthPaint } from "@tool-workspace/hub-identity";
 import { StealthAuthGate } from "../features/auth/StealthAuthGate";
 import { StealthAccessDeniedScreen, StealthAuthBootScreen } from "../features/auth/StealthAuthScreens";
 import { useStealthAuth } from "../features/auth/AuthSessionProvider";
@@ -118,8 +119,15 @@ export const StealthAppShell = memo(function StealthAppShell({
 
   const hasRealHubSession = !isOfflineWorkspaceSession(session, offline);
 
-  const needsSignIn =
-    hubAuthEnabled && !hasRealHubSession && (hubSignInRequested || authRequired);
+  const authPaint = resolveWorkspaceAuthPaint({
+    configured: hubAuthEnabled && hubConfigured,
+    unconfigured: "app",
+    authRequired: authRequired || hubSignInRequested,
+    policyReady,
+    hasSession: hasRealHubSession,
+    sessionLoading: loading,
+    toolAccess,
+  });
 
   const consoleScreens = (
     <StealthConsoleScreens
@@ -132,35 +140,25 @@ export const StealthAppShell = memo(function StealthAppShell({
     />
   );
 
-  let mainContent: ReactNode;
-  if (!hubAuthEnabled || !hubConfigured) {
-    mainContent = consoleScreens;
-  } else if (authRequired && (!policyReady || loading) && !hasRealHubSession) {
-    mainContent = (
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
-        <StealthAuthBootScreen />
-      </div>
-    );
-  } else if (needsSignIn) {
+  let mainContent: ReactNode = consoleScreens;
+  if (authPaint === "gate") {
     mainContent = (
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
         <StealthAuthGate onAuthed={() => setHubSignInRequested(false)} />
       </div>
     );
-  } else if (hasRealHubSession && toolAccess === false) {
+  } else if (authPaint === "denied") {
     mainContent = (
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
         <StealthAccessDeniedScreen />
       </div>
     );
-  } else if (hasRealHubSession && toolAccess !== true) {
+  } else if (authPaint === "boot") {
     mainContent = (
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
         <StealthAuthBootScreen />
       </div>
     );
-  } else {
-    mainContent = consoleScreens;
   }
 
   return (

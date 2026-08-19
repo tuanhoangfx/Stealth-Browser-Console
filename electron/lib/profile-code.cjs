@@ -64,6 +64,14 @@ function digitsOnly(value) {
   return String(value ?? "").replace(/\D/g, "");
 }
 
+/** Chromium userData folder is the catalog UUID — never a 0000–9999 badge code. */
+const UUID_FOLDER_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuidFolderId(value) {
+  return UUID_FOLDER_RE.test(String(value || "").trim());
+}
+
 /**
  * @param {unknown} raw
  * @returns {{ ok: true, code: string, n: number } | { ok: false, error: string }}
@@ -89,7 +97,9 @@ function normalizeProfileNameOrThrow(raw) {
 }
 
 function extractFourDigitCode(name, id = "") {
-  const fromName = digitsOnly(name);
+  const rawName = isUuidFolderId(name) ? "" : String(name ?? "");
+  const rawId = isUuidFolderId(id) ? "" : String(id ?? "");
+  const fromName = digitsOnly(rawName);
   if (fromName.length >= 4) {
     const slice = fromName.slice(-4);
     const n = Number(slice);
@@ -97,11 +107,11 @@ function extractFourDigitCode(name, id = "") {
       return String(n).padStart(4, "0");
     }
   }
-  if (/^\d{1,4}$/.test(String(name || "").trim())) {
-    const parsed = parseProfileCode(name);
+  if (/^\d{1,4}$/.test(rawName.trim())) {
+    const parsed = parseProfileCode(rawName);
     if (parsed.ok) return parsed.code;
   }
-  const fromIdRaw = String(id || "").replace(/-/g, "");
+  const fromIdRaw = String(rawId || "").replace(/-/g, "");
   const fromIdDigits = digitsOnly(fromIdRaw).slice(0, 4);
   if (fromIdDigits.length >= 1) return fromIdDigits.padStart(4, "0").slice(-4);
   if (fromIdRaw) return fromIdRaw.slice(0, 4);
@@ -137,6 +147,7 @@ module.exports = {
   BADGE_DIGIT_GAP_BY_MAX_SIZE,
   parseProfileCode,
   normalizeProfileNameOrThrow,
+  isUuidFolderId,
   extractFourDigitCode,
   extractProfileCode,
   badgeLast3,

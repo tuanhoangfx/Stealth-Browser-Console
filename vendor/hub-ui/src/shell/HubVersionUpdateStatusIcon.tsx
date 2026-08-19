@@ -23,6 +23,52 @@ export type HubVersionUpdateStatusIconProps = {
   className?: string;
 };
 
+/** Desktop electron-updater — fold into HubVersionReleaseNotes, never a second header icon. */
+export type HubVersionDesktopUpdate = {
+  state: HubVersionUpdateState;
+  progress?: number;
+  title?: string;
+  disabled?: boolean;
+  onAction: () => void;
+};
+
+const DESKTOP_UPDATE_TRIGGER_STATES: ReadonlySet<HubVersionUpdateState> = new Set([
+  "available",
+  "downloaded",
+  "downloading",
+  "installing",
+  "checking",
+  "error",
+]);
+
+/** True when the desktop updater must own the single header trigger (Download / %). */
+export function hubDesktopUpdateOwnsTrigger(state: HubVersionUpdateState): boolean {
+  return DESKTOP_UPDATE_TRIGGER_STATES.has(state);
+}
+
+/** Modal header action beside version meta — Download / Install / Retry / progress. */
+export function hubDesktopUpdateActionLabel(
+  state: HubVersionUpdateState,
+  progress?: number,
+): string | null {
+  switch (state) {
+    case "available":
+      return "Download";
+    case "downloaded":
+      return "Install";
+    case "error":
+      return "Retry";
+    case "downloading":
+      return `${Math.round(progress ?? 0)}%`;
+    case "checking":
+      return "Checking";
+    case "installing":
+      return "Installing";
+    default:
+      return null;
+  }
+}
+
 function iconForState(state: HubVersionUpdateState, busy: boolean, progress?: number): ReactNode {
   const size = compactIconSize(13);
   if (state === "latest") {

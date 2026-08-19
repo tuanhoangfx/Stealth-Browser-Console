@@ -1,7 +1,9 @@
 import { hubResolveLoginApiUrl } from "./hub-api-routes";
 import {
   classifyHubLoginIdentifier,
+  looksLikeEmail,
   sanitizeHubLoginInput,
+  type HubLoginIdentifierKind,
 } from "./hub-login";
 
 export type FetchResolvedHubAuthEmailsOptions = {
@@ -17,31 +19,31 @@ export type HubResolveLoginResult = {
   httpStatus?: number;
 };
 
-/**
- * Map username or registered phone → real auth.users email via Hub gateway.
- * Email input skips (client already has the auth email).
- */
-export async function resolveHubLoginEmails(
-  loginInput: string,
+const resolveLoginInflight = new Map<string, Promise<HubResolveLoginResult>>();
+
+function resolveLoginCacheKey(
+  identifierKind: HubLoginIdentifierKind,
+  loginId: string,
+  resolveLoginApiUrl?: string,
+): string {
+  return `${identifierKind}|${loginId}|${String(resolveLoginApiUrl ?? "").trim()}`;
+}
+
+export function clearHubResolveLoginPrefetch(): void {
+  resolveLoginInflight.clear();
+}
+
+async function fetchHubResolveLogin(
+  loginId: string,
+  identifierKind: "username" | "phone",
   options: FetchResolvedHubAuthEmailsOptions = {},
 ): Promise<HubResolveLoginResult> {
-  const classified = classifyHubLoginIdentifier(sanitizeHubLoginInput(loginInput));
-  if (classified.kind !== "username" && classified.kind !== "phone") {
-    return { emails: [], lookup: "skipped" };
-  }
-  const loginId =
-    classified.kind === "phone" ? classified.phoneNormalized : classified.loginId;
-  if (!loginId) return { emails: [], lookup: "skipped" };
-
   const apiUrl = hubResolveLoginApiUrl(options.resolveLoginApiUrl);
   try {
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        loginId,
-        identifierKind: classified.kind,
-      }),
+      body: JSON.stringify({ loginId, identifierKind }),
     });
     if (!res.ok) {
       return { emails: [], lookup: "unavailable", httpStatus: res.status };
@@ -57,6 +59,43 @@ export async function resolveHubLoginEmails(
   } catch {
     return { emails: [], lookup: "unavailable" };
   }
+}
+
+/** Map User ID / phone → real auth.users email via Hub profiles (server-side API). */
+export async function resolveHubLoginEmails(
+  loginInput: string,
+  options: FetchResolvedHubAuthEmailsOptions = {},
+): Promise<HubResolveLoginResult> {
+  const login = sanitizeHubLoginInput(loginInput);
+  if (!login || looksLikeEmail(login)) return { emails: [], lookup: "skipped" };
+  const classified = classifyHubLoginIdentifier(login);
+  if (classified.kind !== "username" && classified.kind !== "phone") {
+    return { emails: [], lookup: "skipped" };
+  }
+  const loginId =
+    classified.kind === "phone" ? classified.phoneNormalized : classified.loginId;
+  if (!loginId) return { emails: [], lookup: "skipped" };
+
+  const key = resolveLoginCacheKey(classified.kind, loginId, options.resolveLoginApiUrl);
+  const hit = resolveLoginInflight.get(key);
+  if (hit) return hit;
+
+  const pending = fetchHubResolveLogin(loginId, classified.kind, options);
+  resolveLoginInflight.set(key, pending);
+  try {
+    return await pending;
+  } catch (err) {
+    resolveLoginInflight.delete(key);
+    throw err;
+  }
+}
+
+/** Debounced typeahead from HubAuthGateModal — same inflight cache as sign-in. */
+export function prefetchHubResolveLogin(
+  loginInput: string,
+  options: FetchResolvedHubAuthEmailsOptions = {},
+): Promise<HubResolveLoginResult> {
+  return resolveHubLoginEmails(loginInput, options);
 }
 
 /** @deprecated Prefer resolveHubLoginEmails for lookup status. */

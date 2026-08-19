@@ -1,13 +1,10 @@
 /**
- * Directory order freeze — keep a just-edited row in its current slot instead of
- * letting it jump when an in-session field edit changes the sort order.
+ * Directory order freeze — keep row slots stable after search/filter is applied.
  *
- * Golden pattern SSOT (generalized from P0020 `twofa-directory-order-freeze`).
- * The frozen order is re-captured only on a *structural* change — the freeze key
- * (sort / search / facet / period) changes, or row membership changes (hydrate /
- * sync / add / delete). Editing a row field keeps the same freeze key + membership,
- * so the row stays put but shows its new values. Module state is in-memory and is
- * cleared by a full page reload (F5).
+ * Recapture sorted order only when the freeze key changes (sort / search / facet /
+ * period) or on F5 (module state). Membership add/delete does **not** reshuffle:
+ * gone ids drop in place; new ids append in incoming sorted order.
+ * In-session field edits (Own, Status, realtime) keep the same slots.
  */
 
 type DirectoryOrderFreezeState = {
@@ -31,22 +28,9 @@ export function buildDirectoryOrderFreezeKey(
   return parts.map((part) => String(part ?? "")).join("::");
 }
 
-function sameDirectoryMembership(
-  frozenIds: readonly string[],
-  sortedIds: readonly string[],
-): boolean {
-  if (frozenIds.length !== sortedIds.length) return false;
-  const frozen = new Set(frozenIds);
-  for (const id of sortedIds) {
-    if (!frozen.has(id)) return false;
-  }
-  return true;
-}
-
 /**
- * Reorder freshly-sorted rows back into the frozen slot order for `scope`, unless a
- * structural change occurred (no snapshot yet, freeze key changed, or membership
- * changed) — in which case the fresh sorted order is captured and returned as-is.
+ * Reorder freshly-sorted rows back into the frozen slot order for `scope`.
+ * Freeze-key change (or first paint) captures the incoming sorted order.
  */
 export function applyDirectoryOrderFreeze<T>(
   sortedRows: readonly T[],
@@ -54,22 +38,28 @@ export function applyDirectoryOrderFreeze<T>(
   scope: string,
   getId: (row: T) => string,
 ): T[] {
-  const sortedIds = sortedRows.map(getId);
   const existing = frozenOrderByScope.get(scope);
-  if (
-    !existing ||
-    existing.freezeKey !== freezeKey ||
-    !sameDirectoryMembership(existing.orderIds, sortedIds)
-  ) {
-    frozenOrderByScope.set(scope, { freezeKey, orderIds: sortedIds });
+  if (!existing || existing.freezeKey !== freezeKey) {
+    const orderIds = sortedRows.map(getId);
+    frozenOrderByScope.set(scope, { freezeKey, orderIds });
     return [...sortedRows];
   }
 
   const byId = new Map(sortedRows.map((row) => [getId(row), row]));
   const next: T[] = [];
+  const seen = new Set<string>();
   for (const id of existing.orderIds) {
     const row = byId.get(id);
-    if (row !== undefined) next.push(row);
+    if (row === undefined) continue;
+    next.push(row);
+    seen.add(id);
   }
+  for (const row of sortedRows) {
+    const id = getId(row);
+    if (seen.has(id)) continue;
+    next.push(row);
+    seen.add(id);
+  }
+  frozenOrderByScope.set(scope, { freezeKey, orderIds: next.map(getId) });
   return next;
 }

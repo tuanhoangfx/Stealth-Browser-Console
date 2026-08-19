@@ -15,6 +15,8 @@ export type ChartRow = {
   emojiGlyph?: string;
   /** Brand image — takes precedence over iconMeta when set. */
   iconSrc?: string;
+  /** Dedicated + hyphen-family fallbacks — legend walks on 404. */
+  iconSrcs?: string[];
   iconShell?: HubBrandIconShell;
   /** Popover hint for legend row (bucket semantics). */
   labelHint?: HubDirectoryColumnHintContent;

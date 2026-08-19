@@ -68,6 +68,7 @@ export function HubPriceFormatField({
       options={options}
       value={value}
       onChange={(next) => onChange(next as HubOrderPriceFormat)}
+      allowClear={false}
       renderValue={(_value, displayLabel) => {
         const sep = " — ";
         const idx = displayLabel.indexOf(sep);

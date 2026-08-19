@@ -1,23 +1,17 @@
-import React, { type ReactNode } from "react";
+import { type ReactNode } from "react";
 import type { TabHeaderMetaItem } from "./AppTabHeader";
 
-/** Merge release-notes badge with any existing version `after` control (Update/Download). */
+/**
+ * Single header icon SSOT (WorkspaceTabHeader parity):
+ * HubVersionReleaseNotes owns Latest / Update / Download.
+ * Do not concatenate `versionAfter` (HubVersionUpdateStatusIcon) beside it.
+ */
 export function mergeHubListVersionMetaAfter(
   first: TabHeaderMetaItem,
   releaseNotesAfter: ReactNode,
 ): TabHeaderMetaItem {
-  const existingAfter = first.after;
   if (!releaseNotesAfter) return first;
-  if (!existingAfter) return { ...first, after: releaseNotesAfter };
-  return {
-    ...first,
-    after: (
-      <span className="inline-flex shrink-0 items-center gap-1">
-        {existingAfter}
-        {releaseNotesAfter}
-      </span>
-    ),
-  };
+  return { ...first, after: releaseNotesAfter };
 }
 
 /** Apply release-notes badge to the first meta item when code is set. */

@@ -1,4 +1,6 @@
 import type { Session, User } from "@supabase/supabase-js";
+import { extractAuthErrorText } from "./extract-auth-error-text";
+import { fetchHubAuth, HUB_GOTRUE_FETCH_TIMEOUT_MS } from "./hub-auth-fetch";
 
 export type GoTruePasswordGrantInput = {
   supabaseUrl: string;
@@ -26,15 +28,19 @@ export async function grantGoTruePasswordSession(
 
   const doFetch = input.fetchImpl ?? fetch;
   try {
-    const res = await doFetch(`${url}/auth/v1/token?grant_type=password`, {
-      method: "POST",
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
+    const res = await fetchHubAuth(
+      `${url}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       },
-      body: JSON.stringify({ email, password }),
-    });
+      { timeoutMs: HUB_GOTRUE_FETCH_TIMEOUT_MS, retries: 1, fetchImpl: doFetch },
+    );
     const payload = (await res.json().catch(() => null)) as {
       access_token?: string;
       refresh_token?: string;
@@ -47,9 +53,16 @@ export async function grantGoTruePasswordSession(
       error?: string;
     } | null;
     if (!res.ok || !payload?.access_token) {
-      const message =
-        payload?.error_description || payload?.msg || payload?.error || `HTTP ${res.status}`;
-      return { session: null, error: new Error(String(message)) };
+      if (res.status === 502 || res.status === 503 || res.status === 504 || res.status === 530) {
+        return {
+          session: null,
+          error: new Error(
+            `Sign-in service is offline (HTTP ${res.status}). Wait a moment and try again.`,
+          ),
+        };
+      }
+      const message = extractAuthErrorText(payload) || `HTTP ${res.status}`;
+      return { session: null, error: new Error(message) };
     }
     const expiresIn = Number(payload.expires_in || 3600);
     const expiresAt =

@@ -96,6 +96,9 @@
   --muted: #8a93b2;
   --accent: #6366f1;
   --accent-2: #818cf8;
+  /* P0012 Todo alias — HubFilterDatePicker / HubPeriodSelect portals inherit :root, not .todo-board-root */
+  --accent-color: var(--accent);
+  --accent-color-dark: var(--accent-2);
   --success: #22c55e;
   --warn: #f59e0b;
   --danger: #ef4444;

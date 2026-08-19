@@ -2,15 +2,11 @@ import { useMemo } from "react";
 import { buildConsoleVersionMetaItems } from "@tool-workspace/hub-ui";
 import { APP_VERSION } from "../lib/app-meta";
 import toolManifest from "../../tool.manifest.json";
-import { StealthHeaderUpdateButton } from "../components/StealthHeaderUpdateButton";
+import { useStealthDesktopUpdate } from "./useStealthDesktopUpdate";
 
-/** Version meta + update status icon beside the version label (not Notify/Log row). */
+/** Version clock + desktop updater folded into the single HubVersionReleaseNotes trigger. */
 export function useStealthVersionMetaItems() {
-  return useMemo(
-    () =>
-      buildConsoleVersionMetaItems(APP_VERSION, toolManifest, {
-        versionAfter: <StealthHeaderUpdateButton />,
-      }),
-    [],
-  );
+  const metaItems = useMemo(() => buildConsoleVersionMetaItems(APP_VERSION, toolManifest), []);
+  const desktopUpdate = useStealthDesktopUpdate();
+  return { metaItems, desktopUpdate };
 }

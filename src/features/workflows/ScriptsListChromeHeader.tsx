@@ -12,7 +12,7 @@ const workflowChrome = stealthScreenChrome("workflow");
 
 /** Workflow tab header — label/icon SSOT from sidebar nav (search lives in directory frame). */
 export function ScriptsListChromeHeader({ centerStats, actions }: ScriptsListChromeHeaderProps) {
-  const metaItems = useStealthVersionMetaItems();
+  const { metaItems, desktopUpdate } = useStealthVersionMetaItems();
   return (
     <HubListChromeHeader
       ariaLabel="Workflow header"
@@ -21,6 +21,7 @@ export function ScriptsListChromeHeader({ centerStats, actions }: ScriptsListChr
       title={workflowChrome.label}
       metaItems={metaItems}
       versionReleaseNotesCode="P0003"
+      versionReleaseNotesDesktopUpdate={desktopUpdate}
       centerStats={centerStats ?? []}
       actions={actions}
     />

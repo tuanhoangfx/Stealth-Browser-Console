@@ -191,7 +191,6 @@ export function HubFullUserAccountModal({
     title ??
     (fullNameDraft.trim() ||
       (loginDisplay !== "—" ? loginDisplay : labels.email) ||
-      user?.id?.slice(0, 8) ||
       "User");
 
   // Same SSOT as Users directory detail — profiles.email / contact_email only.
@@ -544,7 +543,7 @@ export function HubFullUserAccountModal({
         headerTrailing={
           headerTrailing ?? (
             <span className="truncate font-mono text-[10px] text-[var(--muted)]">
-              {loginDisplay !== "—" ? loginDisplay : user?.id?.slice(0, 8) ?? "—"}
+              {loginDisplay !== "—" ? loginDisplay : "—"}
             </span>
           )
         }

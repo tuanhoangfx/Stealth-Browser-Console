@@ -190,3 +190,83 @@ button.hub-filter-trigger[class*="border-indigo-500"] {
     opacity: 0.72;
   }
 }
+
+/* P0012 Todo calendar day cells — portaled to body; use --accent (always on :root). */
+.hub-date-picker-day {
+  display: flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.75rem;
+  line-height: 1;
+  outline: none;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.hub-date-picker-day:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.hub-date-picker-day:focus,
+.hub-date-picker-day:focus-visible {
+  outline: none;
+}
+
+.hub-date-picker-day--selected,
+.hub-date-picker-day--selected:hover {
+  transform: scale(1.05);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.hub-date-picker-day--today:not(.hub-date-picker-day--selected) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.hub-date-picker-footer-today {
+  color: var(--accent);
+}
+
+/* HubPeriodSelect month grid — same --accent fill as HubFilterDatePicker days. */
+.hub-period-month {
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.875rem;
+  outline: none;
+  padding: 0.5rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.hub-period-month:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.hub-period-month:focus,
+.hub-period-month:focus-visible {
+  outline: none;
+}
+
+.hub-period-month--selected,
+.hub-period-month--selected:hover {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.hub-period-month-footer {
+  color: var(--accent);
+}

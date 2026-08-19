@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { formatCopyToastPreview } from "./copy-toast";
+import { formatHubUnknownMessage } from "./format-hub-unknown-message";
 
 export type HubToastType = "success" | "error" | "info" | "warn";
 export type HubToastIcon = "copy" | "check";
@@ -22,7 +23,7 @@ export type HubToast = {
 
 type HubToastContextValue = {
   toasts: HubToast[];
-  pushToast: (message: string, type?: HubToastType, durationMs?: number) => void;
+  pushToast: (message: unknown, type?: HubToastType, durationMs?: number) => void;
   pushCopyToast: (copied: string, label?: string, durationMs?: number) => void;
   dismissToast: (id: number) => void;
   /** Clear visible toasts (e.g. before Save so completion toast is the only one). */
@@ -43,8 +44,8 @@ export function HubToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const pushToast = useCallback(
-    (message: string, type: HubToastType = "info", durationMs = 4200) => {
-      const text = message.trim();
+    (message: unknown, type: HubToastType = "info", durationMs = 4200) => {
+      const text = formatHubUnknownMessage(message);
       if (!text) return;
       const id = Date.now() + Math.random();
       setToasts((prev) => {
@@ -57,7 +58,7 @@ export function HubToastProvider({ children }: { children: ReactNode }) {
 
   const pushCopyToast = useCallback(
     (copied: string, label = "Copied", durationMs = 3000) => {
-      const preview = formatCopyToastPreview(copied);
+      const preview = formatCopyToastPreview(formatHubUnknownMessage(copied));
       if (!preview) return;
       const id = Date.now() + Math.random();
       setToasts((prev) => {
@@ -65,7 +66,7 @@ export function HubToastProvider({ children }: { children: ReactNode }) {
           ...prev,
           {
             id,
-            message: label.trim() || "Copied",
+            message: formatHubUnknownMessage(label, "Copied"),
             type: "success" as const,
             durationMs,
             preview,

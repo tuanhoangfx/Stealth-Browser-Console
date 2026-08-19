@@ -8,11 +8,20 @@ type Props = {
   className?: string;
   size?: number;
   brandIcon?: HubBrandIconId;
+  /** KPI tiles keep the 20px sticker; compact is header/TOC only. */
+  compact?: boolean;
 };
 
 /** Lucide glyph or shared Hub brand mark — KPI tiles, header stats, TOC. */
-export function HubSemanticGlyph({ icon: Icon, className = "", size = 14, brandIcon }: Props) {
-  const lucide = Icon ? <Icon size={compactIconSize(size)} className={className} aria-hidden /> : null;
+export function HubSemanticGlyph({
+  icon: Icon,
+  className = "",
+  size = 14,
+  brandIcon,
+  compact = true,
+}: Props) {
+  const px = compact ? compactIconSize(size) : size;
+  const lucide = Icon ? <Icon size={px} className={className} aria-hidden /> : null;
   if (brandIcon) {
     // Prefer the brand logo; degrade to the Lucide glyph when the image is missing/fails
     // (e.g. cached 404) so channel fields like Zalo/Telegram never render icon-less.

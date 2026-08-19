@@ -15,9 +15,14 @@ function isLocalDevHost(hostname: string): boolean {
 
 /** Resolve Hub API origin — baked env, else CF gateway on public hosts, else same-origin (dev/Vercel). */
 export function hubApiOrigin(): string {
+  // Local Vite mounts `/api/hub/auth/*` (hub-auth-dev-api). Hitting the public CF
+  // gateway from 127.0.0.1 is the slow/530 path even when VITE_HUB_API_ORIGIN is baked.
+  if (typeof window !== "undefined" && isLocalDevHost(window.location.hostname)) {
+    return "";
+  }
   const baked = bakedHubApiOrigin();
   if (baked) return baked;
-  if (typeof window !== "undefined" && !isLocalDevHost(window.location.hostname)) {
+  if (typeof window !== "undefined") {
     return HUB_API_GATEWAY_ORIGIN;
   }
   return "";

@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const {
   guardableRows,
   selectGuardBatch,
+  selectNeediestGuardBatch,
   startTaskbarBadgeGuard,
 } = require("./taskbar-badge-guard.cjs");
 
@@ -73,6 +74,47 @@ describe("startTaskbarBadgeGuard", () => {
     );
     assert.equal(calls[0].opts.isReinforce, true);
     assert.equal(calls[0].opts.force, true);
+    stop();
+  });
+
+  it("selectNeediestGuardBatch prefers never-OK then oldest stamp", () => {
+    const rows = [
+      { userDataDir: "C:/p/ok-new" },
+      { userDataDir: "C:/p/miss-a" },
+      { userDataDir: "C:/p/ok-old" },
+      { userDataDir: "C:/p/miss-b" },
+    ];
+    const okAt = {
+      "C:/p/ok-new": 9_000,
+      "C:/p/ok-old": 1_000,
+    };
+    const { batch } = selectNeediestGuardBatch(rows, (dir) => okAt[dir] || 0, 3);
+    assert.deepEqual(
+      batch.map((r) => r.userDataDir),
+      ["C:/p/miss-a", "C:/p/miss-b", "C:/p/ok-old"],
+    );
+  });
+
+  it("guard with lastOkAt restamps the missing window first", () => {
+    let tick = () => {};
+    const calls = [];
+    const stop = startTaskbarBadgeGuard({
+      listRunning: () => [
+        { id: "1", name: "0009", userDataDir: "C:/p/ok" },
+        { id: "2", name: "0010", userDataDir: "C:/p/miss" },
+      ],
+      schedule: (dir, label, code, opts) => calls.push({ dir, label, code, opts }),
+      formatLabel: (profile) => profile.name,
+      lastOkAt: (dir) => (dir === "C:/p/ok" ? Date.now() : 0),
+      batchSize: 1,
+      setIntervalFn: (fn) => {
+        tick = fn;
+        return { unref() {} };
+      },
+      clearIntervalFn: () => {},
+    });
+    tick();
+    assert.deepEqual(calls.map((c) => c.code), ["0010"]);
     stop();
   });
 

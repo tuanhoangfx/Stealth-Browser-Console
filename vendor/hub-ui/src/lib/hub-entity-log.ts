@@ -164,6 +164,32 @@ export function readHubEntityActivityLog(
   return normalizeHubEntityLog(meta?.[HUB_ENTITY_ACTIVITY_LOG_META_KEY], allowedFields);
 }
 
+/**
+ * Full `metadata` PATCH replaces the jsonb blob. Directory rows often slim away
+ * `activity_log`; a write that omits the key (or sends a shorter tip) wipes
+ * persisted history. Keep / union the existing log so an append RPC can add
+ * the new entry on top. P0005 2026-08-15 `withoutActivityLog` incident.
+ */
+export function preserveHubEntityActivityLogOnMetadataWrite(
+  next: Record<string, unknown>,
+  existing?: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const key = HUB_ENTITY_ACTIVITY_LOG_META_KEY;
+  const existingLog = existing?.[key];
+  const nextLog = next[key];
+  const existingNorm = normalizeHubEntityLog(existingLog);
+  const nextNorm = normalizeHubEntityLog(nextLog);
+  if (existingNorm.length === 0) {
+    const out = { ...next };
+    delete out[key];
+    return out;
+  }
+  if (nextNorm.length === 0 || nextNorm.length < existingNorm.length) {
+    return { ...next, [key]: mergeHubEntityAuditLogs(existingLog, nextLog) };
+  }
+  return next;
+}
+
 /** Merge one entry into a metadata object's activity_log (append + cap). */
 export function withHubEntityActivityLog(
   metadata: Record<string, unknown> | null | undefined,

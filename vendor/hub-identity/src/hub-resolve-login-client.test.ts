@@ -1,9 +1,46 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveHubLoginEmails } from "./hub-resolve-login-client";
+import {
+  clearHubResolveLoginPrefetch,
+  prefetchHubResolveLogin,
+  resolveHubLoginEmails,
+} from "./hub-resolve-login-client";
 
 describe("resolveHubLoginEmails", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    clearHubResolveLoginPrefetch();
+  });
+
+  it("reuses inflight prefetch for the same User ID", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, authEmails: ["czpgo@outlook.com"] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await prefetchHubResolveLogin("czpgo");
+    const result = await resolveHubLoginEmails("czpgo");
+    expect(result).toEqual({ emails: ["czpgo@outlook.com"], lookup: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      loginId: "czpgo",
+      identifierKind: "username",
+    });
+  });
+
+  it("sends identifierKind phone with normalized number", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, authEmails: ["czpgo@outlook.com"] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveHubLoginEmails("0901234567");
+    expect(result.lookup).toBe("ok");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      loginId: "84901234567",
+      identifierKind: "phone",
+    });
   });
 
   it("returns ok with emails on HTTP 200", async () => {
@@ -17,32 +54,6 @@ describe("resolveHubLoginEmails", () => {
 
     const result = await resolveHubLoginEmails("czpgo");
     expect(result).toEqual({ emails: ["czpgo@outlook.com"], lookup: "ok" });
-  });
-
-  it("posts normalized phone digits for phone identifiers", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, authEmails: ["user@corp.com"] }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await resolveHubLoginEmails("0901 234 567");
-    expect(result).toEqual({ emails: ["user@corp.com"], lookup: "ok" });
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ loginId: "84901234567", identifierKind: "phone" }),
-      }),
-    );
-  });
-
-  it("skips resolve for email input", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    const result = await resolveHubLoginEmails("a@corp.com");
-    expect(result).toEqual({ emails: [], lookup: "skipped" });
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("returns not_found when profile missing", async () => {

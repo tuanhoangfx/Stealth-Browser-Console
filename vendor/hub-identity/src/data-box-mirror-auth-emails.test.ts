@@ -15,7 +15,7 @@ describe("resolveDataBoxMirrorAuthEmails", () => {
     expect(
       resolveDataBoxMirrorAuthEmails({
         loginInput: "duyceo01",
-        mirrorEmail: "duyceo01@infix1.io.vn",
+        mirrorEmail: "retired@infix1.io.vn",
       }),
     ).toEqual([]);
   });

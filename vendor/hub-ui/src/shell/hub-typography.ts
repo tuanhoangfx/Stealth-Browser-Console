@@ -24,7 +24,7 @@ export const HUB_KPI_STICKER_TYPO_SSOT = "hub-kpi-tile__emoji";
 
 /**
  * Chart panel titles (STATUS / PRIORITY…) — 80% of directory header size, 600 / `--text`.
- * Size/color from `.hub-chart-card .hub-analytics-caption` (`--hub-chart-panel-title-size`).
+ * Title text: `--hub-chart-panel-title-size`. Title emoji: `--hub-chart-label-size` (legend rows).
  */
 export const HUB_CHART_PANEL_TITLE_TYPO_SSOT = "hub-chart-panel-title";
 

@@ -18,6 +18,8 @@ let seq = 0;
 let ready = false;
 /** @type {Map<number, { resolve: Function, reject: Function, timer: NodeJS.Timeout }>} */
 const pending = new Map();
+/** Serialize stdin writes — PS worker is one-line-at-a-time. */
+let applyTail = Promise.resolve();
 
 function rejectAllPending(error) {
   for (const [id, job] of pending.entries()) {
@@ -83,21 +85,41 @@ async function waitWorkerReady(timeoutMs = 15_000) {
 }
 
 /**
+ * Run exclusive work one-at-a-time. Timeout starts when the job begins, not
+ * when it is queued — burst-open used to pile 13+ stdin lines and later
+ * profiles hit request-timeout before the serial PS worker reached them.
+ * @template T
+ * @param {() => Promise<T>} work
+ * @returns {Promise<T>}
+ */
+function enqueueExclusive(work) {
+  const run = () => work();
+  const next = applyTail.then(run, run);
+  applyTail = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+/**
  * @param {object} payload
  * @param {{ timeoutMs?: number }} [opts]
  */
 async function runTaskbarApplyWorker(payload, opts = {}) {
   const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 12_000;
-  await waitWorkerReady();
-  if (!worker || worker.killed) throw new Error("taskbar-apply-worker-unavailable");
-  const id = ++seq;
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error("taskbar-apply-worker-request-timeout"));
-    }, timeoutMs);
-    pending.set(id, { resolve, reject, timer });
-    worker.stdin.write(`${JSON.stringify({ id, ...payload })}\n`);
+  return enqueueExclusive(async () => {
+    await waitWorkerReady();
+    if (!worker || worker.killed) throw new Error("taskbar-apply-worker-unavailable");
+    const id = ++seq;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error("taskbar-apply-worker-request-timeout"));
+      }, timeoutMs);
+      pending.set(id, { resolve, reject, timer });
+      worker.stdin.write(`${JSON.stringify({ id, ...payload })}\n`);
+    });
   });
 }
 
@@ -122,6 +144,7 @@ function shutdownTaskbarApplyWorker() {
 process.once("exit", shutdownTaskbarApplyWorker);
 
 module.exports = {
+  enqueueExclusive,
   runTaskbarApplyWorker,
   shutdownTaskbarApplyWorker,
   waitWorkerReady,

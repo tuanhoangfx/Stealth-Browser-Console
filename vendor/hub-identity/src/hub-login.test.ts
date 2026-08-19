@@ -9,6 +9,7 @@ import {
   hubDisplayEmail,
   hubDisplayLoginId,
   hubOpaqueAuthEmailFromUserId,
+  hubSyntheticEmailFromLoginId,
   isHubOpaqueAuthEmail,
   isHubSyntheticEmail,
   isHubTechnicalAuthEmail,
@@ -65,19 +66,19 @@ describe("hub-login", () => {
     expect(r.isEmailLogin).toBe(true);
   });
 
-  it("recognizes legacy and new synthetic domains", () => {
+  it("rejects retired username-derived domains and never invents them", () => {
     expect(isHubSyntheticEmail("bob@id.hub.x1z10.local")).toBe(true);
     expect(isHubSyntheticEmail("bob@infix1.io.vn")).toBe(true);
     expect(isHubSyntheticEmail("bob@corp.com")).toBe(false);
+    expect(() => hubSyntheticEmailFromLoginId("abc")).toThrow(/retired/);
   });
 
-  it("displays login id from either synthetic domain", () => {
-    expect(
-      hubDisplayLoginId({
-        authEmail: "x@infix1.io.vn",
-      }),
-    ).toBe("x");
-    expect(hubDisplayLoginId({ authEmail: "x@id.hub.x1z10.local" })).toBe("x");
+  it("displays login id from explicit loginId or contact local-part — never retired synthetics", () => {
+    expect(hubDisplayLoginId({ loginId: "x", authEmail: "x@infix1.io.vn" })).toBe("x");
+    expect(hubDisplayLoginId({ authEmail: "czpgo@outlook.com" })).toBe("czpgo");
+    expect(hubDisplayLoginId({ authEmail: "x@infix1.io.vn" })).toBe("");
+    expect(hubDisplayLoginId({ authEmail: "x@id.hub.x1z10.local" })).toBe("");
+    expect(hubDisplayLoginId({ authEmail: "u_abc@auth.infi.internal" })).toBe("");
   });
 
   it("does not invent @infix1 auth emails for usernames", () => {
@@ -87,7 +88,7 @@ describe("hub-login", () => {
 
   it("CS00761 username needs resolve-login; synthetic address is rejected for sign-in", () => {
     expect(hubAuthEmailsForSignIn("CS00761")).toEqual([]);
-    expect(hubAuthEmailsForSignIn("CS00761@infix1.io.vn")).toEqual([]);
+    expect(hubAuthEmailsForSignIn("retired@infix1.io.vn")).toEqual([]);
   });
 
   it("sanitizes invisible characters from login input", () => {
@@ -144,17 +145,17 @@ describe("hub-login", () => {
     expect("authEmail" in resolved && resolved.authEmail.endsWith("@auth.infi.internal")).toBe(true);
   });
 
-  it("never paints synthetic @infix1.io.vn — contact/profile email only", () => {
+  it("never paints retired synthetic or opaque auth — contact/profile email only", () => {
     expect(
       hubDisplayEmail({
-        authEmail: "oi0906029@infix1.io.vn",
+        authEmail: "retired@infix1.io.vn",
         contactEmail: null,
         profileEmail: null,
       }),
     ).toBe("");
     expect(
       hubDisplayEmail({
-        authEmail: "oi0906029@infix1.io.vn",
+        authEmail: "retired@infix1.io.vn",
         contactEmail: "real@corp.com",
       }),
     ).toBe("real@corp.com");
@@ -172,17 +173,17 @@ describe("hub-login", () => {
     ).toBe("kinhdoanh03@enzyvina.com");
   });
 
-  it("account label never paints synthetic @infix1.io.vn — profiles.email only", () => {
+  it("account label never paints technical auth — profiles.email / contact only", () => {
     expect(
       hubAccountEmailLabel({
-        authEmail: "duyceo01@infix1.io.vn",
+        authEmail: "retired@infix1.io.vn",
         profileEmail: null,
         contactEmail: null,
       }),
     ).toBe("Not linked");
     expect(
       hubAccountEmailLabel({
-        authEmail: "duyceo01@infix1.io.vn",
+        authEmail: "u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal",
         profileEmail: "kinhdoanh@enzyvina.com",
       }),
     ).toBe("kinhdoanh@enzyvina.com");

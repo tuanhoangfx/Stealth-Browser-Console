@@ -9,7 +9,7 @@ import { bindSupabaseAuthListener } from "./workspace-auth-session";
  * with a valid refresh token — repeatedly in P0020, whose vault pull issues dozens of requests
  * over minutes, so a refresh racing that traffic fails often.
  */
-function harness(opts: { getSessionReturns: unknown }) {
+function harness(opts: { getSessionReturns: unknown; cachedSession?: unknown }) {
   let handler: ((event: string, session: unknown) => void) | null = null;
   const onSession = vi.fn();
   const client = {
@@ -25,6 +25,9 @@ function harness(opts: { getSessionReturns: unknown }) {
     isConfigured: () => true,
     client: client as never,
     onSession,
+    readCachedSession: opts.cachedSession
+      ? () => opts.cachedSession as never
+      : undefined,
   } as never);
   return { fire: (event: string, session: unknown) => handler?.(event, session), onSession };
 }
@@ -52,6 +55,16 @@ describe("bindSupabaseAuthListener — null session events", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(h.onSession).toHaveBeenCalledWith(null);
+  });
+
+  it("keeps the disk JWT when getSession is null after a refresh blip", async () => {
+    const cached = { user: { id: "u1" }, access_token: "disk" };
+    const h = harness({ getSessionReturns: null, cachedSession: cached });
+    h.fire("TOKEN_REFRESHED", null);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(h.onSession).not.toHaveBeenCalledWith(null);
+    expect(h.onSession).toHaveBeenCalledWith(cached);
   });
 
   it("ignores INITIAL_SESSION null — hub-cache may not have set the session yet", () => {

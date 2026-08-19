@@ -1,17 +1,17 @@
 /**
  * Periodic taskbar badge guard.
  *
- * The open-path reinforce chain stops ~16s after launch, but Chromium re-stamps its own
+ * The open-path reinforce chain stops ~60s after launch, but Chromium re-stamps its own
  * window icon at unpredictable later moments (profile avatar swap, window re-create).
  * A window sitting idle never navigates, so nothing re-triggers the badge and it stays
- * plain until the next manual apply. The guard re-stamps live windows in small
- * round-robin batches so one slow cycle never blocks the persistent PowerShell worker.
+ * plain until the next manual apply. The guard re-stamps the neediest live windows
+ * (never-OK first, then oldest OK) so burst-open misses recover within one interval.
  */
 const { extractProfileCode } = require("./profile-code.cjs");
 const { shouldSkipTaskbarBadge } = require("./profile-taskbar-native.cjs");
 
-const DEFAULT_INTERVAL_MS = 120_000;
-const DEFAULT_BATCH_SIZE = 6;
+const DEFAULT_INTERVAL_MS = 20_000;
+const DEFAULT_BATCH_SIZE = 16;
 
 /**
  * @param {Array<T>} rows
@@ -42,6 +42,25 @@ function guardableRows(rows) {
 }
 
 /**
+ * Prefer windows that never got OK_ICON, then the oldest stamp.
+ * @param {Array<{ userDataDir: string }>} rows
+ * @param {(dir: string) => number} lastOkAt
+ * @param {number} batchSize
+ */
+function selectNeediestGuardBatch(rows, lastOkAt, batchSize) {
+  const list = Array.isArray(rows) ? rows.slice() : [];
+  const size = Math.max(1, Number(batchSize) || DEFAULT_BATCH_SIZE);
+  const okAt = typeof lastOkAt === "function" ? lastOkAt : () => 0;
+  list.sort((a, b) => {
+    const aOk = Number(okAt(a?.userDataDir)) || 0;
+    const bOk = Number(okAt(b?.userDataDir)) || 0;
+    if (aOk !== bOk) return aOk - bOk;
+    return String(a?.userDataDir || "").localeCompare(String(b?.userDataDir || ""));
+  });
+  return { batch: list.slice(0, Math.min(size, list.length)), nextCursor: 0 };
+}
+
+/**
  * @param {{
  *   listRunning: () => Array<{ id: string, name: string, userDataDir: string, headless?: boolean }>,
  *   schedule: (userDataDir: string, label: string, code: string, opts: object) => void,
@@ -57,6 +76,7 @@ function startTaskbarBadgeGuard({
   listRunning,
   schedule,
   formatLabel,
+  lastOkAt,
   intervalMs = DEFAULT_INTERVAL_MS,
   batchSize = DEFAULT_BATCH_SIZE,
   setIntervalFn = setInterval,
@@ -76,8 +96,11 @@ function startTaskbarBadgeGuard({
       cursor = 0;
       return;
     }
-    const { batch, nextCursor } = selectGuardBatch(rows, cursor, batchSize);
-    cursor = nextCursor;
+    const picked = lastOkAt
+      ? selectNeediestGuardBatch(rows, lastOkAt, batchSize)
+      : selectGuardBatch(rows, cursor, batchSize);
+    const batch = picked.batch;
+    cursor = picked.nextCursor;
     for (const row of batch) {
       const code = extractProfileCode(row.name, row.id);
       try {
@@ -102,5 +125,6 @@ module.exports = {
   DEFAULT_BATCH_SIZE,
   guardableRows,
   selectGuardBatch,
+  selectNeediestGuardBatch,
   startTaskbarBadgeGuard,
 };

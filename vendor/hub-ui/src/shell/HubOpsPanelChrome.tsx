@@ -406,19 +406,24 @@ export function HubOpsPanelBadge({
 export function HubOpsMarkAllReadButton({
   onClick,
   label = "Mark all read",
+  icon: Icon = CheckCheck,
+  disabled = false,
 }: {
   onClick: () => void;
   label?: string;
+  icon?: LucideIcon;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      className="hub-ops-mark-all-read rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)]"
+      className="hub-ops-mark-all-read rounded-md border border-white/10 bg-white/[.04] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)] transition-colors hover:bg-white/[.08] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-65"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
     >
-      <CheckCheck size={compactIconSize(14)} className="hub-ops-mark-all-read__icon shrink-0" aria-hidden />
+      <Icon size={compactIconSize(14)} className="hub-ops-mark-all-read__icon shrink-0" aria-hidden />
       <span className="hub-ops-mark-all-read__label" aria-hidden>
         {label}
       </span>

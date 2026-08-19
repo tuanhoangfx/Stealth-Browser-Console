@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { HubVersionUpdateStatusIcon, type HubVersionUpdateState } from "@tool-workspace/hub-ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { HubVersionDesktopUpdate, HubVersionUpdateState } from "@tool-workspace/hub-ui";
 import type { StealthUpdateStatus } from "../types";
 
-/** Icon beside header version meta — not next to Notify/Log. */
-export function StealthHeaderUpdateButton() {
+/** Electron-updater status for the single header Update trigger (not a second icon). */
+export function useStealthDesktopUpdate(): HubVersionDesktopUpdate | null {
   const [status, setStatus] = useState<StealthUpdateStatus | null>(null);
   const [hasDesktopApi, setHasDesktopApi] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,8 +24,6 @@ export function StealthHeaderUpdateButton() {
     });
   }, []);
 
-  if (!hasDesktopApi) return null;
-
   const currentState = (status?.state ?? "idle") as HubVersionUpdateState;
   const progress = Math.round(status?.progress?.percent ?? 0);
   const title =
@@ -42,7 +40,7 @@ export function StealthHeaderUpdateButton() {
     currentState === "installing" ||
     currentState === "dev";
 
-  const runUpdateAction = async () => {
+  const onAction = useCallback(async () => {
     const api = window.stealthApi;
     if (!api?.checkForUpdates || disabled) return;
     setBusy(true);
@@ -63,15 +61,10 @@ export function StealthHeaderUpdateButton() {
     } finally {
       if (currentState !== "downloaded") setBusy(false);
     }
-  };
+  }, [currentState, disabled]);
 
-  return (
-    <HubVersionUpdateStatusIcon
-      state={currentState}
-      progress={progress}
-      title={title}
-      disabled={disabled}
-      onClick={() => void runUpdateAction()}
-    />
-  );
+  return useMemo(() => {
+    if (!hasDesktopApi) return null;
+    return { state: currentState, progress, title, disabled, onAction };
+  }, [currentState, disabled, hasDesktopApi, onAction, progress, title]);
 }

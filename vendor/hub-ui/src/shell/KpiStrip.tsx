@@ -4,9 +4,9 @@ import type { HubGlyphComponent } from "../types/filter-badge";
 import { MAX_VISIBLE_KPI } from "../display-prefs/kpi-visible";
 import { clampBandSlotCount } from "../lib/analytics-band-count";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
-import { HubSemanticGlyph } from "./HubSemanticGlyph";
 import { AnalyticsCaptionLabel } from "./AnalyticsCaptionHint";
 import { hubBrandIconImgClass } from "./filter-dropdown-primitives";
+import type { HubUsersStatusTone } from "./HubUsersStatusLabel";
 
 /** Visible KPI tile count for `data-kpi-count` (0 or 1…MAX_VISIBLE_KPI). */
 export function resolveKpiStripCount(count: number): number {
@@ -44,10 +44,13 @@ export type KpiTileData = {
   label: string;
   value: string | number;
   hint?: string;
+  /** @deprecated KPI stickers are emoji — ignored by `KpiStrip`. */
   icon?: HubGlyphComponent;
-  /** Sheet-parity emoji sticker — takes precedence over `iconSrc` / `icon` when set. */
+  /** Sheet-parity emoji sticker — KPI tiles never render Lucide. */
   emojiGlyph?: string;
-  /** Custom SVG/raster KPI mark — after emoji, before Lucide/brand. */
+  /** Presence CSS dot (table `hub-users-status-dot`) — centered in the badge; wins over emoji. */
+  statusDot?: HubUsersStatusTone;
+  /** Custom SVG/raster KPI mark — after emoji. */
   iconSrc?: string;
   brandIcon?: HubBrandIconId;
   /** Extra classes on KPI icon (e.g. animate-spin for in-progress). */
@@ -84,22 +87,27 @@ export function KpiStrip({ items, className = "" }: { items: KpiTileData[]; clas
 }
 
 function KpiTileIcon({
+  statusDot,
   emojiGlyph,
   iconSrc,
   iconClassName,
-  brandIcon,
-  icon: Icon,
-  toneIconClass,
 }: {
+  statusDot?: HubUsersStatusTone;
   emojiGlyph?: string;
   iconSrc?: string;
   iconClassName?: string;
-  brandIcon?: HubBrandIconId;
-  icon?: HubGlyphComponent;
-  toneIconClass: string;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const iconClasses = ["hub-kpi-tile__icon-svg", iconClassName].filter(Boolean).join(" ");
+
+  if (statusDot) {
+    return (
+      <span
+        className={`hub-users-status-dot hub-users-status-dot--${statusDot} hub-kpi-tile__status-dot`}
+        aria-hidden
+      />
+    );
+  }
 
   if (emojiGlyph) {
     return (
@@ -121,27 +129,20 @@ function KpiTileIcon({
       />
     );
   }
-  if (brandIcon || Icon) {
-    return (
-      <HubSemanticGlyph
-        icon={Icon}
-        brandIcon={brandIcon}
-        size={20}
-        className={iconClasses}
-      />
-    );
-  }
-  return null;
+  return (
+    <span className="hub-kpi-tile__emoji" aria-hidden>
+      📊
+    </span>
+  );
 }
 
 function KpiTile({
   label,
   value,
   hint,
-  icon: Icon,
+  statusDot,
   emojiGlyph,
   iconSrc,
-  brandIcon,
   iconClassName,
   tone = "indigo",
   valueKind = "number",
@@ -174,12 +175,10 @@ function KpiTile({
       <div className="hub-kpi-tile__inner relative flex min-w-0 items-center">
         <div className={`hub-kpi-tile__icon grid shrink-0 place-items-center rounded-xl ${t.icon}`}>
           <KpiTileIcon
+            statusDot={statusDot}
             emojiGlyph={emojiGlyph}
             iconSrc={iconSrc}
             iconClassName={iconClassName}
-            brandIcon={brandIcon}
-            icon={Icon}
-            toneIconClass={t.icon}
           />
         </div>
         <div className="hub-kpi-tile__body">

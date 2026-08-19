@@ -262,6 +262,7 @@ export {
   clearHubStaleIdleMemoCache,
 } from "./loading/useHubStaleIdleMemo";
 export { HubInactiveTabContent } from "./loading/HubInactiveTabContent";
+export { HubLazyScreenBoundary } from "./loading/HubLazyScreenBoundary";
 export { useHubVaultBoot, type HubVaultBootOptions } from "./loading/useHubVaultBoot";
 export { mountHubApp } from "./loading/mount-hub-app";
 export { installHubChunkReloadGuard } from "./loading/hub-chunk-reload-guard";
@@ -353,6 +354,9 @@ export {
   hubBrandIconImgClass,
   hubDirectoryTableBrandImgClass,
   type HubBrandIconShell,
+  HUB_FILTER_PANEL_CLEAR_BTN_CLASS,
+  HUB_FILTER_PANEL_CREATE_BTN_CLASS,
+  HUB_FILTER_CREATE_GLYPH_CLASS,
   filterDropdownPanelSearchPlaceholder,
   folderFilterButtonLabel,
   multiFilterTriggerTitle,
@@ -539,6 +543,11 @@ export {
 export {
   buildHubBrandFilterOption,
   hubBrandFilterIcon,
+  hubBrandFilterIconFromHits,
+  hubBrandFilterGlyphFields,
+  hubBrandIconSrcFields,
+  hubBrandIconSrcFieldsById,
+  hubBrandIconSrcFieldsByLabel,
   type HubBrandFilterIcon,
 } from "./lib/build-hub-brand-filter-option";
 export { HubDirectoryToolBadge, type HubDirectoryToolBadgeProps } from "./shell/HubDirectoryToolBadge";
@@ -710,6 +719,7 @@ export {
   useHubToastRequired,
   formatCopyToastPreview,
   copyToastLabelFromTitle,
+  formatHubUnknownMessage,
   type HubToast,
   type HubToastIcon,
   type HubToastType,
@@ -792,6 +802,7 @@ export {
   canonicalizeHubEntityLogAt,
   dedupeHubEntityLogEntries,
   parseHubEntityLogMessageChanges,
+  preserveHubEntityActivityLogOnMetadataWrite,
   pushHubEntityLogChange,
   readHubEntityActivityLog,
   withHubEntityActivityLog,
@@ -888,6 +899,7 @@ export {
   type HubActivityAgeTone,
 } from "./lib/format-hub-activity-time";
 export {
+  formatHubCalendarDateCompact,
   formatHubDirectoryDateCompact,
   formatHubTimestampCompact,
   formatHubTimestampDateOnly,
@@ -915,9 +927,11 @@ export {
 export { HubTableColumnHeader, type HubTableColumnHeaderProps } from "./content/HubTableColumnHeader";
 export {
   HubDirectoryColumnHint,
+  pickHubDirectoryHintLineGlyph,
   type HubDirectoryColumnHintContent,
   type HubDirectoryColumnHintGlyph,
   type HubDirectoryColumnHintLine,
+  type HubDirectoryHintLineGlyph,
 } from "./table/HubDirectoryColumnHint";
 export { HubSortIndicator, type HubSortDir } from "./table/HubSortIndicator";
 export {
@@ -1114,6 +1128,7 @@ export {
   listHubBrandIconIds,
   resolveHubBrandIcon,
   resolveHubBrandIconByMatch,
+  resolveHubBrandFamilyHits,
   resolveHubBrandFallbackGlyph,
   clearHubBrandIconMatchCache,
 } from "./lib/resolve-hub-brand-icon";
@@ -1739,7 +1754,10 @@ export {
 } from "./shell/HubHeaderPanelButton";
 export {
   HubVersionUpdateStatusIcon,
+  hubDesktopUpdateOwnsTrigger,
+  hubDesktopUpdateActionLabel,
   type HubVersionUpdateState,
+  type HubVersionDesktopUpdate,
   type HubVersionUpdateStatusIconProps,
 } from "./shell/HubVersionUpdateStatusIcon";
 export {

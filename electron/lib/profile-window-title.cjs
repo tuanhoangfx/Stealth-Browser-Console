@@ -237,6 +237,13 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
   })();
 }
 
+/** Last successful OK_ICON ms for a profile dir — 0 if never stamped. */
+function lastTaskbarBadgeOkAt(userDataDir) {
+  const dir = String(userDataDir || "").trim();
+  if (!dir) return 0;
+  return Number(badgeApplyState.get(dir)?.okAt) || 0;
+}
+
 async function applyProfileWindowTitle(context, profile, opts = {}) {
   if (!context) return;
   const label = formatProfileWindowLabel(profile);
@@ -261,4 +268,5 @@ module.exports = {
   formatProfileWindowLabel,
   applyProfileWindowTitle,
   scheduleProfileTaskbarBadgeApply,
+  lastTaskbarBadgeOkAt,
 };

@@ -4,6 +4,11 @@
  */
 import type { Session } from "@supabase/supabase-js";
 import { withDevAuthTimeout } from "./dev-auto-login";
+import {
+  extractAuthErrorText,
+  fallbackAuthErrorText,
+} from "./extract-auth-error-text";
+import { HUB_AUTH_FETCH_TIMEOUT_MESSAGE } from "./hub-auth-fetch";
 import { WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS } from "./workspace-auth-session";
 import type { DataBoxDualSignInResult } from "./create-data-box-dual-sign-in";
 
@@ -13,6 +18,7 @@ export type WorkspaceAuthGateSubmit = (
   login: string,
   password: string,
   mode: "signin" | "signup",
+  extras?: { contactEmail?: string },
 ) => Promise<WorkspaceAuthGateSubmitResult>;
 
 export type CreateDataBoxDualAuthGateSubmitConfig = {
@@ -37,6 +43,15 @@ export type CreateDataBoxDualAuthGateSubmitConfig = {
 const AUTH_TIMEOUT_MESSAGE =
   "Sign-in timed out — Tool Hub or workspace data plane is slow. Wait a moment and try again.";
 
+function isAuthTimeoutCopy(msg: string): boolean {
+  return (
+    msg === "AUTH_TIMEOUT" ||
+    msg.startsWith("AUTH_TIMEOUT:") ||
+    msg === HUB_AUTH_FETCH_TIMEOUT_MESSAGE ||
+    /aborted|AbortError|timed out/i.test(msg)
+  );
+}
+
 export function createDataBoxDualAuthGateSubmit(
   config: CreateDataBoxDualAuthGateSubmitConfig,
 ): WorkspaceAuthGateSubmit {
@@ -52,13 +67,16 @@ export function createDataBoxDualAuthGateSubmit(
         timeoutMs,
       );
       if (!dataSession) {
-        const detail = typeof dataError === "string" && dataError.trim() ? dataError.trim() : "";
+        const detail = extractAuthErrorText(dataError);
+        if (isAuthTimeoutCopy(detail)) {
+          return { error: AUTH_TIMEOUT_MESSAGE };
+        }
         if (!identitySession) {
           return {
             error:
               detail ||
               (mode === "signup"
-                ? "Sign-up failed on Tool Hub. Try again or use a different User ID."
+                ? "Sign-up failed on Tool Hub. Try a different User ID, or Sign In if this account already exists."
                 : "Sign-in failed on Tool Hub. Check User ID/email and password."),
           };
         }
@@ -72,11 +90,11 @@ export function createDataBoxDualAuthGateSubmit(
         else await config.afterAdopt();
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e ?? "");
-      if (msg === "AUTH_TIMEOUT" || msg.startsWith("AUTH_TIMEOUT:")) {
+      const msg = extractAuthErrorText(e);
+      if (isAuthTimeoutCopy(msg)) {
         return { error: AUTH_TIMEOUT_MESSAGE };
       }
-      return { error: msg || "Sign-in failed." };
+      return { error: fallbackAuthErrorText(e, mode === "signup" ? "signup" : "signin") };
     }
   };
 }

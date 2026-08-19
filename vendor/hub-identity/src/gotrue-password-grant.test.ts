@@ -27,6 +27,42 @@ describe("grantGoTruePasswordSession", () => {
     );
   });
 
+  it("maps Cloudflare 502 to an offline service message", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      json: async () => ({ error: "Bad gateway" }),
+    }));
+    const out = await grantGoTruePasswordSession({
+      supabaseUrl: "https://hub-api.example",
+      anonKey: "anon",
+      email: "a@corp.com",
+      password: "secret",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(out.session).toBeNull();
+    expect(out.error?.message).toMatch(/Sign-in service is offline \(HTTP 502\)/);
+  });
+
+  it("does not stringify an empty GoTrue error object as {}", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: {} }),
+    }));
+    const out = await grantGoTruePasswordSession({
+      supabaseUrl: "https://hub-api.example",
+      anonKey: "anon",
+      email: "a@corp.com",
+      password: "bad",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(out.session).toBeNull();
+    expect(out.error?.message).toBe("HTTP 400");
+    expect(out.error?.message).not.toBe("{}");
+    expect(out.error?.message).not.toBe("[object Object]");
+  });
+
   it("maps GoTrue invalid credentials", async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: false,
@@ -49,6 +85,31 @@ describe("grantGoTruePasswordSession", () => {
       readSupabaseGoTrueTarget({ supabaseUrl: "https://hub-api.example/", supabaseKey: "anon" }),
     ).toEqual({ supabaseUrl: "https://hub-api.example", anonKey: "anon" });
     expect(readSupabaseGoTrueTarget({})).toBeNull();
+  });
+
+  it("retries a single Failed to fetch then succeeds", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "tok",
+          refresh_token: "ref",
+          expires_in: 3600,
+          user: { id: "u1", email: "a@corp.com" },
+        }),
+      });
+    const out = await grantGoTruePasswordSession({
+      supabaseUrl: "https://hub-api.example",
+      anonKey: "anon",
+      email: "a@corp.com",
+      password: "secret",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(out.error).toBeNull();
+    expect(out.session?.access_token).toBe("tok");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("adopts a granted session without awaiting /user", () => {
