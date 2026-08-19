@@ -1,4 +1,4 @@
-import { canManageToolAccess } from "./workspace-tool-access-filter";
+import { canManageToolAccess, toolRoleGrantsAccess } from "./workspace-tool-access-filter";
 import { cleanHubJobTitleSlug } from "./hub-job-titles";
 
 export type HubScopedUserAccessActor = {
@@ -20,8 +20,9 @@ export type HubScopedUserAccessPermissions = {
 
 /**
  * Shared User Detail permission matrix for scoped workspace embeds.
- * A Position CEO can manage profile + Team/Position in its tool, while a tool
- * admin can only manage that tool's Team/Position grants.
+ * Position CEO is per-tool: `job_title=ceo` plus an explicit grant on
+ * `scopedToolCode`. Enzy CEO is not Performance CEO.
+ * A tool admin can only manage that tool's Team/Position grants.
  */
 export function resolveHubScopedUserAccessPermissions(input: {
   actor?: HubScopedUserAccessActor | null;
@@ -34,7 +35,10 @@ export function resolveHubScopedUserAccessPermissions(input: {
   const hubAdmin = role === "admin";
   const hubManager = role === "manager";
   const targetIsAdmin = String(input.targetRole ?? "").trim().toLowerCase() === "admin";
-  const scopedCeo = Boolean(scopedCode) && cleanHubJobTitleSlug(input.actor?.jobTitle) === "ceo";
+  const hasThisToolGrant = Boolean(
+    scopedCode && toolRoleGrantsAccess(input.actor?.toolRoles?.[scopedCode]),
+  );
+  const scopedCeo = hasThisToolGrant && cleanHubJobTitleSlug(input.actor?.jobTitle) === "ceo";
   const toolAdmin = Boolean(scopedCode && canManageToolAccess(input.actor ?? {}, scopedCode));
   const canMutateTarget = hubAdmin || !targetIsAdmin;
   const canManageScopedMembership = Boolean(scopedCode) && (hubAdmin || scopedCeo);

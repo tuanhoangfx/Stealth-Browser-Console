@@ -1,11 +1,12 @@
 import { WorkspaceAuthGate, createWorkspaceAuthGate, HubAuthBrandIcon } from "@tool-workspace/hub-ui";
 import {
+  createHubOnlyAuthGateSubmit,
   createWorkspaceAuthGateHubEnvPartial,
   createWorkspaceAuthGateHubForgotPasswordFromEnv,
 } from "@tool-workspace/hub-identity";
 import { STEALTH_BRAND_ICON } from "../../lib/stealth-product";
 import { hubAuthEnv } from "../../lib/hub-supabase-env";
-import { getIdentitySupabase, applyHubIdentitySession } from "../../lib/supabase-identity";
+import { getIdentitySupabase, applyHubIdentitySession, persistHubSession } from "../../lib/supabase-identity";
 import { useStealthAuth } from "./AuthSessionProvider";
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
 };
 
 export function StealthAuthGate({ onAuthed }: Props) {
-  const { signIn, prepareHubSignIn } = useStealthAuth();
+  const { refreshSession, prepareHubSignIn } = useStealthAuth();
 
   return (
     <WorkspaceAuthGate
@@ -21,20 +22,22 @@ export function StealthAuthGate({ onAuthed }: Props) {
         code: "P0003",
         tagline: "",
         headerLeading: <HubAuthBrandIcon src={STEALTH_BRAND_ICON} />,
-        onAuthed,
+        onAuthed: () => {
+          void refreshSession();
+          onAuthed?.();
+        },
         ...createWorkspaceAuthGateHubEnvPartial({
           env: hubAuthEnv,
           getHubClient: getIdentitySupabase,
           prepareHubIdentitySession: applyHubIdentitySession,
         }),
-        onSubmit: async (login, password, mode) => {
-          try {
+        onSubmit: createHubOnlyAuthGateSubmit({
+          getHubClient: getIdentitySupabase,
+          persistSession: (session) => {
             prepareHubSignIn();
-            await signIn(login, password, mode);
-          } catch (err) {
-            return { error: err instanceof Error ? err.message : String(err) };
-          }
-        },
+            persistHubSession(session);
+          },
+        }),
         forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubAuthEnv }),
       })}
     />

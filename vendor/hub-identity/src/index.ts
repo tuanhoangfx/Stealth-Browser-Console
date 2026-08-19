@@ -44,6 +44,8 @@ export * from "./create-data-box-dual-sign-in";
 export * from "./create-data-box-dual-auth-gate-submit";
 export * from "./create-hub-only-auth-gate-submit";
 export * from "./workspace-auth-paint";
+export * from "./workspace-reauth";
+export * from "./use-force-login-missing-hub-jwt";
 export * from "./workspace-extra-auth-plane-registry";
 export * from "./hub-identity-relay";
 export * from "./workspace-auth-session";

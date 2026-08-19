@@ -1,5 +1,5 @@
 /**
- * SSOT onSubmit for Data Box dual-plane WorkspaceAuthGate (≥2 hosts: P0012 / P0020).
+ * SSOT onSubmit for dual-plane WorkspaceAuthGate (P0012 / P0020 / P0016 adapter).
  * HubAuthGateModal already owns mode/busy/normalize — this only returns the submit handler.
  */
 import type { Session } from "@supabase/supabase-js";
@@ -28,7 +28,7 @@ export type CreateDataBoxDualAuthGateSubmitConfig = {
     mode: "signin" | "signup",
   ) => Promise<DataBoxDualSignInResult>;
   adoptSession: (session: Session) => void;
-  /** Shown when Hub ok but data plane failed — e.g. "Performance" / "Data Box". */
+  /** Shown when Hub ok but data plane failed — e.g. "Performance" / "workspace" / P0020 "Data Box". */
   dataPlaneLabel: string;
   /** Optional detail when data plane fails with Hub ok — overrides default copy. */
   dataPlaneFailHint?: string;

@@ -17,7 +17,7 @@ export type WorkspaceAuthSignInTimings = {
 };
 
 export type EmitWorkspaceDualSignInSessionLogOptions = {
-  /** Default plane labels: index 0 = Data Box, 1 = Mirror. */
+  /** Default plane labels: index 0 = workspace data plane, 1 = Mirror. P0020 overrides to “Data Box”. */
   planeLabels?: string[];
   /** Emit slow wording when Hub grant ≥ this (default 3000). */
   slowHubMs?: number;
@@ -30,7 +30,7 @@ export type EmitWorkspaceDualSignInSessionLogOptions = {
 export const WORKSPACE_AUTH_SIGN_IN_SLOW_HUB_MS = 3_000;
 export const WORKSPACE_AUTH_SIGN_IN_SLOW_TOTAL_MS = 8_000;
 
-const DEFAULT_PLANE_LABELS = ["Data Box", "Mirror"];
+const DEFAULT_PLANE_LABELS = ["workspace", "Mirror"];
 
 function formatMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "0ms";

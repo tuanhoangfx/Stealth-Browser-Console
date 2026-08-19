@@ -27,6 +27,23 @@ describe("resolveHubScopedUserAccessPermissions", () => {
     ).toMatchObject({ canEditProfile: false, canEditScopedOrg: false });
   });
 
+  it("does not treat another tool's CEO as CEO here (P0015 ≠ P0012)", () => {
+    expect(
+      resolveHubScopedUserAccessPermissions({
+        actor: { role: "user", jobTitle: "ceo", toolRoles: { P0015: "user" } },
+        targetRole: "user",
+        scopedToolCode: "P0012",
+      }),
+    ).toEqual({
+      canEditRole: false,
+      canDelete: false,
+      canCreateScopedUser: false,
+      canRemoveFromTool: false,
+      canEditProfile: false,
+      canEditScopedOrg: false,
+    });
+  });
+
   it("never lets a delegated CEO edit an Admin account", () => {
     expect(
       resolveHubScopedUserAccessPermissions({
@@ -41,6 +58,21 @@ describe("resolveHubScopedUserAccessPermissions", () => {
       canRemoveFromTool: false,
       canEditProfile: false,
       canEditScopedOrg: false,
+    });
+  });
+
+  it("gives Hub Admin Delete without needing Position CEO", () => {
+    expect(
+      resolveHubScopedUserAccessPermissions({
+        actor: { role: "admin", jobTitle: "employee", toolRoles: { P0012: "admin" } },
+        targetRole: "user",
+        scopedToolCode: "P0012",
+      }),
+    ).toMatchObject({
+      canEditRole: true,
+      canDelete: true,
+      canRemoveFromTool: true,
+      canCreateScopedUser: true,
     });
   });
 

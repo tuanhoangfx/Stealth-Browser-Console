@@ -1,5 +1,6 @@
 /**
- * SSOT Data Box dual-plane sign-in — used by P0012 / P0020 (P0015 inherits P0012).
+ * SSOT workspace-data dual-plane sign-in (legacy factory name).
+ * Used by P0012 / P0020 (P0015 inherits P0012). UI: not “Data Box” except P0020.
  * Pattern used ≥2 tools → live here, not as near-copies under each Tool/.
  */
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
@@ -105,7 +106,7 @@ export type DataBoxDualSignInApi = {
   ) => Promise<DataBoxDualSignInResult>;
 };
 
-/** Factory — one implementation for every Data Box dual-plane host. */
+/** Factory — one implementation for every workspace-data dual-plane host (legacy name). */
 export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): DataBoxDualSignInApi {
   const log = config.logPrefix ?? "[hub][auth]";
   const dataTimeoutMs = config.dataSignInTimeoutMs ?? 16_000;
