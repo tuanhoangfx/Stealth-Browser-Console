@@ -606,6 +606,13 @@ table.hub-users-table.hub-users-table--hub-tools-modal {
   table-layout: fixed;
 }
 
+table.hub-users-table.hub-users-table--hub-tools-modal thead,
+table.hub-users-table.hub-users-table--hub-tools-modal thead th {
+  background: var(--hub-directory-thead-surface, var(--panel));
+  border-bottom: 1px solid var(--hub-directory-thead-border, rgba(255, 255, 255, 0.08));
+  box-shadow: none;
+}
+
 table.hub-users-table.hub-users-table--hub-tools-modal th,
 table.hub-users-table.hub-users-table--hub-tools-modal td {
   padding: 5px 6px;

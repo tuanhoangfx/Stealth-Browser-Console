@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   HubAppLogProvider,
   HubToolLoadingProvider,
@@ -11,12 +11,14 @@ import { StealthAppShell } from "./components/StealthAppShell";
 import { AuthSessionProvider } from "./features/auth/AuthSessionProvider";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
 import type { StealthScreen } from "./lib/stealth-screen";
-import { defaultStealthSystemTab, type StealthSystemTab } from "./lib/stealth-system-tab";
-import { defaultStealthWorkflowTab, type StealthWorkflowTab } from "./lib/stealth-workflow-tab";
+import type { StealthSystemTab } from "./lib/stealth-system-tab";
+import type { StealthWorkflowTab } from "./lib/stealth-workflow-tab";
 import { resolveStealthActiveScreenId } from "./lib/stealth-active-screen";
+import { readStealthAppUrl, writeStealthAppUrl } from "./lib/stealth-app-url";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
 import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "./lib/stealth-product";
+import { StoreExtensionUpdatePrompt } from "./features/system/extensions/StoreExtensionUpdatePrompt";
 
 export function App() {
   return (
@@ -33,6 +35,7 @@ export function App() {
             </AuthSessionProvider>
           </RunLogsProvider>
           <ToastContainer />
+          <StoreExtensionUpdatePrompt />
         </ToastProvider>
       </HubToastShell>
     </HubToolLoadingProvider>
@@ -40,10 +43,13 @@ export function App() {
 }
 
 function StealthAppRoot() {
-  const [view, setView] = useState<StealthScreen>("profiles");
-  const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => defaultStealthSystemTab());
-  const [workflowTab, setWorkflowTab] = useState<StealthWorkflowTab>(() => defaultStealthWorkflowTab());
-  const [visited, setVisited] = useState<Set<StealthScreen>>(() => new Set(["profiles", "workflow"]));
+  const bootUrl = readStealthAppUrl();
+  const [view, setView] = useState<StealthScreen>(() => bootUrl.screen);
+  const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => bootUrl.systemTab);
+  const [workflowTab, setWorkflowTab] = useState<StealthWorkflowTab>(() => bootUrl.workflowTab);
+  const [visited, setVisited] = useState<Set<StealthScreen>>(
+    () => new Set<StealthScreen>(["profiles", "workflow", bootUrl.screen]),
+  );
   const mainRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -51,6 +57,10 @@ function StealthAppRoot() {
     prefetchWorkflowChunks();
     prefetchSystemChunks();
   }, []);
+
+  useEffect(() => {
+    writeStealthAppUrl({ screen: view, systemTab, workflowTab });
+  }, [systemTab, view, workflowTab]);
 
   useLayoutEffect(() => {
     setVisited((prev) => {

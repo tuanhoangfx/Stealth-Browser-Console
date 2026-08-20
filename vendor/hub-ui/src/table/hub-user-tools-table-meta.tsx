@@ -1,11 +1,13 @@
 import type { HubTableColumn } from "../content/HubDataTable";
+import {
+  HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS,
+  hubDirectoryTableClass,
+} from "./hub-directory-table-meta";
 
-/** Modal tool-access table (User Access · ≤6 columns when Enterprise shown). */
-export const HUB_USER_TOOLS_MODAL_TABLE_CLASS =
-  "hub-users-table hub-users-table--hub-tools hub-users-table--hub-tools-modal";
+/** Modal tool-access table — directory thead SSOT (P0004 Users) + hub-tools-modal cols. */
+export const HUB_USER_TOOLS_MODAL_TABLE_CLASS = `${hubDirectoryTableClass("hub-tools")} hub-users-table--hub-tools-modal`;
 
-export const HUB_USER_TOOLS_MODAL_TABLE_WRAP_CLASS =
-  "hub-users-table-wrap hub-scrollbar min-w-0 overflow-x-auto overflow-y-hidden rounded-xl border border-white/5";
+export const HUB_USER_TOOLS_MODAL_TABLE_WRAP_CLASS = HUB_MODAL_DIRECTORY_TABLE_WRAP_CLASS;
 
 /** Full Hub tools directory table. */
 export const HUB_USER_TOOLS_DIRECTORY_TABLE_CLASS = "hub-users-table hub-users-table--hub-tools";

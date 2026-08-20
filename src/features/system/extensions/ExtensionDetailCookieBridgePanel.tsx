@@ -83,7 +83,7 @@ export const ExtensionDetailCookieBridgePanel = memo(function ExtensionDetailCoo
     <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-3 text-xs">
       <p className="hub-analytics-caption uppercase tracking-wider text-cyan-300">E0001 Cookie Bridge</p>
       <p className="mt-1 text-[var(--muted)]">
-        Native prefs pin — not Chrome auto-update. Force update from the directory when CWS ships a new build.
+        Native prefs pin — not Chrome auto-update. Restart Console to check the Web Store; confirm if a newer cache is offered.
       </p>
       {jobLabel ? <p className="mt-2 font-medium text-cyan-200/95">{jobLabel}</p> : null}
       {updateMsg ? <p className="mt-2 text-cyan-200">{updateMsg}</p> : null}

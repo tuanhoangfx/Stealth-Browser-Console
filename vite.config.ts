@@ -10,7 +10,17 @@ const hubIdentitySrc = path.resolve(rootDir, "vendor/hub-identity/src");
 const devRoot = path.resolve(rootDir, "../..");
 
 export default defineConfig(async () => {
-  const plugins = [react()];
+  const plugins = [
+    react(),
+    {
+      name: "electron-file-protocol-html",
+      apply: "build" as const,
+      transformIndexHtml(html: string) {
+        // file:// + Vite `crossorigin` breaks Chromium Force Reload (Shift+F5).
+        return html.replace(/\s+crossorigin(?:="[^"]*")?/gi, "");
+      },
+    },
+  ];
 
   // Dev-only plugin: avoid static import of a file outside tool root, so
   // Vercel standalone build does not fail module resolution.

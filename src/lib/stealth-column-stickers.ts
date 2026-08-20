@@ -89,6 +89,16 @@ export const STEALTH_WORKFLOW_STORE_FILTER_STICKER = {
   source: "📦",
 } as const;
 
+export const STEALTH_EXTENSIONS_KPI_STICKER = {
+  cached: "🧩",
+  store: "🛒",
+} as const;
+
+export const STEALTH_EXTENSIONS_HEADER_STAT_STICKER = {
+  cached: "🧩",
+  store: "🛒",
+} as const;
+
 export const STEALTH_EXTENSIONS_FILTER_STICKER = {
   kind: "🧩",
 } as const;

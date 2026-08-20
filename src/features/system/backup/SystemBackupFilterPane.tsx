@@ -23,6 +23,8 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   shownProfiles,
   totalProfiles,
   selectedCount,
+  allVisibleSelected,
+  onToggleSelectAll,
   jobBusy,
   groups,
   catalogStats,
@@ -42,6 +44,8 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   shownProfiles: number;
   totalProfiles: number;
   selectedCount: number;
+  allVisibleSelected: boolean;
+  onToggleSelectAll: () => void;
   jobBusy: boolean;
   groups: StealthGroup[];
   catalogStats: ProfileCatalogStats | null;
@@ -105,7 +109,15 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
         />
       }
       row2Actions={
-        <HubDirectoryBulkActionBar>
+        <HubDirectoryBulkActionBar
+          selectAll={{
+            visibleCount: shownProfiles,
+            selectedCount,
+            allVisibleSelected,
+            onToggleSelectAll,
+            noun: "profiles",
+          }}
+        >
           <SystemBackupDirectoryBulkActions
             selectedCount={selectedCount}
             hasSelection={selectedCount > 0}

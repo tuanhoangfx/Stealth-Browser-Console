@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, Database, Play } from "lucide-react";
 import type { KpiTileData } from "@tool-workspace/hub-ui";
+import { STEALTH_PROFILE_KPI_STICKER } from "../../lib/stealth-column-stickers";
 import type { ProfileRow, ProfileCatalogStats } from "../../types";
 
 export type ProfileKpiNumbers = {
@@ -10,31 +11,15 @@ export type ProfileKpiNumbers = {
 };
 
 const PROFILE_KPI_TILES: Array<{
-  key: string;
+  key: keyof typeof STEALTH_PROFILE_KPI_STICKER;
   label: string;
   tone: NonNullable<KpiTileData["tone"]>;
-  icon: KpiTileData["icon"];
   pick: (k: ProfileKpiNumbers) => number;
-  iconClassName?: string;
 }> = [
-  { key: "total", label: "Profiles", tone: "indigo", icon: Database, pick: (k) => k.total },
-  {
-    key: "running",
-    label: "Running",
-    tone: "emerald",
-    icon: Play,
-    pick: (k) => k.running,
-    iconClassName: "text-emerald-400",
-  },
-  {
-    key: "failed",
-    label: "Failed",
-    tone: "rose",
-    icon: AlertTriangle,
-    pick: (k) => k.failed,
-    iconClassName: "text-rose-300",
-  },
-  { key: "ready", label: "Ready", tone: "emerald", icon: CheckCircle2, pick: (k) => k.ready },
+  { key: "total", label: "Profiles", tone: "indigo", pick: (k) => k.total },
+  { key: "running", label: "Running", tone: "emerald", pick: (k) => k.running },
+  { key: "failed", label: "Failed", tone: "rose", pick: (k) => k.failed },
+  { key: "ready", label: "Ready", tone: "emerald", pick: (k) => k.ready },
 ];
 
 export function buildProfileKpiNumbersFromStats(stats: ProfileCatalogStats): ProfileKpiNumbers {
@@ -61,9 +46,8 @@ export function buildProfileKpiItems(kpis: ProfileKpiNumbers): KpiTileData[] {
     prefKey: row.key,
     label: row.label,
     value: row.pick(kpis),
-    icon: row.icon,
+    emojiGlyph: STEALTH_PROFILE_KPI_STICKER[row.key],
     tone: row.tone,
-    iconClassName: row.iconClassName,
   }));
 }
 

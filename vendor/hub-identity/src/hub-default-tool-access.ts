@@ -1,5 +1,5 @@
-/** Tools every workspace user may use without admin approval. */
-export const HUB_DEFAULT_USER_TOOL_CODES = ["E0001", "P0016", "P0020", "P0022"] as const;
+/** Tools every workspace user may use without admin approval. P0016 Chat Center is explicit-grant only. */
+export const HUB_DEFAULT_USER_TOOL_CODES = ["E0001", "P0020", "P0022"] as const;
 
 export type HubDefaultUserToolCode = (typeof HUB_DEFAULT_USER_TOOL_CODES)[number];
 

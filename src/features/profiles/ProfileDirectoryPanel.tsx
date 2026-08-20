@@ -149,6 +149,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     setSelectedStatuses,
     syncBusy,
     selectedProfiles,
+    allVisibleSelected,
+    onToggleSelectAll,
     closeOne,
     closeAllRunning,
     deleteSelected,

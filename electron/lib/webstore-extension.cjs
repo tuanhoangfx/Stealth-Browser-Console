@@ -131,12 +131,146 @@ function readManifestUpdatedAt(unpackedPath) {
   }
 }
 
+function compareExtensionVersions(a, b) {
+  const pa = String(a || "0")
+    .split(".")
+    .map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || "0")
+    .split(".")
+    .map((n) => parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i += 1) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
 function clearStoreExtensionCache(userDataRoot, storeId) {
   const id = parseStoreId(storeId);
   if (!id) throw new Error("invalid Chrome Web Store extension id");
   const cacheRoot = cacheRootForStoreId(userDataRoot, id);
   if (fs.existsSync(cacheRoot)) fs.rmSync(cacheRoot, { recursive: true, force: true });
   return { storeId: id, cleared: true };
+}
+
+function unpinCachedExtensionFromProfiles(userDataRoot, item = {}) {
+  const { unpinExtensionFromProfile } = require("./profile-chrome-preferences.cjs");
+  const kind = String(item.kind || "").trim().toLowerCase();
+  let storeId = null;
+  let unpackedPath = "";
+  if (kind === "store") {
+    storeId = parseStoreId(item.storeId);
+    if (storeId) unpackedPath = unpackedDirForStoreId(userDataRoot, storeId);
+  } else if (kind === "local") {
+    const localKey = String(item.localKey || "").trim();
+    if (localKey && !/[\\/]/.test(localKey) && !localKey.includes("..")) {
+      unpackedPath = path.join(userDataRoot, "extensions-cache", "_local", localKey, "unpacked");
+    }
+  }
+  let profiles = 0;
+  for (const dir of listProfileChromeDirs(userDataRoot)) {
+    const result = unpinExtensionFromProfile(dir, { storeId, unpackedPath });
+    if (result.changed) profiles += 1;
+  }
+  return { profiles };
+}
+
+function removeCachedExtension(userDataRoot, item = {}) {
+  const kind = String(item.kind || "").trim().toLowerCase();
+  const unpinned = unpinCachedExtensionFromProfiles(userDataRoot, item);
+  if (kind === "store") {
+    return { kind: "store", ...clearStoreExtensionCache(userDataRoot, item.storeId), unpinned };
+  }
+  if (kind !== "local") throw new Error("kind must be store or local");
+  const localKey = String(item.localKey || "").trim();
+  if (!localKey || /[\\/]/.test(localKey) || localKey.includes("..")) {
+    throw new Error("invalid local extension key");
+  }
+  const dest = path.join(userDataRoot, "extensions-cache", "_local", localKey);
+  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+  return { kind: "local", localKey, cleared: true, unpinned };
+}
+
+function removeCachedExtensions(userDataRoot, items) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) throw new Error("no extensions selected");
+  const results = [];
+  for (const item of list) {
+    try {
+      results.push({ ok: true, ...removeCachedExtension(userDataRoot, item) });
+    } catch (error) {
+      results.push({
+        ok: false,
+        kind: item?.kind,
+        storeId: item?.storeId ?? null,
+        localKey: item?.localKey ?? null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  const removed = results.filter((row) => row.ok).length;
+  if (!removed) throw new Error(results[0]?.error || "Delete failed");
+  return { removed, results };
+}
+
+function storeUpdateCheckUrl(storeId, currentVersion = "") {
+  const id = parseStoreId(storeId);
+  if (!id) throw new Error("invalid Chrome Web Store extension id");
+  const x = encodeURIComponent(`id=${id}&v=${currentVersion || "0.0.0"}&uc`);
+  return `https://clients2.google.com/service/update2/crx?response=updatecheck&prodversion=${CHROME_PROD_VERSION}&acceptformat=crx2,crx3&x=${x}`;
+}
+
+function parseUpdateCheckXml(xml) {
+  const raw = String(xml || "");
+  const tag = raw.match(/<updatecheck\b([^>]*)\/?>/i);
+  if (!tag) return { status: "unknown", version: "" };
+  const attrs = tag[1];
+  return {
+    status: (attrs.match(/\bstatus=["']([^"']+)["']/i) || [])[1] || "unknown",
+    version: (attrs.match(/\bversion=["']([^"']+)["']/i) || [])[1] || "",
+  };
+}
+
+/** Probe CWS updatecheck XML — no CRX download, no cache swap. */
+async function probeStoreExtensionUpdate(storeId, currentVersion = "") {
+  const id = parseStoreId(storeId);
+  if (!id) throw new Error("invalid Chrome Web Store extension id");
+  const current = String(currentVersion || "").trim();
+  const xml = (await downloadBuffer(storeUpdateCheckUrl(id, current))).toString("utf8");
+  const parsed = parseUpdateCheckXml(xml);
+  const latest = String(parsed.version || "").trim();
+  const available =
+    parsed.status === "ok" && Boolean(latest) && (!current || compareExtensionVersions(latest, current) > 0);
+  return { storeId: id, current, latest, available, status: parsed.status };
+}
+
+async function checkCachedStoreExtensionsOnStartup(userDataRoot = defaultUserDataRoot()) {
+  const rows = listCachedStoreExtensions(userDataRoot);
+  const results = [];
+  for (const row of rows) {
+    try {
+      const result = await probeStoreExtensionUpdate(row.storeId, row.version);
+      results.push({ ...result, name: row.name });
+      if (result.available) {
+        console.log(`[store-ext] startup ${row.storeId}: ${result.current} → ${result.latest} available`);
+      } else {
+        console.log(`[store-ext] startup ${row.storeId}: ${result.current || result.latest || "?"} current`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[store-ext] startup ${row.storeId}: ${message}`);
+      results.push({
+        storeId: row.storeId,
+        name: row.name,
+        current: row.version || "",
+        latest: "",
+        available: false,
+        error: message,
+      });
+    }
+  }
+  return results;
 }
 
 function downloadBuffer(url, redirects = 0) {
@@ -294,9 +428,9 @@ function listLocalUnpackedExtensions(userDataRoot = defaultUserDataRoot()) {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Every extension dir loaded on profile launch (Web Store + local unpacked). */
+/** Store cache only — local unpacked launch is shelved. */
 function listAllLaunchExtensions(userDataRoot = defaultUserDataRoot()) {
-  return [...listCachedStoreExtensions(userDataRoot), ...listLocalUnpackedExtensions(userDataRoot)];
+  return listCachedStoreExtensions(userDataRoot);
 }
 
 function localUnpackedKeyForDir(sourceDir) {
@@ -467,7 +601,12 @@ module.exports = {
   storeUpdateUrl,
   cacheRootForStoreId,
   unpackedDirForStoreId,
+  compareExtensionVersions,
+  storeUpdateCheckUrl,
+  parseUpdateCheckXml,
+  probeStoreExtensionUpdate,
   ensureStoreExtension,
+  checkCachedStoreExtensionsOnStartup,
   listCachedStoreExtensions,
   listLocalUnpackedExtensions,
   listAllLaunchExtensions,
@@ -479,5 +618,7 @@ module.exports = {
   readManifestName,
   readManifestVersion,
   clearStoreExtensionCache,
+  removeCachedExtension,
+  removeCachedExtensions,
   resolveExtensionIconDataUri,
 };

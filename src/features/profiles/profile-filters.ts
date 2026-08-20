@@ -22,7 +22,7 @@ export function buildProfileFilters(groups: StealthGroup[], profiles: ProfileRow
     {
       key: "group",
       label: "Group",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: profiles.length,
       options: groups.map((group) => ({
         value: String(group.id),
@@ -33,7 +33,7 @@ export function buildProfileFilters(groups: StealthGroup[], profiles: ProfileRow
     {
       key: "status",
       label: "Status",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: profiles.length,
       options: PROFILE_STATUS_FILTER_OPTIONS.map((option) => ({
         value: option.value,
@@ -50,7 +50,7 @@ export function buildProfileFiltersFromStats(groups: StealthGroup[], stats: Prof
     {
       key: "group",
       label: "Group",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: stats.total,
       options: groups.map((group) => ({
         value: String(group.id),
@@ -61,7 +61,7 @@ export function buildProfileFiltersFromStats(groups: StealthGroup[], stats: Prof
     {
       key: "status",
       label: "Status",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: stats.total,
       options: PROFILE_STATUS_FILTER_OPTIONS.map((option) => ({
         value: option.value,

@@ -65,6 +65,13 @@ contextBridge.exposeInMainWorld("stealthApi", {
   installStoreExtension: (payload) => invoke("extension:installStore", payload),
   pickUnpackedExtensionFolder: () => invoke("extension:pickUnpackedFolder"),
   installUnpackedExtension: (payload) => invoke("extension:installUnpacked", payload),
+  removeCachedExtensions: (payload) => invoke("extension:removeCached", payload),
+  fetchStoreExtensionUpdateCheck: () => invoke("extension:storeUpdateCheck"),
+  onStoreExtensionUpdateCheck: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on("extension:storeUpdateCheck", listener);
+    return () => ipcRenderer.removeListener("extension:storeUpdateCheck", listener);
+  },
   onProfileSession: (handler) => {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on("profile:session", listener);

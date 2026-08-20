@@ -28,7 +28,7 @@ export function buildWorkflowFilters(workflows: WorkflowConfig[]): FilterDef[] {
     {
       key: "group",
       label: "Group",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: workflows.length,
       options: [...groupCounts.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -37,7 +37,7 @@ export function buildWorkflowFilters(workflows: WorkflowConfig[]): FilterDef[] {
     {
       key: "platform",
       label: "Platform",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: workflows.length,
       options: [...platformCounts.entries()]
         .sort(([a], [b]) => a.localeCompare(b))

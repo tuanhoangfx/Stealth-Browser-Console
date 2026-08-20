@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { Puzzle } from "lucide-react";
 import {
   compactIconSize,
   hubAccountDetailSectionIcon,
@@ -15,16 +16,23 @@ import {
   EXTENSION_DETAIL_TOC,
 } from "./extension-detail-toc";
 
-type ExtensionTocIconKey = HubAdmSectionKey | "log";
+type ExtensionTocIconKey = HubAdmSectionKey | "log" | "new";
 
 const EXTENSION_DETAIL_TOC_ICON: Partial<Record<string, ExtensionTocIconKey>> = {
   [EXTENSION_DETAIL_SECTION_METADATA]: "record",
-  [EXTENSION_DETAIL_SECTION_INSTALL]: "browser",
+  [EXTENSION_DETAIL_SECTION_INSTALL]: "new",
   [EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE]: "service",
   [EXTENSION_DETAIL_SECTION_LOG]: "log",
 };
 
 function tocNavIcon(key: ExtensionTocIconKey) {
+  if (key === "new") {
+    return createElement(Puzzle, {
+      size: compactIconSize(12),
+      className: "text-orange-300",
+      "aria-hidden": true,
+    });
+  }
   if (key === "log") {
     const Icon = hubAccountDetailSectionIcon("log");
     return createElement(Icon, {
@@ -53,6 +61,7 @@ export function extensionDetailTocNavItems(options?: {
 
   const ids = EXTENSION_DETAIL_TOC.filter((item) => {
     if (item.id === EXTENSION_DETAIL_SECTION_INSTALL) return showInstall;
+    if (item.id === EXTENSION_DETAIL_SECTION_METADATA) return !showInstall;
     return true;
   }).map((item) => item.id);
 
@@ -66,7 +75,7 @@ export function extensionDetailTocNavItems(options?: {
 
   const labels: Record<string, string> = {
     [EXTENSION_DETAIL_SECTION_METADATA]: "Metadata",
-    [EXTENSION_DETAIL_SECTION_INSTALL]: "Install",
+    [EXTENSION_DETAIL_SECTION_INSTALL]: "New",
     [EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE]: "Cookie Bridge",
     [EXTENSION_DETAIL_SECTION_LOG]: "Console",
   };

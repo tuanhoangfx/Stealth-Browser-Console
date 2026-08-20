@@ -1,13 +1,14 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   DirectorySearchToolbar,
-  HubBulkActionButton,
   HubDirectoryBulkActionBar,
+  HubDirectoryCrudBulkActions,
+  HubDirectoryDetailAction,
   HubSplitDirectoryFilterBar,
   type FilterDef,
   type FilterValues,
 } from "@tool-workspace/hub-ui";
-import { Download, Puzzle } from "lucide-react";
+import { Puzzle } from "lucide-react";
 import { StealthDisplayBandToolbar } from "../../../components/StealthDisplayBandToolbar";
 import { defaultsForPrefItems, isHubPrefVisible } from "../../../lib/display-pref-helpers";
 import { SYSTEM_EXTENSIONS_DISPLAY_PREFS } from "../../../lib/display-prefs-registry";
@@ -33,10 +34,12 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
   filteredCount,
   catalogCount,
   selectedCount,
+  allVisibleSelected,
+  onToggleSelectAll,
   busy,
-  onForceUpdateSelected,
   onOpenDetailSingle,
   onOpenInstall,
+  onDeleteSelected,
 }: {
   cached: CachedStoreExtension[];
   search: string;
@@ -46,10 +49,12 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
   filteredCount: number;
   catalogCount: number;
   selectedCount: number;
+  allVisibleSelected: boolean;
+  onToggleSelectAll: () => void;
   busy: boolean;
-  onForceUpdateSelected: () => void;
   onOpenDetailSingle: () => void;
   onOpenInstall: () => void;
+  onDeleteSelected: () => void;
 }) {
   const [filterTick, setFilterTick] = useState(0);
 
@@ -116,32 +121,33 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
         />
       }
       row2Actions={
-        <HubDirectoryBulkActionBar>
-          <HubBulkActionButton
-            icon={<Puzzle size={14} aria-hidden />}
-            label="Detail"
-            title={selectedCount === 1 ? "Open extension detail" : "Select one extension for detail"}
-            tone="indigo"
-            disabled={selectedCount !== 1}
-            onClick={onOpenDetailSingle}
+        <HubDirectoryBulkActionBar
+          selectAll={{
+            visibleCount: filteredCount,
+            selectedCount,
+            allVisibleSelected,
+            onToggleSelectAll,
+            noun: "extensions",
+          }}
+        >
+          <HubDirectoryCrudBulkActions
+            embedded
+            hasSelection={selectedCount > 0}
+            selectedCount={selectedCount}
+            onPrimary={onOpenInstall}
+            onEdit={onOpenDetailSingle}
+            onDelete={onDeleteSelected}
+            primaryDisabled={busy}
+            deleteDisabled={busy}
+            primaryTitle="Install from Chrome Web Store"
+            hideEdit
+            beforeDelete={
+              <HubDirectoryDetailAction
+                disabled={selectedCount !== 1}
+                onClick={onOpenDetailSingle}
+              />
+            }
           />
-          <HubBulkActionButton
-            icon={<Download size={14} aria-hidden />}
-            label="Install"
-            title="Install from Web Store or load unpacked folder"
-            tone="sky"
-            disabled={busy}
-            onClick={onOpenInstall}
-          />
-          <button
-            type="button"
-            className="hub-btn hub-btn--ghost text-xs"
-            disabled={busy || selectedCount === 0}
-            onClick={onForceUpdateSelected}
-            title="Clear cache and re-download selected Web Store extensions"
-          >
-            Force update selected
-          </button>
         </HubDirectoryBulkActionBar>
       }
     />

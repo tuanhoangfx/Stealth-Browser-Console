@@ -113,6 +113,8 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
         shownProfiles={profiles.length}
         totalProfiles={total}
         selectedCount={selectedCount}
+        allVisibleSelected={allVisibleSelected}
+        onToggleSelectAll={onToggleSelectAll}
         jobBusy={jobBusy}
         groups={groups}
         catalogStats={catalogStats}
@@ -146,6 +148,8 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
       profiles.length,
       queryPending,
       search,
+      allVisibleSelected,
+      onToggleSelectAll,
       selectedCount,
       selectedGroupIds,
       selectedStatuses,

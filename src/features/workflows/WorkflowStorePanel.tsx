@@ -138,7 +138,6 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
           canInstall={bulkSelectedIds.size > 0 && !installingId}
           installLabel={installLabel}
           loading={loading || Boolean(installingId)}
-          onRefresh={() => void refresh()}
           onInstall={() => void handleBulkInstall()}
         />
       }

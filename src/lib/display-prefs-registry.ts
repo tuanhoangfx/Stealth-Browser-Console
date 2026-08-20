@@ -65,19 +65,17 @@ export const SYSTEM_EXTENSIONS_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "cached", label: "Cached" },
     { key: "store", label: "Store" },
-    { key: "local", label: "Local" },
   ],
   charts: [],
   filters: [{ key: "kind", label: "Kind" }],
   headerStats: [
     { key: "cached", label: "Cached" },
     { key: "store", label: "Store" },
-    { key: "local", label: "Local" },
   ],
   defaultKpiKeys: new Set<string>(),
   defaultChartKeys: new Set<string>(),
   defaultFilterKeys: new Set<string>(["kind"]),
-  defaultHeaderStatKeys: new Set(["cached", "store", "local"]),
+  defaultHeaderStatKeys: new Set(["cached", "store"]),
 };
 
 export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {

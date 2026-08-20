@@ -34,17 +34,23 @@
   --twofa-adm-panel: var(--hub-modal-panel-surface, var(--panel));
 }
 
-/* Layout 3 + --split (P0003 Profile/Extension) — keep Layout 3 tokens, not --split 28rem / 960px. */
+/* Layout 3 + --split (P0003 Profile/Extension) — keep Layout 3 tokens, not --split 72rem / 28rem rail. */
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal.hub-tool-detail-modal--split {
   --hub-tool-detail-rail-w: min(22rem, 34%);
   --hub-tool-detail-split-min-h: 22.4rem;
   --hub-adm-toc-w: 10.5rem;
   --overview-toc-w: var(--hub-adm-toc-w);
+  --hub-modal-max-w: min(88rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
   --hub-modal-max-h: 768px;
   --hub-modal-max-vh: 73.6vh;
   height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
   min-height: min(512px, var(--hub-modal-max-vh));
   max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
+/* User Access / tools catalog — +20% vs Layout 3 88rem (105.6rem). */
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal.hub-account-detail-modal--wide {
+  --hub-modal-max-w: min(105.6rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
 }
 
 .modal-shell.hub-tool-detail-modal.hub-account-detail-modal {

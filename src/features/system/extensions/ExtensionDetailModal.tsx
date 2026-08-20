@@ -6,6 +6,7 @@ import {
   HubAccountDetailSearchProvider,
   HubAdmRecordMetaRow,
   HubToolDetailModal,
+  HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
   HubToolDetailRail,
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
@@ -23,6 +24,7 @@ import { ExtensionDetailHistoryRail } from "./ExtensionDetailHistoryRail";
 import { ExtensionDetailInstallPanel } from "./ExtensionDetailInstallPanel";
 import { ExtensionDetailLogRail } from "./ExtensionDetailLogRail";
 import { ExtensionDetailTocNav } from "./ExtensionDetailTocNav";
+import { ExtensionKindBadge } from "./extension-kind-badge";
 import { extensionDetailTocNavItems } from "./extension-detail-toc-nav";
 import {
   EXTENSION_DETAIL_MODAL_SHELL_CLASS,
@@ -49,7 +51,6 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
   setProfileId,
   busy = false,
   onInstallStore,
-  onInstallUnpacked,
   onClose,
 }: {
   extension?: CachedStoreExtension | null;
@@ -64,7 +65,6 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
   setProfileId: (value: string) => void;
   busy?: boolean;
   onInstallStore: () => void;
-  onInstallUnpacked: () => void;
   onClose: () => void;
 }) {
   const [logRailFocused, setLogRailFocused] = useState(false);
@@ -81,7 +81,7 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
 
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
   const title = installOnly
-    ? "Install extension"
+    ? "New extension"
     : extension
       ? resolveExtensionDisplayName(extension)
       : "Extension";
@@ -100,7 +100,7 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
         titleId="extension-detail-title"
         headerIcon={Puzzle}
         headerIconClassName="text-orange-300"
-        headerCenter={extension ? <HubAccountDetailHeaderSearch /> : undefined}
+        headerCenter={<HubAccountDetailHeaderSearch />}
         shellClassName={EXTENSION_DETAIL_MODAL_SHELL_CLASS}
         sectionIds={sectionIds}
         scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
@@ -117,18 +117,30 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
           </HubToolDetailRail>
         }
         footer={
-          <HubToolDetailModalSecondaryAction
-            label={HUB_DETAIL_MODAL_CLOSE_LABEL}
-            onClick={onClose}
-            icon={X}
-          />
+          <>
+            <HubToolDetailModalSecondaryAction
+              label={HUB_DETAIL_MODAL_CLOSE_LABEL}
+              onClick={onClose}
+              icon={X}
+            />
+            {installOnly ? (
+              <HubToolDetailModalPrimaryAction
+                label="Install from Web Store"
+                onClick={onInstallStore}
+                disabled={busy || !storeInput.trim()}
+                busy={busy}
+                icon={Puzzle}
+              />
+            ) : null}
+          </>
         }
         ariaLabelledBy="extension-detail-title"
       >
         <HubAccountDetailAdmScaffold
           panelId={EXTENSION_DETAIL_SECTION_METADATA}
-          panelTitle={installOnly ? "Install" : "Metadata"}
-          panelAdmSectionKey="record"
+          panelTitle={installOnly ? "New" : "Metadata"}
+          panelTitleEmoji={installOnly ? "🧩" : undefined}
+          panelAdmSectionKey={installOnly ? undefined : "record"}
           frameClassName="twofa-account-detail-modal__frame"
           panelClassName="twofa-account-detail__panel"
           main={
@@ -155,7 +167,9 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
                   <dl className="grid gap-2 rounded-lg border border-white/5 bg-white/[.02] px-3 py-3 text-xs">
                     <div className="flex justify-between gap-3">
                       <dt className="text-[var(--muted)]">Kind</dt>
-                      <dd className="font-medium capitalize text-[var(--text)]">{extension.kind}</dd>
+                      <dd className="font-medium text-[var(--text)]">
+                        <ExtensionKindBadge kind={extension.kind} />
+                      </dd>
                     </div>
                     <div className="flex justify-between gap-3">
                       <dt className="text-[var(--muted)]">Version</dt>
@@ -181,8 +195,6 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
                     profileId={profileId}
                     setProfileId={setProfileId}
                     busy={busy}
-                    onInstallStore={onInstallStore}
-                    onInstallUnpacked={onInstallUnpacked}
                   />
                 </section>
               ) : null}
@@ -195,7 +207,7 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
           }
           rail={
             <div className="stealth-profile-detail-runtime-rail">
-              <ExtensionDetailHistoryRail />
+              {installOnly ? null : <ExtensionDetailHistoryRail />}
               <ExtensionDetailLogRail focused={logRailFocused} />
             </div>
           }

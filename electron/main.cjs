@@ -1,5 +1,5 @@
 require("./lib/ensure-packaged-module-paths.cjs");
-const { app, BrowserWindow, ipcMain, session, shell, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, session, shell, dialog } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { resolveAppIconPathIfExists } = require("./lib/desktop-app-icon.cjs");
@@ -51,7 +51,11 @@ const {
 } = require("./lib/packaged-runtime-check.cjs");
 const { getProfileExtensionsEnabled, setProfileExtensionsEnabled, getExtensionToggles, setExtensionToggles } = require("./lib/app-settings.cjs");
 const { getCookieBridgeStatus } = require("./lib/cookie-bridge-status.cjs");
-const { getExtensionsStatus, installStoreExtension, installUnpackedExtension } = require("./lib/extensions-status.cjs");
+const { getExtensionsStatus, installStoreExtension, installUnpackedExtension, removeCachedExtensions } = require("./lib/extensions-status.cjs");
+const {
+  getStoreExtensionUpdateCheck,
+  setStoreExtensionUpdateCheck,
+} = require("./lib/store-extension-update-state.cjs");
 const { nativeExtensionsEnabled } = require("./lib/extension-launch-mode.cjs");
 const {
   launchProfile: launchProfileOp,
@@ -69,6 +73,7 @@ const {
   validateRunsLimit,
   validateRouterRequestPayload
 } = require("./ipc-contracts.cjs");
+const { bindRendererReloadShortcuts } = require("./lib/renderer-reload.cjs");
 
 const sessionManager = new SessionManager();
 const sessionTray = createSessionTray(sessionManager);
@@ -616,6 +621,11 @@ function bindIpc() {
     status: getExtensionsStatus(userDataRoot()),
   }));
 
+  ipcMain.handle("extension:storeUpdateCheck", () => ({
+    ok: true,
+    check: getStoreExtensionUpdateCheck(),
+  }));
+
   ipcMain.handle("extension:icon", (_event, payload = {}) => {
     const storeId = String(payload.storeId ?? "").trim();
     if (!storeId) return { ok: false, error: "storeId is required" };
@@ -670,6 +680,16 @@ function bindIpc() {
     const binary = await getBinaryInfoCached();
     const result = repairAllProfileExtensionPaths(userDataRoot(), binary.cacheDir);
     return { ok: true, ...result, repaired: result.rewritten };
+  });
+
+  ipcMain.handle("extension:removeCached", async (_event, payload = {}) => {
+    const items = Array.isArray(payload.items) ? payload.items : payload.item ? [payload.item] : [];
+    try {
+      const result = removeCachedExtensions(userDataRoot(), items);
+      return { ok: true, result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
   });
 
   ipcMain.handle("extension:installUnpacked", async (_event, payload = {}) => {
@@ -880,6 +900,53 @@ async function loadApplication(win) {
   await win.loadFile(indexPath);
 }
 
+function reloadRenderer(win) {
+  if (!win || win.isDestroyed()) return Promise.resolve();
+  return loadApplication(win);
+}
+
+function reloadAllRenderers() {
+  return Promise.all(BrowserWindow.getAllWindows().map((win) => reloadRenderer(win)));
+}
+
+function installDesktopMenu() {
+  const reloadItem = {
+    label: "Reload",
+    accelerator: "CmdOrCtrl+R",
+    click: () => void reloadAllRenderers(),
+  };
+  const forceReloadItem = {
+    label: "Force Reload",
+    accelerator: "Shift+F5",
+    click: () => void reloadAllRenderers(),
+  };
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      ...(process.platform === "darwin"
+        ? [{ role: "appMenu" }]
+        : [{ label: "File", submenu: [{ role: "quit" }] }]),
+      { role: "editMenu" },
+      {
+        label: "View",
+        submenu: [
+          reloadItem,
+          forceReloadItem,
+          { type: "separator" },
+          { role: "toggleDevTools" },
+          { type: "separator" },
+          { role: "resetZoom" },
+          { role: "zoomIn" },
+          { role: "zoomOut" },
+          { type: "separator" },
+          { role: "togglefullscreen" },
+        ],
+      },
+      { role: "windowMenu" },
+      { role: "help", submenu: [] },
+    ]),
+  );
+}
+
 /**
  * Production CSP — removes the dev-only "unsafe-eval" exposure flagged by Electron.
  * Only applied when packaged so Vite HMR (needs eval/inline) keeps working in dev.
@@ -934,6 +1001,7 @@ async function createWindow() {
     console.error(`[load] render gone ${details.reason}`);
   });
 
+  bindRendererReloadShortcuts(win, reloadRenderer);
   await loadApplication(win);
 
   const showWindow = () => {
@@ -1004,6 +1072,7 @@ app.whenReady().then(async () => {
   // Bind IPC + API before any BrowserWindow. A blocking runtime-repair modal used to run
   // first; second-instance could then createWindow with zero profile handlers.
   bindContentSecurityPolicy();
+  installDesktopMenu();
   bindIpc();
   mainBootReady = true;
   const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
@@ -1035,9 +1104,7 @@ app.whenReady().then(async () => {
   if (recovery.restored) {
     closeDatabase();
     await openDatabase(userDataRoot());
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) win.webContents.reload();
-    }
+    await reloadAllRenderers();
   }
   require("./lib/stealth-sync-outbox.cjs").startStealthSyncWorker();
   profileService.backfillProfileEvents();
@@ -1085,8 +1152,8 @@ app.whenReady().then(async () => {
         console.warn("[taskbar-badge] warm recent:", error instanceof Error ? error.message : error);
       }
     }
-    if (typeof warmCookieBridgeStoreCache === "function") {
-      void (async () => {
+    void (async () => {
+      if (typeof warmCookieBridgeStoreCache === "function") {
         try {
           const root = userDataRoot();
           await warmCookieBridgeStoreCache(root);
@@ -1099,10 +1166,37 @@ app.whenReady().then(async () => {
         } catch (error) {
           console.warn("[cookie-bridge] warm cache:", error instanceof Error ? error.message : error);
         }
-      })();
-    } else {
-      console.warn("[cookie-bridge] warm cache unavailable: missing startup hook");
-    }
+      } else {
+        console.warn("[cookie-bridge] warm cache unavailable: missing startup hook");
+      }
+      try {
+        const { checkCachedStoreExtensionsOnStartup } = require("./lib/webstore-extension.cjs");
+        const sendCheck = (check) => {
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) win.webContents.send("extension:storeUpdateCheck", check);
+          }
+        };
+        sendCheck(setStoreExtensionUpdateCheck({ checking: true, results: [] }));
+        const results = await checkCachedStoreExtensionsOnStartup(userDataRoot());
+        const check = setStoreExtensionUpdateCheck({
+          checking: false,
+          checkedAt: new Date().toISOString(),
+          results,
+        });
+        sendCheck(check);
+        const available = results.filter((row) => row.available);
+        if (available.length) {
+          console.log(
+            `[store-ext] startup available ${available.map((row) => `${row.storeId} ${row.current}→${row.latest}`).join(", ")}`,
+          );
+        } else {
+          console.log(`[store-ext] startup check: ${results.length} store extension(s) current`);
+        }
+      } catch (error) {
+        console.warn("[store-ext] startup check:", error instanceof Error ? error.message : error);
+        setStoreExtensionUpdateCheck({ checking: false, results: [] });
+      }
+    })();
   });
   try {
     const legacyIdentityRoot = path.join(userDataRoot(), "identity-ext");
@@ -1152,9 +1246,7 @@ app.whenReady().then(async () => {
     bindDistUiWatch({
       distDir: path.join(__dirname, "..", "dist"),
       onReload: () => {
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) win.webContents.reload();
-        }
+        void reloadAllRenderers();
       },
     });
   }

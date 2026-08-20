@@ -92,6 +92,8 @@
   --bg: #0b1020;
   --panel: #121830;
   --panel-2: #1a2140;
+  /* Card / KPI stroke — must exist; `color-mix(var(--border))` is invalid when unset. */
+  --border: rgb(255 255 255 / 0.14);
   --text: #e6e8ef;
   --muted: #8a93b2;
   --accent: #6366f1;

@@ -1,10 +1,8 @@
-import { useCallback, useState } from "react";
-import { LogIn, RefreshCcw } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { hubSessionLabels } from "@tool-workspace/hub-identity";
 import {
   HubLogButton,
   HubSidebarBrandIcon,
-  HubSidebarFooterButton,
   HubSidebarNavList,
   HubSidebarShell,
   HubUiZoomControl,
@@ -39,8 +37,6 @@ export function StealthHubShellSidebar({
   onNavigate,
   onSystemTabChange,
   onWorkflowTabChange,
-  onRefresh,
-  refreshBusy = false,
   onRequestHubSignIn,
 }: {
   screen: StealthScreen;
@@ -49,29 +45,18 @@ export function StealthHubShellSidebar({
   onNavigate: (screen: StealthScreen) => void;
   onSystemTabChange: (tab: StealthSystemTab) => void;
   onWorkflowTabChange: (tab: StealthWorkflowTab) => void;
-  onRefresh: () => void;
-  refreshBusy?: boolean;
   onRequestHubSignIn?: () => void;
 }) {
   const hubAuthEnabled = isStealthHubAuthEnabled();
   const { session, offline, signOut } = useStealthAuth();
   const showAnonymous = hubAuthEnabled && offline;
   const { groupOpen, setGroupSubnavOpen } = useNavGroupOpenState(STEALTH_NAV_SUBNAV_PREFIX, STEALTH_NAV_GROUP_IDS);
-  const [refreshing, setRefreshing] = useState(false);
   const labels = hubSessionLabels(session);
   const { roleKey } = useWorkspaceRoleKey(session, {
     profileRoleClient: getIdentitySupabase() as never,
     profileRoleUserId: session?.user?.id,
     profileRoleEmail: session?.user?.email,
   });
-
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    onRefresh();
-    window.setTimeout(() => setRefreshing(false), 600);
-  }, [onRefresh]);
-
-  const listRefreshing = refreshing || refreshBusy;
 
   return (
     <HubSidebarShell
@@ -151,15 +136,6 @@ export function StealthHubShellSidebar({
               await signOut();
               return true;
             }}
-          />
-          <HubSidebarFooterButton
-            icon={RefreshCcw}
-            iconClass="text-emerald-300"
-            label={listRefreshing ? "Updating…" : "Refresh"}
-            onClick={handleRefresh}
-            disabled={refreshBusy}
-            loading={listRefreshing}
-            title="Refresh active tab data"
           />
           <HubLogButton variant="global" />
           <StealthDisplayPrefs screen={screen} sidebarRow scope="global" settingsMode="general" />

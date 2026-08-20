@@ -18,6 +18,8 @@ export type HubDirectoryBulkMoreAction = {
   selectedCount?: number;
   /** Spin the Lucide icon (Sync / Save busy). */
   iconSpinning?: boolean;
+  /** Lucide tone — Groups / Export / Import SSOT (not muted white). */
+  iconClassName?: string;
   onClick: () => void;
 };
 
@@ -68,7 +70,7 @@ export function HubDirectoryBulkMoreMenu({
         {selectedCount > 0 ? <HubBulkActionCountBadge count={selectedCount} tone="indigo" /> : null}
       </button>
       {open ? (
-        <div role="menu" className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} right-0 w-52 py-1`}>
+        <div role="menu" className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} right-0 w-56 py-1`}>
           {actions.map((action) => {
             const Icon = action.icon;
             return (
@@ -86,7 +88,7 @@ export function HubDirectoryBulkMoreMenu({
               >
                 <Icon
                   size={14}
-                  className={`shrink-0 opacity-80${action.iconSpinning ? " animate-spin" : ""}`}
+                  className={`shrink-0 ${action.iconClassName ?? "opacity-80"}${action.iconSpinning ? " animate-spin" : ""}`}
                   aria-hidden
                 />
                 <span className="min-w-0 flex-1">{action.label}</span>
@@ -96,7 +98,7 @@ export function HubDirectoryBulkMoreMenu({
               </button>
             );
           })}
-          {footer ? <div className="border-t border-white/5 px-3 py-2">{footer}</div> : null}
+          {footer ? <div className="border-t border-white/8">{footer}</div> : null}
         </div>
       ) : null}
     </div>

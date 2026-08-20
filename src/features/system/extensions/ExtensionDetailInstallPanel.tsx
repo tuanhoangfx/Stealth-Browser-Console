@@ -1,6 +1,15 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
+import { HubAdmClickEditField, HubAdmClickFilterField } from "@tool-workspace/hub-ui";
 
-/** Install form — moved from directory filter row (Web Store / unpacked). */
+const EXTENSION_NEW_FORM_ROW = "hub-adm-form-row hub-adm-form-row--aligned twofa-adm-form-row--aligned";
+const EXTENSION_NEW_CONTROL_CLASS = "field auth-gate-field stealth-adm-control";
+
+const SCOPE_OPTIONS = [
+  { value: "all", label: "All profiles", emoji: "📡" },
+  { value: "one", label: "One profile", emoji: "🧍" },
+];
+
+/** New-extension form — Chrome Web Store ID / URL (ADM field SSOT). */
 export const ExtensionDetailInstallPanel = memo(function ExtensionDetailInstallPanel({
   storeInput,
   setStoreInput,
@@ -10,8 +19,6 @@ export const ExtensionDetailInstallPanel = memo(function ExtensionDetailInstallP
   profileId,
   setProfileId,
   busy,
-  onInstallStore,
-  onInstallUnpacked,
 }: {
   storeInput: string;
   setStoreInput: (value: string) => void;
@@ -21,71 +28,58 @@ export const ExtensionDetailInstallPanel = memo(function ExtensionDetailInstallP
   profileId: string;
   setProfileId: (value: string) => void;
   busy: boolean;
-  onInstallStore: () => void;
-  onInstallUnpacked: () => void;
 }) {
+  const profileOptions = useMemo(
+    () =>
+      profiles.map((profile) => ({
+        value: profile.id,
+        label: profile.name,
+        detail: profile.id.slice(0, 8),
+        emoji: "📡",
+      })),
+    [profiles],
+  );
+
   return (
     <div className="space-y-3">
-      <p className="text-xs text-[var(--muted)]">
-        CloakBrowser cannot use “Add to Chrome” on the Web Store. Install here, then close and re-launch profiles.
+      <p className="text-[var(--muted)]">
+        CloakBrowser cannot use “Add to Chrome” on the Web Store. Install here, then close and re-launch
+        profiles.
       </p>
-      <div className="grid gap-2 lg:grid-cols-[7rem_minmax(0,1fr)_auto]">
-        <label className="text-xs text-[var(--muted)]">
-          Scope
-          <select
-            className="hub-input mt-1 w-full text-xs"
-            value={profileScope}
-            disabled={busy}
-            onChange={(e) => setProfileScope(e.target.value as "all" | "one")}
-          >
-            <option value="all">All profiles</option>
-            <option value="one">One profile</option>
-          </select>
-        </label>
-        <label className="text-xs text-[var(--muted)]">
-          Store ID / URL
-          <input
-            type="text"
-            className="hub-input mt-1 w-full text-xs"
-            placeholder="kaaad… or chromewebstore.google.com/detail/…"
-            value={storeInput}
-            disabled={busy}
-            onChange={(e) => setStoreInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onInstallStore();
-            }}
-          />
-        </label>
-        <div className="flex flex-wrap items-end gap-2">
-          <button
-            type="button"
-            className="hub-btn hub-btn--primary text-xs"
-            disabled={busy || !storeInput.trim()}
-            onClick={onInstallStore}
-          >
-            Install from Web Store
-          </button>
-          <button type="button" className="hub-btn hub-btn--ghost text-xs" disabled={busy} onClick={onInstallUnpacked}>
-            Load unpacked
-          </button>
-        </div>
+      <div className={EXTENSION_NEW_FORM_ROW}>
+        <HubAdmClickFilterField
+          header={{ label: "Scope", headerEmoji: "📡" }}
+          filterKey="extension-scope"
+          fieldLabel="Scope"
+          options={SCOPE_OPTIONS}
+          value={profileScope}
+          onChange={(value) => setProfileScope(value === "one" ? "one" : "all")}
+          disabled={busy}
+          allowClear={false}
+        />
+        <HubAdmClickEditField
+          header={{ label: "Store ID / URL", headerEmoji: "🛒" }}
+          fieldLabel="Store ID / URL"
+          value={storeInput}
+          onChange={setStoreInput}
+          placeholder="kaaad… or chromewebstore.google.com/detail/…"
+          disabled={busy}
+          controlClassName={EXTENSION_NEW_CONTROL_CLASS}
+        />
       </div>
       {profileScope === "one" ? (
-        <label className="block text-xs text-[var(--muted)]">
-          Profile
-          <select
-            className="hub-input mt-1 w-full text-xs"
+        <div className={EXTENSION_NEW_FORM_ROW}>
+          <HubAdmClickFilterField
+            header={{ label: "Profile", headerEmoji: "📡" }}
+            filterKey="extension-profile"
+            fieldLabel="Profile"
+            options={profileOptions}
             value={profileId}
+            onChange={setProfileId}
             disabled={busy}
-            onChange={(e) => setProfileId(e.target.value)}
-          >
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.id.slice(0, 8)})
-              </option>
-            ))}
-          </select>
-        </label>
+            allowClear={false}
+          />
+        </div>
       ) : null}
     </div>
   );

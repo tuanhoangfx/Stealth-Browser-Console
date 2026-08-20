@@ -28,7 +28,7 @@ export function buildWorkflowStoreFilters(entries: WorkflowStoreEntry[]): Filter
     {
       key: "group",
       label: "Group",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: entries.length,
       options: [...groupCounts.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -37,7 +37,7 @@ export function buildWorkflowStoreFilters(entries: WorkflowStoreEntry[]): Filter
     {
       key: "platform",
       label: "Platform",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: entries.length,
       options: [...platformCounts.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -46,7 +46,7 @@ export function buildWorkflowStoreFilters(entries: WorkflowStoreEntry[]): Filter
     {
       key: "source",
       label: "Source",
-      showAllLabel: true,
+      showAllLabel: false,
       totalCount: entries.length,
       options: [...sourceCounts.entries()]
         .sort(([a], [b]) => a.localeCompare(b))

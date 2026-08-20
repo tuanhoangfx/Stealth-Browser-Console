@@ -72,7 +72,7 @@ export function stealthFilterHintContent(
   }
 
   if (scope === "system-extensions" && filterKey === "kind") {
-    return asFilterBarHint(colHint(label, "Store cache vs local unpacked folder."));
+    return asFilterBarHint(colHint(label, "Chrome Web Store cache."));
   }
 
   return colHint(label, "Filter facet shown in the toolbar when enabled in Display.");

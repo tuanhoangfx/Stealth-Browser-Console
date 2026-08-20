@@ -552,6 +552,24 @@ function buildRoutes(services) {
       },
     },
     {
+      id: "extensions.removeCached",
+      method: "POST",
+      pattern: /^\/api\/extensions\/remove$/,
+      handler(ctx) {
+        const { removeCachedExtensions } = require("./lib/extensions-status.cjs");
+        const items = Array.isArray(ctx.body.items) ? ctx.body.items : ctx.body.item ? [ctx.body.item] : [];
+        try {
+          const result = removeCachedExtensions(userDataRoot, items);
+          return send.json(ctx.res, 200, { ok: true, result });
+        } catch (error) {
+          return send.json(ctx.res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
+    {
       id: "jobs.events",
       method: "GET",
       pattern: /^\/api\/jobs\/([^/]+)\/events$/,

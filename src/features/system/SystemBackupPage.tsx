@@ -13,6 +13,10 @@ import { useRunLogs } from "../runtime/RunLogsContext";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { ProfileRow, ProfileStorageStat } from "../../types";
 import { useProfileDirectoryPageSize } from "../profiles/useProfileDirectoryPageSize";
+import {
+  readBackupDirectoryFilterUrl,
+  writeBackupDirectoryFilterUrl,
+} from "./backup/backup-directory-url";
 import { useSystemBackupDirectoryChrome } from "./backup/useSystemBackupDirectoryChrome";
 import { SystemBackupDirectoryPanel } from "./backup/SystemBackupDirectoryPanel";
 import {
@@ -40,14 +44,26 @@ export const SystemBackupPage = memo(function SystemBackupPage({
 }) {
   const { refreshProfiles } = useStealthShell();
   const { profiles: catalogProfiles, catalogStats, groups } = useProfilesRuntime();
-  const { kpis, centerStats } = useSystemBackupDirectoryChrome(catalogStats, catalogProfiles);
   const { notifyInfo, notifyError } = useSystemBackupFeedback();
   const { pushToast } = useAppToast();
   const { addLog } = useRunLogs();
   const pageSize = useProfileDirectoryPageSize();
-  const directorySearch = useDirectorySearchQuery({ debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS });
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>([]);
+  const directorySearch = useDirectorySearchQuery({
+    debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS,
+    initialQuery: readBackupDirectoryFilterUrl().search,
+  });
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    () => readBackupDirectoryFilterUrl().groupIds,
+  );
+  const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>(
+    () => readBackupDirectoryFilterUrl().statuses,
+  );
+  const { kpis, centerStats } = useSystemBackupDirectoryChrome(catalogStats, catalogProfiles, {
+    groupIds: selectedGroupIds,
+    statuses: selectedStatuses,
+    setGroupIds: setSelectedGroupIds,
+    setStatuses: setSelectedStatuses,
+  });
   const [pageIndex, setPageIndex] = useState(0);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -65,6 +81,10 @@ export const SystemBackupPage = memo(function SystemBackupPage({
   const jobUiTimerRef = useRef<number | undefined>(undefined);
   const pendingJobUiRef = useRef<{ phase: string; current: number; total: number } | null>(null);
   const [detailModal, setDetailModal] = useState<ProfileDetailModalProps | null>(null);
+
+  useEffect(() => {
+    writeBackupDirectoryFilterUrl(selectedGroupIds, selectedStatuses, directorySearch.query);
+  }, [selectedGroupIds, selectedStatuses, directorySearch.query]);
 
   const backupJobLabel = useMemo(() => {
     if (!jobBusy) return null;

@@ -1,12 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useHubDirectorySelection } from "@tool-workspace/hub-ui";
+import { HubConfirmDialog, useHubDirectorySelection } from "@tool-workspace/hub-ui";
 import {
   fetchExtensionsStatus,
   installStoreExtension,
-  installUnpackedExtension,
   listProfiles,
-  pickUnpackedExtensionFolder,
+  removeCachedExtensions,
 } from "../../api";
+import { COOKIE_BRIDGE_STORE_ID } from "../../lib/stealth-extension-store-ids";
 import { useAppToast } from "../../components/toast";
 import { resolveExtensionDisplayName } from "../../lib/extension-display-name";
 import type { CachedStoreExtension, StealthProfile } from "../../types";
@@ -14,6 +14,10 @@ import { useProfileDirectoryPageSize } from "../profiles/useProfileDirectoryPage
 import { ExtensionDetailModal } from "./extensions/ExtensionDetailModal";
 import { SystemExtensionsDirectoryPanel, extensionRowId } from "./extensions/SystemExtensionsDirectoryPanel";
 import type { ExtensionKindFilter } from "./extensions/extension-filters";
+import {
+  readExtensionDirectoryFilterUrl,
+  writeExtensionDirectoryFilterUrl,
+} from "./extensions/extension-directory-url";
 import { useSystemExtensionsDirectoryChrome } from "./extensions/useSystemExtensionsDirectoryChrome";
 import { SystemExtensionsRail } from "./SystemExtensionsRail";
 
@@ -25,8 +29,10 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
   const { pushToast } = useAppToast();
   const [cached, setCached] = useState<CachedStoreExtension[]>([]);
   const [profiles, setProfiles] = useState<StealthProfile[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedKinds, setSelectedKinds] = useState<ExtensionKindFilter[]>([]);
+  const [search, setSearch] = useState(() => readExtensionDirectoryFilterUrl().search);
+  const [selectedKinds, setSelectedKinds] = useState<ExtensionKindFilter[]>(
+    () => readExtensionDirectoryFilterUrl().kinds,
+  );
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = useProfileDirectoryPageSize();
   const [storeInput, setStoreInput] = useState("");
@@ -36,6 +42,7 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
   const [jobLabel, setJobLabel] = useState<string | null>(null);
   const [detailExtension, setDetailExtension] = useState<CachedStoreExtension | null>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const filtered = useMemo(() => {
     let rows = cached;
@@ -54,6 +61,10 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
     const start = pageIndex * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, pageIndex, pageSize]);
+
+  useEffect(() => {
+    writeExtensionDirectoryFilterUrl(selectedKinds, search);
+  }, [selectedKinds, search]);
 
   useEffect(() => {
     setPageIndex(0);
@@ -78,7 +89,15 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
     return filtered.find((ext) => extensionRowId(ext) === id) ?? null;
   }, [filtered, selectedIds]);
 
-  const { kpis, centerStats } = useSystemExtensionsDirectoryChrome(cached);
+  const selectedExtensions = useMemo(
+    () => filtered.filter((ext) => selectedIds.has(extensionRowId(ext))),
+    [filtered, selectedIds],
+  );
+
+  const { kpis, centerStats } = useSystemExtensionsDirectoryChrome(cached, {
+    selectedKinds,
+    setSelectedKinds,
+  });
 
   const openDetail = useCallback((extension: CachedStoreExtension) => {
     setInstallModalOpen(false);
@@ -134,7 +153,7 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
         `Installed ${result.name}${result.version ? ` v${result.version}` : ""}`,
         result.installed,
         result.profiles,
-        result.cached ? "(used local cache — Force update to re-download)" : "(downloaded)",
+        result.cached ? "(used local cache)" : "(downloaded)",
       );
       setStoreInput("");
       setSelectedIds(new Set());
@@ -148,53 +167,30 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
     }
   }, [afterInstall, profileIds, pushToast, refresh, setSelectedIds, storeInput]);
 
-  const onInstallUnpacked = useCallback(async () => {
-    setBusy(true);
-    setJobLabel("Loading unpacked folder…");
-    try {
-      const folder = await pickUnpackedExtensionFolder();
-      if (!folder) {
-        setJobLabel(null);
-        setBusy(false);
-        return;
-      }
-      const result = await installUnpackedExtension({ path: folder, profileIds });
-      afterInstall(`Loaded unpacked ${result.name}`, result.installed, result.profiles);
-      setSelectedIds(new Set());
-      setInstallModalOpen(false);
-      await refresh();
-    } catch (err) {
-      setJobLabel(null);
-      pushToast(err instanceof Error ? err.message : String(err), "error");
-    } finally {
-      setBusy(false);
-    }
-  }, [afterInstall, profileIds, pushToast, refresh, setSelectedIds]);
+  const openDeleteSelected = useCallback(() => {
+    if (!selectedExtensions.length) return;
+    setDetailExtension(null);
+    setInstallModalOpen(false);
+    setDeleteConfirmOpen(true);
+  }, [selectedExtensions.length]);
 
-  const onForceUpdateSelected = useCallback(async () => {
-    const selected = filtered.filter((ext) => selectedIds.has(extensionRowId(ext)) && ext.kind === "store" && ext.storeId);
-    if (!selected.length) {
-      pushToast("Select one or more Web Store extensions (local unpacked cannot force-update from CWS).", "error");
-      return;
-    }
+  const onDeleteSelected = useCallback(async () => {
+    if (!selectedExtensions.length) return;
     setBusy(true);
-    setJobLabel(`Force updating ${selected.length} extension(s)…`);
+    setJobLabel(`Deleting ${selectedExtensions.length} extension cache(s)…`);
     try {
-      const lines: string[] = [];
-      for (const ext of selected) {
-        const result = await installStoreExtension({
-          storeId: ext.storeId!,
-          profileIds,
-          force: true,
-        });
-        lines.push(
-          `${result.name} v${result.version || "?"} — ${result.installed}/${result.profiles} profiles`,
-        );
-      }
-      const message = `Force updated: ${lines.join("; ")}. Re-launch profiles.`;
+      const result = await removeCachedExtensions(
+        selectedExtensions.map((ext) => ({
+          kind: ext.kind,
+          storeId: ext.storeId,
+          localKey: ext.localKey,
+        })),
+      );
+      const message = `Deleted ${result.removed} cached extension(s). Close and re-launch profiles if they still load these sources.`;
       setJobLabel(message);
       pushToast(message, "success");
       setSelectedIds(new Set());
+      setDeleteConfirmOpen(false);
       await refresh();
     } catch (err) {
       setJobLabel(null);
@@ -202,12 +198,16 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
     } finally {
       setBusy(false);
     }
-  }, [filtered, profileIds, pushToast, refresh, selectedIds, setSelectedIds]);
+  }, [pushToast, refresh, selectedExtensions, setSelectedIds]);
 
   const closeModal = useCallback(() => {
     setDetailExtension(null);
     setInstallModalOpen(false);
   }, []);
+
+  const deleteIncludesCookieBridge = selectedExtensions.some(
+    (ext) => ext.storeId === COOKIE_BRIDGE_STORE_ID || /cookie bridge/i.test(ext.name),
+  );
 
   const modalOpen = Boolean(detailExtension) || installModalOpen;
 
@@ -230,15 +230,41 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
         busy={busy}
-        onForceUpdateSelected={() => void onForceUpdateSelected()}
         onOpenDetail={openDetail}
         onOpenDetailSingle={openDetailSingle}
         onOpenInstall={openInstall}
+        onDeleteSelected={openDeleteSelected}
         headerActions={headerActions}
         centerStats={centerStats}
         kpis={kpis}
         rail={<SystemExtensionsRail jobLabel={jobLabel} />}
       />
+      {deleteConfirmOpen ? (
+        <HubConfirmDialog
+          open
+          title={selectedExtensions.length === 1 ? "Delete extension cache?" : "Delete selected extension caches?"}
+          message={
+            <>
+              <p>
+                This removes {selectedExtensions.length} cached source
+                {selectedExtensions.length === 1 ? "" : "s"} from Extensions. Store items can be
+                installed again with New.
+              </p>
+              {deleteIncludesCookieBridge ? (
+                <p className="mt-2">
+                  Cookie Bridge will download again on the next profile launch if that slot is still
+                  enabled.
+                </p>
+              ) : null}
+            </>
+          }
+          confirmLabel="Delete"
+          tone="danger"
+          confirmBusy={busy}
+          onConfirm={() => void onDeleteSelected()}
+          onClose={() => setDeleteConfirmOpen(false)}
+        />
+      ) : null}
       {modalOpen ? (
         <ExtensionDetailModal
           extension={detailExtension}
@@ -253,7 +279,6 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
           setProfileId={setProfileId}
           busy={busy}
           onInstallStore={() => void onInstallStore()}
-          onInstallUnpacked={() => void onInstallUnpacked()}
           onClose={closeModal}
         />
       ) : null}

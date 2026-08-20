@@ -20,6 +20,8 @@
   z-index: 1;
   flex: 0 0 auto;
   min-width: 0;
+  /* --panel tiles read as cards (P0020/P0005). Do not paint --panel here. */
+  background: var(--bg);
 }
 
 .hub-split-directory-pane__kpi-band .hub-kpi-strip {

@@ -8,6 +8,7 @@ import {
 import type { CachedStoreExtension } from "../../../types";
 import { resolveExtensionDisplayName } from "../../../lib/extension-display-name";
 import type { StealthExtensionsColumnKey } from "../../../lib/directory-column-meta";
+import { ExtensionKindBadge } from "./extension-kind-badge";
 
 function renderUpdatedCell(iso?: string) {
   if (!iso) return <span className="hub-directory-table-body-text">—</span>;
@@ -52,7 +53,7 @@ export function renderSystemExtensionsDirectoryBodyCell(
     case "kind":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text capitalize">{ext.kind}</span>
+          <ExtensionKindBadge kind={ext.kind} />
         </DirectoryTableBodyCell>
       );
     case "version":

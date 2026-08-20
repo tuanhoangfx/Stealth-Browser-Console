@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleOff, Clock, FolderOpen, Globe, Layers, Laptop, Monitor, MonitorSmartphone, Palette, Play, Shield, Tag, Terminal } from "lucide-react";
+import { CheckCircle2, CircleOff, Clock, FolderOpen, Globe, Layers, Laptop, Monitor, MonitorSmartphone, Palette, Play, Puzzle, Shield, Store, Tag, Terminal } from "lucide-react";
 import { resolveSemanticIcon, type FilterIconMeta, type SemanticIconLookupKey } from "@tool-workspace/hub-ui";
 import { DEVICE_PRESETS } from "./device-presets";
 
@@ -53,6 +53,11 @@ const BY_FILTER: Record<string, Record<string, FilterIconMeta>> = {
     "host-maximized": { icon: Monitor, className: "text-emerald-300" },
     "preset-viewport": { icon: MonitorSmartphone, className: "text-violet-300" },
     "engine-default": { icon: Monitor, className: "text-slate-300" },
+  },
+  kind: {
+    all: { icon: Puzzle, className: "text-indigo-300" },
+    store: { icon: Store, className: "text-sky-300" },
+    local: { icon: FolderOpen, className: "text-amber-300" },
   },
   "browser-proxy-preset": {
     all: { icon: Globe, className: "text-sky-300" },

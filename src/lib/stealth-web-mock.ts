@@ -434,6 +434,15 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
       ok: false,
       error: "Unpacked install requires Electron (dev:web mock).",
     }),
+    removeCachedExtensions: async () => ({
+      ok: false,
+      error: "Delete cache requires Electron (dev:web mock).",
+    }),
+    fetchStoreExtensionUpdateCheck: async () => ({
+      ok: true,
+      check: { checking: false, checkedAt: null, results: [] },
+    }),
+    onStoreExtensionUpdateCheck: () => () => undefined,
     fetchExtensionIcon: async (payload) => ({
       ok: false,
       storeId: String(payload?.storeId ?? ""),

@@ -4,6 +4,7 @@ const {
   installStoreExtension,
   installUnpackedExtension,
   parseStoreId,
+  removeCachedExtensions,
   resolveExtensionIconDataUri,
 } = require("./webstore-extension.cjs");
 
@@ -16,8 +17,7 @@ function getExtensionsStatus(userDataRoot) {
     launchMode: extensionLaunchMode(),
     nativeMode: nativeExtensionsEnabled(),
     cached,
-    webStoreInstallHint:
-      "Paste any Chrome Web Store ID or URL. Local unpacked folders are supported via Load unpacked folder.",
+    webStoreInstallHint: "Paste any Chrome Web Store ID or URL.",
   };
 }
 
@@ -25,5 +25,6 @@ module.exports = {
   getExtensionsStatus,
   installStoreExtension,
   installUnpackedExtension,
+  removeCachedExtensions,
   parseStoreId,
 };

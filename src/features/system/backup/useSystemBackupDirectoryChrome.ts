@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { KpiTileData } from "@tool-workspace/hub-ui";
 import { defaultsForPrefItems, isHubPrefVisible } from "../../../lib/display-pref-helpers";
 import { SYSTEM_BACKUP_DISPLAY_PREFS } from "../../../lib/display-prefs-registry";
@@ -7,6 +7,7 @@ import { useStealthHubListPrefs } from "../../../lib/useStealthHubListPrefs";
 import type { ProfileCatalogStats, ProfileRow } from "../../../types";
 import { catalogStatsToKpiNumbers } from "../../profiles/profile-catalog-stats-patch";
 import { buildProfileHeaderStats } from "../../profiles/profile-header-metrics";
+import { withProfileHeaderStatFilterClicks, withProfileKpiFilterClicks } from "../../profiles/profile-kpi-filter";
 import { buildProfileKpiItems, buildProfileKpiNumbers } from "../../profiles/profile-kpi-items";
 
 function resolveCatalogKpiNumbers(catalogStats: ProfileCatalogStats | null, profiles: ProfileRow[]) {
@@ -18,9 +19,23 @@ function resolveCatalogKpiNumbers(catalogStats: ProfileCatalogStats | null, prof
 export function useSystemBackupDirectoryChrome(
   catalogStats: ProfileCatalogStats | null,
   profiles: ProfileRow[],
+  filter: {
+    groupIds: string[];
+    statuses: ProfileRow["status"][];
+    setGroupIds: (values: string[]) => void;
+    setStatuses: (values: ProfileRow["status"][]) => void;
+  },
 ) {
+  const { groupIds, statuses, setGroupIds, setStatuses } = filter;
   const tabDisplay = useStealthSystemTabDisplayPrefs("backup");
   const hubPrefs = useStealthHubListPrefs();
+  const applyKpiFilter = useCallback(
+    (next: { groupIds: string[]; statuses: ProfileRow["status"][] }) => {
+      setGroupIds(next.groupIds);
+      setStatuses(next.statuses);
+    },
+    [setGroupIds, setStatuses],
+  );
   const catalogKpis = useMemo(
     () => resolveCatalogKpiNumbers(catalogStats, profiles),
     [catalogStats, profiles],
@@ -37,10 +52,15 @@ export function useSystemBackupDirectoryChrome(
 
   const kpis = useMemo<KpiTileData[]>(
     () =>
-      buildProfileKpiItems(catalogKpis).filter(
-        (item) => !item.prefKey || isHubPrefVisible(tabDisplay?.kpi ?? null, kpiDefaults, item.prefKey),
+      withProfileKpiFilterClicks(
+        buildProfileKpiItems(catalogKpis).filter(
+          (item) => !item.prefKey || isHubPrefVisible(tabDisplay?.kpi ?? null, kpiDefaults, item.prefKey),
+        ),
+        groupIds,
+        statuses,
+        applyKpiFilter,
       ),
-    [catalogKpis, kpiDefaults, tabDisplay?.kpi],
+    [applyKpiFilter, catalogKpis, groupIds, kpiDefaults, statuses, tabDisplay?.kpi],
   );
 
   const headerStatDefaults = useMemo(
@@ -58,8 +78,13 @@ export function useSystemBackupDirectoryChrome(
         .filter((item) => isHubPrefVisible(hubPrefs.systemHeaderStats, headerStatDefaults, item.key))
         .map((item) => item.key),
     );
-    return buildProfileHeaderStats(visibleKeys, catalogKpis);
-  }, [catalogKpis, headerStatDefaults, hubPrefs.systemHeaderStats]);
+    return withProfileHeaderStatFilterClicks(
+      buildProfileHeaderStats(visibleKeys, catalogKpis),
+      groupIds,
+      statuses,
+      applyKpiFilter,
+    );
+  }, [applyKpiFilter, catalogKpis, groupIds, headerStatDefaults, hubPrefs.systemHeaderStats, statuses]);
 
   return { kpis, centerStats };
 }

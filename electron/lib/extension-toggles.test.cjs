@@ -26,6 +26,11 @@ test("normalizeExtensionToggles coerces booleans", () => {
   });
 });
 
+test("isLocalExtensionAllowed is shelved off", () => {
+  const { isLocalExtensionAllowed } = require("./extension-toggles.cjs");
+  assert.equal(isLocalExtensionAllowed({ e0001: true, surfshark: true, webStore: true }), false);
+});
+
 test("isStoreExtensionAllowed respects per-kind toggles", () => {
   const toggles = { e0001: true, surfshark: false, webStore: false };
   assert.equal(isStoreExtensionAllowed(COOKIE_BRIDGE_STORE_ID, toggles), true);

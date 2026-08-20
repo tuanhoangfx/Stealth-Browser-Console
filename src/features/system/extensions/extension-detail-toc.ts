@@ -9,7 +9,7 @@ export const EXTENSION_DETAIL_SECTION_LOG = "extension-detail-log";
 
 export const EXTENSION_DETAIL_TOC = [
   { id: EXTENSION_DETAIL_SECTION_METADATA, label: "Metadata" },
-  { id: EXTENSION_DETAIL_SECTION_INSTALL, label: "Install" },
+  { id: EXTENSION_DETAIL_SECTION_INSTALL, label: "New" },
   { id: EXTENSION_DETAIL_SECTION_LOG, label: "Console" },
 ] as const;
 

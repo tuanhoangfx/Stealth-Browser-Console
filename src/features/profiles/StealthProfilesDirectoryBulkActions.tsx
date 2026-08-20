@@ -192,15 +192,6 @@ export function StealthProfilesDirectoryBulkActions({
         labelHint={profileAdaptiveEditLabelHint(selectedCount)}
       />
       <HubBulkActionButton
-        icon={<Play size={14} aria-hidden />}
-        label="Launch"
-        title={launchTitle}
-        tone="emerald"
-        disabled={!hasSelection || syncBusy || launchBusy || launchDisabled}
-        selectedCount={hasSelection ? selectedCount : undefined}
-        onClick={onLaunch}
-      />
-      <HubBulkActionButton
         icon={<Square size={14} aria-hidden />}
         label="Close"
         title={closeTitle}
@@ -211,7 +202,7 @@ export function StealthProfilesDirectoryBulkActions({
       />
       <div ref={extensionRef} className="relative">
         <HubBulkActionButton
-          icon={<Blocks size={14} aria-hidden />}
+          icon={<Blocks size={14} className="text-sky-300" aria-hidden />}
           label="Extension"
           title={hasSelection ? "Set extensions for selected profiles" : "Select profiles first"}
           tone="sky"
@@ -229,7 +220,6 @@ export function StealthProfilesDirectoryBulkActions({
                 selectedCount={selectedCount}
                 onToggle={handleAllToggle}
               />
-              <div className="mx-2 border-t border-white/8" />
               <ExtensionToggleRow
                 icon={e0001Icon ?? undefined}
                 iconKind="e0001"
@@ -258,27 +248,42 @@ export function StealthProfilesDirectoryBulkActions({
           </div>
         ) : null}
       </div>
-      <HubBulkActionButton
-        icon={<Trash2 size={14} aria-hidden />}
-        label="Delete"
-        title="Delete selected profiles"
-        tone="rose"
-        disabled={!hasSelection || syncBusy}
-        onClick={onDelete}
-      />
       <HubDirectoryBulkMoreMenu
-        title="Groups, Export, Import"
+        title="Launch, Delete, Groups, Export, Import"
         actions={[
+          {
+            key: "launch",
+            label: "Launch",
+            icon: Play,
+            iconClassName: "text-emerald-300",
+            title: launchTitle,
+            tone: "emerald",
+            disabled: !hasSelection || syncBusy || launchBusy || launchDisabled,
+            selectedCount: hasSelection ? selectedCount : undefined,
+            onClick: onLaunch,
+          },
+          {
+            key: "delete",
+            label: "Delete",
+            icon: Trash2,
+            iconClassName: "text-rose-300",
+            title: "Delete selected profiles",
+            tone: "rose",
+            disabled: !hasSelection || syncBusy,
+            onClick: onDelete,
+          },
           {
             key: "groups",
             label: "Groups",
             icon: FolderTree,
+            iconClassName: "text-amber-300",
             onClick: onGroups,
           },
           {
             key: "export",
             label: "Export",
             icon: Download,
+            iconClassName: "text-sky-300",
             disabled: !hasSelection || syncBusy,
             onClick: onExport,
           },
@@ -286,6 +291,7 @@ export function StealthProfilesDirectoryBulkActions({
             key: "import",
             label: "Import",
             icon: Upload,
+            iconClassName: "text-emerald-300",
             onClick: onImport,
           },
         ]}

@@ -16,6 +16,9 @@ import type {
   ExtensionsStatus,
   InstallStoreExtensionResult,
   InstallUnpackedExtensionResult,
+  CachedExtensionRef,
+  RemoveCachedExtensionsResult,
+  StoreExtensionUpdateCheck,
   ProfileStorageStat,
   ProfileBackupMeta,
 } from "./types";
@@ -440,4 +443,20 @@ export async function installUnpackedExtension(payload: {
   const data = await api().installUnpackedExtension(payload);
   if (!data.ok || !data.result) throw new Error(data.error || "Install failed");
   return data.result;
+}
+
+export async function removeCachedExtensions(items: CachedExtensionRef[]): Promise<RemoveCachedExtensionsResult> {
+  const data = await api().removeCachedExtensions({ items });
+  if (!data.ok || !data.result) throw new Error(data.error || "Delete failed");
+  return data.result;
+}
+
+export async function fetchStoreExtensionUpdateCheck(): Promise<StoreExtensionUpdateCheck> {
+  const data = await api().fetchStoreExtensionUpdateCheck();
+  if (!data.ok || !data.check) throw new Error(data.error || "Store update check unavailable");
+  return data.check;
+}
+
+export function onStoreExtensionUpdateCheck(handler: (check: StoreExtensionUpdateCheck) => void): () => void {
+  return api().onStoreExtensionUpdateCheck(handler);
 }

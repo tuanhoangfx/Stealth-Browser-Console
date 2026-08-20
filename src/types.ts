@@ -309,6 +309,33 @@ export type InstallUnpackedExtensionResult = {
   details: Array<{ profileDir: string; extId?: string; error?: string }>;
 };
 
+export type CachedExtensionRef = {
+  kind: "store" | "local";
+  storeId?: string | null;
+  localKey?: string | null;
+};
+
+export type RemoveCachedExtensionsResult = {
+  removed: number;
+  results: Array<CachedExtensionRef & { ok: boolean; cleared?: boolean; error?: string }>;
+};
+
+export type StoreExtensionUpdateRow = {
+  storeId: string;
+  name?: string;
+  current: string;
+  latest: string;
+  available: boolean;
+  status?: string;
+  error?: string;
+};
+
+export type StoreExtensionUpdateCheck = {
+  checking: boolean;
+  checkedAt?: string | null;
+  results: StoreExtensionUpdateRow[];
+};
+
 declare global {
   interface Window {
     stealthApi: {
@@ -501,6 +528,15 @@ declare global {
         sourceDir?: string;
         profileIds?: string[];
       }) => Promise<{ ok: boolean; result?: InstallUnpackedExtensionResult; error?: string }>;
+      removeCachedExtensions: (payload: {
+        items: CachedExtensionRef[];
+      }) => Promise<{ ok: boolean; result?: RemoveCachedExtensionsResult; error?: string }>;
+      fetchStoreExtensionUpdateCheck: () => Promise<{
+        ok: boolean;
+        check?: StoreExtensionUpdateCheck;
+        error?: string;
+      }>;
+      onStoreExtensionUpdateCheck: (handler: (check: StoreExtensionUpdateCheck) => void) => () => void;
       onProfileSession: (
         handler: (payload: { profile: StealthProfile; event: string }) => void
       ) => () => void;

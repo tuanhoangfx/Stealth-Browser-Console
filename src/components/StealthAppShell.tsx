@@ -113,7 +113,7 @@ export const StealthAppShell = memo(function StealthAppShell({
   const { session, offline, authRequired, policyReady, loading, toolAccess, hubConfigured, prepareHubSignIn } =
     useStealthAuth();
   const [hubSignInRequested, setHubSignInRequested] = useState(false);
-  const { view, setView, refreshProfiles, syncBusy, engineStatus } = useStealthShell();
+  const { view, setView, engineStatus } = useStealthShell();
 
   const headerActions = useMemo(() => <StealthTabHeaderActions screen={view} />, [view]);
 
@@ -170,8 +170,6 @@ export const StealthAppShell = memo(function StealthAppShell({
         onNavigate={setView}
         onSystemTabChange={onSystemTabChange}
         onWorkflowTabChange={onWorkflowTabChange}
-        onRefresh={() => void refreshProfiles()}
-        refreshBusy={syncBusy}
         onRequestHubSignIn={
           hubAuthEnabled
             ? () => {

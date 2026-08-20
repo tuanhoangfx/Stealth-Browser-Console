@@ -481,6 +481,7 @@ export {
   type TabHeaderStatItem,
   type TabTitleMenuItem,
 } from "./shell/AppTabHeader";
+export { withPrefKeyHeaderStatClicks } from "./shell/withPrefKeyHeaderStatClicks";
 export { HubListChromeHeader, type HubListChromeHeaderProps } from "./shell/HubListChromeHeader";
 export {
   HubHeaderStatusNote,

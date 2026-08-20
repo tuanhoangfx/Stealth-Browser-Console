@@ -2,7 +2,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-function bindDistUiWatch({ distDir, onReload }) {
+/** Vite `emptyOutDir` writes many assets; only index.html means the graph is complete. */
+function isDistWatchName(name) {
+  return /(?:^|[\\/])index\.html$/i.test(String(name || ""));
+}
+
+function bindDistUiWatch({ distDir, onReload, debounceMs = 800 }) {
   if (String(process.env.STEALTH_DIST_WATCH || "") !== "1") {
     return () => {};
   }
@@ -23,16 +28,14 @@ function bindDistUiWatch({ distDir, onReload }) {
       lastStamp = stamp;
       console.log(`[dist-watch] reload (${reason})`);
       onReload();
-    }, 250);
+    }, debounceMs);
   };
 
   const watchers = [];
   const watchPath = (target, label) => {
     try {
       const w = fs.watch(target, { recursive: true }, (_event, name) => {
-        if (!name || /index\.html$|\.(js|css|svg|woff2?)$/i.test(String(name))) {
-          trigger(label);
-        }
+        if (isDistWatchName(name)) trigger(label);
       });
       watchers.push(w);
     } catch {
@@ -41,7 +44,6 @@ function bindDistUiWatch({ distDir, onReload }) {
   };
 
   watchPath(distDir, "dist");
-  watchPath(path.join(distDir, "assets"), "assets");
 
   return () => {
     clearTimeout(debounce);
@@ -55,4 +57,4 @@ function bindDistUiWatch({ distDir, onReload }) {
   };
 }
 
-module.exports = { bindDistUiWatch };
+module.exports = { bindDistUiWatch, isDistWatchName };

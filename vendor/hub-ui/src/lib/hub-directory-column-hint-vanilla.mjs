@@ -37,6 +37,17 @@ export const COOKIE_BRIDGE_ROUTE_TABLE_HEADER_ICONS = {
   actions: "bolt",
 };
 
+/** Column header emoji stickers — HubTableColumnHeader `headerEmoji` SSOT. */
+export const COOKIE_BRIDGE_ROUTE_TABLE_HEADER_EMOJI = {
+  route: "🌐",
+  actions: "⚡",
+  synced: "🔄",
+  loaded: "📥",
+  status: "🚦",
+  user: "👤",
+  cookies: "🍪",
+};
+
 /** E0001 popup routes table — column header hints (English UI). */
 export const COOKIE_BRIDGE_ROUTE_TABLE_COLUMN_HINTS = {
   route: {

@@ -144,12 +144,6 @@
   width: 100%;
 }
 
-/* Split head/body — KPI divider + thead stay fixed; tbody scrolls only. */
-.stealth-profile-directory-frame .hub-split-directory-pane__kpi-band {
-  z-index: 1;
-  background: var(--panel);
-}
-
 .stealth-profile-directory-frame .hub-split-directory-pane__body .hub-users-table-wrap:not(.hub-directory-table-split),
 .stealth-profile-directory-frame .hub-split-directory-pane__body .hub-directory-table-split.hub-directory-table-scroll--flex-pane {
   min-height: 0;

@@ -308,6 +308,24 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
     "web": "stub"
   },
   {
+    "method": "removeCachedExtensions",
+    "channel": "extension:removeCached",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "fetchStoreExtensionUpdateCheck",
+    "channel": "extension:storeUpdateCheck",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "onStoreExtensionUpdateCheck",
+    "channel": "extension:storeUpdateCheck",
+    "kind": "on",
+    "web": "stub"
+  },
+  {
     "method": "onProfileSession",
     "channel": "profile:session",
     "kind": "on",

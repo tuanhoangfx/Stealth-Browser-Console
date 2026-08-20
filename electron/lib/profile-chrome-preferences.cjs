@@ -10,6 +10,54 @@ function mergePinnedList(list, extId) {
   return next;
 }
 
+function normalizeExtensionPath(value) {
+  return path.resolve(String(value || "")).replace(/\\/g, "/").toLowerCase();
+}
+
+function removePinFromPrefs(prefs, extId) {
+  if (!prefs?.extensions || !extId) return false;
+  let changed = false;
+  for (const key of PIN_KEYS) {
+    const list = prefs.extensions[key];
+    if (!Array.isArray(list) || !list.includes(extId)) continue;
+    prefs.extensions[key] = list.filter((id) => id !== extId);
+    changed = true;
+  }
+  const toolbarPinned = prefs.extensions.toolbar?.pinned_extension_ids;
+  if (Array.isArray(toolbarPinned) && toolbarPinned.includes(extId)) {
+    prefs.extensions.toolbar.pinned_extension_ids = toolbarPinned.filter((id) => id !== extId);
+    changed = true;
+  }
+  if (prefs.extensions.settings?.[extId]) {
+    delete prefs.extensions.settings[extId];
+    changed = true;
+  }
+  return changed;
+}
+
+/** Remove toolbar / settings pin so a deleted cache is not reloaded on next profile launch. */
+function unpinExtensionFromProfile(userDataDir, { storeId, unpackedPath } = {}) {
+  const prefsFile = path.join(userDataDir, "Default", "Preferences");
+  if (!fs.existsSync(prefsFile)) return { changed: false, ids: [] };
+  const prefs = readJson(prefsFile);
+  const ids = new Set();
+  const store = String(storeId || "").trim().toLowerCase();
+  if (/^[a-p]{32}$/.test(store)) ids.add(store);
+  if (unpackedPath) {
+    ids.add(unpackedExtensionId(unpackedPath));
+    const want = normalizeExtensionPath(unpackedPath);
+    for (const [extId, meta] of Object.entries(prefs.extensions?.settings || {})) {
+      if (normalizeExtensionPath(meta?.path) === want) ids.add(extId);
+    }
+  }
+  let changed = false;
+  for (const extId of ids) {
+    if (removePinFromPrefs(prefs, extId)) changed = true;
+  }
+  if (changed) writeJson(prefsFile, prefs);
+  return { changed, ids: [...ids] };
+}
+
 /** Chrome unpacked extension id from absolute path (stable per machine/path). */
 function unpackedExtensionId(extensionDir) {
   const normalized = path.resolve(extensionDir).replace(/\\/g, "/").toLowerCase();
@@ -150,4 +198,9 @@ function pinStoreExtension(userDataDir, extId, extensionDir) {
   return extId;
 }
 
-module.exports = { pinToolbarExtension, pinStoreExtension, unpackedExtensionId };
+module.exports = {
+  pinToolbarExtension,
+  pinStoreExtension,
+  unpinExtensionFromProfile,
+  unpackedExtensionId,
+};

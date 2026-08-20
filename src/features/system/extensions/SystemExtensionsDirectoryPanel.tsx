@@ -30,10 +30,10 @@ export const SystemExtensionsDirectoryPanel = memo(function SystemExtensionsDire
   onToggleSelect,
   onToggleSelectAll,
   busy,
-  onForceUpdateSelected,
   onOpenDetail,
   onOpenDetailSingle,
   onOpenInstall,
+  onDeleteSelected,
   headerActions,
   centerStats,
   kpis,
@@ -55,10 +55,10 @@ export const SystemExtensionsDirectoryPanel = memo(function SystemExtensionsDire
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
   busy: boolean;
-  onForceUpdateSelected: () => void;
   onOpenDetail?: (extension: CachedStoreExtension) => void;
   onOpenDetailSingle: () => void;
   onOpenInstall: () => void;
+  onDeleteSelected: () => void;
   headerActions?: ReactNode;
   centerStats: TabHeaderStatItem[];
   kpis?: import("@tool-workspace/hub-ui").KpiTileData[];
@@ -90,19 +90,23 @@ export const SystemExtensionsDirectoryPanel = memo(function SystemExtensionsDire
         filteredCount={filteredCount}
         catalogCount={catalogCount}
         selectedCount={selectedCount}
+        allVisibleSelected={allVisibleSelected}
+        onToggleSelectAll={onToggleSelectAll}
         busy={busy}
-        onForceUpdateSelected={onForceUpdateSelected}
         onOpenDetailSingle={onOpenDetailSingle}
         onOpenInstall={onOpenInstall}
+        onDeleteSelected={onDeleteSelected}
       />
     ),
     [
       busy,
       cached,
-      onForceUpdateSelected,
       onOpenDetailSingle,
       onOpenInstall,
+      onDeleteSelected,
       search,
+      allVisibleSelected,
+      onToggleSelectAll,
       selectedCount,
       selectedKinds,
       setSearch,

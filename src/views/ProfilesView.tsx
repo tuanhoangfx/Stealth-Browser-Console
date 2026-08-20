@@ -15,6 +15,10 @@ import {
   useProfileDirectoryPageSize,
 } from "../features/profiles/useProfileDirectoryPageSize";
 import { useProfilesDirectoryChrome } from "../features/profiles/useProfilesDirectoryChrome";
+import {
+  readProfileDirectoryFilterUrl,
+  writeProfileDirectoryFilterUrl,
+} from "../features/profiles/profile-directory-url";
 import type { StealthProfileSortKey, StealthProfileSortDirection } from "../features/profiles/StealthProfileDirectoryTable";
 import { useProfileExtensionToggle } from "../features/profiles/useProfileExtensionToggle";
 import type { ExtensionSelectionState } from "../features/profiles/StealthProfilesDirectoryBulkActions";
@@ -38,8 +42,12 @@ export const ProfilesView = memo(function ProfilesView({
   const { profiles, groups, catalogStats, openOne, closeOne, closeAllRunning, runningHeadlessIds, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
     useProfilesRuntime();
   const directorySearch = useDirectorySearchQuery({ debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS });
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    () => readProfileDirectoryFilterUrl().groupIds,
+  );
+  const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>(
+    () => readProfileDirectoryFilterUrl().statuses,
+  );
   const pageSize = useProfileDirectoryPageSize();
   const [pageIndex, setPageIndex] = useState(0);
   const [sortKey, setSortKey] = useState<StealthProfileSortKey>("profile");
@@ -52,6 +60,10 @@ export const ProfilesView = memo(function ProfilesView({
   useEffect(() => {
     migrateProfilesDisplayPrefsFromUrl();
   }, []);
+
+  useEffect(() => {
+    writeProfileDirectoryFilterUrl(selectedGroupIds, selectedStatuses);
+  }, [selectedGroupIds, selectedStatuses]);
 
   const filterKey = `${directorySearch.query}|${selectedGroupIds.join(",")}|${selectedStatuses.join(",")}|${sortKey}|${sortDir}`;
   const prevFilterKey = useRef(filterKey);
@@ -121,7 +133,12 @@ export const ProfilesView = memo(function ProfilesView({
     setAutomationProfileSelection(selectedProfiles);
   }, [selectedProfiles, setAutomationProfileSelection]);
 
-  const { kpis, centerStats } = useProfilesDirectoryChrome(catalogStats, profiles);
+  const { kpis, centerStats } = useProfilesDirectoryChrome(catalogStats, profiles, {
+    groupIds: selectedGroupIds,
+    statuses: selectedStatuses,
+    setGroupIds: setSelectedGroupIds,
+    setStatuses: setSelectedStatuses,
+  });
 
   const handleSort = useCallback((key: StealthProfileSortKey) => {
     setSortKey((prevKey) => {

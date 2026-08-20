@@ -30,8 +30,9 @@ function isStoreExtensionAllowed(storeId, toggles) {
   return Boolean(toggles[kind]);
 }
 
-function isLocalExtensionAllowed(toggles) {
-  return Boolean(toggles.webStore);
+function isLocalExtensionAllowed(_toggles) {
+  // Shelved — Local unpacked load is off until the user asks to restore it.
+  return false;
 }
 
 function anyExtensionToggleEnabled(toggles) {

@@ -41,6 +41,8 @@ export function useProfileDirectoryChrome(input: {
   setSelectedStatuses: (values: ProfileRow["status"][]) => void;
   syncBusy: boolean;
   selectedProfiles: ProfileRow[];
+  allVisibleSelected: boolean;
+  onToggleSelectAll: () => void;
   closeOne: (profile: ProfileRow) => void;
   closeAllRunning: () => void;
   deleteSelected: () => void;
@@ -71,6 +73,8 @@ export function useProfileDirectoryChrome(input: {
     selectedStatuses,
     syncBusy,
     selectedProfiles,
+    allVisibleSelected,
+    onToggleSelectAll,
     closeOne,
     closeAllRunning,
     deleteSelected,
@@ -151,7 +155,15 @@ export function useProfileDirectoryChrome(input: {
         />
       }
       row2Actions={
-        <HubDirectoryBulkActionBar>
+        <HubDirectoryBulkActionBar
+          selectAll={{
+            visibleCount: shownProfiles ?? filteredProfiles.length,
+            selectedCount: selectedProfiles.length,
+            allVisibleSelected,
+            onToggleSelectAll,
+            noun: "profiles",
+          }}
+        >
           <StealthProfilesDirectoryBulkActions
             hasSelection={selectedProfiles.length > 0}
             runningCount={catalogStats?.running ?? 0}
