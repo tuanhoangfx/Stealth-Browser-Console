@@ -17,8 +17,11 @@ export type HubVaultBootOptions<T> = {
    * at should not be holding a full vault against that ceiling. 0 disables.
    */
   releaseWhenHiddenMs?: number;
-  /** Called when the hidden-release fires — the tool drops its own copy of the dataset. */
-  onRelease?: () => void;
+  /**
+   * Called when the hidden-release fires — the tool drops its own copy of the dataset.
+   * Return `false` to keep the current boot (skip wipe) — do not flip `bootReady`.
+   */
+  onRelease?: () => void | boolean;
 };
 
 /**
@@ -144,27 +147,38 @@ export function useHubVaultBoot<T>({
   useEffect(() => {
     if (releaseWhenHiddenMs <= 0 || typeof document === "undefined") return;
     let timer = 0;
-    const clear = () => {
+    let needsRebootOnVisible = false;
+    const clearTimer = () => {
       if (timer) window.clearTimeout(timer);
       timer = 0;
     };
     const onChange = () => {
-      clear();
-      if (!isHidden()) return;
+      clearTimer();
+      if (!isHidden()) {
+        if (!needsRebootOnVisible) return;
+        needsRebootOnVisible = false;
+        firstFastRef.current = null;
+        setVisibleTick((tick) => tick + 1);
+        return;
+      }
       timer = window.setTimeout(() => {
         // Re-check: the tab may have come back while the timer was pending.
         if (!isHidden()) return;
-        onReleaseRef.current?.();
+        const released = onReleaseRef.current?.();
+        if (released === false) return;
         firstFastRef.current = null;
         settledRef.current = false;
         setBootReady(false);
         setVaultHydrating(false);
+        // Boot effect does not re-run on visibility alone (`once` + settled).
+        // Without this tick, DirectoryBootGate stays on the overlay forever.
+        needsRebootOnVisible = true;
       }, releaseWhenHiddenMs);
     };
     document.addEventListener("visibilitychange", onChange);
     onChange();
     return () => {
-      clear();
+      clearTimer();
       document.removeEventListener("visibilitychange", onChange);
     };
   }, [releaseWhenHiddenMs]);
@@ -173,13 +187,25 @@ export function useHubVaultBoot<T>({
   useEffect(() => {
     // Not while hidden: this timer exists so a user staring at a spinner never waits forever.
     // In a deferred background tab it would just force-open the gate nobody is looking at.
-    if (!tabActive || bootReady || bootTimeoutMs <= 0 || isHidden()) return;
-    const timeoutId = window.setTimeout(() => {
-      setBootReady(true);
-      setVaultHydrating(false);
-      if (once) settledRef.current = true;
-    }, bootTimeoutMs);
-    return () => window.clearTimeout(timeoutId);
+    // Re-arm on visibility — release-while-hidden used to skip this effect (isHidden not a dep).
+    if (!tabActive || bootReady || bootTimeoutMs <= 0) return;
+    let timeoutId = 0;
+    const arm = () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = 0;
+      if (isHidden()) return;
+      timeoutId = window.setTimeout(() => {
+        setBootReady(true);
+        setVaultHydrating(false);
+        if (once) settledRef.current = true;
+      }, bootTimeoutMs);
+    };
+    arm();
+    document.addEventListener("visibilitychange", arm);
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", arm);
+    };
   }, [tabActive, bootReady, bootTimeoutMs, once]);
 
   return {

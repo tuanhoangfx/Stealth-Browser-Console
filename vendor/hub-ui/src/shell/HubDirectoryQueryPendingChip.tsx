@@ -60,11 +60,11 @@ export function HubDirectoryQueryPendingChip({
       <HubDirectoryColumnHint content={hint}>
         <MetaChip
           icon={
-            {pending ? (
+            pending ? (
               <RefreshCw size={11} className="animate-spin" />
             ) : (
               <Search size={11} />
-            )}
+            )
           }
           label={label}
           tone={pending ? "indigo" : "muted"}
