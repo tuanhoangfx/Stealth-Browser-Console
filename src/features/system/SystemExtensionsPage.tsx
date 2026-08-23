@@ -47,7 +47,7 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
   const filtered = useMemo(() => {
     let rows = cached;
     if (selectedKinds.length) {
-      rows = rows.filter((ext) => selectedKinds.includes(ext.kind));
+      rows = rows.filter((ext) => selectedKinds.some((kind) => kind === ext.kind));
     }
     const q = search.trim().toLowerCase();
     if (!q) return rows;
