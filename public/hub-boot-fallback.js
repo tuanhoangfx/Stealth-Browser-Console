@@ -7,9 +7,12 @@
 (function () {
   var BOOT_ID = "hub-boot-loader";
   // Cold sibling embeds compile a deep P0004 screen graph on first navigation.
-  // A 2s probe races that compilation and can falsely claim a healthy Vite
-  // server is offline before the app has a chance to mount.
-  var SERVER_PROBE_MS = 10000;
+  // A short /@vite/client probe races that compilation (and other Dev tabs'
+  // HMR queue) and used to paint "nothing is serving" while Vite is LISTEN.
+  var SERVER_PROBE_MS = 12000;
+  var SERVER_PROBE_TIMEOUT_MS = 12000;
+  var SERVER_PROBE_TRIES = 3;
+  var SERVER_PROBE_GAP_MS = 1500;
   var PREBUNDLE_HINT_MS = 28000;
   var FINAL_TIMEOUT_MS = 120000;
   var DEP_PROBE_INTERVAL_MS = 15000;
@@ -93,6 +96,12 @@
       '<p style="margin:0 0 1rem;font-size:0.7rem;color:#64748b">Try hard refresh <kbd style="padding:0.1rem 0.35rem;border-radius:0.25rem;background:rgba(99,102,241,0.2);color:#a5b4fc">Ctrl+Shift+R</kbd> or restart dev server.</p>' +
       '<button type="button" onclick="location.reload()" style="cursor:pointer;border:1px solid rgba(129,140,248,0.4);border-radius:0.5rem;background:rgba(99,102,241,0.15);color:#c7d2fe;padding:0.45rem 1rem;font-size:0.75rem">Reload</button>' +
       "</div>";
+  }
+
+  function isHardViteOffline(result) {
+    var reason = String((result && result.reason) || "");
+    if (!reason || reason === "timeout") return false;
+    return /failed|refused|network|err_connection/i.test(reason);
   }
 
   function fetchProbe(url, timeoutMs) {
@@ -238,20 +247,37 @@
     showBootError(msg);
   });
 
-  window.setTimeout(function () {
+  function probeDevServer(triesLeft) {
     if (bootSettled() || hungShown || !IS_DEV_HOST) return;
-    fetchProbe("/@vite/client", 5000).then(function (r) {
+    fetchProbe("/@vite/client", SERVER_PROBE_TIMEOUT_MS).then(function (r) {
       if (bootSettled() || hungShown || r.ok) return;
-      var port = window.location.port || "PORT";
-      var reason = String(r.reason || "");
-      if (reason === "timeout" || /failed|refused|network/i.test(reason)) {
-        hungShown = true;
-        showBootError(
-          "Dev server is not responding.",
-          devRecoverHint(window.location.port),
+      if (r.reason === "timeout") {
+        showBootWaiting(
+          "Vite is compiling…",
+          "Dev server is busy (first compile or other tool tabs). Keep this tab open.",
         );
+        if (triesLeft > 1) {
+          window.setTimeout(function () {
+            probeDevServer(triesLeft - 1);
+          }, SERVER_PROBE_GAP_MS);
+        }
+        return;
       }
+      if (!isHardViteOffline(r)) return;
+      if (triesLeft > 1) {
+        showBootWaiting("Reconnecting to Vite…", "The dev server may be restarting after a file change.");
+        window.setTimeout(function () {
+          probeDevServer(triesLeft - 1);
+        }, SERVER_PROBE_GAP_MS);
+        return;
+      }
+      hungShown = true;
+      showBootError("Dev server is not responding.", devRecoverHint(window.location.port));
     });
+  }
+
+  window.setTimeout(function () {
+    probeDevServer(SERVER_PROBE_TRIES);
   }, SERVER_PROBE_MS);
 
   window.setTimeout(function () {
@@ -277,13 +303,15 @@
       return;
     }
     var port = window.location.port || "PORT";
-    var hungHint =
-      devRecoverHint(port) +
-      "\nIf recover fails (Access Denied), in PowerShell:\n" +
-      "  tskill <PID> /A\n" +
-      "  (find PID: netstat -ano | findstr :" +
-      port +
-      ")";
-    showBootError("JavaScript did not start in time.", hungHint);
+    showBootError(
+      "JavaScript did not start in time.",
+      "The HTML loaded but the app module did not mount.\n" +
+        "Hard refresh Ctrl+Shift+R and keep this tab in the foreground.\n" +
+        "If http://127.0.0.1:" +
+        port +
+        " is actually refused:\n" +
+        "  pnpm dev:node\n" +
+        "  or pnpm dev:recover",
+    );
   }, FINAL_TIMEOUT_MS);
 })();

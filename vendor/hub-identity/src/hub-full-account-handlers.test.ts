@@ -69,6 +69,7 @@ describe("createHubFullAccountAuthHandlers own profile", () => {
       telegram: "@tele",
       meta: "fb-1",
       notes: "hello",
+      avatarUrl: "",
     });
   });
 

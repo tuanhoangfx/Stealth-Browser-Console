@@ -2,8 +2,7 @@ import type {
   BulkCreateProfileDefaults,
   BulkCreateProfilesResult,
   EngineHealth,
-  LaunchBenchBaseline,
-  LaunchPerfEntry,
+  HostMetrics,
   OpenUrlResult,
   ProfileRow,
   ProfileCatalogStats,
@@ -43,6 +42,14 @@ export function isStealthDesktop(): boolean {
 
 export async function fetchEngineHealth(): Promise<EngineHealth> {
   return api().engineHealth();
+}
+
+export async function fetchHostMetrics(): Promise<HostMetrics> {
+  const data = await api().fetchHostMetrics();
+  if (!data?.ok) {
+    throw new Error(data?.error || "Host metrics unavailable.");
+  }
+  return data;
 }
 
 export async function updateEngineBinary() {
@@ -363,30 +370,6 @@ export async function setExtensionToggles(patch: Partial<ExtensionToggles>): Pro
   return data.toggles;
 }
 
-export async function fetchLaunchPerfEntries(limit = 24): Promise<LaunchPerfEntry[]> {
-  const data = await api().listLaunchPerf({ limit });
-  return data.entries;
-}
-
-export async function clearLaunchPerfEntries(): Promise<void> {
-  await api().clearLaunchPerf();
-}
-
-export async function fetchLaunchBenchBaseline(): Promise<LaunchBenchBaseline | null> {
-  const data = await api().fetchLaunchBenchBaseline();
-  return data.baseline;
-}
-
-export async function purgeLegacyIdentityToolbar(): Promise<{ profiles: number; removed: number; prefsCleaned: number }> {
-  const data = await api().purgeLegacyIdentityToolbar();
-  if (!data.ok) throw new Error(data.error || "Purge failed");
-  return {
-    profiles: data.profiles ?? 0,
-    removed: data.removed ?? 0,
-    prefsCleaned: data.prefsCleaned ?? 0,
-  };
-}
-
 export async function fetchCookieBridgeStatus(): Promise<CookieBridgeStatus> {
   const data = await api().fetchCookieBridgeStatus();
   if (!data.ok || !data.status) throw new Error("Cookie Bridge status unavailable");
@@ -419,11 +402,13 @@ export async function installStoreExtension(payload: {
   url?: string;
   profileIds?: string[];
   force?: boolean;
+  cacheOnly?: boolean;
 }): Promise<InstallStoreExtensionResult> {
   const data = await api().installStoreExtension({
     storeIdOrUrl: payload.storeId ?? payload.url,
     profileIds: payload.profileIds,
     force: payload.force,
+    cacheOnly: payload.cacheOnly,
   });
   if (!data.ok || !data.result) throw new Error(data.error || "Install failed");
   return data.result;

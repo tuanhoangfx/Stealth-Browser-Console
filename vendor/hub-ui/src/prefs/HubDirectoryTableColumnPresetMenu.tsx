@@ -12,6 +12,7 @@ import {
   HUB_FILTER_DROPDOWN_TRIGGER_TYPO_CLASS,
 } from "../shell/filter-dropdown-primitives";
 import { hubPortalPanelPosition } from "../shell/hub-portal-panel-position";
+import { pinSelectedFilterOptions } from "../shell/pin-selected-filter-options";
 import { HubConfirmDialog } from "../shell/HubConfirmDialog";
 import { HubPromptDialog } from "../shell/HubPromptDialog";
 import { useHubToast } from "../toast/HubToastContext";
@@ -111,8 +112,11 @@ export function HubDirectoryTableColumnPresetMenu<K extends string>({
         ? PRESET_DEFAULT_DOT_COLOR
         : presetDotColorFromId(activePreset?.id ?? "default", activePreset?.color);
 
-  const filteredPresets = presets.filter(
-    (preset) => !search || preset.name.toLowerCase().includes(search.toLowerCase()),
+  const filteredPresets = pinSelectedFilterOptions(
+    presets
+      .filter((preset) => !search || preset.name.toLowerCase().includes(search.toLowerCase()) || preset.name === label)
+      .map((preset) => ({ ...preset, value: preset.id })),
+    activePresetName ? [presets.find((preset) => preset.name === label)?.id ?? ""] : [],
   );
 
   const showDefaultRow = !search || "default".includes(search.toLowerCase());

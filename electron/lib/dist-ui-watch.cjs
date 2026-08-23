@@ -7,6 +7,14 @@ function isDistWatchName(name) {
   return /(?:^|[\\/])index\.html$/i.test(String(name || ""));
 }
 
+function readDistIndexFingerprint(indexPath) {
+  try {
+    return fs.readFileSync(indexPath, "utf8");
+  } catch {
+    return "";
+  }
+}
+
 function bindDistUiWatch({ distDir, onReload, debounceMs = 800 }) {
   if (String(process.env.STEALTH_DIST_WATCH || "") !== "1") {
     return () => {};
@@ -17,15 +25,20 @@ function bindDistUiWatch({ distDir, onReload, debounceMs = 800 }) {
   }
 
   let debounce = null;
-  let lastStamp = 0;
+  let lastFingerprint = "";
+  let lastReloadAt = 0;
+  const minIntervalMs = 4000;
   const trigger = (reason) => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
-      const stamp = fs.statSync(indexPath).mtimeMs;
-      if (stamp <= lastStamp) return;
-      lastStamp = stamp;
+      const fingerprint = readDistIndexFingerprint(indexPath);
+      if (!fingerprint || fingerprint === lastFingerprint) return;
+      const now = Date.now();
+      if (now - lastReloadAt < minIntervalMs) return;
+      lastFingerprint = fingerprint;
+      lastReloadAt = now;
       console.log(`[dist-watch] reload (${reason})`);
       onReload();
     }, debounceMs);
@@ -57,4 +70,4 @@ function bindDistUiWatch({ distDir, onReload, debounceMs = 800 }) {
   };
 }
 
-module.exports = { bindDistUiWatch, isDistWatchName };
+module.exports = { bindDistUiWatch, isDistWatchName, readDistIndexFingerprint };

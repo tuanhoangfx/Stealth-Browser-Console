@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Restart P0003 desktop (Electron + Vite).
- * Kill dev first so electron-dev-gate can bump patch when electron/ changed (SSOT rule).
+ * Kill dev first so electron-dev-gate can free :5175 when electron/ changed.
+ * Version bump = workspace hook SSOT (P0020), not this script.
  */
 import { spawnSync } from "node:child_process";
 import path from "node:path";

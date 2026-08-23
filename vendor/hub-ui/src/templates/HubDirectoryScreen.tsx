@@ -6,9 +6,11 @@ import type { HubViewMode } from "../shell/ViewToggle";
 import type { SettingsExtraTab } from "../display-prefs/types";
 import type { TabHeaderStatItem } from "../shell/AppTabHeader";
 import type { KpiTileData } from "../shell/KpiStrip";
+import { HubDirectoryFieldQueryPendingProvider } from "../shell/HubDirectoryFieldQueryPending";
 import { HubDirectorySelectionChromeProvider } from "../shell/HubDirectorySelectionChromeContext";
 import { HubTabChrome, useHubChromePrefs } from "../shell/HubTabChrome";
 import { HubTabScreenBody } from "../content/HubTabScreenBody";
+import type { HubAnalyticsReserveChrome } from "../content/HubAnalyticsBandReserve";
 
 export type HubDirectoryScreenProps = {
   /** App-built tab header (e.g. ConsoleTabHeader, AppTabHeader). */
@@ -20,6 +22,7 @@ export type HubDirectoryScreenProps = {
   chartCount?: number;
   sectionRuleLabel?: string;
   reserveAnalyticsBand?: boolean;
+  analyticsReserve?: HubAnalyticsReserveChrome;
   bandOrder?: "kpis-first" | "charts-first";
   kpiZoneClassName?: string;
   filters?: FilterDef[];
@@ -66,6 +69,7 @@ export function HubDirectoryScreen({
   chartCount,
   sectionRuleLabel,
   reserveAnalyticsBand = false,
+  analyticsReserve,
   bandOrder,
   kpiZoneClassName,
   filters = [],
@@ -132,22 +136,25 @@ export function HubDirectoryScreen({
   ) : undefined;
 
   return (
-    <HubDirectorySelectionChromeProvider active={Boolean(filterSelectionToolbar)}>
-      <HubTabChrome header={header} filterBar={filterBar}>
-        <HubTabScreenBody
-          kpis={kpis}
-          kpiBand={kpiBand}
-          charts={charts}
-          chartCount={chartCount}
-          sectionRuleLabel={sectionRuleLabel}
-          reserveAnalyticsBand={reserveAnalyticsBand}
-          bandOrder={bandOrder}
-          kpiZoneClassName={kpiZoneClassName}
-          bodyFlex={bodyFlex}
-        >
-          {children}
-        </HubTabScreenBody>
-      </HubTabChrome>
-    </HubDirectorySelectionChromeProvider>
+    <HubDirectoryFieldQueryPendingProvider>
+      <HubDirectorySelectionChromeProvider active={Boolean(filterSelectionToolbar)}>
+        <HubTabChrome header={header} filterBar={filterBar}>
+          <HubTabScreenBody
+            kpis={kpis}
+            kpiBand={kpiBand}
+            charts={charts}
+            chartCount={chartCount}
+            sectionRuleLabel={sectionRuleLabel}
+            reserveAnalyticsBand={reserveAnalyticsBand}
+            analyticsReserve={analyticsReserve}
+            bandOrder={bandOrder}
+            kpiZoneClassName={kpiZoneClassName}
+            bodyFlex={bodyFlex}
+          >
+            {children}
+          </HubTabScreenBody>
+        </HubTabChrome>
+      </HubDirectorySelectionChromeProvider>
+    </HubDirectoryFieldQueryPendingProvider>
   );
 }

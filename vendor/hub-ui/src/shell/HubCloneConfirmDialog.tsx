@@ -39,7 +39,7 @@ function buildCountOptions(max: number): FilterOption[] {
 }
 
 /**
- * Hub-UI clone/duplicate confirm dialog — Layout 2 Modal SSOT
+ * Hub-UI clone/duplicate confirm dialog — compact 28rem SSOT
  * (`hub-adm-form-row--aligned-2`: Copies + Keep same Profile on one row).
  *
  * Shared by directory bulk Clone and account detail Clone.
@@ -81,7 +81,8 @@ export function HubCloneConfirmDialog({
       titleId="hub-clone-confirm-title"
       headerIcon={CopyPlus}
       headerIconClassName="text-sky-300"
-      shellClassName="hub-tool-detail-modal--fit hub-clone-confirm-modal"
+      size="compact"
+      shellClassName="hub-clone-confirm-modal"
       ariaLabelledBy="hub-clone-confirm-title"
       footer={
         <>

@@ -28,6 +28,7 @@
   text-align: left;
   font: inherit;
   color: inherit;
+  text-decoration: none;
   cursor: pointer;
   transition: opacity 0.12s ease;
 }
@@ -45,8 +46,7 @@
 }
 
 /**
- * Trailing open affordance in directory rows (P0020 Team Account → Service/Mail;
- * P0005 Orders Customer → Customer Detail modal). Muted until hover — native `title` tooltip.
+ * Trailing related-detail open (HubRelatedDetailOpenButton / Fingerprint).
  * `.twofa-mail-recover-open` is an alias for P0020 recover/trailing buttons.
  */
 .hub-directory-row-open,
@@ -68,9 +68,15 @@
     border-color 0.12s ease;
 }
 
-.hub-directory-row-open:hover,
-.twofa-mail-recover-open:hover {
-  color: rgb(125, 211, 252);
-  background: rgb(14 165 233 / 0.12);
-  border-color: rgb(56 189 248 / 0.35);
+.hub-directory-row-open:hover:not(:disabled),
+.twofa-mail-recover-open:hover:not(:disabled) {
+  color: var(--text, rgb(226 232 240));
+  background: rgb(255 255 255 / 0.06);
+  border-color: rgb(255 255 255 / 0.12);
+}
+
+.hub-directory-row-open:disabled,
+.twofa-mail-recover-open:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }

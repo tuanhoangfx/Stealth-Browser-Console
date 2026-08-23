@@ -1,6 +1,13 @@
 /** Scripts tab left pane — table-only-directory, no-form-directory, no-read-only-table; filter in WorkflowFilterPane. */
 import { memo, type ReactNode } from "react";
-import { HubDirectoryBulkActionBar, HubDirectoryToolbarSelection, HubSplitDirectoryPane, resolveDirectoryPanelFillRows } from "@tool-workspace/hub-ui";
+import {
+  HubDirectoryBulkActionBar,
+  HubDirectoryToolbarSelection,
+  HubSplitDirectoryPane,
+  KpiStrip,
+  resolveDirectoryPanelFillRows,
+  type KpiTileData,
+} from "@tool-workspace/hub-ui";
 import type { WorkflowConfig } from "./workflow-types";
 import { StealthWorkflowDirectoryTable } from "./StealthWorkflowDirectoryTable";
 import { WorkflowFilterPane } from "./WorkflowFilterPane";
@@ -27,6 +34,7 @@ export type WorkflowDirectoryPanelProps = {
   onContextMenu?: (workflow: WorkflowConfig, event: import("react").MouseEvent) => void;
   workflowTablePageSize: number;
   onWorkflowTablePageSizeChange?: (size: number) => void;
+  kpis?: KpiTileData[];
 };
 
 export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
@@ -50,6 +58,7 @@ export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
   onContextMenu,
   workflowTablePageSize,
   onWorkflowTablePageSizeChange,
+  kpis,
 }: WorkflowDirectoryPanelProps) {
   const { filters, filterValues, listResetKey, handleFilterValuesChange } = useWorkflowDirectoryFilters({
     workflowConfigs,
@@ -66,6 +75,7 @@ export const WorkflowDirectoryPanel = memo(function WorkflowDirectoryPanel({
       variant="panel"
       panelFillRows={resolveDirectoryPanelFillRows(workflowTablePageSize, filteredWorkflows.length)}
       partialPagePad="invisible"
+      kpiBand={kpis?.length ? <KpiStrip items={kpis} /> : undefined}
       filterBar={
         <WorkflowFilterPane
           variant="panel"

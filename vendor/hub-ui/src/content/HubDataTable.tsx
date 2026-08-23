@@ -29,7 +29,7 @@ export function HubDataTable({
   children,
   empty,
   tableClassName = "hub-users-table",
-  wrapClassName = "hub-users-table-wrap overflow-hidden rounded-xl border border-white/5",
+  wrapClassName = "hub-users-table-wrap hub-scrollbar min-w-0 overflow-x-auto overflow-y-hidden rounded-xl border border-white/5",
   directorySelect = false,
 }: {
   columns: HubTableColumn[];

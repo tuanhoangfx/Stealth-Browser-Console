@@ -60,16 +60,27 @@ export const STEALTH_PROFILE_FILTER_STICKER = {
 } as const;
 
 export const STEALTH_PROFILE_HEADER_STAT_STICKER = {
-  running: "▶️",
-  failed: "⚠️",
-  ready: "✅",
-  total: "📡",
+  cpu: "⚡",
+  ram: "💾",
 } as const;
 
 export const STEALTH_WORKFLOW_KPI_STICKER = {
   total: "📜",
+  create_today: "📅",
+  update_today: "🕒",
+  ran_today: "▶️",
+  idle: "💤",
+  empty: "📭",
+} as const;
+
+export const STEALTH_WORKFLOW_STORE_KPI_STICKER = {
+  total: "🛒",
+  create_today: "📅",
+  update_today: "🕒",
+  local: "📝",
+  installed: "✅",
+  available: "📦",
   selected: "☑️",
-  steps: "📋",
 } as const;
 
 export const STEALTH_WORKFLOW_FILTER_STICKER = {
@@ -78,9 +89,8 @@ export const STEALTH_WORKFLOW_FILTER_STICKER = {
 } as const;
 
 export const STEALTH_WORKFLOW_HEADER_STAT_STICKER = {
-  total: "📜",
-  selected: "☑️",
-  steps: "📋",
+  cpu: "⚡",
+  ram: "💾",
 } as const;
 
 export const STEALTH_WORKFLOW_STORE_FILTER_STICKER = {
@@ -95,8 +105,8 @@ export const STEALTH_EXTENSIONS_KPI_STICKER = {
 } as const;
 
 export const STEALTH_EXTENSIONS_HEADER_STAT_STICKER = {
-  cached: "🧩",
-  store: "🛒",
+  cpu: "⚡",
+  ram: "💾",
 } as const;
 
 export const STEALTH_EXTENSIONS_FILTER_STICKER = {

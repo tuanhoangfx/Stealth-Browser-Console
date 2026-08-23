@@ -6,6 +6,7 @@ export type HubDirectoryDeleteBulkActionProps = {
   title: string;
   onClick: () => void;
   disabled?: boolean;
+  label?: string;
   labelHint?: HubDirectoryColumnHintContent;
 };
 
@@ -14,12 +15,13 @@ export function HubDirectoryDeleteBulkAction({
   title,
   onClick,
   disabled = false,
+  label = "Delete",
   labelHint,
 }: HubDirectoryDeleteBulkActionProps) {
   return (
     <HubBulkActionButton
       icon={<Trash2 size={14} aria-hidden />}
-      label="Delete"
+      label={label}
       title={title}
       tone="rose"
       disabled={disabled}

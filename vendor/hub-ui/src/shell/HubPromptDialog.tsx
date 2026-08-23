@@ -56,7 +56,7 @@ export function HubPromptDialog({
       titleId="hub-prompt-title"
       headerIcon={HeaderIcon}
       headerIconClassName={headerIconClassName}
-      shellClassName="hub-tool-detail-modal--fit"
+      size="compact"
       ariaLabelledBy="hub-prompt-title"
       footer={
         <>

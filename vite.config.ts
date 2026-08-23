@@ -3,6 +3,8 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+// @ts-expect-error shared embed (JS module) — VITE_APP_VERSION + VITE_APP_BUILT_AT
+import { hubAppVersionPlugin } from "./scripts/embed-app-version.mjs";
 
 const rootDir = path.resolve(__dirname);
 const hubUiSrc = path.resolve(rootDir, "vendor/hub-ui/src");
@@ -11,6 +13,7 @@ const devRoot = path.resolve(rootDir, "../..");
 
 export default defineConfig(async () => {
   const plugins = [
+    hubAppVersionPlugin({ root: rootDir }),
     react(),
     {
       name: "electron-file-protocol-html",

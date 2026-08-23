@@ -84,8 +84,8 @@ export const HUB_DIRECTORY_BRAND_EMPTY_GLYPH = "⭕";
  * Emoji fallback for unknown platform/service labels (no brand icon match).
  * Keeps UI glyph-only parity without Lucide fallback.
  */
-export function resolveHubBrandFallbackGlyph(label: string): string {
-  const key = label.trim().toLowerCase();
+export function resolveHubBrandFallbackGlyph(label: string | null | undefined): string {
+  const key = String(label ?? "").trim().toLowerCase();
   if (!key) return HUB_DIRECTORY_BRAND_EMPTY_GLYPH;
   if (/(temp\s*mail|tempmail|gmail\s*edu|gmail|outlook|icloud)/.test(key)) return "✉️";
   if (/\bmail\b/.test(key)) return "✉️";

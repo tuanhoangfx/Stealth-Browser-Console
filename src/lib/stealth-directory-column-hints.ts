@@ -202,7 +202,7 @@ const FORM_FIELD_HINT_DESCRIPTIONS: Record<StealthFormFieldKey, string> = {
   defaultStartupUrl: "Global default URL for new profiles and Run actions.",
 };
 
-export type StealthDisplayPrefScope = "profiles" | "workflow";
+export type StealthDisplayPrefScope = "profiles" | "workflow" | "workflow-store";
 
 export type StealthDisplayPrefKey =
   | "total"
@@ -211,9 +211,20 @@ export type StealthDisplayPrefKey =
   | "ready"
   | "selected"
   | "steps"
+  | "create_today"
+  | "update_today"
+  | "ran_today"
+  | "idle"
+  | "empty"
+  | "installed"
+  | "available"
+  | "local"
   | "group"
   | "status"
-  | "platform";
+  | "platform"
+  | "source"
+  | "cpu"
+  | "ram";
 
 const DISPLAY_PREF_LABELS: Record<StealthDisplayPrefKey, string> = {
   total: "Profiles",
@@ -222,12 +233,23 @@ const DISPLAY_PREF_LABELS: Record<StealthDisplayPrefKey, string> = {
   ready: "Ready",
   selected: "Selected",
   steps: "Steps",
+  create_today: "Create today",
+  update_today: "Update today",
+  ran_today: "Ran today",
+  idle: "Idle",
+  empty: "Empty",
+  installed: "Installed",
+  available: "Available",
+  local: "Local",
   group: "Group",
   status: "Status",
   platform: "Platform",
+  source: "Source",
+  cpu: "CPU",
+  ram: "RAM",
 };
 
-const DISPLAY_PREF_DESCRIPTIONS: Record<`${StealthDisplayPrefScope}:${StealthDisplayPrefKey}`, string> = {
+const DISPLAY_PREF_DESCRIPTIONS: Partial<Record<`${StealthDisplayPrefScope}:${StealthDisplayPrefKey}`, string>> = {
   "profiles:total": "Total profiles in catalog — all statuses.",
   "profiles:running": "Profiles with an active browser session.",
   "profiles:failed": "Profiles whose last open or workflow ended in error.",
@@ -237,15 +259,36 @@ const DISPLAY_PREF_DESCRIPTIONS: Record<`${StealthDisplayPrefScope}:${StealthDis
   "profiles:group": "Filter directory by profile folder group.",
   "profiles:status": "Filter by browser session state — Ready, Opening, Running, Failed.",
   "profiles:platform": "Filter profiles by spoofed platform brand.",
-  "workflow:total": "Workflows visible in the current Scripts list.",
+  "profiles:cpu": "This device — processor load across all cores.",
+  "profiles:ram": "This device — memory in use versus installed RAM.",
+  "workflow:total": "All scripts in the local workflow registry.",
   "workflow:running": "Workflows with an active run in progress.",
   "workflow:failed": "Workflows whose last run ended in error.",
   "workflow:ready": "Workflows idle and ready to run.",
   "workflow:selected": "Workflow rows selected for bulk actions.",
   "workflow:steps": "Total steps across the active workflow editor.",
+  "workflow:create_today": "Scripts first saved on the local calendar day.",
+  "workflow:update_today": "Scripts edited on the local calendar day.",
+  "workflow:ran_today": "Scripts whose last run was today.",
+  "workflow:idle": "Scripts that have never been run.",
+  "workflow:empty": "Scripts with zero steps.",
   "workflow:group": "Filter workflows by folder group.",
   "workflow:status": "Filter by workflow run state — Ready, Running, Failed.",
   "workflow:platform": "Filter workflows by target platform brand.",
+  "workflow:cpu": "This device — processor load across all cores.",
+  "workflow:ram": "This device — memory in use versus installed RAM.",
+  "workflow-store:total": "All packages in the remote Store catalog.",
+  "workflow-store:create_today": "Store packages first published today.",
+  "workflow-store:update_today": "Store packages updated today.",
+  "workflow-store:local": "Authored or edited locally — not a remote store install.",
+  "workflow-store:installed": "Catalog packages installed in this console.",
+  "workflow-store:available": "Catalog packages not yet installed locally.",
+  "workflow-store:selected": "Store rows selected for bulk install.",
+  "workflow-store:group": "Filter store listings by folder group.",
+  "workflow-store:platform": "Filter store listings by target platform brand.",
+  "workflow-store:source": "Filter store listings by catalog origin.",
+  "workflow-store:cpu": "This device — processor load across all cores.",
+  "workflow-store:ram": "This device — memory in use versus installed RAM.",
 };
 
 function columnHintContent<T extends string>(

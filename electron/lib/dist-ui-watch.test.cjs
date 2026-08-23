@@ -9,3 +9,8 @@ test("dist-watch only reacts to index.html (not mid-build hashed assets)", () =>
   assert.equal(isDistWatchName("index-_y-ehsiW.css"), false);
   assert.equal(isDistWatchName(""), false);
 });
+
+test("dist-watch fingerprint treats missing index as empty", () => {
+  const { readDistIndexFingerprint } = require("./dist-ui-watch.cjs");
+  assert.equal(readDistIndexFingerprint("E:/this-path-does-not-exist/index.html"), "");
+});

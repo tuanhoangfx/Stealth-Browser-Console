@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HUB_SIGNUP_FAILED_MESSAGE } from "./extract-auth-error-text";
+import { HUB_AUTH_FETCH_TIMEOUT_MESSAGE } from "./hub-auth-fetch";
 import {
   HUB_PHONE_WRONG_PASSWORD_MESSAGE,
   HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE,
   HUB_UNKNOWN_PHONE_MESSAGE,
   HUB_UNKNOWN_USER_ID_MESSAGE,
   HUB_USERNAME_WRONG_PASSWORD_MESSAGE,
+  isHubIdentityTransientFailure,
   signInWithHubPassword,
 } from "./hub-auth-submit";
 import { clearHubResolveLoginPrefetch } from "./hub-resolve-login-client";
@@ -102,7 +104,7 @@ describe("signInWithHubPassword", () => {
     const result = await signInWithHubPassword("duyceo01", attempt, "signin", {
       extraAuthEmails: ["u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal"],
     });
-    expect(result.error?.message).toMatch(/invalid login credentials/i);
+    expect(result.error?.message).toBe(HUB_USERNAME_WRONG_PASSWORD_MESSAGE);
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(attempt).toHaveBeenCalledWith(
       "u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal",
@@ -206,5 +208,30 @@ describe("signInWithHubPassword", () => {
     const result = await signInWithHubPassword("CS00962", attempt, "signup");
     expect(result.error?.message).toBe(HUB_SIGNUP_FAILED_MESSAGE);
     expect(result.error?.message).not.toBe("{}");
+  });
+
+  it("skips a second resolve-login when the caller already looked up unavailable", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const attempt = vi.fn();
+
+    const result = await signInWithHubPassword("czpgo", attempt, "signin", {
+      resolveLookup: "unavailable",
+    });
+
+    expect(result.error?.message).toBe(HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(attempt).not.toHaveBeenCalled();
+  });
+});
+
+describe("isHubIdentityTransientFailure", () => {
+  it("matches resolve-login outage and fetch timeout only", () => {
+    expect(isHubIdentityTransientFailure(HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE)).toBe(true);
+    expect(isHubIdentityTransientFailure(HUB_AUTH_FETCH_TIMEOUT_MESSAGE)).toBe(true);
+    expect(isHubIdentityTransientFailure("The operation was aborted")).toBe(true);
+    expect(isHubIdentityTransientFailure(HUB_UNKNOWN_USER_ID_MESSAGE)).toBe(false);
+    expect(isHubIdentityTransientFailure(HUB_USERNAME_WRONG_PASSWORD_MESSAGE)).toBe(false);
+    expect(isHubIdentityTransientFailure("")).toBe(false);
   });
 });

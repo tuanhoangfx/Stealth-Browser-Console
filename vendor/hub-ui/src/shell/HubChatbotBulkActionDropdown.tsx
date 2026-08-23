@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bot, Check } from "lucide-react";
+import { Bot } from "lucide-react";
+import type { ReactNode } from "react";
 import {
   HUB_BULK_ACTION_BTN_CLASS,
   HubBulkActionCountBadge,
 } from "./HubBulkActionButton";
-import {
-  HUB_FILTER_DROPDOWN_LIST_CLASS,
-  HUB_FILTER_DROPDOWN_PANEL_CLASS,
-  HUB_FILTER_DROPDOWN_ROW_CLASS,
-} from "./filter-dropdown-primitives";
+import { HubSingleFilterDropdown, type FilterOption } from "./FilterBar";
+
+export const HUB_CHATBOT_BULK_OFF_VALUE = "__hub_chatbot_off__";
 
 export type HubChatbotBulkPersonalityOption = {
   id: string;
@@ -31,21 +29,15 @@ export type HubChatbotBulkActionDropdownProps = {
   offDotColor: string;
   onSetChatbotOff: () => void;
   onSetChatbotOn: (personalityId: string) => void;
+  /** Test / embedded — default portal like FilterBar. */
+  usePortal?: boolean;
+  /** @deprecated Color dots come from FilterBar option `color` (Hub SSOT). */
   renderOffDot?: ReactNode;
+  /** @deprecated Color dots come from FilterBar option `color` (Hub SSOT). */
   renderPersonalityDot?: (personality: HubChatbotBulkPersonalityOption) => ReactNode;
 };
 
-function DefaultDot({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: color }}
-      aria-hidden
-    />
-  );
-}
-
-/** Bulk chatbot on/off + personality picker — Pages / Zalo accounts directory golden. */
+/** Bulk chatbot picker — same FilterBar panel as every Hub dropdown (search + pin). */
 export function HubChatbotBulkActionDropdown({
   hasSelection,
   selectedCount,
@@ -56,77 +48,43 @@ export function HubChatbotBulkActionDropdown({
   offDotColor,
   onSetChatbotOff,
   onSetChatbotOn,
-  renderOffDot,
-  renderPersonalityDot,
+  usePortal = true,
 }: HubChatbotBulkActionDropdownProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const disabled = !hasSelection || loading;
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  const options: FilterOption[] = [
+    { value: HUB_CHATBOT_BULK_OFF_VALUE, label: "Off", color: offDotColor },
+    ...personalities.map((p) => ({ value: p.id, label: p.label, color: p.dotColor })),
+  ];
+  const value =
+    selection.allOff || !selection.personalityId
+      ? HUB_CHATBOT_BULK_OFF_VALUE
+      : selection.personalityId;
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        disabled={disabled}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        title={hasSelection ? `Set chatbot for selected ${noun}` : `Select ${noun} first`}
-        className={`${HUB_BULK_ACTION_BTN_CLASS} border border-indigo-400/35 bg-indigo-500/15 text-indigo-100 hover:bg-indigo-500/25`}
-      >
-        <Bot size={14} aria-hidden />
-        Chatbot
-        {hasSelection && selectedCount > 0 ? (
-          <HubBulkActionCountBadge count={selectedCount} tone="indigo" />
-        ) : null}
-      </button>
-      {open ? (
-        <div role="menu" className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} right-0 w-64`}>
-          <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-            <button
-              type="button"
-              role="menuitem"
-              className={HUB_FILTER_DROPDOWN_ROW_CLASS}
-              onClick={() => {
-                onSetChatbotOff();
-                setOpen(false);
-              }}
-            >
-              {renderOffDot ?? <DefaultDot color={offDotColor} />}
-              <span className="min-w-0 flex-1 truncate">Off</span>
-              {selection.allOff ? <Check size={14} className="shrink-0 text-indigo-300" aria-hidden /> : null}
-            </button>
-            {personalities.map((p) => {
-              const active = !selection.allOff && selection.personalityId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="menuitem"
-                  className={HUB_FILTER_DROPDOWN_ROW_CLASS}
-                  onClick={() => {
-                    onSetChatbotOn(p.id);
-                    setOpen(false);
-                  }}
-                >
-                  {renderPersonalityDot?.(p) ?? <DefaultDot color={p.dotColor} />}
-                  <span className="min-w-0 flex-1 truncate">{p.label}</span>
-                  {active ? <Check size={14} className="shrink-0 text-indigo-300" aria-hidden /> : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <HubSingleFilterDropdown
+      filterKey="hub-chatbot-bulk"
+      label="Chatbot"
+      options={options}
+      value={value}
+      onChange={(next) => {
+        if (next === HUB_CHATBOT_BULK_OFF_VALUE || !next) onSetChatbotOff();
+        else onSetChatbotOn(next);
+      }}
+      disabled={!hasSelection || loading}
+      allowClear={false}
+      usePortal={usePortal}
+      triggerFormat="value"
+      triggerHideChevron
+      ariaLabel="Chatbot"
+      triggerClassName={`${HUB_BULK_ACTION_BTN_CLASS} border border-indigo-400/35 bg-indigo-500/15 text-indigo-100 hover:bg-indigo-500/25`}
+      triggerContent={
+        <>
+          <Bot size={14} aria-hidden />
+          Chatbot
+          {hasSelection && selectedCount > 0 ? (
+            <HubBulkActionCountBadge count={selectedCount} tone="indigo" />
+          ) : null}
+        </>
+      }
+    />
   );
 }

@@ -11,6 +11,7 @@ export type WorkspacePeriodKey =
   | "thisWeek"
   | "thisMonth"
   | "thisYear"
+  | "last90"
   | "lastWeek"
   | "lastMonth"
   | "lastYear"
@@ -35,6 +36,8 @@ export type WorkspacePeriodScope =
   | "users"
   | "hub"
   | "dashboard"
+  | "index"
+  | "posts"
   | "bots"
   | "groups"
   | "teams"
@@ -53,6 +56,7 @@ export const WORKSPACE_PERIOD_LABELS: Record<WorkspacePeriodKey, string> = {
   thisWeek: "This Week",
   thisMonth: "This Month",
   thisYear: "This Year",
+  last90: "Last 90 Days",
   lastWeek: "Last Week",
   lastMonth: "Last Month",
   lastYear: "Last Year",
@@ -67,6 +71,7 @@ export const WORKSPACE_PERIOD_ORDER: readonly WorkspacePeriodKey[] = [
   "thisWeek",
   "thisMonth",
   "thisYear",
+  "last90",
   "lastWeek",
   "lastMonth",
   "lastYear",
@@ -98,6 +103,8 @@ const SCOPE_URL_KEYS: Record<
   users: { range: "usrange", month: "usperiodMonth", from: "usperiodFrom", to: "usperiodTo" },
   hub: { range: "hbrange", month: "hbperiodMonth", from: "hbperiodFrom", to: "hbperiodTo" },
   dashboard: { range: "dbrange", month: "dbperiodMonth", from: "dbperiodFrom", to: "dbperiodTo" },
+  index: { range: "ixrange", month: "ixperiodMonth", from: "ixperiodFrom", to: "ixperiodTo" },
+  posts: { range: "psrange", month: "psperiodMonth", from: "psperiodFrom", to: "psperiodTo" },
   bots: { range: "botrange", month: "botperiodMonth", from: "botperiodFrom", to: "botperiodTo" },
   groups: { range: "grprange", month: "grpperiodMonth", from: "grpperiodFrom", to: "grpperiodTo" },
   teams: { range: "teamrange", month: "teamperiodMonth", from: "teamperiodFrom", to: "teamperiodTo" },
@@ -125,6 +132,15 @@ const LEGACY_RANGE_MAP: Record<string, WorkspacePeriodKey> = {
   "1y": "lastYear",
   last30Days: "lastMonth",
 };
+
+export function isWorkspacePeriodKey(raw: string | null | undefined): raw is WorkspacePeriodKey {
+  return Boolean(raw && VALID_KEYS.has(raw));
+}
+
+/** Query key for this tab’s period (`ixrange`, `dbrange`, `trange`, …). */
+export function workspacePeriodRangeParam(scope: WorkspacePeriodScope): string {
+  return scopeUrlKeys(scope).range;
+}
 
 export function normalizeWorkspacePeriodKey(
   raw: string | null | undefined,
@@ -238,10 +254,17 @@ export function workspacePeriodOptions(): HubPeriodOption[] {
   }));
 }
 
+/** JS `Date#getDay()` Sunday=0 → days since Monday (Mon=0 … Sun=6). */
+export function hubMondayWeekOffset(sundayDow: number): number {
+  const dow = ((Math.trunc(sundayDow) % 7) + 7) % 7;
+  return dow === 0 ? 6 : dow - 1;
+}
+
 /** Filter rows by creation ISO timestamp (SSOT: created_at / createdAt — not updated_at). */
 export function matchesWorkspacePeriod(
   isoDate: string | undefined,
   period: WorkspacePeriodPrefs | WorkspacePeriodKey | null | undefined,
+  now = new Date(),
 ): boolean {
   if (period == null) return true;
   const prefs = typeof period === "string" ? { ...defaultPrefs(period), range: period } : period;
@@ -253,14 +276,14 @@ export function matchesWorkspacePeriod(
   const taskDate = new Date(isoDate);
   if (Number.isNaN(taskDate.getTime())) return false;
 
-  const now = new Date();
   let startDate: Date;
   let endDate: Date;
 
-  const todayStart = new Date();
+  const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
+  const todayEnd = new Date(now);
   todayEnd.setHours(23, 59, 59, 999);
+  const mondayOffset = hubMondayWeekOffset(todayStart.getDay());
 
   switch (prefs.range) {
     case "today":
@@ -269,13 +292,15 @@ export function matchesWorkspacePeriod(
       break;
     case "thisWeek": {
       startDate = new Date(todayStart);
-      startDate.setDate(todayStart.getDate() - todayStart.getDay());
-      endDate = todayEnd;
+      startDate.setDate(todayStart.getDate() - mondayOffset);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
       break;
     }
     case "lastWeek": {
       startDate = new Date(todayStart);
-      startDate.setDate(todayStart.getDate() - todayStart.getDay() - 7);
+      startDate.setDate(todayStart.getDate() - mondayOffset - 7);
       endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 6);
       endDate.setHours(23, 59, 59, 999);
@@ -289,6 +314,12 @@ export function matchesWorkspacePeriod(
       startDate = new Date(now.getFullYear(), 0, 1);
       endDate = todayEnd;
       break;
+    case "last90": {
+      startDate = new Date(todayStart);
+      startDate.setDate(todayStart.getDate() - 89);
+      endDate = todayEnd;
+      break;
+    }
     case "lastMonth": {
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       endDate = new Date(now.getFullYear(), now.getMonth(), 0);

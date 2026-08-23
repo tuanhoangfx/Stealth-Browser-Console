@@ -138,6 +138,7 @@ const BASE: Record<WorkspaceAuthToolCode, WorkspaceAuthGatePreset> = {
   P0022: {
     title: "Welcome to Infi Store",
     toolInfo: { name: "Infi Store", tagline: "Store · checkout & order history" },
+    errorOptions: { toolHubHint: true, dualWorkspace: true },
     forgotPassword: {},
   },
 };

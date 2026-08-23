@@ -69,6 +69,7 @@ export const GOLDEN_CHART_PANEL_TITLES: Record<string, string> = {
   day_bar: "Day",
   notify_bar: "Notify",
   contact_bar: "Contact",
+  created_bar: "Created",
   customers_bar: "Customers",
 };
 

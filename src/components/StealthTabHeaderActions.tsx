@@ -3,6 +3,7 @@ import { HubHeaderOpsPanels } from "@tool-workspace/hub-ui";
 import { useStealthShell } from "../context/stealth-shell-context";
 import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import { buildStealthNotifyPanelProps } from "../lib/stealth-notify";
+import { StoreExtensionUpdateChip } from "../features/system/extensions/StoreExtensionUpdateChip";
 import { StealthDisplayPrefs } from "./StealthDisplayPrefs";
 import type { StealthScreen } from "../lib/stealth-screen";
 
@@ -23,10 +24,13 @@ export function StealthTabHeaderActions({ screen }: { screen: StealthScreen }) {
   );
 
   return (
-    <HubHeaderOpsPanels
-      log={{ variant: "tab" }}
-      notify={notify}
-      trailing={<StealthDisplayPrefs screen={screen} scope="tab" />}
-    />
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <StoreExtensionUpdateChip />
+      <HubHeaderOpsPanels
+        log={{ variant: "tab" }}
+        notify={notify}
+        trailing={<StealthDisplayPrefs screen={screen} scope="tab" />}
+      />
+    </span>
   );
 }

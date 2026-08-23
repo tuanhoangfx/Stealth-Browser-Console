@@ -64,12 +64,25 @@ export type CreateDataBoxDualSignInConfig = {
   cacheDataSession: (session: Session) => void;
   clearDataSession: () => void;
   recoverApiUrl: (path: string) => string;
-  resolveLoginApiUrl: string;
+  /** Pass `hubResolveLoginApiUrl` (function) — do not call it at module init. */
+  resolveLoginApiUrl?: string | (() => string);
   recoverToken?: string;
   /** Default 16_000. */
   dataSignInTimeoutMs?: number;
   onTimings?: (timings: WorkspaceDualSignInTimings) => void;
 };
+
+function resolvedLoginApiUrl(value: string | (() => string) | undefined): string | undefined {
+  if (typeof value === "function") return value() || undefined;
+  const next = String(value ?? "").trim();
+  return next || undefined;
+}
+
+function shouldRescueDataPlane(dataError: string | null): boolean {
+  const msg = String(dataError ?? "");
+  if (/opaque required|identity missing|not configured/i.test(msg)) return false;
+  return /rate limit|timeout|AUTH_TIMEOUT|unavailable|offline|aborted/i.test(msg);
+}
 
 function maskLogin(input: string): string {
   const s = String(input ?? "").trim();
@@ -131,7 +144,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
         mirrorSessionKey: "dataSession",
         mode,
       }),
-      4_000,
+      14_000,
     ).catch((err) => {
       console.warn(`${log} hub recover timeout/fail`, {
         ms: Math.round(nowMs() - t0),
@@ -308,7 +321,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
       "workspace-dual",
       runWorkspaceDualSignIn(loginInput, password, mode, {
         getHubClient: config.getHubClient,
-        resolveLoginApiUrl: config.resolveLoginApiUrl,
+        resolveLoginApiUrl: resolvedLoginApiUrl(config.resolveLoginApiUrl),
         recoverHubSession: recoverHubSessionViaWorker,
         adoptRecoveredPlaneSession: config.cacheDataSession,
         cacheHubIdentityFromSession: (session, mirrorEmail) => {
@@ -387,7 +400,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
 
     let dataSession = data.session;
     let dataError = data.error;
-    if (result.identitySession && !dataSession) {
+    if (result.identitySession && !dataSession && shouldRescueDataPlane(dataError)) {
       const rescued = await recoverHubSessionViaWorker(
         loginInput,
         password,

@@ -91,6 +91,8 @@ export type HubDirectoryColumnDef<TKey extends string = string> = {
   headerImageSrc?: string;
   headerTooltip?: string;
   headerHint?: HubDirectoryColumnHintContent;
+  /** Keep sticker + full header text (no icon-only collapse). */
+  enableFit?: boolean;
 };
 
 export type DirectoryColgroupOptions = {
@@ -201,8 +203,8 @@ export function buildDirectoryColumns<TKey extends string>(
 type ColgroupCol = { key: string; colClass: string; width?: string };
 
 /**
- * Fixed lengths (rem/px/ch) lock width+min+max so table-layout cannot stretch
- * short columns (Browser code, Status, …). Percent stays flexible.
+ * rem/px lock width+min+max so table-layout cannot stretch tracks.
+ * Percent is denied by validateDirectoryColumnWidthMeta (wrap overflow-x).
  */
 function colWidthStyle(width: string | undefined): { width: string; minWidth?: string; maxWidth?: string } | undefined {
   if (!width) return undefined;

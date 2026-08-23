@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Archive, Puzzle } from "lucide-react";
-import type { KpiTileData, TabHeaderStatItem } from "@tool-workspace/hub-ui";
+import type { KpiTileData } from "@tool-workspace/hub-ui";
+import { useHostHeaderStats } from "../../../hooks/useHostHeaderStats";
 import { defaultsForPrefItems, isHubPrefVisible } from "../../../lib/display-pref-helpers";
 import { SYSTEM_EXTENSIONS_DISPLAY_PREFS } from "../../../lib/display-prefs-registry";
 import { STEALTH_EXTENSIONS_KPI_STICKER } from "../../../lib/stealth-column-stickers";
@@ -8,7 +8,7 @@ import { useStealthSystemTabDisplayPrefs } from "../../../lib/useStealthSystemTa
 import { useStealthHubListPrefs } from "../../../lib/useStealthHubListPrefs";
 import type { CachedStoreExtension } from "../../../types";
 import type { ExtensionKindFilter } from "./extension-filters";
-import { withExtensionHeaderStatFilterClicks, withExtensionKpiFilterClicks } from "./extension-kpi-filter";
+import { withExtensionKpiFilterClicks } from "./extension-kpi-filter";
 
 type ExtensionKpiNumbers = {
   cached: number;
@@ -32,15 +32,7 @@ const EXTENSION_KPI_TILES: Array<{
   { key: "store", label: "Store", tone: "sky", pick: (k) => k.store },
 ];
 
-const EXTENSION_HEADER_STAT_DEFS: Record<
-  keyof ExtensionKpiNumbers,
-  { icon: typeof Puzzle; label: string; toneClass: string; pick: (k: ExtensionKpiNumbers) => number }
-> = {
-  cached: { icon: Puzzle, label: "Cached", toneClass: "text-indigo-300", pick: (k) => k.cached },
-  store: { icon: Archive, label: "Store", toneClass: "text-sky-300", pick: (k) => k.store },
-};
-
-/** System → Extensions KPI strip + header stats (sub-tab display prefs, default off). */
+/** System → Extensions KPI strip + header CPU/RAM (sub-tab display prefs, default off). */
 export function useSystemExtensionsDirectoryChrome(
   cached: CachedStoreExtension[],
   kindFilter: {
@@ -50,6 +42,7 @@ export function useSystemExtensionsDirectoryChrome(
 ) {
   const tabDisplay = useStealthSystemTabDisplayPrefs("extensions");
   const hubPrefs = useStealthHubListPrefs();
+  const centerStats = useHostHeaderStats(hubPrefs.systemHeaderStats);
   const numbers = useMemo(() => extensionKpiNumbers(cached), [cached]);
 
   const kpiDefaults = useMemo(
@@ -78,42 +71,6 @@ export function useSystemExtensionsDirectoryChrome(
       ),
     [kpiDefaults, kindFilter.selectedKinds, kindFilter.setSelectedKinds, numbers, tabDisplay?.kpi],
   );
-
-  const headerStatDefaults = useMemo(
-    () =>
-      defaultsForPrefItems(
-        SYSTEM_EXTENSIONS_DISPLAY_PREFS.headerStats,
-        SYSTEM_EXTENSIONS_DISPLAY_PREFS.defaultHeaderStatKeys,
-      ),
-    [],
-  );
-
-  const centerStats = useMemo((): TabHeaderStatItem[] => {
-    const items: TabHeaderStatItem[] = [];
-    for (const item of SYSTEM_EXTENSIONS_DISPLAY_PREFS.headerStats) {
-      if (!isHubPrefVisible(hubPrefs.systemHeaderStats, headerStatDefaults, item.key)) continue;
-      const def = EXTENSION_HEADER_STAT_DEFS[item.key as keyof ExtensionKpiNumbers];
-      if (!def) continue;
-      items.push({
-        key: item.key,
-        icon: def.icon,
-        label: def.label,
-        value: def.pick(numbers),
-        toneClass: def.toneClass,
-      });
-    }
-    return withExtensionHeaderStatFilterClicks(
-      items,
-      kindFilter.selectedKinds,
-      kindFilter.setSelectedKinds,
-    );
-  }, [
-    headerStatDefaults,
-    hubPrefs.systemHeaderStats,
-    kindFilter.selectedKinds,
-    kindFilter.setSelectedKinds,
-    numbers,
-  ]);
 
   return { kpis, centerStats };
 }

@@ -1,5 +1,245 @@
 # Changelog
 
+## 2026-08-24 - Patch bump for completed agent task (release)
+
+- Version: `2.1.1`
+- Timestamp: 2026-08-24 01:02 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0003): 1.1.23 → 2.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-24 - Patch bump for completed agent task
+
+- Version: `1.1.23`
+- Timestamp: 2026-08-24 00:43 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-24 - Patch bump for completed agent task
+
+- Version: `1.1.22`
+- Timestamp: 2026-08-24 00:34 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-24 - Patch bump for completed agent task
+
+- Version: `1.1.21`
+- Timestamp: 2026-08-24 00:22 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-24 - Patch bump for completed agent task
+
+- Version: `1.1.20`
+- Timestamp: 2026-08-24 00:15 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-24 - Patch bump for completed agent task
+
+- Version: `1.1.19`
+- Timestamp: 2026-08-24 00:10 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-24 - Patch bump for completed agent task
+
+- Version: `1.1.18`
+- Timestamp: 2026-08-24 00:02 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-23 - Patch bump for completed agent task
+
+- Version: `1.1.17`
+- Timestamp: 2026-08-23 23:47 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-23 - Patch bump for completed agent task
+
+- Version: `1.1.16`
+- Timestamp: 2026-08-23 23:38 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-23 - Patch bump for completed agent task
+
+- Version: `1.1.15`
+- Timestamp: 2026-08-23 22:59 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-23 - Patch bump for completed agent task
+
+- Version: `1.1.14`
+- Timestamp: 2026-08-23 22:53 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-23 - Patch bump for completed agent task
+
+- Version: `1.1.13`
+- Timestamp: 2026-08-23 09:13 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-22 - Patch bump for completed agent task
+
+- Version: `1.1.12`
+- Timestamp: 2026-08-22 06:50 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-22 - Patch bump for completed agent task
+
+- Version: `1.1.11`
+- Timestamp: 2026-08-22 04:34 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-21 - Patch bump for completed agent task
+
+- Version: `1.1.10`
+- Timestamp: 2026-08-21 00:55 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-20 - Patch bump for completed agent task
 
 - Version: `1.1.9`

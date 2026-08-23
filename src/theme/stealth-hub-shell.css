@@ -18,6 +18,11 @@
   padding-right: var(--stealth-chrome-bleed);
 }
 
+/* Wide RAM chip: `18.2 / 32 GB · 57%` — hub-ui value cap is 7.5rem. */
+.stealth-hub-app .stealth-host-ram-stat .app-tab-header-stat-value {
+  max-width: 16rem;
+}
+
 .stealth-hub-app .hub-chrome-sticky {
   margin-left: calc(-1 * var(--stealth-chrome-bleed));
   margin-right: calc(-1 * var(--stealth-chrome-bleed));

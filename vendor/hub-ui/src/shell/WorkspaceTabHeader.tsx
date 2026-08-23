@@ -10,6 +10,7 @@ import {
 import { buildVersionMetaItems } from "./workspace-tab-header-meta";
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
 import type { HubVersionDesktopUpdate } from "./HubVersionUpdateStatusIcon";
+import { HubDirectoryQueryPendingChip } from "./HubDirectoryQueryPendingChip";
 
 export type WorkspaceTabHeaderProps = {
   ariaLabel: string;
@@ -45,6 +46,12 @@ export type WorkspaceTabHeaderProps = {
   centerStats: TabHeaderStatItem[];
   /** Sparse vault/sync status before center stats — idle null. */
   statusSlot?: ReactNode;
+  /** Same signal as FilterBar glyph — header chip beside Sync/Live. */
+  queryPending?: boolean;
+  /** Distinguishes Searching… vs Filtering… on the header chip. */
+  query?: string;
+  /** Facets / KPI keys active (sticky defaults ignored). */
+  filterActive?: boolean;
   pinSticky?: boolean;
   dividerBelow?: boolean;
   embedded?: boolean;
@@ -67,6 +74,9 @@ export function WorkspaceTabHeader({
   extraMetaItems = [],
   centerStats,
   statusSlot,
+  queryPending = false,
+  query = "",
+  filterActive = false,
   ...header
 }: WorkspaceTabHeaderProps) {
   const metaItems = useMemo(() => {
@@ -117,7 +127,52 @@ export function WorkspaceTabHeader({
   ]);
 
   return (
-    <AppTabHeader {...header} metaItems={metaItems} centerStats={centerStats} statusSlot={statusSlot} />
+    <AppTabHeader
+      {...header}
+      metaItems={metaItems}
+      centerStats={centerStats}
+      statusSlot={
+        <WorkspaceTabHeaderQueryStatus
+          statusSlot={statusSlot}
+          queryPending={queryPending}
+          query={query}
+          filterActive={filterActive}
+        />
+      }
+    />
+  );
+}
+
+/** Isolated — field-pending / Filtered must not re-render version meta or center stats. */
+function WorkspaceTabHeaderQueryStatus({
+  statusSlot,
+  queryPending,
+  query,
+  filterActive,
+}: {
+  statusSlot?: ReactNode;
+  queryPending: boolean;
+  query: string;
+  filterActive: boolean;
+}) {
+  if (!statusSlot && !queryPending && !query.trim() && !filterActive) {
+    return (
+      <HubDirectoryQueryPendingChip
+        queryPending={queryPending}
+        query={query}
+        filterActive={filterActive}
+      />
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5">
+      {statusSlot}
+      <HubDirectoryQueryPendingChip
+        queryPending={queryPending}
+        query={query}
+        filterActive={filterActive}
+      />
+    </span>
   );
 }
 

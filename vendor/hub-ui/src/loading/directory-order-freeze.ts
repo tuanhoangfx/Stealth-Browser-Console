@@ -1,11 +1,26 @@
 /**
  * Directory order freeze — keep row slots stable after search/filter is applied.
  *
- * Recapture sorted order only when the freeze key changes (sort / search / facet /
- * period) or on F5 (module state). Membership add/delete does **not** reshuffle:
- * gone ids drop in place; new ids append in incoming sorted order.
- * In-session field edits (Own, Status, realtime) keep the same slots.
+ * Recapture incoming sorted order when:
+ * - the freeze key changes (sort / search / facet / period)
+ * - membership changes (add / delete / sync / late hydrate)
+ * - first paint, or F5 (module state)
+ *
+ * Same-id field edits (Own, Status, realtime) keep the frozen slots.
  */
+
+function sameDirectoryMembership(
+  frozenIds: readonly string[],
+  incomingIds: readonly string[],
+): boolean {
+  if (frozenIds.length !== incomingIds.length) return false;
+  const frozen = new Set(frozenIds);
+  if (frozen.size !== incomingIds.length) return false;
+  for (const id of incomingIds) {
+    if (!frozen.has(id)) return false;
+  }
+  return true;
+}
 
 type DirectoryOrderFreezeState = {
   freezeKey: string;
@@ -30,7 +45,7 @@ export function buildDirectoryOrderFreezeKey(
 
 /**
  * Reorder freshly-sorted rows back into the frozen slot order for `scope`.
- * Freeze-key change (or first paint) captures the incoming sorted order.
+ * Key or membership change (or first paint) captures the incoming sorted order.
  */
 export function applyDirectoryOrderFreeze<T>(
   sortedRows: readonly T[],
@@ -38,28 +53,22 @@ export function applyDirectoryOrderFreeze<T>(
   scope: string,
   getId: (row: T) => string,
 ): T[] {
+  const incomingIds = sortedRows.map(getId);
   const existing = frozenOrderByScope.get(scope);
-  if (!existing || existing.freezeKey !== freezeKey) {
-    const orderIds = sortedRows.map(getId);
-    frozenOrderByScope.set(scope, { freezeKey, orderIds });
+  if (
+    !existing ||
+    existing.freezeKey !== freezeKey ||
+    !sameDirectoryMembership(existing.orderIds, incomingIds)
+  ) {
+    frozenOrderByScope.set(scope, { freezeKey, orderIds: incomingIds });
     return [...sortedRows];
   }
 
   const byId = new Map(sortedRows.map((row) => [getId(row), row]));
   const next: T[] = [];
-  const seen = new Set<string>();
   for (const id of existing.orderIds) {
     const row = byId.get(id);
-    if (row === undefined) continue;
-    next.push(row);
-    seen.add(id);
+    if (row !== undefined) next.push(row);
   }
-  for (const row of sortedRows) {
-    const id = getId(row);
-    if (seen.has(id)) continue;
-    next.push(row);
-    seen.add(id);
-  }
-  frozenOrderByScope.set(scope, { freezeKey, orderIds: next.map(getId) });
   return next;
 }

@@ -19,6 +19,8 @@ export type HubActivityTimestampLabelProps = {
   title?: string;
   /** When true (default), applies directory timestamp typography SSOT. */
   directoryTypography?: boolean;
+  /** Detail meta uses ADM field size; directory tables keep compact 10px chrome. */
+  variant?: "compact" | "detail";
   className?: string;
 };
 
@@ -27,6 +29,7 @@ export function HubActivityTimestampLabel({
   at,
   fallback = <HubDirectoryEmptyCell />,
   directoryTypography = true,
+  variant = "compact",
   className = "",
 }: HubActivityTimestampLabelProps) {
   const now = useRelativeNow();
@@ -43,6 +46,7 @@ export function HubActivityTimestampLabel({
       label={label}
       tone={hubActivityAgeHubTone(tone)}
       capitalize={false}
+      variant={variant}
     />
   );
 

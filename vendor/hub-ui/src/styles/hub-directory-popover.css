@@ -15,9 +15,10 @@
 .hub-directory-popover {
   position: fixed;
   z-index: 11000;
+  box-sizing: border-box;
   width: max-content;
   min-width: 11rem;
-  max-width: min(92vw, 28rem);
+  max-width: min(96vw, 52rem);
   padding: 0.5rem 0.65rem;
   border-radius: 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -42,6 +43,7 @@
   align-items: center;
   gap: 0.35rem;
   margin: 0 0 0.25rem;
+  max-width: 100%;
 }
 
 .hub-directory-popover__heading--title {
@@ -51,16 +53,18 @@
 }
 
 .hub-directory-popover__heading--section {
+  flex-wrap: wrap;
   margin-top: 0.35rem;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--muted, #94a3b8);
 }
 
 .hub-directory-popover__heading-text {
   min-width: 0;
+  white-space: normal;
 }
 
 .hub-directory-popover__desc {
@@ -86,9 +90,10 @@
 
 .hub-directory-popover__row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.35rem;
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
 }
 
 .hub-directory-popover__icon {
@@ -113,12 +118,76 @@
 }
 
 .hub-directory-popover__line {
-  flex-shrink: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  align-items: baseline;
+  flex-shrink: 1;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.35;
   color: var(--text, #e2e8f0);
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.hub-directory-popover__line .hub-directory-copy-wrap,
+.hub-directory-popover__line .twofa-copy-control-wrap {
+  flex-shrink: 0;
+}
+
+.hub-directory-popover__line .hub-directory-copy-control,
+.hub-directory-popover__line .twofa-copy-control {
+  text-decoration: none;
+}
+
+/* Days Left hex SSOT — tooltip + directory/Detail Left number. 5 days = safe. */
+:root {
+  --hub-days-left-safe: #86efac;
+  --hub-days-left-soon: #fbbf24;
+  --hub-days-left-due: #f87171;
+  --hub-days-left-expired: #c4b5fd;
+}
+
+.hub-directory-popover__days-left,
+.quota-days-left {
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-directory-popover__days-left--safe,
+span.quota-days-left.quota-days-left--safe,
+span.quota-days-left.quota-days-left--ok,
+span.quota-expiry.quota-expiry--safe,
+span.quota-expiry.quota-expiry--ok {
+  color: var(--hub-days-left-safe);
+}
+
+.hub-directory-popover__days-left--soon,
+span.quota-days-left.quota-days-left--soon,
+span.quota-days-left.quota-days-left--warn,
+span.quota-expiry.quota-expiry--soon,
+span.quota-expiry.quota-expiry--warn {
+  color: var(--hub-days-left-soon);
+}
+
+.hub-directory-popover__days-left--due,
+span.quota-days-left.quota-days-left--due,
+span.quota-expiry.quota-expiry--due {
+  color: var(--hub-days-left-due);
+}
+
+.hub-directory-popover__days-left--expired,
+span.quota-days-left.quota-days-left--expired,
+span.quota-days-left.quota-days-left--danger,
+span.quota-expiry.quota-expiry--expired,
+span.quota-expiry.quota-expiry--danger {
+  color: var(--hub-days-left-expired);
+}
+
+.hub-directory-popover__days-left--muted,
+span.quota-days-left.quota-days-left--muted,
+span.quota-expiry.quota-expiry--muted {
+  color: var(--hub-text-muted, #94a3b8);
 }
 
 .hub-directory-popover__access {
@@ -201,7 +270,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .hub-directory-popover__row--action:hover .hub-directory-popover__line {

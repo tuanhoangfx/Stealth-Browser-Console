@@ -8,12 +8,16 @@ export type CrmOrderDetailsMirrorRow = {
   id: string;
   product_name?: string | null;
   external_order_id?: string | null;
-  /** CRM order status (🚦 order_status) — used to keep only completed orders in usage counts. */
+  /** CRM order status (🚦 order_status) — live Usage requires Completed; all other statuses are exceptions. */
   order_status?: string | null;
+  /** Primary / first Services vault join (backward-compat scalar). */
+  twofa_account_id?: string | null;
+  /** All matching Services vault ids on a multi-account order. */
+  twofa_account_ids?: readonly string[] | null;
   metadata?: Record<string, unknown> | null;
 };
 
-/** True when an order's sheet status is a "Completed" state (CRM Usage count gate). */
+/** True when an order's sheet status is a "Completed" state (live Usage gate). */
 export function isCrmOrderCompletedStatus(status: string | null | undefined): boolean {
   if (!status) return false;
   return status.includes("Completed");
@@ -53,10 +57,44 @@ export function normalizeCrmOrderDetailsIdentifier(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * Gmail mailbox aliases — `user@gmail.com` ≡ `user@googlemail.com`.
+ * Index + lookup must emit both keys; mention-count must search both spellings.
+ */
+export function expandCrmOrderGmailAliases(identifier: string): string[] {
+  const n = normalizeCrmOrderDetailsIdentifier(identifier);
+  if (!n) return [];
+  if (n.endsWith("@gmail.com")) return [n, `${n.slice(0, -"@gmail.com".length)}@googlemail.com`];
+  if (n.endsWith("@googlemail.com")) return [n, `${n.slice(0, -"@googlemail.com".length)}@gmail.com`];
+  return [n];
+}
+
+/** Canonical mailbox key — `user@googlemail.com` → `user@gmail.com`. */
+export function canonicalizeCrmOrderMailbox(email: string): string {
+  const n = normalizeCrmOrderDetailsIdentifier(email);
+  return n.endsWith("@googlemail.com") ? `${n.slice(0, -"@googlemail.com".length)}@gmail.com` : n;
+}
+
+/** Unique mailboxes in Details order (gmail/googlemail collapsed). */
+export function crmOrderDetailMailboxOrder(text: string): string[] {
+  const matches = text.toLowerCase().match(CRM_ORDER_DETAILS_EMAIL_REGEX) ?? [];
+  const out: string[] = [];
+  for (const raw of matches) {
+    const key = canonicalizeCrmOrderMailbox(raw);
+    if (key.includes("@") && !out.includes(key)) out.push(key);
+  }
+  return out;
+}
+
+/** Unique mailboxes in Order Details (gmail/googlemail collapsed). Not order count. */
+export function countCrmOrderDetailMailboxes(text: string): number {
+  return crmOrderDetailMailboxOrder(text).length;
+}
+
 export function extractCrmOrderDetailEmails(text: string): string[] {
   const lower = text.toLowerCase();
   const matches = lower.match(CRM_ORDER_DETAILS_EMAIL_REGEX) ?? [];
-  return [...new Set(matches.map(normalizeCrmOrderDetailsIdentifier))];
+  return [...new Set(matches.flatMap((m) => expandCrmOrderGmailAliases(m)))];
 }
 
 const CRM_ORDER_DETAIL_IDENTITY_PREFIXES = [
@@ -115,12 +153,14 @@ export function extractCrmOrderDetailCredentialTokens(text: string): string[] {
 export function countCrmOrderDetailMentions(haystack: string, needle: string): number {
   if (!haystack || !needle) return 0;
   let count = 0;
-  let from = 0;
-  while (from < haystack.length) {
-    const at = haystack.indexOf(needle, from);
-    if (at < 0) break;
-    count += 1;
-    from = at + needle.length;
+  for (const token of expandCrmOrderGmailAliases(needle)) {
+    let from = 0;
+    while (from < haystack.length) {
+      const at = haystack.indexOf(token, from);
+      if (at < 0) break;
+      count += 1;
+      from = at + token.length;
+    }
   }
   return count;
 }

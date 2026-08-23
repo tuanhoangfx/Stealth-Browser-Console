@@ -5,7 +5,9 @@ import {
   HubDirectoryToolbarSelection,
   HubPaginatedCardGrid,
   HubSplitDirectoryPane,
+  KpiStrip,
   type HubViewMode,
+  type KpiTileData,
   type TimeRange,
 } from "@tool-workspace/hub-ui";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
@@ -45,6 +47,7 @@ export type WorkflowStoreDirectoryPanelProps = {
   viewMode: HubViewMode;
   onViewModeChange: (mode: HubViewMode) => void;
   timeRange: TimeRange;
+  kpis?: KpiTileData[];
 };
 
 export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryPanel({
@@ -74,6 +77,7 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
   viewMode,
   onViewModeChange,
   timeRange,
+  kpis,
 }: WorkflowStoreDirectoryPanelProps) {
   const { filters, filterValues, listResetKey, handleFilterValuesChange } = useWorkflowStoreDirectoryFilters({
     entries,
@@ -107,6 +111,7 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
       <HubSplitDirectoryPane
         className="stealth-workflow-store-directory-frame hub-directory-frame flex min-h-0 flex-1 flex-col"
         variant="panel"
+        kpiBand={kpis?.length ? <KpiStrip items={kpis} /> : undefined}
         filterBar={
           <WorkflowStoreFilterPane
             filters={filters}
@@ -119,7 +124,6 @@ export const WorkflowStoreDirectoryPanel = memo(function WorkflowStoreDirectoryP
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
             timeRange={timeRange}
-            loading={loading}
             searchTrailing={
               <HubDirectoryToolbarSelection
                 visibleCount={filteredEntries.length}

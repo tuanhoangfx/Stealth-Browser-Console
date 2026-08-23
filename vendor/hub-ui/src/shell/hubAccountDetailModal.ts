@@ -14,13 +14,25 @@ export const HUB_TWOfA_ACCOUNT_DETAIL_SHELL_CLASS = "twofa-account-detail-modal"
  * Update Release, Settings, Add). Reference box = P0005 CRM Service detail.
  * Mirrored by `.modal-shell.hub-tool-detail-modal:not(--fit)` in `styles/hub-modal.css`
  * (asserted in hubLayout3DetailTokens.test.ts) — tools must NOT re-declare
- * `--hub-modal-max-w/h/vh`; ask for a content-sized shell with `--fit` instead.
+ * `--hub-modal-max-w/h/vh` (including User Access / Users Detail). Ask for a
+ * content-sized shell with `--fit` instead.
  */
 export const HUB_TOOL_MODAL_SIZE_TOKENS = {
   maxW: "min(88rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)))",
   maxH: "768px",
   maxVh: "73.6vh",
   minH: "min(512px, var(--hub-modal-max-vh))",
+} as const;
+
+/**
+ * Confirm / Prompt / Clone — one compact box (`size="compact"` + `--fit`).
+ * Do not invent max-w-md/lg or per-dialog `--hub-modal-max-w`.
+ */
+export const HUB_COMPACT_MODAL_CLASS = "hub-compact-modal";
+
+export const HUB_COMPACT_MODAL_SIZE_TOKENS = {
+  maxW: "min(28rem, calc(100vw - var(--hub-modal-h-margin, 2rem)))",
+  frameW: "min(28rem, calc(100vw - var(--hub-modal-h-margin, 2rem)))",
 } as const;
 
 export const HUB_LAYOUT3_DETAIL_TOKENS = {

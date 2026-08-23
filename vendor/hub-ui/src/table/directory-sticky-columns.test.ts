@@ -61,8 +61,16 @@ describe("buildDirectoryStickyColumnsCss", () => {
   });
 
   it("edge shadow appears only while scrolled (last frozen column)", () => {
-    expect(css).toContain(`${SCOPE}[data-sticky-scrolled="1"] tbody td.hub-users-col--od-order-id`);
+    expect(css).toContain(
+      `${SCOPE}[data-sticky-scrolled="1"] tbody tr:not(.hub-users-row--pad) td.hub-users-col--od-order-id`,
+    );
     expect(css).toContain("box-shadow:8px 0 8px -8px rgba(0,0,0,0.45);");
+  });
+
+  it("pad rows keep sticky left but drop the opaque --panel fill", () => {
+    expect(css).toContain(
+      `${SCOPE} tbody tr.hub-users-row--pad td.hub-users-col--select{background:transparent;background-image:none;box-shadow:none;}`,
+    );
   });
 
   it("wires the frozen flash animation for post-edit rows", () => {

@@ -10,8 +10,8 @@ export type HubDirectoryColumnWidthSpec = {
 };
 
 /**
- * SSOT: chrome columns (status, timestamp, counts) → fixed rem/px; content columns → fluid %.
- * Bulk tables (`showSelect: true`): apply via variant CSS — never inline % on fixed roles in colgroup.
+ * SSOT: every directory track is rem/px. Narrow view = wrap overflow-x (never %).
+ * Bulk tables (`showSelect: true`): apply via variant CSS — never inline % in colgroup.
  */
 export const HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY: Partial<
   Record<HubTableColumnRole, HubDirectoryColumnWidthSpec>
@@ -37,12 +37,15 @@ export const HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY: Partial<
   load: { kind: "fixed", token: "5rem" },
   actions: { kind: "fixed", token: "8.5rem" },
   code: { kind: "fixed", token: "4.5rem" },
-  browser: { kind: "fixed", token: "4.5rem" },
+  /** Profile / 4-digit browser code + header sticker + full “Profile” label. */
+  browser: { kind: "fixed", token: "7.5rem" },
   /** Directory audit log — one-line summary + ellipsis (P0020 Log column). */
   log: { kind: "fixed", token: "15rem" },
   bots: { kind: "fixed", token: "3.75rem" },
   members: { kind: "fixed", token: "5rem" },
   active: { kind: "fixed", token: "5rem" },
+  session: { kind: "fixed", token: "5rem" },
+  synced: { kind: "fixed", token: "5rem" },
 };
 
 export const HUB_DIRECTORY_SELECT_WIDTH_SPEC: HubDirectoryColumnWidthSpec = {
@@ -53,8 +56,7 @@ export const HUB_DIRECTORY_SELECT_WIDTH_SPEC: HubDirectoryColumnWidthSpec = {
 /**
  * Freeform directory **Note** column width SSOT (P0020 Services/Mail/Teams, P0005 Orders,
  * P0013 Movies, P0003 Profiles, …). Prefer rem lock + generated/theme CSS that beats
- * hub-directory-table neutralize (`th/td max-width:none`). Not for fluid % “Notes” chrome
- * on system panels (P0004 server/supabase summaries).
+ * hub-directory-table neutralize (`th/td max-width:none`). Same rem on Hub system Notes.
  */
 export const HUB_DIRECTORY_NOTE_COL_WIDTH = "20rem";
 
@@ -63,6 +65,42 @@ export const HUB_DIRECTORY_NOTE_COL_WIDTH = "20rem";
  * Prefer this alias over `HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY.log!.token`.
  */
 export const HUB_DIRECTORY_LOG_COL_WIDTH = resolveDirectoryColumnWidthSpec("log").token;
+
+/**
+ * Shared directory chrome — Profile / Usage / Day Left.
+ * One rem token per semantic column (Services · Mail · Meta · Teams · Quota).
+ * Never hand-write 5.5rem / 7.5rem in a product theme or HubRouteAccess CSS.
+ */
+export const HUB_DIRECTORY_PROFILE_COL_WIDTH = resolveDirectoryColumnWidthSpec("browser").token;
+/**
+ * Usage — sticker + “Usage”. Wider than hub `activity` 6.25rem.
+ */
+export const HUB_DIRECTORY_USAGE_COL_WIDTH = "8.75rem";
+/**
+ * Usage Expired — sticker + full header label (longer than Usage).
+ * Own rem so a shared Usage class cannot collapse the header to icon-only.
+ */
+export const HUB_DIRECTORY_USAGE_EXPIRED_COL_WIDTH = "12rem";
+export const HUB_DIRECTORY_PLAN_LEFT_COL_WIDTH = resolveDirectoryColumnWidthSpec("period").token;
+/** Own chip — Services / Mail / Teams (🦸‍♂️). Not hub `status` 6.5rem. */
+export const HUB_DIRECTORY_OWNERSHIP_COL_WIDTH = "5.5rem";
+/**
+ * Account live Status — Services theme floor (🚦 + label). Wider than hub `status` 6.5rem.
+ * Mail / Team / Meta / Quota Status use this, not a per-screen rem.
+ */
+export const HUB_DIRECTORY_ACCOUNT_STATUS_COL_WIDTH = "8.75rem";
+/**
+ * CRM Subscription / Plan Status — ♻️ Active · 🚨 Expiring Soon · 🛑 Expired.
+ * P0005 Order `subscription_status` + P0020 Services/Mail/Quota/Teams Plan Status.
+ */
+export const HUB_DIRECTORY_SUBSCRIPTION_STATUS_COL_WIDTH = "14rem";
+export const HUB_DIRECTORY_PLAN_DATE_COL_WIDTH = resolveDirectoryColumnWidthSpec("created").token;
+export const HUB_DIRECTORY_PLAN_DUE_COL_WIDTH = resolveDirectoryColumnWidthSpec("updated").token;
+/** Password / Recovery / Full Info / Plan Package — Services identity + plan floors. */
+export const HUB_DIRECTORY_PASSWORD_COL_WIDTH = "8rem";
+export const HUB_DIRECTORY_MAIL_RECOVER_COL_WIDTH = "12.5rem";
+export const HUB_DIRECTORY_FULL_INFO_COL_WIDTH = "7rem";
+export const HUB_DIRECTORY_PLAN_PACKAGE_COL_WIDTH = "26rem";
 
 /** Playwright / visual regression bands (px) for fixed chrome columns. */
 export const HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS = {
@@ -104,17 +142,16 @@ export function failDirectoryColumnMeta(message: string): void {
   console.error(`[hub-directory] ${message}`);
 }
 
-/** Fail when meta assigns % to a fixed-tier role (bulk CSS should use registry token). */
+/** Fail when any directory meta still uses % / auto (workspace rem + overflow-x). */
 export function validateDirectoryColumnWidthMeta(
   columns: readonly { role: HubTableColumnRole; width: string; key?: string }[],
 ): void {
   for (const col of columns) {
-    const spec = resolveDirectoryColumnWidthSpec(col.role);
-    if (spec.kind !== "fixed") continue;
     if (isFluidDirectoryColumnWidth(col.width)) {
+      const spec = resolveDirectoryColumnWidthSpec(col.role);
       const label = col.key ? `"${col.key}" (${col.role})` : col.role;
       failDirectoryColumnMeta(
-        `Directory column ${label}: role "${col.role}" is fixed-width SSOT (${spec.token}) — meta width must not be %`,
+        `Directory column ${label}: width must be rem/px (got "${col.width}") — role token ${spec.token}`,
       );
     }
   }

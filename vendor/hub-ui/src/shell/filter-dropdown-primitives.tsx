@@ -160,7 +160,10 @@ export function HubFilterDropdownCircle({
 
 /** Scrollable option list inside filter / period dropdown panels. */
 export const HUB_SCROLLBAR_CLASS = "hub-scrollbar";
-export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list hub-scrollbar max-h-72 overflow-y-auto overflow-x-hidden p-1 min-w-0";
+export const HUB_FILTER_DROPDOWN_LIST_CLASS = "hub-filter-dropdown-list hub-scrollbar max-h-72 overflow-y-auto overflow-x-auto p-1 min-w-0";
+
+/** Roster rows (Name · Team · Position · Status) may exceed the trigger — keep the row full-width then grow. */
+export const HUB_FILTER_DROPDOWN_ROW_WIDE_CLASS = "w-max min-w-full";
 
 export const HUB_FILTER_DROPDOWN_PANEL_CLASS =
   "anim-pop absolute top-full z-30 mt-1 w-72 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel)] text-[var(--text)] shadow-xl shadow-black/40";

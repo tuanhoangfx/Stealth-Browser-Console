@@ -47,6 +47,7 @@ export function MiniBarChart({
   colorMode = "rank",
   topN,
   preserveOrder,
+  onItemClick,
 }: {
   title: string;
   titleEmoji?: string;
@@ -60,6 +61,8 @@ export function MiniBarChart({
   topN?: number;
   /** Keep input legend order (fixed-bucket charts). */
   preserveOrder?: boolean;
+  /** Directory drill-down — same FilterBar keys as KPI click. */
+  onItemClick?: (item: BarItem) => void;
 }) {
   const rows = prepareChartItems(
     items,
@@ -79,7 +82,23 @@ export function MiniBarChart({
           const color = resolveBarColor(it, i, m, colorMode);
           const othersRow = isChartOthersLabel(it.label);
           return (
-            <li key={`${it.label}-${i}`} className="hub-chart-row anim-slide">
+            <li
+              key={`${it.label}-${i}`}
+              className={`hub-chart-row anim-slide${onItemClick ? " hub-chart-row--interactive cursor-pointer" : ""}`}
+              onClick={onItemClick ? () => onItemClick(it) : undefined}
+              onKeyDown={
+                onItemClick
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onItemClick(it);
+                      }
+                    }
+                  : undefined
+              }
+              role={onItemClick ? "button" : undefined}
+              tabIndex={onItemClick ? 0 : undefined}
+            >
               <ChartLegendRowLabel
                 label={it.label}
                 iconSrc={it.iconSrc}
@@ -88,7 +107,7 @@ export function MiniBarChart({
                 iconMeta={it.iconMeta}
                 emojiGlyph={it.emojiGlyph}
                 labelHint={it.labelHint}
-                colorDot={!it.iconSrc && !it.emojiGlyph ? it.color : undefined}
+                colorDot={!it.iconSrc && !it.emojiGlyph ? color : undefined}
               />
               <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-white/5">
                 <div

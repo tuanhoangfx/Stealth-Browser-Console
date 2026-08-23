@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { KpiTileData } from "@tool-workspace/hub-ui";
+import { useHostHeaderStats } from "../../hooks/useHostHeaderStats";
 import { defaultsForPrefItems, isHubPrefVisible } from "../../lib/display-pref-helpers";
 import { PROFILES_DISPLAY_PREFS } from "../../lib/display-prefs-registry";
 import { useStealthHubListPrefs } from "../../lib/useStealthHubListPrefs";
@@ -7,13 +8,12 @@ import type { ProfileCatalogStats, ProfileRow } from "../../types";
 import {
   catalogStatsToKpiNumbers,
 } from "./profile-catalog-stats-patch";
-import { buildProfileHeaderStats } from "./profile-header-metrics";
 import {
   buildProfileKpiItems,
   buildProfileKpiNumbers,
   type ProfileKpiNumbers,
 } from "./profile-kpi-items";
-import { withProfileHeaderStatFilterClicks, withProfileKpiFilterClicks } from "./profile-kpi-filter";
+import { withProfileKpiFilterClicks } from "./profile-kpi-filter";
 
 function resolveCatalogKpiNumbers(
   catalogStats: ProfileCatalogStats | null,
@@ -36,6 +36,7 @@ export function useProfilesDirectoryChrome(
 ) {
   const { groupIds, statuses, setGroupIds, setStatuses } = filter;
   const hubPrefs = useStealthHubListPrefs();
+  const centerStats = useHostHeaderStats(hubPrefs.headerStats);
   const applyKpiFilter = useCallback(
     (next: { groupIds: string[]; statuses: ProfileRow["status"][] }) => {
       setGroupIds(next.groupIds);
@@ -68,29 +69,6 @@ export function useProfilesDirectoryChrome(
       ),
     [applyKpiFilter, groupIds, statuses, kpiNumbers, hubPrefs.kpi, kpiDefaults],
   );
-
-  const headerStatDefaults = useMemo(
-    () =>
-      defaultsForPrefItems(
-        PROFILES_DISPLAY_PREFS.headerStats,
-        PROFILES_DISPLAY_PREFS.defaultHeaderStatKeys,
-      ),
-    [],
-  );
-
-  const centerStats = useMemo(() => {
-    const visibleKeys = new Set(
-      PROFILES_DISPLAY_PREFS.headerStats
-        .filter((item) => isHubPrefVisible(hubPrefs.headerStats, headerStatDefaults, item.key))
-        .map((item) => item.key),
-    );
-    return withProfileHeaderStatFilterClicks(
-      buildProfileHeaderStats(visibleKeys, catalogKpis),
-      groupIds,
-      statuses,
-      applyKpiFilter,
-    );
-  }, [applyKpiFilter, catalogKpis, groupIds, headerStatDefaults, hubPrefs.headerStats, statuses]);
 
   return { kpis, centerStats };
 }

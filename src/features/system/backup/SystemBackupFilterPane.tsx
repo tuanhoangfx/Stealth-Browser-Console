@@ -103,7 +103,6 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
           countLabel="profiles"
           showViewToggle={false}
           showTimeRange={false}
-          showRefresh={false}
           showResultCount={false}
           displayBand={<StealthDisplayBandToolbar screen="system" systemTab="backup" />}
         />

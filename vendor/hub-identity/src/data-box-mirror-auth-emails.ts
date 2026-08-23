@@ -1,8 +1,8 @@
 /**
- * Data Box mirror auth emails — one Hub identity, one Data Box GoTrue key.
+ * Data Box / workspace-data mirror auth emails — one Hub identity, one data GoTrue key.
  *
- * SSOT: Hub opaque `u_<hub_uuid>@auth.infi.internal` only.
- * Never invent `@infix1.io.vn` / legacy synthetics.
+ * Trust Hub-validated `mirrorEmail` (opaque **or** provisioned `cs*@infix1.io.vn` store buyers).
+ * Never invent `@infix1.io.vn` from a username.
  */
 import { isHubOpaqueAuthEmail, looksLikeEmail, sanitizeHubLoginInput } from "./hub-login";
 
@@ -13,20 +13,24 @@ export function resolveDataBoxMirrorAuthEmails(opts: {
 }): string[] {
   const mirror = String(opts.mirrorEmail ?? "").trim().toLowerCase();
   const out: string[] = [];
-  const push = (value: string) => {
+  const push = (value: string, allowProvisionedSynthetic = false) => {
     const next = String(value ?? "").trim().toLowerCase();
     if (!next || !next.includes("@") || out.includes(next)) return;
-    // Reject leftover synthetics — migrate scripts own those rows.
-    if (next.endsWith("@infix1.io.vn") || next.endsWith("@id.hub.x1z10.local")) return;
+    if (
+      !allowProvisionedSynthetic &&
+      (next.endsWith("@infix1.io.vn") || next.endsWith("@id.hub.x1z10.local"))
+    ) {
+      return;
+    }
     out.push(next);
   };
 
   if (mirror) {
-    push(mirror);
+    push(mirror, true);
     return out;
   }
 
-  // Username without Hub session email cannot invent a mirror — caller must pass opaque.
+  // Username without Hub session email cannot invent a mirror — caller must pass Hub email.
   const login = sanitizeHubLoginInput(opts.loginInput);
   if (login && looksLikeEmail(login) && isHubOpaqueAuthEmail(login)) {
     push(login);

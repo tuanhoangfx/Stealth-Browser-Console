@@ -39,6 +39,15 @@ node Tool/P0003-Stealth-Browser-Console/scripts/dev-desktop-reload.mjs
 - Test bản cài: `corepack pnpm desktop:open` (không `--replace` khi chạy song song dev).
 - Chi tiết: `.cursor/rules/p0003-stealth-browser-ssot.mdc` · skill `ship-until-done` (Local dev → P0003).
 
+**See UI after source edit:** bake `dist/` (`pnpm dev:desktop-only -- --no-watch --keep-dev`) then F5 the **DEV** Electron window (`userData` contains `stealth-browser-console-dev`). Packaged exe (`:6003`) stays old until Release. `pnpm dev:web` (`:5175`) is layout-only (no IPC) — not the desktop SSOT.
+
+## Version clock (P0020 SSOT)
+
+Header `vX.Y.Z · Nm ago` reads `package.json` via `src/lib/app-meta.ts` + `resolveHubProductVersionMeta` (`src/lib/app-release.ts`). Vite bakes `VITE_APP_VERSION` + `VITE_APP_BUILT_AT` through `hubAppVersionPlugin` (`scripts/embed-app-version.mjs`). Patch bump = workspace hook — do not rewrite `APP_VERSION` as a string.
+
+- Cards: [`hub-version-clock-ssot.md`](../docs/playbooks/_cards/hub-version-clock-ssot.md) · [`product-task-patch-version.md`](../docs/playbooks/_cards/product-task-patch-version.md)
+- Gate: `node Tool/scripts/hub-version-meta-gate.mjs --code P0003`
+
 Web-only UI (no IPC):
 
 ```powershell
@@ -68,11 +77,16 @@ Data directory: `%APPDATA%/Stealth Browser Console/` (SQLite + profile folders +
 
 Remote catalog is **read-only** from the app. Install/Update copies workflow JSON into **localStorage** (`stealth-console-workflows`).
 
+Scripts JSON is **not** a folder of files — it is Chromium localStorage in Electron userData:
+
+- DEV: `%APPDATA%/stealth-browser-console-dev/` key `stealth-console-workflows`
+- Packaged: `%APPDATA%/Stealth Browser Console/` same key
+
 | Layer | Location | Who writes |
 |-------|----------|------------|
 | **Supabase (Hub)** | `public.stealth_workflow_catalog` on Hub Supabase | `pnpm workflow:publish -- --file path/to/workflow.json` (service role) |
-| **Drive / static** | `public/workflow-store/index.json` + `public/workflow-store/workflows/*.json` | Git commit or set `VITE_WORKFLOW_STORE_DRIVE_MANIFEST_URL` |
-| **Local (after Install)** | `localStorage` keys `stealth-console-workflows`, `stealth-console-workflow-store-installed` | App UI |
+| **Drive / static** | `public/workflow-store/*.json` (baked into `dist/` + bundle). Electron must resolve relative to `index.html` — `/workflow-store` on `file://` fails. | Git commit or `VITE_WORKFLOW_STORE_DRIVE_MANIFEST_URL` (https only) |
+| **Local (Scripts + Install)** | localStorage `stealth-console-workflows` + `stealth-console-workflow-store-installed` | App UI |
 
 **Publish to Supabase** (from repo root):
 

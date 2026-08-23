@@ -1,4 +1,5 @@
 import type { HubTableColumn } from "../content/HubDataTable";
+import { HUB_DIRECTORY_ID_EMOJI } from "../lib/directory-id-emoji";
 
 /** Modal route-access table — same shell as User Access tools table. */
 export const HUB_ROUTE_ACCESS_MODAL_TABLE_CLASS = "hub-users-table hub-users-table--route-access-modal";
@@ -12,6 +13,28 @@ export const HUB_ROUTE_ACCESS_TABLE_CLASS = "hub-users-table hub-users-table--ro
 export const HUB_ROUTE_ACCESS_TABLE_WRAP_CLASS = "hub-scrollbar min-w-0 overflow-x-auto";
 
 export type HubRouteAccessColumnLayout = "expanded" | "compact";
+
+/**
+ * Services directory chrome — always paint the header label (no icon-only collapse).
+ * Rem tokens are already sized for sticker + full title (Usage Expired, Left, …).
+ */
+export const HUB_ROUTE_ACCESS_HEADER_LABEL_ALWAYS = new Set<HubRouteAccessSortKey>([
+  "profile",
+  "usage",
+  "usageExpired",
+  "planLeft",
+  "planDays",
+  "planDate",
+  "planDue",
+  "ownership",
+  "liveStatus",
+  "password",
+  "mailRecover",
+  "fullInfo",
+  "source",
+  "loadAt",
+  "syncAt",
+]);
 
 export const HUB_ROUTE_ACCESS_COL = {
   select: "hub-users-col--select",
@@ -27,6 +50,7 @@ export const HUB_ROUTE_ACCESS_COL = {
   ownership: "hub-route-access-col--ownership",
   liveStatus: "hub-route-access-col--live-status",
   usage: "hub-route-access-col--usage",
+  usageExpired: "hub-route-access-col--usage-expired",
   planDate: "hub-route-access-col--plan-date",
   planDays: "hub-route-access-col--plan-days",
   planDue: "hub-route-access-col--plan-due",
@@ -60,13 +84,16 @@ export type HubRouteAccessModalColumnOptions = {
   showLiveStatusColumn?: boolean;
   /** Teams members — CRM Usage (P0005 Order Detail mentions, same service). */
   showUsageColumn?: boolean;
+  /** Teams members — CRM Usage Expired (Subscription Status Expired). */
+  showUsageExpiredColumn?: boolean;
   /** Teams members — Date / Duration / Due / Left after Tier. */
   showPlanScheduleColumns?: boolean;
   /** Hide Expires / remapped Status column (Teams — Role Backup replaces Status). Default true. */
   showExpiresColumn?: boolean;
   /**
-   * Stacked card embeds (Teams schema) — `table-layout:fixed` + pinned tracks so
-   * sibling tables share identical column edges regardless of cell content length.
+   * Stacked card embeds (Teams schema) — `table-layout:fixed` + rem tracks +
+   * `width: max-content` so sibling tables share edges without shrinking cols
+   * to the card (`width: 100%` scales Usage below Services 6.25rem).
    */
   stackAlignColumns?: boolean;
 };
@@ -110,7 +137,7 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     label: "Full Info",
     className: HUB_ROUTE_ACCESS_COL.fullInfo,
     role: "notes" as const,
-    headerEmoji: "📋",
+    headerEmoji: HUB_DIRECTORY_ID_EMOJI,
   },
   syncAt: {
     key: "syncAt",
@@ -152,6 +179,13 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     role: "activity" as const,
     headerEmoji: "🧮",
   },
+  usageExpired: {
+    key: "usageExpired",
+    label: "Usage Expired",
+    className: HUB_ROUTE_ACCESS_COL.usageExpired,
+    role: "activity" as const,
+    headerEmoji: "⏳",
+  },
   planDate: {
     key: "planDate",
     label: "Date",
@@ -163,7 +197,7 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     key: "planDays",
     label: "Duration",
     className: HUB_ROUTE_ACCESS_COL.planDays,
-    role: "activity" as const,
+    role: "period" as const,
     headerEmoji: "⏱️",
   },
   planDue: {
@@ -177,7 +211,7 @@ export const HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS = {
     key: "planLeft",
     label: "Left",
     className: HUB_ROUTE_ACCESS_COL.planLeft,
-    role: "activity" as const,
+    role: "period" as const,
     headerEmoji: "⏳",
   },
   permLoad: {
@@ -239,6 +273,7 @@ export function buildHubRouteAccessModalColumns(
   const showOwnershipColumn = options.showOwnershipColumn ?? false;
   const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
   const showUsageColumn = options.showUsageColumn ?? false;
+  const showUsageExpiredColumn = options.showUsageExpiredColumn ?? false;
   const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
   const showExpiresColumn = options.showExpiresColumn ?? true;
 
@@ -257,17 +292,19 @@ export function buildHubRouteAccessModalColumns(
   return [
     ...(showSelect ? [{ key: "select", label: "", className: HUB_ROUTE_ACCESS_COL.select }] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.user,
-    // Status band (Teams Member detail SSOT): Role → Source → Own → Live Status
+    // Status band (Teams Member detail SSOT): Role → Source → Own → Live Status → Left
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.role,
     ...(showSourceColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.source] : []),
     ...(showOwnershipColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.ownership] : []),
     ...(showLiveStatusColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.liveStatus] : []),
+    ...(showPlanScheduleColumns ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planLeft] : []),
     // Identity band: Profile → Password → Recovery → Full Info
     ...(showProfileColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.profile] : []),
     ...(showPasswordColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.password] : []),
     ...(showMailRecoverColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.mailRecover] : []),
     ...(showFullInfoColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.fullInfo] : []),
     ...(showUsageColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.usage] : []),
+    ...(showUsageExpiredColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.usageExpired] : []),
     ...(showSyncAtColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.syncAt] : []),
     HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.loadAt,
     ...(showPlanScheduleColumns
@@ -275,7 +312,6 @@ export function buildHubRouteAccessModalColumns(
           HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planDate,
           HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planDays,
           HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planDue,
-          HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.planLeft,
         ]
       : []),
     ...(showRouteColumn ? [HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS.route] : []),
@@ -299,6 +335,7 @@ export function hubRouteAccessModalColumnCount(
   const showOwnershipColumn = options.showOwnershipColumn ?? false;
   const showLiveStatusColumn = options.showLiveStatusColumn ?? false;
   const showUsageColumn = options.showUsageColumn ?? false;
+  const showUsageExpiredColumn = options.showUsageExpiredColumn ?? false;
   const showPlanScheduleColumns = options.showPlanScheduleColumns ?? false;
   const showExpiresColumn = options.showExpiresColumn ?? true;
 
@@ -318,6 +355,7 @@ export function hubRouteAccessModalColumnCount(
   if (showOwnershipColumn) dataCols += 1;
   if (showLiveStatusColumn) dataCols += 1;
   if (showUsageColumn) dataCols += 1;
+  if (showUsageExpiredColumn) dataCols += 1;
   if (showPlanScheduleColumns) dataCols += 4;
   if (!showExpiresColumn) dataCols -= 1;
   return showSelect ? dataCols + 1 : dataCols;
@@ -361,6 +399,7 @@ export type HubRouteAccessSortKey =
   | "ownership"
   | "liveStatus"
   | "usage"
+  | "usageExpired"
   | "syncAt"
   | "loadAt"
   | "planDate"

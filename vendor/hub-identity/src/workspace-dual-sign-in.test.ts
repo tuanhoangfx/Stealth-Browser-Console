@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@supabase/supabase-js";
+import { HUB_UNKNOWN_USER_ID_MESSAGE } from "./hub-auth-submit";
 import { runWorkspaceDualSignIn } from "./workspace-dual-sign-in";
 import { clearHubResolveLoginPrefetch } from "./hub-resolve-login-client";
 
@@ -352,5 +353,64 @@ describe("runWorkspaceDualSignIn parallel planes", () => {
     expect(vaultMirrorEmail).toBe("u_hub-id@auth.infi.internal");
     expect(vaultPlane.authenticate).toHaveBeenCalledOnce();
     vi.unstubAllGlobals();
+  });
+
+  it("recovers Hub session when resolve-login is unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      })),
+    );
+    const hub = {
+      auth: {
+        signInWithPassword: vi.fn(async () => ({
+          data: { session: null },
+          error: { message: "should not grant without resolve" },
+        })),
+      },
+    };
+    const recovered = mockSession("recovered", "cs00616@outlook.com");
+    const recoverHubSession = vi.fn(async () => ({ identitySession: recovered }));
+    const plane = vi.fn(async () => ({ session: mockSession("data"), error: null }));
+
+    const result = await runWorkspaceDualSignIn("cs00616", "secret", "signin", {
+      getHubClient: () => hub as never,
+      cacheHubIdentityFromSession: vi.fn(),
+      recoverHubSession,
+      planes: [{ authenticate: plane }],
+    });
+
+    expect(recoverHubSession).toHaveBeenCalledOnce();
+    expect(result.identitySession).toBe(recovered);
+    expect(hub.auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it("does not recover when resolve-login finds no user", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, authEmails: [] }),
+      })),
+    );
+    const recoverHubSession = vi.fn();
+
+    await expect(
+      runWorkspaceDualSignIn("nouser99", "secret", "signin", {
+        getHubClient: () =>
+          ({
+            auth: { signInWithPassword: vi.fn() },
+          }) as never,
+        cacheHubIdentityFromSession: vi.fn(),
+        recoverHubSession,
+        planes: [{ authenticate: vi.fn() }],
+      }),
+    ).rejects.toMatchObject({ message: HUB_UNKNOWN_USER_ID_MESSAGE });
+
+    expect(recoverHubSession).not.toHaveBeenCalled();
   });
 });

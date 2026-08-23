@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import "../theme/stealth-scripts-hub-layout.css";
 import "../theme/stealth-workflow-steps.css";
 import { useWorkflowEditor } from "../context/workflow-editor-context";
@@ -26,8 +26,8 @@ function ScriptsEditorPaneSkeleton() {
 }
 
 export const WorkflowView = memo(function WorkflowView({ headerActions }: { headerActions?: ReactNode }) {
-  const { workflowConfigs, filteredWorkflows, selectedWorkflowCount } = useWorkflowPicker();
-  const { activeWorkflowConfig, copyWorkflow, deleteWorkflows, setActiveWorkflow } = useWorkflowEditor();
+  const { workflowConfigs } = useWorkflowPicker();
+  const { copyWorkflow, deleteWorkflows, setActiveWorkflow } = useWorkflowEditor();
 
   useEffect(() => {
     const pending = consumePendingEditorWorkflow();
@@ -40,19 +40,9 @@ export const WorkflowView = memo(function WorkflowView({ headerActions }: { head
     setContextMenu({ workflow, x: event.clientX, y: event.clientY });
   }, []);
 
-  const scriptCounts = useMemo(
-    () => ({
-      total: workflowConfigs.length,
-      visible: filteredWorkflows.length,
-      checked: selectedWorkflowCount,
-      steps: activeWorkflowConfig.steps.length,
-    }),
-    [workflowConfigs.length, filteredWorkflows.length, selectedWorkflowCount, activeWorkflowConfig.steps.length],
-  );
-
   return (
     <>
-      <ScriptsHubChrome counts={scriptCounts} headerActions={headerActions}>
+      <ScriptsHubChrome headerActions={headerActions}>
         <section className="script-builder anim-fade min-h-0 min-w-0 flex-1 overflow-hidden">
           <aside className="script-workflows stealth-workflow-directory-pane min-h-0 min-w-0">
             <ScriptsWorkflowDirectory onContextMenu={handleWorkflowContextMenu} />

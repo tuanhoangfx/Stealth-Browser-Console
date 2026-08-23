@@ -77,7 +77,7 @@ export async function recoverHubSessionViaApi(
       method: "POST",
       headers,
       body,
-      signal: AbortSignal.timeout(3_500),
+      signal: AbortSignal.timeout(12_000),
     });
   } catch {
     return null;

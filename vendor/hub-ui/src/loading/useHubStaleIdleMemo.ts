@@ -93,6 +93,16 @@ function cancelScheduled(handle: Scheduled | null): void {
   if (handle.inner) window.cancelAnimationFrame(handle.inner);
 }
 
+export type HubStaleIdleMemoOptions = {
+  /**
+   * Stale-while-revalidate stays inside this key (filter / row rev).
+   * Changing it (P0020 Mail → Meta) drops the previous value immediately.
+   */
+  staleKey?: string;
+};
+
+type MemoState<T> = { fp: string; staleKey?: string; value: T };
+
 /**
  * Stale-first + idle recompute SSOT for expensive directory chrome (facet/KPI).
  *
@@ -101,6 +111,7 @@ function cancelScheduled(handle: Scheduled | null): void {
  * | Cache hit | Paint immediately; refresh via `requestIdleCallback` |
  * | Cache miss | Compute after rAF×2 (post first paint); store |
  * | Fingerprint change | Keep previous value until new compute finishes |
+ * | `staleKey` change | Do **not** keep previous value (cross-vault / cross-tab) |
  *
  * Golden: P0020 large vault KPI band; reuse across P00xx directories.
  */
@@ -109,15 +120,17 @@ export function useHubStaleIdleMemo<T>(
   fingerprint: string,
   compute: () => T,
   enabled: boolean,
+  options?: HubStaleIdleMemoOptions,
 ): T | undefined {
   const bucket = getBucket(namespace);
   const computeRef = useRef(compute);
   computeRef.current = compute;
+  const staleKey = options?.staleKey;
 
-  const [state, setState] = useState<{ fp: string; value: T } | undefined>(() => {
+  const [state, setState] = useState<MemoState<T> | undefined>(() => {
     if (!enabled || !fingerprint) return undefined;
     const hit = bucket.get(fingerprint) as T | undefined;
-    return hit !== undefined ? { fp: fingerprint, value: hit } : undefined;
+    return hit !== undefined ? { fp: fingerprint, staleKey, value: hit } : undefined;
   });
 
   useEffect(() => {
@@ -130,7 +143,7 @@ export function useHubStaleIdleMemo<T>(
       if (cancelled) return;
       const next = computeRef.current();
       setBucketValue(bucket, fingerprint, next);
-      setState({ fp: fingerprint, value: next });
+      setState({ fp: fingerprint, staleKey, value: next });
     };
 
     const hit = bucket.get(fingerprint) as T | undefined;
@@ -140,7 +153,9 @@ export function useHubStaleIdleMemo<T>(
       // (the P0005 Products "6s per tab open" pattern), cascading through every
       // downstream memo (charts/KPI/band) for an identical result.
       setState((prev) =>
-        prev?.fp === fingerprint && prev.value === hit ? prev : { fp: fingerprint, value: hit },
+        prev?.fp === fingerprint && prev.value === hit && prev.staleKey === staleKey
+          ? prev
+          : { fp: fingerprint, staleKey, value: hit },
       );
       return;
     }
@@ -150,12 +165,13 @@ export function useHubStaleIdleMemo<T>(
       cancelled = true;
       cancelScheduled(handle);
     };
-  }, [bucket, enabled, fingerprint]);
+  }, [bucket, enabled, fingerprint, staleKey]);
 
   if (!enabled) return undefined;
   if (state?.fp === fingerprint) return state.value;
   const hit = bucket.get(fingerprint) as T | undefined;
   if (hit !== undefined) return hit;
-  // Cross-fingerprint stale while new key computes
+  if (staleKey !== undefined && state?.staleKey !== staleKey) return undefined;
+  // Cross-fingerprint stale while new key computes (same staleKey)
   return state?.value;
 }

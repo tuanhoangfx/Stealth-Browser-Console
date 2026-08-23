@@ -35,3 +35,13 @@ describe("resolveStealthActiveScreenId", () => {
     expect(resolveStealthActiveScreenId("system", { systemTab: "extensions" })).toBe("system-extensions");
   });
 });
+
+describe("STEALTH_NAV_STRUCTURE system children", () => {
+  it("omits Overview and empty Design", () => {
+    const system = STEALTH_NAV_STRUCTURE.find((item) => item.kind === "group" && item.id === "system");
+    expect(system && system.kind === "group" ? system.children.map((child) => child.view) : []).toEqual([
+      "extensions",
+      "backup",
+    ]);
+  });
+});

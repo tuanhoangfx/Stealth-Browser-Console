@@ -1,5 +1,5 @@
 import type { StealthScreen } from "./stealth-screen";
-import { defaultStealthSystemTab, isStealthSystemTab, type StealthSystemTab } from "./stealth-system-tab";
+import { coerceStealthSystemTab, defaultStealthSystemTab, type StealthSystemTab } from "./stealth-system-tab";
 import {
   defaultStealthWorkflowTab,
   isStealthWorkflowTab,
@@ -31,7 +31,7 @@ export function readStealthAppUrl(): StealthAppUrlState {
   const wtab = sp.get("wtab") ?? "";
   return {
     screen,
-    systemTab: isStealthSystemTab(stab) ? stab : defaultStealthSystemTab(),
+    systemTab: coerceStealthSystemTab(stab),
     workflowTab: isStealthWorkflowTab(wtab) ? wtab : defaultStealthWorkflowTab(),
   };
 }

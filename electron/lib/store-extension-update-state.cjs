@@ -1,4 +1,4 @@
-/** In-memory Store update probe — no CRX download. Renderer shows HubConfirmDialog. */
+/** In-memory Store update probe — no CRX download. Renderer updates the cache in the background. */
 
 let snapshot = {
   checking: false,

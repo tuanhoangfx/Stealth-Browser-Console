@@ -7,9 +7,12 @@ import {
   HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS,
   HUB_FILTER_DROPDOWN_ROW_CLASS,
   HubFilterDropdownCircle,
+  HubFilterDropdownPanelSearch,
   HubFilterDropdownTrigger,
+  filterDropdownPanelSearchPlaceholder,
 } from "./filter-dropdown-primitives";
 import { hubPortalPanelPosition } from "./hub-portal-panel-position";
+import { pinSelectedFilterOptions } from "./pin-selected-filter-options";
 import { workspacePeriodDotColor, workspacePeriodTriggerIconColor } from "../lib/workspace-period-dot-color";
 import type { WorkspacePeriodKey } from "../lib/hub-workspace-period";
 import { HubFilterDatePicker } from "./HubFilterDatePicker";
@@ -181,6 +184,7 @@ export function HubPeriodSelect<T extends string>({
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [view, setView] = useState<PanelView>("list");
   const [panelPos, setPanelPos] = useState<{ top: number; left: number; width: number } | null>(
     null,
@@ -220,6 +224,24 @@ export function HubPeriodSelect<T extends string>({
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
+
+  useEffect(() => {
+    if (open) return;
+    setSearch("");
+  }, [open]);
+
+  const listOptions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const matched = q
+      ? options.filter(
+          (o) =>
+            o.value === value ||
+            o.label.toLowerCase().includes(q) ||
+            o.value.toLowerCase().includes(q),
+        )
+      : options;
+    return pinSelectedFilterOptions(matched, [value]);
+  }, [options, search, value]);
 
   const triggerValueLabel = useMemo(() => {
     if (monthRangeKey && value === monthRangeKey && customMonth) {
@@ -282,16 +304,28 @@ export function HubPeriodSelect<T extends string>({
         className={HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS}
         style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
         role="listbox"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {view === "list" ? (
-          <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
-            {options.map((o) => {
+          <>
+            <HubFilterDropdownPanelSearch
+              value={search}
+              onChange={setSearch}
+              placeholder={filterDropdownPanelSearchPlaceholder("period")}
+            />
+            <div className={HUB_FILTER_DROPDOWN_LIST_CLASS}>
+            {listOptions.map((o) => {
               const dotColor = o.dotColor ?? workspacePeriodDotColor(o.value as WorkspacePeriodKey);
               return (
                 <button
                   key={o.value}
                   type="button"
-                  onClick={() => handleSelectPeriod(o.value)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSelectPeriod(o.value);
+                  }}
                   className={`${HUB_FILTER_DROPDOWN_ROW_CLASS} ${
                     o.value === value ? "bg-indigo-500/10 text-indigo-200" : "text-[var(--text)]"
                   }`}
@@ -306,7 +340,11 @@ export function HubPeriodSelect<T extends string>({
                 </button>
               );
             })}
-          </div>
+            {listOptions.length === 0 ? (
+              <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
+            ) : null}
+            </div>
+          </>
         ) : null}
 
         {view === "month" && monthRangeKey && onCustomMonthChange ? (

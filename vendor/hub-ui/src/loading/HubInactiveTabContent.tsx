@@ -22,6 +22,7 @@ export function HubInactiveTabContent({ active, children, className }: HubInacti
         .filter(Boolean)
         .join(" ")}
       aria-hidden={active ? undefined : true}
+      inert={!active}
     >
       {children}
     </div>

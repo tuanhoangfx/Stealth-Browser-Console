@@ -1,8 +1,9 @@
-import { Search, X } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
 import { startTransition, useEffect, useRef, useState, type Ref } from "react";
 import { HUB_MODAL_SEARCH_ATTR } from "../keyboard/hub-modal-search";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
+import { useHubDirectoryFieldQueryPendingReport } from "./HubDirectoryFieldQueryPending";
 
 export type HubSearchFieldProps = {
   value: string;
@@ -12,7 +13,7 @@ export type HubSearchFieldProps = {
   inputRef?: Ref<HTMLInputElement>;
   /** Show `F` focus hint when empty (directory FilterBar). Off in modals. */
   showShortcutHint?: boolean;
-  /** Debounce / fetch pending — in-place pulse on the search glyph (directory FilterBar SSOT). */
+  /** Debounce / fetch pending — swap loupe for spinning RefreshCw (same as Sync chip). */
   queryPending?: boolean;
   /** Keyboard focus scope — FilterBar registers shortcuts when embedded. */
   shortcutScope?: string;
@@ -43,6 +44,8 @@ export function HubSearchField({
   /** True after flush until parent value catches up — blocks lagging "" from wiping VN IME drafts. */
   const awaitingAckRef = useRef(false);
   const composingRef = useRef(false);
+  const reportFieldPending = useHubDirectoryFieldQueryPendingReport();
+  const localPending = debounced && draft !== value;
 
   const flushToParent = (next: string) => {
     lastFlushedRef.current = next;
@@ -80,7 +83,13 @@ export function HubSearchField({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onChange identity usually stable
   }, [debounced, debounceMs, draft]);
 
+  useEffect(() => {
+    reportFieldPending(localPending);
+    return () => reportFieldPending(false);
+  }, [localPending, reportFieldPending]);
+
   const displayValue = debounced ? draft : value;
+  const glyphPending = queryPending || localPending;
 
   const setDisplayValue = (next: string, flush = false) => {
     if (debounced) {
@@ -95,11 +104,15 @@ export function HubSearchField({
     <div className={`relative min-w-[var(--hub-search-min-w)] flex-1 ${className}`.trim()}>
       <span
         className={`hub-search-field__glyph pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 ${
-          queryPending ? "hub-search-field__glyph--pending" : "text-[var(--muted)]"
+          glyphPending ? "hub-search-field__glyph--pending" : "text-[var(--muted)]"
         }`}
         aria-hidden
       >
-        <Search size={compactIconSize(14)} />
+        {glyphPending ? (
+          <RefreshCw size={compactIconSize(14)} className="animate-spin" aria-hidden />
+        ) : (
+          <Search size={compactIconSize(14)} />
+        )}
       </span>
       <input
         ref={inputRef}

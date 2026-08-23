@@ -89,16 +89,10 @@
   padding: 0 0.65rem 0.65rem;
 }
 
-/* Wide account-style detail shell — opt-in on modal class. */
+/* Split rail only — modal box stays Layout 2/3 tokens (do not re-declare --hub-modal-max-*). */
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split {
-  --hub-modal-max-w: min(72rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
-  --hub-modal-max-h: 960px;
-  --hub-modal-max-vh: 92vh;
   --hub-tool-detail-rail-w: min(28rem, 40%);
   --hub-tool-detail-split-min-h: 32rem;
-
-  height: auto;
-  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
 }
 
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split .hub-tool-detail-modal__scroll {

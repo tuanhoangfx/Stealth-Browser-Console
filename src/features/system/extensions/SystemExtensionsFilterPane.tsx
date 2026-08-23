@@ -115,7 +115,6 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
           countLabel="extensions"
           showViewToggle={false}
           showTimeRange={false}
-          showRefresh={false}
           showResultCount={false}
           displayBand={<StealthDisplayBandToolbar screen="system" systemTab="extensions" />}
         />

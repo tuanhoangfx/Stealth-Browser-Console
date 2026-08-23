@@ -85,13 +85,13 @@ export const STEALTH_PROFILE_COLUMN_META = withExtensionColumnHeaderIcons(
   withDirectoryColumnStickers(
     applyStandardDirectoryColumnHints(
     {
-    profile: col("Profile", "hub-users-col--name", "name", "col.directory.browser", "20%"),
+    profile: col("Profile", "hub-users-col--name", "name", "col.directory.browser", "16rem"),
     group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "4.5rem"),
     status: col("Run", "hub-users-col--tools", "tools", "col.directory.status", "4.5rem"),
     updated: col("Update", "hub-users-col--created", "created", "col.directory.lastActive", "5.5rem"),
     createdAt: col("Created", "hub-users-col--activity", "activity", "col.directory.created", "5.5rem"),
-    startupUrl: col("Startup URL", "hub-users-col--email", "email", "col.directory.username", "18%"),
-    proxy: col("Proxy", "hub-users-col--metric-c", "name", "col.directory.username", "12%"),
+    startupUrl: col("Startup URL", "hub-users-col--email", "email", "col.directory.username", "16rem"),
+    proxy: col("Proxy", "hub-users-col--metric-c", "name", "col.directory.username", "12rem"),
     note: col("Note", "hub-users-col--id", "notes", "col.directory.posts", HUB_DIRECTORY_NOTE_COL_WIDTH),
     e0001: col("E0001", "hub-users-col--metric-a", "tools", "col.directory.status", "3.25rem"),
     surfshark: col("Surfshark", "hub-users-col--metric-b", "tools", "col.directory.status", "3.75rem"),
@@ -107,9 +107,9 @@ export const STEALTH_PROFILE_COLUMN_META = withExtensionColumnHeaderIcons(
 export const STEALTH_WORKFLOW_PANEL_COLUMN_META = withDirectoryColumnStickers(
   applyStandardDirectoryColumnHints(
   {
-  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "20%"),
-  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "30%"),
-  id: col("ID", "hub-users-col--id", "id", "col.directory.pageId", "16%"),
+  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "10rem"),
+  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "16rem"),
+  id: col("ID", "hub-users-col--id", "id", "col.directory.pageId", "10rem"),
   steps: col("Steps", "hub-users-col--tools", "tools", "col.directory.posts", "3.75rem"),
   created: col("Created", "hub-users-col--created", "created", "col.directory.created", "6.5rem"),
   updated: col("Update", "hub-users-col--activity", "updated", "col.directory.lastActive", "6.5rem"),
@@ -128,8 +128,8 @@ export const STEALTH_WORKFLOW_RAIL_COLUMN_META = STEALTH_WORKFLOW_PANEL_COLUMN_M
 export const STEALTH_WORKFLOW_STORE_COLUMN_META = withDirectoryColumnStickers(
   applyStandardDirectoryColumnHints(
   {
-  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "16%"),
-  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "26%"),
+  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "10rem"),
+  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "16rem"),
   version: col("Version", "hub-users-col--id", "id", "col.directory.pageId", "5rem"),
   group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "7rem"),
   status: col("Status", "hub-users-col--tools", "tools", "col.directory.status", "5.5rem"),
@@ -170,7 +170,7 @@ export function resolveProfileCellIcon(key: SemanticIconLookupKey) {
 export const STEALTH_BACKUP_COLUMN_META = withDirectoryColumnStickers(
   applyStandardDirectoryColumnHints(
   {
-  profile: col("Profile", "hub-users-col--name", "name", "col.directory.browser", "24%"),
+  profile: col("Profile", "hub-users-col--name", "name", "col.directory.browser", "16rem"),
   group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "5.5rem"),
   updated: col("Update", "hub-users-col--created", "created", "col.directory.lastActive", "6.5rem"),
   dataSize: col("Data size", "hub-users-col--metric-a", "name", "col.directory.posts", "6rem"),
@@ -185,12 +185,12 @@ export const STEALTH_BACKUP_COLUMN_META = withDirectoryColumnStickers(
 export const STEALTH_EXTENSIONS_COLUMN_META = withDirectoryColumnStickers(
   applyStandardDirectoryColumnHints(
     {
-      extension: col("Extension", "hub-users-col--name", "name", "col.directory.account", "26%"),
+      extension: col("Extension", "hub-users-col--name", "name", "col.directory.account", "16rem"),
       kind: col("Kind", "hub-users-col--role", "role", "col.directory.groups", "4.5rem"),
       version: col("Version", "hub-users-col--id", "id", "col.directory.pageId", "5rem"),
-      storeId: col("Store ID", "hub-users-col--email", "email", "col.directory.username", "14%"),
+      storeId: col("Store ID", "hub-users-col--email", "email", "col.directory.username", "12rem"),
       updated: col("Cached", "hub-users-col--activity", "updated", "col.directory.lastActive", "6.5rem"),
-      path: col("Path", "hub-users-col--metric-c", "name", "col.directory.posts", "18%"),
+      path: col("Path", "hub-users-col--metric-c", "name", "col.directory.posts", "14rem"),
     },
     {
       extension: "Extension name from manifest.",

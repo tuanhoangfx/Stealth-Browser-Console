@@ -11,6 +11,7 @@ import { compactIconSize } from "../ui-scale";
 import { hubDirectoryMetricHeatDotClass } from "../lib/directory-metric-tier";
 import type { HubBrandIconShell } from "../shell/filter-dropdown-primitives";
 import { hubDirectoryTableBrandImgClass } from "../shell/filter-dropdown-primitives";
+import { HubDirectoryCopyText } from "../shell/HubDirectoryCopyText";
 import "../styles/hub-directory-popover.css";
 
 export type HubDirectoryColumnHintGlyph = {
@@ -39,6 +40,10 @@ export type HubDirectoryColumnHintLine = {
   metricHeatCount?: number;
   /** When set with onLineAction, line renders as a button. */
   actionKey?: string;
+  /** Leading token — click copies `value` (Usage Order ID SSOT). */
+  copyLead?: { label: string; value: string; toastLabel?: string };
+  /** After copyLead — per-field spans (Days Left tone). ` • ` joined. */
+  tokens?: { text: string; className?: string }[];
 };
 
 export type HubDirectoryColumnHintContent = {
@@ -46,7 +51,8 @@ export type HubDirectoryColumnHintContent = {
   titleGlyph?: HubDirectoryColumnHintGlyph;
   description?: string;
   optionsLabel?: string;
-  optionsLabelGlyph?: HubDirectoryColumnHintGlyph;
+  /** `null` — no leading glyph (label already has per-column stickers). */
+  optionsLabelGlyph?: HubDirectoryColumnHintGlyph | null;
   lines: HubDirectoryColumnHintLine[];
 };
 
@@ -68,7 +74,7 @@ function HintSectionHeading({
   text,
   variant,
 }: {
-  glyph: HubDirectoryColumnHintGlyph;
+  glyph?: HubDirectoryColumnHintGlyph | null;
   text: string;
   variant: "title" | "section";
 }) {
@@ -80,27 +86,29 @@ function HintSectionHeading({
           : "hub-directory-popover__heading hub-directory-popover__heading--section"
       }
     >
-      <span className="hub-directory-popover__icon" aria-hidden>
-        {glyph.emoji ? (
-          <span className="hub-directory-popover__emoji">{glyph.emoji}</span>
-        ) : glyph.imageSrc ? (
-          <img
-            src={glyph.imageSrc}
-            alt=""
-            width={compactIconSize(variant === "title" ? 12 : 11)}
-            height={compactIconSize(variant === "title" ? 12 : 11)}
-            className="hub-directory-popover__image shrink-0"
-            draggable={false}
-          />
-        ) : (
-          <HubSemanticGlyph
-            icon={glyph.icon}
-            brandIcon={glyph.brandIcon}
-            size={compactIconSize(variant === "title" ? 12 : 11)}
-            className={glyph.toneClass ?? "text-[var(--muted)]"}
-          />
-        )}
-      </span>
+      {glyph ? (
+        <span className="hub-directory-popover__icon" aria-hidden>
+          {glyph.emoji ? (
+            <span className="hub-directory-popover__emoji">{glyph.emoji}</span>
+          ) : glyph.imageSrc ? (
+            <img
+              src={glyph.imageSrc}
+              alt=""
+              width={compactIconSize(variant === "title" ? 12 : 11)}
+              height={compactIconSize(variant === "title" ? 12 : 11)}
+              className="hub-directory-popover__image shrink-0"
+              draggable={false}
+            />
+          ) : (
+            <HubSemanticGlyph
+              icon={glyph.icon}
+              brandIcon={glyph.brandIcon}
+              size={compactIconSize(variant === "title" ? 12 : 11)}
+              className={glyph.toneClass ?? "text-[var(--muted)]"}
+            />
+          )}
+        </span>
+      ) : null}
       <span className="hub-directory-popover__heading-text">{text}</span>
     </p>
   );
@@ -132,6 +140,18 @@ export function pickHubDirectoryHintLineGlyph(line: HubDirectoryColumnHintLine):
   if (line.statusDot) return { kind: "statusDot", tone: line.statusDot };
   if (line.dotClassName) return { kind: "heatDot", className: line.dotClassName };
   return { kind: "emoji", emoji: line.emoji?.trim() || HUB_DIRECTORY_BRAND_EMPTY_GLYPH };
+}
+
+function lineHasHintGlyph(line: HubDirectoryColumnHintLine): boolean {
+  return Boolean(
+    line.imageSrc?.trim() ||
+      line.brandIcon ||
+      line.icon ||
+      line.statusDot ||
+      line.dotClassName ||
+      line.emoji?.trim() ||
+      line.metricHeatCount != null,
+  );
 }
 
 function HintLineGlyph({ line }: { line: HubDirectoryColumnHintLine }) {
@@ -192,7 +212,8 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
   }, [open, updatePosition, content]);
 
   const resolvedTitleGlyph = content.titleGlyph ?? titleGlyph;
-  const resolvedOptionsGlyph = content.optionsLabelGlyph ?? DEFAULT_OPTIONS_GLYPH;
+  const resolvedOptionsGlyph =
+    content.optionsLabelGlyph === undefined ? DEFAULT_OPTIONS_GLYPH : content.optionsLabelGlyph;
 
   const popover =
     open && typeof document !== "undefined"
@@ -204,6 +225,11 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
             role="tooltip"
             onMouseEnter={show}
             onMouseLeave={hide}
+            onMouseDown={(event) => {
+              if ((event.target as HTMLElement | null)?.closest(".hub-directory-copy-control")) {
+                event.preventDefault();
+              }
+            }}
           >
             {content.title ? (
               resolvedTitleGlyph ? (
@@ -225,31 +251,58 @@ export function HubDirectoryColumnHint({ content, titleGlyph, children, onLineAc
             <ul className="hub-directory-popover__list">
               {content.lines.map((line, index) => {
                 const text = line.detail ? `${line.label} · ${line.detail}` : line.label;
+                const lead = line.copyLead;
+                const tokens = line.tokens?.filter((token) => token.text);
+                const showGlyph = !lead || lineHasHintGlyph(line);
+                const tokenSpans = tokens?.length
+                  ? tokens.map((token, tokenIndex) => (
+                      <span key={`${token.text}-${tokenIndex}`}>
+                        {lead || tokenIndex > 0 ? " • " : null}
+                        <span className={token.className}>{token.text}</span>
+                      </span>
+                    ))
+                  : null;
+                const lineText = lead ? (
+                  <span className="hub-directory-popover__line">
+                    <HubDirectoryCopyText
+                      value={lead.value}
+                      copyToastLabel={lead.toastLabel ?? "Order ID copied"}
+                    >
+                      {lead.label}
+                    </HubDirectoryCopyText>
+                    {tokenSpans ?? (text ? <span>{` • ${text}`}</span> : null)}
+                  </span>
+                ) : (
+                  <span className="hub-directory-popover__line">{tokenSpans ?? text}</span>
+                );
                 const rowBody = (
                   <>
-                    <span
-                      className={
-                        line.metricHeatCount != null
-                          ? "hub-directory-popover__icon hub-directory-popover__icon--with-heat"
-                          : "hub-directory-popover__icon"
-                      }
-                      aria-hidden
-                    >
-                      <HintLineGlyph line={line} />
-                      {line.metricHeatCount != null ? (
-                        <span className={hubDirectoryMetricHeatDotClass(line.metricHeatCount)} aria-hidden />
-                      ) : null}
-                    </span>
-                    <span className="hub-directory-popover__line">{text}</span>
+                    {showGlyph ? (
+                      <span
+                        className={
+                          line.metricHeatCount != null
+                            ? "hub-directory-popover__icon hub-directory-popover__icon--with-heat"
+                            : "hub-directory-popover__icon"
+                        }
+                        aria-hidden
+                      >
+                        <HintLineGlyph line={line} />
+                        {line.metricHeatCount != null ? (
+                          <span className={hubDirectoryMetricHeatDotClass(line.metricHeatCount)} aria-hidden />
+                        ) : null}
+                      </span>
+                    ) : null}
+                    {lineText}
                   </>
                 );
-                const key = `${line.label}-${index}`;
+                const key = `${lead?.value ?? line.label}-${index}`;
                 if (line.actionKey && onLineAction) {
                   return (
                     <li key={key}>
                       <button
                         type="button"
                         className="hub-directory-popover__row hub-directory-popover__row--action"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) => {
                           event.stopPropagation();
                           onLineAction(line.actionKey!);

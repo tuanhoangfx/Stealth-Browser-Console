@@ -7,13 +7,16 @@ import {
   resolveHubLogin,
   sanitizeHubLoginInput,
 } from "./hub-login";
-import { resolveHubLoginEmails } from "./hub-resolve-login-client";
+import {
+  type HubResolveLoginLookup,
+  resolveHubLoginEmails,
+} from "./hub-resolve-login-client";
 import {
   adoptGrantedGoTrueSession,
   grantGoTruePasswordSession,
   readSupabaseGoTrueTarget,
 } from "./gotrue-password-grant";
-import { signInWithHubPassword } from "./hub-auth-submit";
+import { isHubIdentityTransientFailure, signInWithHubPassword } from "./hub-auth-submit";
 import type { MirrorSupabaseAuthResult } from "./mirror-supabase-auth";
 
 export type { MirrorSupabaseAuthResult };
@@ -52,6 +55,8 @@ export type SignInHubIdentityConfig = {
   ) => Promise<HubSessionRecoveryResult | null>;
   /** Auth emails already resolved by the caller — skips a second resolve-login round trip. */
   resolvedAuthEmails?: string[];
+  /** Lookup from the caller's resolve-login — skip a second fetch on miss/timeout. */
+  resolveLookup?: HubResolveLoginLookup;
 };
 
 export type SignInHubIdentityResult = {
@@ -108,6 +113,7 @@ export async function signInHubIdentityPlane(
   const identityResult = await signInWithHubPassword(login, identityAttempt, mode, {
     resolveLoginApiUrl: config.resolveLoginApiUrl,
     extraAuthEmails: config.resolvedAuthEmails,
+    resolveLookup: config.resolveLookup,
   });
   let identitySession = identityResult.data?.session as Session | null | undefined;
 
@@ -116,12 +122,17 @@ export async function signInHubIdentityPlane(
       mode === "signin" &&
       identityResult.error &&
       isHubAuthRateLimitError(identityResult.error.message);
+    const resolveUnavailable =
+      mode === "signin" && isHubIdentityTransientFailure(identityResult.error?.message);
     const needsSignupConfirm = mode === "signup" && !identityResult.error;
     const signupAlreadyRegistered =
       mode === "signup" &&
       Boolean(identityResult.error?.message?.match(/already registered|already been registered/i));
 
-    if ((rateLimited || needsSignupConfirm || signupAlreadyRegistered) && config.recoverHubSession) {
+    if (
+      (rateLimited || resolveUnavailable || needsSignupConfirm || signupAlreadyRegistered) &&
+      config.recoverHubSession
+    ) {
       try {
         const recovered = await config.recoverHubSession(
           loginInput,
@@ -310,9 +321,11 @@ export async function runWorkspaceDualSignIn(
     const tResolve = nowMs();
     const resolved = await resolveHubLoginEmails(login, {
       resolveLoginApiUrl: wrappedConfig.resolveLoginApiUrl,
+      forceRefresh: true,
     });
     resolveLoginMs = Math.max(0, Math.round(nowMs() - tResolve));
     if (resolved.emails.length) wrappedConfig.resolvedAuthEmails = resolved.emails;
+    wrappedConfig.resolveLookup = resolved.lookup;
   }
   const speculativeMirrorEmail =
     (wrappedConfig.resolvedAuthEmails ?? []).find((email) => isHubOpaqueAuthEmail(email)) ||

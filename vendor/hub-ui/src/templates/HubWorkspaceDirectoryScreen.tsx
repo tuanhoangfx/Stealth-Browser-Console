@@ -5,6 +5,7 @@ import type { HubDirectoryToolbarSelectionProps } from "../shell/HubDirectoryToo
 import type { HubViewMode } from "../shell/ViewToggle";
 import { subscribeHubListPrefs } from "../lib/hub-url-prefs";
 import type { KpiTileData } from "../shell/KpiStrip";
+import type { HubAnalyticsReserveChrome } from "../content/HubAnalyticsBandReserve";
 
 function readVisibleFilterKeys(param: string): Set<string> | null {
   if (typeof window === "undefined") return null;
@@ -36,6 +37,7 @@ export type HubWorkspaceDirectoryScreenProps = {
   charts?: ReactNode;
   sectionRuleLabel?: string;
   reserveAnalyticsBand?: boolean;
+  analyticsReserve?: HubAnalyticsReserveChrome;
   bodyFlex?: boolean;
   children: ReactNode;
 };
@@ -66,6 +68,7 @@ export function HubWorkspaceDirectoryScreen({
   charts,
   sectionRuleLabel,
   reserveAnalyticsBand = false,
+  analyticsReserve,
   bodyFlex = false,
   children,
 }: HubWorkspaceDirectoryScreenProps) {
@@ -93,6 +96,7 @@ export function HubWorkspaceDirectoryScreen({
         charts={charts}
         sectionRuleLabel={sectionRuleLabel}
         reserveAnalyticsBand={reserveAnalyticsBand}
+        analyticsReserve={analyticsReserve}
         bodyFlex={bodyFlex}
       >
         {children}
@@ -121,6 +125,7 @@ export function HubWorkspaceDirectoryScreen({
       charts={charts}
       sectionRuleLabel={sectionRuleLabel}
       reserveAnalyticsBand={reserveAnalyticsBand}
+      analyticsReserve={analyticsReserve}
       bodyFlex={bodyFlex}
     >
       {children}

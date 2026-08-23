@@ -45,6 +45,13 @@ describe("createWorkspaceAuthGatePreset", () => {
     expect(preset.toolInfo.tagline).toBe("Work performance, boards & team workload");
   });
 
+  it("gives P0022 dual-workspace login error mapping", () => {
+    const preset = createWorkspaceAuthGatePreset({ code: "P0022" });
+    expect(preset.title).toBe("Welcome to Infi Store");
+    expect(preset.errorOptions?.dualWorkspace).toBe(true);
+    expect(preset.errorOptions?.toolHubHint).toBe(true);
+  });
+
   it("gives P0015 its own portal tagline", () => {
     const preset = createWorkspaceAuthGatePreset({ code: "P0015" });
     expect(preset.title).toBe("Welcome to ENZY Portal");

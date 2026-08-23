@@ -1,4 +1,4 @@
-/* Directory tables — select chrome + layout skin. Bulk: CSS colClass widths; read-only: buildDirectoryColgroup inline %. */
+/* Directory tables — select chrome + layout skin. Bulk + read-only: rem tracks; wrap overflow-x. */
 @import "./hub-flash-border.css";
 
 /* Select column SSOT — 36px col + 16px hub-checkbox; applies when shell sets data-hub-directory-select */
@@ -75,6 +75,24 @@ table.hub-users-table.hub-users-table--directory {
   --hub-table-body-line-height: 1.45;
   --hub-directory-glyph-label-gap: 5px;
   --hub-directory-header-glyph-px: 13px;
+}
+
+/*
+ * Shared directory chrome rem — hub-directory-column-width-registry.ts
+ * Profile = browser 7.5rem · Usage = 8.75rem · Usage Expired = 12rem · Day Left = period 5rem.
+ */
+:root {
+  --hub-dir-col-profile: 7.5rem;
+  --hub-dir-col-usage: 8.75rem;
+  --hub-dir-col-usage-expired: 12rem;
+  --hub-dir-col-plan-left: 5rem;
+  --hub-dir-col-own: 5.5rem;
+  --hub-dir-col-status: 8.75rem;
+  --hub-dir-col-date: 6.25rem;
+  --hub-dir-col-password: 8rem;
+  --hub-dir-col-recover: 12.5rem;
+  --hub-dir-col-full-info: 7rem;
+  --hub-dir-col-plan-package: 26rem;
 }
 
 /* Directory body typography — status / sync / muted match 12px body (frame-table parity). */
@@ -201,6 +219,27 @@ table.hub-users-table[data-hub-directory-select] .hub-users-row.is-detail {
 
 table.hub-users-table[data-hub-directory-select] .hub-users-row.is-detail:hover {
   background: rgba(52, 211, 153, 0.1);
+}
+
+/*
+ * Pad rows (`padBodyRowsToPageSize`) — default invisible.
+ * Keep height for a stable page frame; hide ghost grid (P0003 Profiles golden).
+ * Frozen lead cells keep sticky `left` but drop `--panel` fill so empty slots
+ * stay blank. Opt-in faint separators: `[data-partial-page-pad="visible"]`.
+ */
+table.hub-users-table tbody tr.hub-users-row--pad {
+  pointer-events: none;
+  user-select: none;
+  cursor: default;
+  background: transparent;
+  box-shadow: none;
+}
+
+table.hub-users-table tbody tr.hub-users-row--pad td {
+  border-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
 }
 
 table.hub-users-table[data-hub-directory-select] .hub-users-row.is-highlighted {

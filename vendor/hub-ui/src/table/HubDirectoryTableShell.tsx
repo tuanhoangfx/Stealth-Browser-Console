@@ -38,6 +38,8 @@ export type HubDirectoryTableColumn<TKey extends string> = {
   headerTooltip?: string;
   /** Rich multi-line popover with icon rows. */
   headerHint?: HubDirectoryColumnHintContent;
+  /** Keep sticker + full header text (no icon-only collapse). Default true. */
+  enableFit?: boolean;
 };
 
 export type HubDirectoryTableStaticColumn = {
@@ -328,19 +330,22 @@ export function HubDirectoryTableShell<TItem, TSortKey extends string>({
     return undefined;
   }, [dragging]);
 
-  const columnHeaderProps = (col: (typeof columns)[number]) =>
-    col.headerEmoji
-      ? { label: col.label, headerEmoji: col.headerEmoji }
+  const columnHeaderProps = (col: (typeof columns)[number]) => {
+    const fit = col.enableFit === false ? { enableFit: false as const } : {};
+    return col.headerEmoji
+      ? { label: col.label, headerEmoji: col.headerEmoji, ...fit }
       : col.headerImageSrc
-        ? { label: col.label, headerImageSrc: col.headerImageSrc }
+        ? { label: col.label, headerImageSrc: col.headerImageSrc, ...fit }
         : col.headerIcon || col.headerBrandIcon
           ? {
               label: col.label,
               icon: col.headerIcon,
               iconClassName: col.headerIconClassName,
               brandIcon: col.headerBrandIcon,
+              ...fit,
             }
-          : { label: col.label, role: col.role };
+          : { label: col.label, role: col.role, ...fit };
+  };
 
   const renderThLabel = (
     col: (typeof columns)[number],

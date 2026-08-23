@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 import { ChartsBand } from "../shell/ChartsBand";
 import { KpiStrip, type KpiTileData } from "../shell/KpiStrip";
 import { HubTabSectionRule } from "../shell/HubTabSectionRule";
+import {
+  HubAnalyticsBandReserve,
+  type HubAnalyticsReserveChrome,
+} from "./HubAnalyticsBandReserve";
 
 /**
  * P0004 HubListPage content bands below chrome:
@@ -15,6 +19,7 @@ export function HubTabScreenBody({
   sectionRuleLabel,
   bodyFlex = false,
   reserveAnalyticsBand = false,
+  analyticsReserve,
   bandOrder = "kpis-first",
   kpiZoneClassName,
   embedded = false,
@@ -28,6 +33,8 @@ export function HubTabScreenBody({
   sectionRuleLabel?: string;
   bodyFlex?: boolean;
   reserveAnalyticsBand?: boolean;
+  /** Optional labels/slot counts for the cold KPI + chart frames (no 0 / —). */
+  analyticsReserve?: HubAnalyticsReserveChrome;
   bandOrder?: "kpis-first" | "charts-first";
   kpiZoneClassName?: string;
   embedded?: boolean;
@@ -40,17 +47,10 @@ export function HubTabScreenBody({
     ? "hub-tab-body-zone hub-tab-body-zone--split space-y-3"
     : "hub-tab-body-zone space-y-3";
 
-  const kpiRow = kpiBand ?? (kpis?.length ? (
-    <KpiStrip items={kpis} />
-  ) : reserveAnalyticsBand ? (
-    <div className="hub-kpi-strip hub-kpi-strip--reserve" aria-hidden />
-  ) : null);
+  const showReserve = Boolean(!hasAnalytics && reserveAnalyticsBand);
+  const kpiRow = kpiBand ?? (kpis?.length ? <KpiStrip items={kpis} /> : null);
 
-  const chartsBand = charts ? (
-    <ChartsBand count={chartCount}>{charts}</ChartsBand>
-  ) : reserveAnalyticsBand ? (
-    <ChartsBand reserve />
-  ) : null;
+  const chartsBand = charts ? <ChartsBand count={chartCount}>{charts}</ChartsBand> : null;
 
   const inner = (
     <>
@@ -58,13 +58,18 @@ export function HubTabScreenBody({
         <div
           className={[
             "hub-tab-kpi-zone flex flex-col",
-            !hasAnalytics && reserveAnalyticsBand ? "hub-tab-kpi-zone--reserved" : "",
+            showReserve ? "hub-tab-kpi-zone--reserved" : "",
             kpiZoneClassName ?? "",
           ]
             .filter(Boolean)
             .join(" ")}
+          {...(showReserve
+            ? { "data-hub-analytics-reserve": "", "aria-busy": true }
+            : {})}
         >
-          {bandOrder === "charts-first" ? (
+          {showReserve ? (
+            <HubAnalyticsBandReserve {...analyticsReserve} bandOrder={bandOrder} />
+          ) : bandOrder === "charts-first" ? (
             <>
               {chartsBand}
               {kpiRow}

@@ -1,6 +1,10 @@
 import { useHubTablePageSize, patchHubListPrefs, patchHubTablePageSizeValue } from "@tool-workspace/hub-ui";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { workflowDisplayPlatform } from "./workflow-display";
+import {
+  readScriptsDirectoryFilterUrl,
+  writeScriptsDirectoryFilterUrl,
+} from "./workflow-directory-filter-url";
 import { matchesWorkflowDirectorySearch } from "./workflow-directory-search";
 import type { WorkflowConfig } from "./workflow-types";
 
@@ -10,13 +14,21 @@ export function useWorkflows(
   builtinWorkflows: WorkflowConfig[],
 ) {
   const [workflowSearch, setWorkflowSearch] = useState("");
-  const [workflowGroupFilters, setWorkflowGroupFilters] = useState<string[]>([]);
-  const [workflowPlatformFilters, setWorkflowPlatformFilters] = useState<string[]>([]);
+  const [workflowGroupFilters, setWorkflowGroupFilters] = useState<string[]>(
+    () => readScriptsDirectoryFilterUrl().groupIds,
+  );
+  const [workflowPlatformFilters, setWorkflowPlatformFilters] = useState<string[]>(
+    () => readScriptsDirectoryFilterUrl().platformIds,
+  );
   const workflowTablePageSize = useHubTablePageSize();
 
   const setWorkflowTablePageSize = useCallback((size: number) => {
     patchHubListPrefs({ tpage: patchHubTablePageSizeValue(size) });
   }, []);
+
+  useEffect(() => {
+    writeScriptsDirectoryFilterUrl(workflowGroupFilters, workflowPlatformFilters);
+  }, [workflowGroupFilters, workflowPlatformFilters]);
 
   const selectedWorkflowConfigs = useMemo(
     () =>

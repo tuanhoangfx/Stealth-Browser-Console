@@ -1,4 +1,7 @@
-/** Active design reviews in System → Design Template (empty when all features are locked). */
+/**
+ * Active design reviews in System → Design.
+ * Design nav/route mounts only while this count is > 0 (SSOT design-preview-5).
+ */
 export const ACTIVE_DESIGN_COUNT = 0;
 
 /** Locked 2026-07-06 — Run History Design V1 Chip lanes. */

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { HubModalFrame } from "./HubModalFrame";
+import { HUB_COMPACT_MODAL_CLASS } from "./hubAccountDetailModal";
 import {
   acquireHubDetailModalStackLayer,
   hubDetailModalPendingLayer,
@@ -9,7 +10,7 @@ import {
   releaseHubDetailModalStackLayer,
 } from "./hub-detail-modal-stack";
 
-/** `compact` = centered form backdrop (no sidebar pad) + max-w frame. `detail` = Settings/Log scale. */
+/** `compact` = Confirm/Prompt/Clone (28rem, centered). `detail` = Layout 2/3 (88rem). */
 export type HubDetailModalSize = "detail" | "compact";
 
 export type HubDetailModalProps = {
@@ -26,8 +27,8 @@ export type HubDetailModalProps = {
   shellClassName?: string;
   shellStyle?: CSSProperties;
   /**
-   * Extra classes on HubModalFrame — compact defaults to `w-full max-w-md`
-   * so shell width matches the frame (close button stays on the panel corner).
+   * Extra classes on HubModalFrame. Compact width is the 28rem token
+   * (`.hub-compact-modal` / `--fit`) — do not pass `max-w-md` / `max-w-lg`.
    */
   frameClassName?: string;
   /** Tab/page inline — no portal, backdrop, escape, or body scroll lock. */
@@ -100,6 +101,7 @@ export function HubDetailModal({
     "modal-shell--tool-detail",
     isCompact ? "modal-shell--compact" : "",
     isCompact ? "hub-tool-detail-modal--fit" : "",
+    isCompact ? HUB_COMPACT_MODAL_CLASS : "",
     embedded ? "hub-tool-detail-modal--embedded" : "",
     shellClassName,
   ]
@@ -123,7 +125,7 @@ export function HubDetailModal({
 
   if (embedded) return shell;
 
-  const resolvedFrameClass = frameClassName ?? (isCompact ? "w-full max-w-md" : "");
+  const resolvedFrameClass = frameClassName ?? "";
   const effectiveLayer = hubDetailModalPendingLayer(stacked, stackLayer);
   const backdropStyle = hubDetailModalStackBackdropStyle(effectiveLayer);
 

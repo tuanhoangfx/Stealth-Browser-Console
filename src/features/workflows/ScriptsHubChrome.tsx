@@ -1,20 +1,19 @@
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { HubSplitWorkspaceScreen } from "@tool-workspace/hub-ui";
+import { useHostHeaderStats } from "../../hooks/useHostHeaderStats";
 import { stealthScreenChrome } from "../../lib/stealth-nav-structure";
 import { ScriptsListChromeHeader } from "./ScriptsListChromeHeader";
-import { buildWorkflowHeaderCenterStats, type WorkflowKpiNumbers } from "./workflow-kpi-items";
 
 const workflowChrome = stealthScreenChrome("workflow");
 
 export type ScriptsHubChromeProps = {
-  counts: WorkflowKpiNumbers;
   headerActions?: ReactNode;
   children: ReactNode;
 };
 
-/** Screen-level header only — search/filter live inside the Workflow frame (mirrors ProfilesHubChrome). */
-export function ScriptsHubChrome({ counts, headerActions, children }: ScriptsHubChromeProps) {
-  const centerStats = useMemo(() => buildWorkflowHeaderCenterStats(counts), [counts]);
+/** Screen-level header — device CPU/RAM (workflow counts stay in the directory). */
+export function ScriptsHubChrome({ headerActions, children }: ScriptsHubChromeProps) {
+  const centerStats = useHostHeaderStats();
 
   return (
     <HubSplitWorkspaceScreen

@@ -30,6 +30,13 @@ table.hub-users-table[data-hub-directory-select] td .hub-directory-timestamp .hu
   color: var(--muted);
 }
 
+/* Subscription / Plan Due — inherit `orderDaysLeftExpiryClass` over age-stale muted. */
+.hub-directory-timestamp.quota-expiry .hub-users-status,
+table.hub-users-table[class*="hub-users-table--directory"] td .hub-directory-timestamp.quota-expiry .hub-users-status,
+table.hub-users-table[data-hub-directory-select] td .hub-directory-timestamp.quota-expiry .hub-users-status {
+  color: inherit;
+}
+
 /* Directory log column — typography parity with hub-directory-timestamp (Date V2 lock). */
 .hub-directory-log-cell,
 .twofa-log-cell {

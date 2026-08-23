@@ -59,7 +59,9 @@ import {
   SYSTEM_BACKUP_DISPLAY_PREFS,
   SYSTEM_EXTENSIONS_DISPLAY_PREFS,
   WORKFLOW_DISPLAY_PREFS,
+  WORKFLOW_STORE_DISPLAY_PREFS,
   resolveScreenDisplayPrefs,
+  resolveWorkflowStoreDisplayPrefs,
   type ScreenDisplayPrefsConfig,
 } from "./display-prefs-registry";
 import {
@@ -88,7 +90,7 @@ function resolveSystemTabDisplayPrefs(tab: StealthSystemTab): ScreenDisplayPrefs
   return SYSTEM_BACKUP_DISPLAY_PREFS;
 }
 
-/** Tab display panel — profiles: KPI + columns; workflow: table columns; system tabs: sub-tab KPI + columns. */
+/** Tab display panel — profiles / Scripts / Store: KPI + columns; workflow rail: columns only. */
 export function useStealthDisplayPanelConfig(
   screen: StealthScreen,
   directoryVariant: StealthDirectoryDisplayVariant = "panel",
@@ -101,8 +103,9 @@ export function useStealthDisplayPanelConfig(
 
   const cfg = useMemo(() => {
     if (isSystemTab && systemTab) return resolveSystemTabDisplayPrefs(systemTab);
+    if (isWorkflowStore) return resolveWorkflowStoreDisplayPrefs();
     return resolveScreenDisplayPrefs(screen);
-  }, [isSystemTab, screen, systemTab]);
+  }, [isSystemTab, isWorkflowStore, screen, systemTab]);
 
   const [hiddenProfileCols, setHiddenProfileCols] = useState(() =>
     screen === "profiles" ? countHiddenProfileDirectoryColumns() : 0,
@@ -288,6 +291,7 @@ export function useStealthDisplayPanelConfig(
     if (!cfg && screen !== "workflow" && !isSystemTab) return null;
 
     const workflowColumnsOnly = screen === "workflow";
+    const hideWorkflowKpis = isWorkflowRail;
     const resolved = cfg ?? {
       kpis: [],
       charts: [],
@@ -300,11 +304,11 @@ export function useStealthDisplayPanelConfig(
     };
 
     return {
-      kpis: workflowColumnsOnly ? [] : resolved.kpis,
+      kpis: hideWorkflowKpis ? [] : resolved.kpis,
       charts: workflowColumnsOnly ? [] : resolved.charts,
       filters: workflowColumnsOnly ? [] : resolved.filters,
       headerStats: workflowColumnsOnly ? [] : resolved.headerStats,
-      defaultKpiKeys: workflowColumnsOnly ? new Set<string>() : resolved.defaultKpiKeys,
+      defaultKpiKeys: hideWorkflowKpis ? new Set<string>() : resolved.defaultKpiKeys,
       defaultChartKeys: workflowColumnsOnly ? new Set<string>() : resolved.defaultChartKeys,
       defaultFilterKeys: workflowColumnsOnly ? new Set<string>() : resolved.defaultFilterKeys,
       defaultHeaderStatKeys: workflowColumnsOnly ? new Set<string>() : resolved.defaultHeaderStatKeys,
@@ -364,4 +368,10 @@ export function useStealthDisplayPanelConfig(
   ]);
 }
 
-export { PROFILES_DISPLAY_PREFS, SYSTEM_BACKUP_DISPLAY_PREFS, SYSTEM_EXTENSIONS_DISPLAY_PREFS, WORKFLOW_DISPLAY_PREFS };
+export {
+  PROFILES_DISPLAY_PREFS,
+  SYSTEM_BACKUP_DISPLAY_PREFS,
+  SYSTEM_EXTENSIONS_DISPLAY_PREFS,
+  WORKFLOW_DISPLAY_PREFS,
+  WORKFLOW_STORE_DISPLAY_PREFS,
+};

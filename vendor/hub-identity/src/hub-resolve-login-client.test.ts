@@ -69,6 +69,49 @@ describe("resolveHubLoginEmails", () => {
     expect(result).toEqual({ emails: [], lookup: "not_found" });
   });
 
+  it("forceRefresh skips a cached ok lookup so Sign In hits the API again", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, authEmails: ["cs00616@outlook.com"] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await prefetchHubResolveLogin("cs00616");
+    const again = await resolveHubLoginEmails("cs00616", { forceRefresh: true });
+    expect(again.lookup).toBe("ok");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns unavailable when resolve-login fetch times out", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(Object.assign(new Error("The operation was aborted"), { name: "AbortError" })),
+    );
+
+    const result = await resolveHubLoginEmails("cs00004");
+    expect(result).toEqual({ emails: [], lookup: "unavailable" });
+  });
+
+  it("does not stick a settled unavailable lookup — retry Sign In hits the API again", async () => {
+    const abort = Object.assign(new Error("The operation was aborted"), { name: "AbortError" });
+    const fetchMock = vi
+      .fn()
+      // fetchHubAuth retries once — both attempts must fail to settle unavailable.
+      .mockRejectedValueOnce(abort)
+      .mockRejectedValueOnce(abort)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, authEmails: ["cs00616@outlook.com"] }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await resolveHubLoginEmails("cs00616");
+    expect(first.lookup).toBe("unavailable");
+    const second = await resolveHubLoginEmails("cs00616");
+    expect(second).toEqual({ emails: ["cs00616@outlook.com"], lookup: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("returns unavailable on non-OK HTTP", async () => {
     vi.stubGlobal(
       "fetch",

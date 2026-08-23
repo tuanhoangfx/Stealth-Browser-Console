@@ -135,6 +135,38 @@ describe("workflowStoreUpdatedMs", () => {
   });
 });
 
+describe("resolveWorkflowStoreAssetUrl", () => {
+  it("keeps hosted Drive URLs", async () => {
+    const { resolveWorkflowStoreAssetUrl } = await import("./workflow-store-config");
+    expect(resolveWorkflowStoreAssetUrl("https://example.com/store.json")).toBe("https://example.com/store.json");
+  });
+
+  it("resolves root-absolute paths against the page URL", async () => {
+    const { resolveWorkflowStoreAssetUrl } = await import("./workflow-store-config");
+    const href = resolveWorkflowStoreAssetUrl("/workflow-store/index.json");
+    expect(href.endsWith("workflow-store/index.json")).toBe(true);
+    expect(href.startsWith("file:") || href.startsWith("http")).toBe(true);
+    expect(href).not.toBe("/workflow-store/index.json");
+  });
+});
+
+describe("fetchDriveWorkflowManifest", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("falls back to bundled catalog when Electron file fetch fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Failed to fetch")));
+    const { fetchDriveWorkflowManifest } = await import("./workflow-store-sources");
+    const result = await fetchDriveWorkflowManifest("/workflow-store/index.json");
+    expect(result.error).toBeUndefined();
+    expect(result.entries.length).toBeGreaterThan(0);
+    expect(result.entries.some((entry) => entry.id === "gmail-login")).toBe(true);
+    expect(result.entries.find((entry) => entry.id === "gmail-login")?.payload).toBeTruthy();
+  });
+});
+
 describe("workflowStoreSourceBrand", () => {
   it("maps catalog sources to hub brand ids", async () => {
     const { WORKFLOW_STORE_SOURCE_BRAND_ID, workflowStoreSourceLabel } = await import(

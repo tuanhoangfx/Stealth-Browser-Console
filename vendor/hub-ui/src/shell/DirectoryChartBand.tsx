@@ -33,6 +33,8 @@ const BAR_CHART_TOP_N: Record<string, number> = {
   tool_bar: 4,
   distribution_bar: 4,
   last_active_bar: 4,
+  created_bar: 4,
+  identity_bar: 4,
 };
 
 /** Fixed-bucket facets — keep aggregate row order (not value-rank). */
@@ -51,12 +53,15 @@ const BAR_CHART_PRESERVE_ORDER = new Set([
   "tool_bar",
   "distribution_bar",
   "last_active_bar",
+  "created_bar",
+  "identity_bar",
 ]);
 
 export type DirectoryChartBandProps = {
   visCharts: Set<string>;
   defs: PrefItem[];
   data: Record<string, ChartRow[] | undefined>;
+  onItemClick?: (chartKey: string, item: ChartRow) => void;
 };
 
 export function hasDirectoryCharts(
@@ -75,7 +80,7 @@ export function directoryChartBandNode(props: DirectoryChartBandProps): ReactNod
 }
 
 /** Golden directory charts row — defs order, Display prefs visibility, MiniBarChart + top-N/Other. */
-export function DirectoryChartBand({ visCharts, defs, data }: DirectoryChartBandProps) {
+export function DirectoryChartBand({ visCharts, defs, data, onItemClick }: DirectoryChartBandProps) {
   const keys = defs.map((d) => d.key).filter((k) => visCharts.has(k) && data[k]);
   if (keys.length === 0) return null;
   return (
@@ -99,6 +104,7 @@ export function DirectoryChartBand({ visCharts, defs, data }: DirectoryChartBand
             items={items}
             topN={topN}
             preserveOrder={preserveOrder}
+            onItemClick={onItemClick ? (item) => onItemClick(key, item) : undefined}
           />
         );
       })}

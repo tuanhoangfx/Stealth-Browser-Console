@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createEnsureSupabaseAuth, isAuthNetworkError } from "./ensure-supabase-auth";
+import { isAuthNetworkError } from "./supabase-auth-error";
+import { createEnsureSupabaseAuth } from "./ensure-supabase-auth";
 import type { Session } from "@supabase/supabase-js";
 
 function makeSession(overrides?: Partial<Session>): Session {

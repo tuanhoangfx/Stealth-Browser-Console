@@ -133,11 +133,9 @@ function defaultPatchHubListPrefs(patch: Record<string, string | null>) {
     else sp.set(k, v);
   }
   const q = sp.toString();
-  window.history.replaceState(
-    null,
-    "",
-    `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`,
-  );
+  const pathname = window.location.pathname || "/";
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  window.history.replaceState(null, "", `${path}${q ? `?${q}` : ""}${window.location.hash}`);
   if (config.usePrefsChangeEvent) {
     window.dispatchEvent(new CustomEvent(HUB_LIST_PREFS_CHANGE_EVENT));
   } else {

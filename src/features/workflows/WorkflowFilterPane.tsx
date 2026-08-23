@@ -57,7 +57,6 @@ export const WorkflowFilterPane = memo(function WorkflowFilterPane({
         <DirectorySearchToolbar
           showViewToggle={false}
           showTimeRange={false}
-          showRefresh={false}
           displayBand={
             isPanel ? <StealthDisplayBandToolbar screen="workflow" directoryVariant="panel" /> : undefined
           }

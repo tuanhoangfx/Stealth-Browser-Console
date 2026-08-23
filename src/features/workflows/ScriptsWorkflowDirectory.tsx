@@ -1,10 +1,12 @@
 /** Scripts tab — workflow directory pane (picker context only + bulk actions). */
 import { useHubDirectorySelection } from "@tool-workspace/hub-ui";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
 import { useWorkflowPicker } from "../../context/workflow-picker-context";
 import type { WorkflowConfig } from "./workflow-types";
 import { StealthWorkflowsDirectoryBulkActions } from "./StealthWorkflowsDirectoryBulkActions";
+import { filterWorkflowsByActivity, useScriptsDirectoryChrome } from "./useScriptsDirectoryChrome";
+import { readScriptsKpiActivityUrl, writeScriptsKpiActivityUrl } from "./workflow-kpi-activity-url";
 import { WorkflowDirectoryPanel } from "./WorkflowDirectoryPanel";
 
 export type ScriptsWorkflowDirectoryProps = {
@@ -40,6 +42,16 @@ export const ScriptsWorkflowDirectory = memo(function ScriptsWorkflowDirectory({
   } = useWorkflowEditor();
 
   const workflowRowId = useCallback((workflow: WorkflowConfig) => workflow.id, []);
+  const [activityKpi, setActivityKpiState] = useState<string | null>(() => readScriptsKpiActivityUrl());
+  const setActivityKpi = useCallback((next: string | null) => {
+    setActivityKpiState(next);
+    writeScriptsKpiActivityUrl(next);
+  }, []);
+  const { kpis } = useScriptsDirectoryChrome(workflowConfigs, activityKpi, setActivityKpi);
+  const displayedWorkflows = useMemo(
+    () => filterWorkflowsByActivity(filteredWorkflows, activityKpi),
+    [activityKpi, filteredWorkflows],
+  );
 
   const {
     selectedIds: bulkSelectedIds,
@@ -48,7 +60,7 @@ export const ScriptsWorkflowDirectory = memo(function ScriptsWorkflowDirectory({
     toggleSelect: toggleWorkflowBulkSelect,
     toggleSelectAll: toggleBulkSelectAll,
     allVisibleSelected: bulkAllVisibleSelected,
-  } = useHubDirectorySelection(filteredWorkflows, workflowRowId);
+  } = useHubDirectorySelection(displayedWorkflows, workflowRowId);
 
   const handleBulkCopy = useCallback(() => {
     if (bulkSelectedWorkflows.length === 0) {
@@ -72,7 +84,7 @@ export const ScriptsWorkflowDirectory = memo(function ScriptsWorkflowDirectory({
   return (
     <WorkflowDirectoryPanel
       workflowConfigs={workflowConfigs}
-      filteredWorkflows={filteredWorkflows}
+      filteredWorkflows={displayedWorkflows}
       workflowSearch={workflowSearch}
       setWorkflowSearch={setWorkflowSearch}
       workflowGroupFilters={workflowGroupFilters}
@@ -99,6 +111,7 @@ export const ScriptsWorkflowDirectory = memo(function ScriptsWorkflowDirectory({
       onContextMenu={onContextMenu}
       workflowTablePageSize={workflowTablePageSize}
       onWorkflowTablePageSizeChange={setWorkflowTablePageSize}
+      kpis={kpis}
     />
   );
 });

@@ -63,3 +63,71 @@
     0 0 18px rgba(251, 191, 36, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
+
+.hub-twofa-code-badge--static,
+.twofa-code-badge--static {
+  cursor: default;
+  letter-spacing: 0;
+}
+
+.hub-twofa-code-badge--static:hover,
+.twofa-code-badge--static:hover {
+  border-color: rgba(251, 191, 36, 0.16);
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow:
+    0 0 14px rgba(251, 191, 36, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* P0020 Time / period — yellow/cyan/rose countdown dot beside `{n}s`. */
+.hub-twofa-period-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.hub-twofa-period-label {
+  font-size: var(--hub-table-header-size, 12px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text, #f8fafc);
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-twofa-period-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  transition: background-color 0.45s ease, box-shadow 0.45s ease;
+}
+
+.hub-twofa-period-dot--fresh {
+  background: #22d3ee;
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.45);
+}
+
+.hub-twofa-period-dot--warn {
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.4);
+}
+
+.hub-twofa-period-dot--urgent {
+  background: #fb7185;
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.5);
+  animation: hub-twofa-period-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hub-twofa-period-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.88);
+  }
+}

@@ -5,10 +5,13 @@ import {
   sanitizeHubLoginInput,
   type HubLoginIdentifierKind,
 } from "./hub-login";
+import { fetchHubAuth, HUB_RESOLVE_LOGIN_FETCH_TIMEOUT_MS } from "./hub-auth-fetch";
 
 export type FetchResolvedHubAuthEmailsOptions = {
   /** Same-origin Tool Hub API — default `/api/hub/auth/resolve-login`. */
   resolveLoginApiUrl?: string;
+  /** Sign In — do not reuse typeahead / prior miss. Prefetch stays cached on `ok`. */
+  forceRefresh?: boolean;
 };
 
 export type HubResolveLoginLookup = "skipped" | "ok" | "not_found" | "unavailable";
@@ -40,11 +43,15 @@ async function fetchHubResolveLogin(
 ): Promise<HubResolveLoginResult> {
   const apiUrl = hubResolveLoginApiUrl(options.resolveLoginApiUrl);
   try {
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ loginId, identifierKind }),
-    });
+    const res = await fetchHubAuth(
+      apiUrl,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId, identifierKind }),
+      },
+      { timeoutMs: HUB_RESOLVE_LOGIN_FETCH_TIMEOUT_MS, retries: 1 },
+    );
     if (!res.ok) {
       return { emails: [], lookup: "unavailable", httpStatus: res.status };
     }
@@ -77,17 +84,24 @@ export async function resolveHubLoginEmails(
   if (!loginId) return { emails: [], lookup: "skipped" };
 
   const key = resolveLoginCacheKey(classified.kind, loginId, options.resolveLoginApiUrl);
-  const hit = resolveLoginInflight.get(key);
-  if (hit) return hit;
-
-  const pending = fetchHubResolveLogin(loginId, classified.kind, options);
-  resolveLoginInflight.set(key, pending);
-  try {
-    return await pending;
-  } catch (err) {
-    resolveLoginInflight.delete(key);
-    throw err;
+  if (options.forceRefresh) resolveLoginInflight.delete(key);
+  else {
+    const hit = resolveLoginInflight.get(key);
+    if (hit) return hit;
   }
+
+  const pending = fetchHubResolveLogin(loginId, classified.kind, options)
+    .then((result) => {
+      // Dedupe concurrent calls only. Settled miss/timeout must not stick.
+      if (result.lookup !== "ok") resolveLoginInflight.delete(key);
+      return result;
+    })
+    .catch((err) => {
+      resolveLoginInflight.delete(key);
+      throw err;
+    });
+  resolveLoginInflight.set(key, pending);
+  return pending;
 }
 
 /** Debounced typeahead from HubAuthGateModal — same inflight cache as sign-in. */

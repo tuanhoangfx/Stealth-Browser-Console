@@ -8,8 +8,14 @@ import {
   markStoreWorkflowInstalled,
   readInstalledStoreIds,
 } from "./workflow-store-sources";
+import {
+  readStoreDirectoryFilterUrl,
+  writeStoreDirectoryFilterUrl,
+} from "./workflow-directory-filter-url";
 import { filterWorkflowStoreEntries } from "./workflow-store-filters";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
+import { filterStoreEntriesByActivity, useStoreDirectoryChrome } from "./useStoreDirectoryChrome";
+import { readStoreKpiActivityUrl, writeStoreKpiActivityUrl } from "./workflow-kpi-activity-url";
 import { WorkflowStoreBulkActions } from "./WorkflowStoreBulkActions";
 import { WorkflowStoreDirectoryPanel } from "./WorkflowStoreDirectoryPanel";
 import { readWorkflowStoreViewMode, writeWorkflowStoreViewMode } from "./workflow-store-view-prefs";
@@ -25,12 +31,18 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [installedIds, setInstalledIds] = useState(() => readInstalledStoreIds());
   const [search, setSearch] = useState("");
-  const [groupFilters, setGroupFilters] = useState<string[]>([]);
-  const [platformFilters, setPlatformFilters] = useState<string[]>([]);
-  const [sourceFilters, setSourceFilters] = useState<string[]>([]);
+  const [groupFilters, setGroupFilters] = useState<string[]>(() => readStoreDirectoryFilterUrl().groupIds);
+  const [platformFilters, setPlatformFilters] = useState<string[]>(
+    () => readStoreDirectoryFilterUrl().platformIds,
+  );
+  const [sourceFilters, setSourceFilters] = useState<string[]>(() => readStoreDirectoryFilterUrl().sourceIds);
   const [tablePageSize, setTablePageSize] = useState(DEFAULT_PAGE_SIZE);
   const [viewMode, setViewMode] = useState<HubViewMode>(() => readWorkflowStoreViewMode());
   const hubPrefs = useStealthHubListPrefs();
+
+  useEffect(() => {
+    writeStoreDirectoryFilterUrl(groupFilters, platformFilters, sourceFilters);
+  }, [groupFilters, platformFilters, sourceFilters]);
 
   const handleViewModeChange = useCallback((mode: HubViewMode) => {
     setViewMode(mode);
@@ -38,6 +50,11 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
   }, []);
 
   const localIds = useMemo(() => new Set(workflowConfigs.map((item) => item.id)), [workflowConfigs]);
+  const [activityKpi, setActivityKpiState] = useState<string | null>(() => readStoreKpiActivityUrl());
+  const setActivityKpi = useCallback((next: string | null) => {
+    setActivityKpiState(next);
+    writeStoreKpiActivityUrl(next);
+  }, []);
 
   const filteredEntries = useMemo(
     () =>
@@ -51,6 +68,10 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
       ),
     [entries, search, groupFilters, platformFilters, sourceFilters, hubPrefs.range],
   );
+  const displayedEntries = useMemo(
+    () => filterStoreEntriesByActivity(filteredEntries, activityKpi, localIds, installedIds),
+    [activityKpi, filteredEntries, installedIds, localIds],
+  );
 
   const storeRowId = useCallback((entry: WorkflowStoreEntry) => entry.id, []);
 
@@ -61,7 +82,16 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
     toggleSelect: toggleBulkSelect,
     toggleSelectAll: toggleBulkSelectAll,
     allVisibleSelected: bulkAllVisibleSelected,
-  } = useHubDirectorySelection(filteredEntries, storeRowId);
+  } = useHubDirectorySelection(displayedEntries, storeRowId);
+
+  const { kpis } = useStoreDirectoryChrome(
+    entries,
+    localIds,
+    installedIds,
+    bulkSelectedIds.size,
+    activityKpi,
+    setActivityKpi,
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -119,7 +149,7 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
   return (
     <WorkflowStoreDirectoryPanel
       entries={entries}
-      filteredEntries={filteredEntries}
+      filteredEntries={displayedEntries}
       search={search}
       setSearch={setSearch}
       groupFilters={groupFilters}
@@ -152,6 +182,7 @@ export const WorkflowStorePanel = memo(function WorkflowStorePanel() {
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
       timeRange={hubPrefs.range}
+      kpis={kpis}
     />
   );
 });

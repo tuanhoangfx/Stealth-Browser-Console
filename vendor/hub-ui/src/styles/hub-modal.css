@@ -52,12 +52,9 @@
 }
 
 /*
- * Compact forms (Edit Shift / Confirm / Note…): HubModalFrame owns max-width
- * (`max-w-md` / `max-w-lg`). Without this override, `.modal-shell--tool-detail`
- * forces Settings-scale width (≈72rem) and the red X anchors to the narrow
- * frame while the visible shell overflows — looks “floating / misaligned”.
- * Large Settings/Log shells use HubDetailModal without a max-w frame and keep
- * the width rules above.
+ * Compact forms (Confirm / Prompt / Clone): frame width is the 28rem token.
+ * Without this override, `.modal-shell--tool-detail` fills the Layout 2/3
+ * box and the red X anchors to a narrow frame while the shell overflows.
  */
 .hub-modal-frame > .modal-shell.modal-shell--tool-detail,
 .hub-modal-frame > .modal-shell.modal-shell--compact {
@@ -83,6 +80,11 @@
   max-width: none;
 }
 
+.hub-modal-frame:has(> .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--fit) {
+  width: min(28rem, calc(100vw - var(--hub-modal-h-margin, 2rem)));
+  max-width: none;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -94,11 +96,11 @@
 }
 
 .modal-backdrop--tool-detail {
-  /* Golden — one shell size for Settings · Log · User · Layout 2/3 across P00xx (P0005 CRM SSOT). */
+  /* Fallback only — Layout 2/3 shell block below owns the visible box (88rem). */
   --hub-modal-h-margin: 2rem;
-  --hub-modal-max-w: min(72rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin)));
-  --hub-modal-max-h: 860px;
-  --hub-modal-max-vh: 88vh;
+  --hub-modal-max-w: min(88rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
+  --hub-modal-max-h: 768px;
+  --hub-modal-max-vh: 73.6vh;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -112,11 +114,11 @@
 /*
  * Compact forms (Edit Shift / Confirm / Note / Add…): true viewport center —
  * no Hub sidebar left pad (that offset makes small panels look “lệch”).
- * Pair with HubModalFrame `max-w-md`/`max-w-lg` + width lock above.
+ * Pair with `--fit` / `hub-compact-modal` (28rem token). No max-w-md/lg.
  */
 .modal-backdrop--compact {
   --app-sidebar-width: 0px;
-  --hub-modal-max-w: 28rem;
+  --hub-modal-max-w: min(28rem, calc(100vw - var(--hub-modal-h-margin, 2rem)));
   --hub-modal-max-h: 860px;
   --hub-modal-max-vh: 88vh;
   --hub-modal-h-margin: 2rem;
@@ -156,14 +158,10 @@
 /*
  * ONE shell size for every Layout 2 / Layout 3 tool modal across P00xx.
  *
- * Reference box = P0005 CRM Service detail (the golden one): 72rem wide, 768px tall
- * capped at 73.6vh. Before this, header panels (Log · Notify · Update Release · Usage)
- * were content-fit against 860px/88vh while detail modals were fixed 768px/73.6vh, so the
- * same screen showed two different modal boxes — and tools kept adding their own
- * `--hub-modal-max-*` overrides on top.
+ * Reference box = Layout 2/3 golden: 88rem × 768px / 73.6vh. Notify · Log · Update ·
+ * Settings · Detail share this box. Confirm / Prompt / Clone use `--fit` (28rem).
  *
- * Opt-out stays `.hub-tool-detail-modal--fit` (confirm dialogs, small forms) — that class
- * is the documented way to ask for a content-sized shell.
+ * Opt-out stays `.hub-tool-detail-modal--fit` — one compact token, not max-w-md/lg.
  */
 .modal-shell.hub-tool-detail-modal:not(.hub-tool-detail-modal--fit) {
   --hub-modal-max-w: min(88rem, calc(100vw - var(--app-sidebar-width, 0px) - var(--hub-modal-h-margin, 2rem)));
@@ -177,6 +175,15 @@
   min-width: 0;
   height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
   min-height: min(512px, var(--hub-modal-max-vh));
+  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--fit,
+.modal-shell.hub-tool-detail-modal.hub-compact-modal {
+  --hub-modal-max-w: min(28rem, calc(100vw - var(--hub-modal-h-margin, 2rem)));
+  min-width: 0;
+  height: auto;
+  min-height: 0;
   max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
 }
 

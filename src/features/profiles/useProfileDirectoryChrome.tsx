@@ -149,7 +149,6 @@ export function useProfileDirectoryChrome(input: {
           countLabel="profiles"
           showViewToggle={false}
           showTimeRange={false}
-          showRefresh={false}
           showResultCount={false}
           displayBand={<StealthDisplayBandToolbar screen="profiles" />}
         />

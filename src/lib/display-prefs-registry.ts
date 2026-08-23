@@ -8,11 +8,14 @@ import {
   STEALTH_WORKFLOW_FILTER_STICKER,
   STEALTH_WORKFLOW_HEADER_STAT_STICKER,
   STEALTH_WORKFLOW_KPI_STICKER,
+  STEALTH_WORKFLOW_STORE_FILTER_STICKER,
+  STEALTH_WORKFLOW_STORE_KPI_STICKER,
   stealthPrefIconMap,
 } from "./stealth-column-stickers";
 import {
   stealthProfilesDisplayPrefItems,
   stealthWorkflowDisplayPrefItems,
+  stealthWorkflowStoreDisplayPrefItems,
 } from "./stealth-display-pref-hints";
 
 const RESOLVED_DISPLAY_PREFS_CACHE = new Map<StealthScreen, ScreenDisplayPrefsConfig>();
@@ -28,7 +31,7 @@ export type ScreenDisplayPrefsConfig = {
   defaultHeaderStatKeys: Set<string>;
 };
 
-/** P0003 — profiles directory KPIs only; workflow/scripts has no KPI band. */
+/** P0003 — profiles directory KPIs (running/failed/ready). */
 export const PROFILES_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "total", label: "Profiles" },
@@ -42,15 +45,13 @@ export const PROFILES_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
     { key: "status", label: "Status" },
   ],
   headerStats: [
-    { key: "running", label: "Running" },
-    { key: "failed", label: "Failed" },
-    { key: "ready", label: "Ready" },
-    { key: "total", label: "Profiles" },
+    { key: "cpu", label: "CPU" },
+    { key: "ram", label: "RAM" },
   ],
   defaultKpiKeys: new Set(["total", "running", "failed", "ready"]),
   defaultChartKeys: new Set(),
   defaultFilterKeys: new Set(["group", "status"]),
-  defaultHeaderStatKeys: new Set(["running", "failed", "ready", "total"]),
+  defaultHeaderStatKeys: new Set(["cpu", "ram"]),
 };
 
 /** System → Backup — profile KPIs available; default off until enabled in Display. */
@@ -69,20 +70,23 @@ export const SYSTEM_EXTENSIONS_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   charts: [],
   filters: [{ key: "kind", label: "Kind" }],
   headerStats: [
-    { key: "cached", label: "Cached" },
-    { key: "store", label: "Store" },
+    { key: "cpu", label: "CPU" },
+    { key: "ram", label: "RAM" },
   ],
   defaultKpiKeys: new Set<string>(),
   defaultChartKeys: new Set<string>(),
   defaultFilterKeys: new Set<string>(["kind"]),
-  defaultHeaderStatKeys: new Set(["cached", "store"]),
+  defaultHeaderStatKeys: new Set(["cpu", "ram"]),
 };
 
 export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
-    { key: "total", label: "Workflows (shown)" },
-    { key: "selected", label: "Selected" },
-    { key: "steps", label: "Steps (active)" },
+    { key: "total", label: "Scripts" },
+    { key: "create_today", label: "Create today" },
+    { key: "update_today", label: "Update today" },
+    { key: "ran_today", label: "Ran today" },
+    { key: "idle", label: "Idle" },
+    { key: "empty", label: "Empty" },
   ],
   charts: [],
   filters: [
@@ -90,15 +94,51 @@ export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
     { key: "platform", label: "Platform" },
   ],
   headerStats: [
-    { key: "total", label: "Workflows" },
-    { key: "selected", label: "Selected" },
-    { key: "steps", label: "Steps" },
+    { key: "cpu", label: "CPU" },
+    { key: "ram", label: "RAM" },
   ],
-  defaultKpiKeys: new Set(["total", "selected", "steps"]),
+  defaultKpiKeys: new Set(["total", "create_today", "update_today", "ran_today", "idle", "empty"]),
   defaultChartKeys: new Set(),
   defaultFilterKeys: new Set(["group", "platform"]),
-  defaultHeaderStatKeys: new Set(["total", "selected", "steps"]),
+  defaultHeaderStatKeys: new Set(["cpu", "ram"]),
 };
+
+/** Workflow → Store — P0005 Service analog + Local vs Installed. */
+export const WORKFLOW_STORE_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
+  kpis: [
+    { key: "total", label: "Store" },
+    { key: "create_today", label: "Create today" },
+    { key: "update_today", label: "Update today" },
+    { key: "local", label: "Local" },
+    { key: "installed", label: "Installed" },
+    { key: "available", label: "Available" },
+    { key: "selected", label: "Selected" },
+  ],
+  charts: [],
+  filters: [
+    { key: "group", label: "Group" },
+    { key: "platform", label: "Platform" },
+    { key: "source", label: "Source" },
+  ],
+  headerStats: [
+    { key: "cpu", label: "CPU" },
+    { key: "ram", label: "RAM" },
+  ],
+  defaultKpiKeys: new Set([
+    "total",
+    "create_today",
+    "update_today",
+    "local",
+    "installed",
+    "available",
+    "selected",
+  ]),
+  defaultChartKeys: new Set(),
+  defaultFilterKeys: new Set(["group", "platform", "source"]),
+  defaultHeaderStatKeys: new Set(["cpu", "ram"]),
+};
+
+let resolvedWorkflowStoreDisplayPrefs: ScreenDisplayPrefsConfig | undefined;
 
 export const SCREEN_DISPLAY_PREFS: Partial<Record<StealthScreen, ScreenDisplayPrefsConfig>> = {
   profiles: PROFILES_DISPLAY_PREFS,
@@ -145,4 +185,27 @@ export function resolveScreenDisplayPrefs(screen: StealthScreen): ScreenDisplayP
 
   RESOLVED_DISPLAY_PREFS_CACHE.set(screen, resolved);
   return resolved;
+}
+
+export function resolveWorkflowStoreDisplayPrefs(): ScreenDisplayPrefsConfig {
+  if (resolvedWorkflowStoreDisplayPrefs) return resolvedWorkflowStoreDisplayPrefs;
+  resolvedWorkflowStoreDisplayPrefs = {
+    ...WORKFLOW_STORE_DISPLAY_PREFS,
+    kpis: stealthWorkflowStoreDisplayPrefItems(
+      withPrefItemIcons(WORKFLOW_STORE_DISPLAY_PREFS.kpis, stealthPrefIconMap(STEALTH_WORKFLOW_STORE_KPI_STICKER)),
+    ),
+    filters: stealthWorkflowStoreDisplayPrefItems(
+      withPrefItemIcons(
+        WORKFLOW_STORE_DISPLAY_PREFS.filters,
+        stealthPrefIconMap(STEALTH_WORKFLOW_STORE_FILTER_STICKER),
+      ),
+    ),
+    headerStats: stealthWorkflowStoreDisplayPrefItems(
+      withPrefItemIcons(
+        WORKFLOW_STORE_DISPLAY_PREFS.headerStats,
+        stealthPrefIconMap(STEALTH_WORKFLOW_HEADER_STAT_STICKER),
+      ),
+    ),
+  };
+  return resolvedWorkflowStoreDisplayPrefs;
 }

@@ -219,11 +219,31 @@ html.hub-embed .hub-main {
 
 .hub-chrome-sticky {
   isolation: isolate;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  background: var(--bg);
 }
 
 /* Small gap between stacked sticky chrome and tab body (flex gap — no content padding under sticky) */
 .hub-tab-chrome-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Grow with directory content so sticky header+search pin against .hub-main.
+     `flex:1; min-height:0` boxed the sticky parent to the viewport — chrome
+     scrolled away with the page (Team / long directories). */
+  flex: 1 0 auto;
+  min-width: 0;
+  min-height: auto;
   gap: var(--hub-chrome-content-gap);
+}
+
+.hub-tab-chrome-stack:has(.hub-tab-body-zone--split) {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 /* Flush header + search panel when stacked (no double gap between header and filter) */
@@ -256,45 +276,92 @@ html.hub-embed .hub-main {
   overflow: visible;
 }
 
-/* Reserve analytics band height before KPI/charts hydrate (directory tabs — F5 parity).
-   Skeleton pulse (not visibility:hidden) so cold hydrate does not look like a “blank hole”. */
+/* Reserve analytics band — real KPI tiles + chart cards; empty values stay blank (no grey pulse). */
 .hub-tab-kpi-zone--reserved {
+  position: relative;
   min-height: calc(
     var(--hub-kpi-strip-min-h) + var(--hub-chrome-content-gap) + var(--hub-charts-band-min-h)
   );
 }
 
-@keyframes hub-analytics-reserve-pulse {
-  0%,
-  100% {
-    opacity: 0.28;
-  }
-  50% {
-    opacity: 0.48;
-  }
+.hub-kpi-strip--reserve-frames .hub-kpi-tile__value:empty {
+  display: block;
+  min-height: 1.15em;
 }
 
-.hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve,
-.hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
+.hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve-frames,
+.hub-tab-kpi-zone--reserved .hub-charts-band--reserve-frames {
   pointer-events: none;
-  border-radius: var(--hub-radius-md, 0.5rem);
-  background: color-mix(in srgb, var(--muted-foreground, #8a8a8a) 12%, transparent);
-  animation: hub-analytics-reserve-pulse 1.1s ease-in-out infinite;
 }
 
-.hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve {
-  min-height: var(--hub-kpi-strip-min-h);
+.hub-directory-empty {
+  border-radius: 0.75rem;
+  border: 1px dashed rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.02);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
-.hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
-  min-height: var(--hub-charts-band-min-h);
+.hub-directory-empty__mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: max-content;
+  margin: 0 auto 0.65rem;
+}
+
+.hub-directory-empty__icon,
+.hub-directory-empty__beam,
+.hub-directory-empty__beam-host {
+  grid-area: 1 / 1;
+  display: block;
+}
+
+.hub-directory-empty__beam-host {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.hub-directory-empty__mark--busy .hub-directory-empty__icon {
+  opacity: 0.42;
+}
+
+.hub-directory-empty__beam {
+  z-index: 1;
+  pointer-events: none;
+  fill: none;
+  stroke: none;
+}
+
+.hub-directory-empty__beam :is(path, circle, line, polyline, polygon, rect, ellipse) {
+  fill: none !important;
+  stroke: color-mix(in srgb, currentColor 18%, white);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* pathLength=100 on the glyph: one 2-unit dot, one outline lap in 3s. */
+  stroke-dasharray: 2 98;
+  animation: hub-directory-empty-beam 3s linear infinite;
+  filter:
+    drop-shadow(0 0 1.5px #fff)
+    drop-shadow(0 0 5px color-mix(in srgb, currentColor 85%, white));
+}
+
+@keyframes hub-directory-empty-beam {
+  to {
+    stroke-dashoffset: -100;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hub-tab-kpi-zone--reserved .hub-kpi-strip--reserve,
-  .hub-tab-kpi-zone--reserved .hub-charts-band--reserve {
-    animation: none;
-    opacity: 0.32;
+  .hub-directory-empty__beam {
+    display: none;
+  }
+
+  .hub-directory-empty__mark--busy .hub-directory-empty__icon {
+    opacity: 0.85;
   }
 }
 

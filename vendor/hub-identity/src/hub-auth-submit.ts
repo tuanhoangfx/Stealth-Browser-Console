@@ -8,6 +8,7 @@ import {
   hubAuthEmailsForSignIn,
   sanitizeHubLoginInput,
 } from "./hub-login";
+import { HUB_AUTH_FETCH_TIMEOUT_MESSAGE } from "./hub-auth-fetch";
 import {
   type HubResolveLoginLookup,
   resolveHubLoginEmails,
@@ -41,6 +42,15 @@ export const HUB_USERNAME_WRONG_PASSWORD_MESSAGE =
 export const HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE =
   "Sign-in service unavailable. Try again in a moment or sign in with your email.";
 
+/** Transient Hub path — Dual recover worker may bypass (timeout / 5xx / abort). */
+export function isHubIdentityTransientFailure(message: string | null | undefined): boolean {
+  const msg = String(message ?? "").trim();
+  if (!msg) return false;
+  if (msg === HUB_RESOLVE_LOGIN_UNAVAILABLE_MESSAGE) return true;
+  if (msg === HUB_AUTH_FETCH_TIMEOUT_MESSAGE) return true;
+  return /timed out|AUTH_TIMEOUT|unavailable|aborted/i.test(msg);
+}
+
 export const HUB_INVALID_USERNAME_MESSAGE =
   "Invalid username (use 3–32 letters, numbers, . _ -)";
 
@@ -70,6 +80,8 @@ export type SignInWithHubPasswordOptions = {
   extraAuthEmails?: string[];
   /** Same-origin resolve-login API when extraAuthEmails omitted for User ID sign-in. */
   resolveLoginApiUrl?: string;
+  /** Caller already ran resolve-login (dual sign-in) — skip a second 12s fetch. */
+  resolveLookup?: HubResolveLoginLookup;
 };
 
 /** Try resolver emails then synthetic email fallbacks for username/email sign-in. */
@@ -112,13 +124,22 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
     mode === "signin" &&
     !extraEmails.length &&
     (classified.kind === "username" || classified.kind === "phone");
-  if (needsResolve) {
+  if (needsResolve && options.resolveLookup && options.resolveLookup !== "skipped") {
+    resolveLookupUsed = true;
+    resolveLookup = options.resolveLookup;
+  } else if (needsResolve) {
     resolveLookupUsed = true;
     const resolved = await resolveHubLoginEmails(login, {
       resolveLoginApiUrl: options.resolveLoginApiUrl,
+      forceRefresh: true,
     });
     extraEmails = resolved.emails;
     resolveLookup = resolved.lookup;
+  } else if (mode === "signin" && extraEmails.length > 0) {
+    // Dual first hop already mapped User ID → auth emails — keep wrong-password copy.
+    resolveLookupUsed = true;
+    resolveLookup =
+      options.resolveLookup && options.resolveLookup !== "skipped" ? options.resolveLookup : "ok";
   }
   // Resolve-login already mapped username/phone → real auth.users email(s).
   // Do not also hammer synthetic @infix1 / legacy fallbacks — each GoTrue attempt

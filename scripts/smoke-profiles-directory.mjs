@@ -225,19 +225,25 @@ const nav = fs.readFileSync(path.join(root, "src/lib/stealth-nav-structure.ts"),
 if (!nav.includes('view: "extensions"') || !nav.includes("Extensions")) {
   fail("stealth-nav-structure missing System → Extensions tab");
 }
-const designIdx = nav.indexOf('view: "design"');
-const extensionsIdx = nav.indexOf('view: "extensions"');
-if (designIdx < 0 || extensionsIdx < 0 || designIdx > extensionsIdx) {
-  fail("System nav must place Design above Extensions");
+if (!nav.includes('view: "backup"') || !nav.includes("Backup")) {
+  fail("stealth-nav-structure missing System → Backup tab");
+}
+if (!nav.includes("isStealthDesignTabVisible")) {
+  fail("System Design tab must stay gated by isStealthDesignTabVisible");
+}
+if (nav.includes("Overview") || nav.includes('view: "overview"')) {
+  fail("System nav must not include Overview");
 }
 
 if (!extFilter.includes("isHubPrefVisible") || !extFilter.includes("readSystemTabDisplay")) {
   fail("SystemExtensionsFilterPane must gate Kind filter via Display hubFilters");
 }
 
-const overview = fs.readFileSync(path.join(root, "src/features/system/SystemOverviewPage.tsx"), "utf8");
-if (overview.includes("SystemWebStoreExtensionsPanel") || overview.includes("SystemCookieBridgePanel")) {
-  fail("SystemOverviewPage must not host extension panels anymore");
+if (fs.existsSync(path.join(root, "src/features/system/SystemOverviewPage.tsx"))) {
+  fail("SystemOverviewPage was removed — do not reintroduce an Overview tab");
+}
+if (fs.existsSync(path.join(root, "src/features/system/SystemLaunchPerfPanel.tsx"))) {
+  fail("SystemLaunchPerfPanel was removed — launch-perf UI is retired");
 }
 
 const table = fs.readFileSync(

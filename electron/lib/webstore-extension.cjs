@@ -542,26 +542,59 @@ function listProfileChromeDirs(userDataRoot) {
     .map((entry) => path.join(profilesDir, entry.name));
 }
 
-async function installStoreExtension(userDataRoot, storeIdOrUrl, { profileIds, force = false } = {}) {
-  const { storeId, unpackedPath, cached } = await ensureStoreExtension(userDataRoot, storeIdOrUrl, { force });
-  const allDirs = listProfileChromeDirs(userDataRoot);
-  let targetDirs = allDirs;
-  if (Array.isArray(profileIds) && profileIds.length) {
-    const wanted = new Set(profileIds.map((id) => String(id).trim()).filter(Boolean));
-    targetDirs = allDirs.filter((dir) => wanted.has(path.basename(dir)));
-  }
-  const profiles = installStoreExtensionToProfiles(userDataRoot, storeId, unpackedPath, targetDirs);
-  return {
-    storeId,
-    name: readManifestName(unpackedPath),
-    version: readManifestVersion(unpackedPath),
-    unpackedPath,
-    cached,
-    force: Boolean(force),
-    profiles: profiles.length,
-    installed: profiles.filter((row) => row.extId).length,
-    details: profiles,
-  };
+const installStoreJobs = new Map();
+
+async function installStoreExtension(
+  userDataRoot,
+  storeIdOrUrl,
+  { profileIds, force = false, cacheOnly = false } = {},
+) {
+  const id = parseStoreId(storeIdOrUrl);
+  if (!id) throw new Error("invalid Chrome Web Store extension id");
+  const jobKey = `${id}:${force ? "1" : "0"}:${cacheOnly ? "1" : "0"}`;
+  const existing = installStoreJobs.get(jobKey);
+  if (existing) return existing;
+
+  const job = (async () => {
+    const { storeId, unpackedPath, cached } = await ensureStoreExtension(userDataRoot, storeIdOrUrl, { force });
+    if (cacheOnly) {
+      return {
+        storeId,
+        name: readManifestName(unpackedPath),
+        version: readManifestVersion(unpackedPath),
+        unpackedPath,
+        cached,
+        force: Boolean(force),
+        cacheOnly: true,
+        profiles: 0,
+        installed: 0,
+        details: [],
+      };
+    }
+    const allDirs = listProfileChromeDirs(userDataRoot);
+    let targetDirs = allDirs;
+    if (Array.isArray(profileIds) && profileIds.length) {
+      const wanted = new Set(profileIds.map((id) => String(id).trim()).filter(Boolean));
+      targetDirs = allDirs.filter((dir) => wanted.has(path.basename(dir)));
+    }
+    const profiles = installStoreExtensionToProfiles(userDataRoot, storeId, unpackedPath, targetDirs);
+    return {
+      storeId,
+      name: readManifestName(unpackedPath),
+      version: readManifestVersion(unpackedPath),
+      unpackedPath,
+      cached,
+      force: Boolean(force),
+      profiles: profiles.length,
+      installed: profiles.filter((row) => row.extId).length,
+      details: profiles,
+    };
+  })().finally(() => {
+    installStoreJobs.delete(jobKey);
+  });
+
+  installStoreJobs.set(jobKey, job);
+  return job;
 }
 
 /** Read manifest.json icons field → pick the best size → return base64 data URI (or null). */

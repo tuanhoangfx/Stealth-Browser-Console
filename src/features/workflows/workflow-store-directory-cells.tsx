@@ -12,6 +12,7 @@ import { DIRECTORY_CELL_TRUNCATE } from "../../lib/directory-cell-format";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import { workflowPlatformIconFor } from "./workflow-display";
 import { workflowStoreUpdatedMs } from "./workflow-store-meta";
+import { resolveStoreEntryPresence } from "./workflow-store-kpi-items";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 import type { WorkflowStoreSortKey } from "./WorkflowStoreDirectoryTable";
 import { WorkflowStoreSourceDirectoryCell } from "./workflow-store-source-brand";
@@ -25,8 +26,9 @@ function renderStoreUpdatedCell(entry: WorkflowStoreEntry) {
 }
 
 export function storeStatusLabel(entry: WorkflowStoreEntry, localIds: Set<string>, installedIds: Set<string>) {
-  if (localIds.has(entry.id)) return { label: "Local", tone: "online" as const };
-  if (installedIds.has(entry.id)) return { label: "Installed", tone: "active" as const };
+  const presence = resolveStoreEntryPresence(entry.id, localIds, installedIds);
+  if (presence === "local") return { label: "Local", tone: "online" as const };
+  if (presence === "installed") return { label: "Installed", tone: "active" as const };
   return { label: "Available", tone: "idle" as const };
 }
 

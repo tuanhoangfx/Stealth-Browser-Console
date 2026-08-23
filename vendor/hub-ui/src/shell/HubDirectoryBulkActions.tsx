@@ -1,62 +1,7 @@
-import { Copy, Package, Pencil, RefreshCw, SquareStack } from "lucide-react";
+import { Copy, Pencil, SquareStack } from "lucide-react";
 import { HubBulkActionButton } from "./HubBulkActionButton";
 import { HubDirectoryDeleteBulkAction } from "./HubDirectoryDeleteBulkAction";
 import { HubDirectoryNewBulkAction } from "./HubDirectoryNewBulkAction";
-
-/** Optional Hub tools bulk refresh — P0004 golden Hub uses auto-sync; card select-all only. */
-export type HubToolsDirectoryBulkActionsProps = {
-  hasSelection: boolean;
-  selectedCount: number;
-  busy?: boolean;
-  onRefreshSelected: () => void;
-};
-
-export function HubToolsDirectoryBulkActions({
-  hasSelection,
-  selectedCount,
-  busy = false,
-  onRefreshSelected,
-}: HubToolsDirectoryBulkActionsProps) {
-  return (
-    <HubBulkActionButton
-      icon={<RefreshCw size={14} aria-hidden />}
-      label="Refresh"
-      title={hasSelection ? "Refresh GitHub metadata for selected tools" : "Select one or more tools"}
-      tone="indigo"
-      disabled={!hasSelection || busy}
-      selectedCount={hasSelection ? selectedCount : undefined}
-      iconSpinning={busy}
-      onClick={onRefreshSelected}
-    />
-  );
-}
-
-/** Catalog-wide sync — filter toolbar (not selection bulk). */
-export type HubCatalogSyncButtonProps = {
-  busy?: boolean;
-  label?: string;
-  title?: string;
-  onClick: () => void;
-};
-
-export function HubCatalogSyncButton({
-  busy = false,
-  label = "Sync workspace",
-  title = "Scan workspace + refresh registry and quota",
-  onClick,
-}: HubCatalogSyncButtonProps) {
-  return (
-    <HubBulkActionButton
-      icon={<Package size={14} aria-hidden />}
-      label={label}
-      title={title}
-      tone="sky"
-      disabled={busy}
-      iconSpinning={busy}
-      onClick={onClick}
-    />
-  );
-}
 
 /** Golden Dashboard screen catalog — bulk actions that need multi-select. */
 export type HubScreensDirectoryBulkActionsProps = {

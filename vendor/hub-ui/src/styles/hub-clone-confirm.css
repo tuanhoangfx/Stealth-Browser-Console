@@ -1,9 +1,4 @@
-/* HubCloneConfirmDialog — Layout 2 Modal SSOT (fit shell) */
-
-.hub-clone-confirm-modal {
-  /* Fit confirm: slightly wider so Layout 2 field pair breathes */
-  --hub-modal-max-w: min(28rem, calc(100vw - 2rem));
-}
+/* HubCloneConfirmDialog — field chrome. Width = compact 28rem token, not this file. */
 
 .hub-clone-confirm__keep {
   display: inline-flex;

@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld("stealthApi", {
   listProfileEvents: (payload) => invoke("profileEvents:list", payload),
   openUrl: (payload) => invoke("automation:openUrl", payload),
   appInfo: () => invoke("app:info"),
+  fetchHostMetrics: () => invoke("host:metrics"),
   setVaultUserScope: (payload) => invoke("vault:setUserScope", payload),
   getVaultUserScope: () => invoke("vault:getUserScope"),
   openDataFolder: () => invoke("app:openDataFolder"),

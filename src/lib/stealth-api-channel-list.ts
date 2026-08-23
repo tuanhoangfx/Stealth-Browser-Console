@@ -200,6 +200,12 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
     "web": "stub"
   },
   {
+    "method": "fetchHostMetrics",
+    "channel": "host:metrics",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
     "method": "setVaultUserScope",
     "channel": "vault:setUserScope",
     "kind": "invoke",

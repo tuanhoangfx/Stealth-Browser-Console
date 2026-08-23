@@ -68,6 +68,11 @@
 .hub-directory-frame .hub-directory-frame-table .hub-directory-table-body-text,
 .hub-directory-frame .hub-directory-frame-table .hub-directory-icon-cell__label {
   display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--hub-table-body-size, 12px);
   font-weight: 400;
   line-height: var(--hub-table-body-line-height, 1.45);
@@ -285,17 +290,17 @@
   height: calc(var(--hub-table-body-size, 12px) * var(--hub-table-body-line-height, 1.45));
 }
 
-/* Partial-page pad rows — SSOT for panel-fill stable frame */
+/* Partial-page pad — default chrome is invisible (hub-directory-table.css). */
 .hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad {
   pointer-events: none;
   user-select: none;
 }
 
 .hub-directory-frame[data-partial-page-pad="invisible"] tbody tr.hub-users-row--pad td {
-  border-top-color: transparent !important;
-  border-bottom-color: transparent !important;
-  background: transparent;
-  box-shadow: none;
+  border-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
 }
 
 .hub-directory-frame[data-partial-page-pad="visible"] tbody tr.hub-users-row--pad {
@@ -304,5 +309,5 @@
 }
 
 .hub-directory-frame[data-partial-page-pad="visible"] tbody tr.hub-users-row--pad td {
-  border-top-color: rgba(255, 255, 255, 0.02);
+  border-top-color: rgba(255, 255, 255, 0.02) !important;
 }

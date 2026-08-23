@@ -82,7 +82,7 @@ export type HubBulkActionButtonProps = {
   labelNode?: ReactNode;
 };
 
-/** Golden bulk-action CTA — filter row 2 (Pin, Refresh, Edit, Sync, …). */
+/** Golden bulk-action CTA — filter row 2 (New, Edit, Delete, Open selected, …). */
 export function HubBulkActionButton({
   icon,
   label,

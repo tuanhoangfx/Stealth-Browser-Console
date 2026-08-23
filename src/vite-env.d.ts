@@ -1,11 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_APP_VERSION?: string;
   readonly VITE_APP_BUILT_AT?: string;
-  readonly VITE_HUB_AUTH_URL?: string;
-  readonly VITE_HUB_AUTH_ANON_KEY?: string;
-  readonly VITE_HUB_SUPABASE_URL?: string;
-  readonly VITE_HUB_SUPABASE_ANON_KEY?: string;
 }
 
 interface ImportMeta {

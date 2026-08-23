@@ -1,6 +1,13 @@
 import { getIdentitySupabase } from "../../lib/supabase-identity";
 import { isHubSupabaseConfigured } from "../../lib/hub-supabase-env";
-import { WORKFLOW_STORE_DRIVE_MANIFEST_URL, WORKFLOW_STORE_INSTALLED_KEY } from "./workflow-store-config";
+import { attachBundledDrivePayloads, readBundledDriveManifest, readBundledDrivePayload } from "./bundled-workflow-store";
+import {
+  isRemoteDriveManifestUrl,
+  readConfiguredDriveManifestUrl,
+  resolveWorkflowStoreAssetUrl,
+  resolveWorkflowStoreDriveManifestUrl,
+  WORKFLOW_STORE_INSTALLED_KEY,
+} from "./workflow-store-config";
 import { mergeWorkflowStoreEntries } from "./workflow-store-merge";
 import type { WorkflowStoreEntry, WorkflowStoreLoadResult, WorkflowStoreManifest } from "./workflow-store-types";
 
@@ -55,28 +62,46 @@ function manifestToEntries(manifest: WorkflowStoreManifest): WorkflowStoreEntry[
   }));
 }
 
+function bundledDriveEntries(): WorkflowStoreEntry[] {
+  return attachBundledDrivePayloads(manifestToEntries(readBundledDriveManifest()));
+}
+
+async function readDriveManifestFromUrl(manifestUrl: string): Promise<WorkflowStoreManifest> {
+  const response = await fetch(manifestUrl, { signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) {
+    throw new Error(`Drive manifest HTTP ${response.status}`);
+  }
+  const manifest = (await response.json()) as WorkflowStoreManifest;
+  if (!manifest || !Array.isArray(manifest.workflows)) {
+    throw new Error("Drive manifest invalid");
+  }
+  return manifest;
+}
+
 export async function fetchDriveWorkflowManifest(
-  manifestUrl = WORKFLOW_STORE_DRIVE_MANIFEST_URL,
+  manifestUrl = resolveWorkflowStoreDriveManifestUrl(),
 ): Promise<{ entries: WorkflowStoreEntry[]; error?: string }> {
+  const remote = isRemoteDriveManifestUrl(manifestUrl) || isRemoteDriveManifestUrl(readConfiguredDriveManifestUrl());
   try {
-    const response = await fetch(manifestUrl, { signal: AbortSignal.timeout(20_000) });
-    if (!response.ok) {
-      return { entries: [], error: `Drive manifest HTTP ${response.status}` };
-    }
-    const manifest = (await response.json()) as WorkflowStoreManifest;
-    if (!manifest || !Array.isArray(manifest.workflows)) {
-      return { entries: [], error: "Drive manifest invalid" };
-    }
-    return { entries: manifestToEntries(manifest) };
+    const manifest = await readDriveManifestFromUrl(manifestUrl);
+    const entries = manifestToEntries(manifest);
+    return { entries: remote ? entries : attachBundledDrivePayloads(entries) };
   } catch (err) {
+    if (!remote) {
+      return { entries: bundledDriveEntries() };
+    }
     return { entries: [], error: err instanceof Error ? err.message : "Drive manifest fetch failed" };
   }
 }
 
 export async function fetchWorkflowStorePayload(entry: WorkflowStoreEntry): Promise<Record<string, unknown>> {
   if (entry.payload && typeof entry.payload === "object") return entry.payload;
+  const bundled = !isRemoteDriveManifestUrl(readConfiguredDriveManifestUrl())
+    ? readBundledDrivePayload(entry.id)
+    : undefined;
+  if (bundled) return bundled;
   if (!entry.payloadUrl) throw new Error("Workflow payload missing");
-  const response = await fetch(entry.payloadUrl, { signal: AbortSignal.timeout(20_000) });
+  const response = await fetch(resolveWorkflowStoreAssetUrl(entry.payloadUrl), { signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`Workflow payload HTTP ${response.status}`);
   const data = await response.json();
   if (!data || typeof data !== "object" || Array.isArray(data)) {

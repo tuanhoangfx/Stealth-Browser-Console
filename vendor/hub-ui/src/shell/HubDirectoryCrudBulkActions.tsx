@@ -35,6 +35,8 @@ export type HubDirectoryCrudBulkActionsProps = {
   primaryLabelHint?: HubDirectoryColumnHintContent;
   editLabelHint?: HubDirectoryColumnHintContent;
   deleteLabelHint?: HubDirectoryColumnHintContent;
+  /** Override Delete button label (e.g. Material Trash → Delete forever). */
+  deleteLabel?: string;
   /** Hide default Edit button (for tools using adaptive Detail CTA). */
   hideEdit?: boolean;
   /** Insert between New/Edit and Delete — e.g. `HubDirectoryAdaptiveEditAction` Detail CTA. */
@@ -64,6 +66,7 @@ export function HubDirectoryCrudBulkActions({
   primaryLabelHint,
   editLabelHint,
   deleteLabelHint,
+  deleteLabel,
   hideEdit = false,
   beforeDelete,
   extra,
@@ -113,6 +116,7 @@ export function HubDirectoryCrudBulkActions({
         title={resolvedDeleteTitle}
         disabled={!deleteEnabled}
         onClick={onDelete}
+        label={deleteLabel}
         labelHint={deleteLabelHint}
       />
       {extra ? (

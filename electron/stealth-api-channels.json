@@ -33,6 +33,7 @@
     { "method": "listProfileEvents", "channel": "profileEvents:list", "kind": "invoke" },
     { "method": "openUrl", "channel": "automation:openUrl", "kind": "invoke", "web": "reject" },
     { "method": "appInfo", "channel": "app:info", "kind": "invoke" },
+    { "method": "fetchHostMetrics", "channel": "host:metrics", "kind": "invoke" },
     { "method": "setVaultUserScope", "channel": "vault:setUserScope", "kind": "invoke" },
     { "method": "getVaultUserScope", "channel": "vault:getUserScope", "kind": "invoke" },
     { "method": "openDataFolder", "channel": "app:openDataFolder", "kind": "invoke" },

@@ -36,6 +36,25 @@
   filter: brightness(0) saturate(100%);
 }
 
+/* Person photo in FilterBar / ClickFilter — circular crop + thin frame. */
+.hub-filter-avatar-icon,
+.hub-filter-dropdown-list img.hub-filter-avatar-icon,
+[data-hub-multi-filter-panel] img.hub-filter-avatar-icon,
+[data-hub-single-filter-panel] img.hub-filter-avatar-icon,
+.hub-chart-legend-label img.hub-filter-avatar-icon,
+.hub-adm-click-filter__trigger img.hub-filter-avatar-icon,
+.hub-sidebar-chrome-type img.hub-filter-avatar-icon {
+  box-sizing: border-box;
+  width: var(--hub-directory-header-glyph-px, 13px) !important;
+  height: var(--hub-directory-header-glyph-px, 13px) !important;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(99, 102, 241, 0.18);
+  object-fit: cover;
+}
+
 .hub-filter-dropdown-group-label {
   padding: 0.4rem 0.5rem 0.1rem;
   font-size: 10px;

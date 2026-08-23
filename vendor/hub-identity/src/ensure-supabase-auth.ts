@@ -1,6 +1,11 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_NEAR_EXPIRY_MS } from "./ensure-fresh-supabase-auth";
-import { isWorkspaceSessionExpiryFresh } from "./workspace-auth-session";
+import { isAuthNetworkError } from "./supabase-auth-error";
+import {
+  isSessionNearExpiry,
+  isSessionStillWriteable,
+  isWorkspaceSessionExpiryFresh,
+} from "./workspace-auth-session";
 import type { ToolSessionSnapshot } from "./tool-session-cache";
 
 export type EnsureSupabaseAuthConfig = {
@@ -20,17 +25,6 @@ export type EnsureSupabaseAuthConfig = {
    */
   refreshNearExpiryMs?: number | null;
 };
-
-/** GoTrue / browser network failure — refresh may still succeed on retry. */
-export function isAuthNetworkError(error: unknown): boolean {
-  const message =
-    typeof error === "string"
-      ? error
-      : error && typeof error === "object" && "message" in error
-        ? String((error as { message?: unknown }).message ?? "")
-        : String(error ?? "");
-  return /failed to fetch|network|timeout|econnreset|etimedout|fetch failed|load failed/i.test(message);
-}
 
 async function dropGhostSession(
   client: SupabaseClient,
@@ -96,23 +90,23 @@ export function createEnsureSupabaseAuth(config: EnsureSupabaseAuthConfig): () =
       config.cacheSession(session);
     }
 
-    if (nearMs != null && session) {
-      const expiresAtMs = session.expires_at ? session.expires_at * 1000 : 0;
-      const nearExpiry = !expiresAtMs || expiresAtMs < Date.now() + nearMs;
-      if (nearExpiry) {
+    if (nearMs != null && session && isSessionNearExpiry(session, nearMs)) {
+      try {
         const { data: refreshed, error } = await client.auth.refreshSession();
         if (!error && refreshed.session) {
           session = refreshed.session;
           config.cacheSession(session);
+        } else if (isAuthNetworkError(error)) {
+          if (!isSessionStillWriteable(session)) return null;
         } else if (!isWorkspaceSessionExpiryFresh(session.expires_at, 0)) {
           // Hard-expired JWT + failed refresh.
-          // Network blip: keep local tokens for retry; do not paint a usable session.
           // Auth-invalid (revoked refresh): drop GoTrue + tool cache so UI cannot look signed-in.
-          if (!isAuthNetworkError(error)) {
-            await dropGhostSession(client, config.clearSession);
-          }
+          await dropGhostSession(client, config.clearSession);
           return null;
         }
+      } catch (err) {
+        if (!isAuthNetworkError(err)) throw err;
+        if (!isSessionStillWriteable(session)) return null;
       }
     }
 

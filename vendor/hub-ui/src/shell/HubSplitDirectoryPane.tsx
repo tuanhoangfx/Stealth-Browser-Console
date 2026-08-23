@@ -29,7 +29,7 @@ export type HubSplitDirectoryPaneProps = {
   compactDirectory?: boolean;
   /**
    * Pad row chrome when `padBodyRowsToPageSize` fills a partial page.
-   * `invisible` — stable panel-fill frame without ghost grid lines (Profiles / Scripts panel golden).
+   * Default (omit / `invisible`) — stable frame, no ghost grid (Profiles / P0020 vault golden).
    * `visible` — subtle row separators on pad slots (workflow rail).
    */
   partialPagePad?: HubDirectoryPartialPagePad;

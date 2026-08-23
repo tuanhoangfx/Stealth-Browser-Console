@@ -22,6 +22,58 @@ export function isWorkspaceSessionExpiryFresh(
   return expiresAt * 1000 > Date.now() + bufferMs;
 }
 
+export type SessionExpiryFields = {
+  expires_at?: number | null;
+  access_token?: string | null;
+};
+
+/** Decode JWT `exp` (seconds). Missing/malformed token → null. */
+export function readJwtExpSeconds(accessToken: string | null | undefined): number | null {
+  const token = String(accessToken ?? "").trim();
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  try {
+    const padded = payload.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (payload.length % 4)) % 4);
+    const json =
+      typeof atob === "function"
+        ? atob(padded)
+        : Buffer.from(padded, "base64").toString("utf8");
+    const exp = (JSON.parse(json) as { exp?: unknown }).exp;
+    return typeof exp === "number" && exp > 0 ? exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/** GoTrue `expires_at`, else JWT `exp`. Do not invent a clock. */
+export function resolveSessionExpiresAtSeconds(session: SessionExpiryFields | null | undefined): number | null {
+  const stamped = session?.expires_at;
+  if (typeof stamped === "number" && stamped > 0) return stamped;
+  return readJwtExpSeconds(session?.access_token);
+}
+
+/**
+ * Proactive refresh window. **Missing exp is not near-expiry** — forcing
+ * `refreshSession()` on every CRM/Todo Save is what turns a Home Server
+ * GoTrue blip into `TypeError: Failed to fetch` on an otherwise valid JWT.
+ */
+export function isSessionNearExpiry(
+  session: SessionExpiryFields | null | undefined,
+  nearExpiryMs: number,
+): boolean {
+  const exp = resolveSessionExpiresAtSeconds(session);
+  if (exp == null) return false;
+  return exp * 1000 < Date.now() + Math.max(0, nearExpiryMs);
+}
+
+/** Token can still be sent (not hard-expired). Missing exp stays writeable. */
+export function isSessionStillWriteable(session: SessionExpiryFields | null | undefined): boolean {
+  if (!session?.access_token?.trim()) return false;
+  const exp = resolveSessionExpiresAtSeconds(session);
+  if (exp == null) return true;
+  return exp * 1000 > Date.now();
+}
+
 export function sessionsEqual(a: Session | null | undefined, b: Session | null | undefined): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;

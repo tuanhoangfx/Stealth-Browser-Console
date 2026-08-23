@@ -400,6 +400,9 @@ function bindIpc() {
     );
   });
 
+  const { sampleHostMetrics } = require("./lib/host-metrics.cjs");
+  ipcMain.handle("host:metrics", () => sampleHostMetrics());
+
   ipcMain.handle("app:info", () => {
     const {
       getProfilesLocationInfo,
@@ -642,21 +645,24 @@ function bindIpc() {
       ? payload.profileIds.map((id) => String(id).trim()).filter(Boolean)
       : undefined;
     const force = Boolean(payload.force);
+    const cacheOnly = Boolean(payload.cacheOnly);
     try {
-      const result = await installStoreExtension(userDataRoot(), storeIdOrUrl, { profileIds, force });
-      const binary = await getBinaryInfoCached();
-      const { prepareProfileExtensions } = require("./lib/native-extension-load.cjs");
-      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
-      const profilesDir = resolveProfilesRoot(userDataRoot());
-      const wanted = Array.isArray(profileIds) && profileIds.length ? new Set(profileIds) : null;
-      if (fs.existsSync(profilesDir)) {
-        for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
-          if (!entry.isDirectory()) continue;
-          if (wanted && !wanted.has(entry.name)) continue;
-          try {
-            prepareProfileExtensions(path.join(profilesDir, entry.name), userDataRoot(), binary.cacheDir);
-          } catch {
-            // best-effort per profile
+      const result = await installStoreExtension(userDataRoot(), storeIdOrUrl, { profileIds, force, cacheOnly });
+      if (!cacheOnly) {
+        const binary = await getBinaryInfoCached();
+        const { prepareProfileExtensions } = require("./lib/native-extension-load.cjs");
+        const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+        const profilesDir = resolveProfilesRoot(userDataRoot());
+        const wanted = Array.isArray(profileIds) && profileIds.length ? new Set(profileIds) : null;
+        if (fs.existsSync(profilesDir)) {
+          for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+            if (!entry.isDirectory()) continue;
+            if (wanted && !wanted.has(entry.name)) continue;
+            try {
+              prepareProfileExtensions(path.join(profilesDir, entry.name), userDataRoot(), binary.cacheDir);
+            } catch {
+              // best-effort per profile
+            }
           }
         }
       }

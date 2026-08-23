@@ -11,13 +11,17 @@ describe("resolveDataBoxMirrorAuthEmails", () => {
     ).toEqual(["u_12770af0-93b5-429e-85f1-9ecb4f66e9b5@auth.infi.internal"]);
   });
 
-  it("rejects leftover @infix1 mirror emails", () => {
+  it("trusts Hub-validated infix1 emails (P0022 store buyers)", () => {
     expect(
       resolveDataBoxMirrorAuthEmails({
-        loginInput: "duyceo01",
-        mirrorEmail: "retired@infix1.io.vn",
+        loginInput: "CS00004",
+        mirrorEmail: "cs00004@infix1.io.vn",
       }),
-    ).toEqual([]);
+    ).toEqual(["cs00004@infix1.io.vn"]);
+  });
+
+  it("does not invent @infix1 from a username", () => {
+    expect(resolveDataBoxMirrorAuthEmails({ loginInput: "cs00004", mirrorEmail: "" })).toEqual([]);
   });
 
   it("returns empty when username has no Hub opaque yet", () => {

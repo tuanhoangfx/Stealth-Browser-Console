@@ -9,6 +9,7 @@ import {
 } from "./filter-dropdown-primitives";
 import { hubPortalPanelPosition } from "./hub-portal-panel-position";
 import { formatHubCalendarDateCompact } from "../lib/format-hub-timestamp-compact";
+import { hubMondayWeekOffset } from "../lib/hub-workspace-period";
 
 /** Account detail + vault date fields — muted placeholder tone (not column label). */
 export const HUB_DATE_PICKER_PLACEHOLDER = "dd/mm/yy";
@@ -29,6 +30,8 @@ export type HubFilterDatePickerProps = {
   /** Account detail — label column already shows emoji; value cell is text-only. */
   hideTriggerIcon?: boolean;
   disabled?: boolean;
+  /** Inline calendar (FilterBar Fixed date) — no trigger / portal. */
+  embedded?: boolean;
 };
 
 function formatDateFull(dateString: string) {
@@ -64,6 +67,7 @@ export function HubFilterDatePicker({
   locale = "en",
   hideTriggerIcon = false,
   disabled = false,
+  embedded = false,
 }: HubFilterDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -121,7 +125,8 @@ export function HubFilterDatePicker({
 
   const daysOfWeek = useMemo(() => {
     const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
-    return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2023, 0, i + 1)).slice(0, 2));
+    /** 2023-01-02 is Monday — Hub week SSOT. */
+    return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2023, 0, i + 2)).slice(0, 2));
   }, [locale]);
 
   const { monthName, year, days } = useMemo(() => {
@@ -130,7 +135,7 @@ export function HubFilterDatePicker({
     const monthLabel = new Intl.DateTimeFormat(locale, { month: "short" }).format(viewDate);
     const firstDayOfMonth = new Date(y, month, 1);
     const lastDayOfMonth = new Date(y, month + 1, 0);
-    const startingDayOfWeek = firstDayOfMonth.getDay();
+    const startingDayOfWeek = hubMondayWeekOffset(firstDayOfMonth.getDay());
     const totalDays = lastDayOfMonth.getDate();
     const daysArray: (Date | null)[] = [];
     for (let i = 0; i < startingDayOfWeek; i++) daysArray.push(null);
@@ -180,79 +185,88 @@ export function HubFilterDatePicker({
     : placeholder;
   const triggerTitle = value && compactTrigger ? formatDateFull(value) : undefined;
 
+  const calendar = (
+    <div className="p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <button type="button" onClick={() => changeMonth(-1)} className="rounded-full p-1 hover:bg-white/5">
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-sm font-bold text-[var(--text)]">
+          {monthName} {year}
+        </span>
+        <button type="button" onClick={() => changeMonth(1)} className="rounded-full p-1 hover:bg-white/5">
+          <ChevronRight size={16} />
+        </button>
+      </div>
+      <div className="mb-1 grid grid-cols-7">
+        {daysOfWeek.map((d) => (
+          <div
+            key={d}
+            className="text-center text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day, idx) => {
+          if (!day) return <div key={`empty-${idx}`} />;
+          const selected = isSelected(day);
+          const today = isToday(day);
+          return (
+            <button
+              key={day.toISOString()}
+              type="button"
+              onClick={() => handleDayClick(day)}
+              className={`hub-date-picker-day${
+                selected
+                  ? " hub-date-picker-day--selected"
+                  : today
+                    ? " hub-date-picker-day--today"
+                    : ""
+              }`}
+            >
+              {day.getDate()}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex items-center justify-center gap-3 border-t border-white/5 pt-2">
+        {value && clearLabel ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:underline"
+          >
+            {clearLabel}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => handleDayClick(new Date())}
+          className="hub-date-picker-footer-today text-[10px] font-bold uppercase tracking-wider hover:underline"
+        >
+          {todayLabel}
+        </button>
+      </div>
+    </div>
+  );
+
   const panel =
-    isOpen && panelPos ? (
+    !embedded && isOpen && panelPos ? (
       <div
         ref={panelRef}
+        data-hub-filter-date-panel
         className={HUB_FILTER_DROPDOWN_PANEL_PORTAL_CLASS}
         style={{ top: panelPos.top, left: panelPos.left, width: panelPos.width }}
       >
-        <div className="p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <button type="button" onClick={() => changeMonth(-1)} className="rounded-full p-1 hover:bg-white/5">
-              <ChevronLeft size={16} />
-            </button>
-            <span className="text-sm font-bold text-[var(--text)]">
-              {monthName} {year}
-            </span>
-            <button type="button" onClick={() => changeMonth(1)} className="rounded-full p-1 hover:bg-white/5">
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <div className="mb-1 grid grid-cols-7">
-            {daysOfWeek.map((d) => (
-              <div
-                key={d}
-                className="text-center text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]"
-              >
-                {d}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day, idx) => {
-              if (!day) return <div key={`empty-${idx}`} />;
-              const selected = isSelected(day);
-              const today = isToday(day);
-              return (
-                <button
-                  key={day.toISOString()}
-                  type="button"
-                  onClick={() => handleDayClick(day)}
-                  className={`hub-date-picker-day${
-                    selected
-                      ? " hub-date-picker-day--selected"
-                      : today
-                        ? " hub-date-picker-day--today"
-                        : ""
-                  }`}
-                >
-                  {day.getDate()}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex items-center justify-center gap-3 border-t border-white/5 pt-2">
-            {value && clearLabel ? (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:underline"
-              >
-                {clearLabel}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => handleDayClick(new Date())}
-              className="hub-date-picker-footer-today text-[10px] font-bold uppercase tracking-wider hover:underline"
-            >
-              {todayLabel}
-            </button>
-          </div>
-        </div>
+        {calendar}
       </div>
     ) : null;
+
+  if (embedded) {
+    return <div className={className ? `min-w-0 ${className}` : "min-w-0"}>{calendar}</div>;
+  }
 
   return (
     <div className={`relative min-w-0${className ? ` ${className}` : ""}`} ref={containerRef}>

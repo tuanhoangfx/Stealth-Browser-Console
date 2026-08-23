@@ -1,35 +1,43 @@
 #!/usr/bin/env node
 /**
- * Sync `src/lib/app-meta.ts` from package.json version.
- * - Source of truth: package.json#version
- * - Target: src/lib/app-meta.ts exports APP_VERSION
+ * Keep `src/lib/app-meta.ts` on the P0020 SSOT: APP_VERSION from package.json.
+ * Do not rewrite a hardcoded version string — hook `bump-product-patch` owns semver.
  *
- * PowerShell-safe (no &&). Runs fast; safe to run on every predev/build.
+ * PowerShell-safe (no &&). Runs fast; safe on every predev/build/release.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import crypto from "node:crypto";
- 
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pkgPath = path.join(root, "package.json");
 const outPath = path.join(root, "src", "lib", "app-meta.ts");
- 
+
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const version = String(pkg?.version || "").trim();
 if (!version) {
   console.error("sync-app-version: package.json version missing");
   process.exit(1);
 }
- 
-const next = `export const APP_VERSION = "${version}";\n`;
+
+const next = `import packageJson from "../../package.json";
+
+/** App release label (keep in sync with package.json version). */
+export const APP_VERSION = packageJson.version;
+
+/** Sidebar brand — human name only (version lives in tab header). */
+export const STEALTH_PRODUCT = {
+  code: "P0003",
+  name: "Stealth Browser Console",
+} as const;
+`;
+
 const existing = fs.existsSync(outPath) ? fs.readFileSync(outPath, "utf8") : "";
 if (existing === next) {
-  console.log(`sync-app-version: ok (v${version})`);
+  console.log(`sync-app-version: ok (package.json v${version})`);
   process.exit(0);
 }
- 
+
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, next);
-console.log(`sync-app-version: wrote v${version} (${crypto.randomUUID().slice(0, 8)})`);
-
+console.log(`sync-app-version: restored package.json import (v${version})`);

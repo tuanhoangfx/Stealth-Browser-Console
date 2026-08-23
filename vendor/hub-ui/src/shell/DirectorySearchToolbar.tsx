@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { RefreshCw } from "lucide-react";
 import type { TimeRange } from "../display-prefs/constants";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { useDirectoryTimeRange } from "../lib/directory-time-range";
@@ -14,6 +13,10 @@ import { HubTablePageSizeSelect } from "./HubTablePageSizeSelect";
 import { HubTimeRangeSelect } from "./HubTimeRangeSelect";
 import { HubWorkspacePeriodSelect, type HubWorkspacePeriodSelectProps } from "./HubWorkspacePeriodSelect";
 import { ViewToggle, type HubViewMode } from "./ViewToggle";
+import {
+  HubDirectoryLifecycleToggle,
+  type HubDirectoryLifecycleMode,
+} from "./HubDirectoryLifecycleToggle";
 import { resolveDirectoryToolbarShowTablePageSize } from "./directory-search-toolbar-page-size";
 
 export type DirectorySearchToolbarProps = {
@@ -23,14 +26,17 @@ export type DirectorySearchToolbarProps = {
   leading?: ReactNode;
   viewMode?: HubViewMode;
   onViewModeChange?: (mode: HubViewMode) => void;
+  /**
+   * Soft-delete Live/Trash — **after** Table/Cards (SSOT for every directory table that supports Trash).
+   * Omit both props when the table has no soft-delete lifecycle.
+   */
+  lifecycleMode?: HubDirectoryLifecycleMode;
+  onLifecycleModeChange?: (mode: HubDirectoryLifecycleMode) => void;
   countIcon?: LucideIcon;
   countBrandIcon?: HubBrandIconId;
   shown: number;
   total: number;
   countLabel?: string;
-  refreshing?: boolean;
-  onRefresh?: () => void;
-  disabled?: boolean;
   showViewToggle?: boolean;
   /** Filter by `updatedAt` / activity — Hub catalog, System Overview, … */
   showTimeRange?: boolean;
@@ -41,8 +47,6 @@ export type DirectorySearchToolbarProps = {
   tablePageSize?: number;
   /** Optional host callback after URL `tpage` patch (reset pager, side effects). */
   onTablePageSizeChange?: (size: number) => void;
-  /** When false, omit the Refresh button (e.g. Inbox uses a custom Sync menu). */
-  showRefresh?: boolean;
   /** When false, omit shown/total chip (e.g. Todo row-1 period-only). */
   showResultCount?: boolean;
   /** When selection chip shows x/y (toolbar leading or searchTrailing) — omit duplicate shown/total chip. */
@@ -57,21 +61,19 @@ export function DirectorySearchToolbar({
   leading,
   viewMode,
   onViewModeChange,
+  lifecycleMode,
+  onLifecycleModeChange,
   countIcon,
   countBrandIcon,
   shown,
   total,
   countLabel = "tools",
-  refreshing = false,
-  onRefresh,
-  disabled = false,
   showViewToggle = true,
   showTimeRange = true,
   timeRange,
   showTablePageSize,
   tablePageSize,
   onTablePageSizeChange,
-  showRefresh = true,
   showResultCount = true,
   hasSearchSelectionChip = false,
   displayBand,
@@ -90,11 +92,16 @@ export function DirectorySearchToolbar({
     viewMode,
   });
   const resultCountVisible = shouldShowHubDirectoryResultCount(resultCountGuard);
+  const showLifecycle =
+    lifecycleMode != null && typeof onLifecycleModeChange === "function";
   return (
     <>
       {leading}
       {showViewToggle && viewMode != null && onViewModeChange ? (
         <ViewToggle value={viewMode} onChange={onViewModeChange} />
+      ) : null}
+      {showLifecycle ? (
+        <HubDirectoryLifecycleToggle value={lifecycleMode} onChange={onLifecycleModeChange} />
       ) : null}
       {workspacePeriod ? <HubWorkspacePeriodSelect {...workspacePeriod} /> : null}
       {showTimeRange ? <HubTimeRangeSelect value={period} /> : null}
@@ -112,19 +119,6 @@ export function DirectorySearchToolbar({
         />
       ) : null}
       {trailing}
-      {showRefresh && onRefresh ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={disabled}
-          title={refreshing ? "Refreshing directory data…" : "Refresh directory data from cloud"}
-          aria-label={refreshing ? "Refreshing directory data" : "Refresh directory data"}
-          className="inline-flex h-[var(--hub-control-h)] shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-          {refreshing ? "Updating…" : "Refresh"}
-        </button>
-      ) : null}
     </>
   );
 }

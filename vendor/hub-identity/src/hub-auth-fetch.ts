@@ -2,7 +2,8 @@
 
 /** Home Server GoTrue password grants often take 5–8s; 7s aborted mid-flight ("signal is aborted"). */
 export const HUB_GOTRUE_FETCH_TIMEOUT_MS = 16_000;
-export const HUB_RESOLVE_LOGIN_FETCH_TIMEOUT_MS = 5_000;
+/** Resolve-login bound — Vite compile + Home Server first-hit can exceed 5s. */
+export const HUB_RESOLVE_LOGIN_FETCH_TIMEOUT_MS = 12_000;
 export const HUB_AUTH_FETCH_RETRY_DELAY_MS = 280;
 export const HUB_AUTH_FETCH_TIMEOUT_MESSAGE =
   "Sign-in timed out — Tool Hub is slow. Wait a moment and try again.";

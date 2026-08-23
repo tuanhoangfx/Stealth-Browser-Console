@@ -1,0 +1,15 @@
+/* Directory body cells — one visual line (hub-ui SSOT). Newlines in Note must not grow the row. */
+.hub-directory-frame table.hub-directory-frame-table td {
+  overflow: hidden;
+}
+
+.hub-directory-frame table.hub-directory-frame-table .hub-users-name-title,
+.hub-directory-frame table.hub-directory-frame-table .hub-directory-table-body-text,
+.hub-directory-frame table.hub-directory-frame-table .hub-directory-icon-cell__label {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

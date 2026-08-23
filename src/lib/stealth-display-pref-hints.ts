@@ -22,3 +22,7 @@ export function stealthProfilesDisplayPrefItems(items: PrefItem[]): PrefItem[] {
 export function stealthWorkflowDisplayPrefItems(items: PrefItem[]): PrefItem[] {
   return withDisplayPrefHints(items, "workflow");
 }
+
+export function stealthWorkflowStoreDisplayPrefItems(items: PrefItem[]): PrefItem[] {
+  return withDisplayPrefHints(items, "workflow-store");
+}

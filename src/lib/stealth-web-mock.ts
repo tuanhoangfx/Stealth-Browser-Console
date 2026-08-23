@@ -329,6 +329,15 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
       runs: runs.slice(0, Number(payload?.limit) || 100),
     }),
     listProfileEvents: async () => ({ ok: true, events: [] }),
+    fetchHostMetrics: async () => ({
+      ok: true,
+      cpuPercent: 24,
+      cpuReady: true,
+      ramUsedBytes: 18 * 1024 ** 3,
+      ramTotalBytes: 32 * 1024 ** 3,
+      ramPercent: 56.25,
+      sampledAt: Date.now(),
+    }),
     appInfo: async () => ({
       name: "Stealth Browser Console (web mock)",
       version: "0.4.1",

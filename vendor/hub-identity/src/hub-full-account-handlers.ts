@@ -1,8 +1,12 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { isHubTechnicalAuthEmail, normalizeLoginId } from "./hub-login";
 import { hubSessionLabels } from "./hub-session-labels";
 import { hubSyncMirrorPasswordApiUrl } from "./hub-api-routes";
 import { updateHubPasswordWithMirrorSync } from "./workspace-mirror-password-recovery-sync";
+import {
+  tryRemoveHubAvatarObject,
+  uploadHubAvatarObjectForSession,
+} from "./hub-avatar-upload";
 
 export type HubFullAccountAuthResult = { ok: boolean; message: string };
 
@@ -20,6 +24,8 @@ export type HubOwnProfileFields = {
   telegram: string;
   meta: string;
   notes: string;
+  /** profiles.avatar_url — Hub Storage public URL when set. */
+  avatarUrl: string;
 };
 
 export type HubOwnProfilePatch = {
@@ -29,6 +35,7 @@ export type HubOwnProfilePatch = {
   telegram?: string;
   meta?: string;
   notes?: string;
+  avatarUrl?: string | null;
 };
 
 export type CreateHubFullAccountAuthHandlersOptions = {
@@ -38,6 +45,22 @@ export type CreateHubFullAccountAuthHandlersOptions = {
   syncApiUrl?: string | (() => string);
   /** Prefer live login_id from session labels. */
   getLoginId?: () => string | null | undefined;
+  /**
+   * @deprecated Hub plane has no storage-api. Prefer getAvatarStorageConfig (Data Box).
+   */
+  getHubStorageConfig?: () => { url: string; anonKey: string } | null;
+  /**
+   * Avatar binary store — Data Box Storage (`sb-api`, CORS + storage-api).
+   * Hub `profiles.avatar_url` still receives the public URL string.
+   */
+  getAvatarStorageConfig?: () => { url: string; anonKey: string } | null;
+  /** Data Box JWT for Storage RLS (`auth.uid()` folder). */
+  getAvatarUploadSession?: () => Promise<Session | null>;
+  /**
+   * Mirror avatar_url string onto Data Box `profiles` (dual-auth hosts).
+   * Do not re-upload — Storage remains a single object.
+   */
+  mirrorAvatarUrl?: (avatarUrl: string | null) => Promise<void>;
 };
 
 async function readyClient(
@@ -51,6 +74,40 @@ function resolveSyncApiUrl(options: CreateHubFullAccountAuthHandlersOptions): st
   if (typeof options.syncApiUrl === "function") return options.syncApiUrl();
   if (options.syncApiUrl) return options.syncApiUrl;
   return hubSyncMirrorPasswordApiUrl();
+}
+
+function readClientStorageConfig(client: SupabaseClient): { url: string; anonKey: string } | null {
+  const anyClient = client as unknown as {
+    supabaseUrl?: string;
+    supabaseKey?: string;
+    rest?: { url?: string; headers?: Record<string, string> };
+  };
+  let url = String(anyClient.supabaseUrl ?? "").trim().replace(/\/+$/, "");
+  if (!url && anyClient.rest?.url) {
+    url = String(anyClient.rest.url)
+      .trim()
+      .replace(/\/rest\/v1\/?$/i, "")
+      .replace(/\/+$/, "");
+  }
+  let anonKey = String(anyClient.supabaseKey ?? "").trim();
+  if (!anonKey && anyClient.rest?.headers) {
+    const headers = anyClient.rest.headers;
+    anonKey = String(headers.apikey ?? headers.Authorization?.replace(/^Bearer\s+/i, "") ?? "").trim();
+  }
+  if (!url || !anonKey) return null;
+  return { url, anonKey };
+}
+
+async function mirrorAvatarBestEffort(
+  options: CreateHubFullAccountAuthHandlersOptions,
+  avatarUrl: string | null,
+): Promise<void> {
+  if (!options.mirrorAvatarUrl) return;
+  try {
+    await options.mirrorAvatarUrl(avatarUrl);
+  } catch (error) {
+    console.warn("[hub-account] Data Box avatar mirror failed:", error);
+  }
 }
 
 function publicIdentifierError(error: unknown, fallback: string): string {
@@ -144,7 +201,7 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
     if (!client) return null;
 
     const selectCols =
-      "login_id, email, contact_email, full_name, phone, zalo, telegram, meta, notes";
+      "login_id, email, contact_email, full_name, phone, zalo, telegram, meta, notes, avatar_url";
 
     let row: Record<string, unknown> | null = null;
     if (id) {
@@ -172,6 +229,7 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
       telegram: typeof row.telegram === "string" ? row.telegram : "",
       meta: typeof row.meta === "string" ? row.meta : "",
       notes: typeof row.notes === "string" ? row.notes : "",
+      avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url.trim() : "",
     };
   }
 
@@ -182,13 +240,14 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
     const id = session?.user?.id;
     if (!id) return { ok: false, message: "Not signed in." };
 
-    const row: Record<string, string> = { updated_at: new Date().toISOString() };
+    const row: Record<string, string | null> = { updated_at: new Date().toISOString() };
     if (patch.fullName !== undefined) row.full_name = patch.fullName.trim();
     if (patch.phone !== undefined) row.phone = patch.phone.trim();
     if (patch.zalo !== undefined) row.zalo = patch.zalo.trim();
     if (patch.telegram !== undefined) row.telegram = patch.telegram.trim();
     if (patch.meta !== undefined) row.meta = patch.meta.trim();
     if (patch.notes !== undefined) row.notes = patch.notes.trimEnd();
+    if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl?.trim() || null;
 
     if (Object.keys(row).length <= 1) {
       return { ok: true, message: "No profile changes." };
@@ -196,7 +255,90 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
 
     const { error } = await client.from("profiles").update(row).eq("id", id);
     if (error) return { ok: false, message: publicIdentifierError(error, "Profile update failed.") };
+    if (patch.avatarUrl !== undefined) {
+      await mirrorAvatarBestEffort(options, patch.avatarUrl?.trim() || null);
+    }
     return { ok: true, message: "Profile updated." };
+  }
+
+  async function onUploadAvatar(file: File): Promise<HubFullAccountAuthResult & { avatarUrl?: string }> {
+    const client = await readyClient(options);
+    if (!client) return { ok: false, message: "Hub identity is not configured." };
+    let hubSession = (await client.auth.getSession()).data.session;
+    if (!hubSession?.access_token || !hubSession.user?.id) {
+      if (options.prepareClient) await options.prepareClient();
+      hubSession = (await client.auth.getSession()).data.session;
+    }
+    if (!hubSession?.access_token || !hubSession.user?.id) {
+      return { ok: false, message: "Not signed in to Hub. Sign in again, then retry avatar upload." };
+    }
+
+    // Hub nginx has no storage-api — upload binaries on Data Box (CORS + Kong storage).
+    const storage =
+      options.getAvatarStorageConfig?.() ??
+      options.getHubStorageConfig?.() ??
+      readClientStorageConfig(client);
+    if (!storage?.url || !storage.anonKey) {
+      return { ok: false, message: "Avatar Storage is not configured." };
+    }
+
+    let uploadSession = options.getAvatarUploadSession
+      ? await options.getAvatarUploadSession()
+      : null;
+    if (!uploadSession?.access_token || !uploadSession.user?.id) {
+      uploadSession = hubSession;
+    }
+
+    const previous = await fetchOwnProfileFields(hubSession.user.id);
+    const uploaded = await uploadHubAvatarObjectForSession({
+      supabaseUrl: storage.url,
+      anonKey: storage.anonKey,
+      session: uploadSession,
+      file,
+    });
+    if (!uploaded.ok) return { ok: false, message: uploaded.message };
+
+    const { error } = await client
+      .from("profiles")
+      .update({ avatar_url: uploaded.publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", hubSession.user.id);
+    if (error) return { ok: false, message: publicIdentifierError(error, "Avatar save failed.") };
+
+    if (previous?.avatarUrl && previous.avatarUrl !== uploaded.publicUrl) {
+      void tryRemoveHubAvatarObject({
+        client,
+        supabaseUrl: storage.url,
+        avatarUrl: previous.avatarUrl,
+      });
+    }
+    await mirrorAvatarBestEffort(options, uploaded.publicUrl);
+    return { ok: true, message: "Avatar updated.", avatarUrl: uploaded.publicUrl };
+  }
+
+  async function onClearAvatar(): Promise<HubFullAccountAuthResult> {
+    const client = await readyClient(options);
+    if (!client) return { ok: false, message: "Hub identity is not configured." };
+    const session = (await client.auth.getSession()).data.session;
+    const id = session?.user?.id;
+    if (!id) return { ok: false, message: "Not signed in." };
+
+    const previous = await fetchOwnProfileFields(id);
+    const { error } = await client
+      .from("profiles")
+      .update({ avatar_url: null, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return { ok: false, message: publicIdentifierError(error, "Avatar remove failed.") };
+
+    const storage = options.getHubStorageConfig?.() ?? readClientStorageConfig(client);
+    if (storage && previous?.avatarUrl) {
+      void tryRemoveHubAvatarObject({
+        client,
+        supabaseUrl: storage.url,
+        avatarUrl: previous.avatarUrl,
+      });
+    }
+    await mirrorAvatarBestEffort(options, null);
+    return { ok: true, message: "Avatar removed." };
   }
 
   return {
@@ -206,5 +348,7 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
     onUpdatePassword,
     fetchOwnProfileFields,
     onUpdateOwnProfile,
+    onUploadAvatar,
+    onClearAvatar,
   };
 }

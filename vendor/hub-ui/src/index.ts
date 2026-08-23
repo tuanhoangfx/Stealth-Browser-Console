@@ -260,9 +260,10 @@ export {
   useHubStaleIdleMemo,
   hubFilterValuesFingerprint,
   clearHubStaleIdleMemoCache,
+  type HubStaleIdleMemoOptions,
 } from "./loading/useHubStaleIdleMemo";
 export { HubInactiveTabContent } from "./loading/HubInactiveTabContent";
-export { HubLazyScreenBoundary } from "./loading/HubLazyScreenBoundary";
+export { HubChromeBoundary, HubLazyScreenBoundary } from "./loading/HubLazyScreenBoundary";
 export { useHubVaultBoot, type HubVaultBootOptions } from "./loading/useHubVaultBoot";
 export { mountHubApp } from "./loading/mount-hub-app";
 export { installHubChunkReloadGuard } from "./loading/hub-chunk-reload-guard";
@@ -305,6 +306,10 @@ export {
   HubMultiFilterDropdown,
   HubSingleFilterDropdown,
   filterOptionRowLabel,
+  hubFilterOptionHasWideMeta,
+  hubFilterPanelMinWidthPx,
+  hubFilterBarActiveCount,
+  hubFilterBarHasActive,
   type FilterBarProps,
   type FilterDef,
   type FilterOption,
@@ -312,6 +317,24 @@ export {
   type HubMultiFilterDropdownProps,
   type HubSingleFilterDropdownProps,
 } from "./shell/FilterBar";
+export {
+  HUB_FILTER_VIRTUAL_OVERSCAN,
+  HUB_FILTER_VIRTUAL_ROW_PX,
+  HUB_FILTER_VIRTUAL_THRESHOLD,
+  hubFilterShouldVirtualize,
+  hubFilterVirtualWindow,
+} from "./shell/hub-filter-virtual-window";
+export {
+  isFilterOptionSelected,
+  pinSelectedFilterOptions,
+  type PinableFilterOption,
+} from "./shell/pin-selected-filter-options";
+export {
+  HUB_FILTER_DATE_VALUE_PREFIX,
+  hubFilterDateValue,
+  isHubFilterDateValue,
+  parseHubFilterDateValue,
+} from "./lib/hub-filter-date-value";
 export {
   hubPortalPanelPosition,
   type HubPortalPanelPosition,
@@ -366,7 +389,12 @@ export {
   configureDirectoryFilterColumnRoles,
   resolveDirectoryFilterColumnIcon,
 } from "./shell/filter-directory-column-roles";
-export { enrichFilterDefs, refineSparseFacetOptions } from "./lib/filter-option-counts";
+export {
+  enrichFilterDefs,
+  refineSparseFacetOptions,
+  ENRICH_FILTER_OPTION_SCAN_CAP,
+  type EnrichFilterOptionValuesOf,
+} from "./lib/filter-option-counts";
 export {
   fetchWorkspaceUserDirectoryRows,
   workspaceDirectoryRowToProfile,
@@ -413,11 +441,14 @@ export {
   type HubWorkspacePeriodSelectProps,
 } from "./shell/HubWorkspacePeriodSelect";
 export {
+  hubMondayWeekOffset,
+  isWorkspacePeriodKey,
   matchesWorkspacePeriod,
   normalizeWorkspacePeriodKey,
   patchWorkspacePeriod,
   readWorkspacePeriod,
   workspacePeriodOptions,
+  workspacePeriodRangeParam,
   WORKSPACE_PERIOD_FILTER_HINT,
   WORKSPACE_PERIOD_ORDER,
   WORKSPACE_PERIOD_LABELS,
@@ -498,7 +529,36 @@ export {
   type HubDirectorySettingsProps,
 } from "./shell/HubDirectorySettings";
 export { KpiStrip, type KpiStripTone, type KpiTileData } from "./shell/KpiStrip";
+export {
+  HUB_KPI_TODAY_FILTER_VALUE,
+  HUB_KPI_YES_FILTER_VALUE,
+  attachDirectoryKpiClicks,
+  hubKpiTodayFilterDef,
+  hubKpiYesFilterDef,
+  isKpiPatchActive,
+  kpiClearAllIfAny,
+  kpiSetOrClear,
+  matchesKpiTodayFilter,
+  matchesKpiYesFilter,
+  sameFilterValues,
+  withPinnedFilterDefs,
+} from "./lib/hub-kpi-filter";
 export { MiniBarChart, type BarItem } from "./shell/MiniBarChart";
+export {
+  HubTimeSeriesLineChart,
+  type HubTimeSeriesLineChartProps,
+  type HubTimeSeriesLinePoint,
+} from "./shell/HubTimeSeriesLineChart";
+export {
+  createHubTimeSeriesAreaPath,
+  createHubTimeSeriesLinePath,
+  createHubTimeSeriesPath,
+  createHubTimeSeriesSmoothPath,
+  hubTimeSeriesPlotPoints,
+  pickHubTimeSeriesLabelIndexes,
+  resolveHubTimeSeriesAxisMax,
+  type HubTimeSeriesCurve,
+} from "./lib/hub-time-series-line";
 export {
   AnalyticsCaptionLabel,
   ChartLegendRowLabel,
@@ -660,6 +720,13 @@ export {
   type HubContactOpenActionProps,
 } from "./shell/HubContactOpenAction";
 export {
+  HUB_RELATED_DETAIL_OPEN_ICON,
+  HUB_RELATED_PARTNER_DETAIL_OPEN_ICON,
+  HUB_RELATED_DETAIL_OPEN_ICON_SIZE,
+  HubRelatedDetailOpenButton,
+  type HubRelatedDetailOpenButtonProps,
+} from "./shell/HubRelatedDetailOpenButton";
+export {
   HubPhoneCallAction,
   type HubPhoneCallActionProps,
 } from "./shell/HubPhoneCallAction";
@@ -695,18 +762,79 @@ export {
 } from "./lib/hub-directory-popover";
 export {
   CRM_ORDER_DETAILS_EMAIL_REGEX,
+  canonicalizeCrmOrderMailbox,
+  countCrmOrderDetailMailboxes,
+  crmOrderDetailMailboxOrder,
   countCrmOrderDetailMentions,
   crmOrderDetailsSnippet,
   crmOrderProductMatchesService,
   extractCrmOrderDetailCredentialTokens,
   extractCrmOrderDetailEmails,
   extractCrmOrderDetailIdentityTokens,
+  expandCrmOrderGmailAliases,
   isCrmOrderCompletedStatus,
   normalizeCrmOrderDetailsIdentifier,
   normalizeCrmOrderDetailsText,
   readCrmOrderDetailsFromRow,
   type CrmOrderDetailsMirrorRow,
 } from "./lib/crm-order-details";
+export {
+  CRM_ORDER_MAIL_VAULT_SERVICES,
+  crmOrderProductIsMailSku,
+  crmOrderVaultCandidateEligible,
+  crmOrderVaultCandidateIdentityHits,
+  capCrmOrderServicesVaultIds,
+  crmOrderMultiSeatSlot,
+  crmOrderNeedsServicesVaultBackfill,
+  isCrmOrderMailVaultService,
+  readCrmOrderServicesVaultIds,
+  resolveCrmOrderServicesVaultId,
+  resolveCrmOrderServicesVaultIds,
+  sameCrmOrderVaultAccountIds,
+  type CrmOrderVaultCandidate,
+  type CrmOrderVaultLinkQuery,
+} from "./lib/crm-order-vault-link";
+export {
+  EMPTY_CRM_ORDER_USAGE,
+  crmOrderCountsForExpiredUsage,
+  crmOrderCountsForLiveUsage,
+  crmOrderCountsForUsageBucket,
+  crmOrderSubscriptionIsLive,
+  lookupCrmOrderUsage,
+  lookupTeamMemberCrmOrderUsage,
+  lookupTeamSharedPlanCrmOrderUsage,
+  mergeCrmOrderUsage,
+  resolveTeamMemberCrmUsageVaultAccount,
+  teamMemberToCrmUsageSubject,
+  type CrmOrderUsage,
+  type CrmOrderUsageBucket,
+  type CrmOrderUsageHit,
+  type CrmOrderUsageIndex,
+  type CrmOrderUsageSubscriptionBucket,
+  type CrmUsageSubject,
+  type CrmUsageVaultRow,
+} from "./lib/crm-order-usage-lookup";
+export {
+  CRM_DURATION_LIFETIME_DAYS,
+  CRM_SAMPLE_NOTIFY_HIGHLIGHT_DAYS,
+  CRM_SUBSCRIPTION_EXPIRING_DAYS,
+  CRM_SUBSCRIPTION_STATUS,
+  CRM_SUBSCRIPTION_STATUS_LABELS,
+  ORDER_DAYS_LEFT_TONE_META,
+  ORDER_DAYS_LEFT_TONE_ORDER,
+  canonicalizeSubscriptionStatus,
+  deriveSubscriptionStatusFromDaysLeft,
+  orderDaysLeftDirectoryClass,
+  orderDaysLeftDisplayTone,
+  orderDaysLeftExpiryClass,
+  orderDaysLeftLegendLines,
+  orderDaysLeftPopoverClass,
+  orderDaysLeftTone,
+  orderDaysLeftToneClass,
+  type CrmSubscriptionStatus,
+  type OrderDaysLeftDisplayTone,
+  type OrderDaysLeftTone,
+} from "./lib/crm-subscription-status";
 export {
   HubDirectoryValuePopover,
   type HubDirectoryValuePopoverProps,
@@ -729,11 +857,40 @@ export { CopyMetaChip, MetaChip, HUB_EMAIL_COPY_CHIP_CLASS, type MetaTone } from
 export { HubResultCount } from "./shell/HubResultCount";
 export { HubSearchField, type HubSearchFieldProps } from "./shell/HubSearchField";
 export {
+  HubDirectoryQueryPendingChip,
+  type HubDirectoryQueryPendingChipProps,
+} from "./shell/HubDirectoryQueryPendingChip";
+export {
+  HubDirectorySyncChip,
+  type HubDirectorySyncChipProps,
+} from "./shell/HubDirectorySyncChip";
+export {
+  hubDirectorySyncChipHintContent,
+  hubDirectorySyncChipStatusKey,
+  resolveHubDirectoryRealtimeSyncChipView,
+  resolveHubDirectorySyncLivePath,
+  type HubDirectoryRealtimeStatus,
+  type HubDirectorySyncChipView,
+  type HubDirectorySyncLivePath,
+} from "./shell/hub-directory-sync-chip";
+export {
+  HubDirectoryFieldQueryPendingProvider,
+  useHubDirectoryFieldQueryPending,
+  useHubDirectoryFieldQueryPendingReport,
+} from "./shell/HubDirectoryFieldQueryPending";
+export {
   HubSegmentToggle,
   hubSegmentIconSize,
+  hubSegmentActiveToneClass,
+  type HubSegmentActiveTone,
   type HubSegmentToggleOption,
   type HubSegmentToggleProps,
 } from "./shell/HubSegmentToggle";
+export {
+  HubDirectoryLifecycleToggle,
+  type HubDirectoryLifecycleMode,
+  type HubDirectoryLifecycleToggleProps,
+} from "./shell/HubDirectoryLifecycleToggle";
 export { DirectorySearchToolbar, type DirectorySearchToolbarProps } from "./shell/DirectorySearchToolbar";
 export { resolveDirectoryToolbarShowTablePageSize } from "./shell/directory-search-toolbar-page-size";
 export { HubDirectoryToolbarSlots, type HubDirectoryToolbarSlotsProps } from "./shell/HubDirectoryToolbarSlots";
@@ -742,6 +899,7 @@ export {
   HubTabChrome,
   HubTabBody,
   configureHubChromePrefs,
+  readHubChromePrefs,
   useHubChromePrefs,
   type HubChromePrefs,
 } from "./shell/HubTabChrome";
@@ -846,6 +1004,16 @@ export {
   type HubDetailOptimisticSaveOptions,
 } from "./lib/hub-detail-optimistic-save";
 export {
+  HUB_DETAIL_CLOUD_PENDING_PREFIX,
+  hubDetailCloudFailedToast,
+  hubDetailCloudPendingToast,
+  hubDetailPlural,
+  hubDetailSaveToast,
+  scheduleHubDetailCloudSaveFeedback,
+  type HubDetailCloudAck,
+  type HubDetailSaveToastInput,
+} from "./lib/hub-detail-save-toast";
+export {
   mergeHubDetailDisplayRow,
   useHubDetailDirtyBaseline,
   useHubDetailDisplayRow,
@@ -905,6 +1073,7 @@ export {
   formatHubTimestampCompact,
   formatHubTimestampDateOnly,
   formatHubTimestampFull,
+  formatHubTimestampLog,
 } from "./lib/format-hub-timestamp-compact";
 export {
   extractNumericSearchTerm,
@@ -1029,6 +1198,19 @@ export {
   HUB_DIRECTORY_FIXED_COL_WIDTH_BANDS,
   HUB_DIRECTORY_NOTE_COL_WIDTH,
   HUB_DIRECTORY_LOG_COL_WIDTH,
+  HUB_DIRECTORY_PROFILE_COL_WIDTH,
+  HUB_DIRECTORY_USAGE_COL_WIDTH,
+  HUB_DIRECTORY_USAGE_EXPIRED_COL_WIDTH,
+  HUB_DIRECTORY_PLAN_LEFT_COL_WIDTH,
+  HUB_DIRECTORY_OWNERSHIP_COL_WIDTH,
+  HUB_DIRECTORY_ACCOUNT_STATUS_COL_WIDTH,
+  HUB_DIRECTORY_SUBSCRIPTION_STATUS_COL_WIDTH,
+  HUB_DIRECTORY_PLAN_DATE_COL_WIDTH,
+  HUB_DIRECTORY_PLAN_DUE_COL_WIDTH,
+  HUB_DIRECTORY_PASSWORD_COL_WIDTH,
+  HUB_DIRECTORY_MAIL_RECOVER_COL_WIDTH,
+  HUB_DIRECTORY_FULL_INFO_COL_WIDTH,
+  HUB_DIRECTORY_PLAN_PACKAGE_COL_WIDTH,
   HUB_DIRECTORY_SELECT_WIDTH_SPEC,
   isFixedDirectoryColumnRole,
   isFixedDirectoryColumnWidth,
@@ -1045,6 +1227,7 @@ export {
   HUB_ROUTE_ACCESS_MODAL_TABLE_CLASS,
   HUB_ROUTE_ACCESS_MODAL_TABLE_WRAP_CLASS,
   HUB_ROUTE_ACCESS_COL,
+  HUB_ROUTE_ACCESS_HEADER_LABEL_ALWAYS,
   HUB_ROUTE_ACCESS_MODAL_COLUMN_DEFS,
   HUB_ROUTE_ACCESS_SKELETON_WRAP_CLASS,
   buildHubRouteAccessModalColumns,
@@ -1332,6 +1515,17 @@ export {
   type HubDirectoryCardLeadingTileProps,
 } from "./content/HubDirectoryCardLeadingTile";
 export { HubTabScreenBody } from "./content/HubTabScreenBody";
+export {
+  HubAnalyticsBandReserve,
+  HubChartCardReserve,
+  type HubAnalyticsReserveChrome,
+  type HubAnalyticsReserveChart,
+  type HubAnalyticsReserveKpi,
+} from "./content/HubAnalyticsBandReserve";
+export {
+  HubDirectoryEmptyFrame,
+  type HubDirectoryEmptyFrameProps,
+} from "./content/HubDirectoryEmptyFrame";
 export { HubDirectoryScreen, type HubDirectoryScreenProps } from "./templates/HubDirectoryScreen";
 export {
   HubWorkspaceDirectoryScreen,
@@ -1543,6 +1737,9 @@ export {
   HUB_ACCOUNT_DETAIL_MODAL_SHELL_CLASS,
   HUB_TWOfA_ACCOUNT_DETAIL_SHELL_CLASS,
   HUB_LAYOUT3_DETAIL_TOKENS,
+  HUB_TOOL_MODAL_SIZE_TOKENS,
+  HUB_COMPACT_MODAL_CLASS,
+  HUB_COMPACT_MODAL_SIZE_TOKENS,
   hubAccountDetailShellClass,
   type HubAccountDetailShellOptions,
   HUB_ADM_FORM_SHELL_CLASS,
@@ -1862,6 +2059,17 @@ export {
   readNotifySeenIds,
   writeNotifySeenIds,
 } from "./shell/hub-notify-seen";
+export {
+  HUB_TRASH_PURGE_NOTIFY_LIMIT,
+  HUB_TRASH_PURGE_NOTIFY_SELECT,
+  HUB_TRASH_PURGE_NOTIFY_TYPE,
+  formatHubTrashPurgeNotifyLabel,
+  hubTrashPurgeNotificationToAlert,
+  isHubTrashPurgeNotifyType,
+  mapHubTrashPurgeNotifyRows,
+  useHubTrashPurgeNotifyAlerts,
+  type HubTrashPurgeNotifyRow,
+} from "./shell/hub-trash-purge-notify";
 export { HubHeaderOpsPanels, type HubHeaderOpsPanelsProps } from "./shell/HubHeaderOpsPanels";
 export { HubNotifyButton, type HubNotifyButtonProps } from "./shell/HubNotifyButton";
 export { HubFilterRowButton, type HubFilterRowButtonProps, type HubFilterRowTone } from "./shell/HubFilterRowButton";
@@ -1884,18 +2092,15 @@ export {
 } from "./shell/HubSharePopover";
 export {
   HubChatbotBulkActionDropdown,
+  HUB_CHATBOT_BULK_OFF_VALUE,
   type HubChatbotBulkActionDropdownProps,
   type HubChatbotBulkPersonalityOption,
   type HubChatbotBulkSelection,
 } from "./shell/HubChatbotBulkActionDropdown";
 export {
-  HubCatalogSyncButton,
   HubScreensDirectoryBulkActions,
-  HubToolsDirectoryBulkActions,
   HubUsersDirectoryBulkActions,
-  type HubCatalogSyncButtonProps,
   type HubScreensDirectoryBulkActionsProps,
-  type HubToolsDirectoryBulkActionsProps,
   type HubUsersDirectoryBulkActionsProps,
 } from "./shell/HubDirectoryBulkActions";
 export {
@@ -2096,6 +2301,10 @@ export {
   type WorkspaceProfileRoleUpdatedDetail,
 } from "./lib/workspace-profile-role";
 export {
+  canHardPurgeTrashForever,
+  isHubAdminRole,
+} from "./lib/can-hard-purge-trash";
+export {
   normalizeHubAuthError,
   type NormalizeHubAuthErrorOptions,
 } from "./auth/normalize-hub-auth-error";
@@ -2121,6 +2330,15 @@ export { HubAuthBrandIcon, type HubAuthBrandIconProps } from "./auth/HubAuthBran
 export { HubAuthBootPanel, type HubAuthBootPanelProps } from "./auth/HubAuthBootPanel";
 export { HubSidebarUserFooter, type HubSidebarUserFooterProps } from "./auth/HubSidebarUserFooter";
 export { HubWorkspaceUserAvatar, type HubWorkspaceUserAvatarProps } from "./auth/HubWorkspaceUserAvatar";
+export { HubAccountAvatarEditor, type HubAccountAvatarEditorProps } from "./auth/HubAccountAvatarEditor";
+export { HubAvatarSquareCrop, type HubAvatarSquareCropProps } from "./auth/HubAvatarSquareCrop";
+export {
+  exportHubAvatarSquareJpeg,
+  HUB_AVATAR_CROP_OUTPUT_PX,
+  HUB_AVATAR_CROP_SOURCE_MAX_BYTES,
+  HUB_AVATAR_CROP_VIEWPORT_PX,
+  type HubAvatarCropState,
+} from "./auth/hub-avatar-crop";
 export {
   buildWorkspaceUserProfileRows,
   resolveHubAuthSessionMode,

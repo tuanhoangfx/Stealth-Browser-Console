@@ -7,6 +7,7 @@ export const WORKSPACE_PERIOD_DOT_COLORS: Record<WorkspacePeriodKey, string> = {
   thisWeek: "#38bdf8",
   thisMonth: "#818cf8",
   thisYear: "#2dd4bf",
+  last90: "#67e8f9",
   lastWeek: "#a78bfa",
   lastMonth: "#fbbf24",
   lastYear: "#f97316",

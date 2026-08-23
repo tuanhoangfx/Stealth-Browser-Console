@@ -48,7 +48,7 @@ export function HubConfirmDialog({
       titleId="hub-confirm-title"
       headerIcon={Icon}
       headerIconClassName={toneIconClass[tone]}
-      shellClassName="hub-tool-detail-modal--fit"
+      size="compact"
       ariaLabelledBy="hub-confirm-title"
       footer={
         <>

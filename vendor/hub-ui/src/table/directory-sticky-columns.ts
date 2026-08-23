@@ -158,6 +158,8 @@ export function buildDirectoryStickyColumnsCss(options: BuildDirectoryStickyColu
       `${scope} thead th.${cc},\n${scope} tbody td.${cc}{position:sticky;left:${left};}`,
       `${scope} thead th.${cc}{z-index:${Z_FROZEN_HEAD};background:${head};}`,
       `${scope} tbody td.${cc}{z-index:${Z_FROZEN_BODY};background-color:${panel};}`,
+      /* Pad slots stay sticky for H-scroll, but no --panel boxes / ghost grid. */
+      `${scope} tbody tr.hub-users-row--pad td.${cc}{background:transparent;background-image:none;box-shadow:none;}`,
     );
   });
 
@@ -182,7 +184,7 @@ export function buildDirectoryStickyColumnsCss(options: BuildDirectoryStickyColu
   if (edgeShadow && entries.length > 0) {
     const lastCc = entries[entries.length - 1]!.colClass;
     rules.push(
-      `${scope}[data-sticky-scrolled="1"] thead th.${lastCc},\n${scope}[data-sticky-scrolled="1"] tbody td.${lastCc}{box-shadow:8px 0 8px -8px rgba(0,0,0,0.45);}`,
+      `${scope}[data-sticky-scrolled="1"] thead th.${lastCc},\n${scope}[data-sticky-scrolled="1"] tbody tr:not(.hub-users-row--pad) td.${lastCc}{box-shadow:8px 0 8px -8px rgba(0,0,0,0.45);}`,
     );
   }
 

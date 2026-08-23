@@ -21,10 +21,18 @@ import {
   HUB_WORKSPACE_USER_FOOTER_TITLE,
 } from "../shell/hub-chrome-messages";
 
-type FooterProfileFields = { fullName: string | null; loginId: string | null };
+type FooterProfileFields = {
+  fullName: string | null;
+  loginId: string | null;
+  avatarUrl: string | null;
+};
 
 /** Remount-safe cache — footer label must not re-hit profiles on every shell paint. */
 const footerProfileCache = new Map<string, FooterProfileFields>();
+
+function writeFooterProfileCache(userId: string, next: FooterProfileFields) {
+  footerProfileCache.set(userId, next);
+}
 
 export type HubWorkspaceUserModalRenderContext = {
   open: boolean;
@@ -54,6 +62,17 @@ export type HubWorkspaceUserShellProps = {
   prepareHubClient?: () => Promise<void>;
   /** Mirror password sync API — defaults to hub-identity route helper. */
   syncApiUrl?: string | (() => string);
+  /**
+   * Dual-auth hosts: mirror Hub `profiles.avatar_url` string onto Data Box profiles
+   * (no second Storage upload).
+   */
+  mirrorAvatarUrl?: (avatarUrl: string | null) => Promise<void>;
+  /** Hub Storage public config for avatar upload (url + anon key). */
+  getHubStorageConfig?: () => { url: string; anonKey: string } | null;
+  /** Data Box Storage config — preferred (Hub has no storage-api). */
+  getAvatarStorageConfig?: () => { url: string; anonKey: string } | null;
+  /** Data Box session for Storage RLS. */
+  getAvatarUploadSession?: () => Promise<import("@supabase/supabase-js").Session | null>;
   onSignOutError?: (title: string, message: string) => void;
   /** Extra content under Status (e.g. Sign in to Hub CTA). */
   statusTrailing?: ReactNode;
@@ -101,6 +120,10 @@ export function HubWorkspaceUserShell({
   getHubClient,
   prepareHubClient,
   syncApiUrl,
+  mirrorAvatarUrl,
+  getHubStorageConfig,
+  getAvatarStorageConfig,
+  getAvatarUploadSession,
   onSignOutError,
   statusTrailing,
   forceModalOpen = false,
@@ -108,6 +131,7 @@ export function HubWorkspaceUserShell({
   const [open, setOpen] = useState(false);
   const [footerDisplayName, setFooterDisplayName] = useState<string | null>(null);
   const [footerUsername, setFooterUsername] = useState<string | null>(null);
+  const [footerAvatarUrl, setFooterAvatarUrl] = useState<string | null>(null);
 
   const labels = labelsProp ?? hubSessionLabels(session);
   const { roleKey, roleIconPending } = useWorkspaceRoleKey(session, {
@@ -141,8 +165,21 @@ export function HubWorkspaceUserShell({
         prepareClient,
         syncApiUrl,
         getLoginId: () => labels.loginId,
+        mirrorAvatarUrl,
+        getHubStorageConfig,
+        getAvatarStorageConfig,
+        getAvatarUploadSession,
       }),
-    [resolveClient, prepareClient, syncApiUrl, labels.loginId],
+    [
+      resolveClient,
+      prepareClient,
+      syncApiUrl,
+      labels.loginId,
+      mirrorAvatarUrl,
+      getHubStorageConfig,
+      getAvatarStorageConfig,
+      getAvatarUploadSession,
+    ],
   );
   const fetchOwnProfileFieldsRef = useRef(accountHandlers.fetchOwnProfileFields);
   fetchOwnProfileFieldsRef.current = accountHandlers.fetchOwnProfileFields;
@@ -158,12 +195,14 @@ export function HubWorkspaceUserShell({
     if (anonymous || !profileUserId) {
       setFooterDisplayName(null);
       setFooterUsername(null);
+      setFooterAvatarUrl(null);
       return;
     }
     const cached = footerProfileCache.get(profileUserId);
     if (cached) {
       setFooterDisplayName(cached.fullName);
       setFooterUsername(cached.loginId);
+      setFooterAvatarUrl(cached.avatarUrl);
       return;
     }
     let cancelled = false;
@@ -174,14 +213,17 @@ export function HubWorkspaceUserShell({
         const next: FooterProfileFields = {
           fullName: fields?.fullName?.trim() || null,
           loginId: fields?.loginId?.trim() || null,
+          avatarUrl: fields?.avatarUrl?.trim() || null,
         };
-        footerProfileCache.set(profileUserId, next);
+        writeFooterProfileCache(profileUserId, next);
         setFooterDisplayName(next.fullName);
         setFooterUsername(next.loginId);
+        setFooterAvatarUrl(next.avatarUrl);
       } catch {
         if (!cancelled) {
           setFooterDisplayName(null);
           setFooterUsername(null);
+          setFooterAvatarUrl(null);
         }
       }
     })();
@@ -189,6 +231,18 @@ export function HubWorkspaceUserShell({
       cancelled = true;
     };
   }, [anonymous, profileUserId]);
+
+  const syncFooterAvatarUrl = (url: string | null) => {
+    const nextUrl = url?.trim() || null;
+    setFooterAvatarUrl(nextUrl);
+    if (!profileUserId) return;
+    const prev = footerProfileCache.get(profileUserId);
+    writeFooterProfileCache(profileUserId, {
+      fullName: prev?.fullName ?? footerDisplayName,
+      loginId: prev?.loginId ?? footerUsername,
+      avatarUrl: nextUrl,
+    });
+  };
 
   const rawFooterLabel = workspaceUserFooterLabel({
     labels,
@@ -268,6 +322,7 @@ export function HubWorkspaceUserShell({
         title={footerTitle}
         roleKey={roleKey}
         roleIconPending={roleIconPending}
+        avatarUrl={footerAvatarUrl}
         onOpenUser={() => setOpen(true)}
       />
       {renderModal ? (
@@ -289,6 +344,9 @@ export function HubWorkspaceUserShell({
           onUpdatePassword={accountHandlers.onUpdatePassword}
           onLoadOwnProfile={accountHandlers.fetchOwnProfileFields}
           onUpdateOwnProfile={accountHandlers.onUpdateOwnProfile}
+          onUploadAvatar={accountHandlers.onUploadAvatar}
+          onClearAvatar={accountHandlers.onClearAvatar}
+          onAvatarUrlChange={syncFooterAvatarUrl}
           onSignOut={handleFullModalSignOut}
           onSignOutError={onSignOutError}
           onLoadActivityLog={activityLog.fetchUserActivityLog}

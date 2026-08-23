@@ -1,8 +1,10 @@
 import {
   compactIconSize,
+  DIRECTORY_CELL_TRUNCATE,
   DirectoryTableBodyCell,
   getDirectorySearchHighlight,
   HUB_DIRECTORY_ICON_CELL_HIT_EXPAND_CLASS,
+  HubDirectoryEllipsisCell,
   HubDirectorySearchHighlightText,
   HubUsersOnOffLabel,
   HubUsersStatusLabel,
@@ -10,6 +12,7 @@ import {
 } from "@tool-workspace/hub-ui";
 import { Ghost, Loader2, Play, Square } from "lucide-react";
 import { HubDirectoryTimestampLabel } from "@tool-workspace/hub-ui";
+import { formatDirectoryOneLine } from "../../lib/directory-one-line";
 import { formatStartupUrlDisplay } from "../../lib/startup-url";
 import type { ExtensionToggles, ProfileRow } from "../../types";
 import { resolveProfileExtensionEffective } from "../../lib/profile-extension-effective";
@@ -46,9 +49,9 @@ export function renderStealthProfileDirectoryBodyCell(
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <HubDirectorySearchHighlightText
-            text={profile.name}
+            text={formatDirectoryOneLine(profile.name)}
             terms={profileNameTerms}
-            className="hub-users-name-title"
+            className={`hub-users-name-title ${DIRECTORY_CELL_TRUNCATE}`}
           />
         </DirectoryTableBodyCell>
       );
@@ -142,24 +145,28 @@ export function renderStealthProfileDirectoryBodyCell(
           {renderProfileTimestampCell(profile.createdAt ? Date.parse(profile.createdAt) : null)}
         </DirectoryTableBodyCell>
       );
-    case "startupUrl": {
-      const label = formatStartupUrlDisplay(profile.startupUrl || "");
+    case "startupUrl":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text line-clamp-1">{label}</span>
+          <HubDirectoryEllipsisCell
+            value={formatDirectoryOneLine(formatStartupUrlDisplay(profile.startupUrl || ""))}
+          />
         </DirectoryTableBodyCell>
       );
-    }
     case "proxy":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text">{profile.proxy || "Local IP"}</span>
+          <HubDirectoryEllipsisCell value={formatDirectoryOneLine(profile.proxy || "Local IP")} />
         </DirectoryTableBodyCell>
       );
     case "note":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text line-clamp-1">{profile.note || "—"}</span>
+          <HubDirectoryEllipsisCell
+            value={formatDirectoryOneLine(profile.note)}
+            hoverPopover
+            popoverTitle="Note"
+          />
         </DirectoryTableBodyCell>
       );
     default:

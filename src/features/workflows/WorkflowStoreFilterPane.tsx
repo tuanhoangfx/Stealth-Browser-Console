@@ -23,7 +23,6 @@ export type WorkflowStoreFilterPaneProps = {
   viewMode: HubViewMode;
   onViewModeChange: (mode: HubViewMode) => void;
   timeRange: TimeRange;
-  loading?: boolean;
 };
 
 export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
@@ -39,7 +38,6 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
   viewMode,
   onViewModeChange,
   timeRange,
-  loading = false,
 }: WorkflowStoreFilterPaneProps) {
   return (
     <HubSplitDirectoryFilterBar
@@ -58,13 +56,11 @@ export const WorkflowStoreFilterPane = memo(function WorkflowStoreFilterPane({
           showViewToggle
           showTimeRange
           timeRange={timeRange}
-          showRefresh={false}
           showResultCount={false}
           countIcon={Store}
           shown={filteredCount}
           total={totalCount}
           countLabel="workflows"
-          refreshing={loading}
           displayBand={<StealthDisplayBandToolbar screen="workflow" directoryVariant="store" />}
         />
       }

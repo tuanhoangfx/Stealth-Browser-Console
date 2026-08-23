@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HubChromeBoundary } from "../loading/HubLazyScreenBoundary";
 import { HubLogButton, type HubLogButtonProps } from "./HubLogButton";
 import { HubNotifyPanel, type HubNotifyPanelProps } from "./HubNotifyPanel";
 
@@ -18,12 +19,12 @@ export function HubHeaderOpsPanels({ log, notify, trailing, className }: HubHead
   const logProps = log === false ? undefined : log;
 
   return (
-    <div className={`flex shrink-0 items-center gap-1.5${className ? ` ${className}` : ""}`}>
-      {notify ? <HubNotifyPanel {...notify} /> : null}
-      {showLog ? (
-        <HubLogButton variant="tab" {...logProps} />
-      ) : null}
-      {trailing}
-    </div>
+    <HubChromeBoundary label="Header">
+      <div className={`hub-header-ops flex shrink-0 items-center gap-1.5${className ? ` ${className}` : ""}`}>
+        {notify ? <HubNotifyPanel {...notify} /> : null}
+        {showLog ? <HubLogButton variant="tab" {...logProps} /> : null}
+        {trailing}
+      </div>
+    </HubChromeBoundary>
   );
 }

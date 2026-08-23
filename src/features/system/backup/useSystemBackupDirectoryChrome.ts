@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 import type { KpiTileData } from "@tool-workspace/hub-ui";
+import { useHostHeaderStats } from "../../../hooks/useHostHeaderStats";
 import { defaultsForPrefItems, isHubPrefVisible } from "../../../lib/display-pref-helpers";
 import { SYSTEM_BACKUP_DISPLAY_PREFS } from "../../../lib/display-prefs-registry";
 import { useStealthSystemTabDisplayPrefs } from "../../../lib/useStealthSystemTabDisplayPrefs";
 import { useStealthHubListPrefs } from "../../../lib/useStealthHubListPrefs";
 import type { ProfileCatalogStats, ProfileRow } from "../../../types";
 import { catalogStatsToKpiNumbers } from "../../profiles/profile-catalog-stats-patch";
-import { buildProfileHeaderStats } from "../../profiles/profile-header-metrics";
-import { withProfileHeaderStatFilterClicks, withProfileKpiFilterClicks } from "../../profiles/profile-kpi-filter";
+import { withProfileKpiFilterClicks } from "../../profiles/profile-kpi-filter";
 import { buildProfileKpiItems, buildProfileKpiNumbers } from "../../profiles/profile-kpi-items";
 
 function resolveCatalogKpiNumbers(catalogStats: ProfileCatalogStats | null, profiles: ProfileRow[]) {
@@ -29,6 +29,7 @@ export function useSystemBackupDirectoryChrome(
   const { groupIds, statuses, setGroupIds, setStatuses } = filter;
   const tabDisplay = useStealthSystemTabDisplayPrefs("backup");
   const hubPrefs = useStealthHubListPrefs();
+  const centerStats = useHostHeaderStats(hubPrefs.systemHeaderStats);
   const applyKpiFilter = useCallback(
     (next: { groupIds: string[]; statuses: ProfileRow["status"][] }) => {
       setGroupIds(next.groupIds);
@@ -62,29 +63,6 @@ export function useSystemBackupDirectoryChrome(
       ),
     [applyKpiFilter, catalogKpis, groupIds, kpiDefaults, statuses, tabDisplay?.kpi],
   );
-
-  const headerStatDefaults = useMemo(
-    () =>
-      defaultsForPrefItems(
-        SYSTEM_BACKUP_DISPLAY_PREFS.headerStats,
-        SYSTEM_BACKUP_DISPLAY_PREFS.defaultHeaderStatKeys,
-      ),
-    [],
-  );
-
-  const centerStats = useMemo(() => {
-    const visibleKeys = new Set(
-      SYSTEM_BACKUP_DISPLAY_PREFS.headerStats
-        .filter((item) => isHubPrefVisible(hubPrefs.systemHeaderStats, headerStatDefaults, item.key))
-        .map((item) => item.key),
-    );
-    return withProfileHeaderStatFilterClicks(
-      buildProfileHeaderStats(visibleKeys, catalogKpis),
-      groupIds,
-      statuses,
-      applyKpiFilter,
-    );
-  }, [applyKpiFilter, catalogKpis, groupIds, headerStatDefaults, hubPrefs.systemHeaderStats, statuses]);
 
   return { kpis, centerStats };
 }

@@ -1,10 +1,25 @@
 {
-  "generatedAt": "2026-08-20T00:55:34.607Z",
+  "generatedAt": "2026-08-23T18:02:30.584Z",
   "entries": [
     {
-      "version": "1.1.9",
-      "date": "2026-08-20",
-      "at": "2026-08-20T05:48:00+07:00",
+      "version": "2.1.1",
+      "date": "2026-08-24",
+      "at": "2026-08-24T01:02:00+07:00",
+      "title": "Patch bump for completed agent task (release)",
+      "bullets": [
+        "Release Major bump (P0003): 1.1.23 → 2.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Release Major bump : 1.1.23 → 2.1.1 ."
+      ]
+    },
+    {
+      "version": "1.1.23",
+      "date": "2026-08-24",
+      "at": "2026-08-24T00:43:00+07:00",
       "title": "Patch bump for completed agent task",
       "bullets": [
         "Automatic patch bump after completed P0003 task."
@@ -184,28 +199,6 @@
       "userHighlights": [
         "Fix vendor hub-ui Hub Detail Modal CSS custom-property typing .",
         "Includes 1.0.176 profiles Root Settings Data folder NSIS first-run."
-      ]
-    },
-    {
-      "version": "1.0.175",
-      "date": "2026-08-13",
-      "at": "2026-08-13T02:40:00+07:00",
-      "title": "Profiles storage location (portable)",
-      "bullets": [
-        "Split profilesRoot from Electron userData (DB/settings stay in AppData).",
-        "Settings â†’ Data folder: change / migrate profiles location; recommended non-system drive path.",
-        "Config: {userData}/data/profiles-location.json (no hard-coded D: â€” heuristic per machine).",
-        "NSIS seeds first-run promptPending when config missing; adopt existing junction targets on upgrade.",
-        "Startup ensureProfilesLocationInitialized + IPC open/migrate/apply-suggested."
-      ],
-      "kind": "improve",
-      "userTitle": "Profiles storage location",
-      "userSummary": "",
-      "userHighlights": [
-        "Split profiles Root from Electron user Data .",
-        "Settings â†’ Data folder: change migrate profiles location",
-        "Config: {user Data} data profiles-location.json .",
-        "NSIS seeds first-run prompt Pending when config missing"
       ]
     }
   ]

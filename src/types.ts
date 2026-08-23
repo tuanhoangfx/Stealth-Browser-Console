@@ -183,6 +183,18 @@ export type EngineHealth = {
   info?: Record<string, unknown>;
 };
 
+/** Host device sample from Electron `os` — Profiles header CPU / RAM. */
+export type HostMetrics = {
+  ok: boolean;
+  cpuPercent: number;
+  cpuReady: boolean;
+  ramUsedBytes: number;
+  ramTotalBytes: number;
+  ramPercent: number;
+  sampledAt: number;
+  error?: string;
+};
+
 export type OpenUrlResult = {
   runId: string;
   ok: boolean;
@@ -294,6 +306,7 @@ export type InstallStoreExtensionResult = {
   unpackedPath: string;
   cached: boolean;
   force?: boolean;
+  cacheOnly?: boolean;
   profiles: number;
   installed: number;
   details: Array<{ profileDir: string; extId?: string; error?: string }>;
@@ -473,6 +486,7 @@ declare global {
         profileExtensionsEnabled?: boolean;
         extensionToggles?: ExtensionToggles;
       }>;
+      fetchHostMetrics: () => Promise<HostMetrics>;
       setVaultUserScope: (payload: {
         email?: string | null;
       }) => Promise<{
@@ -521,6 +535,7 @@ declare global {
         url?: string;
         profileIds?: string[];
         force?: boolean;
+        cacheOnly?: boolean;
       }) => Promise<{ ok: boolean; result?: InstallStoreExtensionResult; error?: string }>;
       pickUnpackedExtensionFolder: () => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
       installUnpackedExtension: (payload: {

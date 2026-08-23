@@ -15,6 +15,8 @@ export type HubTableCellFilterDropdownProps = {
   triggerHideChevron?: boolean;
   triggerClassName?: string;
   ariaLabel?: string;
+  /** Default on — pass `false` for required cell enums (status). */
+  allowClear?: boolean;
 };
 
 /**
@@ -33,6 +35,7 @@ export function HubTableCellFilterDropdown({
   triggerHideChevron,
   triggerClassName,
   ariaLabel,
+  allowClear = true,
 }: HubTableCellFilterDropdownProps) {
   function stopRowNav(e: MouseEvent) {
     e.stopPropagation();
@@ -52,6 +55,7 @@ export function HubTableCellFilterDropdown({
         triggerHideChevron={triggerHideChevron}
         triggerClassName={triggerClassName}
         ariaLabel={ariaLabel}
+        allowClear={allowClear}
         usePortal
         className="w-full min-w-0"
       />

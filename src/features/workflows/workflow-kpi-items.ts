@@ -1,75 +1,81 @@
-import { Bot, ClipboardList, Layers3, Search } from "lucide-react";
-import type { KpiTileData, TabHeaderStatItem } from "@tool-workspace/hub-ui";
+import type { KpiTileData } from "@tool-workspace/hub-ui";
+import { isLocalCalendarToday } from "../../lib/local-calendar-today";
+import { STEALTH_WORKFLOW_KPI_STICKER } from "../../lib/stealth-column-stickers";
+import type { WorkflowConfig } from "./workflow-types";
+
+export const WORKFLOW_SCRIPT_KPI_KEYS = [
+  "total",
+  "create_today",
+  "update_today",
+  "ran_today",
+  "idle",
+  "empty",
+] as const;
+
+export type WorkflowScriptKpiKey = (typeof WORKFLOW_SCRIPT_KPI_KEYS)[number];
+
+export const DEFAULT_WORKFLOW_KPI_KEYS = new Set<string>(WORKFLOW_SCRIPT_KPI_KEYS);
 
 export type WorkflowKpiNumbers = {
   total: number;
-  visible: number;
-  checked: number;
-  steps: number;
+  createToday: number;
+  updateToday: number;
+  ranToday: number;
+  idle: number;
+  empty: number;
 };
 
-export function buildWorkflowHeaderCenterStats(counts: WorkflowKpiNumbers): TabHeaderStatItem[] {
-  return [
-    {
-      key: "workflows-total",
-      icon: Layers3,
-      label: "workflows",
-      value: counts.total,
-      toneClass: "text-violet-300"
-    },
-    {
-      key: "workflows-visible",
-      icon: Search,
-      label: "visible",
-      value: counts.visible,
-      toneClass: "text-cyan-300"
-    },
-    {
-      key: "workflows-checked",
-      icon: Bot,
-      label: "checked",
-      value: counts.checked,
-      toneClass: "text-emerald-300"
-    },
-    {
-      key: "workflows-steps",
-      icon: ClipboardList,
-      label: "steps",
-      value: counts.steps,
-      toneClass: "text-indigo-300"
-    }
-  ];
+const SCRIPT_KPI_TILES: Array<{
+  key: WorkflowScriptKpiKey;
+  label: string;
+  tone: NonNullable<KpiTileData["tone"]>;
+  pick: (k: WorkflowKpiNumbers) => number;
+}> = [
+  { key: "total", label: "Scripts", tone: "indigo", pick: (k) => k.total },
+  { key: "create_today", label: "Create today", tone: "emerald", pick: (k) => k.createToday },
+  { key: "update_today", label: "Update today", tone: "amber", pick: (k) => k.updateToday },
+  { key: "ran_today", label: "Ran today", tone: "emerald", pick: (k) => k.ranToday },
+  { key: "idle", label: "Idle", tone: "amber", pick: (k) => k.idle },
+  { key: "empty", label: "Empty", tone: "rose", pick: (k) => k.empty },
+];
+
+/** Catalog-wide Scripts KPI — P0005 Service analog (count does not shrink on tile click). */
+export function computeWorkflowKpiNumbers(workflows: readonly WorkflowConfig[], now = new Date()): WorkflowKpiNumbers {
+  let createToday = 0;
+  let updateToday = 0;
+  let ranToday = 0;
+  let idle = 0;
+  let empty = 0;
+  for (const workflow of workflows) {
+    if (isLocalCalendarToday(workflow.createdAt, now)) createToday += 1;
+    if (isLocalCalendarToday(workflow.updatedAt, now)) updateToday += 1;
+    if (isLocalCalendarToday(workflow.lastRunAt, now)) ranToday += 1;
+    if (!workflow.lastRunAt?.trim()) idle += 1;
+    if (workflow.steps.length === 0) empty += 1;
+  }
+  return { total: workflows.length, createToday, updateToday, ranToday, idle, empty };
 }
 
-export function buildWorkflowKpiItems(counts: WorkflowKpiNumbers): KpiTileData[] {
-  return [
-    {
-      prefKey: "total",
-      label: "Total",
-      value: counts.total,
-      icon: Layers3,
-      tone: "indigo"
-    },
-    {
-      prefKey: "visible",
-      label: "Visible",
-      value: counts.visible,
-      icon: Search,
-      tone: "cyan"
-    },
-    {
-      prefKey: "checked",
-      label: "Checked",
-      value: counts.checked,
-      icon: Bot,
-      tone: "emerald"
-    },
-    {
-      prefKey: "steps",
-      label: "Steps",
-      value: counts.steps,
-      icon: ClipboardList,
-      tone: "violet"
-    }
-  ];
+export function buildWorkflowKpiItems(kpis: WorkflowKpiNumbers): KpiTileData[] {
+  return SCRIPT_KPI_TILES.map((row) => ({
+    prefKey: row.key,
+    label: row.label,
+    value: row.pick(kpis),
+    emojiGlyph: STEALTH_WORKFLOW_KPI_STICKER[row.key],
+    tone: row.tone,
+  }));
+}
+
+/**
+ * Shared `kpi=` URL may still hold Profile / legacy Scripts keys.
+ * Honor a stored set only when it includes a Scripts-specific key (or only Scripts tiles).
+ */
+export function resolveWorkflowKpiVisibleKeys(stored: Set<string> | null): Set<string> {
+  if (!stored) return DEFAULT_WORKFLOW_KPI_KEYS;
+  const known = WORKFLOW_SCRIPT_KPI_KEYS as readonly string[];
+  const recognized = [...stored].filter((key) => known.includes(key));
+  const hasForeign = [...stored].some((key) => !known.includes(key));
+  if (recognized.length === 0) return DEFAULT_WORKFLOW_KPI_KEYS;
+  if (hasForeign && !recognized.some((key) => key !== "total")) return DEFAULT_WORKFLOW_KPI_KEYS;
+  return new Set(recognized);
 }

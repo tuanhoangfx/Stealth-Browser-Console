@@ -389,11 +389,11 @@ function DataFolderSectionBody() {
         stability (same SSD speed on multi-partition disks).
       </p>
       <div className="col-span-full space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">App data</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">App data</p>
         <p className="break-all font-mono text-xs text-[var(--muted)]">{userDataPath || "—"}</p>
       </div>
       <div className="col-span-full space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Profiles storage</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Profiles storage</p>
         <p className="break-all font-mono text-xs text-cyan-100/90">{loc?.profilesRoot || "—"}</p>
         <p className="text-xs text-[var(--muted)]">
           {loc?.usingCustom ? "Custom location" : "Default (under App data)"}
