@@ -449,6 +449,7 @@ export {
   readWorkspacePeriod,
   workspacePeriodOptions,
   workspacePeriodRangeParam,
+  slugWorkspacePeriodUrlKeys,
   WORKSPACE_PERIOD_FILTER_HINT,
   WORKSPACE_PERIOD_ORDER,
   WORKSPACE_PERIOD_LABELS,

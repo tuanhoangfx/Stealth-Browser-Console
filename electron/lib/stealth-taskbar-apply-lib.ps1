@@ -130,41 +130,48 @@ function Invoke-StealthTaskbarApply {
 
   $wmiSkipped = $false
   $pids = @()
-  if ($HintPid -gt 0) {
-    # HintPid is often a utility/zygote with HWND=0 forever. Short poll only —
-    # a 2s hold here serialized the worker and starved later profiles.
-    $hasHwnd = $false
-    for ($i = 0; $i -lt 8; $i++) {
-      $p = Get-Process -Id $HintPid -ErrorAction SilentlyContinue
-      if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) {
-        $hasHwnd = $true
-        break
-      }
-      Start-Sleep -Milliseconds 40
-    }
-    if ($hasHwnd) {
-      $pids = @($HintPid)
-      $wmiSkipped = $true
-    }
-    # else: fall through — HintPid may be a utility process; discover real browser PID
+
+  function Test-StealthPidHasHwnd([int]$procId) {
+    if ($procId -le 0) { return $false }
+    $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
+    if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) { return $true }
+    $found = @([StealthTaskbarWin]::FindAllVisibleHwnds([uint32[]]@([uint32]$procId)))
+    return ($found.Count -gt 0)
+  }
+
+  if ($HintPid -gt 0 -and (Test-StealthPidHasHwnd $HintPid)) {
+    $pids = @($HintPid)
+    $wmiSkipped = $true
   }
   if (-not $pids -or $pids.Count -eq 0) {
     $sidecar = Join-Path $dir 'stealth-pid.json'
     if (Test-Path -LiteralPath $sidecar) {
       try {
         $sp = Get-Content -LiteralPath $sidecar -Raw | ConvertFrom-Json
-        if ($sp.pid -gt 0) {
-          $p = Get-Process -Id ([int]$sp.pid) -ErrorAction SilentlyContinue
-          if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) {
-            $pids = @([int]$sp.pid)
-            $wmiSkipped = $true
-          }
+        if ($sp.pid -gt 0 -and (Test-StealthPidHasHwnd ([int]$sp.pid))) {
+          $pids = @([int]$sp.pid)
+          $wmiSkipped = $true
         }
       } catch { }
     }
   }
+  # HintPid/sidecar often a zygote (MainWindowHandle=0) that still owns Chrome_WidgetWin_1.
+  # EnumWindows first — a full Win32_Process scan used to serialize the worker ~2–8s/profile.
+  if ((-not $pids -or $pids.Count -eq 0) -and $HintPid -gt 0) {
+    for ($i = 0; $i -lt 4; $i++) {
+      if (Test-StealthPidHasHwnd $HintPid) {
+        $pids = @($HintPid)
+        $wmiSkipped = $true
+        break
+      }
+      Start-Sleep -Milliseconds 40
+    }
+  }
   if (-not $pids -or $pids.Count -eq 0) {
-    $pids = @(Get-CimInstance Win32_Process | Where-Object {
+    $chrome = @(Get-CimInstance Win32_Process -Filter "Name='chrome.exe'")
+    $chromium = @()
+    try { $chromium = @(Get-CimInstance Win32_Process -Filter "Name='chromium.exe'") } catch { }
+    $pids = @($chrome + $chromium | Where-Object {
       $cmd = $_.CommandLine; $name = $_.Name
       if (-not $cmd) { return $false }
       if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }

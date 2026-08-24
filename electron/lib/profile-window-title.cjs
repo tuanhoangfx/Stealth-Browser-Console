@@ -14,7 +14,7 @@ const {
 /**
  * Per userDataDir apply state.
  * Early + late schedule must NOT cancel each other (gen bump mid-retry = missing badges).
- * @type {Map<string, { gen: number, digits: string, inFlight: boolean, okAt: number, browserPid: number }>}
+ * @type {Map<string, { gen: number, digits: string, inFlight: boolean, okAt: number, browserPid: number, needsRestamp: boolean }>}
  */
 const badgeApplyState = new Map();
 
@@ -142,8 +142,11 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
   }
 
   // Reinforce / nav restamp: never abort open-path mid-flight (drops recover chain).
+  // Mark needsRestamp so the pass still runs after the in-flight apply — dropping
+  // it starved profiles 6+ while they sat queued on the worker.
   if (isReinforce && prev?.digits === digits && prev.inFlight) {
     if (browserPid > 0) prev.browserPid = browserPid;
+    prev.needsRestamp = true;
     return;
   }
 
@@ -154,6 +157,7 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
     inFlight: true,
     okAt: prev?.okAt || 0,
     browserPid,
+    needsRestamp: prev?.needsRestamp === true,
   });
 
   void (async () => {
@@ -192,7 +196,11 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
       });
       if (state()?.gen !== gen) return;
       const cur = state();
-      if (cur && cur.gen === gen) cur.inFlight = false;
+      const pendingRestamp = Boolean(cur?.needsRestamp);
+      if (cur && cur.gen === gen) {
+        cur.inFlight = false;
+        cur.needsRestamp = false;
+      }
 
       if (r?.ok && r.detail === "OK_ICON") {
         if (cur && cur.gen === gen) cur.okAt = Date.now();
@@ -206,6 +214,14 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
         );
         if (!isReinforce) {
           queueBadgeRecoverPasses(dir, title, digits, resolvedPid || browserPid, opts.headless);
+        }
+        if (pendingRestamp) {
+          scheduleProfileTaskbarBadgeApply(dir, title, digits, {
+            browserPid: resolvedPid || browserPid,
+            force: true,
+            isReinforce: true,
+            headless: opts.headless,
+          });
         }
         return;
       }
@@ -222,9 +238,21 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
       if (!isReinforce) {
         queueBadgeRecoverPasses(dir, title, digits, resolvedPid || browserPid, opts.headless);
       }
+      if (pendingRestamp) {
+        scheduleProfileTaskbarBadgeApply(dir, title, digits, {
+          browserPid: resolvedPid || browserPid,
+          force: true,
+          isReinforce: true,
+          headless: opts.headless,
+        });
+      }
     } catch (error) {
       const cur = state();
-      if (cur && cur.gen === gen) cur.inFlight = false;
+      const pendingRestamp = Boolean(cur?.needsRestamp);
+      if (cur && cur.gen === gen) {
+        cur.inFlight = false;
+        cur.needsRestamp = false;
+      }
       console.warn(
         "[taskbar-badge] apply error",
         path.basename(dir),
@@ -232,6 +260,14 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
       );
       if (!isReinforce) {
         queueBadgeRecoverPasses(dir, title, digits, resolvedPid || browserPid, opts.headless);
+      }
+      if (pendingRestamp) {
+        scheduleProfileTaskbarBadgeApply(dir, title, digits, {
+          browserPid: resolvedPid || browserPid,
+          force: true,
+          isReinforce: true,
+          headless: opts.headless,
+        });
       }
     }
   })();

@@ -53,8 +53,8 @@ describe("scheduleProfileTaskbarBadgeApply reinforce race", () => {
       await new Promise((r) => setTimeout(r, 50));
       assert.equal(applyCalls, 1, "reinforce must not abort/restart in-flight open");
       resolveFirst();
-      await new Promise((r) => setTimeout(r, 50));
-      assert.equal(applyCalls, 1, "open should complete as sole apply wave");
+      await new Promise((r) => setTimeout(r, 80));
+      assert.equal(applyCalls, 2, "pending restamp must run after in-flight open completes");
     } finally {
       delete require.cache[titlePath];
       delete require.cache[nativePath];

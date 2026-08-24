@@ -1,35 +1,45 @@
 /**
- * Persistent PowerShell worker for hot-path taskbar apply (avoids ~3–4s spawn per call).
+ * Persistent PowerShell workers for hot-path taskbar apply (avoids ~3–4s spawn per call).
+ * Pool of 4 — burst-open used to serialize 13+ profiles on one worker and starve later stamps.
  */
-const fs = require("node:fs");
-const path = require("node:path");
 const { spawn } = require("node:child_process");
 const readline = require("node:readline");
 
 const { resolvePowerShell, resolveElectronLibScript } = require("./powershell-exec.cjs");
 
 const WORKER_PS1 = resolveElectronLibScript("stealth-taskbar-apply-worker.ps1");
+const WORKER_POOL_SIZE = 4;
 
-/** @type {import('node:child_process').ChildProcessWithoutNullStreams | null} */
-let worker = null;
-/** @type {import('node:readline').Interface | null} */
-let rl = null;
-let seq = 0;
-let ready = false;
-/** @type {Map<number, { resolve: Function, reject: Function, timer: NodeJS.Timeout }>} */
-const pending = new Map();
-/** Serialize stdin writes — PS worker is one-line-at-a-time. */
+/** @typedef {{ worker: import('node:child_process').ChildProcessWithoutNullStreams | null, rl: import('node:readline').Interface | null, ready: boolean, pending: Map<number, { resolve: Function, reject: Function, timer: NodeJS.Timeout }>, tail: Promise<unknown>, queued: number }} WorkerSlot */
+
+/** @returns {WorkerSlot} */
+function createSlot() {
+  return {
+    worker: null,
+    rl: null,
+    ready: false,
+    pending: new Map(),
+    tail: Promise.resolve(),
+    queued: 0,
+  };
+}
+
+/** @type {WorkerSlot[]} */
+const slots = Array.from({ length: WORKER_POOL_SIZE }, createSlot);
+
+/** Serialize generic exclusive work (tests / one-at-a-time helpers). */
 let applyTail = Promise.resolve();
+let seq = 0;
 
-function rejectAllPending(error) {
-  for (const [id, job] of pending.entries()) {
+function rejectSlotPending(slot, error) {
+  for (const [id, job] of slot.pending.entries()) {
     clearTimeout(job.timer);
     job.reject(error);
-    pending.delete(id);
+    slot.pending.delete(id);
   }
 }
 
-function handleWorkerLine(line) {
+function handleWorkerLine(slot, line) {
   const trimmed = String(line || "").trim();
   if (!trimmed) return;
   let msg;
@@ -39,49 +49,57 @@ function handleWorkerLine(line) {
     return;
   }
   if (msg.ready === true) {
-    ready = true;
+    slot.ready = true;
     return;
   }
   const id = Number(msg.id);
-  const job = pending.get(id);
+  const job = slot.pending.get(id);
   if (!job) return;
   clearTimeout(job.timer);
-  pending.delete(id);
+  slot.pending.delete(id);
   job.resolve(msg);
 }
 
-function spawnWorker() {
-  if (worker && !worker.killed) return worker;
-  ready = false;
-  worker = spawn(
+function spawnWorkerOn(slot) {
+  if (slot.worker && !slot.worker.killed) return slot.worker;
+  slot.ready = false;
+  slot.worker = spawn(
     resolvePowerShell(),
     ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", WORKER_PS1],
     { stdio: ["pipe", "pipe", "pipe"], windowsHide: true },
   );
-  rl = readline.createInterface({ input: worker.stdout });
-  rl.on("line", handleWorkerLine);
-  worker.stderr.on("data", () => undefined);
-  worker.on("exit", () => {
-    ready = false;
-    worker = null;
-    if (rl) {
-      rl.close();
-      rl = null;
+  slot.rl = readline.createInterface({ input: slot.worker.stdout });
+  slot.rl.on("line", (line) => handleWorkerLine(slot, line));
+  slot.worker.stderr.on("data", () => undefined);
+  slot.worker.on("exit", () => {
+    slot.ready = false;
+    slot.worker = null;
+    if (slot.rl) {
+      slot.rl.close();
+      slot.rl = null;
     }
-    rejectAllPending(new Error("taskbar-apply-worker-exited"));
+    rejectSlotPending(slot, new Error("taskbar-apply-worker-exited"));
   });
-  return worker;
+  return slot.worker;
 }
 
-async function waitWorkerReady(timeoutMs = 15_000) {
-  if (ready) return;
-  spawnWorker();
+async function waitSlotReady(slot, timeoutMs = 15_000) {
+  if (slot.ready) return;
+  spawnWorkerOn(slot);
   const deadline = Date.now() + timeoutMs;
-  while (!ready && Date.now() < deadline) {
-    if (!worker || worker.killed) throw new Error("taskbar-apply-worker-failed");
+  while (!slot.ready && Date.now() < deadline) {
+    if (!slot.worker || slot.worker.killed) throw new Error("taskbar-apply-worker-failed");
     await new Promise((r) => setTimeout(r, 25));
   }
-  if (!ready) throw new Error("taskbar-apply-worker-timeout");
+  if (!slot.ready) throw new Error("taskbar-apply-worker-timeout");
+}
+
+function pickSlot() {
+  let best = slots[0];
+  for (const slot of slots) {
+    if (slot.queued < best.queued) best = slot;
+  }
+  return best;
 }
 
 /**
@@ -103,48 +121,93 @@ function enqueueExclusive(work) {
 }
 
 /**
+ * @template T
+ * @param {WorkerSlot} slot
+ * @param {() => Promise<T>} work
+ * @returns {Promise<T>}
+ */
+function enqueueOnSlot(slot, work) {
+  slot.queued += 1;
+  const run = async () => {
+    try {
+      return await work();
+    } finally {
+      slot.queued = Math.max(0, slot.queued - 1);
+    }
+  };
+  const next = slot.tail.then(run, run);
+  slot.tail = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+/**
+ * Spread work across the worker pool (burst-open / guard).
+ * @template T
+ * @param {(slot: WorkerSlot) => Promise<T>} work
+ * @returns {Promise<T>}
+ */
+function enqueuePooled(work) {
+  const slot = pickSlot();
+  return enqueueOnSlot(slot, () => work(slot));
+}
+
+async function waitWorkerReady(timeoutMs = 15_000) {
+  await waitSlotReady(slots[0], timeoutMs);
+}
+
+/**
  * @param {object} payload
  * @param {{ timeoutMs?: number }} [opts]
  */
 async function runTaskbarApplyWorker(payload, opts = {}) {
   const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 12_000;
-  return enqueueExclusive(async () => {
-    await waitWorkerReady();
-    if (!worker || worker.killed) throw new Error("taskbar-apply-worker-unavailable");
+  return enqueuePooled(async (slot) => {
+    await waitSlotReady(slot);
+    if (!slot.worker || slot.worker.killed) throw new Error("taskbar-apply-worker-unavailable");
     const id = ++seq;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        pending.delete(id);
+        slot.pending.delete(id);
         reject(new Error("taskbar-apply-worker-request-timeout"));
       }, timeoutMs);
-      pending.set(id, { resolve, reject, timer });
-      worker.stdin.write(`${JSON.stringify({ id, ...payload })}\n`);
+      slot.pending.set(id, { resolve, reject, timer });
+      slot.worker.stdin.write(`${JSON.stringify({ id, ...payload })}\n`);
     });
   });
 }
 
-function shutdownTaskbarApplyWorker() {
-  rejectAllPending(new Error("taskbar-apply-worker-shutdown"));
-  if (worker && !worker.killed) {
+function shutdownSlot(slot) {
+  rejectSlotPending(slot, new Error("taskbar-apply-worker-shutdown"));
+  if (slot.worker && !slot.worker.killed) {
     try {
-      worker.stdin.end();
-      worker.kill();
+      slot.worker.stdin.end();
+      slot.worker.kill();
     } catch {
       /* ignore */
     }
   }
-  worker = null;
-  ready = false;
-  if (rl) {
-    rl.close();
-    rl = null;
+  slot.worker = null;
+  slot.ready = false;
+  slot.queued = 0;
+  if (slot.rl) {
+    slot.rl.close();
+    slot.rl = null;
   }
+}
+
+function shutdownTaskbarApplyWorker() {
+  for (const slot of slots) shutdownSlot(slot);
 }
 
 process.once("exit", shutdownTaskbarApplyWorker);
 
 module.exports = {
+  WORKER_POOL_SIZE,
   enqueueExclusive,
+  enqueuePooled,
   runTaskbarApplyWorker,
   shutdownTaskbarApplyWorker,
   waitWorkerReady,

@@ -1,6 +1,36 @@
 {
-  "generatedAt": "2026-08-23T18:12:20.269Z",
+  "generatedAt": "2026-08-24T11:18:32.432Z",
   "entries": [
+    {
+      "version": "3.1.1",
+      "date": "2026-08-24",
+      "at": "2026-08-24T18:18:00+07:00",
+      "title": "Patch bump for completed agent task (release)",
+      "bullets": [
+        "Release Major bump (P0003): 2.1.5 → 3.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Release Major bump : 2.1.5 → 3.1.1 ."
+      ]
+    },
+    {
+      "version": "2.1.5",
+      "date": "2026-08-24",
+      "at": "2026-08-24T18:16:00+07:00",
+      "title": "Patch bump for completed agent task",
+      "bullets": [
+        "Automatic patch bump after completed P0003 task."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Automatic patch bump after completed P0003 task."
+      ]
+    },
     {
       "version": "2.1.1",
       "date": "2026-08-24",
@@ -167,38 +197,6 @@
         "Package build icons ** into the app so Browser Window can load the Stealth icon — Fast releases h…",
         "Fast prepackaged path now seeds icons into app.asar and forces rebuild when the shell icon is mis…",
         "Resolve icon with resources Path fallback ."
-      ]
-    },
-    {
-      "version": "1.0.178",
-      "date": "2026-08-13",
-      "at": "2026-08-13T04:05:00+07:00",
-      "title": "Hub User ID sign-in resolve-login",
-      "bullets": [
-        "Fix packaged Hub login for User ID (e.g. czpgo): use signInHubIdentityPlane so /hub/auth/resolve-login maps to real auth email (czpgo@outlook.com) before synthetic @infix1.io.vn fallback."
-      ],
-      "kind": "improve",
-      "userTitle": "Hub User ID sign-in resolve-login",
-      "userSummary": "",
-      "userHighlights": [
-        "Fix packaged Hub login for User ID : use sign In Hub Identity Plane so hub auth resolve-login map…"
-      ]
-    },
-    {
-      "version": "1.0.177",
-      "date": "2026-08-13",
-      "at": "2026-08-13T02:55:00+07:00",
-      "title": "Profiles storage location (portable) + hub-ui modal TS",
-      "bullets": [
-        "Fix vendor hub-ui HubDetailModal CSS custom-property typing (unblocks desktop Release build).",
-        "Includes 1.0.176 profilesRoot / Settings Data folder / NSIS first-run."
-      ],
-      "kind": "improve",
-      "userTitle": "Profiles storage location + hub-ui modal TS",
-      "userSummary": "",
-      "userHighlights": [
-        "Fix vendor hub-ui Hub Detail Modal CSS custom-property typing .",
-        "Includes 1.0.176 profiles Root Settings Data folder NSIS first-run."
       ]
     }
   ]
