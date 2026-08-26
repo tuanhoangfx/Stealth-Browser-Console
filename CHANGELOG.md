@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-26 - Patch bump for completed agent task (release)
+
+- Version: `4.1.1`
+- Timestamp: 2026-08-26 23:26 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0003): 3.1.2 → 4.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-26 - Patch bump for completed agent task
+
+- Version: `3.1.2`
+- Timestamp: 2026-08-26 23:24 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-24 - Patch bump for completed agent task (release)
 
 - Version: `3.1.1`

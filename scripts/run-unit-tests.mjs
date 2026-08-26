@@ -30,6 +30,7 @@ runStep("host-metrics", "node", ["--test", "electron/lib/host-metrics.test.cjs"]
 runStep("microsoft-gate-gmail", "node", ["--test", "electron/automation/script-steps.microsoft-gate.test.cjs"]);
 runStep("captcha-stop-gmail", "node", ["--test", "electron/automation/script-steps.captcha-stop.test.cjs"]);
 runStep("profile-window-title", "node", ["--test", "electron/lib/profile-window-title.test.cjs"]);
+runStep("taskbar-title-match", "node", ["--test", "electron/lib/taskbar-title-match.test.cjs"]);
 runStep("taskbar-badge-guard", "node", ["--test", "electron/lib/taskbar-badge-guard.test.cjs"]);
 runStep("taskbar-apply-worker", "node", ["--test", "electron/lib/taskbar-apply-worker.test.cjs"]);
 runStep("profile-code", "node", ["--test", "electron/lib/profile-code.test.cjs"]);

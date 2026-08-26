@@ -1,6 +1,36 @@
 {
-  "generatedAt": "2026-08-24T11:34:35.981Z",
+  "generatedAt": "2026-08-26T16:26:47.085Z",
   "entries": [
+    {
+      "version": "4.1.1",
+      "date": "2026-08-26",
+      "at": "2026-08-26T23:26:00+07:00",
+      "title": "Patch bump for completed agent task (release)",
+      "bullets": [
+        "Release Major bump (P0003): 3.1.2 → 4.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Release Major bump : 3.1.2 → 4.1.1 ."
+      ]
+    },
+    {
+      "version": "3.1.2",
+      "date": "2026-08-26",
+      "at": "2026-08-26T23:24:00+07:00",
+      "title": "Patch bump for completed agent task",
+      "bullets": [
+        "Automatic patch bump after completed P0003 task."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Automatic patch bump after completed P0003 task."
+      ]
+    },
     {
       "version": "3.1.1",
       "date": "2026-08-24",
@@ -161,42 +191,6 @@
       "userHighlights": [
         "Add post-pack gate .",
         "Fast installer-only refreshes warm exe + resources app.ico so next --prepackaged cannot re-ship t…"
-      ]
-    },
-    {
-      "version": "1.0.180",
-      "date": "2026-08-13",
-      "at": "2026-08-13T05:10:00+07:00",
-      "title": "Embed Stealth icon into exe (Fast sign fix)",
-      "bullets": [
-        "Fast release set win.signAndEditExecutable=false, which skipped rcedit icon embedding and left the default Electron atom on the exe. Keep only signExecutable=false so Authenticode is skipped but the Stealth app.ico is still applied.",
-        "Continues 1.0.179 packaging of build/icons + resources/app.ico for BrowserWindow."
-      ],
-      "kind": "improve",
-      "userTitle": "Embed Stealth icon into exe",
-      "userSummary": "",
-      "userHighlights": [
-        "Fast release set win.sign And Edit Executable=false, which skipped rcedit icon embedding and left…",
-        "Continues 1.0.179 packaging of build icons + resources app.ico for Browser Window."
-      ]
-    },
-    {
-      "version": "1.0.179",
-      "date": "2026-08-13",
-      "at": "2026-08-13T04:30:00+07:00",
-      "title": "Desktop shell icon (title bar + taskbar)",
-      "bullets": [
-        "Package build/icons/** into the app (asar + resources/app.ico) so BrowserWindow can load the Stealth icon — Fast releases had omitted it, leaving a blank title-bar glyph and the default Electron atom on the exe.",
-        "Fast prepackaged path now seeds icons into app.asar and forces rebuild when the shell icon is missing.",
-        "Resolve icon with resourcesPath fallback (Windows NativeImage)."
-      ],
-      "kind": "improve",
-      "userTitle": "Desktop shell icon",
-      "userSummary": "",
-      "userHighlights": [
-        "Package build icons ** into the app so Browser Window can load the Stealth icon — Fast releases h…",
-        "Fast prepackaged path now seeds icons into app.asar and forces rebuild when the shell icon is mis…",
-        "Resolve icon with resources Path fallback ."
       ]
     }
   ]

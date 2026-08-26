@@ -4,9 +4,10 @@ $ErrorActionPreference = 'Stop'
 function Ensure-StealthTaskbarWinType {
   $cacheDir = Join-Path $env:TEMP 'stealth-taskbar-badges'
   if (-not (Test-Path -LiteralPath $cacheDir)) { New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null }
+  # v4: title-prefix HWND fallback (burst-open pid=0). No WMI on the hot path.
   # v2: no RelaunchIconResource (Win11 ignores WM_SETICON when that property is set);
   # stamp SETICON on all top-level visible HWNDs for the browser PID.
-  $dll = Join-Path $cacheDir 'StealthTaskbarWin.v3.dll'
+  $dll = Join-Path $cacheDir 'StealthTaskbarWin.v4.dll'
   if (-not (Test-Path -LiteralPath $dll)) {
     Add-Type -TypeDefinition @"
 using System;
@@ -30,6 +31,7 @@ public static class StealthTaskbarWin {
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
   [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
   [DllImport("shell32.dll")] public static extern int SHGetPropertyStoreForWindow(IntPtr hwnd, ref Guid iid, out IPropertyStore propertyStore);
@@ -86,6 +88,35 @@ public static class StealthTaskbarWin {
   public static void StampIcons(IntPtr hwnd, IntPtr hiSmall, IntPtr hiBig) {
     if (hiSmall != IntPtr.Zero) SendMessage(hwnd, WM_SETICON, (IntPtr)ICON_SMALL, hiSmall);
     if (hiBig != IntPtr.Zero) SendMessage(hwnd, WM_SETICON, (IntPtr)ICON_BIG, hiBig);
+  }
+  // Keep in sync with electron/lib/taskbar-title-match.cjs
+  public static bool TitleMatchesLabel(string title, string label) {
+    if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(label)) return false;
+    if (title == label) return true;
+    if (title.StartsWith(label + " —") || title.StartsWith(label + " ·") || title.StartsWith(label + " -")) return true;
+    if (label.Length >= 4) {
+      string code = label.Substring(0, 4);
+      bool digits = true;
+      for (int i = 0; i < 4; i++) { if (code[i] < '0' || code[i] > '9') { digits = false; break; } }
+      if (digits && (title == code || title.StartsWith(code + " —") || title.StartsWith(code + " ·") || title.StartsWith(code + " -"))) return true;
+    }
+    return false;
+  }
+  public static IntPtr[] FindHwndsByTitlePrefix(string label) {
+    var list = new List<IntPtr>();
+    if (string.IsNullOrEmpty(label)) return list.ToArray();
+    EnumWindows((h, l) => {
+      if (!IsWindowVisible(h) && !IsIconic(h)) return true;
+      var cls = new StringBuilder(64);
+      GetClassName(h, cls, 64);
+      if (cls.ToString().IndexOf("Chrome_WidgetWin") < 0) return true;
+      var sb = new StringBuilder(512);
+      GetWindowText(h, sb, sb.Capacity);
+      if (!TitleMatchesLabel(sb.ToString(), label)) return true;
+      list.Add(h);
+      return true;
+    }, IntPtr.Zero);
+    return list.ToArray();
   }
 }
 "@ -OutputAssembly $dll -OutputType Library
@@ -155,9 +186,14 @@ function Invoke-StealthTaskbarApply {
       } catch { }
     }
   }
+  # Title match before any WMI — burst-open 18+ chrome.exe made Win32_Process 2–8s/profile
+  # and starved later stamps (first ~10 OK_ICON, rest plain). Page title is already "0010".
+  $titleHwnds = @([StealthTaskbarWin]::FindHwndsByTitlePrefix($Title))
+  if ((-not $pids -or $pids.Count -eq 0) -and $titleHwnds.Count -gt 0) {
+    $wmiSkipped = $true
+  }
   # HintPid/sidecar often a zygote (MainWindowHandle=0) that still owns Chrome_WidgetWin_1.
-  # EnumWindows first — a full Win32_Process scan used to serialize the worker ~2–8s/profile.
-  if ((-not $pids -or $pids.Count -eq 0) -and $HintPid -gt 0) {
+  if ((-not $pids -or $pids.Count -eq 0) -and $titleHwnds.Count -eq 0 -and $HintPid -gt 0) {
     for ($i = 0; $i -lt 4; $i++) {
       if (Test-StealthPidHasHwnd $HintPid) {
         $pids = @($HintPid)
@@ -166,23 +202,13 @@ function Invoke-StealthTaskbarApply {
       }
       Start-Sleep -Milliseconds 40
     }
-  }
-  if (-not $pids -or $pids.Count -eq 0) {
-    $chrome = @(Get-CimInstance Win32_Process -Filter "Name='chrome.exe'")
-    $chromium = @()
-    try { $chromium = @(Get-CimInstance Win32_Process -Filter "Name='chromium.exe'") } catch { }
-    $pids = @($chrome + $chromium | Where-Object {
-      $cmd = $_.CommandLine; $name = $_.Name
-      if (-not $cmd) { return $false }
-      if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }
-      if ($cmd -notmatch 'stealth-browser-console') { return $false }
-      foreach ($n in $needles) { if ($n -and ($cmd -like ('*' + $n + '*'))) { return $true } }
-      return $false
-    } | Sort-Object { if ($_.CommandLine -match '--type=') { 1 } else { 0 } } | Select-Object -ExpandProperty ProcessId)
+    if (-not $pids -or $pids.Count -eq 0) {
+      $titleHwnds = @([StealthTaskbarWin]::FindHwndsByTitlePrefix($Title))
+    }
   }
 
-  if (-not $pids -or $pids.Count -eq 0) {
-    return @{ result = 'MISSING'; wmiSkipped = $wmiSkipped }
+  if ((-not $pids -or $pids.Count -eq 0) -and $titleHwnds.Count -eq 0) {
+    return @{ result = 'NOHWND'; wmiSkipped = $true }
   }
 
   $loadFlags = [uint32]([StealthTaskbarWin]::LR_LOADFROMFILE)
@@ -210,24 +236,33 @@ function Invoke-StealthTaskbarApply {
   }
 
   $ok = $false; $iconOk = $false
-  $pidArr = [uint32[]]@($pids | ForEach-Object { [uint32]$_ })
-
-  # Prefer largest visible HWND; also stamp every top-level window for the PID
-  # (Chrome popups / wrong MainWindowHandle previously caused OK_ICON but blank taskbar).
   $primary = [IntPtr]::Zero
-  foreach ($procId in $pids) {
-    $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
-    if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) {
-      $primary = $p.MainWindowHandle
-      break
+  $all = @()
+
+  if ($pids -and $pids.Count -gt 0) {
+    $pidArr = [uint32[]]@($pids | ForEach-Object { [uint32]$_ })
+    # Prefer largest visible HWND; also stamp every top-level window for the PID
+    # (Chrome popups / wrong MainWindowHandle previously caused OK_ICON but blank taskbar).
+    foreach ($procId in $pids) {
+      $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
+      if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowHandle -ne 0) {
+        $primary = $p.MainWindowHandle
+        break
+      }
+    }
+    if ($primary -eq [IntPtr]::Zero) {
+      $primary = [StealthTaskbarWin]::FindVisibleHwnd($pidArr)
+    }
+    $all = @([StealthTaskbarWin]::FindAllVisibleHwnds($pidArr))
+    if ($primary -ne [IntPtr]::Zero -and ($all.Count -eq 0 -or -not ($all | Where-Object { $_ -eq $primary }))) {
+      $all = @($primary) + $all
     }
   }
-  if ($primary -eq [IntPtr]::Zero) {
-    $primary = [StealthTaskbarWin]::FindVisibleHwnd($pidArr)
-  }
-  $all = @([StealthTaskbarWin]::FindAllVisibleHwnds($pidArr))
-  if ($primary -ne [IntPtr]::Zero -and ($all.Count -eq 0 -or -not ($all | Where-Object { $_ -eq $primary }))) {
-    $all = @($primary) + $all
+  foreach ($h in $titleHwnds) {
+    if ($h -eq [IntPtr]::Zero) { continue }
+    if ($all.Count -eq 0 -or -not ($all | Where-Object { $_ -eq $h })) {
+      $all = @($all) + $h
+    }
   }
 
   foreach ($h in $all) {

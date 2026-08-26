@@ -92,11 +92,11 @@ function installProfileTitlePrefix(label) {
 }
 
 /** Chromium wipes WM_SETICON on title/nav — keep re-stamping after open.
- * Late passes (25s+) cover profiles that render their first page slowly and get their
- * icon reset well after the early chain finished. */
-const BADGE_RECOVER_DELAYS_MS = Object.freeze([
-  800, 1800, 3500, 6000, 10_000, 16_000, 25_000, 40_000, 60_000,
-]);
+ * 4 passes (not 9): 18×9 recover jobs used to serialize the 4 workers and starve
+ * later profiles. Guard (20s, never-OK first) covers the long tail. */
+const BADGE_RECOVER_DELAYS_MS = Object.freeze([800, 2500, 8000, 20_000]);
+/** Guard/reinforce may preempt an apply stuck on a dead WMI/worker (~12s+). */
+const INFLIGHT_STALE_MS = 12_000;
 
 function queueBadgeRecoverPasses(dir, title, digits, browserPid, headless) {
   for (const ms of BADGE_RECOVER_DELAYS_MS) {
@@ -141,13 +141,16 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
     if (prev.okAt && Date.now() - prev.okAt < 8_000) return;
   }
 
-  // Reinforce / nav restamp: never abort open-path mid-flight (drops recover chain).
-  // Mark needsRestamp so the pass still runs after the in-flight apply — dropping
-  // it starved profiles 6+ while they sat queued on the worker.
+  // Reinforce / nav restamp: never abort a fresh open-path (drops recover chain).
+  // Stale inFlight (WMI hang / worker timeout) used to block guard forever → only
+  // the first ~10 burst-open profiles kept a badge.
   if (isReinforce && prev?.digits === digits && prev.inFlight) {
-    if (browserPid > 0) prev.browserPid = browserPid;
-    prev.needsRestamp = true;
-    return;
+    const age = Date.now() - (Number(prev.startedAt) || 0);
+    if (age < INFLIGHT_STALE_MS) {
+      if (browserPid > 0) prev.browserPid = browserPid;
+      prev.needsRestamp = true;
+      return;
+    }
   }
 
   const gen = (prev?.gen || 0) + 1;
@@ -155,6 +158,7 @@ function scheduleProfileTaskbarBadgeApply(userDataDir, label, code, opts = {}) {
     gen,
     digits,
     inFlight: true,
+    startedAt: Date.now(),
     okAt: prev?.okAt || 0,
     browserPid,
     needsRestamp: prev?.needsRestamp === true,
@@ -305,4 +309,6 @@ module.exports = {
   applyProfileWindowTitle,
   scheduleProfileTaskbarBadgeApply,
   lastTaskbarBadgeOkAt,
+  BADGE_RECOVER_DELAYS_MS,
+  INFLIGHT_STALE_MS,
 };

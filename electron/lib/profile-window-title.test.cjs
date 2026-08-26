@@ -5,6 +5,15 @@ const os = require("node:os");
 const fs = require("node:fs");
 const Module = require("node:module");
 
+describe("badge recover cadence", () => {
+  it("keeps recover chain short so burst-open does not starve later stamps", () => {
+    const { BADGE_RECOVER_DELAYS_MS, INFLIGHT_STALE_MS } = require("./profile-window-title.cjs");
+    assert.ok(BADGE_RECOVER_DELAYS_MS.length <= 4);
+    assert.ok(BADGE_RECOVER_DELAYS_MS[BADGE_RECOVER_DELAYS_MS.length - 1] <= 20_000);
+    assert.ok(INFLIGHT_STALE_MS <= 12_000);
+  });
+});
+
 describe("scheduleProfileTaskbarBadgeApply reinforce race", () => {
   it("reinforce does not abort in-flight open (same digits)", async () => {
     const titlePath = require.resolve("./profile-window-title.cjs");

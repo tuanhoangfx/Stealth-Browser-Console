@@ -66,6 +66,7 @@ describe("isRetryableTaskbarFailure", () => {
     assert.equal(isRetryableTaskbarFailure({ ok: true, detail: "OK_ICON" }), false);
     assert.equal(isRetryableTaskbarFailure({ ok: false, reason: "not-running" }), true);
     assert.equal(isRetryableTaskbarFailure({ ok: false, reason: "NOHWND" }), true);
+    assert.equal(isRetryableTaskbarFailure({ ok: false, reason: "no-window" }), true);
     assert.equal(isRetryableTaskbarFailure({ ok: false, reason: "taskbar-apply-worker-request-timeout" }), true);
     assert.equal(isRetryableTaskbarFailure({ ok: false, reason: "empty-title" }), false);
   });

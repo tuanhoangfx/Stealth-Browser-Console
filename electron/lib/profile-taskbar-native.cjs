@@ -457,6 +457,15 @@ async function applyNativeProfileTaskbarChrome(userDataDir, title, code, opts = 
   const dir = path.resolve(String(userDataDir));
   const appId = `StealthBrowser.Profile.${digits}`;
   let browserPid = readTaskbarHintPid(dir, opts.browserPid);
+  if (!browserPid) {
+    try {
+      const { listProfileBrowserPidsByLock } = require("./profile-browser-orphan.cjs");
+      const lockPids = await listProfileBrowserPidsByLock(dir);
+      browserPid = Number(lockPids[0]) || 0;
+    } catch {
+      /* lock probe is best-effort — title HWND fallback covers pid=0 */
+    }
+  }
   const pidWaitMs = Number(opts.pidWaitMs);
   if (!browserPid && pidWaitMs > 0) {
     browserPid = await waitForTaskbarHintPid(dir, opts.browserPid, {
