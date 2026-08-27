@@ -5,7 +5,7 @@
 - Version: `5.1.2`
 - Timestamp: 2026-08-27 15:05 (UTC+7)
 - Type: Patch
-- Status: Draft
+- Status: Committed
 
 ### Changes
 
