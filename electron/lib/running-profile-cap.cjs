@@ -1,30 +1,21 @@
 /**
- * Optional cap on concurrent headed Stealth Chromium.
+ * Concurrent-profile policy — standing order 2026-08-27:
+ * NEVER auto-close a profile, even if 100 are open.
  *
- * 19+ gpu-process can freeze the Windows mouse (NVIDIA TDR / DWM) on this
- * dual-Xeon desk — but a default of 8 silently closed burst-open profiles
- * (looked like “stuck then auto-close”). Default is **off**.
- *
- * Set STEALTH_MAX_RUNNING_PROFILES=16 (or any N>0) to re-enable eviction.
- * 0 / off / unset = do not auto-close.
- *
- * Protected names stay up unless still over the cap after evicting browse profiles.
+ * GPU freeze is accepted. Do not re-introduce eviction, env caps, or
+ * scheduled --apply closers. User Close / API close only.
  */
 "use strict";
 
-/** Legacy GPU-safe hint — not the default. Use resolveMaxRunningProfiles(). */
+/** Historical GPU-safe hint only — never used as a live cap. */
 const MAX_RUNNING_STEALTH_PROFILES = 8;
 
 /**
- * @param {NodeJS.ProcessEnv} [env]
- * @returns {number} 0 = unlimited (no silent close)
+ * @param {NodeJS.ProcessEnv} [_env]
+ * @returns {number} always 0 — unlimited; env is ignored
  */
-function resolveMaxRunningProfiles(env = process.env) {
-  const raw = String(env?.STEALTH_MAX_RUNNING_PROFILES ?? "").trim();
-  if (!raw || /^(0|off|false|none|unlimited)$/i.test(raw)) return 0;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return n;
+function resolveMaxRunningProfiles(_env = process.env) {
+  return 0;
 }
 
 const PROTECTED_NAMES = new Set([
@@ -56,28 +47,11 @@ function isProtectedName(name, keepName) {
 }
 
 /**
- * @param {Array<{ id: string, name?: string }>} running
- * @param {{ max?: number, keepName?: string }} [opts]
+ * Always empty — auto-evict is forbidden.
  * @returns {Array<{ id: string, name?: string }>}
  */
-function pickCloseTargets(running, { max = MAX_RUNNING_STEALTH_PROFILES, keepName } = {}) {
-  const rows = Array.isArray(running) ? running.filter((r) => r && r.id) : [];
-  if (rows.length <= max) return [];
-  const overflow = rows.length - max;
-  const evict = [];
-  const keep = [];
-  for (const row of rows) {
-    if (isProtectedName(row.name, keepName)) keep.push(row);
-    else evict.push(row);
-  }
-  const out = evict.slice(0, overflow);
-  if (out.length < overflow) {
-    const extra = keep.filter(
-      (row) => nameKey(row.name) !== "0059" && nameKey(row.name) !== nameKey(keepName),
-    );
-    out.push(...extra.slice(0, overflow - out.length));
-  }
-  return out;
+function pickCloseTargets(_running, _opts) {
+  return [];
 }
 
 module.exports = {

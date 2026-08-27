@@ -19,7 +19,6 @@ const { markProfileChromeCleanExit } = require("../lib/profile-chrome-session.cj
 const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks, writeSidecarPid, readSidecarPid, removeSidecarPid, waitForProfileUnlock } = require("../lib/profile-user-data-repair.cjs");
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
-const { pickCloseTargets, resolveMaxRunningProfiles } = require("../lib/running-profile-cap.cjs");
 
 function launchMeta(profile) {
   const agentSmoke = isAgentSmokeLaunch();
@@ -354,7 +353,7 @@ class SessionManager {
     if (session) session.watchdog = watchdog;
   }
 
-  async #tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl = false, allowKillOrphan = false } = {}) {
+  async #tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl = false } = {}) {
     const id = String(profile.id);
     const profileCode = extractProfileCode(profile.name, profile.id);
     const sidecar = readSidecarPid(userDataDir);
@@ -400,9 +399,9 @@ class SessionManager {
       }
     }
     if (!focused.ok) {
-      const staleLock = focused.reason === "not-running";
-      const lastChancePwa = allowKillOrphan && focused.reason === "no-window";
-      if (staleLock || lastChancePwa) {
+      // Only reap a truly dead process. Never kill no-window (HWND not ready) —
+      // burst-open / 100 profiles must stay up (standing order 2026-08-27).
+      if (focused.reason === "not-running") {
         await killOrphanProfileBrowser(userDataDir);
         removeStaleProfileLocks(userDataDir);
       }
@@ -781,7 +780,6 @@ class SessionManager {
         if (attempt > 0) {
           const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, {
             skipStartupUrl,
-            allowKillOrphan: attempt >= 2,
           });
           if (retried) return retried;
           await repairProfileUserDataDir(userDataDir);
@@ -803,19 +801,16 @@ class SessionManager {
         if (attempt < 2 && isLaunchLockError(error)) {
           const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, {
             skipStartupUrl,
-            allowKillOrphan: attempt >= 2,
           });
           if (retried) return retried;
-          // If another instance is in the middle of starting (process already exists)
-          // we avoid killing it immediately — wait a moment and retry attach/focus.
           const alive = await hasProfileBrowserProcess(userDataDir);
           if (alive) {
             await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
             const retried2 = await this.#tryAttachOrFocusOrphan(profile, userDataDir, {
               skipStartupUrl,
-              allowKillOrphan: attempt >= 2,
             });
             if (retried2) return retried2;
+            continue;
           }
           await killOrphanProfileBrowser(userDataDir);
           await repairProfileUserDataDir(userDataDir);
@@ -914,23 +909,8 @@ class SessionManager {
     );
   }
 
-  async #enforceRunningCap(keepProfile) {
-    const max = resolveMaxRunningProfiles();
-    if (max <= 0) return;
-    const victims = pickCloseTargets(this.listRunning(), {
-      max,
-      keepName: keepProfile?.name,
-    });
-    if (victims.length) {
-      console.warn("[session] running-cap", max, "closing", victims.map((r) => r.name).join(","));
-    }
-    for (const row of victims) {
-      try {
-        await this.close(row.id);
-      } catch {
-        /* best-effort — launch must still proceed */
-      }
-    }
+  async #enforceRunningCap(_keepProfile) {
+    /* Standing order 2026-08-27: never auto-close, even at 100 running. */
   }
 
   listRunning() {

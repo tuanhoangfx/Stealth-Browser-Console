@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v5.1.2-stable",
-  "version": "5.1.2",
+  "label": "v6.1.1-stable",
+  "version": "6.1.1",
   "gitCommit": null,
-  "gitTag": "v5.1.2-stable",
+  "gitTag": "v6.1.1-stable",
   "packagedFrom": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
   "notes": "v1.0.184: FilterBar row-tools flex (search fills past actions col). Installer + win-unpacked pinned.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-5.1.2.exe",
+    "installer": "Stealth-Browser-Console-Setup-6.1.1.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "fzcMT8VVgfAqaYV49KWmY6RB0Ctmw5ZuiDrC42948sIza9CxA79S2U4chOZK7mCZaA4v8N9rGG6nIVd4Qwf28w==",
-    "capturedAt": "2026-08-27T08:20:23.486Z"
+    "sha512": "gsYJwPyQRqDeUDU2aaD95tHklW+Jm8wDsoZOFTNUxsa/T5QqSyI5wYY/DJUlgy2NV9QA2h4CXH4XBu4yayzBqQ==",
+    "capturedAt": "2026-08-27T08:31:06.791Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

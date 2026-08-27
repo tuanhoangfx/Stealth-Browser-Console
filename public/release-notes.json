@@ -1,12 +1,13 @@
 {
-  "generatedAt": "2026-08-27T08:31:09.445Z",
+  "generatedAt": "2026-08-27T11:29:40.762Z",
   "entries": [
     {
-      "version": "6.1.1",
+      "version": "7.1.1",
       "date": "2026-08-27",
-      "at": "2026-08-27T15:25:00+07:00",
+      "at": "2026-08-27T18:29:00+07:00",
       "title": "Patch bump for completed agent task (release)",
       "bullets": [
+        "Release Major bump (P0003): 6.1.1 → 7.1.1 (MAJOR+1, MINOR=1, PATCH=1).",
         "Release Major bump (P0003): 5.1.3 → 6.1.1 (MAJOR+1, MINOR=1, PATCH=1).",
         "Release Major bump (P0003): 4.1.4 → 5.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
       ],
@@ -14,6 +15,7 @@
       "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
+        "Release Major bump : 6.1.1 → 7.1.1 .",
         "Release Major bump : 5.1.3 → 6.1.1 .",
         "Release Major bump : 4.1.4 → 5.1.1 ."
       ]
