@@ -2,6 +2,22 @@
 
 ## 2026-08-27 - Patch bump for completed agent task (release)
 
+- Version: `5.1.2`
+- Timestamp: 2026-08-27 15:05 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-27 - Patch bump for completed agent task (release)
+
 - Version: `5.1.1`
 - Timestamp: 2026-08-27 15:04 (UTC+7)
 - Type: Patch
