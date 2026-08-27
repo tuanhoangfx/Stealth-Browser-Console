@@ -748,6 +748,7 @@ export {
   directoryCellHoverTitle,
   directoryCellNeedsRichTooltip,
 } from "./lib/directory-cell-hover";
+export { safeTrim } from "./lib/safe-trim";
 export {
   copyTextWithExecCommand,
   copyTextWithFallback,
@@ -760,6 +761,7 @@ export {
 export {
   HUB_DIRECTORY_POPOVER_OFFSET_PX,
   hubDirectoryPopoverPosition,
+  sameHubDirectoryPopoverPos,
 } from "./lib/hub-directory-popover";
 export {
   CRM_ORDER_DETAILS_EMAIL_REGEX,
@@ -801,6 +803,7 @@ export {
   crmOrderCountsForLiveUsage,
   crmOrderCountsForUsageBucket,
   crmOrderSubscriptionIsLive,
+  crmOrderUsageHitAllowedForSubject,
   lookupCrmOrderUsage,
   lookupTeamMemberCrmOrderUsage,
   lookupTeamSharedPlanCrmOrderUsage,
@@ -1954,7 +1957,9 @@ export {
 export {
   HubVersionUpdateStatusIcon,
   hubDesktopUpdateOwnsTrigger,
+  hubDesktopUpdateShouldRecheckOnOpen,
   hubDesktopUpdateActionLabel,
+  hubDesktopUpdateChromeLabel,
   type HubVersionUpdateState,
   type HubVersionDesktopUpdate,
   type HubVersionUpdateStatusIconProps,

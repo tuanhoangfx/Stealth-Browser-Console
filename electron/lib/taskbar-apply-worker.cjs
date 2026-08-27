@@ -1,6 +1,6 @@
 /**
  * Persistent PowerShell workers for hot-path taskbar apply (avoids ~3–4s spawn per call).
- * Pool of 4 — burst-open used to serialize 13+ profiles on one worker and starve later stamps.
+ * Pool of 6 — burst-open used to serialize 13+ profiles on one worker and starve later stamps.
  */
 const { spawn } = require("node:child_process");
 const readline = require("node:readline");
@@ -8,7 +8,7 @@ const readline = require("node:readline");
 const { resolvePowerShell, resolveElectronLibScript } = require("./powershell-exec.cjs");
 
 const WORKER_PS1 = resolveElectronLibScript("stealth-taskbar-apply-worker.ps1");
-const WORKER_POOL_SIZE = 4;
+const WORKER_POOL_SIZE = 6;
 
 /** @typedef {{ worker: import('node:child_process').ChildProcessWithoutNullStreams | null, rl: import('node:readline').Interface | null, ready: boolean, pending: Map<number, { resolve: Function, reject: Function, timer: NodeJS.Timeout }>, tail: Promise<unknown>, queued: number }} WorkerSlot */
 

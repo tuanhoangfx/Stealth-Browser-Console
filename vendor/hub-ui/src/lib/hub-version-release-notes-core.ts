@@ -193,7 +193,7 @@ export function ensureHubReleaseNotesIncludeCurrent(
     title: `chore: release v${cur}`,
     bullets: [],
     kind: "improve",
-    userTitle: "Latest version",
+    userTitle: "Current version",
     userSummary: "",
     userHighlights: ["Maintenance and polish since the last documented release."],
   };

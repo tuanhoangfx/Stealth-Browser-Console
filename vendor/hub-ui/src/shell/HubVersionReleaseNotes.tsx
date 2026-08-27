@@ -15,10 +15,13 @@ import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetail
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { compactIconSize } from "../ui-scale";
+import { HUB_HEADER_PANEL_BTN_CLASS } from "./HubHeaderPanelButton";
 import {
   HubVersionUpdateStatusIcon,
   hubDesktopUpdateActionLabel,
+  hubDesktopUpdateChromeLabel,
   hubDesktopUpdateOwnsTrigger,
+  hubDesktopUpdateShouldRecheckOnOpen,
   type HubVersionDesktopUpdate,
 } from "./HubVersionUpdateStatusIcon";
 import {
@@ -357,6 +360,9 @@ export function HubVersionReleaseNotes({
   const desktopActionLabel = desktopUpdate
     ? hubDesktopUpdateActionLabel(desktopUpdate.state, desktopUpdate.progress)
     : null;
+  const desktopChromeLabel = desktopUpdate
+    ? hubDesktopUpdateChromeLabel(desktopUpdate.state, desktopUpdate.progress)
+    : null;
   const triggerTitle = bundleStale
     ? `Older bundle — reload for v${currentVersion || version}`
     : desktopOwnsTrigger
@@ -392,8 +398,15 @@ export function HubVersionReleaseNotes({
             return;
           }
           setOpen(true);
+          if (desktopUpdate && hubDesktopUpdateShouldRecheckOnOpen(desktopUpdate.state)) {
+            desktopUpdate.onAction();
+          }
         }}
-        className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm transition-opacity hover:opacity-90"
+        className={
+          desktopChromeLabel
+            ? `${HUB_HEADER_PANEL_BTN_CLASS} text-xs font-medium transition-opacity hover:opacity-90`
+            : "relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm transition-opacity hover:opacity-90"
+        }
       >
         {desktopOwnsTrigger && desktopUpdate ? (
           <HubVersionUpdateStatusIcon
@@ -404,6 +417,7 @@ export function HubVersionReleaseNotes({
         ) : (
           <TriggerIcon size={compactIconSize(13)} className={`shrink-0 ${triggerIconClass}`} aria-hidden />
         )}
+        {desktopChromeLabel ? <span>{desktopChromeLabel}</span> : null}
       </button>
 
       <HubToolDetailModal

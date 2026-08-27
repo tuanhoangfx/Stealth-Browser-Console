@@ -5,7 +5,7 @@ const profileService = require("../db/profile-service.cjs");
 const { navigateStartupUrl, awaitBrowserReady, stabilizePrimaryPage } = require("../automation/navigate-startup.cjs");
 const { getFreePort, waitForCdp } = require("../lib/net-port.cjs");
 const { extractProfileCode } = require("../lib/profile-code.cjs");
-const { applyProfileWindowTitle, formatProfileWindowLabel, scheduleProfileTaskbarBadgeApply } = require("../lib/profile-window-title.cjs");
+const { applyProfileWindowTitle, formatProfileWindowLabel, scheduleProfileTaskbarBadgeApply, scheduleMissingBadgeSweep } = require("../lib/profile-window-title.cjs");
 const {
   focusProfileBrowserWindow,
   hasProfileBrowserProcess,
@@ -19,6 +19,7 @@ const { markProfileChromeCleanExit } = require("../lib/profile-chrome-session.cj
 const { repairProfileUserDataDir, purgeProfileUserDataDir, removeStaleProfileLocks, writeSidecarPid, readSidecarPid, removeSidecarPid, waitForProfileUnlock } = require("../lib/profile-user-data-repair.cjs");
 const { bindOmniboxSearchGuard } = require("../lib/omnibox-search-guard.cjs");
 const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
+const { pickCloseTargets, resolveMaxRunningProfiles } = require("../lib/running-profile-cap.cjs");
 
 function launchMeta(profile) {
   const agentSmoke = isAgentSmokeLaunch();
@@ -287,6 +288,7 @@ class SessionManager {
     // Early apply — do not block on startup URL. Post-nav reinforce updates PID only
     // (same-code in-flight is not cancelled — cancel race caused missing badges).
     scheduleOpenBadge(browserPid || readSidecarPid(opened.userDataDir)?.pid || 0);
+    this.#scheduleMissingBadgeSweep();
 
     void (async () => {
       try {
@@ -352,7 +354,7 @@ class SessionManager {
     if (session) session.watchdog = watchdog;
   }
 
-  async #tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl = false } = {}) {
+  async #tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl = false, allowKillOrphan = false } = {}) {
     const id = String(profile.id);
     const profileCode = extractProfileCode(profile.name, profile.id);
     const sidecar = readSidecarPid(userDataDir);
@@ -387,12 +389,20 @@ class SessionManager {
       return null;
     }
 
-    const focused = await focusProfileBrowserWindow(userDataDir);
+    let focused = await focusProfileBrowserWindow(userDataDir);
+    // Burst-open: Chromium writes SingletonLock before HWND exists. Killing on the
+    // first no-window miss closes the just-spawned profile (“stuck then auto-close”).
+    if (!focused.ok && focused.reason === "no-window") {
+      for (let i = 0; i < 4 && focused.reason === "no-window"; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        focused = await focusProfileBrowserWindow(userDataDir);
+        if (focused.ok) break;
+      }
+    }
     if (!focused.ok) {
-      // Live Chrome holds the profile (often Taskbar PWA / --app-id) but has no
-      // focusable Stealth window. Kill so the next openProfile can reclaim the dir
-      // instead of failing with "Opening in existing browser session".
-      if (focused.reason === "no-window" || focused.reason === "not-running") {
+      const staleLock = focused.reason === "not-running";
+      const lastChancePwa = allowKillOrphan && focused.reason === "no-window";
+      if (staleLock || lastChancePwa) {
         await killOrphanProfileBrowser(userDataDir);
         removeStaleProfileLocks(userDataDir);
       }
@@ -415,6 +425,7 @@ class SessionManager {
       profileCode,
       { browserPid: focusPid, headless: launchMeta(profile).headless, force: true },
     );
+    this.#scheduleMissingBadgeSweep();
 
     this.#sessions.set(id, {
       context: null,
@@ -757,6 +768,8 @@ class SessionManager {
     }
     if (attached) return attached;
 
+    await this.#enforceRunningCap(profile);
+
     // Live orphan found (often Chrome App/PWA on AppData junction path) but attach failed —
     // must repair before first launch or ProcessSingleton Error 32 aborts immediately.
     if (prep?.live || profileDirHasLock(userDataDir)) {
@@ -766,7 +779,10 @@ class SessionManager {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         if (attempt > 0) {
-          const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
+          const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, {
+            skipStartupUrl,
+            allowKillOrphan: attempt >= 2,
+          });
           if (retried) return retried;
           await repairProfileUserDataDir(userDataDir);
           await new Promise((resolve) => setTimeout(resolve, 280 * attempt));
@@ -785,14 +801,20 @@ class SessionManager {
       } catch (error) {
         lastError = error;
         if (attempt < 2 && isLaunchLockError(error)) {
-          const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
+          const retried = await this.#tryAttachOrFocusOrphan(profile, userDataDir, {
+            skipStartupUrl,
+            allowKillOrphan: attempt >= 2,
+          });
           if (retried) return retried;
           // If another instance is in the middle of starting (process already exists)
           // we avoid killing it immediately — wait a moment and retry attach/focus.
           const alive = await hasProfileBrowserProcess(userDataDir);
           if (alive) {
             await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
-            const retried2 = await this.#tryAttachOrFocusOrphan(profile, userDataDir, { skipStartupUrl });
+            const retried2 = await this.#tryAttachOrFocusOrphan(profile, userDataDir, {
+              skipStartupUrl,
+              allowKillOrphan: attempt >= 2,
+            });
             if (retried2) return retried2;
           }
           await killOrphanProfileBrowser(userDataDir);
@@ -875,6 +897,39 @@ class SessionManager {
       };
     } catch (error) {
       return { ok: false, port, reason: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  #scheduleMissingBadgeSweep() {
+    scheduleMissingBadgeSweep(() =>
+      this.listRunning()
+        .filter((row) => !row.headless)
+        .map((row) => ({
+          userDataDir: row.userDataDir,
+          label: formatProfileWindowLabel(profileService.getProfile(row.id) || { name: row.name, id: row.id }),
+          code: extractProfileCode(row.name, row.id),
+          browserPid: readSidecarPid(row.userDataDir)?.pid || 0,
+          headless: row.headless,
+        })),
+    );
+  }
+
+  async #enforceRunningCap(keepProfile) {
+    const max = resolveMaxRunningProfiles();
+    if (max <= 0) return;
+    const victims = pickCloseTargets(this.listRunning(), {
+      max,
+      keepName: keepProfile?.name,
+    });
+    if (victims.length) {
+      console.warn("[session] running-cap", max, "closing", victims.map((r) => r.name).join(","));
+    }
+    for (const row of victims) {
+      try {
+        await this.close(row.id);
+      } catch {
+        /* best-effort — launch must still proceed */
+      }
     }
   }
 

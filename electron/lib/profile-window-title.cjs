@@ -284,6 +284,41 @@ function lastTaskbarBadgeOkAt(userDataDir) {
   return Number(badgeApplyState.get(dir)?.okAt) || 0;
 }
 
+/** @type {ReturnType<typeof setTimeout> | null} */
+let missingBadgeSweepTimer = null;
+
+/**
+ * After burst-open, restamp dirs that never got OK_ICON (later windows used to starve).
+ * @param {() => Array<{ userDataDir?: string, label?: string, code?: string, browserPid?: number, headless?: boolean }>} listRunning
+ */
+function scheduleMissingBadgeSweep(listRunning, { delayMs = 2500 } = {}) {
+  if (typeof listRunning !== "function") return;
+  if (missingBadgeSweepTimer) clearTimeout(missingBadgeSweepTimer);
+  missingBadgeSweepTimer = setTimeout(() => {
+    missingBadgeSweepTimer = null;
+    let rows = [];
+    try {
+      rows = listRunning() || [];
+    } catch {
+      return;
+    }
+    for (const row of rows) {
+      const dir = String(row?.userDataDir || "").trim();
+      if (!dir || row.headless) continue;
+      if (lastTaskbarBadgeOkAt(dir)) continue;
+      const code = String(row.code || row.label || "").trim();
+      if (!code) continue;
+      scheduleProfileTaskbarBadgeApply(dir, row.label || code, code, {
+        browserPid: Number(row.browserPid) || 0,
+        headless: false,
+        force: true,
+        isReinforce: true,
+      });
+    }
+  }, delayMs);
+  if (typeof missingBadgeSweepTimer.unref === "function") missingBadgeSweepTimer.unref();
+}
+
 async function applyProfileWindowTitle(context, profile, opts = {}) {
   if (!context) return;
   const label = formatProfileWindowLabel(profile);
@@ -309,6 +344,7 @@ module.exports = {
   applyProfileWindowTitle,
   scheduleProfileTaskbarBadgeApply,
   lastTaskbarBadgeOkAt,
+  scheduleMissingBadgeSweep,
   BADGE_RECOVER_DELAYS_MS,
   INFLIGHT_STALE_MS,
 };

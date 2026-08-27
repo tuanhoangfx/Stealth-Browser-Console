@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-08-27 - Patch bump for completed agent task (release)
+
+- Version: `5.1.1`
+- Timestamp: 2026-08-27 15:04 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0003): 4.1.4 → 5.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
+## 2026-08-27 - Patch bump for completed agent task
+
+- Version: `4.1.4`
+- Timestamp: 2026-08-27 14:48 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-27 - Patch bump for completed agent task
+
+- Version: `4.1.3`
+- Timestamp: 2026-08-27 04:39 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-27 - Patch bump for completed agent task
+
+- Version: `4.1.2`
+- Timestamp: 2026-08-27 04:38 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-26 - Patch bump for completed agent task (release)
 
 - Version: `4.1.1`

@@ -34,6 +34,7 @@ runStep("taskbar-title-match", "node", ["--test", "electron/lib/taskbar-title-ma
 runStep("taskbar-badge-guard", "node", ["--test", "electron/lib/taskbar-badge-guard.test.cjs"]);
 runStep("taskbar-apply-worker", "node", ["--test", "electron/lib/taskbar-apply-worker.test.cjs"]);
 runStep("profile-code", "node", ["--test", "electron/lib/profile-code.test.cjs"]);
+runStep("running-profile-cap", "node", ["--test", "electron/lib/running-profile-cap.test.cjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);
 runStep("refresh-hub-ui-node-link", "node", [
   path.join(root, "..", "scripts", "refresh-hub-ui-node-link.cjs"),

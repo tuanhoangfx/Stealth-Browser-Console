@@ -26,6 +26,12 @@ function runtimeChannel() {
   return "installer";
 }
 
+const RECHECK_INTERVAL_MS = 30 * 60 * 1000;
+const FOCUS_RECHECK_MS = 15 * 60 * 1000;
+let lastCheckAt = 0;
+/** @type {ReturnType<typeof setInterval> | null} */
+let recheckTimer = null;
+
 let updateStatus = {
   state: app.isPackaged ? "idle" : "dev",
   runtime: runtimeChannel(),
@@ -81,10 +87,11 @@ function friendlyUpdateError(error) {
 function applyUpdaterRequestHeaders(autoUpdater) {
   const token = resolveUpdaterGhToken(app);
   if (!token) return false;
+  // Authorization only — do not set Accept: octet-stream on every request
+  // (breaks GitHub /releases/latest JSON used to discover latest.yml).
   autoUpdater.requestHeaders = {
     ...(autoUpdater.requestHeaders || {}),
     Authorization: `Bearer ${token}`,
-    Accept: "application/octet-stream",
   };
   return true;
 }
@@ -191,6 +198,7 @@ async function checkForDesktopUpdates() {
   }
 
   try {
+    lastCheckAt = Date.now();
     setUpdateStatus({
       state: "checking",
       message: "Checking GitHub Releases for a new version...",
@@ -285,11 +293,20 @@ function bindDesktopUpdaterIpc() {
 function attachDesktopUpdaterWindow(win) {
   mainWindow = win;
   setUpdateStatus(updateStatus);
-  if (app.isPackaged) {
-    setTimeout(() => {
+  if (!app.isPackaged) return;
+  setTimeout(() => {
+    checkForDesktopUpdates().catch((error) => console.error("[updater]", error));
+  }, 3000);
+  if (!recheckTimer) {
+    recheckTimer = setInterval(() => {
       checkForDesktopUpdates().catch((error) => console.error("[updater]", error));
-    }, 3000);
+    }, RECHECK_INTERVAL_MS);
+    if (typeof recheckTimer.unref === "function") recheckTimer.unref();
   }
+  win.on("focus", () => {
+    if (Date.now() - lastCheckAt < FOCUS_RECHECK_MS) return;
+    checkForDesktopUpdates().catch((error) => console.error("[updater]", error));
+  });
 }
 
 module.exports = {

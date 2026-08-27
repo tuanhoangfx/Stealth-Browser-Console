@@ -14,6 +14,46 @@ describe("badge recover cadence", () => {
   });
 });
 
+describe("scheduleMissingBadgeSweep", () => {
+  it("restamps only dirs that never got OK_ICON", async () => {
+    const titlePath = require.resolve("./profile-window-title.cjs");
+    const nativePath = require.resolve("./profile-taskbar-native.cjs");
+    delete require.cache[titlePath];
+    delete require.cache[nativePath];
+    const applied = [];
+    const realNative = require("./profile-taskbar-native.cjs");
+    require.cache[nativePath].exports = {
+      ...realNative,
+      shouldSkipTaskbarBadge: () => false,
+      readTaskbarHintPid: () => 7,
+      waitForTaskbarHintPid: async () => 7,
+      ensureBadgeIcoFast: async () => path.join(os.tmpdir(), "stealth-badge-sweep.ico"),
+      applyNativeProfileTaskbarChromeWithRetry: async (dir, title, digits) => {
+        applied.push(digits);
+        return { ok: true, detail: "OK_ICON", via: "test" };
+      },
+    };
+    delete require.cache[titlePath];
+    const { scheduleMissingBadgeSweep } = require("./profile-window-title.cjs");
+    const missing = path.join(os.tmpdir(), `stealth-sweep-miss-${Date.now()}`);
+    fs.mkdirSync(missing, { recursive: true });
+    try {
+      scheduleMissingBadgeSweep(
+        () => [
+          { userDataDir: missing, label: "1103", code: "1103", browserPid: 7, headless: false },
+        ],
+        { delayMs: 20 },
+      );
+      await new Promise((r) => setTimeout(r, 80));
+      assert.ok(applied.includes("1103"));
+    } finally {
+      delete require.cache[titlePath];
+      delete require.cache[nativePath];
+      fs.rmSync(missing, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("scheduleProfileTaskbarBadgeApply reinforce race", () => {
   it("reinforce does not abort in-flight open (same digits)", async () => {
     const titlePath = require.resolve("./profile-window-title.cjs");
