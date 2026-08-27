@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-27 - Patch bump for completed agent task (release)
+
+- Version: `6.1.1`
+- Timestamp: 2026-08-27 15:25 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0003): 5.1.3 → 6.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-27 - Patch bump for completed agent task (release) (ship)
 
 - Version: `5.1.3`

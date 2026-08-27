@@ -1,33 +1,20 @@
 {
-  "generatedAt": "2026-08-27T08:25:03.636Z",
+  "generatedAt": "2026-08-27T08:25:26.680Z",
   "entries": [
     {
-      "version": "5.1.3",
+      "version": "6.1.1",
       "date": "2026-08-27",
-      "at": "2026-08-27T08:25:03.636Z",
-      "title": "chore: release v5.1.3",
-      "bullets": [
-        "Maintenance and polish since the last documented release."
-      ],
-      "kind": "improve",
-      "userTitle": "Release v5.1.3",
-      "userSummary": "",
-      "userHighlights": [
-        "Maintenance and polish since the last documented release."
-      ]
-    },
-    {
-      "version": "5.1.1",
-      "date": "2026-08-27",
-      "at": "2026-08-27T15:04:00+07:00",
+      "at": "2026-08-27T15:25:00+07:00",
       "title": "Patch bump for completed agent task (release)",
       "bullets": [
+        "Release Major bump (P0003): 5.1.3 → 6.1.1 (MAJOR+1, MINOR=1, PATCH=1).",
         "Release Major bump (P0003): 4.1.4 → 5.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
       ],
       "kind": "improve",
       "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
+        "Release Major bump : 5.1.3 → 6.1.1 .",
         "Release Major bump : 4.1.4 → 5.1.1 ."
       ]
     },
@@ -189,6 +176,21 @@
         "Profile-browser-orphan: has Profile Browser Process no longer trusts sidecar PID alone .",
         "Session-manager close: kill orphan PWAs + remove Sidecar Pid + wait For Profile Unlock",
         "Wait For Profile Unlock default timeout raised to 3200ms."
+      ]
+    },
+    {
+      "version": "1.0.184",
+      "date": "2026-08-13",
+      "at": "2026-08-13T11:22:00+07:00",
+      "title": "FilterBar row-tools flex (search fills past actions col)",
+      "bullets": [
+        "hub-ui FilterBar: row-tools / row-band flex rows - desktop no longer shares a 2-col grid with bulk actions (actions inflated col2 to ~180px search gap)."
+      ],
+      "kind": "improve",
+      "userTitle": "Filter Bar row-tools flex",
+      "userSummary": "",
+      "userHighlights": [
+        "Hub-ui Filter Bar: row-tools row-band flex rows - desktop no longer shares a 2-col grid with bulk…"
       ]
     }
   ]
