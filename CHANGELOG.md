@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-27 - Patch bump for completed agent task (release) (ship)
+
+- Version: `5.1.3`
+- Timestamp: 2026-08-27 15:24 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump for Deploy (P0003): WIP after published v5.1.2.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-27 - Patch bump for completed agent task (release)
 
 - Version: `5.1.2`

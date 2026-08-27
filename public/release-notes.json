@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-08-27T08:20:26.568Z",
+  "generatedAt": "2026-08-27T08:25:00.384Z",
   "entries": [
     {
-      "version": "5.1.2",
+      "version": "5.1.3",
       "date": "2026-08-27",
-      "at": "2026-08-27T08:20:26.568Z",
-      "title": "chore: release v5.1.2",
+      "at": "2026-08-27T08:25:00.383Z",
+      "title": "chore: release v5.1.3",
       "bullets": [
         "Maintenance and polish since the last documented release."
       ],
       "kind": "improve",
-      "userTitle": "Release v5.1.2",
+      "userTitle": "Release v5.1.3",
       "userSummary": "",
       "userHighlights": [
         "Maintenance and polish since the last documented release."
