@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { emitHubAppLog } from "@tool-workspace/hub-ui";
-import { formatStealthLifecycleLogLine, type StealthLifecycleLogEntry } from "../lib/stealth-lifecycle-log";
+import { formatStealthLifecycleLogLine, type StealthLifecycleLogEntry } from "../../lib/stealth-lifecycle-log";
 
 /** Hydrate packaged boot/shutdown rows into Header Log once per session. */
 export function StealthLifecycleLogBoot() {
