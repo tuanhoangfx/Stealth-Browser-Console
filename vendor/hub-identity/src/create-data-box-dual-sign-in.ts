@@ -25,6 +25,9 @@ import {
 } from "./workspace-dual-sign-in";
 import { WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS } from "./workspace-auth-session";
 
+/** Drift auto-heal: sync-mirror-password + retry — only runs after Data Box invalid-credentials. */
+export const WORKSPACE_DATABOX_PASSWORD_SYNC_TIMEOUT_MS = 8_000;
+
 export type DataBoxDualSignInResult = {
   identitySession: Session | null;
   dataSession: Session | null;
@@ -262,7 +265,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
             return { session: null, error: again.error?.message ?? lastError };
           },
         }),
-        4_000,
+        WORKSPACE_DATABOX_PASSWORD_SYNC_TIMEOUT_MS,
       ).catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         return { session: null as Session | null, error: msg, via: undefined as string | undefined };

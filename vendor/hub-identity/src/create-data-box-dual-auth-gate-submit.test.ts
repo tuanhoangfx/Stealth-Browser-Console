@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDataBoxDualAuthGateSubmit } from "./create-data-box-dual-auth-gate-submit";
 import { HUB_SIGNUP_FAILED_MESSAGE } from "./extract-auth-error-text";
+import { HUB_MIRROR_PASSWORD_DRIFT_MESSAGE } from "./hub-mirror-sign-in-error";
+import { HUB_USERNAME_WRONG_PASSWORD_MESSAGE } from "./hub-auth-submit";
 
 describe("createDataBoxDualAuthGateSubmit", () => {
   it("adopts data session and relays when dual succeeds", async () => {
@@ -61,6 +63,23 @@ describe("createDataBoxDualAuthGateSubmit", () => {
     });
     await expect(onSubmit("x", "y", "signin")).resolves.toMatchObject({
       error: expect.stringContaining("Performance"),
+    });
+  });
+
+  it("rewrites misleading Hub wrong-password copy when Hub ok but data failed", async () => {
+    const onSubmit = createDataBoxDualAuthGateSubmit({
+      signInWorkspaceDual: vi.fn(async () => ({
+        identitySession: { user: { id: "hub" } } as never,
+        dataSession: null,
+        dataError: HUB_USERNAME_WRONG_PASSWORD_MESSAGE,
+        twofaSession: null,
+        twofaError: null,
+      })),
+      adoptSession: vi.fn(),
+      dataPlaneLabel: "workspace",
+    });
+    await expect(onSubmit("haikd01", "pw", "signin")).resolves.toMatchObject({
+      error: HUB_MIRROR_PASSWORD_DRIFT_MESSAGE,
     });
   });
 

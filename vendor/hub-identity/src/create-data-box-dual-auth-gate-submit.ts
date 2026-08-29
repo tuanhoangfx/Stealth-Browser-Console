@@ -9,6 +9,7 @@ import {
   fallbackAuthErrorText,
 } from "./extract-auth-error-text";
 import { HUB_AUTH_FETCH_TIMEOUT_MESSAGE } from "./hub-auth-fetch";
+import { rewriteWorkspaceDataPlaneAuthError } from "./hub-mirror-sign-in-error";
 import { WORKSPACE_DUAL_SIGN_IN_TIMEOUT_MS } from "./workspace-auth-session";
 import type { DataBoxDualSignInResult } from "./create-data-box-dual-sign-in";
 
@@ -67,7 +68,10 @@ export function createDataBoxDualAuthGateSubmit(
         timeoutMs,
       );
       if (!dataSession) {
-        const detail = extractAuthErrorText(dataError);
+        const hubValidated = Boolean(identitySession);
+        const detail =
+          rewriteWorkspaceDataPlaneAuthError(extractAuthErrorText(dataError), { hubValidated }) ??
+          extractAuthErrorText(dataError);
         if (isAuthTimeoutCopy(detail)) {
           return { error: AUTH_TIMEOUT_MESSAGE };
         }

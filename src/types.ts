@@ -486,6 +486,20 @@ declare global {
         profileExtensionsEnabled?: boolean;
         extensionToggles?: ExtensionToggles;
       }>;
+      readLifecycleLog: (payload?: { limit?: number }) => Promise<{
+        ok: boolean;
+        entries: Array<{
+          at?: string;
+          kind?: string;
+          reason?: string;
+          version?: string;
+          packaged?: boolean;
+          apiPort?: number;
+          runningProfiles?: number;
+          updateVersion?: string;
+          updateState?: string;
+        }>;
+      }>;
       fetchHostMetrics: () => Promise<HostMetrics>;
       setVaultUserScope: (payload: {
         email?: string | null;
