@@ -98,4 +98,12 @@ describe("explicit Sign Out shell/relay guards", () => {
     optOutDevAutoLogin();
     expect(resolveWorkspaceShellSession(react, cached)).toBeNull();
   });
+
+  it("dual-plane footer stays guest when only Hub cache exists", () => {
+    const cached = { user: { email: "hub@infi.io.vn" } };
+    expect(resolveWorkspaceShellSession(null, cached, { requireDataSession: true })).toBeNull();
+    expect(resolveWorkspaceShellSession({ user: { id: "db" } }, cached, { requireDataSession: true })).toEqual({
+      user: { id: "db" },
+    });
+  });
 });

@@ -24,7 +24,9 @@ export function hubDirectoryPopoverPosition(
   if (popoverHeight > 0 && vpH > 0) {
     const spaceBelow = vpH - rect.bottom - margin;
     const spaceAbove = rect.top - margin;
-    if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
+    // Prefer flip when the panel would sit in the bottom strip (taskbar / board edge).
+    const crampedBelow = spaceBelow < popoverHeight || spaceBelow < 160;
+    if (crampedBelow && spaceAbove > spaceBelow) {
       top = Math.max(margin, rect.top - popoverHeight - gap);
     } else {
       top = Math.min(top, Math.max(margin, vpH - margin - popoverHeight));

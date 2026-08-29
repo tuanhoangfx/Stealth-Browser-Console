@@ -4,6 +4,7 @@ import {
   WORKSPACE_REAUTH_REQUIRED_EVENT,
   resolveDualPlaneToolAccessForPaint,
   shouldForceLoginMissingHubJwt,
+  shouldSignOutWhenHubJwtMissing,
 } from "./workspace-reauth";
 
 describe("workspace-reauth SSOT", () => {
@@ -12,7 +13,11 @@ describe("workspace-reauth SSOT", () => {
     expect(DUAL_PLANE_HUB_JWT_FORCE_LOGIN_MS).toBe(8_000);
   });
 
-  it("forces Login only when workspace data token exists and Hub JWT is empty", () => {
+  it("never Sign Outs the data plane when Hub JWT is missing (login-once)", () => {
+    expect(shouldSignOutWhenHubJwtMissing()).toBe(false);
+  });
+
+  it("detects hydrate-needed when workspace data token exists and Hub JWT is empty", () => {
     expect(
       shouldForceLoginMissingHubJwt({
         hubAccessToken: null,

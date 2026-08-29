@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@supabase/supabase-js";
 import { HUB_UNKNOWN_USER_ID_MESSAGE } from "./hub-auth-submit";
-import { runWorkspaceDualSignIn } from "./workspace-dual-sign-in";
+import { runWorkspaceDualSignIn, shouldRetrySpeculativePlane } from "./workspace-dual-sign-in";
 import { clearHubResolveLoginPrefetch } from "./hub-resolve-login-client";
 
 function mockSession(label: string, email = `u_${label}@auth.infi.internal`): Session {
@@ -13,6 +13,31 @@ function mockSession(label: string, email = `u_${label}@auth.infi.internal`): Se
     user: { id: `${label}-id`, email } as Session["user"],
   } as Session;
 }
+
+describe("shouldRetrySpeculativePlane", () => {
+  it("retries only the empty-email no-op", () => {
+    expect(shouldRetrySpeculativePlane(undefined)).toBe(true);
+    expect(shouldRetrySpeculativePlane({ session: null, error: null })).toBe(true);
+    expect(
+      shouldRetrySpeculativePlane({
+        session: null,
+        error: "Workspace data identity missing (Hub opaque required).",
+      }),
+    ).toBe(true);
+    expect(
+      shouldRetrySpeculativePlane({
+        session: null,
+        error: "Workspace data sign-in timed out. Please try again.",
+      }),
+    ).toBe(false);
+    expect(
+      shouldRetrySpeculativePlane({ session: mockSession("data"), error: null }),
+    ).toBe(false);
+    expect(
+      shouldRetrySpeculativePlane({ session: null, error: "shared-data-plane" }),
+    ).toBe(false);
+  });
+});
 
 describe("runWorkspaceDualSignIn parallel planes", () => {
   afterEach(() => {
@@ -386,6 +411,81 @@ describe("runWorkspaceDualSignIn parallel planes", () => {
     expect(recoverHubSession).toHaveBeenCalledOnce();
     expect(result.identitySession).toBe(recovered);
     expect(hub.auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it("does not re-run a speculative plane that already timed out", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, authEmails: ["czpgo@outlook.com"] }),
+      })),
+    );
+    const hub = {
+      auth: {
+        signInWithPassword: vi.fn(async () => ({
+          data: { session: mockSession("hub", "czpgo@outlook.com") },
+          error: null,
+        })),
+      },
+    };
+    const plane = {
+      authenticate: vi.fn(async () => ({
+        session: null,
+        error: "Workspace data sign-in timed out. Please try again.",
+      })),
+      revokeSpeculativeSession: vi.fn(),
+    };
+
+    const result = await runWorkspaceDualSignIn("czpgo", "secret", "signin", {
+      getHubClient: () => hub as never,
+      cacheHubIdentityFromSession: vi.fn(),
+      planes: [plane],
+    });
+
+    expect(plane.authenticate).toHaveBeenCalledOnce();
+    expect(result.planes[0]?.error).toMatch(/timed out/i);
+    vi.unstubAllGlobals();
+  });
+
+  it("retries a speculative no-op after Hub returns the real email", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, authEmails: ["czpgo@outlook.com"] }),
+      })),
+    );
+    const hub = {
+      auth: {
+        signInWithPassword: vi.fn(async () => ({
+          data: { session: mockSession("hub", "czpgo@outlook.com") },
+          error: null,
+        })),
+      },
+    };
+    const plane = {
+      authenticate: vi
+        .fn()
+        .mockResolvedValueOnce({
+          session: null,
+          error: "Workspace data identity missing (Hub opaque required).",
+        })
+        .mockResolvedValueOnce({ session: mockSession("data"), error: null }),
+      revokeSpeculativeSession: vi.fn(),
+    };
+
+    const result = await runWorkspaceDualSignIn("czpgo", "secret", "signin", {
+      getHubClient: () => hub as never,
+      cacheHubIdentityFromSession: vi.fn(),
+      planes: [plane],
+    });
+
+    expect(plane.authenticate).toHaveBeenCalledTimes(2);
+    expect(result.planes[0]?.session).toBeTruthy();
+    vi.unstubAllGlobals();
   });
 
   it("does not recover when resolve-login finds no user", async () => {

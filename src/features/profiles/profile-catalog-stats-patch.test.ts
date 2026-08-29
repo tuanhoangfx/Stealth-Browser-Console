@@ -31,6 +31,13 @@ describe("profile-catalog-stats-patch", () => {
     expect(stats.opening).toBe(1);
   });
 
+  it("startup-reconciled decrements active buckets like closed", () => {
+    const active = { ...base, closed: 6, opening: 1, running: 2, failed: 1 };
+    const stats = patchCatalogStatsForSessionEvent(active, "startup-reconciled");
+    expect(stats.running).toBe(1);
+    expect(stats.closed).toBe(7);
+  });
+
   it("reconciles patch drift so ready never exceeds total", () => {
     const drifted = { ...base, total: 4999, closed: 5000, opening: 0, running: 0, failed: 0 };
     const stats = catalogStatsToKpiNumbers(drifted);

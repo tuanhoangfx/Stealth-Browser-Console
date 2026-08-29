@@ -60,14 +60,15 @@ export function shouldAcceptHubIdentityRelay(): boolean {
 
 /**
  * Sidebar shell session: never fall back to Hub JWT cache after explicit Sign Out.
- * Otherwise `readCachedHubSession() ?? reactSession` re-paints the footer email
- * when a sibling Hub tab (or bridge) re-broadcasts identity.
+ * Dual-plane hosts (P0020 / P0005): pass `{ requireDataSession: true }` so Hub
+ * identity alone cannot paint a signed-in footer or skip AuthGate.
  */
 export function resolveWorkspaceShellSession<T>(
   reactSession: T | null | undefined,
   cachedHubSession: T | null | undefined,
+  opts?: { requireDataSession?: boolean },
 ): T | null {
-  if (isDevAutoLoginOptedOut()) return reactSession ?? null;
+  if (isDevAutoLoginOptedOut() || opts?.requireDataSession) return reactSession ?? null;
   return reactSession ?? cachedHubSession ?? null;
 }
 

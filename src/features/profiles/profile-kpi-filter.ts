@@ -7,8 +7,9 @@ import {
 import type { ProfileRow } from "../../types";
 import { profileFilterValuesToState, profileStateToFilterValues } from "./profile-filters";
 
+/** Match catalogStatsToKpiNumbers — Running KPI includes profiles still opening. */
 const KPI_STATUS: Record<string, string[]> = {
-  running: ["running"],
+  running: ["running", "opening"],
   failed: ["failed"],
   ready: ["closed"],
 };

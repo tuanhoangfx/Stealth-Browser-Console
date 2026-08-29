@@ -131,7 +131,6 @@ export async function signInWithHubPassword<T extends { session: unknown | null 
     resolveLookupUsed = true;
     const resolved = await resolveHubLoginEmails(login, {
       resolveLoginApiUrl: options.resolveLoginApiUrl,
-      forceRefresh: true,
     });
     extraEmails = resolved.emails;
     resolveLookup = resolved.lookup;

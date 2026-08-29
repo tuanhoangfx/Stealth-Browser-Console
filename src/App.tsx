@@ -19,6 +19,7 @@ import { StealthAppProviders } from "./providers/StealthAppProviders";
 import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "./lib/stealth-product";
 import { StoreExtensionUpdatePrompt } from "./features/system/extensions/StoreExtensionUpdatePrompt";
+import { StealthLifecycleLogBoot } from "./features/system/StealthLifecycleLogBoot";
 
 export function App() {
   return (
@@ -91,6 +92,7 @@ function StealthAppRoot() {
       activeScreen={activeScreenId}
       bootLog={{ scope: "Stealth", message: "Stealth Browser Console started", screen: "profiles" }}
     >
+      <StealthLifecycleLogBoot />
       <StealthAppProviders
         view={view}
         setView={setView}

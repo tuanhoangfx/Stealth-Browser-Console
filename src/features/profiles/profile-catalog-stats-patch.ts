@@ -52,6 +52,7 @@ export function patchCatalogStatsForSessionEvent(
       break;
     case "closed":
     case "storage-released":
+    case "startup-reconciled":
       if (next.running > 0) dec("running");
       else if (next.opening > 0) dec("opening");
       else dec("failed");

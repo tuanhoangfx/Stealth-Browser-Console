@@ -14,6 +14,7 @@ export * from "./hub-admin-recover-client";
 export * from "./hub-recover-api-base";
 export * from "./gotrue-password-grant";
 export * from "./hub-auth-submit";
+export * from "./hub-profile-approval";
 export * from "./hub-resolve-login-client";
 export * from "./hub-auth-warmup";
 export * from "./hub-mirror-sign-in-error";

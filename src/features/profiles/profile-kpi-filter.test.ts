@@ -12,7 +12,7 @@ describe("profileKpiFilterPatch", () => {
   });
 
   it("toggles clear when already active", () => {
-    expect(profileKpiFilterPatch("running", { status: ["running"] })).toEqual({});
+    expect(profileKpiFilterPatch("running", { status: ["running", "opening"] })).toEqual({});
   });
 
   it("clears all filters on total when any active", () => {
@@ -37,13 +37,17 @@ describe("profileKpiFilterPatch", () => {
     );
     expect(stat.active).toBe(false);
     stat.onClick?.();
-    expect(applied).toEqual([{ groupIds: [], statuses: ["running"] }]);
+    expect(applied).toEqual([{ groupIds: [], statuses: ["running", "opening"] }]);
+  });
+
+  it("sets Running filter to running + opening", () => {
+    expect(profileKpiFilterPatch("running", {})).toEqual({ status: ["running", "opening"] });
   });
 
   it("applies state setters for directory chrome", () => {
     expect(applyProfileKpiFilterPatch("running", ["g1"], [])).toEqual({
       groupIds: ["g1"],
-      statuses: ["running"],
+      statuses: ["running", "opening"],
     });
     expect(applyProfileKpiFilterPatch("total", ["g1"], ["running"])).toEqual({
       groupIds: [],

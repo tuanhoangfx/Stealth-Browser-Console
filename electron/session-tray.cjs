@@ -21,6 +21,8 @@ function resolveTrayIcon() {
 function createSessionTray(sessionManager) {
   let tray = null;
   let timer = null;
+  /** @type {{ showConsole?: () => void; requestQuit?: () => void } | null} */
+  let handlers = null;
 
   const refresh = () => {
     if (!tray) return;
@@ -29,14 +31,14 @@ function createSessionTray(sessionManager) {
     tray.setToolTip(
       count > 0
         ? `Stealth Browser Console — ${count} profile${count === 1 ? "" : "s"} running`
-        : "Stealth Browser Console — no profiles running"
+        : "Stealth Browser Console — no profiles running",
     );
 
     const items = running.map((row) => ({
       label: `${row.name || row.id} — focus window`,
       click: () => {
         void sessionManager.focusProfile(row.id);
-      }
+      },
     }));
 
     if (items.length > 0) {
@@ -44,17 +46,34 @@ function createSessionTray(sessionManager) {
     }
     items.push({
       label: count > 0 ? `Running profiles (${count})` : "No running profiles",
-      enabled: false
+      enabled: false,
+    });
+    items.push({ type: "separator" });
+    items.push({
+      label: "Show Console",
+      click: () => handlers?.showConsole?.(),
+    });
+    items.push({
+      label: "Quit",
+      click: () => handlers?.requestQuit?.(),
     });
 
     tray.setContextMenu(Menu.buildFromTemplate(items));
   };
 
-  const start = () => {
-    if (tray) return tray;
+  const start = (nextHandlers = {}) => {
+    handlers = nextHandlers;
+    if (tray) {
+      refresh();
+      return tray;
+    }
     tray = new Tray(resolveTrayIcon());
     tray.setToolTip("Stealth Browser Console");
-    tray.on("click", refresh);
+    tray.on("click", () => {
+      handlers?.showConsole?.();
+      refresh();
+    });
+    tray.on("double-click", () => handlers?.showConsole?.());
     refresh();
     timer = setInterval(refresh, REFRESH_MS);
     return tray;
@@ -69,6 +88,7 @@ function createSessionTray(sessionManager) {
       tray.destroy();
       tray = null;
     }
+    handlers = null;
   };
 
   return { start, stop, refresh };

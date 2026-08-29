@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld("stealthApi", {
   setVaultUserScope: (payload) => invoke("vault:setUserScope", payload),
   getVaultUserScope: () => invoke("vault:getUserScope"),
   openDataFolder: () => invoke("app:openDataFolder"),
+  readLifecycleLog: (payload) => invoke("app:readLifecycleLog", payload),
   openProfilesFolder: () => invoke("app:openProfilesFolder"),
   getProfilesLocation: () => invoke("app:getProfilesLocation"),
   dismissProfilesLocationPrompt: () => invoke("app:dismissProfilesLocationPrompt"),

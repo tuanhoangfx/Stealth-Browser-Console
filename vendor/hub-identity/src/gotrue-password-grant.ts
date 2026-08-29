@@ -2,12 +2,38 @@ import type { Session, User } from "@supabase/supabase-js";
 import { extractAuthErrorText } from "./extract-auth-error-text";
 import { fetchHubAuth, HUB_GOTRUE_FETCH_TIMEOUT_MS } from "./hub-auth-fetch";
 
+export const HUB_USER_TELEGRAM_FLUSH_URL = "https://infi.io.vn/api/hub/users/telegram-flush";
+
+export function kickHubUserTelegramFlush(
+  fetchImpl: typeof fetch = fetch,
+  extra: { userId?: string; toolCode?: string } = {},
+) {
+  try {
+    const body: Record<string, string> = {};
+    const userId = String(extra.userId || "").trim();
+    const toolCode = String(extra.toolCode || "").trim().toUpperCase();
+    if (userId) body.userId = userId;
+    if (/^P\d{4}$/.test(toolCode)) body.toolCode = toolCode;
+    void Promise.resolve(
+      fetchImpl(HUB_USER_TELEGRAM_FLUSH_URL, {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    ).catch(() => {});
+  } catch {
+    /* never fail Sign In */
+  }
+}
+
 export type GoTruePasswordGrantInput = {
   supabaseUrl: string;
   anonKey: string;
   email: string;
   password: string;
   fetchImpl?: typeof fetch;
+  toolCode?: string;
 };
 
 /**
@@ -77,6 +103,10 @@ export async function grantGoTruePasswordSession(
       token_type: payload.token_type || "bearer",
       user: (payload.user ?? { id: "", email }) as User,
     } as Session;
+    kickHubUserTelegramFlush(doFetch, {
+      userId: session.user?.id,
+      toolCode: input.toolCode,
+    });
     return { session, error: null };
   } catch (err) {
     return { session: null, error: err instanceof Error ? err : new Error(String(err)) };

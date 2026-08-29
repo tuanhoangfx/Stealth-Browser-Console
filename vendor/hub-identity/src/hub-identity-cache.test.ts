@@ -8,6 +8,7 @@ import {
   isHubIdentitySignOutFresh,
   markHubIdentitySignedOut,
   readHubIdentity,
+  reopenHubIdentityAfterSignIn,
   subscribeHubIdentity,
 } from "./hub-identity-cache";
 
@@ -79,37 +80,42 @@ describe("hub-identity-cache", () => {
     expect(isHubIdentitySignOutFresh()).toBe(true);
   });
 
-  it("clears the sign-out mark on a local sign-in write", () => {
+  it("refuses a local hydrate write while the sign-out mark is fresh", () => {
     markHubIdentitySignedOut();
     cacheHubIdentity(BASE, "p0015");
-    expect(readHubIdentity()?.access_token).toBe("access-1");
-    expect(isHubIdentitySignOutFresh()).toBe(false);
+    expect(readHubIdentity()).toBeNull();
+    expect(isHubIdentitySignOutFresh()).toBe(true);
   });
 
-  it("reopens host-embed relay after Sign Out sticky opt-out", async () => {
+  it("reopens host-embed relay only after Sign In clears opt-out", async () => {
     const { optOutDevAutoLogin, isDevAutoLoginOptedOut, DEV_AUTO_LOGIN_SESSION_KEY } =
       await import("./dev-auto-login");
     const { shouldAcceptHubIdentityRelay } = await import("./workspace-sign-out");
     optOutDevAutoLogin();
     expect(isDevAutoLoginOptedOut()).toBe(true);
     expect(shouldAcceptHubIdentityRelay()).toBe(false);
+    cacheHubIdentity(BASE, "hydrate");
+    expect(readHubIdentity()).toBeNull();
+    reopenHubIdentityAfterSignIn();
     const handler = vi.fn();
     subscribeHubIdentity(handler);
     cacheHubIdentity(BASE, "dual-sign-in");
     expect(isDevAutoLoginOptedOut()).toBe(false);
     expect(shouldAcceptHubIdentityRelay()).toBe(true);
     expect(sessionStorage.getItem(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("on");
+    expect(readHubIdentity()?.access_token).toBe("access-1");
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ type: "updated" }));
   });
 
-  it("re-broadcasts when the same JWT is written after Sign Out opt-out", async () => {
+  it("does not re-broadcast the same JWT while Sign Out opt-out is sticky", async () => {
     const { optOutDevAutoLogin } = await import("./dev-auto-login");
     cacheHubIdentity(BASE, "first");
     optOutDevAutoLogin();
     const handler = vi.fn();
     subscribeHubIdentity(handler);
-    cacheHubIdentity(BASE, "after-sign-in");
-    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ type: "updated" }));
+    cacheHubIdentity(BASE, "hydrate");
+    expect(handler).not.toHaveBeenCalled();
+    expect(readHubIdentity()?.access_token).toBe("access-1");
   });
 
   it("expires the sign-out mark after the ttl", () => {

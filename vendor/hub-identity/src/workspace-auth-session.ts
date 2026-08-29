@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { promiseWithTimeout } from "./promise-timeout";
 import { subscribeHubIdentity } from "./hub-identity-cache";
+import { shouldAcceptHubIdentityRelay } from "./workspace-sign-out";
 
 /** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
 export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
@@ -143,6 +144,14 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
   const {
     data: { subscription },
   } = config.client.auth.onAuthStateChange((event, session) => {
+    // Explicit Sign Out opts out of auto-login + relay. GoTrue may still emit
+    // TOKEN_REFRESHED / SIGNED_IN with an in-memory JWT until local signOut finishes —
+    // adopting that looked like Sign Out hung, then bounced back.
+    if (!shouldAcceptHubIdentityRelay()) {
+      if (event === "INITIAL_SESSION" && !session) return;
+      config.onSession(null);
+      return;
+    }
     if (!session) {
       // Supabase may emit INITIAL_SESSION null before hub-cache setSession finishes.
       if (event === "INITIAL_SESSION") return;
@@ -157,6 +166,10 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
         void config.client?.auth
           .getSession()
           .then(({ data }) => {
+            if (!shouldAcceptHubIdentityRelay()) {
+              config.onSession(null);
+              return;
+            }
             if (!data.session) {
               const cached = config.readCachedSession?.() ?? null;
               if (cached) {
@@ -172,6 +185,15 @@ export function bindSupabaseAuthListener(config: SupabaseAuthListenerConfig): ()
           .catch(() => {
             /* transient — keep the session and let the next event decide */
           });
+        return;
+      }
+      // supabase-js also emits SIGNED_OUT when a sibling GoTrue client rotates the
+      // refresh token (P0020 vault + Data Box used the same sb-api storage key) or
+      // when setSession's /user hydrate fails. Explicit Sign Out already cleared
+      // the tool snapshot — keep a still-writeable cache so the gate does not blink.
+      const cached = config.readCachedSession?.() ?? null;
+      if (cached && isSessionStillWriteable(cached)) {
+        config.onSession(cached);
         return;
       }
       config.onSession(null);

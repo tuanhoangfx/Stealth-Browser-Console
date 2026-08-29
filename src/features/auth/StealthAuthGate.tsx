@@ -32,6 +32,7 @@ export function StealthAuthGate({ onAuthed }: Props) {
           prepareHubIdentitySession: applyHubIdentitySession,
         }),
         onSubmit: createHubOnlyAuthGateSubmit({
+          toolCode: "P0003",
           getHubClient: getIdentitySupabase,
           persistSession: (session) => {
             prepareHubSignIn();

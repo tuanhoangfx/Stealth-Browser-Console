@@ -111,6 +111,8 @@ class SessionManager {
   #userDataRoot = "";
   /** Profiles mid-launch — reconcile must not mark closed while spawn is in flight. */
   #launchingIds = new Set();
+  /** Coalesce double-click / parallel launch() for the same profile. */
+  #launchPromises = new Map();
   /** @type {((profileId: string, profile: object, event: string) => void) | null} */
   #onSessionChange = null;
 
@@ -181,7 +183,7 @@ class SessionManager {
       if (!profileDirHasLock(userDataDir) && !readSidecarPid(userDataDir)?.pid) continue;
       await killOrphanProfileBrowser(userDataDir);
       removeStaleProfileLocks(userDataDir);
-      const next = profileService.setProfileStatus(row.id, "closed");
+      const next = profileService.setProfileStatus(row.id, "closed", { reason: "startup-reconciled" });
       this.#emitSessionChange(row.id, next, "startup-reconciled");
       cleaned += 1;
     }
@@ -202,7 +204,7 @@ class SessionManager {
       removeStaleProfileLocks(userDataDir);
       const profile = profileService.getProfile(id);
       if (profile && (profile.status === "running" || profile.status === "opening")) {
-        const next = profileService.setProfileStatus(id, "closed");
+        const next = profileService.setProfileStatus(id, "closed", { reason: "startup-reconciled" });
         this.#emitSessionChange(id, next, "startup-reconciled");
         cleaned += 1;
       }
@@ -345,7 +347,7 @@ class SessionManager {
         if (session.watchdog) clearInterval(session.watchdog);
         session.alive = false;
         this.#sessions.delete(id);
-        const next = profileService.setProfileStatus(id, "closed");
+        const next = profileService.setProfileStatus(id, "closed", { reason: "watchdog" });
         this.#emitSessionChange(id, next, "closed");
       })();
     }, SESSION_WATCHDOG_MS);
@@ -468,10 +470,19 @@ class SessionManager {
       }
     }
     // (b) DB đánh dấu active nhưng không còn session sống → set closed (dọn trạng thái treo).
+    const openingStaleMs = LAUNCH_GRACE_MS + 30_000;
     for (const row of profileService.listActiveProfileIds()) {
-      if (row.status === "opening") continue;
+      if (row.status === "opening") {
+        if (this.isRunning(row.id)) continue;
+        const updatedAt = row.updatedAt ? Date.parse(row.updatedAt) : 0;
+        if (updatedAt && Date.now() - updatedAt < openingStaleMs) continue;
+        const next = profileService.setProfileStatus(row.id, "closed", { reason: "opening-stale" });
+        this.#emitSessionChange(row.id, next, "opening-stale");
+        changed = true;
+        continue;
+      }
       if (!this.isRunning(row.id)) {
-        const next = profileService.setProfileStatus(row.id, "closed");
+        const next = profileService.setProfileStatus(row.id, "closed", { reason: "reconcile" });
         this.#emitSessionChange(row.id, next, "closed");
         changed = true;
       }
@@ -505,7 +516,7 @@ class SessionManager {
           session.alive = false;
           this.#sessions.delete(id);
           try {
-            const next = profileService.setProfileStatus(id, "closed");
+            const next = profileService.setProfileStatus(id, "closed", { reason });
             if (next) this.#emitSessionChange(id, next, reason);
           } catch (error) {
             console.warn("[session] finalize status:", error instanceof Error ? error.message : error);
@@ -704,6 +715,19 @@ class SessionManager {
 
   async launch(profile, { skipStartupUrl = false } = {}) {
     const id = String(profile.id);
+    const inflight = this.#launchPromises.get(id);
+    if (inflight) return inflight;
+    const promise = this.#launchOnce(profile, { skipStartupUrl });
+    this.#launchPromises.set(id, promise);
+    try {
+      return await promise;
+    } finally {
+      if (this.#launchPromises.get(id) === promise) this.#launchPromises.delete(id);
+    }
+  }
+
+  async #launchOnce(profile, { skipStartupUrl = false } = {}) {
+    const id = String(profile.id);
     this.#launchingIds.add(id);
     try {
     const existing = this.#sessions.get(id);
@@ -857,8 +881,8 @@ class SessionManager {
       removeSidecarPid(session.userDataDir);
       await waitForProfileUnlock(session.userDataDir);
     }
-    const next = profileService.setProfileStatus(id, "closed");
-    this.#emitSessionChange(id, next, "closed");
+    const next = profileService.setProfileStatus(id, "closed", { reason: "profile_close" });
+    this.#emitSessionChange(id, next, "profile_close");
     return { ok: true, status: "closed", profile: next };
   }
 
@@ -1014,7 +1038,7 @@ class SessionManager {
       removeStaleProfileLocks(userDataDir);
     }
     const purgeResult = await purgeProfileUserDataDir(userDataDir);
-    const next = profileService.setProfileStatus(id, "closed");
+    const next = profileService.setProfileStatus(id, "closed", { reason: "storage-released" });
     this.#emitSessionChange(id, next, "storage-released");
     return { ok: true, userDataDir, storagePurged: purgeResult.purged };
   }

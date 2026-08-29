@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-08-27T11:29:40.762Z",
+  "generatedAt": "2026-08-29T10:41:20.967Z",
   "entries": [
+    {
+      "version": "7.1.9",
+      "date": "2026-08-29",
+      "at": "2026-08-29T17:27:00+07:00",
+      "title": "Patch bump for completed agent task",
+      "bullets": [
+        "Automatic patch bump after completed P0003 task."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Automatic patch bump after completed P0003 task."
+      ]
+    },
     {
       "version": "7.1.1",
       "date": "2026-08-27",
@@ -178,21 +193,6 @@
         "Profile-browser-orphan: has Profile Browser Process no longer trusts sidecar PID alone .",
         "Session-manager close: kill orphan PWAs + remove Sidecar Pid + wait For Profile Unlock",
         "Wait For Profile Unlock default timeout raised to 3200ms."
-      ]
-    },
-    {
-      "version": "1.0.184",
-      "date": "2026-08-13",
-      "at": "2026-08-13T11:22:00+07:00",
-      "title": "FilterBar row-tools flex (search fills past actions col)",
-      "bullets": [
-        "hub-ui FilterBar: row-tools / row-band flex rows - desktop no longer shares a 2-col grid with bulk actions (actions inflated col2 to ~180px search gap)."
-      ],
-      "kind": "improve",
-      "userTitle": "Filter Bar row-tools flex",
-      "userSummary": "",
-      "userHighlights": [
-        "Hub-ui Filter Bar: row-tools row-band flex rows - desktop no longer shares a 2-col grid with bulk…"
       ]
     }
   ]

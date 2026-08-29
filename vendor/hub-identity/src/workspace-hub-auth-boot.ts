@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { HubIdentityRelaySnapshot } from "./hub-identity-relay";
+import { enforceHubIdentitySnapshotApproval, signOutHubIfPresent } from "./hub-profile-approval";
 import { useWorkspaceAuthBootCore } from "./workspace-auth-boot-core";
 import {
   bindSupabaseAuthListener,
@@ -70,6 +71,12 @@ export function useWorkspaceHubAuthBoot(config: WorkspaceHubAuthBootConfig): Wor
         if (!c().readCachedHubSession()) c().onBootStart?.();
         await c().refreshSession({ boot: true });
         if (cancelled) return;
+        const bootGate = await enforceHubIdentitySnapshotApproval();
+        if (cancelled) return;
+        if (!bootGate.ok) {
+          void signOutHubIfPresent(c().getIdentityClient());
+          c().onHubSignedOut();
+        }
         dataUnsub = bindSupabaseAuthListener({
           client: c().getIdentityClient(),
           isConfigured: c().isHubConfigured,
@@ -80,8 +87,16 @@ export function useWorkspaceHubAuthBoot(config: WorkspaceHubAuthBootConfig): Wor
               c().onHubSignedOut();
               return;
             }
-            c().onHubSignedIn(session);
-            void c().checkToolAccess(session.access_token);
+            void enforceHubIdentitySnapshotApproval().then((gate) => {
+              if (cancelled) return;
+              if (!gate.ok) {
+                void signOutHubIfPresent(c().getIdentityClient());
+                c().onHubSignedOut();
+                return;
+              }
+              c().onHubSignedIn(session);
+              void c().checkToolAccess(session.access_token);
+            });
           },
           onAfterSession: (session) => {
             if (!cancelled) c().onAfterHubSignedIn?.(session);

@@ -164,9 +164,9 @@ function buildProfileFilter({ search, groupId, groupIds, status, statuses } = {}
 /** Chỉ các profile có status active (running/opening) — dùng để reconcile, indexed, set nhỏ. */
 function listActiveProfileIds() {
   return getDb()
-    .prepare("SELECT id, status FROM profiles WHERE status IN ('running', 'opening')")
+    .prepare("SELECT id, status, updated_at FROM profiles WHERE status IN ('running', 'opening')")
     .all()
-    .map((r) => ({ id: r.id, status: r.status }));
+    .map((r) => ({ id: r.id, status: r.status, updatedAt: r.updated_at }));
 }
 
 function countProfiles(filter = {}) {
@@ -499,11 +499,23 @@ function appendProfileEvent(profileId, { eventType, level = "info", message = ""
   return { id, profileId: String(profileId), eventType, level, message, createdAt: now };
 }
 
-function appendProfileStatusEvent(profileId, status) {
+function formatProfileStatusMessage(status, reason) {
+  const preset = PROFILE_STATUS_EVENT[String(status || "")];
+  if (!preset) return "";
+  const base = preset.message;
+  const detail = String(reason || "").trim();
+  if (!detail || detail === String(status || "")) return base;
+  return `${base} (${detail})`;
+}
+
+function appendProfileStatusEvent(profileId, status, { reason } = {}) {
   const key = String(status || "");
   const preset = PROFILE_STATUS_EVENT[key];
   if (!preset) return null;
-  return appendProfileEvent(profileId, preset);
+  return appendProfileEvent(profileId, {
+    ...preset,
+    message: formatProfileStatusMessage(key, reason) || preset.message,
+  });
 }
 
 function listProfileEvents(profileId, limit = 100) {
@@ -587,13 +599,13 @@ function backfillProfileEvents() {
   if (inserted > 0) console.info(`[db] backfilled ${inserted} profile_events row(s)`);
 }
 
-function setProfileStatus(id, status) {
+function setProfileStatus(id, status, { reason } = {}) {
   if (!isDatabaseReady()) return null;
   const now = new Date().toISOString();
   getDb()
     .prepare("UPDATE profiles SET status = ?, updated_at = ? WHERE id = ?")
     .run(String(status), now, String(id));
-  appendProfileStatusEvent(id, status);
+  appendProfileStatusEvent(id, status, { reason });
   return getProfile(id);
 }
 
@@ -1029,6 +1041,7 @@ module.exports = {
   createProfilesBulkByNames,
   createProfilesBulkByRange,
   updateProfile,
+  formatProfileStatusMessage,
   setProfileStatus,
   generateFingerprintSeed,
   bulkUpdateStartupUrl,

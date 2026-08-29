@@ -30,9 +30,13 @@ export async function hydrateHubIdentity(
     }
   }
 
+  if (!shouldAcceptHubIdentityRelay()) return false;
+
   if (opts.applySession) {
     await opts.applySession();
   }
+
+  if (!shouldAcceptHubIdentityRelay()) return false;
 
   return Boolean(readHubIdentity()?.access_token?.trim());
 }

@@ -224,6 +224,12 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
     "web": "stub"
   },
   {
+    "method": "readLifecycleLog",
+    "channel": "app:readLifecycleLog",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
     "method": "getProfileExtensionsEnabled",
     "channel": "app:getProfileExtensionsEnabled",
     "kind": "invoke",

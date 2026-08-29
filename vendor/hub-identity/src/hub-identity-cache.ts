@@ -115,19 +115,26 @@ export function isHubIdentitySignOutFresh(ttlMs: number = HUB_IDENTITY_SIGN_OUT_
   }
 }
 
+/** Password Sign In / Sign Up — call before cache so hydrate/apply cannot undo Sign Out. */
+export function reopenHubIdentityAfterSignIn(): void {
+  clearHubIdentitySignOutMark();
+  clearDevAutoLoginOptOut();
+}
+
+/** Explicit Sign Out is in effect — hydrate, apply, and SIGNED_OUT must not rewrite JWT. */
+export function shouldRefuseHubIdentityResurrect(): boolean {
+  return isDevAutoLoginOptedOut() || isHubIdentitySignOutFresh();
+}
+
 export function cacheHubIdentity(
   payload: Omit<HubIdentitySnapshot, "cached_at">,
   source?: string,
 ): void {
-  if (source === "cross-origin" && isHubIdentitySignOutFresh()) return;
-  let reopenedRelay = false;
-  if (source !== "cross-origin" && payload.access_token?.trim()) {
-    // Manual / dual Sign In must reopen host-embed relay after explicit Sign Out
-    // (`optOutDevAutoLogin`). Clear before broadcast so subscribers accept this update.
-    clearHubIdentitySignOutMark();
-    reopenedRelay = isDevAutoLoginOptedOut();
-    clearDevAutoLoginOptOut();
-  }
+  if (source === "cross-origin" && shouldRefuseHubIdentityResurrect()) return;
+  // In-flight hydrate/apply after explicit Sign Out used to persist JWT and
+  // `clearDevAutoLoginOptOut()` here — that looked like Sign Out hung / bounced back.
+  // Sign In factories call `reopenHubIdentityAfterSignIn()` first.
+  if (source !== "cross-origin" && shouldRefuseHubIdentityResurrect()) return;
   const prev = readHubIdentity();
   const snapshot: HubIdentitySnapshot = { ...payload, cached_at: Date.now() };
   const unchanged =
@@ -135,11 +142,7 @@ export function cacheHubIdentity(
     prev?.refresh_token === snapshot.refresh_token &&
     prev?.user_id === snapshot.user_id &&
     prev?.expires_at === snapshot.expires_at;
-  if (unchanged) {
-    // Same JWT after Sign Out opt-out — still notify so host embeds re-apply the session.
-    if (reopenedRelay) broadcastChange({ type: "updated", source });
-    return;
-  }
+  if (unchanged) return;
   localStorage.setItem(HUB_IDENTITY_STORAGE_KEY, JSON.stringify(snapshot));
   broadcastChange({ type: "updated", source });
 }

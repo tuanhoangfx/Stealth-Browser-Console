@@ -38,6 +38,8 @@ export type WorkspacePeriodKnownScope =
   | "dashboard"
   | "index"
   | "posts"
+  | "documents"
+  | "bulletin"
   | "bots"
   | "groups"
   | "teams"
@@ -107,6 +109,8 @@ const SCOPE_URL_KEYS: Record<WorkspacePeriodKnownScope, WorkspacePeriodUrlKeys> 
   dashboard: { range: "dbrange", month: "dbperiodMonth", from: "dbperiodFrom", to: "dbperiodTo" },
   index: { range: "ixrange", month: "ixperiodMonth", from: "ixperiodFrom", to: "ixperiodTo" },
   posts: { range: "psrange", month: "psperiodMonth", from: "psperiodFrom", to: "psperiodTo" },
+  documents: { range: "docrange", month: "docperiodMonth", from: "docperiodFrom", to: "docperiodTo" },
+  bulletin: { range: "blrange", month: "blperiodMonth", from: "blperiodFrom", to: "blperiodTo" },
   bots: { range: "botrange", month: "botperiodMonth", from: "botperiodFrom", to: "botperiodTo" },
   groups: { range: "grprange", month: "grpperiodMonth", from: "grpperiodFrom", to: "grpperiodTo" },
   teams: { range: "teamrange", month: "teamperiodMonth", from: "teamperiodFrom", to: "teamperiodTo" },

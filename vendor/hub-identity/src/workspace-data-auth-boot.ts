@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { HubIdentityRelaySnapshot } from "./hub-identity-relay";
+import { enforceHubIdentitySnapshotApproval } from "./hub-profile-approval";
 import { useWorkspaceAuthBootCore } from "./workspace-auth-boot-core";
 import { bindSupabaseAuthListener } from "./workspace-auth-session";
 
@@ -60,6 +61,11 @@ export function useWorkspaceDataAuthBoot(config: WorkspaceDataAuthBootConfig): v
       if (!c().readCachedSession()) c().onBootStart?.();
       await c().refreshSession({ boot: true });
       if (cancelled) return;
+      const bootGate = await enforceHubIdentitySnapshotApproval();
+      if (cancelled) return;
+      if (!bootGate.ok) {
+        c().onSignedOut();
+      }
       dataUnsub = bindSupabaseAuthListener({
         client: c().getClient(),
         isConfigured: c().isConfigured,
@@ -71,7 +77,14 @@ export function useWorkspaceDataAuthBoot(config: WorkspaceDataAuthBootConfig): v
             c().onSignedOut();
             return;
           }
-          c().onSignedIn(session);
+          void enforceHubIdentitySnapshotApproval().then((gate) => {
+            if (cancelled) return;
+            if (!gate.ok) {
+              c().onSignedOut();
+              return;
+            }
+            c().onSignedIn(session);
+          });
         },
         onAfterSession: (session) => {
           if (!cancelled) c().onAfterSignedIn?.(session);

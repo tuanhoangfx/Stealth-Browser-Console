@@ -1,7 +1,7 @@
 import {
   cacheHubIdentity,
-  isHubIdentitySignOutFresh,
   readHubIdentity,
+  shouldRefuseHubIdentityResurrect,
   subscribeHubIdentity,
   type HubIdentitySnapshot,
 } from "./hub-identity-cache";
@@ -114,6 +114,7 @@ export function startHubIdentityCrossOriginBridge(opts?: {
   };
 
   const pullFromHub = async () => {
+    if (shouldRefuseHubIdentityResurrect()) return;
     if (!iframe?.contentWindow) return;
     const ok = await whenReady();
     if (!ok) return;
@@ -147,7 +148,7 @@ export function startHubIdentityCrossOriginBridge(opts?: {
     if (event.data.action !== "get-result") return;
     const remote = event.data.snapshot;
     if (!remote?.access_token?.trim()) return;
-    if (isHubIdentitySignOutFresh()) {
+    if (shouldRefuseHubIdentityResurrect()) {
       // We signed out here; the Hub copy is the stale one — drop it instead of adopting it.
       void pushClearToHub();
       return;

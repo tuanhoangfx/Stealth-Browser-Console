@@ -6,6 +6,12 @@ const { resolveAppIconPathIfExists } = require("./lib/desktop-app-icon.cjs");
 const { configureElectronUserData, resolveStealthApiPort, isDevIsolated } = require("./lib/user-data-root.cjs");
 
 configureElectronUserData(app);
+const {
+  setShutdownReason,
+  writeShutdownLog,
+  writeBootLog,
+  readLifecycleLog,
+} = require("./lib/shutdown-log.cjs");
 
 /** Interactive UI must not inherit Cursor/agent smoke env (headless profiles with no window). API smokes use X-Stealth-Agent-Smoke per request. */
 for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGENT"]) {
@@ -15,6 +21,7 @@ for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGEN
 /** One desktop process per userData root — prevents agent/dev double-launch DB lock + login churn. */
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
+  setShutdownReason("second-instance-blocked");
   app.quit();
 }
 
@@ -78,6 +85,9 @@ const { bindRendererReloadShortcuts } = require("./lib/renderer-reload.cjs");
 const sessionManager = new SessionManager();
 const sessionTray = createSessionTray(sessionManager);
 let appShutdownDone = false;
+const { markAppQuitting, isAppQuitting } = require("./lib/app-quit-state.cjs");
+/** @type {import("electron").BrowserWindow | null} */
+let mainBrowserWindow = null;
 /** Set true only after bindIpc() — second-instance/activate must not open a window earlier. */
 let mainBootReady = false;
 /** Queued when second-instance arrives during DB/boot before IPC handlers exist. */
@@ -86,6 +96,55 @@ const DEFAULT_DEV_SERVER_URL = "http://127.0.0.1:5175/";
 
 function userDataRoot() {
   return app.getPath("userData");
+}
+
+function showMainConsoleWindow() {
+  const win = mainBrowserWindow;
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  if (!win.isVisible()) win.show();
+  win.focus();
+}
+
+async function confirmQuitWithRunningProfiles(win, runningCount) {
+  const parent = win && !win.isDestroyed() ? win : undefined;
+  const { response } = await dialog.showMessageBox(parent ?? null, {
+    type: "question",
+    title: "Quit Stealth Browser Console?",
+    message:
+      runningCount > 0
+        ? `${runningCount} profile${runningCount === 1 ? "" : "s"} still running.`
+        : "Quit Stealth Browser Console?",
+    detail:
+      runningCount > 0
+        ? "Quit closes all profiles and the API. Choose Minimize to tray to keep them running."
+        : "The console will close. Profiles are not running.",
+    buttons: runningCount > 0 ? ["Minimize to tray", "Quit all"] : ["Cancel", "Quit"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (runningCount > 0) return response === 1 ? "quit" : "minimize";
+  return response === 1 ? "quit" : "cancel";
+}
+
+function requestAppQuit(reason) {
+  if (isAppQuitting()) return;
+  setShutdownReason(reason);
+  markAppQuitting();
+  app.quit();
+}
+
+async function requestAppQuitWithConfirm(reason, win = mainBrowserWindow) {
+  if (isAppQuitting()) return;
+  const runningCount = sessionManager.listRunning().length;
+  const choice = await confirmQuitWithRunningProfiles(win, runningCount);
+  if (choice === "minimize") {
+    if (win && !win.isDestroyed()) win.hide();
+    return;
+  }
+  if (choice === "cancel") return;
+  requestAppQuit(reason);
 }
 
 function bindIpc() {
@@ -489,6 +548,11 @@ function bindIpc() {
   ipcMain.handle("app:openDataFolder", () => {
     shell.openPath(userDataRoot());
     return { ok: true, path: userDataRoot() };
+  });
+
+  ipcMain.handle("app:readLifecycleLog", (_event, payload = {}) => {
+    const limit = Math.min(200, Math.max(1, Number(payload.limit) || 50));
+    return { ok: true, entries: readLifecycleLog(userDataRoot(), limit) };
   });
 
   ipcMain.handle("app:openProfilesFolder", () => {
@@ -930,7 +994,20 @@ function installDesktopMenu() {
     Menu.buildFromTemplate([
       ...(process.platform === "darwin"
         ? [{ role: "appMenu" }]
-        : [{ label: "File", submenu: [{ role: "quit" }] }]),
+        : [
+            {
+              label: "File",
+              submenu: [
+                {
+                  label: "Quit",
+                  accelerator: "Alt+F4",
+                  click: () => {
+                    void requestAppQuitWithConfirm("menu-quit");
+                  },
+                },
+              ],
+            },
+          ]),
       { role: "editMenu" },
       {
         label: "View",
@@ -999,6 +1076,26 @@ async function createWindow() {
     }
   });
 
+  mainBrowserWindow = win;
+
+  win.on("close", (event) => {
+    if (isAppQuitting() || appShutdownDone) return;
+    event.preventDefault();
+    const runningCount = sessionManager.listRunning().length;
+    if (runningCount === 0) {
+      win.hide();
+      return;
+    }
+    void (async () => {
+      const choice = await confirmQuitWithRunningProfiles(win, runningCount);
+      if (choice === "quit") {
+        requestAppQuit("window-close-confirmed");
+      } else if (choice === "minimize") {
+        win.hide();
+      }
+    })();
+  });
+
   win.webContents.on("did-fail-load", (_event, code, description, url) => {
     console.error(`[load] failed ${code} ${description} ${url}`);
   });
@@ -1065,6 +1162,7 @@ app.whenReady().then(async () => {
       buttons: ["OK"],
       noLink: true,
     });
+    setShutdownReason("boot-database-failed");
     app.quit();
     return;
   }
@@ -1092,7 +1190,12 @@ app.whenReady().then(async () => {
     broadcastProfileSession(profile, event);
     sessionTray.refresh();
   });
-  sessionTray.start();
+  sessionTray.start({
+    showConsole: showMainConsoleWindow,
+    requestQuit: () => {
+      void requestAppQuitWithConfirm("tray-quit");
+    },
+  });
   bindRouterApi();
   sessionManager.setUserDataRoot(userDataRoot());
 
@@ -1102,6 +1205,12 @@ app.whenReady().then(async () => {
     await createWindow();
   }
   pendingBootWindow = false;
+
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    apiPort: resolveStealthApiPort({ packaged: app.isPackaged }),
+  });
 
   const catalogCount = profileService.listProfilesLite().length;
   const { tryAutoRestoreCatalogIfEmpty } = require("./lib/catalog-backup-recovery.cjs");
@@ -1336,6 +1445,7 @@ app.on("before-quit", (event) => {
   event.preventDefault();
   sessionTray.stop();
   void (async () => {
+    const runningProfiles = sessionManager.listRunning().length;
     try {
       await sessionManager.closeAll();
     } catch (error) {
@@ -1343,6 +1453,17 @@ app.on("before-quit", (event) => {
     } finally {
       const { flushScheduledLastOpenedCheckpoint } = require("./db/last-opened-durability.cjs");
       flushScheduledLastOpenedCheckpoint(require("./db/init.cjs").checkpointDatabase);
+      const { getUpdateStatus } = require("./desktop-updater.cjs");
+      const updater = getUpdateStatus();
+      writeShutdownLog(userDataRoot(), {
+        version: app.getVersion(),
+        packaged: app.isPackaged,
+        runningProfiles,
+        ...(updater.updateVersion ? { updateVersion: updater.updateVersion } : {}),
+        ...(updater.state && !["idle", "latest", "dev"].includes(updater.state)
+          ? { updateState: updater.state }
+          : {}),
+      });
       closeDatabase();
       appShutdownDone = true;
       app.quit();
@@ -1351,5 +1472,6 @@ app.on("before-quit", (event) => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  // Tray app — hiding the Console must not quit API / running profiles on Windows.
+  if (!isAppQuitting()) return;
 });

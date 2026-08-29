@@ -7,6 +7,7 @@ import { extractAuthErrorText, fallbackAuthErrorText } from "./extract-auth-erro
 import { HUB_AUTH_NOT_CONFIGURED_ERROR } from "./hub-supabase-env";
 import { resolveHubLogin, type ResolvedLogin } from "./hub-login";
 import { signInWithHubPassword } from "./hub-auth-submit";
+import { enforceHubProfileApproval, signOutHubIfPresent } from "./hub-profile-approval";
 import {
   adoptGrantedGoTrueSession,
   grantGoTruePasswordSession,
@@ -14,6 +15,7 @@ import {
   type GoTruePasswordGrantInput,
 } from "./gotrue-password-grant";
 import type { WorkspaceAuthGateSubmit } from "./create-data-box-dual-auth-gate-submit";
+import { reopenHubIdentityAfterSignIn } from "./hub-identity-cache";
 
 export type CreateHubOnlyAuthGateSubmitConfig = {
   getHubClient: () => SupabaseClient | null;
@@ -32,6 +34,7 @@ export type CreateHubOnlyAuthGateSubmitConfig = {
   grant?: Pick<GoTruePasswordGrantInput, "supabaseUrl" | "anonKey">;
   /** Test seam — production uses grantGoTruePasswordSession. */
   grantPassword?: typeof grantGoTruePasswordSession;
+  toolCode?: string;
 };
 
 export function createHubOnlyAuthGateSubmit(
@@ -71,6 +74,7 @@ export function createHubOnlyAuthGateSubmit(
           anonKey: target.anonKey,
           email: authEmail,
           password,
+          toolCode: config.toolCode,
         });
         if (granted.session) adoptGrantedGoTrueSession(hub, granted.session);
         return {
@@ -91,13 +95,22 @@ export function createHubOnlyAuthGateSubmit(
     if (error) {
       return { error: fallbackAuthErrorText(error, mode === "signup" ? "signup" : "signin") };
     }
-    if (data?.session) config.persistSession(data.session);
 
     const userId = data?.session?.user?.id ?? data?.user?.id;
     if (mode === "signup" && config.afterSignup && resolved.loginId && userId) {
       const contactEmail =
         extras?.contactEmail || (resolved.kind === "email" ? resolved.authEmail : null);
       await config.afterSignup({ hub, resolved, userId, contactEmail });
+    }
+
+    if (data?.session) {
+      const gate = await enforceHubProfileApproval(hub, data.session.user?.id ?? userId);
+      if (!gate.ok) {
+        await signOutHubIfPresent(hub);
+        return { error: gate.error };
+      }
+      reopenHubIdentityAfterSignIn();
+      config.persistSession(data.session);
     }
   };
 }

@@ -17,6 +17,8 @@ import {
   readSupabaseGoTrueTarget,
 } from "./gotrue-password-grant";
 import { isHubIdentityTransientFailure, signInWithHubPassword } from "./hub-auth-submit";
+import { enforceHubProfileApproval, signOutHubIfPresent } from "./hub-profile-approval";
+import { reopenHubIdentityAfterSignIn } from "./hub-identity-cache";
 import type { MirrorSupabaseAuthResult } from "./mirror-supabase-auth";
 
 export type { MirrorSupabaseAuthResult };
@@ -57,6 +59,9 @@ export type SignInHubIdentityConfig = {
   resolvedAuthEmails?: string[];
   /** Lookup from the caller's resolve-login — skip a second fetch on miss/timeout. */
   resolveLookup?: HubResolveLoginLookup;
+  /** Known Hub GoTrue target — do not depend on supabase-js exposing supabaseUrl. */
+  hubGrant?: { supabaseUrl: string; anonKey: string };
+  toolCode?: string;
 };
 
 export type SignInHubIdentityResult = {
@@ -96,12 +101,13 @@ export async function signInHubIdentityPlane(
       return { data: { session: result.data.session }, error: result.error };
     }
     // Token-only grant (P0004 parity) — skip supabase-js /auth/v1/user.
-    const target = readSupabaseGoTrueTarget(hub);
+    const target = config.hubGrant ?? readSupabaseGoTrueTarget(hub);
     if (target) {
       const granted = await grantGoTruePasswordSession({
         ...target,
         email: authEmail,
         password,
+        toolCode: config.toolCode,
       });
       if (granted.session) adoptGrantedGoTrueSession(hub, granted.session);
       return { data: { session: granted.session }, error: granted.error };
@@ -178,7 +184,14 @@ export async function signInHubIdentityPlane(
       .eq("id", userId);
   }
 
+  const gate = await enforceHubProfileApproval(hub, identitySession.user?.id);
+  if (!gate.ok) {
+    await signOutHubIfPresent(hub);
+    throw new Error(gate.error);
+  }
+
   const mirrorEmail = identitySession.user?.email ?? identityResult.authEmail ?? resolved.authEmail;
+  reopenHubIdentityAfterSignIn();
   config.cacheHubIdentityFromSession(identitySession, mirrorEmail);
 
   return {
@@ -231,6 +244,27 @@ function planeIsRevocable(plane: WorkspaceDataPlane): boolean {
 
 function anyPlaneRevocable(planes: WorkspaceDataPlane[], mode: string): boolean {
   return mode === "signin" && planes.some(planeIsRevocable);
+}
+
+/**
+ * Extra product plane on the same GoTrue as the primary data plane (P0020 vault).
+ * Dual Sign In must not wait on / grant this plane — extra planes adopt after Data Box.
+ */
+export const WORKSPACE_SHARED_PLANE_SKIP = "shared-data-plane";
+
+/**
+ * Speculative plane ran with an empty/unknown email — retry after Hub returns
+ * mirrorEmail. Timeout / wrong password already finished; a second 16s+ chain
+ * is what trips the 45s dual wrapper on P0005 / P0020 / P0022.
+ */
+export function shouldRetrySpeculativePlane(result: MirrorSupabaseAuthResult | undefined): boolean {
+  if (!result) return true;
+  if (result.session) return false;
+  const msg = String(result.error ?? "");
+  // Empty error = placeholder (non-revocable plane skipped the speculative tick).
+  if (!msg) return true;
+  if (msg === WORKSPACE_SHARED_PLANE_SKIP || /shared-data-plane/i.test(msg)) return false;
+  return /identity missing|opaque required|not configured/i.test(msg);
 }
 
 /** Hub rejected the password after a parallel plane already signed in — drop those sessions. */
@@ -321,7 +355,6 @@ export async function runWorkspaceDualSignIn(
     const tResolve = nowMs();
     const resolved = await resolveHubLoginEmails(login, {
       resolveLoginApiUrl: wrappedConfig.resolveLoginApiUrl,
-      forceRefresh: true,
     });
     resolveLoginMs = Math.max(0, Math.round(nowMs() - tResolve));
     if (resolved.emails.length) wrappedConfig.resolvedAuthEmails = resolved.emails;
@@ -375,7 +408,7 @@ export async function runWorkspaceDualSignIn(
   }
   planeResults = await Promise.all(
     config.planes.map(async (plane, index) => {
-      if (planeResults[index]?.session) return planeResults[index];
+      if (!shouldRetrySpeculativePlane(planeResults[index])) return planeResults[index];
       return measurePlaneAuthenticate(plane, planeCtx, index, false, planeTimings);
     }),
   );

@@ -70,6 +70,7 @@ export type CreateDataBoxDualSignInConfig = {
   /** Default 16_000. */
   dataSignInTimeoutMs?: number;
   onTimings?: (timings: WorkspaceDualSignInTimings) => void;
+  toolCode?: string;
 };
 
 function resolvedLoginApiUrl(value: string | (() => string) | undefined): string | undefined {
@@ -230,6 +231,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
     const lastError = signIn.error?.message ?? null;
     if (lastError?.startsWith("AUTH_TIMEOUT:")) {
       console.warn(`${log} databox signin timeout`, { ms: Math.round(nowMs() - t0) });
+      // Do not chain password-sync + mirror-signup — that second 16s+ is the 45s dual timeout.
       return { session: null, error: "Workspace data sign-in timed out. Please try again." };
     }
     if (lastError && isHubAuthRateLimitError(lastError)) {
@@ -321,6 +323,11 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
       "workspace-dual",
       runWorkspaceDualSignIn(loginInput, password, mode, {
         getHubClient: config.getHubClient,
+        toolCode: config.toolCode || (String(config.logPrefix || "").toUpperCase().match(/P\d{4}/) || [])[0],
+        hubGrant:
+          config.hubUrl && config.hubAnonKey
+            ? { supabaseUrl: config.hubUrl, anonKey: config.hubAnonKey }
+            : undefined,
         resolveLoginApiUrl: resolvedLoginApiUrl(config.resolveLoginApiUrl),
         recoverHubSession: recoverHubSessionViaWorker,
         adoptRecoveredPlaneSession: config.cacheDataSession,

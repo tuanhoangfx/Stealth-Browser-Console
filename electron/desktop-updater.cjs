@@ -1,6 +1,8 @@
 const { app, ipcMain } = require("electron");
 
 const { resolveUpdaterGhToken } = require("./lib/updater-auth.cjs");
+const { setShutdownReason, setShutdownDetails } = require("./lib/shutdown-log.cjs");
+const { markAppQuitting } = require("./lib/app-quit-state.cjs");
 require("./lib/ensure-packaged-module-paths.cjs");
 
 /** @type {import("electron").BrowserWindow | null} */
@@ -112,6 +114,15 @@ function configureAutoUpdater() {
 
   autoUpdater.autoDownload = channel === "installer";
   autoUpdater.autoInstallOnAppQuit = channel === "installer";
+
+  autoUpdater.on("before-quit-for-update", () => {
+    setShutdownReason("update-quit-auto");
+    setShutdownDetails({
+      updateVersion: updateStatus.updateVersion || "",
+      updateState: updateStatus.state,
+    });
+    markAppQuitting();
+  });
 
   autoUpdater.on("checking-for-update", () => {
     setUpdateStatus({
@@ -279,6 +290,12 @@ function installDesktopUpdate() {
   });
   const { flushCatalogForUpdate } = require("./db/last-opened-durability.cjs");
   flushCatalogForUpdate();
+  setShutdownReason("update-install");
+  setShutdownDetails({
+    updateVersion: updateStatus.updateVersion || "",
+    updateState: updateStatus.state,
+  });
+  markAppQuitting();
   setImmediate(() => autoUpdater.quitAndInstall(false, true));
   return updateStatus;
 }

@@ -25,6 +25,34 @@ describe("grantGoTruePasswordSession", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
       "https://hub-api.example/auth/v1/token?grant_type=password",
     );
+    expect(String(fetchImpl.mock.calls.at(-1)?.[0])).toBe(
+      "https://infi.io.vn/api/hub/users/telegram-flush",
+    );
+    expect(JSON.parse(String(fetchImpl.mock.calls.at(-1)?.[1]?.body || "{}"))).toEqual({ userId: "u1" });
+  });
+
+  it("forwards toolCode on the login flush kick", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        access_token: "tok",
+        refresh_token: "ref",
+        expires_in: 3600,
+        user: { id: "u1", email: "a@corp.com" },
+      }),
+    }));
+    await grantGoTruePasswordSession({
+      supabaseUrl: "https://hub-api.example",
+      anonKey: "anon",
+      email: "a@corp.com",
+      password: "secret",
+      toolCode: "P0005",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(JSON.parse(String(fetchImpl.mock.calls.at(-1)?.[1]?.body || "{}"))).toEqual({
+      userId: "u1",
+      toolCode: "P0005",
+    });
   });
 
   it("maps Cloudflare 502 to an offline service message", async () => {
@@ -109,7 +137,10 @@ describe("grantGoTruePasswordSession", () => {
     });
     expect(out.error).toBeNull();
     expect(out.session?.access_token).toBe("tok");
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(String(fetchImpl.mock.calls[2]?.[0])).toBe(
+      "https://infi.io.vn/api/hub/users/telegram-flush",
+    );
   });
 
   it("adopts a granted session without awaiting /user", () => {

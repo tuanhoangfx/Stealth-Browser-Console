@@ -1,21 +1,25 @@
 import { useEffect, useRef } from "react";
 import { hydrateHubIdentity, type HydrateHubIdentityOptions } from "./hydrate-hub-identity";
 import { readHubIdentity } from "./hub-identity-cache";
-import { DUAL_PLANE_HUB_JWT_FORCE_LOGIN_MS } from "./workspace-reauth";
+import {
+  DUAL_PLANE_HUB_JWT_FORCE_LOGIN_MS,
+  shouldSignOutWhenHubJwtMissing,
+} from "./workspace-reauth";
 
 export type ForceLoginMissingHubJwtOptions = {
   loading: boolean;
   hasDataSession: boolean;
   hasHubJwt: boolean;
+  /** Kept for caller compatibility — login-once never Sign Outs the data plane. */
   signOut: () => Promise<void> | void;
   applySession?: HydrateHubIdentityOptions["applySession"];
   delayMs?: number;
 };
 
 /**
- * Users/Org embed hosts only (P0012 / P0015).
+ * Users/Org embed hosts (P0012 / P0015).
  * Workspace data persistSession can paint the shell while Hub JWT is dead —
- * hydrate first, then Sign Out both planes so the Login gate shows.
+ * hydrate / refresh Hub. Do not Sign Out both planes (login-once).
  */
 export function useForceLoginMissingHubJwt(opts: ForceLoginMissingHubJwtOptions): void {
   const {
@@ -48,7 +52,7 @@ export function useForceLoginMissingHubJwt(opts: ForceLoginMissingHubJwtOptions)
         hostWaitMs: 0,
       }).then((ok) => {
         if (cancelled || ok || readHubIdentity()?.access_token?.trim()) return;
-        void signOutRef.current();
+        if (shouldSignOutWhenHubJwtMissing()) void signOutRef.current();
       });
     }, delayMs);
 

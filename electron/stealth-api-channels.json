@@ -37,6 +37,7 @@
     { "method": "setVaultUserScope", "channel": "vault:setUserScope", "kind": "invoke" },
     { "method": "getVaultUserScope", "channel": "vault:getUserScope", "kind": "invoke" },
     { "method": "openDataFolder", "channel": "app:openDataFolder", "kind": "invoke" },
+    { "method": "readLifecycleLog", "channel": "app:readLifecycleLog", "kind": "invoke" },
     { "method": "getProfileExtensionsEnabled", "channel": "app:getProfileExtensionsEnabled", "kind": "invoke" },
     { "method": "setProfileExtensionsEnabled", "channel": "app:setProfileExtensionsEnabled", "kind": "invoke" },
     { "method": "getExtensionToggles", "channel": "app:getExtensionToggles", "kind": "invoke" },

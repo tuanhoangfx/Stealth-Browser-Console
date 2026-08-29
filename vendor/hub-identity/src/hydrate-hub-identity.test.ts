@@ -61,4 +61,22 @@ describe("hydrateHubIdentity", () => {
     expect(window.sessionStorage.getItem(DEV_AUTO_LOGIN_SESSION_KEY)).toBe("off");
     await expect(hydrateHubIdentity({ requestFromHost: false })).resolves.toBe(false);
   });
+
+  it("does not applySession when Sign Out happens during host wait", async () => {
+    const applySession = vi.fn(async () => undefined);
+    const parent = { postMessage: vi.fn() } as unknown as Window;
+    const originalOpener = window.opener;
+    const originalParent = window.parent;
+    Object.defineProperty(window, "opener", { configurable: true, value: null });
+    Object.defineProperty(window, "parent", { configurable: true, value: parent });
+    try {
+      const pending = hydrateHubIdentity({ applySession, hostWaitMs: 40 });
+      optOutDevAutoLogin();
+      await expect(pending).resolves.toBe(false);
+      expect(applySession).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "opener", { configurable: true, value: originalOpener });
+      Object.defineProperty(window, "parent", { configurable: true, value: originalParent });
+    }
+  });
 });

@@ -77,10 +77,17 @@ async function main() {
     if (runs.length !== 1) throw new Error("insertRun/listRuns failed");
 
     profileService.setProfileStatus(created.id, "running");
-    profileService.setProfileStatus(created.id, "closed");
+    profileService.setProfileStatus(created.id, "closed", { reason: "window-closed" });
     profileService.updateProfile(created.id, { note: "event-test" });
     const events = profileService.listProfileEvents(created.id, 20);
     if (events.length < 3) throw new Error(`profile_events expected >=3, got ${events.length}`);
+    const closeEv = events.find((e) => e.eventType === "close");
+    if (!closeEv?.message?.includes("window-closed")) {
+      throw new Error(`close reason missing in message: ${closeEv?.message}`);
+    }
+    if (profileService.formatProfileStatusMessage("closed", "profile_close") !== "Profile closed (profile_close)") {
+      throw new Error("formatProfileStatusMessage failed");
+    }
 
     const fpNoise = profileService.createProfile({ name: "0448", note: "fp-noise" });
     profileService.updateProfile(fpNoise.id, { fingerprintSeed: 1231477890 });

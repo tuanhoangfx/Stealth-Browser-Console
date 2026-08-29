@@ -27,6 +27,7 @@ import {
   patchCatalogStatsForStatusChange,
   reconcileCatalogStats,
 } from "../features/profiles/profile-catalog-stats-patch";
+import { useCatalogStatsFocusReconcile } from "../features/profiles/useCatalogStatsFocusReconcile";
 import { useRunLogs } from "../features/runtime/RunLogsContext";
 import { useAppToast } from "../components/toast";
 import { buildProfileExportFilename, downloadJson } from "../lib/stealth-profile-utils";
@@ -172,7 +173,12 @@ export function ProfilesRuntimeProvider({
         }
         return reconcileCatalogStats(patchCatalogStatsForSessionEvent(stats, event));
       });
-      if (event === "closed" || event === "failed" || event === "storage-released") {
+      if (
+        event === "closed" ||
+        event === "failed" ||
+        event === "storage-released" ||
+        event === "startup-reconciled"
+      ) {
         setRunningHeadlessIds((prev) => {
           if (!prev.has(profile.id)) return prev;
           const next = new Set(prev);
@@ -189,6 +195,8 @@ export function ProfilesRuntimeProvider({
       off?.();
     };
   }, [refreshCatalogStats, refreshRunningHeadless]);
+
+  useCatalogStatsFocusReconcile(refreshCatalogStats);
 
   useEffect(() => {
     void refreshRunningHeadless();
