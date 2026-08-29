@@ -9,13 +9,13 @@
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v6.1.1",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v6.1.1",
-      "publishedAt": "2026-08-27T08:31:09.299Z"
+      "tag": "v7.1.9",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v7.1.9",
+      "publishedAt": "2026-08-29T10:49:24.316Z"
     }
   },
   "urls": {
     "local": "http://127.0.0.1:5175"
   },
-  "manifestUpdatedAt": "2026-08-29T10:27:01.527Z"
+  "manifestUpdatedAt": "2026-08-29T10:49:24.316Z"
 }
