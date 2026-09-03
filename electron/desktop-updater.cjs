@@ -192,6 +192,12 @@ function configureAutoUpdater() {
 
 async function checkForDesktopUpdates() {
   if (!app.isPackaged) {
+    setUpdateStatus({
+      state: "checking",
+      message: "Checking GitHub Releases for a new version...",
+      progress: null,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 480));
     return setUpdateStatus({
       state: "dev",
       message: "Auto update is available after installing the packaged app.",

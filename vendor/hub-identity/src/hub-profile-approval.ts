@@ -28,6 +28,53 @@ type ProfileApprovalQuery = {
   };
 };
 
+type ToolAccessApprovalQuery = {
+  select: (columns: string) => {
+    eq: (column: string, value: string) => {
+      not: (
+        column: string,
+        operator: string,
+        value: unknown,
+      ) => {
+        limit: (count: number) => {
+          maybeSingle: () => Promise<{
+            data: { user_id?: string } | null;
+            error: { message?: string } | null;
+          }>;
+        };
+      };
+    };
+  };
+};
+
+export function isHubToolAccessApprovalColumnMissing(message: string | null | undefined): boolean {
+  return /approved_at|tool_access|PGRST204|42703|does not exist/i.test(String(message ?? ""));
+}
+
+/** Tool-based SSOT — at least one approved grant counts as Hub-approved. */
+export async function hubUserHasApprovedToolGrant(
+  hub: HubProfileApprovalClient | null | undefined,
+  userId: string,
+): Promise<boolean> {
+  const id = String(userId ?? "").trim();
+  if (!hub || typeof hub.from !== "function" || !id) return false;
+  try {
+    const { data, error } = await (hub.from("tool_access") as ToolAccessApprovalQuery)
+      .select("user_id")
+      .eq("user_id", id)
+      .not("approved_at", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      if (isHubToolAccessApprovalColumnMissing(error.message)) return false;
+      return false;
+    }
+    return Boolean(data?.user_id);
+  } catch {
+    return false;
+  }
+}
+
 export function isHubAdminRole(role: unknown): boolean {
   return String(role ?? "").trim().toLowerCase() === "admin";
 }
@@ -61,6 +108,7 @@ export async function enforceHubProfileApproval(
     if (error) return { ok: true };
     if (!data) return { ok: true };
     if (!isHubApprovedAtPending(data.approved_at, data.role)) return { ok: true };
+    if (await hubUserHasApprovedToolGrant(hub, id)) return { ok: true };
     return { ok: false, error: HUB_WAITING_FOR_APPROVAL_MESSAGE };
   } catch {
     return { ok: true };
@@ -117,6 +165,20 @@ export async function enforceHubIdentitySnapshotApproval(input?: {
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row) return { ok: true };
     if (!isHubApprovedAtPending(row.approved_at, row.role)) return { ok: true };
+    const toolRes = await doFetch(
+      `${url}/rest/v1/tool_access?user_id=eq.${encodeURIComponent(userId)}&approved_at=not.is.null&select=user_id&limit=1`,
+      {
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        signal: controller?.signal,
+      },
+    );
+    if (toolRes.ok) {
+      const toolRows = (await toolRes.json()) as { user_id?: string }[];
+      if (Array.isArray(toolRows) && toolRows.length > 0) return { ok: true };
+    }
     dropPendingHubIdentitySnapshot();
     return { ok: false, error: HUB_WAITING_FOR_APPROVAL_MESSAGE };
   } catch {

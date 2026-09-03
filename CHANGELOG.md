@@ -1,5 +1,213 @@
 # Changelog
 
+## 2026-09-03 - Release modal Latest chip SSOT lock
+
+- Version: `7.1.22`
+- Timestamp: 2026-09-03 22:33 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- 9px badge in modal + semver match helper
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.21`
+- Timestamp: 2026-09-03 22:30 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Check/Checking CTA SSOT parity
+
+- Version: `7.1.20`
+- Timestamp: 2026-09-03 22:28 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- useStealthDesktopUpdater + dev Checking pulse like P0010
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.19`
+- Timestamp: 2026-09-03 22:22 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Update Release Latest badge SSOT
+
+- Version: `7.1.18`
+- Timestamp: 2026-09-03 22:21 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Timeline running bundle shows Latest (not Update) — semver match + smoke guard
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.17`
+- Timestamp: 2026-09-03 22:12 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.16`
+- Timestamp: 2026-09-03 21:46 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.15`
+- Timestamp: 2026-09-03 20:36 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.14`
+- Timestamp: 2026-09-03 19:30 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-03 - Patch bump for completed agent task
+
+- Version: `7.1.13`
+- Timestamp: 2026-09-03 19:04 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-30 - Patch bump for completed agent task
+
+- Version: `7.1.12`
+- Timestamp: 2026-08-30 22:04 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-30 - Patch bump for completed agent task
+
+- Version: `7.1.11`
+- Timestamp: 2026-08-30 21:50 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-08-29 - Patch bump for completed agent task
+
+- Version: `7.1.10`
+- Timestamp: 2026-08-29 17:49 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-08-29 - Patch bump for completed agent task
 
 - Version: `7.1.9`

@@ -5,8 +5,11 @@ const STEALTH_ADM_DETAIL_MODAL_BASE = hubAccountDetailShellClass({
   extra: "stealth-adm-detail-modal stealth-profile-detail-modal",
 });
 
-/** Edit / fill-height detail — TOC · scrollable main · History + Console rail (50/50). */
+/** Edit / fill-height detail — TOC · scrollable main · Note + Console rail (50/50). */
 export const STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS = `${STEALTH_ADM_DETAIL_MODAL_BASE} hub-tool-detail-modal--split`;
 
-/** Create / compact fit + split main + log rail. */
-export const STEALTH_ADM_DETAIL_CREATE_MODAL_SHELL_CLASS = `${STEALTH_ADM_DETAIL_MODAL_BASE} hub-tool-detail-modal--fit hub-tool-detail-modal--split stealth-profile-create-modal`;
+/**
+ * New profile — same Layout 3 box as Edit (88rem × 768px / 73.6vh).
+ * `--fit` is Confirm/Prompt/Clone only (28rem). Do not put it on entity New/Detail.
+ */
+export const STEALTH_ADM_DETAIL_CREATE_MODAL_SHELL_CLASS = `${STEALTH_ADM_DETAIL_MODAL_BASE} hub-tool-detail-modal--split stealth-profile-create-modal`;

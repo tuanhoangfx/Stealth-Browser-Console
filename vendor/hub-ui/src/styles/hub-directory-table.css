@@ -73,7 +73,7 @@ table.hub-users-table.hub-users-table--directory {
   min-width: 48rem;
   --hub-table-body-size: 12px;
   --hub-table-body-line-height: 1.45;
-  --hub-directory-glyph-label-gap: 5px;
+  --hub-directory-glyph-label-gap: 8px;
   --hub-directory-header-glyph-px: 13px;
 }
 
@@ -360,14 +360,14 @@ table.hub-users-table[data-hub-directory-select] .hub-users-th-btn {
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-heading,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-heading {
-  gap: var(--hub-directory-glyph-label-gap, 5px);
+  gap: var(--hub-directory-glyph-label-gap, 8px);
   flex: 1 1 auto;
   min-width: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-label {
-  gap: var(--hub-directory-glyph-label-gap, 5px);
+  gap: var(--hub-directory-glyph-label-gap, 8px);
   min-width: 0;
   overflow: hidden;
   /* Sort icon must not steal flex space from the column title. */

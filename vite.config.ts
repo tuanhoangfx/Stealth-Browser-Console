@@ -11,7 +11,7 @@ const hubUiSrc = path.resolve(rootDir, "vendor/hub-ui/src");
 const hubIdentitySrc = path.resolve(rootDir, "vendor/hub-identity/src");
 const devRoot = path.resolve(rootDir, "../..");
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
   const plugins = [
     hubAppVersionPlugin({ root: rootDir }),
     react(),
@@ -53,7 +53,9 @@ export default defineConfig(async () => {
   }
 
   return {
-    base: "./",
+    // Serve: absolute base so `/profiles` hard-refresh works. Build: `./` for Electron file://.
+    base: command === "serve" ? "/" : "./",
+    appType: "spa",
     plugins,
     resolve: {
       dedupe: ["react", "react-dom"],

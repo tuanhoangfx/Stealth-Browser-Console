@@ -46,6 +46,7 @@ runStep("refresh-hub-ui-node-link", "node", [
 runStep("vitest", "pnpm", ["exec", "vitest", "run", "--passWithNoTests"]);
 runStep("vite-build-ui", "pnpm", ["exec", "vite", "build"]);
 runStep("ui-render-smoke", "node", ["scripts/smoke-ui-render.mjs", "dist/index.html"]);
+runStep("release-latest-badge-smoke", "node", ["scripts/smoke-release-latest-badge.mjs"]);
 runStep("packaged-auth-smoke", "node", ["scripts/smoke-packaged-auth.mjs", "dist/index.html"]);
 
 const fast = process.argv.includes("--fast") || process.env.P0003_TEST_FAST === "1";

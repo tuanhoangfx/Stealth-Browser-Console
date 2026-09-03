@@ -1,70 +1,38 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { HubVersionDesktopUpdate, HubVersionUpdateState } from "@tool-workspace/hub-ui";
-import type { StealthUpdateStatus } from "../types";
+import { useCallback, useMemo } from "react";
+import {
+  useStealthDesktopUpdater,
+  type HubDesktopUpdateBridge,
+  type HubVersionDesktopUpdate,
+} from "@tool-workspace/hub-ui";
+import { useAppToast } from "../components/toast";
 
-/** Electron-updater status for the single header Update trigger (not a second icon). */
+/** Electron-updater — hub-ui SSOT (`useStealthDesktopUpdater`) + Stealth toasts. */
 export function useStealthDesktopUpdate(): HubVersionDesktopUpdate | null {
-  const [status, setStatus] = useState<StealthUpdateStatus | null>(null);
-  const [hasDesktopApi, setHasDesktopApi] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const dismissedUpdateKey = useRef("");
-
-  useEffect(() => {
+  const bridge = useMemo((): HubDesktopUpdateBridge | null => {
+    if (typeof window === "undefined") return null;
     const api = window.stealthApi;
-    const supportsUpdates = Boolean(api?.getUpdateStatus && api?.checkForUpdates);
-    setHasDesktopApi(supportsUpdates);
-    if (!supportsUpdates) return;
-
-    void api.getUpdateStatus?.().then(setStatus).catch(() => {});
-    return api.onUpdateStatus?.((next) => {
-      setStatus(next);
-      if (next.state === "available" && api.downloadUpdate && next.runtime === "installer") {
-        void api.downloadUpdate().then(setStatus).catch(() => {});
-      }
-    });
+    if (!api?.getUpdateStatus || !api?.checkForUpdates) return null;
+    return api;
   }, []);
-
-  const currentState = (status?.state ?? "idle") as HubVersionUpdateState;
-  const progress = Math.round(status?.progress?.percent ?? 0);
-  const title =
-    status?.message ||
-    (currentState === "available"
-      ? "New version available"
-      : currentState === "latest"
-        ? "You are using the latest version"
-        : "Check for Stealth Browser Console updates");
-  const disabled =
-    busy ||
-    currentState === "checking" ||
-    currentState === "downloading" ||
-    currentState === "installing" ||
-    currentState === "dev";
+  const desktopUpdate = useStealthDesktopUpdater(bridge);
+  const { pushToast } = useAppToast();
 
   const onAction = useCallback(async () => {
-    const api = window.stealthApi;
-    if (!api?.checkForUpdates || disabled) return;
-    setBusy(true);
-    try {
-      const next =
-        currentState === "available" && api.downloadUpdate
-          ? await api.downloadUpdate()
-          : currentState === "downloaded" && api.installUpdate
-            ? await api.installUpdate()
-            : await api.checkForUpdates();
-      setStatus(next);
-      if (currentState === "available") {
-        const updateKey = next.updateVersion || next.releaseName || "available";
-        if (dismissedUpdateKey.current !== updateKey && next.state === "available") {
-          dismissedUpdateKey.current = updateKey;
-        }
-      }
-    } finally {
-      if (currentState !== "downloaded") setBusy(false);
+    if (!desktopUpdate) return;
+    await desktopUpdate.onAction();
+    const next = await window.stealthApi?.getUpdateStatus?.().catch(() => null);
+    if (!next?.message) return;
+    if (next.state === "dev") {
+      pushToast(next.message, "info", 6500);
+    } else if (next.state === "latest") {
+      pushToast(next.message, "success", 4200);
+    } else if (next.state === "error") {
+      pushToast(next.message, "error", 6500);
     }
-  }, [currentState, disabled]);
+  }, [desktopUpdate, pushToast]);
 
   return useMemo(() => {
-    if (!hasDesktopApi) return null;
-    return { state: currentState, progress, title, disabled, onAction };
-  }, [currentState, disabled, hasDesktopApi, onAction, progress, title]);
+    if (!desktopUpdate) return null;
+    return { ...desktopUpdate, onAction };
+  }, [desktopUpdate, onAction]);
 }

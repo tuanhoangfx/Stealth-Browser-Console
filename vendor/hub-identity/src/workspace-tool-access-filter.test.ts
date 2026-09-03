@@ -45,7 +45,15 @@ describe("workspace-tool-access-filter", () => {
   it("lets Hub admin/manager or tool admin manage grants", () => {
     expect(canManageToolAccess({ role: "admin" }, "P0012")).toBe(true);
     expect(canManageToolAccess({ role: "manager" }, "P0012")).toBe(true);
+    expect(canManageToolAccess({ role: "manager" }, "P0004")).toBe(false);
     expect(canManageToolAccess({ role: "user", toolRoles: { P0012: "admin" } }, "P0012")).toBe(true);
     expect(canManageToolAccess({ role: "user", toolRoles: { P0012: "user" } }, "P0012")).toBe(false);
+  });
+
+  it("does not grant default tools to non-CS users", () => {
+    expect(userHasToolAccess({ role: "user", toolCodes: ["P0016", "P0020"], loginId: "duyceo01" }, "E0001")).toBe(
+      false,
+    );
+    expect(userHasToolAccess({ role: "user", toolCodes: [], loginId: "cs00001" }, "E0001")).toBe(true);
   });
 });

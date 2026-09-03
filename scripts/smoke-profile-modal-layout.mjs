@@ -126,6 +126,11 @@ if (shellTs.match(/PROFILE_EDIT_MODAL_SHELL_CLASS[^;]*hub-tool-detail-modal--fit
   fail("edit modal shell must not use hub-tool-detail-modal--fit");
 }
 
+const createModalTsx = fs.readFileSync(path.join(root, "src/features/profiles/CreateProfileModal.tsx"), "utf8");
+if (createModalTsx.match(/size=["']compact["']/)) {
+  fail("CreateProfileModal must not use size=compact — Layout 3 New/Detail is 88rem");
+}
+
 if (!logRailTsx.includes("STEALTH_CONSOLE_RAIL_LABEL") || !logRailTsx.includes("showIcon")) {
   fail("ProfileDetailLogRail must use StealthConsoleRailTitle + Console SSOT label/icon");
 }
@@ -171,6 +176,12 @@ const admShellTs = fs.readFileSync(
 if (!shellTs.includes("STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS") || !admShellTs.includes("hub-tool-detail-modal--split")) {
   fail("profile-form-modal must delegate to stealth-adm-detail-modal SSOT");
 }
+if (admShellTs.match(/STEALTH_ADM_DETAIL_CREATE_MODAL_SHELL_CLASS[^;]*hub-tool-detail-modal--fit/)) {
+  fail("create modal must use Layout 3 88rem — not hub-tool-detail-modal--fit (28rem compact)");
+}
+if (admShellTs.match(/STEALTH_ADM_DETAIL_EDIT_MODAL_SHELL_CLASS[^;]*hub-tool-detail-modal--fit/)) {
+  fail("edit modal shell must not use hub-tool-detail-modal--fit");
+}
 
 const detailCss = fs.readFileSync(
   path.join(root, "src/features/profiles/stealth-profile-detail-modal.css"),
@@ -179,6 +190,9 @@ const detailCss = fs.readFileSync(
 
 if (!detailCss.includes("stealth-profile-detail-runtime-rail") || !detailCss.includes("grid-template-rows")) {
   fail("stealth-profile-detail-modal.css must define 50/50 Note + Console rail grid");
+}
+if (detailCss.includes("--hub-add-modal-body-h: 20rem") || detailCss.includes("--stealth-profile-detail-min-h: 20rem")) {
+  fail("create modal must not pin compact 20rem body — Layout 3 fills 768px");
 }
 if (!detailCss.includes("stealth-profile-detail-note-rail")) {
   fail("stealth-profile-detail-modal.css must style stealth-profile-detail-note-rail");

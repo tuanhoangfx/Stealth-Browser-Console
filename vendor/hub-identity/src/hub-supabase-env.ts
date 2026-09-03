@@ -96,3 +96,25 @@ export function createHubAuthEnvFromVite(
     defaultUrl: opts?.defaultUrl ?? HUB_AUTH_DEFAULT_URL,
   });
 }
+
+/** Read Vite-injected env in browser bundles — never use bare `process.env` in `app/src`. */
+export function readViteEnvString(...keys: string[]): string {
+  const bag =
+    typeof import.meta !== "undefined"
+      ? (import.meta as { env?: Record<string, unknown> }).env
+      : undefined;
+  for (const key of keys) {
+    const val = bag?.[key];
+    if (val != null && String(val).trim()) return String(val).trim();
+  }
+  return "";
+}
+
+/** Hub auth env from the host Vite `import.meta.env` (P00xx SSOT). */
+export function createHubAuthEnvFromImportMeta(opts?: { defaultUrl?: string }): HubAuthEnv {
+  const bag =
+    typeof import.meta !== "undefined"
+      ? (import.meta as { env?: HubAuthViteEnv }).env
+      : undefined;
+  return createHubAuthEnvFromVite(bag ?? {}, opts);
+}

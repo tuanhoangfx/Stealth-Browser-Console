@@ -9,15 +9,37 @@ import {
   isHubApprovedAtPending,
 } from "./hub-profile-approval";
 
-function client(row: { approved_at?: string | null; role?: string | null } | null, error: { message?: string } | null = null) {
+function client(
+  row: { approved_at?: string | null; role?: string | null } | null,
+  error: { message?: string } | null = null,
+  toolGrant = false,
+) {
   return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          maybeSingle: vi.fn(async () => ({ data: row, error })),
+    from: vi.fn((table: string) => {
+      if (table === "tool_access") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn(() => ({
+                  maybeSingle: vi.fn(async () => ({
+                    data: toolGrant ? { user_id: "u1" } : null,
+                    error: null,
+                  })),
+                })),
+              })),
+            })),
+          })),
+        };
+      }
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(async () => ({ data: row, error })),
+          })),
         })),
-      })),
-    })),
+      };
+    }),
     auth: { signOut: vi.fn(async () => undefined) },
   };
 }
@@ -44,6 +66,14 @@ describe("hub-profile-approval", () => {
   it("blocks a pending non-admin after a successful grant", async () => {
     const result = await enforceHubProfileApproval(client({ approved_at: null, role: "user" }), "u1");
     expect(result).toEqual({ ok: false, error: HUB_WAITING_FOR_APPROVAL_MESSAGE });
+  });
+
+  it("allows a pending user when at least one tool grant is approved", async () => {
+    const result = await enforceHubProfileApproval(
+      client({ approved_at: null, role: "user" }, null, true),
+      "u1",
+    );
+    expect(result).toEqual({ ok: true });
   });
 
   it("allows admins even when approved_at is null", async () => {
@@ -88,10 +118,15 @@ describe("enforceHubIdentitySnapshotApproval", () => {
 
   it("clears a leftover pending snapshot so Dual tools cannot stay signed in", async () => {
     cacheHubIdentity(SNAP, "test");
-    const fetchImpl = vi.fn(async () => ({
-      ok: true,
-      json: async () => [{ approved_at: null, role: "user" }],
-    }));
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).includes("tool_access")) {
+        return { ok: true, json: async () => [] };
+      }
+      return {
+        ok: true,
+        json: async () => [{ approved_at: null, role: "user" }],
+      };
+    });
     const result = await enforceHubIdentitySnapshotApproval({ fetchImpl: fetchImpl as typeof fetch });
     expect(result).toEqual({ ok: false, error: HUB_WAITING_FOR_APPROVAL_MESSAGE });
     expect(readHubIdentity()).toBeNull();
@@ -99,10 +134,32 @@ describe("enforceHubIdentitySnapshotApproval", () => {
 
   it("keeps an approved leftover snapshot", async () => {
     cacheHubIdentity(SNAP, "test");
-    const fetchImpl = vi.fn(async () => ({
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).includes("tool_access")) {
+        return { ok: true, json: async () => [] };
+      }
+      return {
+        ok: true,
+        json: async () => [{ approved_at: "2026-08-27T00:00:00.000Z", role: "user" }],
+      };
+    });
+    expect(await enforceHubIdentitySnapshotApproval({ fetchImpl: fetchImpl as typeof fetch })).toEqual({
       ok: true,
-      json: async () => [{ approved_at: "2026-08-27T00:00:00.000Z", role: "user" }],
-    }));
+    });
+    expect(readHubIdentity()?.access_token).toBe("access-1");
+  });
+
+  it("allows a pending snapshot when an approved tool grant exists", async () => {
+    cacheHubIdentity(SNAP, "test");
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).includes("tool_access")) {
+        return { ok: true, json: async () => [{ user_id: "user-1" }] };
+      }
+      return {
+        ok: true,
+        json: async () => [{ approved_at: null, role: "user" }],
+      };
+    });
     expect(await enforceHubIdentitySnapshotApproval({ fetchImpl: fetchImpl as typeof fetch })).toEqual({
       ok: true,
     });

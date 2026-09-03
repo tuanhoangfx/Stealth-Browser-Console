@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { HubAdmGridSlotPad } from "@tool-workspace/hub-ui";
+import { useMemo, useState } from "react";
+import { FolderPlus } from "lucide-react";
+import { HubAdmGridSlotPad, HubPromptDialog } from "@tool-workspace/hub-ui";
 import { formatStartupUrlOnBlur } from "../../lib/startup-url";
 import { PROXY_PRESETS } from "../../lib/stealth-profile-utils";
 import {
@@ -7,6 +8,8 @@ import {
   proxyPresetFilterOptions,
   resolveProxyPresetId,
 } from "../../lib/device-filter-options";
+import { useAppToast } from "../../components/toast";
+import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import type { StealthGroup } from "../../types";
 import {
   PROFILE_DETAIL_FORM_ROW_ALIGNED_3,
@@ -41,6 +44,10 @@ export function ProfileBasicsFields({
   groups,
   showName = true,
 }: ProfileBasicsFieldsProps) {
+  const { createGroup } = useProfilesRuntime();
+  const { pushToast } = useAppToast();
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [createBusy, setCreateBusy] = useState(false);
   const groupOptions = useMemo(() => profileGroupFilterOptions(groups), [groups]);
 
   return (
@@ -63,6 +70,8 @@ export function ProfileBasicsFields({
           options={groupOptions}
           value={groupId}
           onChange={setGroupId}
+          onPanelCreate={() => setCreateGroupOpen(true)}
+          panelCreateAriaLabel="Add Group"
         />
         <ProfileDetailClickEditField
           fieldKey="startupUrl"
@@ -108,6 +117,34 @@ export function ProfileBasicsFields({
         />
         <HubAdmGridSlotPad filledCount={2} />
       </div>
+
+      <HubPromptDialog
+        open={createGroupOpen}
+        title="New group"
+        label="Group name"
+        placeholder="e.g. Clients"
+        confirmLabel={createBusy ? "Creating…" : "Create"}
+        headerIcon={FolderPlus}
+        headerIconClassName="text-amber-300"
+        onClose={() => {
+          if (!createBusy) setCreateGroupOpen(false);
+        }}
+        onConfirm={(raw) => {
+          const nameTrim = raw.trim();
+          if (!nameTrim || createBusy) return;
+          setCreateBusy(true);
+          void createGroup(nameTrim)
+            .then((group) => {
+              setGroupId(group.id);
+              setCreateGroupOpen(false);
+              pushToast(`Group created: ${group.name}`, "success");
+            })
+            .catch((err: unknown) => {
+              pushToast(err instanceof Error ? err.message : "Could not create group", "error");
+            })
+            .finally(() => setCreateBusy(false));
+        }}
+      />
     </>
   );
 }

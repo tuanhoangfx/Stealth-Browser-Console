@@ -28,6 +28,15 @@ export type SessionExpiryFields = {
   access_token?: string | null;
 };
 
+/** Browser `atob`, else Node `globalThis.Buffer` — no `Buffer` global (Vite `types: vite/client`). */
+function decodeJwtPayloadBase64(padded: string): string {
+  if (typeof atob === "function") return atob(padded);
+  const nodeBuffer = (globalThis as { Buffer?: { from(data: string, enc: string): { toString(enc: string): string } } })
+    .Buffer;
+  if (!nodeBuffer) throw new Error("no-base64-decoder");
+  return nodeBuffer.from(padded, "base64").toString("utf8");
+}
+
 /** Decode JWT `exp` (seconds). Missing/malformed token → null. */
 export function readJwtExpSeconds(accessToken: string | null | undefined): number | null {
   const token = String(accessToken ?? "").trim();
@@ -35,10 +44,7 @@ export function readJwtExpSeconds(accessToken: string | null | undefined): numbe
   if (!payload) return null;
   try {
     const padded = payload.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (payload.length % 4)) % 4);
-    const json =
-      typeof atob === "function"
-        ? atob(padded)
-        : Buffer.from(padded, "base64").toString("utf8");
+    const json = decodeJwtPayloadBase64(padded);
     const exp = (JSON.parse(json) as { exp?: unknown }).exp;
     return typeof exp === "number" && exp > 0 ? exp : null;
   } catch {

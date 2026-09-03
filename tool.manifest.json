@@ -127,14 +127,23 @@
     {
       "screen": "profiles",
       "template": "inbox-split",
+      "layout": "split-workspace",
       "golden": "P0020/notes",
       "notes": "HubDirectoryScreen + Open URL rail"
     },
     {
       "screen": "workflow",
       "template": "inbox-split",
+      "layout": "split-workspace",
       "golden": "P0004/hub-ui/workflows",
       "notes": "HubSplitWorkspaceScreen header; WorkflowFilterPane in left pane"
+    },
+    {
+      "screen": "system",
+      "template": "document-toc",
+      "layout": "split-workspace",
+      "golden": "P0004/overview-toc",
+      "notes": "System panels — split overflow host"
     },
     {
       "screen": "settings",
@@ -154,9 +163,9 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-08-29T10:49:25.367Z",
+  "manifestUpdatedAt": "2026-09-03T15:33:23.972Z",
   "release": {
-    "version": "7.1.9",
+    "version": "7.1.22",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {

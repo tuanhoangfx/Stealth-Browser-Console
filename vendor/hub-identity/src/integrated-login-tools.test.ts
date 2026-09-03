@@ -16,6 +16,19 @@ describe("integrated-login-tools", () => {
     expect(p0012?.inheritedRole).toBe(false);
   });
 
+  it("includes P0004 and P0020 as explicit-grant tools", () => {
+    for (const code of ["P0004", "P0020"] as const) {
+      expect(HUB_INTEGRATED_LOGIN_TOOL_CODES).toContain(code);
+      expect(isHubIntegratedLoginTool(code)).toBe(true);
+      const row = HUB_INTEGRATED_LOGIN_TOOLS.find((tool) => tool.code === code);
+      expect(row?.inheritedRole).toBe(false);
+    }
+    expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: [] }, "P0004")).toBe(false);
+    expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: ["P0004"] }, "P0004")).toBe(true);
+    expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: [] }, "P0020")).toBe(false);
+    expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: ["P0020"] }, "P0020")).toBe(true);
+  });
+
   it("includes P0015 as an explicit-grant tool", () => {
     expect(HUB_INTEGRATED_LOGIN_TOOL_CODES).toContain("P0015");
     expect(isHubIntegratedLoginTool("P0015")).toBe(true);
@@ -34,6 +47,11 @@ describe("integrated-login-tools", () => {
     expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: [] }, "P0015")).toBe(false);
     expect(hasIntegratedLoginToolAccess({ role: "user", toolCodes: ["P0015"] }, "P0015")).toBe(true);
     expect(hasIntegratedLoginToolAccess({ role: "user", toolRoles: { P0015: "manager" } }, "P0015")).toBe(true);
+  });
+
+  it("gives Hub managers every integrated tool except P0004", () => {
+    expect(hasIntegratedLoginToolAccess({ role: "manager", toolCodes: [] }, "P0015")).toBe(true);
+    expect(hasIntegratedLoginToolAccess({ role: "manager", toolCodes: [] }, "P0004")).toBe(false);
   });
 
   it("labels tool cells Access / Denied — never Hub Role", () => {

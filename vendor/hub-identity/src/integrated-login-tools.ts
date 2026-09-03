@@ -13,11 +13,11 @@ export const HUB_INTEGRATED_LOGIN_TOOLS: ReadonlyArray<{
   inheritedRole: boolean;
 }> = [
   { code: "P0003", label: "P0003", inheritedRole: false },
-  { code: "P0004", label: "P0004", inheritedRole: true },
+  { code: "P0004", label: "P0004", inheritedRole: false },
   { code: "P0012", label: "P0012", inheritedRole: false },
   { code: "P0015", label: "P0015", inheritedRole: false },
   { code: "P0016", label: "P0016", inheritedRole: true },
-  { code: "P0020", label: "P0020", inheritedRole: true },
+  { code: "P0020", label: "P0020", inheritedRole: false },
 ] as const;
 
 export function isHubIntegratedLoginTool(toolCode: string): toolCode is HubIntegratedLoginToolCode {
@@ -32,6 +32,7 @@ export type HubIntegratedLoginUserContext = {
   role: string;
   toolCodes: readonly string[];
   toolRoles?: Readonly<Record<string, string>>;
+  loginId?: string | null;
 };
 
 function isGrantedLevel(level: string | null | undefined): boolean {
@@ -47,6 +48,7 @@ export function integratedToolLevel(
   if (explicit) return explicit;
   const hubRole = user.role;
   if (user.role === "admin") return hubRole;
+  if (user.role === "manager" && code !== "P0004") return hubRole;
   if (user.toolCodes.includes(code)) return hubRole;
   return "none";
 }
@@ -56,6 +58,7 @@ export function hasIntegratedLoginToolAccess(
   code: HubIntegratedLoginToolCode,
 ): boolean {
   if (user.role === "admin") return true;
+  if (user.role === "manager" && code !== "P0004") return true;
   return isGrantedLevel(integratedToolLevel(user, code));
 }
 

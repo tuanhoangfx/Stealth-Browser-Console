@@ -14,7 +14,7 @@ import type { StealthScreen } from "./lib/stealth-screen";
 import type { StealthSystemTab } from "./lib/stealth-system-tab";
 import type { StealthWorkflowTab } from "./lib/stealth-workflow-tab";
 import { resolveStealthActiveScreenId } from "./lib/stealth-active-screen";
-import { readStealthAppUrl, writeStealthAppUrl } from "./lib/stealth-app-url";
+import { migrateStealthAppUrl, readStealthAppUrl, writeStealthAppUrl } from "./lib/stealth-app-url";
 import { StealthAppProviders } from "./providers/StealthAppProviders";
 import { prefetchSystemChunks, prefetchWorkflowChunks } from "./lib/prefetch-workflow-chunks";
 import { STEALTH_BRAND_ICON, STEALTH_PRODUCT } from "./lib/stealth-product";
@@ -44,7 +44,7 @@ export function App() {
 }
 
 function StealthAppRoot() {
-  const bootUrl = readStealthAppUrl();
+  const [bootUrl] = useState(() => migrateStealthAppUrl());
   const [view, setView] = useState<StealthScreen>(() => bootUrl.screen);
   const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => bootUrl.systemTab);
   const [workflowTab, setWorkflowTab] = useState<StealthWorkflowTab>(() => bootUrl.workflowTab);
@@ -57,6 +57,17 @@ function StealthAppRoot() {
     hideBootLoader();
     prefetchWorkflowChunks();
     prefetchSystemChunks();
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => {
+      const next = readStealthAppUrl();
+      setView(next.screen);
+      setSystemTab(next.systemTab);
+      setWorkflowTab(next.workflowTab);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {

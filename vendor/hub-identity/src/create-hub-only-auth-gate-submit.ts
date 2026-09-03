@@ -8,6 +8,7 @@ import { HUB_AUTH_NOT_CONFIGURED_ERROR } from "./hub-supabase-env";
 import { resolveHubLogin, type ResolvedLogin } from "./hub-login";
 import { signInWithHubPassword } from "./hub-auth-submit";
 import { enforceHubProfileApproval, signOutHubIfPresent } from "./hub-profile-approval";
+import { recordHubToolAccessRequest } from "./hub-tool-access-request";
 import {
   adoptGrantedGoTrueSession,
   grantGoTruePasswordSession,
@@ -103,9 +104,18 @@ export function createHubOnlyAuthGateSubmit(
       await config.afterSignup({ hub, resolved, userId, contactEmail });
     }
 
+    if (config.toolCode && userId) {
+      if (mode === "signup") {
+        await recordHubToolAccessRequest(hub, config.toolCode);
+      }
+    }
+
     if (data?.session) {
       const gate = await enforceHubProfileApproval(hub, data.session.user?.id ?? userId);
       if (!gate.ok) {
+        if (config.toolCode && mode === "signin") {
+          await recordHubToolAccessRequest(hub, config.toolCode);
+        }
         await signOutHubIfPresent(hub);
         return { error: gate.error };
       }

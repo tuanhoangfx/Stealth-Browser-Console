@@ -1,20 +1,14 @@
 /* Profile New/Edit modal — P0020 Mail Account Detail ADM parity (hub-ui SSOT + create bulk overrides). */
 
-/* Edit profile — fill modal height so main column scrolls (hub-tool-detail-modal--fit breaks flex chain). */
-.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
-    .stealth-profile-create-modal
-  ),
+/* New + Edit + Extension — fill Layout 3 height so main column scrolls. */
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal,
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal {
   min-height: min(var(--hub-modal-fill-min-h, 640px), var(--hub-modal-max-vh));
 }
 
-.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
-    .stealth-profile-create-modal
-  )
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal
   .hub-tool-detail-modal__body,
-.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
-    .stealth-profile-create-modal
-  )
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal
   .hub-tool-detail-modal__layout,
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
   .hub-tool-detail-modal__body,
@@ -24,9 +18,7 @@
   min-height: 0;
 }
 
-.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
-    .stealth-profile-create-modal
-  )
+.modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal
   .twofa-account-detail__panel.hub-tool-detail-panel--grow
   .hub-account-detail-modal__main-scroll,
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-extension-detail-modal
@@ -37,12 +29,6 @@
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
-}
-
-.modal-shell.hub-tool-detail-modal.stealth-profile-detail-modal.stealth-profile-create-modal {
-  --hub-add-modal-body-h: 20rem;
-  --hub-add-modal-toc-bulk-slot-h: 7rem;
-  --stealth-profile-detail-min-h: 20rem;
 }
 
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-create-modal
@@ -63,7 +49,7 @@
   min-height: 0;
 }
 
-/* Detail modal — Note + Console rails 50/50 (Create modal Note rail parity). */
+/* Detail modal — Note + Console rails 50/50 (Create uses hub-account-detail-modal__rail SSOT). */
 .stealth-profile-detail-runtime-rail,
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-detail-modal:not(
     .stealth-profile-create-modal
