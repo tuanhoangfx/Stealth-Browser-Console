@@ -5,7 +5,8 @@
 - Version: `8.1.1`
 - Timestamp: 2026-09-04 02:06 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v8.1.1
 
 ### Changes
 
