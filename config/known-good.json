@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v8.1.1-stable",
-  "version": "8.1.1",
-  "gitCommit": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
-  "gitTag": "v8.1.1-stable",
+  "label": "v9.1.1-stable",
+  "version": "9.1.1",
+  "gitCommit": "2f6dc97",
+  "gitTag": "v9.1.1-stable",
   "packagedFrom": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
-  "notes": "v8.1.1: Release Major bump 7.1.22→8.1.1 + Release modal Latest chip SSOT. Installer + win-unpacked pinned.",
+  "notes": "v9.1.1: Release Major bump 8.1.4→9.1.1. Fast prepackaged rebuild seeded build/icons into app.asar.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-8.1.1.exe",
+    "installer": "Stealth-Browser-Console-Setup-9.1.1.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "sXkkMzM7DzA8k2+YsFrnQUS+c0RcQq6xRfgCz5pHmq6v16T/Diofimv7ezKo+UJyQqnP9iMbteRGb20XxE8j9g==",
-    "capturedAt": "2026-09-03T19:11:59.795Z"
+    "sha512": "uzIWQUjh4MUMQ9dNia16HkE6u7cCw4f64Xp5AtVok+PJDsVIXkC29xcBHkjt67UIVeRJEhgKi10BvfW2Dv31Gg==",
+    "capturedAt": "2026-09-03T20:02:18.970Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
