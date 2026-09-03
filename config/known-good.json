@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v7.1.9-stable",
-  "version": "7.1.9",
-  "gitCommit": null,
-  "gitTag": "v7.1.9-stable",
-  "packagedFrom": "4e3c53aadc4f14211f54209ca59e4cf59d8ab459",
-  "notes": "v1.0.184: FilterBar row-tools flex (search fills past actions col). Installer + win-unpacked pinned.",
+  "label": "v8.1.1-stable",
+  "version": "8.1.1",
+  "gitCommit": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
+  "gitTag": "v8.1.1-stable",
+  "packagedFrom": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
+  "notes": "v8.1.1: Release Major bump 7.1.22→8.1.1 + Release modal Latest chip SSOT. Installer + win-unpacked pinned.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-7.1.9.exe",
+    "installer": "Stealth-Browser-Console-Setup-8.1.1.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "eTUIfzuAUcYi2Q8ETdAMQK6gvw1nTBIK5KCNrtgpXmAL+hQkKpeE6+6zMv1fgXh7gIUWAgjtWK+/cjOimDdSFw==",
-    "capturedAt": "2026-08-29T10:49:21.672Z"
+    "sha512": "sXkkMzM7DzA8k2+YsFrnQUS+c0RcQq6xRfgCz5pHmq6v16T/Diofimv7ezKo+UJyQqnP9iMbteRGb20XxE8j9g==",
+    "capturedAt": "2026-09-03T19:11:59.795Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
