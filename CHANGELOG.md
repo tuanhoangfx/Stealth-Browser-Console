@@ -5,7 +5,8 @@
 - Version: `7.1.22`
 - Timestamp: 2026-09-03 22:33 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v7.1.22
 
 ### Changes
 
