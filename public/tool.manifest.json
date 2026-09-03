@@ -5,7 +5,7 @@
   "name": "Stealth Browser Console",
   "deployTarget": "github-release",
   "release": {
-    "version": "8.1.1",
+    "version": "9.1.1",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -17,5 +17,5 @@
   "urls": {
     "local": "http://127.0.0.1:5175"
   },
-  "manifestUpdatedAt": "2026-09-03T19:12:02.370Z"
+  "manifestUpdatedAt": "2026-09-03T19:57:05.835Z"
 }

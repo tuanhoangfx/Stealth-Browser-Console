@@ -1054,7 +1054,7 @@ export type HubMultiFilterDropdownProps = {
   triggerLabel?: string;
   usePortal?: boolean;
   panelScope?: string;
-  /** Directory toolbar — compact `text-xs` trigger + panel rows (HubSplitDirectoryFilterBar SSOT). */
+  /** Directory toolbar — tighter inline gap only (`hub-inline-gap-name`). Typography stays golden `text-sm`. */
   toolbarChrome?: boolean;
   /**
    * Keep already-selected rows visible while panel search does not match them.
@@ -1077,7 +1077,8 @@ export function HubMultiFilterDropdown({
   toolbarChrome = false,
   pinSelected = true,
 }: HubMultiFilterDropdownProps) {
-  const compactDropdown = panelScope === "twofa" || toolbarChrome;
+  /** twofa vault only — directory FilterBar must keep golden `text-sm` panel rows (regression guard). */
+  const compactDropdown = panelScope === "twofa";
   const directoryValueTypo = hubFilterUsesDirectoryValueTypo(panelScope);
   const rowClass = hubFilterDropdownRowClass(compactDropdown, directoryValueTypo);
   const triggerTypo = directoryValueTypo

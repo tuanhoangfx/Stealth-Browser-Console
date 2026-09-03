@@ -1,6 +1,66 @@
 {
-  "generatedAt": "2026-09-03T19:12:02.516Z",
+  "generatedAt": "2026-09-03T19:57:06.395Z",
   "entries": [
+    {
+      "version": "9.1.1",
+      "date": "2026-09-04",
+      "at": "2026-09-04T02:57:00+07:00",
+      "title": "Patch bump for completed agent task (release)",
+      "bullets": [
+        "Release Major bump (P0003): 8.1.4 → 9.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Release Major bump : 8.1.4 → 9.1.1 ."
+      ]
+    },
+    {
+      "version": "8.1.4",
+      "date": "2026-09-04",
+      "at": "2026-09-04T02:47:00+07:00",
+      "title": "Patch bump for completed agent task",
+      "bullets": [
+        "Automatic patch bump after completed P0003 task."
+      ],
+      "kind": "improve",
+      "userTitle": "Patch bump for completed agent task",
+      "userSummary": "",
+      "userHighlights": [
+        "Automatic patch bump after completed P0003 task."
+      ]
+    },
+    {
+      "version": "8.1.3",
+      "date": "2026-09-04",
+      "at": "2026-09-04T02:46:00+07:00",
+      "title": "Vendor sync patch tracking + FilterBar SSOT test",
+      "bullets": [
+        "Track hub-ui vendor fan-out for auto patch bump; lock directory dropdown text-sm parity."
+      ],
+      "kind": "improve",
+      "userTitle": "Vendor sync patch tracking + Filter Bar shared UI test",
+      "userSummary": "",
+      "userHighlights": [
+        "Track hub-ui vendor fan-out for auto patch bump"
+      ]
+    },
+    {
+      "version": "8.1.2",
+      "date": "2026-09-04",
+      "at": "2026-09-04T02:43:00+07:00",
+      "title": "Fix directory filter dropdown typography SSOT",
+      "bullets": [
+        "Restore golden text-sm filter panel rows; toolbarChrome gap-only (regression from compact text-xs)."
+      ],
+      "kind": "fix",
+      "userTitle": "Fix directory filter dropdown typography shared UI",
+      "userSummary": "",
+      "userHighlights": [
+        "Restore golden text-sm filter panel rows"
+      ]
+    },
     {
       "version": "8.1.1",
       "date": "2026-09-04",
@@ -123,66 +183,6 @@
         "Release Major bump : 6.1.1 → 7.1.1 .",
         "Release Major bump : 5.1.3 → 6.1.1 .",
         "Release Major bump : 4.1.4 → 5.1.1 ."
-      ]
-    },
-    {
-      "version": "4.1.4",
-      "date": "2026-08-27",
-      "at": "2026-08-27T14:48:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "4.1.1",
-      "date": "2026-08-26",
-      "at": "2026-08-26T23:26:00+07:00",
-      "title": "Patch bump for completed agent task (release)",
-      "bullets": [
-        "Release Major bump (P0003): 3.1.2 → 4.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Release Major bump : 3.1.2 → 4.1.1 ."
-      ]
-    },
-    {
-      "version": "3.1.2",
-      "date": "2026-08-26",
-      "at": "2026-08-26T23:24:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "3.1.1",
-      "date": "2026-08-24",
-      "at": "2026-08-24T18:18:00+07:00",
-      "title": "Patch bump for completed agent task (release)",
-      "bullets": [
-        "Release Major bump (P0003): 2.1.5 → 3.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Release Major bump : 2.1.5 → 3.1.1 ."
       ]
     }
   ]

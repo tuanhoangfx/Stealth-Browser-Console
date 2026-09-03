@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-09-04 - Patch bump for completed agent task (release)
+
+- Version: `9.1.1`
+- Timestamp: 2026-09-04 02:57 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0003): 8.1.4 → 9.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
+## 2026-09-04 - Patch bump for completed agent task
+
+- Version: `8.1.4`
+- Timestamp: 2026-09-04 02:47 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-04 - Vendor sync patch tracking + FilterBar SSOT test
+
+- Version: `8.1.3`
+- Timestamp: 2026-09-04 02:46 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Track hub-ui vendor fan-out for auto patch bump; lock directory dropdown text-sm parity.
+
+### Verification
+
+- pending
+
+---
+## 2026-09-04 - Fix directory filter dropdown typography SSOT
+
+- Version: `8.1.2`
+- Timestamp: 2026-09-04 02:43 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Restore golden text-sm filter panel rows; toolbarChrome gap-only (regression from compact text-xs).
+
+### Verification
+
+- pending
+
+---
 ## 2026-09-04 - Release modal Latest chip SSOT lock (release)
 
 - Version: `8.1.1`
