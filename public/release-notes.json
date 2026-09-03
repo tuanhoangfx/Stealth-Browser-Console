@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-09-03T19:05:05.400Z",
+  "generatedAt": "2026-09-03T19:06:19.044Z",
   "entries": [
+    {
+      "version": "8.1.1",
+      "date": "2026-09-04",
+      "at": "2026-09-04T02:06:00+07:00",
+      "title": "Release modal Latest chip SSOT lock (release)",
+      "bullets": [
+        "Release Major bump (P0003): 7.1.22 → 8.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
+      ],
+      "kind": "improve",
+      "userTitle": "Release modal Latest chip shared UI lock",
+      "userSummary": "",
+      "userHighlights": [
+        "Release Major bump : 7.1.22 → 8.1.1 ."
+      ]
+    },
     {
       "version": "7.1.22",
       "date": "2026-09-03",
@@ -168,21 +183,6 @@
       "userSummary": "",
       "userHighlights": [
         "Release Major bump : 2.1.5 → 3.1.1 ."
-      ]
-    },
-    {
-      "version": "2.1.5",
-      "date": "2026-08-24",
-      "at": "2026-08-24T18:16:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
       ]
     }
   ]

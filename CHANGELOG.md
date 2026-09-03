@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-04 - Release modal Latest chip SSOT lock (release)
+
+- Version: `8.1.1`
+- Timestamp: 2026-09-04 02:06 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Release Major bump (P0003): 7.1.22 → 8.1.1 (MAJOR+1, MINOR=1, PATCH=1).
+
+### Verification
+
+- pending
+
+---
 ## 2026-09-03 - Release modal Latest chip SSOT lock
 
 - Version: `7.1.22`
