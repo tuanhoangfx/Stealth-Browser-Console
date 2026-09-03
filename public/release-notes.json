@@ -1,18 +1,20 @@
 {
-  "generatedAt": "2026-09-03T20:02:21.763Z",
+  "generatedAt": "2026-09-03T20:11:34.152Z",
   "entries": [
     {
-      "version": "9.1.1",
+      "version": "9.1.3",
       "date": "2026-09-04",
-      "at": "2026-09-04T02:57:00+07:00",
+      "at": "2026-09-04T03:11:00+07:00",
       "title": "Patch bump for completed agent task (release)",
       "bullets": [
+        "Automatic patch bump after completed P0003 task.",
         "Release Major bump (P0003): 8.1.4 → 9.1.1 (MAJOR+1, MINOR=1, PATCH=1)."
       ],
       "kind": "improve",
       "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
+        "Automatic patch bump after completed P0003 task.",
         "Release Major bump : 8.1.4 → 9.1.1 ."
       ]
     },
