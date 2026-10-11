@@ -163,7 +163,7 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-10-11T09:50:31.364Z",
+  "manifestUpdatedAt": "2026-10-11T10:07:44.753Z",
   "release": {
     "version": "9.1.13",
     "updatedAt": "2026-07-17",
@@ -171,7 +171,7 @@
     "latestPublished": {
       "tag": "v9.1.13",
       "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.1.13",
-      "publishedAt": "2026-10-11T09:50:31.363Z"
+      "publishedAt": "2026-10-11T10:07:44.752Z"
     }
   },
   "ship": {
