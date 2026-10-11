@@ -5,7 +5,8 @@
 - Version: `9.1.14`
 - Timestamp: 2026-10-11 17:08 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.1.14
 
 ### Changes
 
