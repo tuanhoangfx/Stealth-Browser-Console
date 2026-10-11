@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-10-11T10:07:43.943Z",
+  "generatedAt": "2026-10-11T10:08:10.454Z",
   "entries": [
+    {
+      "version": "9.1.14",
+      "date": "2026-10-11",
+      "at": "2026-10-11T10:08:10.454Z",
+      "title": "chore: release v9.1.14",
+      "bullets": [
+        "Maintenance and polish since the last documented release."
+      ],
+      "kind": "improve",
+      "userTitle": "Release v9.1.14",
+      "userSummary": "",
+      "userHighlights": [
+        "Maintenance and polish since the last documented release."
+      ]
+    },
     {
       "version": "9.1.13",
       "date": "2026-10-11",
@@ -166,21 +181,6 @@
       "userSummary": "",
       "userHighlights": [
         "Timeline running bundle shows Latest — semver match + smoke guard"
-      ]
-    },
-    {
-      "version": "7.1.17",
-      "date": "2026-09-03",
-      "at": "2026-09-03T22:12:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
       ]
     }
   ]

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-11 - Patch bump for completed agent task (ship)
+
+- Version: `9.1.14`
+- Timestamp: 2026-10-11 17:08 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump for Deploy (P0003): WIP after published v9.1.13.
+
+### Verification
+
+- pending
+
+---
 ## 2026-10-11 - Patch bump for completed agent task
 
 - Version: `9.1.13`
