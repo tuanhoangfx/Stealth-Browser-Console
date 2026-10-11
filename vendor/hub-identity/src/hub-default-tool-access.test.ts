@@ -29,8 +29,10 @@ describe("hub-default-tool-access", () => {
     expect(hasEffectiveHubToolAccess("user", "P0016", [])).toBe(false);
     expect(hasEffectiveHubToolAccess("user", "P0022", [], { loginId: "cs00042" })).toBe(true);
     expect(hasEffectiveHubToolAccess("manager", "P0015", [])).toBe(true);
+    expect(hasEffectiveHubToolAccess("manager", "P0015", [], { deniedCodes: ["P0015"] })).toBe(false);
     expect(hasEffectiveHubToolAccess("manager", "P0004", [])).toBe(false);
     expect(hasEffectiveHubToolAccess("admin", "P0004", [])).toBe(true);
+    expect(hasEffectiveHubToolAccess("admin", "P0015", [], { deniedCodes: ["P0015"] })).toBe(true);
   });
 
   it("locks default grants only for CS buyers", () => {
@@ -46,6 +48,12 @@ describe("hub-default-tool-access", () => {
       "P0012",
       "P0022",
     ]);
+    expect(
+      resolveEffectiveHubUserToolCodes(
+        { role: "manager", toolCodes: [], toolRoles: { P0012: "none" } },
+        catalog,
+      ),
+    ).toEqual(["P0003", "P0022"]);
     expect(resolveEffectiveHubUserToolCodes({ role: "admin", toolCodes: [] }, catalog)).toEqual(catalog);
     expect(resolveEffectiveHubUserToolCodes({ role: "user", toolCodes: ["P0015"] }, catalog)).toEqual(["P0015"]);
   });

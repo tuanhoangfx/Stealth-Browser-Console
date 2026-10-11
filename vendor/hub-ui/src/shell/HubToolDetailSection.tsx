@@ -10,6 +10,8 @@ export type HubToolDetailSectionProps = {
   id: string;
   /** Section title — may include emoji prefix (matches TOC labels). */
   title: string;
+  /** Emoji sticker — same glyph as the TOC row. Preferred over `icon`. */
+  emoji?: string;
   /** Optional icon — same node as TOC row for Settings / detail modals. */
   icon?: ReactNode;
   /** Optional actions aligned to the section header (e.g. Reset columns). */
@@ -24,6 +26,7 @@ export type HubToolDetailSectionProps = {
 export function HubToolDetailSection({
   id,
   title,
+  emoji,
   icon,
   headerActions,
   hideHeader = false,
@@ -44,7 +47,11 @@ export function HubToolDetailSection({
       {hideHeader ? null : (
         <header className="hub-tool-detail-section__header">
           <h3 className="hub-tool-detail-section__title">
-            {icon ? (
+            {emoji ? (
+              <span className="hub-toc-nav__emoji shrink-0 text-[12px] leading-none" aria-hidden>
+                {emoji}
+              </span>
+            ) : icon ? (
               <span className="hub-tool-detail-section__title-icon" aria-hidden>
                 {icon}
               </span>

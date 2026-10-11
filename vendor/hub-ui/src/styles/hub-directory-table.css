@@ -1,4 +1,4 @@
-/* Directory tables — select chrome + layout skin. Bulk + read-only: rem tracks; wrap overflow-x. */
+/* Directory tables — select chrome + layout skin. Bulk: CSS colClass widths; read-only: buildDirectoryColgroup inline %. */
 @import "./hub-flash-border.css";
 
 /* Select column SSOT — 36px col + 16px hub-checkbox; applies when shell sets data-hub-directory-select */
@@ -73,26 +73,8 @@ table.hub-users-table.hub-users-table--directory {
   min-width: 48rem;
   --hub-table-body-size: 12px;
   --hub-table-body-line-height: 1.45;
-  --hub-directory-glyph-label-gap: 8px;
+  --hub-directory-glyph-label-gap: 5px;
   --hub-directory-header-glyph-px: 13px;
-}
-
-/*
- * Shared directory chrome rem — hub-directory-column-width-registry.ts
- * Profile = browser 7.5rem · Usage = 8.75rem · Usage Expired = 12rem · Day Left = period 5rem.
- */
-:root {
-  --hub-dir-col-profile: 7.5rem;
-  --hub-dir-col-usage: 8.75rem;
-  --hub-dir-col-usage-expired: 12rem;
-  --hub-dir-col-plan-left: 5rem;
-  --hub-dir-col-own: 5.5rem;
-  --hub-dir-col-status: 8.75rem;
-  --hub-dir-col-date: 6.25rem;
-  --hub-dir-col-password: 8rem;
-  --hub-dir-col-recover: 12.5rem;
-  --hub-dir-col-full-info: 7rem;
-  --hub-dir-col-plan-package: 26rem;
 }
 
 /* Directory body typography — status / sync / muted match 12px body (frame-table parity). */
@@ -221,27 +203,6 @@ table.hub-users-table[data-hub-directory-select] .hub-users-row.is-detail:hover 
   background: rgba(52, 211, 153, 0.1);
 }
 
-/*
- * Pad rows (`padBodyRowsToPageSize`) — default invisible.
- * Keep height for a stable page frame; hide ghost grid (P0003 Profiles golden).
- * Frozen lead cells keep sticky `left` but drop `--panel` fill so empty slots
- * stay blank. Opt-in faint separators: `[data-partial-page-pad="visible"]`.
- */
-table.hub-users-table tbody tr.hub-users-row--pad {
-  pointer-events: none;
-  user-select: none;
-  cursor: default;
-  background: transparent;
-  box-shadow: none;
-}
-
-table.hub-users-table tbody tr.hub-users-row--pad td {
-  border-color: transparent !important;
-  background: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-}
-
 table.hub-users-table[data-hub-directory-select] .hub-users-row.is-highlighted {
   background: rgba(99, 102, 241, 0.07);
   box-shadow: inset 3px 0 0 rgba(129, 140, 248, 0.45);
@@ -360,14 +321,14 @@ table.hub-users-table[data-hub-directory-select] .hub-users-th-btn {
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-heading,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-heading {
-  gap: var(--hub-directory-glyph-label-gap, 8px);
+  gap: var(--hub-directory-glyph-label-gap, 5px);
   flex: 1 1 auto;
   min-width: 0;
 }
 
 table.hub-users-table.hub-users-table--directory .hub-users-th-label,
 table.hub-users-table[data-hub-directory-select] .hub-users-th-label {
-  gap: var(--hub-directory-glyph-label-gap, 8px);
+  gap: var(--hub-directory-glyph-label-gap, 5px);
   min-width: 0;
   overflow: hidden;
   /* Sort icon must not steal flex space from the column title. */
@@ -444,68 +405,37 @@ table.hub-users-table[data-hub-directory-select] thead .hub-users-th-text {
  */
 
 /*
- * Glyph column headers — pack icon+label for JS fit (icon-only when <th> is too narrow).
- * min-width: 0 — NOT max-content: narrow cols (P0003 E0001 3.25rem) overflow-clip looked
- * like label far left + icon far right (7.1.9 regression). Spacing = NBSP-only (HubTableColumnHeader).
+ * Glyph column headers — keep short labels sized to content so flex+ellipsis does not
+ * clip before JS measures the real <th> budget. Long text-only headers stay default flex.
  */
-:is(
-  table.hub-users-table.hub-users-table--directory,
-  table.hub-users-table[data-hub-directory-select]
-) thead th:has(
+table.hub-users-table[data-hub-directory-select] thead th:has(
   .hub-users-th-emoji,
   .hub-users-th-icon,
   .hub-chrome-brand-icon-bare,
   img.hub-users-th-icon--image
 ) .hub-users-th-heading,
-:is(
-  table.hub-users-table.hub-users-table--directory,
-  table.hub-users-table[data-hub-directory-select]
-) thead th:has(
+table.hub-users-table[data-hub-directory-select] thead th:has(
   .hub-users-th-emoji,
   .hub-users-th-icon,
   .hub-chrome-brand-icon-bare,
   img.hub-users-th-icon--image
 ) .hub-users-th-label {
   flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
+  min-width: max-content;
+  overflow: visible;
   width: auto;
-  overflow: hidden;
-  gap: 0;
 }
 
-:is(
-  table.hub-users-table.hub-users-table--directory,
-  table.hub-users-table[data-hub-directory-select]
-) thead th:has(
+table.hub-users-table[data-hub-directory-select] thead th:has(
   .hub-users-th-emoji,
   .hub-users-th-icon,
   .hub-chrome-brand-icon-bare,
   img.hub-users-th-icon--image
 ) .hub-users-th-text:not(.hub-users-th-text--measure) {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
   text-overflow: clip;
-}
-
-:is(
-  table.hub-users-table.hub-users-table--directory,
-  table.hub-users-table[data-hub-directory-select]
-) .hub-users-th-emoji {
-  margin-right: 0;
-}
-
-:is(
-  table.hub-users-table.hub-users-table--directory,
-  table.hub-users-table[data-hub-directory-select]
-) .hub-users-th-heading > .hub-users-th-emoji + .hub-users-th-text,
-:is(
-  table.hub-users-table.hub-users-table--directory,
-  table.hub-users-table[data-hub-directory-select]
-) .hub-users-th-heading > .inline-flex + .hub-users-th-text {
-  padding-left: 0;
 }
 
 /* JS fit — never clip header labels; icon-only when measured overflow. */

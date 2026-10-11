@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { HubPaginatedTableShell } from "./HubPaginatedTableShell";
 import type { HubServerPaginationControl } from "../table/hub-table-pagination";
+import { HubPaginatedTableShell } from "./HubPaginatedTableShell";
 
 /** Golden directory card grid — 1/2/3/4 columns by breakpoint. */
 export const HUB_DIRECTORY_CARD_GRID_CLASS =
@@ -12,6 +12,7 @@ export type HubPaginatedCardGridProps<T> = {
   pageSize?: number;
   ariaLabel?: string;
   className?: string;
+  /** Pre-sliced page rows + SQL total — same contract as HubPaginatedTableShell. */
   serverPagination?: HubServerPaginationControl;
   children: (pageItems: readonly T[]) => ReactNode;
 };

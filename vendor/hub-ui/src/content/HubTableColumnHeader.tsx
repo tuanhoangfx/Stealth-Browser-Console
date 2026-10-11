@@ -45,21 +45,13 @@ export function HubTableColumnHeader({
   const glyphRef = useRef<HTMLSpanElement>(null);
   const textMeasureRef = useRef<HTMLSpanElement>(null);
 
-  const safeLabel = label ?? "";
-  const parsed = parseHubTableHeaderLabel(safeLabel);
-  /** Sheet sticker wins over Lucide `role` — label-embedded emoji is the fallback SSOT. */
-  const resolvedEmoji = headerEmoji || parsed.embeddedGlyph;
-  const hasSeparateGlyph = Boolean(resolvedEmoji || headerImageSrc || role || IconProp || brandIcon);
-  const embeddedGlyph = !resolvedEmoji && !headerImageSrc && !role && !IconProp && !brandIcon
-    ? parsed.embeddedGlyph
-    : null;
+  const parsed = parseHubTableHeaderLabel(label);
+  const hasSeparateGlyph = Boolean(headerEmoji || headerImageSrc || role || IconProp || brandIcon);
+  const embeddedGlyph = !hasSeparateGlyph ? parsed.embeddedGlyph : null;
   // Separate sticker + "🦸‍♂️Own" used to double-render; always strip leading emoji when a glyph shows.
   const displayText =
-    hasSeparateGlyph || embeddedGlyph ? hubTableLabelTextForGlyph(safeLabel) : safeLabel;
-  const showGlyph = Boolean(resolvedEmoji || headerImageSrc || role || IconProp || brandIcon || embeddedGlyph);
-  /** Flex gap can collapse; leading NBSP on the label is the glyph↔text space SSOT. */
-  const spacedDisplayText =
-    showGlyph && displayText.trim() ? `\u00A0${displayText}` : displayText;
+    hasSeparateGlyph || embeddedGlyph ? hubTableLabelTextForGlyph(label) : label;
+  const showGlyph = Boolean(headerEmoji || headerImageSrc || role || IconProp || brandIcon || embeddedGlyph);
 
   const iconOnly = useHubTableColumnHeaderFit(
     { headingRef, glyphRef, textMeasureRef },
@@ -71,7 +63,7 @@ export function HubTableColumnHeader({
 
   const text = (
     <span className="hub-users-th-text" title={label} aria-hidden={iconOnly || undefined}>
-      {spacedDisplayText}
+      {displayText}
     </span>
   );
 
@@ -81,11 +73,11 @@ export function HubTableColumnHeader({
       className="hub-users-th-text hub-users-th-text--measure"
       aria-hidden
     >
-      {spacedDisplayText}
+      {displayText}
     </span>
   ) : null;
 
-  if (resolvedEmoji) {
+  if (headerEmoji) {
     return (
       <span
         ref={headingRef}
@@ -94,7 +86,7 @@ export function HubTableColumnHeader({
         aria-label={label}
       >
         <span ref={glyphRef} className="hub-users-th-emoji" aria-hidden>
-          {resolvedEmoji}
+          {headerEmoji}
         </span>
         {showText ? text : null}
         {measureText}

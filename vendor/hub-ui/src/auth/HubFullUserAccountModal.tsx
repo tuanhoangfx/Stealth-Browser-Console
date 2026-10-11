@@ -1,16 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  Fingerprint,
-  KeyRound,
-  LogOut,
-  Mail,
-  MessageSquare,
-  Phone,
-  Clock,
-  Save,
-  User,
-  UserRound,
-} from "lucide-react";
+import { LogOut, MessageSquare, Save } from "lucide-react";
 import type {
   HubOwnProfileFields,
   HubOwnProfilePatch,
@@ -32,31 +21,34 @@ import { readUserAccountLog, writeUserAccountLog } from "./hub-user-account-log-
 import { HubToolDetailModal } from "../shell/HubToolDetailModal";
 import { HubToolDetailModalPrimaryAction } from "../shell/HubToolDetailModalActions";
 import { HubToolDetailModalAccountFooter } from "../shell/HubToolDetailModalAccountFooter";
-import { HubAdmClickEditField, HubAdmReadonlyField } from "../shell/HubAdmClickEditField";
+import { HubAdmClickEditField } from "../shell/HubAdmClickEditField";
 import { HubAdmNoteRail } from "../shell/HubAdmNoteRail";
 import { HubAccountDetailAdmScaffold } from "../shell/HubAccountDetailAdmScaffold";
 import { HubAccountDetailHeaderSearch } from "../shell/HubAccountDetailHeaderSearch";
 import { HubAccountDetailSearchProvider } from "../shell/hubAccountDetailSearch";
 import { HubAccountAvatarEditor } from "./HubAccountAvatarEditor";
 import { HubToolDetailRail } from "../shell/HubToolDetailSplitLayout";
-import { HubTocSectionNav } from "../shell/HubTocSectionNav";
+import { HubCrmDetailTocNav } from "../shell/HubCrmDetailTocNav";
 import {
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
   HUB_ADM_ACTIVITY_LOG_EMPTY_MESSAGE,
   hubAccountDetailShellClass,
 } from "../shell/hubAccountDetailModal";
 import {
-  hubAccountDetailSectionIcon,
-  hubAccountDetailSectionIconClass,
+  HUB_ACCOUNT_DETAIL_LOG_EMOJI,
 } from "../shell/hubAccountDetailSectionIcons";
 import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import type { HubWorkspaceUserProfileRow } from "./HubWorkspaceUserModal";
-import { HubUserAccountSections, hubUserAccountVisibleSectionIds } from "./HubUserAccountSections";
+import {
+  HubUserAccountSections,
+  hubUserAccountFieldHeader,
+  hubUserAccountVisibleSectionIds,
+} from "./HubUserAccountSections";
 import {
   HUB_FULL_USER_ACCOUNT_TOC,
   hubUserAccountTocItems,
 } from "./hub-user-account-toc";
-import { resolveWorkspaceRoleIcon, workspaceRoleLabel } from "./hub-workspace-role-icon";
+import { workspaceRoleLabel } from "./hub-workspace-role-icon";
 import { hubUserLogFieldMeta } from "./hub-user-log-field-meta";
 
 export { HUB_FULL_USER_ACCOUNT_TOC } from "./hub-user-account-toc";
@@ -201,10 +193,9 @@ export function HubFullUserAccountModal({
     user?.last_sign_in_at ?? (user as { updated_at?: string | null } | null)?.updated_at ?? null;
   const loginDisplay = (usernameOverride ?? labels.loginId) || "—";
   const displayName =
-    title ??
-    (fullNameDraft.trim() ||
-      (loginDisplay !== "—" ? loginDisplay : labels.email) ||
-      "User");
+    title?.trim() ||
+    (loginDisplay !== "—" ? loginDisplay : "") ||
+    "User";
 
   // Same SSOT as Users directory detail — profiles.email / contact_email only.
   // Never seed from labels.email (may still be synthetic @infix1 until profile hydrates).
@@ -221,23 +212,20 @@ export function HubFullUserAccountModal({
 
   const defaultRows: HubWorkspaceUserProfileRow[] = useMemo(() => {
     const roleValue = resolvedRole ?? roleLabel;
-    const roleMeta = resolveWorkspaceRoleIcon(roleValue);
     const profileRows: HubWorkspaceUserProfileRow[] = canEditOwnProfile
       ? [
-          { label: "Display name", value: fullNameDraft, icon: UserRound },
-          { label: "Phone", value: phoneDraft, icon: Phone },
+          { label: "Display name", value: fullNameDraft },
+          { label: "Phone", value: phoneDraft },
         ]
       : [];
     return [
-      { label: "Username", value: loginDisplay, icon: UserRound },
-      { label: "Email", value: emailDisplay, icon: Mail },
-      { label: "Password", value: "", icon: KeyRound },
+      { label: "Username", value: loginDisplay },
+      { label: "Email", value: emailDisplay },
+      { label: "Password", value: "" },
       ...profileRows,
       {
         label: "Role",
         value: resolvedRole ? workspaceRoleLabel(resolvedRole) : roleLabel,
-        icon: roleMeta.icon,
-        iconClassName: roleMeta.className,
       },
       ...(canEditOwnProfile
         ? ([
@@ -246,9 +234,9 @@ export function HubFullUserAccountModal({
             { label: "Meta", value: metaDraft, icon: MessageSquare },
           ] satisfies HubWorkspaceUserProfileRow[])
         : []),
-      { label: "Created", value: createdAt ?? "—", timestamp: createdAt, icon: User },
-      { label: "Last active", value: lastActiveAt ?? "—", timestamp: lastActiveAt, icon: Clock },
-      { label: "Vault ID", value: userId || "—", icon: Fingerprint },
+      { label: "Created", value: createdAt ?? "—", timestamp: createdAt },
+      { label: "Last active", value: lastActiveAt ?? "—", timestamp: lastActiveAt },
+      { label: "Vault ID", value: userId || "—" },
     ];
   }, [
     loginDisplay,
@@ -588,11 +576,7 @@ export function HubFullUserAccountModal({
         shellClassName={hubAccountDetailShellClass()}
         scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
         sectionIds={sectionIds}
-        toc={
-          <div className="hub-toc-nav">
-            <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT} />
-          </div>
-        }
+        toc={<HubCrmDetailTocNav items={tocItems} />}
         footer={
           <HubToolDetailModalAccountFooter
             onClose={onClose}
@@ -618,7 +602,7 @@ export function HubFullUserAccountModal({
           panelId="hub-user-account"
           panelTitle="Account"
           panelSectionKey="credentials"
-          panelTitleEmoji={undefined}
+          panelTitleEmoji="👤"
           main={
             <HubUserAccountSections
               rows={rows}
@@ -645,12 +629,7 @@ export function HubFullUserAccountModal({
                   row.label === "Zalo" || row.label === "Tele" || row.label === "Meta"
                     ? CHANNEL_BRAND[row.label]
                     : undefined;
-                const header = {
-                  label: row.label,
-                  icon: row.icon,
-                  iconClassName: iconClass,
-                  brandIcon: channelBrand,
-                };
+                const header = hubUserAccountFieldHeader(row, iconClass, channelBrand);
                 const channelLink =
                   row.label === "Zalo" ? (
                     <HubContactOpenAction
@@ -772,17 +751,6 @@ export function HubFullUserAccountModal({
                     />
                   );
                 }
-                if (row.label === "Role" && row.icon) {
-                  const RoleIcon = row.icon;
-                  return (
-                    <HubAdmReadonlyField header={header} valueLayout="text">
-                      <span className="inline-flex items-center gap-1.5">
-                        <RoleIcon size={12} className={iconClass} aria-hidden />
-                        <span>{row.value}</span>
-                      </span>
-                    </HubAdmReadonlyField>
-                  );
-                }
                 return null;
               }}
             />
@@ -805,8 +773,7 @@ export function HubFullUserAccountModal({
               <HubToolDetailRail
                 id="hub-user-log"
                 title="Log"
-                icon={hubAccountDetailSectionIcon("log")}
-                iconClassName={hubAccountDetailSectionIconClass("log")}
+                titleEmoji={HUB_ACCOUNT_DETAIL_LOG_EMOJI}
                 className="twofa-adm-rail--log hub-adm-rail--log"
                 ariaLabel="Log"
               >

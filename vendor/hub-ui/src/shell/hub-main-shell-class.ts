@@ -77,3 +77,8 @@ export function hubAppShellClassName(extraClassName = ""): string {
     .filter(Boolean)
     .join(" ");
 }
+
+/** Workspace column beside HubSidebarShell. CSS grows it to the remaining width. */
+export function hubShellColumnClassName(extraClassName = ""): string {
+  return ["hub-shell-column flex min-h-0 min-w-0 flex-1 flex-col", extraClassName].filter(Boolean).join(" ");
+}

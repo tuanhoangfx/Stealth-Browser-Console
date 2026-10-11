@@ -20,7 +20,6 @@ import {
 import {
   buildHubRouteAccessModalColumns,
   HUB_ROUTE_ACCESS_COL,
-  HUB_ROUTE_ACCESS_HEADER_LABEL_ALWAYS,
   HUB_ROUTE_ACCESS_MODAL_TABLE_WRAP_CLASS,
   hubRouteAccessModalTableClass,
   type HubRouteAccessColumnLayout,
@@ -41,7 +40,7 @@ function columnHeaderTitle(key: string): string | undefined {
     case "planDue":
       return "Plan due date";
     case "planLeft":
-      return "Days remaining until Plan Due";
+      return "Days remaining on plan";
     case "addedAt":
       return "When access was granted";
     case "expires":
@@ -52,10 +51,8 @@ function columnHeaderTitle(key: string): string | undefined {
       return "Account status";
     case "usage":
       return "Completed CRM orders for this account (same service)";
-    case "usageExpired":
-      return "Usage exceptions — Pending / Guarantee / Cancel / Expired subscription";
     case "profile":
-      return "Profile code used for this account";
+      return "Service profile / browser code";
     case "role":
       return "Team role";
     default:
@@ -91,7 +88,7 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   renderLiveStatusCell?: (row: TRow) => ReactNode;
   /** Teams — CRM Usage column (P0005 Order Detail). */
   renderUsageCell?: (row: TRow) => ReactNode;
-  /** Teams — CRM Usage Expired column (Subscription Status Expired). */
+  /** Teams — CRM Usage Expired, immediately after Usage. */
   renderUsageExpiredCell?: (row: TRow) => ReactNode;
   /** Teams — Plan Date / Duration / Due / Left. */
   renderPlanDateCell?: (row: TRow) => ReactNode;
@@ -108,8 +105,6 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   /** Golden directory sort — one value per column key. */
   getSortValue: (row: TRow, key: HubRouteAccessSortKey) => string | number;
   defaultSortKey?: HubRouteAccessSortKey;
-  /** Display → Allow manual column sort OFF — static headers, fixed default order. */
-  defaultSortOnly?: boolean;
   /** Secondary/tertiary order when primary sort values tie. */
   sortTieBreak?: DirectoryTableSortTieBreak<TRow>;
   /** Rich header hints (SSOT popover) — replaces native `title` when set. */
@@ -144,9 +139,9 @@ export type HubRouteAccessDirectoryTableProps<TRow> = {
   showSourceColumn?: boolean;
   showOwnershipColumn?: boolean;
   showLiveStatusColumn?: boolean;
-  /** Teams — CRM Usage after Full Info. */
+  /** Teams — CRM Usage after Live Status. */
   showUsageColumn?: boolean;
-  /** Teams — CRM Usage Expired after live Usage. */
+  /** Teams — Usage Expired immediately after Usage. */
   showUsageExpiredColumn?: boolean;
   /** Teams — Date / Duration / Due / Left columns. */
   showPlanScheduleColumns?: boolean;
@@ -189,7 +184,6 @@ export function HubRouteAccessDirectoryTable<TRow>({
   renderExpiresCell,
   getSortValue,
   defaultSortKey = "user",
-  defaultSortOnly = false,
   sortTieBreak,
   columnHeaderHintOverrides,
   showSelectColumn = true,
@@ -240,12 +234,11 @@ export function HubRouteAccessDirectoryTable<TRow>({
     stackAlignColumns,
   };
   const { sortKey, sortDir, onSort, sorted } = useDirectoryTableSort(
-    items as TRow[],
+    [...items],
     defaultSortKey,
     getSortValue,
     "asc",
     sortTieBreak,
-    defaultSortOnly,
   );
   const resolvedPageSize = useHubTablePageSize(pageSize);
   const pagination = useHubTablePagination(sorted, { resetKey, pageSize: resolvedPageSize });
@@ -289,18 +282,11 @@ export function HubRouteAccessDirectoryTable<TRow>({
         className={`hub-users-th-label${col.key === "user" ? " hub-users-th-label--start" : ""}`}
       >
         {col.role || headerEmoji ? (
-          <HubTableColumnHeader
-            label={label}
-            role={col.role}
-            headerEmoji={headerEmoji}
-            enableFit={!HUB_ROUTE_ACCESS_HEADER_LABEL_ALWAYS.has(sortKeyTyped)}
-          />
+          <HubTableColumnHeader label={label} role={col.role} headerEmoji={headerEmoji} />
         ) : (
           <span className="hub-users-th-text">{label}</span>
         )}
-        {defaultSortOnly ? null : (
-          <HubSortIndicator active={sortKey === col.key} dir={sortDir} />
-        )}
+        <HubSortIndicator active={sortKey === col.key} dir={sortDir} />
       </span>
     );
     const labelNode = headerHint ? (
@@ -314,17 +300,12 @@ export function HubRouteAccessDirectoryTable<TRow>({
       labelInner
     );
 
-    const headerClass = `hub-users-th-btn${col.key === "user" ? " hub-users-th-btn--align-start" : ""}`;
     return {
       ...col,
-      header: defaultSortOnly ? (
-        <span className={`${headerClass} hub-users-th-btn--static`} title={headerHint ? undefined : title}>
-          {labelNode}
-        </span>
-      ) : (
+      header: (
         <button
           type="button"
-          className={headerClass}
+          className={`hub-users-th-btn${col.key === "user" ? " hub-users-th-btn--align-start" : ""}`}
           title={headerHint ? undefined : title}
           onClick={() => onSort(col.key as HubRouteAccessSortKey)}
           aria-sort={

@@ -267,6 +267,19 @@ export type FilterDef = {
    * Pass `false` only for required sticky enums.
    */
   allowClear?: boolean;
+  /**
+   * Panel Pencil + typed Rename row — same chrome as HubAdm ClickFilter catalogs.
+   * `onRename(fromLabel, to)` — FilterBar values stay ids; parent persists the label.
+   */
+  allowRename?: boolean;
+  onRename?: (from: string, to: string) => void;
+  /** Empty-search Pencil — parent prompt. Receives the current rename-from label when known. */
+  onPanelRename?: (from?: string) => void;
+  renameOptionLabel?: (from: string, to: string) => string;
+  panelRenameAriaLabel?: string;
+  /** Panel header trash — delete the selected catalog value. Muted until one value is selected. */
+  onPanelDelete?: (from?: string) => void;
+  panelDeleteAriaLabel?: string;
 };
 
 const FILTER_ICONS: Record<string, HubGlyphComponent> = {
@@ -475,8 +488,13 @@ export function FilterBar({
       onClick={clearAll}
       className="hub-filter-clear-btn inline-flex h-[var(--hub-control-h)] shrink-0 items-center hub-inline-gap-comfort rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-medium text-rose-200 transition-colors hover:bg-rose-500/20"
       title="Clear search and all filters"
+      aria-label="Clear filters"
     >
-      Clear filters
+      {/* 🧹 kept — optical center via .hub-filter-clear-btn__icon (Windows emoji em-box). */}
+      <span className="hub-filter-clear-btn__icon" aria-hidden>
+        <span className={hubFilterOptionEmojiClass(hubFilterEmojiToneClass("🧹", true))}>🧹</span>
+      </span>
+      <span className="hub-filter-trigger__label">Clear</span>
       <span className="hub-filter-clear-btn__count grid h-4 min-w-[var(--hub-count-badge-min-w)] place-items-center rounded-full bg-rose-500/80 px-1 text-[9px] font-bold text-white">
         {activeCount}
       </span>
@@ -1107,7 +1125,9 @@ export function HubMultiFilterDropdown({
       ),
       estimatedHeight: panelView === "date" ? 320 : Math.min(340, 86 + filter.options.length * 36),
     });
-    setPanelPos({ top, left, width });
+    setPanelPos((prev) =>
+      prev.top === top && prev.left === left && prev.width === width ? prev : { top, left, width },
+    );
   }, [open, usePortal, filter.options.length, panelView]);
 
   useEffect(() => {
@@ -1252,6 +1272,29 @@ export function HubMultiFilterDropdown({
 
   const allowClear = filter.allowClear !== false;
   const canClearSelection = selected.length > 0 && !isStickyDefaultOnly(filter, selected);
+  const trimmedSearch = search.trim();
+  const selectedRenameOpt =
+    selected.length === 1 && !isStickyDefaultOnly(filter, selected)
+      ? filter.options.find((o) => o.value === selected[0])
+      : undefined;
+  const searchHits = trimmedSearch
+    ? filter.options.filter((o) => filterOptionMatchesQuery(o, trimmedSearch.toLowerCase()))
+    : [];
+  const uniqueSearchHit = searchHits.length === 1 ? searchHits[0] : undefined;
+  const renameFromOpt = selectedRenameOpt ?? uniqueSearchHit;
+  const renameFrom = (renameFromOpt?.label ?? "").trim();
+  const showRename =
+    Boolean(filter.allowRename && filter.onRename) &&
+    renameFrom.length > 0 &&
+    trimmedSearch.length > 0 &&
+    trimmedSearch.toLowerCase() !== renameFrom.toLowerCase();
+
+  const handleCatalogRename = () => {
+    if (!showRename || !filter.onRename) return;
+    filter.onRename(renameFrom, trimmedSearch);
+    setOpen(false);
+  };
+
   const panelSearch = (
     <HubFilterDropdownPanelSearch
       value={search}
@@ -1264,6 +1307,25 @@ export function HubMultiFilterDropdown({
       }
       clearSelectionLabel="Clear"
       clearSelectionEnabled={allowClear && canClearSelection}
+      onSearchEnter={() => {
+        if (showRename) handleCatalogRename();
+      }}
+      onRenameAction={
+        filter.allowRename && (filter.onPanelRename || filter.onRename)
+          ? () => {
+              if (showRename) {
+                handleCatalogRename();
+                return;
+              }
+              if (filter.onPanelRename) {
+                setOpen(false);
+                filter.onPanelRename(renameFrom || undefined);
+              }
+            }
+          : undefined
+      }
+      renameActionAriaLabel={filter.panelRenameAriaLabel ?? "Rename"}
+      renameActionEnabled={Boolean(renameFrom)}
       onCreateAction={
         filter.onPanelCreate
           ? () => {
@@ -1273,8 +1335,29 @@ export function HubMultiFilterDropdown({
           : undefined
       }
       createActionAriaLabel={filter.panelCreateAriaLabel ?? "Add"}
+      onDeleteAction={
+        filter.onPanelDelete
+          ? () => {
+              setOpen(false);
+              filter.onPanelDelete?.(renameFrom || undefined);
+            }
+          : undefined
+      }
+      deleteActionAriaLabel={filter.panelDeleteAriaLabel ?? "Delete"}
+      deleteActionEnabled={Boolean(renameFrom)}
     />
   );
+
+  const catalogRenameFooter = showRename ? (
+    <button type="button" onClick={handleCatalogRename} className={rowClass}>
+      <Pencil size={compactIconSize(12)} className="shrink-0 text-[var(--muted)]" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-left">
+        {filter.renameOptionLabel
+          ? filter.renameOptionLabel(renameFrom, trimmedSearch)
+          : `Rename “${renameFrom}” to “${trimmedSearch}”`}
+      </span>
+    </button>
+  ) : null;
 
   const datePanel =
     panelView === "date" ? (
@@ -1308,7 +1391,7 @@ export function HubMultiFilterDropdown({
       <button
         ref={triggerRef}
         type="button"
-        title={filter.labelHint && selected.length === 0 ? undefined : resolvedTriggerTitle}
+        title={filter.labelHint ? undefined : resolvedTriggerTitle}
         onClick={() =>
           setOpen((v) => {
             const next = !v;
@@ -1432,9 +1515,12 @@ export function HubMultiFilterDropdown({
                   ) : null
                 }
                 footer={
-                  panel.filtered.length === 0 ? (
-                    <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
-                  ) : null
+                  <>
+                    {catalogRenameFooter}
+                    {panel.filtered.length === 0 ? (
+                      <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
+                    ) : null}
+                  </>
                 }
                 renderItem={(o) => (
                   <button
@@ -1486,9 +1572,12 @@ export function HubMultiFilterDropdown({
                 ) : null
               }
               footer={
-                panel.filtered.length === 0 ? (
-                  <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
-                ) : null
+                <>
+                  {catalogRenameFooter}
+                  {panel.filtered.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>
+                  ) : null}
+                </>
               }
               renderItem={(o) => (
                 <button
@@ -1569,6 +1658,22 @@ export type HubSingleFilterDropdownProps = {
   onRename?: (from: string, to: string) => void;
   /** Custom rename row label — defaults to `Rename “<from>” to “<to>”`. */
   renameOptionLabel?: (from: string, to: string) => string;
+  /**
+   * Panel header Pencil — opens rename flow (e.g. prompt) when search is empty.
+   * If the search box already has a new name, Pencil commits rename (same as the Rename row / Enter).
+   */
+  onPanelRename?: () => void;
+  panelRenameAriaLabel?: string;
+  /** Panel header trash — delete the selected catalog value. Muted until a value is selected. */
+  onPanelDelete?: () => void;
+  panelDeleteAriaLabel?: string;
+  /** Increment to open the panel (Adm Parent after Layer → Sub). Ignored while disabled. */
+  openNonce?: number;
+  /**
+   * Keep the selected row visible while panel search does not match it.
+   * Default on — same as `HubMultiFilterDropdown`.
+   */
+  pinSelected?: boolean;
 };
 
 /** Single-select — identical trigger/panel chrome as `HubMultiFilterDropdown`. */
@@ -1597,21 +1702,40 @@ export function HubSingleFilterDropdown({
   allowRename = false,
   onRename,
   renameOptionLabel,
+  onPanelRename,
+  panelRenameAriaLabel = "Rename",
+  onPanelDelete,
+  panelDeleteAriaLabel = "Delete",
+  openNonce = 0,
+  pinSelected = true,
 }: HubSingleFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [panelPos, setPanelPos] = useState({ top: 0, left: 0, width: 288 });
+  const panelSearchAsyncRef = useRef(panelSearchAsync);
+  panelSearchAsyncRef.current = panelSearchAsync;
+  const wasOpenRef = useRef(open);
+
+  useEffect(() => {
+    if (!openNonce || disabled) return;
+    setOpen(true);
+  }, [openNonce, disabled]);
 
   const search = panelSearchAsync?.query ?? localSearch;
   const setSearch = panelSearchAsync?.onQueryChange ?? setLocalSearch;
 
+  // Clear search only on open→closed. Never depend on `panelSearchAsync` object identity —
+  // inline `{ query, onQueryChange }` remints every parent render and was React #185
+  // (onQueryChange("") → parent setState → remint → effect → …).
   useEffect(() => {
-    if (open) return;
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (open || !wasOpen) return;
     setLocalSearch("");
-    panelSearchAsync?.onQueryChange("");
-  }, [open, panelSearchAsync]);
+    panelSearchAsyncRef.current?.onQueryChange("");
+  }, [open]);
 
   const filter: FilterDef = { key: filterKey, label, options };
   const selected = value ? [value] : [];
@@ -1623,8 +1747,13 @@ export function HubSingleFilterDropdown({
       width: hubFilterPanelMinWidthPx(options, rect.width),
       estimatedHeight: Math.min(320, 52 + options.length * 36),
     });
-    setPanelPos({ top, left, width });
-  }, [open, usePortal, options]);
+    // Bail out on equal geometry — Detail ClickFilter remints `options` every parent
+    // paint (status/own helpers, catalog tick). New object setState was React #185.
+    setPanelPos((prev) =>
+      prev.top === top && prev.left === left && prev.width === width ? prev : { top, left, width },
+    );
+    // Length only — option *identity* remints every parent render (P0020 Detail).
+  }, [open, usePortal, options.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -1652,6 +1781,7 @@ export function HubSingleFilterDropdown({
       ? selectableOptions
       : selectableOptions.filter((o) => {
           if (!search) return true;
+          if (pinSelected && isFilterOptionSelected(o, selected)) return true;
           const q = search.toLowerCase();
           return filterOptionMatchesQuery(o, q);
         }),
@@ -1674,7 +1804,6 @@ export function HubSingleFilterDropdown({
     renameFrom.length > 0 &&
     trimmedSearch.length > 0 &&
     trimmedSearch.toLowerCase() !== renameFrom.toLowerCase() &&
-    !hasExactMatch &&
     !catalogLoading;
   const showCreate =
     allowCustom && trimmedSearch.length > 0 && !hasExactMatch && !showRename && !catalogLoading;
@@ -1725,6 +1854,37 @@ export function HubSingleFilterDropdown({
         onClearSelection={allowClear ? handleClearSelection : undefined}
         clearSelectionLabel={clearLabel}
         clearSelectionEnabled={allowClear && Boolean(value.trim())}
+        onSearchEnter={() => {
+          if (showRename) handleRename();
+          else if (showCreate) handleCreateCustom();
+          else if (hasExactMatch) {
+            const hit = selectableOptions.find(
+              (o) =>
+                o.label.toLowerCase() === trimmedSearch.toLowerCase() ||
+                o.value.toLowerCase() === trimmedSearch.toLowerCase(),
+            );
+            if (hit && !hit.disabled) {
+              onChange(hit.value);
+              setOpen(false);
+            }
+          }
+        }}
+        onRenameAction={
+          allowRename && (onPanelRename || onRename)
+            ? () => {
+                if (showRename) {
+                  handleRename();
+                  return;
+                }
+                if (onPanelRename) {
+                  setOpen(false);
+                  onPanelRename();
+                }
+              }
+            : undefined
+        }
+        renameActionAriaLabel={panelRenameAriaLabel}
+        renameActionEnabled={Boolean(value.trim())}
         onCreateAction={
           onPanelCreate
             ? () => {
@@ -1734,6 +1894,16 @@ export function HubSingleFilterDropdown({
             : undefined
         }
         createActionAriaLabel={panelCreateAriaLabel}
+        onDeleteAction={
+          onPanelDelete
+            ? () => {
+                setOpen(false);
+                onPanelDelete();
+              }
+            : undefined
+        }
+        deleteActionAriaLabel={panelDeleteAriaLabel}
+        deleteActionEnabled={Boolean(value.trim())}
       />
       <HubFilterVirtualList
         className={HUB_FILTER_DROPDOWN_LIST_CLASS}
@@ -1766,6 +1936,11 @@ export function HubSingleFilterDropdown({
                   {customOptionLabel ? customOptionLabel(trimmedSearch) : `Create “${trimmedSearch}”`}
                 </span>
               </button>
+            ) : null}
+            {allowRename && renameFrom && !showRename && !showCreate && trimmedSearch.length === 0 ? (
+              <div className="px-2.5 py-1.5 text-[11px] leading-snug text-[var(--muted)]">
+                Type a new name above to rename this value
+              </div>
             ) : null}
             {filtered.length === 0 && !showCreate && !showRename ? (
               <div className="py-4 text-center text-xs text-[var(--muted)]">No matches</div>

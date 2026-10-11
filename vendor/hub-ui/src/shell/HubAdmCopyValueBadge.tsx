@@ -81,7 +81,6 @@ export function HubAdmCopyValueBadge({
           title={`Copy ${title}`}
           copyToastLabel={copyToastLabel}
           showTrailingCopy={showTrailingCopy}
-          nativeTitle={false}
           className={`hub-adm-type-mono max-w-full${toneClass ? ` ${toneClass}` : ""}`}
         />
       </HubDirectoryValuePopover>

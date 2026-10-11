@@ -1,21 +1,19 @@
-import { HubTocSectionNav } from "./HubTocSectionNav";
+import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { HubToolDetailRail } from "./HubToolDetailSplitLayout";
 import { HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT } from "./hubAccountDetailModal";
-import { hubAccountDetailSectionIcon, hubAccountDetailSectionIconClass } from "./hubAccountDetailSectionIcons";
-import type { HubCrmDetailTocItem } from "./hubCrmDetailChrome";
+import { HUB_ACCOUNT_DETAIL_NAVIGATE_EMOJI } from "./hubAccountDetailSectionIcons";
 
 export function HubCrmDetailTocNav({
   items,
   className = "hub-crm-detail-toc-rail",
 }: {
-  items: readonly HubCrmDetailTocItem[];
+  items: readonly HubTocNavItem[];
   className?: string;
 }) {
   return (
     <HubToolDetailRail
       title="Navigate"
-      icon={hubAccountDetailSectionIcon("navigate")}
-      iconClassName={hubAccountDetailSectionIconClass("navigate")}
+      titleEmoji={HUB_ACCOUNT_DETAIL_NAVIGATE_EMOJI}
       className={className}
       scroll={false}
       ariaLabel="Sections"

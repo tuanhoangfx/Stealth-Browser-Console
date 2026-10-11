@@ -662,6 +662,16 @@ if (skipSign) {
   console.log("run-electron-package: skip code signing (set DESKTOP_RELEASE_SIGN=1 to enable)");
 }
 
+const menuSrc = path.resolve(root, "..", "scripts", "lib", "desktop-app-menu.cjs");
+const menuDest = path.join(root, "electron", "lib", "desktop-app-menu.cjs");
+if (!fs.existsSync(menuSrc)) {
+  console.error("run-electron-package: missing " + menuSrc);
+  process.exit(1);
+}
+fs.mkdirSync(path.dirname(menuDest), { recursive: true });
+fs.copyFileSync(menuSrc, menuDest);
+console.log("run-electron-package: copied desktop-app-menu.cjs into electron/lib");
+
 const builderArgs = [];
 let asarWarmBackup = "";
 if (canPrepackaged) {

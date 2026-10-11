@@ -1,4 +1,4 @@
-import { Check, ChevronDown, FolderOpen, Plus, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, FolderOpen, Pencil, Plus, Trash2, X, type LucideIcon } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
@@ -289,11 +289,27 @@ type HubFilterDropdownPanelSearchProps = {
   clearSelectionLabel?: string;
   clearSelectionEnabled?: boolean;
   /**
+   * Optional — rename selected value (Pencil). Sits beside search, before Clear / Add.
+   * Campaign / catalog free-text fields (allowRename).
+   */
+  onRenameAction?: () => void;
+  renameActionAriaLabel?: string;
+  renameActionEnabled?: boolean;
+  /**
    * Optional — panel header “+” (sits beside Clear when both are set).
    * Services Plan Package → open Add Material.
    */
   onCreateAction?: () => void;
   createActionAriaLabel?: string;
+  /** Enter in the search box — parent commits Rename or Create. */
+  onSearchEnter?: () => void;
+  /**
+   * Panel header trash — delete the selected catalog value.
+   * Sits after Add. Muted until a value is selected.
+   */
+  onDeleteAction?: () => void;
+  deleteActionAriaLabel?: string;
+  deleteActionEnabled?: boolean;
 };
 
 const HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE =
@@ -302,8 +318,14 @@ const HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE =
 /** Clear (X) — rose, same family as FilterBar clear / HubFilterRowButton rose. */
 export const HUB_FILTER_PANEL_CLEAR_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-rose-400/30 bg-rose-400/10 text-rose-200 hover:bg-rose-400/16 hover:text-rose-100`;
 
+/** Rename (Pencil) — amber, sits before Clear / Add on allowRename catalogs. */
+export const HUB_FILTER_PANEL_RENAME_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-amber-400/30 bg-amber-400/10 text-amber-200 hover:bg-amber-400/16 hover:text-amber-100`;
+
 /** Add (+) — emerald, same family as HubFilterRowButton emerald / directory New. */
 export const HUB_FILTER_PANEL_CREATE_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/16 hover:text-emerald-100`;
+
+/** Delete (trash) — after Add. Same rose family as Clear, distinct glyph. */
+export const HUB_FILTER_PANEL_DELETE_BTN_CLASS = `${HUB_FILTER_PANEL_TRAILING_ICON_BTN_BASE} border border-rose-400/35 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25`;
 
 /** Plus glyph on “Create …” rows — matches search-bar Add. */
 export const HUB_FILTER_CREATE_GLYPH_CLASS = "shrink-0 text-emerald-300";
@@ -316,13 +338,22 @@ export function HubFilterDropdownPanelSearch({
   onClearSelection,
   clearSelectionLabel = "Clear",
   clearSelectionEnabled = false,
+  onRenameAction,
+  renameActionAriaLabel = "Rename",
+  renameActionEnabled = false,
   onCreateAction,
   createActionAriaLabel = "Add",
+  onSearchEnter,
+  onDeleteAction,
+  deleteActionAriaLabel = "Delete",
+  deleteActionEnabled = false,
 }: HubFilterDropdownPanelSearchProps) {
   const showCreate = Boolean(onCreateAction);
   /** Optional dropdowns always paint Clear (X); mute it until a value exists. */
   const showClear = Boolean(onClearSelection);
-  const showTrailing = showCreate || showClear;
+  const showRename = Boolean(onRenameAction);
+  const showDelete = Boolean(onDeleteAction);
+  const showTrailing = showCreate || showClear || showRename || showDelete;
   return (
     <div className="border-b border-white/5 p-2">
       <div className={`flex min-w-0 items-center${showTrailing ? " gap-2" : ""}`}>
@@ -339,6 +370,11 @@ export function HubFilterDropdownPanelSearch({
             style={{ paddingLeft: 10, paddingRight: value ? 28 : 10 }}
             aria-label={placeholder}
             {...HUB_NO_SPELLCHECK_PROPS}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              onSearchEnter?.();
+            }}
           />
           {value ? (
             <button
@@ -352,6 +388,18 @@ export function HubFilterDropdownPanelSearch({
             </button>
           ) : null}
         </div>
+        {showRename ? (
+          <button
+            type="button"
+            onClick={onRenameAction}
+            disabled={!renameActionEnabled}
+            aria-label={renameActionAriaLabel}
+            title={renameActionAriaLabel}
+            className={`${HUB_FILTER_PANEL_RENAME_BTN_CLASS}${renameActionEnabled ? "" : " opacity-40"}`}
+          >
+            <Pencil size={compactIconSize(14)} aria-hidden />
+          </button>
+        ) : null}
         {showClear ? (
           <button
             type="button"
@@ -373,6 +421,18 @@ export function HubFilterDropdownPanelSearch({
             className={HUB_FILTER_PANEL_CREATE_BTN_CLASS}
           >
             <Plus size={compactIconSize(14)} aria-hidden />
+          </button>
+        ) : null}
+        {showDelete ? (
+          <button
+            type="button"
+            onClick={onDeleteAction}
+            disabled={!deleteActionEnabled}
+            aria-label={deleteActionAriaLabel}
+            title={deleteActionAriaLabel}
+            className={`${HUB_FILTER_PANEL_DELETE_BTN_CLASS}${deleteActionEnabled ? "" : " opacity-40"}`}
+          >
+            <Trash2 size={compactIconSize(14)} aria-hidden />
           </button>
         ) : null}
       </div>

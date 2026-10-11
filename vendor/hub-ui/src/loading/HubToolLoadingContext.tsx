@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { hubToolLoadingAriaLabel, resolveHubToolIconSrcForVite } from "./resolve-hub-tool-icon";
+import { hubToolLoadingAriaLabel, resolveHubToolIconSrc } from "./resolve-hub-tool-icon";
 
 export type HubToolLoadingValue = {
   toolCode: string;
@@ -13,7 +13,7 @@ const HubToolLoadingContext = createContext<HubToolLoadingValue | null>(null);
 export type HubToolLoadingProviderProps = {
   toolCode: string;
   toolName: string;
-  /** Defaults to Vite-safe `/icons/tools/{toolCode}.svg` (BASE_URL-aware). */
+  /** Defaults to `/icons/tools/{toolCode}.svg` */
   iconSrc?: string;
   children: ReactNode;
 };
@@ -29,7 +29,7 @@ export function HubToolLoadingProvider({
     () => ({
       toolCode,
       toolName,
-      iconSrc: iconSrc ?? resolveHubToolIconSrcForVite(toolCode),
+      iconSrc: iconSrc ?? resolveHubToolIconSrc(toolCode),
       ariaLabel: hubToolLoadingAriaLabel(toolName),
     }),
     [iconSrc, toolCode, toolName],

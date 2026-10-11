@@ -1,6 +1,6 @@
-import { Fingerprint, Gauge, KeyRound } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import type { HubTableColumnHeaderProps } from "../content/HubTableColumnHeader";
+import type { HubBrandIconId } from "../lib/resolve-hub-brand-icon";
 import { HubAdmReadonlyField } from "../shell/HubAdmClickEditField";
 import { HubAdmGridSlotPad } from "../shell/HubBulkDetailField";
 import { HubAdmPlainRelativeTime } from "../shell/HubAdmPlainRelativeTime";
@@ -33,20 +33,45 @@ export const HUB_USER_ACCOUNT_IDENTITY_LABELS = [
 ] as const;
 const IDENTITY_LABELS = HUB_USER_ACCOUNT_IDENTITY_LABELS;
 
+/** Field-label stickers — Lucide stays only as a brand-icon fallback. */
+export const HUB_USER_ACCOUNT_LABEL_EMOJI: Record<string, string> = {
+  Username: "👤",
+  Email: "📧",
+  Password: "🔑",
+  "Display name": "🏷️",
+  Phone: "📞",
+  Role: "🛡️",
+  "User ID": "🆔",
+  Note: "📝",
+};
+
 const USER_ACCOUNT_SECTIONS: readonly { id: HubUserAccountSectionId; header: HubTableColumnHeaderProps }[] = [
-  {
-    id: "credentials",
-    header: { label: "Credentials", icon: KeyRound, iconClassName: "hub-adm-section-icon--amber" },
-  },
-  {
-    id: "identity",
-    header: { label: "Identity", icon: Fingerprint, iconClassName: "hub-adm-section-icon--cyan" },
-  },
-  {
-    id: "status",
-    header: { label: "Status", icon: Gauge, iconClassName: "hub-adm-section-icon--rose" },
-  },
+  { id: "credentials", header: { label: "Credentials", headerEmoji: "🔐" } },
+  { id: "identity", header: { label: "Identity", headerEmoji: "👤" } },
+  { id: "status", header: { label: "Status", headerEmoji: "🚦" } },
 ];
+
+export function hubUserAccountFieldHeader(
+  row: HubWorkspaceUserProfileRow,
+  iconClassName?: string,
+  brandIcon?: HubBrandIconId,
+): HubTableColumnHeaderProps {
+  if (brandIcon) {
+    return {
+      label: row.label,
+      brandIcon,
+      icon: row.icon,
+      iconClassName: iconClassName ?? row.iconClassName,
+    };
+  }
+  const emoji = row.emoji ?? HUB_USER_ACCOUNT_LABEL_EMOJI[row.label];
+  if (emoji) return { label: row.label, headerEmoji: emoji };
+  return {
+    label: row.label,
+    icon: row.icon,
+    iconClassName: iconClassName ?? row.iconClassName,
+  };
+}
 
 export function hubUserAccountSectionId(section: HubUserAccountSectionId): string {
   return `hub-user-${section}`;
@@ -204,11 +229,10 @@ export function HubUserAccountSections({
                   return (
                     <HubAdmReadonlyField
                       key={row.label}
-                      header={{
-                        label: row.label,
-                        icon: row.icon,
-                        iconClassName: iconClassNameFor?.(row) ?? row.iconClassName,
-                      }}
+                      header={hubUserAccountFieldHeader(
+                        row,
+                        iconClassNameFor?.(row) ?? row.iconClassName,
+                      )}
                       valueLayout={trailing ? "inline" : "text"}
                       trailingAction={trailing}
                       empty={!row.value || row.value === "—"}

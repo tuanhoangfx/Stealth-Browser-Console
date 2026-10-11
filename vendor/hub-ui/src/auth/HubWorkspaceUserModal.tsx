@@ -1,11 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 import { KeyRound, LogOut, StickyNote } from "lucide-react";
 import type { ReactNode } from "react";
-import { HubToolDetailModal } from "../shell/HubToolDetailModal";
-import { HubToolDetailModalPrimaryAction } from "../shell/HubToolDetailModalActions";
+import {
+  HubToolDetailModal,
+  HubToolDetailModalPrimaryAction,
+} from "../shell/HubToolDetailModal";
 import { HubToolDetailModalAccountFooter } from "../shell/HubToolDetailModalAccountFooter";
 import { HubAccountDetailAdmScaffold } from "../shell/HubAccountDetailAdmScaffold";
-import { HubTocSectionNav } from "../shell/HubTocSectionNav";
+import { HubCrmDetailTocNav } from "../shell/HubCrmDetailTocNav";
 import {
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
   hubAccountDetailShellClass,
@@ -36,8 +38,10 @@ export type HubWorkspaceUserProfileRow = {
   value: string;
   /** Original ISO value for SSOT timestamp rendering; `value` remains a backward-compatible fallback. */
   timestamp?: string | null;
-  icon: LucideIcon;
+  /** Lucide fallback when the label has no emoji sticker (brand channels keep their logo). */
+  icon?: LucideIcon;
   iconClassName?: string;
+  emoji?: string;
 };
 
 export type HubWorkspaceUserModalProps = {
@@ -125,11 +129,7 @@ export function HubWorkspaceUserModal({
       ariaLabelledBy="hub-workspace-user-modal-title"
       scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
       sectionIds={sectionIds}
-      toc={
-        <div className="hub-toc-nav">
-          <HubTocSectionNav items={tocItems} scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT} />
-        </div>
-      }
+      toc={<HubCrmDetailTocNav items={tocItems} />}
       footer={
         footer ??
         (showSignOut ? (
@@ -152,6 +152,7 @@ export function HubWorkspaceUserModal({
       <HubAccountDetailAdmScaffold
         panelId="hub-user-account"
         panelTitle="Account"
+        panelTitleEmoji="👤"
         panelSectionKey="credentials"
         main={
           <HubUserAccountSections

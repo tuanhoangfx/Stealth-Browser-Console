@@ -1,4 +1,7 @@
-/* Hub golden — profile directory + workflow/runtime rail split (P0003 Profiles SSOT). */
+/* Hub golden — profile directory + workflow/runtime rail split.
+   P0003 Profiles and P0009 Jobs share this file: pane surface, header-to-pane gap,
+   and the table fill (`--hub-directory-pane-surface`). Do not redeclare the grid gap
+   in a product stylesheet. */
 
 .stealth-profile-layout {
   display: grid;
@@ -16,6 +19,7 @@
 }
 
 .hub-main.hub-main--profiles,
+.hub-main.hub-main--jobs,
 .hub-main.hub-main--workflow,
 .hub-main.hub-main--runners,
 .hub-main.hub-main--tasks {
@@ -35,6 +39,11 @@
 .hub-main--profiles .hub-tab-content-zone,
 .hub-main--profiles .hub-tab-body-zone--split,
 .hub-main--profiles .stealth-profile-layout,
+.hub-main--jobs > div:not([hidden]),
+.hub-main--jobs .hub-tab-chrome-stack,
+.hub-main--jobs .hub-tab-content-zone,
+.hub-main--jobs .hub-tab-body-zone--split,
+.hub-main--jobs .stealth-profile-layout,
 .hub-main--workflow > div:not([hidden]),
 .hub-main--workflow .hub-tab-chrome-stack,
 .hub-main--workflow .hub-tab-content-zone,
@@ -64,6 +73,7 @@
 
 /* Tailwind `flex` on layout root must not collapse the 2-column grid. */
 .hub-main--profiles .stealth-profile-layout,
+.hub-main--jobs .stealth-profile-layout,
 .hub-main--workflow .stealth-profile-layout,
 .hub-main--system .stealth-profile-layout,
 .hub-main--runners .stealth-profile-layout,

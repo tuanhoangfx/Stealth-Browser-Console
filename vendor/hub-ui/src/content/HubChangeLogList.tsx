@@ -7,6 +7,7 @@ import { formatHubRelativeTime } from "../lib/format-hub-relative-time";
 import { formatHubTimestampCompact } from "../lib/format-hub-timestamp-compact";
 import { DirectoryEmptyDash, isDirectoryEmptyLabel } from "../lib/directory-empty-label";
 import type { HubEntityLogChange, HubEntityLogEntry, HubEntityLogFieldMeta } from "../lib/hub-entity-log";
+import { formatHubEntityLogActorCaption } from "../lib/hub-entity-log";
 import {
   flattenHubEntityLog,
   formatHubEntityLogActionLabel,
@@ -32,13 +33,15 @@ export function formatHubChangeLogRowTooltip(
   fieldMeta: FieldMetaResolver,
 ): string {
   const time = formatHubTimestampCompact(row.at) || row.at;
+  const actor = row.actor ? formatHubEntityLogActorCaption(row.actor) : "";
+  const actorSuffix = actor ? ` · ${actor}` : "";
   if (row.change) {
     const label = row.fieldLabel ?? fieldMeta(row.change.field).label ?? row.change.field;
     const before = row.change.before ?? "";
     const after = row.change.after ?? "";
-    return `${time} · ${label}: ${before} → ${after}`;
+    return `${time}${actorSuffix} · ${label}: ${before} → ${after}`;
   }
-  return `${time} · ${row.message ?? ""}`;
+  return `${time}${actorSuffix} · ${row.message ?? ""}`;
 }
 
 function isEmptyValue(value: string | undefined): boolean {
@@ -305,6 +308,14 @@ export function HubChangeLogList({
                   )
                 }
               />
+              {row.actor?.label ? (
+                <span
+                  className="twofa-adm-log-row__actor hub-users-cell-muted"
+                  title={formatHubEntityLogActorCaption(row.actor)}
+                >
+                  {formatHubEntityLogActorCaption(row.actor)}
+                </span>
+              ) : null}
             </div>
             {row.change ? (
               <div className="twofa-adm-log-row__values">

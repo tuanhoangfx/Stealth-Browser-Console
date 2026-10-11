@@ -37,38 +37,62 @@ export function isUnstableWorkspaceFooterLabel(label: string | null | undefined)
   return false;
 }
 
+/** Mailbox local-part when it is a stable username (czpgo@outlook.com → czpgo). */
+export function workspaceUsernameFromMailbox(email: string | null | undefined): string {
+  const raw = String(email ?? "").trim();
+  if (!raw || !raw.includes("@")) return "";
+  if (isHubOpaqueAuthEmail(raw)) return "";
+  const local = raw.split("@")[0]?.trim() ?? "";
+  if (!local || isUnstableWorkspaceFooterLabel(local)) return "";
+  return local;
+}
+
 /**
- * Sidebar User footer label — never show email.
- * Priority: Display name → Username (login_id) → auth local-part → id/guest.
+ * Sidebar footer + account modal title — Username only.
+ * Priority: profiles.login_id → contact/profile mailbox local-part → auth local-part.
+ * Display name (`full_name`) is an Identity field and never paints here.
  * Never surface opaque `u_<uuid>` auth locals (Hub GoTrue technical address).
  */
+export function workspaceAccountUsername(opts: {
+  labels?: ReturnType<typeof hubSessionLabels>;
+  session?: HubSessionLike;
+  /** Live profiles.login_id (original case). Wins over session labels. */
+  username?: string | null;
+  /** Live profiles.email */
+  profileEmail?: string | null;
+  /** Live profiles.contact_email */
+  contactEmail?: string | null;
+}): string {
+  const labels = opts.labels ?? hubSessionLabels(opts.session ?? null);
+  const candidates = [
+    opts.username,
+    labels.loginId,
+    workspaceUsernameFromMailbox(opts.contactEmail),
+    workspaceUsernameFromMailbox(opts.profileEmail),
+    workspaceUsernameFromMailbox(labels.email),
+    workspaceUsernameFromMailbox(opts.session?.user?.email ?? labels.authEmail),
+  ];
+  for (const raw of candidates) {
+    const username = String(raw ?? "").trim();
+    if (username && !isUnstableWorkspaceFooterLabel(username)) return username;
+  }
+  return "";
+}
+
 export function workspaceUserFooterLabel(opts: {
   labels?: ReturnType<typeof hubSessionLabels>;
   session?: HubSessionLike;
   anonymous?: boolean;
   anonymousLabel?: string;
   guestLabel?: string;
-  /** Live profiles.full_name (or host override) — wins over session metadata. */
+  /** Ignored. Display name must not paint on chrome. Kept so older call sites compile. */
   displayName?: string | null;
-  /** Live profiles.login_id (or host override). */
   username?: string | null;
+  profileEmail?: string | null;
+  contactEmail?: string | null;
 }): string {
   if (opts.anonymous) return opts.anonymousLabel ?? "Anonymous";
-  const labels = opts.labels ?? hubSessionLabels(opts.session ?? null);
-  const displayName = String(opts.displayName ?? labels.displayName ?? "").trim();
-  if (displayName && !isUnstableWorkspaceFooterLabel(displayName)) return displayName;
-
-  const username = String(opts.username ?? labels.loginId ?? "").trim();
-  if (username && !isUnstableWorkspaceFooterLabel(username)) return username;
-
-  const authEmail = String(opts.session?.user?.email ?? labels.authEmail ?? "").trim();
-  if (authEmail && !isHubOpaqueAuthEmail(authEmail)) {
-    const authLocal = authEmail.split("@")[0]?.trim() ?? "";
-    if (authLocal && !isUnstableWorkspaceFooterLabel(authLocal)) return authLocal;
-  }
-
-  // Never paint auth UUID (full or first-8) — wait for profiles.login_id / sticky label.
-  return opts.guestLabel || "Account";
+  return workspaceAccountUsername(opts) || opts.guestLabel || "Account";
 }
 
 export type BuildWorkspaceUserProfileRowsOptions = {

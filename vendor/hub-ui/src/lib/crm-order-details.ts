@@ -24,6 +24,22 @@ export function isCrmOrderCompletedStatus(status: string | null | undefined): bo
 }
 
 /**
+ * P0020 Usage only — Google Flow SKUs count on Google One vaults.
+ * Catalog Products (P0005 Service / Filter) stay separate (`google-flow` ≠ `google-one`).
+ */
+const CRM_USAGE_EQUIVALENT_SERVICE_KEYS: ReadonlyArray<readonly [string, string]> = [
+  ["google-flow", "google-one"],
+];
+
+function crmUsageServiceKeysMatch(productKey: string, serviceKey: string): boolean {
+  if (productKey && serviceKey && productKey === serviceKey) return true;
+  for (const [a, b] of CRM_USAGE_EQUIVALENT_SERVICE_KEYS) {
+    if ((productKey === a && serviceKey === b) || (productKey === b && serviceKey === a)) return true;
+  }
+  return false;
+}
+
+/**
  * True when an order's product resolves to the same service/category as an account's service.
  * Primary match uses the shared `inferProductCategory` SSOT (brand registry + plan-suffix strip);
  * falls back to a normalized substring match for labels with no brand-registry entry.
@@ -38,7 +54,7 @@ export function crmOrderProductMatchesService(
 
   const productKey = inferProductCategory(product).groupKey;
   const serviceKey = inferProductCategory(svc).groupKey;
-  if (productKey && serviceKey && productKey === serviceKey) return true;
+  if (crmUsageServiceKeysMatch(productKey, serviceKey)) return true;
 
   const p = (stripProductPlanSuffix(product) || product).toLowerCase();
   const s = (stripProductPlanSuffix(svc) || svc).toLowerCase();
@@ -51,6 +67,11 @@ export function normalizeCrmOrderDetailsText(raw: unknown): string {
 
 export function readCrmOrderDetailsFromRow(row: CrmOrderDetailsMirrorRow): string {
   return normalizeCrmOrderDetailsText(row.metadata?.raw_details);
+}
+
+/** True when Order Details can participate in CRM Usage (non-empty credentials text). */
+export function crmOrderHasUsageDetails(row: CrmOrderDetailsMirrorRow): boolean {
+  return Boolean(readCrmOrderDetailsFromRow(row));
 }
 
 export function normalizeCrmOrderDetailsIdentifier(value: string): string {
@@ -101,6 +122,9 @@ const CRM_ORDER_DETAIL_IDENTITY_PREFIXES = [
   "id :",
   "mail :",
   "account :",
+  "recover mail :",
+  "recover :",
+  "mail recover :",
 ] as const;
 
 const CRM_ORDER_DETAIL_CREDENTIAL_PREFIXES = [
@@ -109,7 +133,28 @@ const CRM_ORDER_DETAIL_CREDENTIAL_PREFIXES = [
   "password :",
 ] as const;
 
-/** Emails + ID / Mail / Account lines — account Usage SSOT (no password tokens). */
+const CRM_ORDER_DETAIL_SKIP_BARE_LINE =
+  /^(account|mail|id|pass|password|secret|recover(?:\s+mail)?|mail\s+recover)\s*:/i;
+
+/**
+ * Bare shop / profile lines under Account credentials (Kalowave Boost etc.).
+ * Example: `Blessed Care PH - PHPHLC9WLYKA` — not an email, still a Usage identity.
+ */
+export function extractCrmOrderDetailBareIdentityLines(text: string): string[] {
+  const out: string[] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.length < 3) continue;
+    if (CRM_ORDER_DETAIL_SKIP_BARE_LINE.test(line)) continue;
+    if (/\b(password|secret)\s*:/i.test(line)) continue;
+    if (/^https?:\/\//i.test(line)) continue;
+    const normalized = normalizeCrmOrderDetailsIdentifier(line);
+    if (normalized.length >= 3) out.push(normalized);
+  }
+  return [...new Set(out)];
+}
+
+/** Emails + ID / Mail / Account / Recover lines + bare shop lines — Usage SSOT. */
 export function extractCrmOrderDetailIdentityTokens(text: string): string[] {
   const tokens = new Set(extractCrmOrderDetailEmails(text));
   const lower = text.toLowerCase();
@@ -122,10 +167,13 @@ export function extractCrmOrderDetailIdentityTokens(text: string): string[] {
       const slice = text.slice(valueStart, valueStart + 160);
       const raw = slice.split(/\s+-\s+|\n|,|;|\|/)[0]?.trim() ?? "";
       const normalized = normalizeCrmOrderDetailsIdentifier(raw);
-      if (normalized.length >= 3) tokens.add(normalized);
+      if (normalized.length >= 3) {
+        for (const alias of expandCrmOrderGmailAliases(normalized)) tokens.add(alias);
+      }
       from = valueStart + 1;
     }
   }
+  for (const bare of extractCrmOrderDetailBareIdentityLines(text)) tokens.add(bare);
   return [...tokens];
 }
 

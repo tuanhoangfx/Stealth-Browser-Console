@@ -11,7 +11,7 @@ export const HUB_RECORD_META_FIELD_HEADERS: Record<
   keyof typeof HUB_RECORD_META_LABELS,
   HubTableColumnHeaderProps
 > = {
-  vaultId: { label: HUB_RECORD_META_LABELS.vaultId, role: "vault" },
+  vaultId: { label: HUB_RECORD_META_LABELS.vaultId, headerEmoji: "🆔" },
   /** ADM labels use emoji — Lucide Clock/History is directory-table header only. */
   created: { label: HUB_RECORD_META_LABELS.created, headerEmoji: "📅" },
   updated: { label: HUB_RECORD_META_LABELS.updated, headerEmoji: "🔄" },

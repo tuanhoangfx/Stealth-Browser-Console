@@ -641,6 +641,22 @@ export {
   HubDirectoryMetricBadge,
   type HubDirectoryMetricBadgeProps,
 } from "./shell/HubDirectoryMetricBadge";
+export { HubCountRankBadge, hubCountRankHintIcon, type HubCountRankBadgeProps } from "./shell/HubCountRankBadge";
+export {
+  HUB_COUNT_RANK_LETTERS,
+  HUB_PACKAGE_COUNT_RANK_BANDS,
+  HUB_PACKAGE_COUNT_RANK_LEGEND,
+  hubCountRankScore,
+  hubPackageCountRank,
+  hubPackageCountRankDetail,
+  resolveHubCountRank,
+  type HubCountRankBands,
+  type HubCountRankLetter,
+} from "./lib/hub-count-rank";
+export {
+  HubDirectoryCountHint,
+  type HubDirectoryCountHintProps,
+} from "./shell/HubDirectoryCountHint";
 export {
   HUB_DIRECTORY_METRIC_TIER_THRESHOLDS,
   HUB_DIRECTORY_METRIC_HEAT_LEGEND,
@@ -682,6 +698,13 @@ export {
   HubTwofaCopyControl,
   type HubTwofaCopyControlProps,
 } from "./shell/HubTwofaCopyControl";
+export {
+  HubTwofaPeriodInline,
+  hubTwofaPeriodTone,
+  hubTwofaPeriodDotClass,
+  type HubTwofaPeriodInlineProps,
+  type HubTwofaPeriodTone,
+} from "./shell/HubTwofaPeriodInline";
 export {
   HUB_TWOFA_CODE_BADGE_CLASS,
   HUB_TWOFA_CODE_BADGE_DESIGN_LOCK,
@@ -806,11 +829,13 @@ export {
   isCrmOrderCompletedStatus,
   normalizeCrmOrderDetailsIdentifier,
   normalizeCrmOrderDetailsText,
+  crmOrderHasUsageDetails,
   readCrmOrderDetailsFromRow,
   type CrmOrderDetailsMirrorRow,
 } from "./lib/crm-order-details";
 export {
   CRM_ORDER_MAIL_VAULT_SERVICES,
+  crmOrderProductIsAccGmailSeatSku,
   crmOrderProductIsMailSku,
   crmOrderVaultCandidateEligible,
   crmOrderVaultCandidateIdentityHits,
@@ -882,8 +907,11 @@ export {
   copyToastLabelFromTitle,
   formatHubUnknownMessage,
   type HubToast,
+  type HubToastAction,
   type HubToastIcon,
+  type HubToastPlacement,
   type HubToastType,
+  type HubRichToastInput,
 } from "./toast";
 export { CopyMetaChip, MetaChip, HUB_EMAIL_COPY_CHIP_CLASS, type MetaTone } from "./shell/CopyMetaChip";
 export { HubResultCount } from "./shell/HubResultCount";
@@ -993,12 +1021,15 @@ export {
   MAX_HUB_ENTITY_LOG_ENTRIES,
   appendHubEntityLogEntry,
   buildHubEntityLogMessage,
+  formatHubEntityLogActorCaption,
   formatHubEntityLogChangeLine,
+  hubEntityLogActorFromUser,
   hubEntityLogFieldMetaResolver,
   hubEntityLogSameText,
   hubEntityLogTextValue,
   mergeHubEntityAuditLogs,
   normalizeHubEntityLog,
+  normalizeHubEntityLogActor,
   canonicalizeHubEntityLogAt,
   dedupeHubEntityLogEntries,
   parseHubEntityLogMessageChanges,
@@ -1006,6 +1037,9 @@ export {
   pushHubEntityLogChange,
   readHubEntityActivityLog,
   withHubEntityActivityLog,
+  healHubEntityLogActors,
+  type HubEntityLogActor,
+  type HubEntityLogActorSource,
   type HubEntityLogChange,
   type HubEntityLogEntry,
   type HubEntityLogFieldMeta,
@@ -1060,6 +1094,12 @@ export {
   useHubDetailDisplayRow,
   type UseHubDetailDisplayRowOptions,
 } from "./lib/use-hub-detail-dirty-baseline";
+export {
+  resolveHubDetailDeleteHotkeyEnabled,
+  useHubDetailDeleteHotkey,
+  isHubDetailDeleteHotkeyBlockedByOverlay,
+  type HubDetailDeleteHotkeyArmedInput,
+} from "./lib/use-hub-detail-delete-hotkey";
 export {
   isHubMultilineDraftDirty,
   isHubMultilinePersistDirty,
@@ -1117,6 +1157,13 @@ export {
   formatHubTimestampFull,
   formatHubTimestampLog,
 } from "./lib/format-hub-timestamp-compact";
+export {
+  HUB_CALENDAR_MONTH_EMOJI,
+  formatHubCalendarMonthShort,
+  formatHubCalendarMonthYear,
+  hubCalendarMonthEmoji,
+  hubCalendarMonthNameShort,
+} from "./lib/hub-calendar-month";
 export {
   extractNumericSearchTerm,
   matchesDirectoryIdSearch,
@@ -1405,6 +1452,7 @@ export {
   type ToolManifestUiShell,
   type ToolManifestUiShellInput,
   hubAppShellClassName,
+  hubShellColumnClassName,
 } from "./shell/hub-main-shell-class";
 export { applyHubEmbedDocumentClass, isHubEmbedMode } from "./shell/hub-embed-mode";
 export {
@@ -1850,6 +1898,10 @@ export {
 } from "./shell/HubAccountDetailAdmBody";
 export {
   HUB_ACCOUNT_DETAIL_SECTION_META,
+  HUB_ACCOUNT_DETAIL_NAVIGATE_EMOJI,
+  HUB_ACCOUNT_DETAIL_LOG_EMOJI,
+  HUB_ACCOUNT_DETAIL_ACCOUNT_EMOJI,
+  HUB_ACCOUNT_DETAIL_JOB_EMOJI,
   hubAccountDetailSectionIcon,
   hubAccountDetailSectionIconClass,
   type HubAccountDetailSectionKind,
@@ -2045,8 +2097,13 @@ export {
   hubDesktopUpdateChromeLabel,
   hubDesktopUpdateHighlightsEntry,
   HUB_DESKTOP_UPDATE_BADGE_LABEL,
+  HUB_DESKTOP_UPDATE_AVAILABLE_TOAST_TITLE,
+  HUB_DESKTOP_UPDATE_AVAILABLE_DOWNLOAD_LABEL,
+  HUB_DESKTOP_UPDATE_AVAILABLE_LATER_LABEL,
+  HUB_DESKTOP_UPDATE_AVAILABLE_TOAST_DURATION_MS,
   HUB_DESKTOP_UPDATE_INSTALL_TOAST,
   HUB_DESKTOP_UPDATE_INSTALL_TOAST_DURATION_MS,
+  hubDesktopUpdateAvailableDetail,
   type HubVersionUpdateState,
   type HubVersionDesktopUpdate,
   type HubVersionUpdateStatusIconProps,
@@ -2202,9 +2259,13 @@ export {
   type HubChatbotBulkSelection,
 } from "./shell/HubChatbotBulkActionDropdown";
 export {
+  HubCatalogSyncButton,
   HubScreensDirectoryBulkActions,
+  HubToolsDirectoryBulkActions,
   HubUsersDirectoryBulkActions,
+  type HubCatalogSyncButtonProps,
   type HubScreensDirectoryBulkActionsProps,
+  type HubToolsDirectoryBulkActionsProps,
   type HubUsersDirectoryBulkActionsProps,
 } from "./shell/HubDirectoryBulkActions";
 export {

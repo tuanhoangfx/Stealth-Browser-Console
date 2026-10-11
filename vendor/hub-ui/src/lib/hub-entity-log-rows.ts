@@ -1,5 +1,5 @@
 import { isDirectoryEmptyLabel } from "./directory-empty-label";
-import type { HubEntityLogChange, HubEntityLogEntry } from "./hub-entity-log";
+import type { HubEntityLogActor, HubEntityLogChange, HubEntityLogEntry } from "./hub-entity-log";
 
 /**
  * Hub entity change-log row logic — golden SSOT shared by every tool's rail
@@ -20,6 +20,8 @@ export type HubEntityLogRow = {
   message?: string;
   /** Resolved display label for `change.field` (via `labelFor`). */
   fieldLabel?: string;
+  /** Who performed the parent log entry (shown once per stamp group). */
+  actor?: HubEntityLogActor;
 };
 
 export type FlattenHubEntityLogOptions = {
@@ -158,6 +160,8 @@ export function flattenHubEntityLog(
           change,
           changeIndex,
           fieldLabel: options.labelFor?.(change),
+          // Actor once per stamp (first field row) — avoid repeating on every delta.
+          ...(entry.actor && changeIndex === 0 ? { actor: entry.actor } : {}),
         });
       });
       return;
@@ -168,6 +172,7 @@ export function flattenHubEntityLog(
       dotIndex: entryIndex % 3,
       entryIndex,
       message: entry.message,
+      ...(entry.actor ? { actor: entry.actor } : {}),
     });
   });
   return rows;

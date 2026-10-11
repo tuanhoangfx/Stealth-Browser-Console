@@ -3,8 +3,11 @@ export {
   useHubToast,
   useHubToastRequired,
   type HubToast,
+  type HubToastAction,
   type HubToastIcon,
+  type HubToastPlacement,
   type HubToastType,
+  type HubRichToastInput,
 } from "./HubToastContext";
 export { HubToastContainer, HubToastShell } from "./HubToastContainer";
 export { resolveHubToastPortalTarget, HUB_TOAST_PORTAL_HOST_CLASS } from "./resolve-hub-toast-portal";

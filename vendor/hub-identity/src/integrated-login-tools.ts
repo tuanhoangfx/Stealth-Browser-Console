@@ -40,11 +40,22 @@ function isGrantedLevel(level: string | null | undefined): boolean {
   return v !== "" && v !== "none";
 }
 
+function explicitToolRole(
+  user: HubIntegratedLoginUserContext,
+  code: HubIntegratedLoginToolCode,
+): string | undefined {
+  const direct = user.toolRoles?.[code];
+  if (direct != null && String(direct).trim() !== "") return String(direct).trim();
+  const lower = user.toolRoles?.[code.toLowerCase()];
+  if (lower != null && String(lower).trim() !== "") return String(lower).trim();
+  return undefined;
+}
+
 export function integratedToolLevel(
   user: HubIntegratedLoginUserContext,
   code: HubIntegratedLoginToolCode,
 ): string {
-  const explicit = user.toolRoles?.[code];
+  const explicit = explicitToolRole(user, code);
   if (explicit) return explicit;
   const hubRole = user.role;
   if (user.role === "admin") return hubRole;
@@ -58,6 +69,9 @@ export function hasIntegratedLoginToolAccess(
   code: HubIntegratedLoginToolCode,
 ): boolean {
   if (user.role === "admin") return true;
+  const explicit = explicitToolRole(user, code);
+  // Explicit Denied overrides Hub Manager default Access.
+  if (explicit != null && !isGrantedLevel(explicit)) return false;
   if (user.role === "manager" && code !== "P0004") return true;
   return isGrantedLevel(integratedToolLevel(user, code));
 }

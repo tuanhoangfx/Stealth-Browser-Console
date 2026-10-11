@@ -58,6 +58,38 @@
   min-height: 0;
 }
 
+/* Plan is one 6-col grid. Separate row wrappers stacked flex-gap on top of
+   detail-line row-gap, so Package / Note sat farther apart than Tier / Date. */
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-section-block__rows {
+  display: grid;
+  grid-template-columns:
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr);
+  column-gap: var(--hub-adm-field-gap);
+  row-gap: 0.55rem;
+  align-items: center;
+}
+
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--aligned {
+  display: contents;
+}
+
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--detail-line .hub-adm-inline-field--readonly > :is(.hub-adm-inline-field__label, .hub-directory-popover-anchor),
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--detail-line .hub-adm-inline-field--readonly > .hub-adm-inline-field__value,
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--detail-line .hub-adm-inline-field--click-filter > :is(.hub-adm-inline-field__label, .hub-directory-popover-anchor),
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--detail-line .hub-adm-inline-field--click-filter > .hub-adm-inline-field__value,
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline > :is(.hub-adm-inline-field__label, .hub-directory-popover-anchor),
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-form-row--detail-line .hub-adm-inline-field--multiline > .hub-adm-inline-field__value {
+  align-self: center;
+}
+
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-directory-popover-anchor,
+.twofa-account-detail-modal .hub-adm-section-block--plan .hub-adm-inline-field__label {
+  min-height: var(--hub-adm-value-h);
+  align-items: center;
+}
+
 .twofa-account-detail__panel .twofa-adm-form-rows.hub-adm-section-stack {
   gap: 0.55rem;
 }
@@ -310,6 +342,17 @@
   display: inline-block;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.twofa-adm-log-row__actor {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 .twofa-adm-log-row__field {

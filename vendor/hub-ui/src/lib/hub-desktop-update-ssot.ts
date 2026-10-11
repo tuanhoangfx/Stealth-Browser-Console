@@ -22,14 +22,34 @@ export type HubVersionDesktopUpdate = {
   onAction: () => void;
   /** Remote version from GitHub — drives timeline badge + card highlight. */
   availableVersion?: string | null;
+  /** Optional product label for available-update toast detail (e.g. AutoVideo Studio). */
+  appName?: string | null;
 };
 
 export const HUB_DESKTOP_UPDATE_BADGE_LABEL = "Update available";
+
+export const HUB_DESKTOP_UPDATE_AVAILABLE_TOAST_TITLE = "New update available";
+export const HUB_DESKTOP_UPDATE_AVAILABLE_DOWNLOAD_LABEL = "Download update";
+export const HUB_DESKTOP_UPDATE_AVAILABLE_LATER_LABEL = "Later";
+/** Sticky until Later / Download — matches prior desktop prompt UX. */
+export const HUB_DESKTOP_UPDATE_AVAILABLE_TOAST_DURATION_MS = 0;
 
 export const HUB_DESKTOP_UPDATE_INSTALL_TOAST =
   "Update downloaded — open Update Release, tap Install, then restart the app.";
 
 export const HUB_DESKTOP_UPDATE_INSTALL_TOAST_DURATION_MS = 8000;
+
+/** Detail line for the available-update toast (English UI SSOT). */
+export function hubDesktopUpdateAvailableDetail(
+  version: string | null | undefined,
+  appName?: string | null,
+): string {
+  const v = version?.trim() || "";
+  const name = appName?.trim() || "";
+  if (v && name) return `${name} ${v} is ready to download.`;
+  if (v) return `Version ${v} is ready to download.`;
+  return "A new version is ready to download.";
+}
 
 const DESKTOP_UPDATE_TRIGGER_STATES: ReadonlySet<HubVersionUpdateState> = new Set([
   "available",

@@ -1,5 +1,5 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import { isHubTechnicalAuthEmail, normalizeLoginId } from "./hub-login";
+import { isHubOpaqueAuthEmail, isHubTechnicalAuthEmail, normalizeLoginId } from "./hub-login";
 import { hubSessionLabels } from "./hub-session-labels";
 import { hubSyncMirrorPasswordApiUrl } from "./hub-api-routes";
 import { updateHubPasswordWithMirrorSync } from "./workspace-mirror-password-recovery-sync";
@@ -45,6 +45,11 @@ export type CreateHubFullAccountAuthHandlersOptions = {
   syncApiUrl?: string | (() => string);
   /** Prefer live login_id from session labels. */
   getLoginId?: () => string | null | undefined;
+  /**
+   * Contact mailbox when the host session id is a Data Box user (opaque auth email).
+   * Used only after id + login_id miss Hub `profiles`.
+   */
+  getProfileEmail?: () => string | null | undefined;
   /**
    * @deprecated Hub plane has no storage-api. Prefer getAvatarStorageConfig (Data Box).
    */
@@ -216,6 +221,23 @@ export function createHubFullAccountAuthHandlers(options: CreateHubFullAccountAu
         .eq("login_id", loginHint)
         .maybeSingle();
       if (!byLogin.error && byLogin.data) row = byLogin.data as Record<string, unknown>;
+    }
+    const emailHint = String(options.getProfileEmail?.() ?? "")
+      .trim()
+      .toLowerCase();
+    if (
+      !row &&
+      emailHint.includes("@") &&
+      !isHubOpaqueAuthEmail(emailHint) &&
+      !isHubTechnicalAuthEmail(emailHint)
+    ) {
+      for (const column of ["email", "contact_email"] as const) {
+        const byMail = await client.from("profiles").select(selectCols).ilike(column, emailHint).maybeSingle();
+        if (!byMail.error && byMail.data) {
+          row = byMail.data as Record<string, unknown>;
+          break;
+        }
+      }
     }
     if (!row) return null;
 

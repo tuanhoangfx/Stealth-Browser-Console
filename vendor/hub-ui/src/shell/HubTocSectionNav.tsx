@@ -74,7 +74,7 @@ function HubTocSectionNavItem({
         }`}
       >
         {item.emoji ? (
-          <span className="shrink-0 text-[12px] leading-none opacity-90" aria-hidden>
+          <span className="hub-toc-nav__emoji shrink-0 text-[12px] leading-none opacity-90" aria-hidden>
             {item.emoji}
           </span>
         ) : item.icon ? (

@@ -102,9 +102,10 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 
 ---
 
-## Filter (golden — P0004 Hub)
+## Filter (golden — packages/hub-ui)
 
-**Canonical source:** `P0004/vendor/hub-ui` → promoted to `packages/hub-ui` via `node Tool/scripts/sync-hub-ui-vendor.cjs`.
+**Canonical source:** `packages/hub-ui` (`FilterBar`, dropdown primitives). Fan-out: `node Tool/scripts/sync-hub-ui-vendor.cjs` → product `vendor/hub-ui`.  
+**Edit order:** see `Tool/docs/ssot/hub-ui-canonical-map.md` (charts still promote from P0004 vendor — **not** FilterBar).
 
 | Layer | Component | When to use |
 |-------|-----------|-------------|
@@ -120,6 +121,8 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 - Custom folder/tag pickers: import primitives from `@tool-workspace/hub-ui` only — no per-tool `filter-dropdown-ui` copies.
 - Register filter icons once: `configureFilterIcons` in app `setupHubUi()`.
 - Inline gaps: `.hub-inline-gap-comfort` on triggers · `.hub-inline-gap-name` on filter chip rows · see **Inline glyph + label gaps**.
+- **No facet counts.** FilterBar never paints `totalCount` or `option.count` (closed chip or open panel). KPI / table already show row totals. Do not scan vaults just to label filters.
+- **Clear (X).** Optional dropdowns always paint rose Clear beside panel search (`HubFilterDropdownPanelSearch`); mute until a value is set. `allowClear={false}` only for required enums. Card `hub-dropdown-allowclear-ssot`.
 
 **Exceptions (documented)**
 
@@ -132,9 +135,18 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 | Row | Slot | Content |
 |-----|------|---------|
 | 1 | search + `toolbar` | Search field · view toggles (Board/Calendar) · **Period** (`HubFilterSelect` / `HubTimeRangeSelect`) |
-| 2 | `row2Leading` + filters + `row2Actions` | Admin-only leading filters · golden multi-select dropdowns · **Clear filters** when active · **New** (`HubFilterRowButton`) |
+| 2 | `row2Leading` + filters + `row2Actions` | Admin-only leading filters · golden multi-select dropdowns · **🧹 Clear** when active · **New** (`HubFilterRowButton`) |
 
-**Do not** render a third “Active:” pill row under hub FilterBar — clearing is via **Clear filters** on row 2 only (golden Hub-UI).
+**Searchbar Lite** (`hideSearch` + `searchbarLite` default true) — **one row** for report dashboards (P0014 Staff Performance):
+
+| Side | Content |
+|------|---------|
+| Left | `toolbar` (Period · Display · Default · ViewToggle) · filters · Clear |
+| Right | `row2Actions` bulk (`HubBulkActionButton`) |
+
+No search field · no stacked toolbar/filters/actions rows · no table page-size on Staff.
+
+**Do not** render a third “Active:” pill row under hub FilterBar — clearing is via **🧹 Clear** on row 2 only (golden Hub-UI). Optical center: `.hub-filter-clear-btn__icon` + `translateY(-2px)` (Windows emoji em-box).
 
 **Catalog:** `Tool/schemas/ui-patterns.catalog.json` → `filterBarHub` (Agent + parity scripts). Patterns with `"filterBarHub": true`: `directory`, `workspace-composer`, `inbox-split`.
 
@@ -145,7 +157,7 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 
 ### Directory toolbar row 1 (golden — hub-ui)
 
-**Order (`DirectorySearchToolbar`):** view toggle → **`HubWorkspacePeriodSelect`** (All) → **`HubDirectoryDisplayPanel`** (Display + page size + preset) → result count.
+**Order (`DirectorySearchToolbar`):** view toggle (Table/Cards) → **Live/Trash** (`lifecycleMode`, when soft-delete) → **`HubWorkspacePeriodSelect`** (All) → **`HubDirectoryDisplayPanel`** (Display + page size + preset) → result count.
 
 | Rule | SSOT |
 |------|------|
@@ -167,10 +179,26 @@ P0016 wrappers: `ConsoleLoadingView`, `ConsolePaneLoading`. P0004: `AppScreenLoa
 | `HubLogButton` | Inside ops panels | Session / tab log |
 | Settings | `HubDisplayPrefs` / tool prefs in `trailing` | KPI/charts/price — **not** Table & detail (that stays in Display) |
 
+**User-directory adapter (P0004 Users golden)**
+
+- Use `HubUserDirectoryHeaderActions` for the User header rail and `HubDirectorySettings` for its Settings trigger.
+- Products pass their own `HubDisplayPrefs` data (`kpis`, `filters`, `tablePanel`, URL prefs, and log callback); the adapter fixes the User contract to tab-scoped **Settings** with no range/limit controls.
+- Do not hand-build another `Notify · Log · Settings` rail in a User screen. This preserves a single migration surface for every future tool.
+- Card: `Tool/docs/playbooks/_cards/hub-user-directory-adapter.md`. If P0004 tree is locked/churning, wait + parallelize — `_cards/agent-persistent-progress.md`.
+
 **List modals (Notify, Activity log)**
 
 - Shell: `HubDetailModal` + `HubModalFrame` + `HubModalCloseButton` (red edge ×, 2rem).
 - Do not use inline header × icons — breaks golden modal parity.
+
+**Detail / account modals — two close controls (do not merge)**
+
+| Control | SSOT | Class / component | Forbidden |
+|---------|------|-------------------|-----------|
+| **Edge dismiss** | `HubModalCloseButton` on `HubModalFrame` | `.hub-modal-close` — red circle, `top: -0.55rem`, hover rotate 90° | Legacy `.modal-close` in product CSS; inline header × |
+| **Footer Close** | `HubToolDetailModalSecondaryAction` with `close` (or `HubToolDetailModalAccountFooter`) | `.hub-tool-detail-modal__secondary--close` — gray secondary (`rgba(255,255,255,0.04)` idle) | Letting accent footer-nav rule match `--close` (causes white outline bleed); product `modal-close` square button |
+
+Accent footer nav (View customer / orders / …) uses `.hub-tool-detail-modal__secondary--{tone}` only — **must** exclude `--close` via `:not(.hub-tool-detail-modal__secondary--close)` in `hub-modal.css`. Gate: `audit-hub-modal-close.mjs` + `hub-mobile.ssot.test.ts` § Hub modal close SSOT.
 
 ---
 
@@ -313,8 +341,8 @@ import {
 - **Pane = P0004 paint** — `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS` is `overflow-hidden min-w-0` only; **never** add `hub-directory-table-scroll` on the wrap (scrollbar track causes thead color seam).
 - **One table** — pane mode uses `DirectoryInlineTable` (single `<table>`); split head/body only for legacy P0001 flex-pane migration backlog.
 - **Thead paint SSOT** — `hub-directory-table.css` golden header; `hub-split-directory-pane.css` owns wrap chrome (border/radius) only — no duplicate `thead th` background.
-- **Panel-fill** — `hub-directory-frame--panel-fill` + `hub-directory-frame-table.css` stretch N rows; no inner scrollbar on wrap. Row height: `calc((100% - var(--hub-directory-head-row-h)) / var(--hub-directory-page-rows))` — **must subtract thead** (regression if rows use `100% / N` on full table height).
-- **Partial-page pad** — `padBodyRowsToPageSize` on `HubDirectoryTableShell` + `partialPagePad` on `HubSplitDirectoryPane`:
+- **Panel-fill** — `hub-directory-frame--panel-fill` + `panelFillRows` — **opt-in only** (P0003 Profiles equal-height grid). **Default split pane (P0001 Runners/Tasks, P0005 density):** no `panelFillRows`; `hub-directory-frame-table.css` scrolls `.hub-users-table-wrap` inside flex shell with **natural** `tbody tr` height + pager pinned.
+- **Partial-page pad** — `padBodyRowsToPageSize` pairs **only** with `panelFillRows` (invisible pad slots). **Cấm** pad without panel-fill.
   - `invisible` — panel-fill keeps full frame height; pad slots have no grid lines (P0003 Profiles / Scripts panel).
   - `visible` — subtle separators on pad slots (workflow rail `fixedRows`).
   - Helpers: `shouldPadDirectoryBodyToPageSize(visible, pageSize)` · `shouldPadDirectoryBodyToFixedRows(visible, fixedRows)`.
@@ -430,10 +458,12 @@ New tools and pane directories **must** use `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS
 | Column | CSS class | Content | Rules |
 |--------|-----------|---------|-------|
 | Start | `.app-tab-header__start` | Tab title (icon + h1) · **Session** timer · version meta (`Tag` + `vX.Y.Z` + activity dot + timestamp) | Session **before** version meta; **no** `·` between version and activity dot; activity label uses same `tabular-nums text-[var(--text)]/90` as Session value |
-| Center | `.app-tab-header-center-stats` | `centerStats` from app (`buildHubHeaderStats`, `buildDashboardHeaderStats`, …) | Always `flex` (not `hidden xl:flex`); `justify-self-center` |
+| Center | `.app-tab-header-center-stats` | `statusSlot` (**Live / Syncing…** = `HubDirectorySyncChip`) then `centerStats` | Sync chip SSOT — do not fork MetaChip per tool. Query pending is a **separate** chip. Always `flex`; `justify-self-center` |
 | End | `.app-tab-header__end` | `actions` slot — **Notify** · **Log** + **Settings** | No Session, no KPI stats |
 
 **Grid:** `grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)` — symmetric columns so center stats stay viewport-centered.
+
+**Sparse (no center KPI):** When `centerStats`, `centerContent`, and `statusSlot` are all empty → `app-tab-header--sparse` (`1fr auto`; hide center rail). **Do not** leave empty center column gap. Gate: `audit-hub-tab-header-sparse.mjs --strict`.
 
 **App wiring**
 
@@ -447,7 +477,7 @@ New tools and pane directories **must** use `HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS
 
 **Version meta layout (release activity):** `v4.3.42` `[gap]` `[dot]` `3h ago` — dot colors: fresh red (≤1h) · recent orange (≤24h) · days blue (1–3d) · week teal (4–7d) · stale gray (>7d); label buckets match `HubActivityTimestampLabel` (directory/rail). Header label typography matches **Session** value span exactly (not `hub-users-status` 10px).
 
-**Version timestamp sources** (`resolveVersionReleaseMeta`): GitHub release → manifest `latestPublished` → CHANGELOG exact semver → CHANGELOG latest block (dev fallback).
+**Version timestamp sources (SSOT):** card `Tool/docs/playbooks/_cards/hub-version-clock-ssot.md` — `resolveHubProductVersionMeta` / `resolveAppVersionReleaseMeta` pick newest of `VITE_APP_BUILT_AT` → matching `latestPublished` → CHANGELOG Timestamp → `manifestUpdatedAt`. Header + Update modal must share that stamp (`ensureHubReleaseNotesIncludeCurrent(..., publishedAt)`). **Cấm** tool tự gán `manifestUpdatedAt` làm `publishedAt`.
 
 **Version triple** (`package.json` · `tool.manifest.json release.version` · CHANGELOG top `- Version:`): kept in sync by `bumpAndSyncDocs` (pre-commit), `ensure-changelog-version-block.mjs --write` (pre-push), and `syncToolManifestReleaseVersion` in `version-sync-lib.cjs`.
 
@@ -480,6 +510,18 @@ Checks: `session-in-start-rail`, `center-stats-always-visible`, `grid-three-colu
 
 **Shell:** `HubSidebarShell` — `brandLeading` + `brandTitle` (human product name) only.
 
+### Portal / brand-gateway hosts (P0014 · P0022 · P0015)
+
+Compose Hub chrome once; **do not fork** directory screens into the host.
+
+| Rule | Detail |
+|------|--------|
+| Golden shell | P0020 + this package |
+| Embed Orders | P0022 `StoreOrdersRoute` + `@p0005` + `.embed-vendor` |
+| Embed Customers / multi-tab | P0015 `AGENTS.md` · `mainExtraFor` |
+| Docs | `Tool/docs/ssot/hub-portal-host-ssot.md` |
+| Iframe / split panes | `uiShell.splitScreens` + `overflow-hidden` host main (absolute iframe collapses under directory `overflow-y-auto`) |
+
 | Rule | Detail |
 |------|--------|
 | **Brand mark** | `HubSidebarBrandIcon` — `src` + `alt`; do **not** use raw `HubAuthBrandIcon`, `ToolAvatar`, or `HubToolAvatar` in sidebar |
@@ -492,7 +534,8 @@ Checks: `session-in-start-rail`, `center-stats-always-visible`, `grid-three-colu
 
 **Golden refs (logo + name, no `brandTagline`)**
 
-- P0001 — `GpmHubShellSidebar.tsx`
+- P0001 — `DeskSidebar.tsx` (Desk Console)
+- S001 — `GpmHubShellSidebar.tsx` (shelved GPM; former P0001)
 - P0003 — `StealthHubShellSidebar.tsx`
 - P0004 — `SalesSidebar.tsx`
 - P0005 — `P0005CrmSidebar.tsx`
@@ -554,7 +597,7 @@ One semantic key maps icon + tone across **badge**, **KPI strip**, **tab header 
 | Helper | Surface | Example |
 |--------|---------|---------|
 | `semanticFilterMeta(key)` | Filter chips / MetricBadge | `skill` → Puzzle |
-| `semanticKpiIcon(key)` | `KpiStrip` tiles | `{ ...semanticKpiIcon("kpi.inbox.unread") }` |
+| `semanticKpiIcon(key)` | `KpiStrip` tiles | `{ ...semanticKpiIcon("kpi.inbox.unread") }` → **emojiGlyph** (never Lucide on the tile) |
 | `semanticHeaderStat(key)` | Tab header stat line | `{ ...semanticHeaderStat("kpi.fanpages.pages") }` |
 | `buildSemanticTocIcon(key)` | Settings / User / Log TOC + section header | `icon={buildSemanticTocIcon("user.account")}` |
 | `resolveSemanticIcon(key)` | Raw `{ icon, className, tone }` | Custom wrappers |
@@ -582,7 +625,7 @@ One semantic key maps icon + tone across **badge**, **KPI strip**, **tab header 
 **Golden refs**
 
 - Settings TOC — `HubDisplayPrefs.tsx` (`settings.*` keys)
-- User modal — shell V5 · labels L1 `HubUserModalFieldTable` · `HubFullUserAccountModal` / `HubWorkspaceUserModal` (Cookie FAB FieldRow)
+- User modal — Layout 3 ADM SSOT: `HubAdmRecordMetaRow` (Created · Update · Vault ID) + `HubUserAccountSections` (`HubAdmReadonlyField` grid) via `HubFullUserAccountModal` / `HubWorkspaceUserModal`. Change sub-modals use `HubUserModalAdmField` (not legacy `HubUserModalFieldTable`).
 - Log panel — `HubUsageLogPanel.tsx` (`log.*` keys)
 - P0016 directory KPIs — `InboxScreen.tsx`, `FanpagesScreen.tsx`, …
 - P0006 jobs directory — `job-semantic-metrics.ts` (`JOB_METRIC_DEFS` → `kpi.jobs.*`)
@@ -616,13 +659,15 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 | `directoryActivityIso` + `matchesDirectoryActivityAt` | Epoch (s/ms) or ISO — P0016 bots/groups `lastActiveAt` |
 | `useHubDirectorySelection` | Checkbox prune + card select-all — P0004 Hub, P0016/P0020 directories |
 | `DirectorySearchToolbar` `workspacePeriod` | P0020 vault tabs — embeds `HubWorkspacePeriodSelect` (replaces manual `leading`) |
-| `DirectorySearchToolbar` `showTimeRange` | P0004 Hub / P0016 Bots·Groups — `HubTimeRangeSelect` on URL `range` |
+| `DirectorySearchToolbar` `showTimeRange` | Legacy only — prefer `workspacePeriod` (All). Remaining: rare activity filters until migrated |
 
 **Hub `range` vs workspace `*range`**
 
 | Layer | URL key | Select | Filter helper | Tabs |
 |-------|---------|--------|---------------|------|
-| Hub catalog | `range` | `HubTimeRangeSelect` via `showTimeRange` | `matchesDirectoryTimeRange(iso, range)` | P0004 Hub/Users, P0016 Bots/Groups |
+| Hub catalog | `hbrange` / legacy `range` | Prefer `workspacePeriod` (`scope: "hub"`) · legacy `showTimeRange` | `matchesWorkspacePeriod` / `matchesDirectoryTimeRange` | P0004 Hub (when period enabled) |
+| Users directory | `usrange` | `workspacePeriod` `scope: "users"` `defaultRange: "all"` | `matchesWorkspacePeriod(createdAt, …)` | P0004 Users |
+| P0016 Bots/Groups | `range` | `HubTimeRangeSelect` via `showTimeRange` | `matchesDirectoryActivityAt` | P0016 |
 | Workspace vault | `{scope}range` (e.g. `twofarange`) | `workspacePeriod` on `DirectorySearchToolbar` | `readWorkspacePeriod(scope)` + domain date field | P0020 2FA/Cookie/Notes/Todo |
 
 - **Never** show both selectors on one toolbar — `showTimeRange={false}` when `workspacePeriod` is set.
@@ -674,7 +719,30 @@ SSOT chain: `job-semantic-metrics.ts` (`JOB_METRIC_DEFS`) → `job-kpi-items.ts`
 - **Toggle row icons (golden)** — `PrefItem` / `DirectoryTableColumnItem` accept optional `icon` + `iconClassName`. Tools attach via `withPrefItemIcons(defs, ICON_MAP)` and `withDirectoryColumnIcons(cols, ICON_MAP)` from hub-ui; `ToggleRow` renders checkbox + icon + label in `HubDirectoryDisplayPanel`, `HubDisplayVisibilityMenu`, and Settings modal filter sections.
 - **Hide analytics frame** when zero KPI and zero charts: pass `kpis={undefined}` / `charts={undefined}` (use `directoryChartBandNode`, not a bare `<DirectoryChartBand />` element).
 
+### Directory table Display settings (golden — hub-ui)
+
+**Section order (P0020 Service/2FA):** Field Display Limit (default OFF) + Allow manual column sort (default OFF) → Fixed default order / Default sort → Password (if any) → Columns (`HubDirectoryFreezeColumnsSetting` **inside** Columns + `DirectoryTableColumnsSettings`).
+
+| API | Role |
+|-----|------|
+| `DirectoryTableDisplaySettingsShell` | Fixed slot order (toggles → sort → extras → columns) |
+| `createDirectoryManualSortPrefs` / `createScopedDirectoryManualSortPrefs` | Opt-in manual sort storage (default OFF) |
+| `HubDirectoryManualSortToggle` | Display toggle row |
+| `useDirectoryManualSortEnabled` | Subscribe hook |
+| `resolveDirectorySortMode` | `manualSortEnabled: false` → `default-order-only` |
+| `DirectoryDefaultSortHint` | Documented primary default + Active/Reset |
+
+**Do not promote** per-tool field-limit caps, password toggles, or sort-rule defs into hub-ui. Gate: `Tool/scripts/audit-directory-display-settings.mjs`. Card: `_cards/hub-directory-display-settings.md`.
+
+**Legacy upgrade:** `DirectoryTableLegacyDisplaySettings` — one-call MS + Fixed default order + Columns for columns-only panels (P0016 / P0003 / P0006 / P0024).
+
 ### Directory table columns + presets (golden — hub-ui)
+
+**Note column width SSOT:** `HUB_DIRECTORY_NOTE_COL_WIDTH` (`20rem`) in `hub-directory-column-width-registry.ts` — freeform **Note** / Plan Notes only (Plan Package is `26rem`). Ellipsis + rem lock that beats directory neutralize. Do not hand-roll other rem/`%` for that column. Fluid `%` “Notes” on system panels (P0004) stay fluid. Gate: `Tool/scripts/verify-directory-note-width-ssot.mjs`.
+
+**Log column width SSOT:** `HUB_DIRECTORY_LOG_COL_WIDTH` (`15rem`) — same registry file / export. Prefer the named alias (or product `TWOFA_LOG_COL_WIDTH`) over `R.log!.token` literals. Gate: `Tool/scripts/verify-directory-log-width-ssot.mjs`.
+
+**Shared vault chrome (width + sticker):** same semantic column = same rem + same `TWOFA_COLUMN_SHARED_GLYPH` on every screen (Services · Mail · Meta · Teams members · Quota). Tokens: Profile `7.5rem` · Own `5.5rem` · Status `8.75rem` · Usage `8.75rem` · Usage Expired `12rem` · Date/Due/Joined `6.25rem` · Duration/Left `5rem` · Password `8rem` · Recovery `12.5rem` · Full Info `7rem` · Plan Package `26rem`. CSS `--hub-dir-col-profile|own|status|usage|usage-expired|date|plan-left|password|recover|full-info|plan-package`. Teams members stickers import Services glyphs (`fullInfo` = `🆔`, Joined = Created `📅`). Schema stack-align = `width: max-content`. HubRouteAccess shared chrome headers never icon-only (`HUB_ROUTE_ACCESS_HEADER_LABEL_ALWAYS`). Left cells use Services `formatQuotaPlanDaysRemainingLabel` (`N days`). **Forbidden:** Mail 6.5 Status/Update, Team rem/`%` on shared cols, Team Left number-only. Gate: `Tool/scripts/verify-directory-shared-chrome-width-ssot.mjs`.
 
 **Canonical:** `packages/hub-ui/src/prefs/` — `createDirectoryTableColumnPrefs`, `createDynamicDirectoryTableColumnPrefs`, `createDirectoryTableColumnPresetManager`, `DirectoryTableColumnsSettings`, `HubDirectoryTableColumnPresetMenu`.
 
@@ -719,14 +787,14 @@ Do **not** invent a second preset menu — only `HubDirectoryTableColumnPresetMe
 
 ## Modal shell (golden — hub-ui)
 
-**CSS SSOT:** `packages/hub-ui/src/styles/hub-modal.css` — tokens `--hub-modal-max-w` (72rem), `--hub-modal-max-h`, `--hub-modal-max-vh`.
+**CSS SSOT:** `packages/hub-ui/src/styles/hub-modal.css` — `HUB_TOOL_MODAL_SIZE_TOKENS` (`88rem` × `768px` / `73.6vh`) · `HUB_COMPACT_MODAL_SIZE_TOKENS` (`28rem`).
 
-| Class | Height | Use |
-|-------|--------|-----|
-| `hub-tool-detail-modal` (default) | `min-height` fill ~640px | Tool detail, User access, directory modals with long TOC + tables |
-| `hub-header-panel-modal` | `height: auto` (content-fit) | Settings · Log · Notify · workspace user modals |
-| `hub-tool-detail-modal--fit` | opts out of 640px fill | Confirm dialogs, compact forms |
-| `hub-account-detail-modal` | fixed `min(640px, 92vh)` fill | **Account detail 3-frame** — TOC · main scroll · log rail |
+| Class | Box | Use |
+|-------|-----|-----|
+| `hub-tool-detail-modal` (default) | `88rem` × `768px` / `73.6vh` | Detail · Notify · Log · Update · Settings |
+| `hub-header-panel-modal` | same `88rem` box | Settings · Log · Notify · Update (header chrome only) |
+| `hub-tool-detail-modal--fit` / `hub-compact-modal` | `28rem` · height auto | Confirm · Prompt · Clone |
+| `hub-account-detail-modal` | same `88rem` box | Layout 3 account (TOC · main · Note/Log) |
 
 ### Layout 2 — Main + TOC (Tier C form SSOT)
 
@@ -747,10 +815,14 @@ Do **not** invent a second preset menu — only `HubDirectoryTableColumnPresetMe
 **Rules**
 
 - Do **not** pass legacy `panelWidth` / `maxViewHeight` on `HubDisplayPrefs` — removed; shell uses CSS tokens.
-- Header-panel modals: `shellClassName="hub-header-panel-modal"` (optional `hub-tool-detail-modal--fit` for small forms).
-- Tool-specific width override: `shellStyle={{ "--hub-modal-max-w": "…" }}` on `HubToolDetailModal` only when golden 72rem is insufficient (rare).
+- Header-panel modals: `shellClassName="hub-header-panel-modal"` — same `88rem` box. Confirm/Prompt/Clone = `size="compact"` only.
+- **Cấm** `shellStyle={{ "--hub-modal-max-w": "…" }}` · `max-w-md` / `max-w-lg` on `HubModalFrame`.
+- **Ops panels (Log · Notify · Update Release):** same Layout 2 shell; **one** search via `headerCenter` + `HubActivityFeedToolbar variant="header"`; nest feed sections under `HubOpsFeedFilterProvider` so Vault Live / alert rows share filters — never a second search inside a section.
+- **Update Release feed SSOT:** every Push/Deploy/Release regenerates `public/release-notes.json` via `Tool/scripts/generate-release-notes.mjs` (wired in `ship-product.ps1`, `auto-commit-if-ready.mjs`, `post-deploy-manifest.mjs`). Header age uses `HubChromeActivityAge` (never `HubUsersStatusLabel`). One trigger icon: Latest / Update / Download (bundle stale).
 
 ### Account detail modal (3-frame — hub-ui)
+
+**New / Detail (locked 2026-08-22):** every new entity New/Detail modal is **Layout 3**. Golden = User Detail (`HubWorkspaceUserModal` / `HubFullUserAccountModal`). Do **not** ship a stacked `HubAdmSectionBlock` column inside a bare `HubToolDetailModal`. Card: `Tool/docs/playbooks/_cards/hub-modal-layout-3-ssot.md`.
 
 **Canonical source:** `packages/hub-ui/src/styles/hub-account-detail-modal.css` · `HubAccountDetailModalFrame` · constants `HUB_ACCOUNT_DETAIL_*` in `hubAccountDetailModal.ts`.
 
@@ -787,6 +859,16 @@ Do **not** invent a second preset menu — only `HubDirectoryTableColumnPresetMe
 
 > Note rail `controlClassName` must **not** include a fixed-height single-line control class (e.g. `twofa-adm-control`, height `2rem`) — it collapses the textarea. Use `"field auth-gate-field hub-adm-note-textarea"` so the editor fills the rail (P0020 Mail bug fix).
 
+**Multiline draft SSOT** (`hub-multiline-draft-text.ts` — Note / Plan Note / Remark / Order Details / Team Note):
+
+| Concern | API |
+|---------|-----|
+| Load | `readHubMultilinePersistedText` |
+| Hydrate guard | `isHubMultilineDraftDirty` |
+| Save / cloud | `isHubMultilinePersistDirty` · `persistHubMultilineDraftText` |
+
+**Click-multiline:** Enter = newline · blur/Escape = exit. **Gate:** `hub-adm-detail-parity-check.mjs` bans `note*.trim() !==` dirty compares in `src/**`.
+
 Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}` on `HubToolDetailIdentityHeader` instead of `headerCenter`.
 
 **Column gap SSOT:** `--hub-account-detail-columns-gap: 0.65rem` in `hub-theme-tokens.css` — used by TOC↔main layout and Credentials↔Note split.
@@ -810,8 +892,9 @@ Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}`
 | Order (LTR, centered) | Component | Label |
 |-----------------------|-----------|-------|
 | 1 Save | `HubToolDetailModalPrimaryAction` via footer | `Save` (busy → `Saving…`) |
-| 2 Close | `HubToolDetailModalSecondaryAction` via footer | `Close` |
-| 3 Delete (optional) | `HubToolDetailModalPrimaryAction` `danger` via `onDelete` | `Delete` |
+| 2 Functional action (optional) | `leading` on `HubToolDetailModalAccountFooter` | e.g. `Sign Out` |
+| 3 Close | `HubToolDetailModalSecondaryAction` via footer | `Close` |
+| 4 Delete (optional) | `HubToolDetailModalPrimaryAction` `danger` via `onDelete` | `Delete` |
 | 4+ Trailing | `leading` prop (secondary) | `View customer`, `View orders`, … |
 | Cancel (inline edit) | footer `closeLabel` | `Cancel` |
 | Create form | `saveVariant="create"` + Close secondary | compact forms only |
@@ -820,12 +903,17 @@ Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}`
 
 - Account-detail modals **must** use `HubToolDetailModalAccountFooter` — no raw `hub-tool-detail-modal__confirm` buttons.
 - Footer is a **single centered cluster** — do **not** use left/right split (`footer-bar--split`) for account detail.
+- **Account Credentials:** `HubUserAccountSections` is a compact, main-panel exception to the
+  narrow-rail rule: **Username · Email · Password use one aligned 3-column row**. Use
+  `HubAdmClickEditField` / `HubAdmReadonlyField`; never raw `<input>`. `slots="full"` remains
+  exclusive to narrow Setting/History/Terminal rails.
 - Do **not** fork save labels (`Save changes`, `Save note`, …) — use `HUB_DETAIL_MODAL_SAVE_LABEL`.
 - **Busy SSOT (Save / Apply / Delete):** wire the same `busy` flag to footer primary **and** `HubToolDetailModal` `busy` (cursor wait). Primary shows spinner + `Saving…` / `Applying…` / `Deleting…` via `HubToolDetailModalPrimaryAction` — **Delete parity**. Do **not** put a body `HubLoaderOrb` / `HubLoadingView` overlay on detail Save (orb is for tab/directory boot only).
 - **Save toast SSOT:** while the button is busy, do **not** fire interim toasts (“Saved locally — syncing…”). Call `clearToasts()` when Save starts, then emit **one** toast after the op completes (success or cloud-pending warn). Notes toolbar uses busy + “Saved” ack instead of a success toast.
 - While `busy`, do **not** reset form state / call `setBusy(false)` from hydrate effects when local apply updates the row mid-cloud-flush (see P0020 `shouldHydrateEditFormFromAccount`).
 - Delete is **primary danger**, never secondary gray; place after Close when present.
-- Optional nav CTAs (`View customer`, `View orders`, `Refresh subscription`) → `leading` prop (after Close/Delete in the same row).
+- Optional nav CTAs (`View customer`, `View orders`, `Refresh subscription`, **Add Material**, **Add Service**, **Add Partner**) → `leading` prop (after Close/Delete in the same row). **Create and edit share this footer** — do not ship a lite New modal without Add … actions.
+- Nested Add … / field **+** keeps the parent modal mounted (card `hub-nested-detail-modal-ssot.md`). Never switch directory tab to open the child.
 - Compact create/edit without Close in footer → `HubToolDetailModalFooterActions` (Personality modal).
 
 **Golden refs:** P0020 `TwofaAccountDetailModal` · P0005 `OrderDetailModal` / `CustomerDetailModal` · P0016 `FacebookPageDetailModal` · P0013 `ChannelDetailModal`
@@ -838,7 +926,7 @@ Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}`
 |------|--------|
 | Placement | First row inside the primary domain panel (Credentials · Identity · Catalog · Status · Profile) — **no** separate TOC section or "Record" heading |
 | Field order | **Created** → **Update** → **Vault ID** (fixed labels across all tools) |
-| Values | `HubCopyBadge` for Vault ID when copyable; tool timestamp components (`HubActivityTimestampLabel`, `formatDirectoryDate`, …) for dates; `—` when unknown |
+| Values | `HubCopyBadge` for Vault ID when copyable (no ellipsis-clip); Created/Update = `HubAdmPlainRelativeTime` → activity **status dot** + relative ≤24h / `dd/mm/yy`. Labels = `headerEmoji` 📅 / 🔄 — **not** Lucide Clock. Directory cells = `HubActivityTimestampLabel`. |
 | Drift | Do **not** duplicate `created_at` / `updated_at` / record id in other form rows — parity gate fails `columnKey="created_at"` and inline `Created` readonly fields |
 
 **Golden refs:** P0020 `TwofaAccountDetailModal` (Credentials) · P0005 `CustomerDetailModal` (Identity) · P0016 `BotDetailModal` (Overview)
@@ -846,8 +934,8 @@ Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}`
 ```tsx
 <HubAdmRecordMetaRow
   vaultId={<HubCopyBadge value={record.id} title="Copy record ID" />}
-  created={<HubActivityTimestampLabel at={record.createdAt} />}
-  updated={<HubActivityTimestampLabel at={record.updatedAt} />}
+  created={<HubAdmPlainRelativeTime at={record.createdAt} />}
+  updated={<HubAdmPlainRelativeTime at={record.updatedAt} />}
 />
 ```
 
@@ -859,6 +947,8 @@ Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}`
 |-------|------|
 | Section blocks | `hubAdmSectionBlockClass` + `HubAdmSectionLabel` inside `HubToolDetailPanel` — section heading = **light pill badge** (12px semibold, sentence case, tinted by block class); field labels stay 12px medium |
 | Grid | `hub-adm-form-row--aligned` (3-col) — **always 3 slots** even when only 1–2 fields (labels stay aligned); meta row adds `hub-adm-meta-row` |
+| Grid pad | `hubAdmGridSlotPadClass(n)` / `<HubAdmGridSlotPad filledCount={n} />` — **1→spacer**, **2→tail**; never stack pads (wraps empty band under the row) |
+| **Classification (P0005 Catalog)** | Labels SSOT `SKU_CLASSIFICATION_LABELS` (`Tool/P0005-CRM/src/lib/sku-classification-labels.ts`) — Subscription / Service / Account with emoji; Product Detail = **readonly** badge; Service Detail = editable `HubAdmClickFilterField`; Activity Log via `formatSkuClassificationLogValue` (re-export: `product-sku-classification.ts`) |
 | Click-edit | `HubAdmClickEditField` — value shrink-wrap, pencil adjacent, glow on value only |
 | Click-filter | `HubAdmClickFilterField` — chevron adjacent to value, emoji + label |
 | Read-only | `HubAdmReadonlyField` — **no hover glow** on static values (`hub-adm-readonly-value--static`); tooltip via `title` / label hint · `valueLayout="inline"` for copy badges |
@@ -890,18 +980,27 @@ Custom identity header (P0016): pass `center={<HubAccountDetailHeaderSearch />}`
 
 - **Only** `HubDirectoryLogLabel` for glyph + note (directory Log column **and** ADM / Cookie / Teams change-log action).
 - Class `twofa-adm-log-row__action` is an **extra** class on that component in modals — **never** raw `<span|div className="twofa-adm-log-row__action">`.
-- Gaps: directory table → `--hub-directory-glyph-label-gap` (5px, header parity); ADM modal → `--hub-inline-gap-name` (8px) via `.twofa-adm-log-row .hub-directory-log-cell.twofa-adm-log-row__action`.
+- Gaps: directory table → `--hub-directory-glyph-label-gap` (8px, header glyph↔label); ADM modal → `--hub-inline-gap-name` (8px) via `.twofa-adm-log-row .hub-directory-log-cell.twofa-adm-log-row__action`.
 - Gate: `node Tool/scripts/verify-directory-glyph-label-gap.mjs --all` (CSS + consumer scan across active-wave tools).
 
 Weights: **400** = regular · **500** = medium · **600** = semibold (nav + mono). Tokens live on `.hub-account-detail-modal` and `.hub-add-modal`. Export: `HUB_ADM_TYPE_CSS_VARS`.
 
 **Golden clones (must pass `hub-adm-detail-parity-check.mjs`):** P0020 `TwofaAccountDetailModal` · `TwofaQuotaDetailModal` · P0016 `BotDetailModal` · `FacebookAccountDetailModal` · `FacebookPageDetailModal` · P0005 `CustomerDetailModal` · `OrderDetailModal` · `ProductDetailModal` (readonly-only).
 
+**Catalog note line (Order Details / Info / About / Warranty):** always use `HubAdmDetailNoteLineField` inside `hub-adm-form-row--detail-line` — never hand-roll `HubAdmInlineFieldLabel` + `HubAdmNoteEditorField`. Right-rail Note/Remark stays `HubAdmNoteRail`. Inventory gate flags hand-rolled note lines under `--fail-on-tier-c`.
+
+**`--hub-adm-note-line-rows` / `--hub-adm-note-line-row-h` (height SSOT):** `HubAdmDetailNoteLineField` sets `--hub-adm-note-line-rows` from the `rows` prop on the **root** (never redeclare on the textarea — that ignored `rows={3}`). Editor height = `rows × --hub-adm-note-line-row-h (1.15rem) + 0.4rem`, `overflow-y: auto`. Compact Info/About ≈ 3 lines; Order Details default `rows={6}`.
+
+| Use | `rows` | Typical |
+|-----|--------|---------|
+| **Compact** (SKU Info, Service About / Warranty / Service Note) | `3` | Catalog density under Process/Notify |
+| **Default / Order Details** | `6` (component default) | Long credential / order narrative |
+
 **Tier inventory gate:** `node Tool/scripts/hub-detail-modal-inventory.mjs --code P00xx --fail-on-tier-c` — wired in `check-hub-ui-parity-product.cjs`.
 
 | Tier | Modals | Shell | ADM fields | Notes |
 |------|--------|-------|------------|-------|
-| **A — Golden ADM** | P0020 Mail/Quota · P0016 Bot/Channel/Facebook · P0005 Customer/Order/Product | `HUB_ACCOUNT_DETAIL_*` | Full parity gate | Product + FB Account + Channel = readonly-only |
+| **A — Golden ADM** | P0020 Mail/Quota · P0016 Bot/Channel/Facebook · P0005 Customer/Order/Product/Service | `HUB_ACCOUNT_DETAIL_*` | Full parity gate · `HubAdmDetailNoteLineField` for long notes | Product + FB Account + Channel = readonly-only |
 | **B — 3-frame shell only** | P0013 Channel · P0006 Job · P0004 system | `HUB_ACCOUNT_DETAIL_*` or job split | Domain tables/metrics | Not ADM credentials |
 | **C — Legacy / domain** | P0020 Cookie · P0023 Post preview | `HUB_TOOL_DETAIL_*` or custom | Custom forms | `hub-detail-modal-inventory: allow-tier-c` to exempt |
 
@@ -941,25 +1040,28 @@ Weights: **400** = regular · **500** = medium · **600** = semibold (nav + mono
 - Do not create per-tool font-weight overrides for Order ID / Customer / Product / Money / Number columns.
 - Gate: `node Tool/scripts/hub-ui-body-font-weight-check.mjs` (package + vendor mirror).
 
-### Directory column header hints (only portal tooltip)
+### Directory / chrome tooltips (portal + native)
 
-**Body cells have no hover tooltip.** Only `HubDirectoryColumnHint` on `<th>` headers uses `hub-directory-popover`.
+**Default body cells:** no hover tip on plain truncate/copy. **Allowed body portals** (see card `hub-tooltip-ssot.md`):
 
 | Component | Role |
 |-----------|------|
-| `HubDirectoryColumnHint` | Rich popover on column header hover — title, description, option list |
-| `HubDirectoryEllipsisCell` | Truncated read-only cell — no tooltip |
+| `HubDirectoryColumnHint` | Rich popover on `<th>` / FilterBar / KPI / bulk `labelHint` |
+| `HubDirectoryValuePopover` | Selective value hover (ADM, long Note, metric drill-down) |
+| `HubDirectoryTimestampTooltipCell` | Created/Update — compact label + exact `hh:mm dd/mm/yy` hover |
+| `HubDirectoryEllipsisCell` | Truncate; set `hoverPopover` for Note/multiline only |
 | `directoryCellHoverTitle` | Copy toast label helper only |
 
 **Rules**
 
-- No `HubDirectoryCellTooltip`, native `title`, or portal on directory **body** cells.
-- Click-to-copy still works via `HubTwofaCopyControl` / `HubDirectoryCopyText` (toast only).
-- Import from `@tool-workspace/hub-ui` — no per-tool cell tooltip forks.
-- **Still allowed (not body cells):** native `title=` on KPI tiles (`KpiStrip`), chart legend labels (`MiniBarChart`), toolbar/buttons (`HubBulkActionButton`, FilterBar), Settings `HubHintTooltip`.
-- **FilterBar facets:** `FilterDef.labelHint` → `HubDirectoryColumnHint` on trigger label (hover facet name).
+- No `HubDirectoryCellTooltip` forks; no native `title=` **long** text on directory body truncate (use portal).
+- Click-to-copy still via `HubTwofaCopyControl` / `HubDirectoryCopyText` (toast; optional ValuePopover wrap).
+- Import from `@tool-workspace/hub-ui` only.
+- **Chrome (not body):** native `title=` on KPI tiles (`KpiStrip`), chart legends (`MiniBarChart`), toolbar/buttons (`HubBulkActionButton`, FilterBar), header ops (`HubHeaderPanelButton`).
+- **FilterBar facets:** `FilterDef.labelHint` → `HubDirectoryColumnHint` (prefer over native `title`).
+- **Settings:** prefer `labelHint` → ColumnHint; do not put `HubHintTooltip` on Display sort rows.
 
-**Golden refs:** P0020 `twofa-copy-cells.tsx` · P0005 `customer-copy-cell.tsx` · column hints `HubDirectoryColumnHint`
+**Golden refs:** P0020 `twofa-copy-cells.tsx` · P0005 timestamp cells · column hints `HubDirectoryColumnHint` · card `_cards/hub-tooltip-ssot.md`
 
 **Onboard a new P00xx directory (copy order)**
 
@@ -1103,7 +1205,7 @@ Tokens (`hub-theme-tokens.css`): `--hub-search-highlight-bg` · `--hub-search-hi
 | Columns | `buildDirectoryColumns(keys, meta)` — never hand-roll `COLUMNS` array |
 | Colgroup | `buildDirectoryColgroup(columns, { includeSelect: true })` — inline `style.width` per col |
 | Body | `DirectoryTableBodyCell` — `td.colClass` must match colgroup |
-| Shell | `HubDirectoryTableShell` + `hubDirectoryTableClass("default" \| "sheet" \| …)` |
+| Shell | `HubDirectoryTableShell` + `hubDirectoryTableClass("default" \| "dense" \| …)` |
 | Select | `data-hub-directory-select`; select col **36px** th/td + **36px** colgroup (never %) |
 | Width tiers | Fixed chrome (status/timestamp/count) → **rem/px** via `HUB_DIRECTORY_COLUMN_WIDTH_REGISTRY`; fluid (name/path) → **%** via variant CSS |
 | Bulk colgroup | `buildDirectoryColgroupForShell({ showSelect: true })` — **no inline %** on data cols (2FA parity) |
@@ -1128,7 +1230,7 @@ Do **not** add per-domain CSS variants (`fb-accounts`, `directory-7`) for width 
 |-------|----------|
 | Shell | `data-hub-directory-select` when checkbox column shown |
 | Colgroup | `buildDirectoryColgroup` / `ForShell` — select colgroup **36px**; th/td **36px** |
-| CSS | `hub-directory-table.css` + variant CSS — fixed rem/px chrome; fluid % content |
+| CSS | `hub-directory-table.css` + variant CSS — rem/px tracks; wrap overflow-x (never %) |
 | Select belt | `col.hub-users-col--select` **36px !important** (hub-ui only — never product CSS) |
 
 **Pivot / dynamic columns (Profile browser, sheet grids):** under `table-layout:fixed`, pinning **rem on every** content `<col>` leaves no fluid absorber → the select track stretches (~46–49px) and the gap before the first data column looks wrong vs Facebook/Services. Use **`buildChromeRemDirectoryColgroup(columns, chromeKeys)`** (Profile / count / Updated / status); leave runtime service slots without inline `<col>` width (CSS `min-width` floor only). Fixed vaults (Facebook…): `applyChromeRemDirectoryColWidths(cols, cols.map(c => c.key))` + `buildDirectoryColgroup`. Golden: P0020 `BrowserAccountTable` / `TwofaAccountsTable`. Ship light: `browser-profile-select-ssot`.
@@ -1153,7 +1255,7 @@ Do **not** fork select column width per tool — use shell + meta helpers only.
 
 | Call | Product skin class | P0020 use |
 |------|-------------------|-----------|
-| `hubDirectoryTableClass("sheet")` | `hub-users-table--sheet` | Sheet rail + CSV grid |
+| `hubDirectoryTableClass("dense")` | `hub-users-table--dense` | Dense rail / compact directory (alias: `--sheet`) |
 | `hubDirectoryTableClass("folders")` | `hub-users-table--folders` | Notes folder rail |
 | `hubDirectoryTableClass("cookie-routes")` | `hub-users-table--cookie-routes` | Cookie routes table |
 
@@ -1269,16 +1371,17 @@ Khi entity / catalog source có **icon chuẩn** trong `hub-brand-icons.registry
 | `HubDirectoryCardHeader` | Header block — `leading` avatar/icon + `badges` + `title` + optional `trailing` (`items-center` — icon aligns with badge row) |
 | `HubDirectoryCardLeadingIcon` | **SSOT** Lucide leading tile — `HUB_DIRECTORY_CARD_ICON_BOX_PX` **22** · glyph **`HUB_CHROME_ICON_PX` (14)** · matches `MetricBadge` `h-[22px]` / `--hub-metric-badge-h` |
 | `HubDirectoryCardLeadingTile` | Same 22px box for favicon / platform logo / custom glyph (`children`) + optional status dot |
-| `HubDirectorySelectAllChip` | Filter row 2 **actions** — **Card view only**; first slot before bulk CTAs; uses `HubBulkActionButton` + `ListChecks` icon |
-| `HubDirectoryToolbarSelection` | Design **V2 Spectrum Bar** — stacked `x/y` + % hue fill; **table** → `searchTrailing` · **card** → `row2Trailing` after bulk actions |
+| `HubDirectorySelectAllChip` | Filter row 2 — **last CTA before More**; default via `HUB_DIRECTORY_SELECT_ALL_LABEL_MODE` → **Select** / **Unselect**; legacy `select-all` only with `@legacy-select-all` (gate) |
+| `HubDirectoryBulkMoreMenu` | **Rail tail** — infrequent actions (Clear all, Dedupe, Sync). Row2 end = **Select · More** |
+| `HubDirectoryToolbarSelection` | Design **V2 Spectrum Bar** — stacked `x/y` + % hue fill; **table** → FilterBar **toolbar leading** (before ViewToggle) · **card** → **`searchTrailing`** (cạnh search; auto-guard ẩn `HubResultCount`) |
 | `HubBulkActionButton` | Filter row 2 bulk CTAs — Pin / Refresh / Edit / Sync (count badge + tooltip) |
 
 **Variants (`variant` prop)**
 
 | Variant | Surface | Hover | Golden clone |
 |---------|---------|-------|--------------|
-| `grid` (default) | `rounded-xl`, `HUB_DIRECTORY_CARD_SURFACE` | indigo border + shadow | P0004 Dashboard screens, Hub tools |
-| `panel` | `rounded-2xl`, padded, `pr-10` for checkbox | emerald ring lift | P0004 Users cards |
+| `grid` (default) | `rounded-xl`, `HUB_DIRECTORY_CARD_SURFACE` + `.hub-directory-card-surface` | rest indigo ring; hover stronger glow | P0004 Dashboard screens, Hub tools |
+| `panel` | `rounded-2xl`, padded, `pr-10` + `.hub-directory-card-surface--panel` | rest indigo ring; hover emerald lift | P0004 Users cards |
 
 **Selection ring (mandatory)**
 
@@ -1329,10 +1432,36 @@ HubDirectoryBulkActionBar
   ├─ selectAll? → HubDirectorySelectAllChip (card view only)
   └─ children → Hub*DirectoryBulkActions / HubBulkActionButton(s)
 
+**More overflow (infrequent actions)**
+
+Keep row 2 compact — primary CTAs inline (New · Detail · Delete · context actions); move low-frequency maintenance into **`HubDirectoryBulkMoreMenu`** at the rail tail.
+
+| Inline (common) | More menu (infrequent) |
+|-----------------|------------------------|
+| New, Detail, Clone, Delete | Dedupe, Sync, Import/Export, Refresh, History |
+
+```tsx
+<HubDirectoryBulkMoreMenu
+  title="More actions"
+  actions={[
+    { key: "dedupe", label: "Dedupe", icon: CopyMinus, tone: "amber", onClick: onDedupe },
+    { key: "sync", label: "Sync", icon: RefreshCw, iconSpinning: busy, onClick: onSync },
+  ]}
+/>
+```
+
+`iconSpinning` spins the Lucide icon (Sync / Save busy) — same contract as `HubBulkActionButton`.
+
+Reference: P0020 `TwofaBulkActionBar` (Dedupe), Quota (Sync/Backup), P0016 bots/fanpages/channels/groups, P0003 Profiles (Groups/Export/Import), Cookie (Refresh).
+New tools: inventory `bulkGolden: "more-menu"` + `HubDirectoryBulkMoreMenu`.
+
 DirectorySearchToolbar (row 1)
-  ├─ selectionToolbar? → HubDirectoryToolbarSelection (table view — replaces HubResultCount)
+  ├─ filterSelectionToolbar active → auto-guard hides HubResultCount (table + card)
+  ├─ selection chip → HubDirectoryToolbarSelection (table: toolbar leading · card: searchTrailing)
   ├─ hasSearchSelectionChip → omit HubResultCount (SSOT: `shouldShowHubDirectoryResultCount`)
-  └─ showResultCount → HubResultCount (when no selection chip in search)
+  └─ showResultCount → HubResultCount (only when no bulk selection toolbar registered)
+
+**Rule:** Directory có bulk selection (`filterSelectionToolbar`) → **một** counter x/y duy nhất; không bật `HubResultCount` shown/total song song.
 ```
 
 Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`ml-auto flex gap-2`).
@@ -1345,11 +1474,16 @@ Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`
 
 | Token / class | Size | Weight | Use |
 |---------------|------|--------|-----|
-| `--hub-analytics-caption-size` → `.hub-analytics-caption` + `HUB_ANALYTICS_CAPTION_TYPO_CLASS` | **10px** (`--hub-kpi-label-size`) | 600 | KPI tile labels (`TOOLS (SHOWN)`), chart titles (`BY HEALTH`) — uppercase |
+| `--hub-analytics-caption-size` → `.hub-analytics-caption` + `HUB_ANALYTICS_CAPTION_TYPO_CLASS` | **10px** (`--hub-kpi-label-size`) | 600 | KPI tile labels (`TOOLS (SHOWN)`) — uppercase, muted |
+| `--hub-kpi-sticker-size` → `.hub-kpi-tile__emoji` / `.hub-kpi-tile__icon-svg` + `HUB_KPI_STICKER_TYPO_SSOT` | **18px** (`1.25rem` @ 90%) | — | KPI tile sticker (emoji **and** Lucide/brand). Independent of caption. Box `--hub-kpi-icon` = sticker + 1rem for 1–8 tiles, `overflow: visible` |
+| `.hub-chart-panel-title` / `.hub-chart-card .hub-analytics-caption` + `HUB_CHART_PANEL_TITLE_TYPO_SSOT` | **9.6px** text (`--hub-chart-panel-title-size` = 80% of 12px header); title emoji **12px** (`--hub-chart-label-size`, same as legend rows) | 600 | Chart panel titles (`STATUS`, `PRIORITY`) — same weight/color as filter facet / Kanban task title, `--text` |
 | `--hub-chart-label-size` → `.hub-chart-legend-label` | **12px** (`--hub-table-body-size`) | 400 | Chart row labels (`Ready`, `Beta`) — same as directory table body |
 | `--hub-chart-label-size` → `.hub-chart-row__value` / `.hub-chart-donut-value` | **12px** | 400 · `tabular-nums` | Chart counts (`9`, `3`) — same as table body numerics |
 | `--hub-kpi-value-size` | **19px** | 500 | KPI big numbers only (`18`, `9`) |
 | `HUB_SHELL_LABEL_TYPO_CLASS` (`text-sm font-medium`) | 14px | 500 | Filter triggers, bulk buttons — **not** chart rows |
+| `HUB_DIRECTORY_CARD_METRIC_VALUE_TYPO_SSOT` (`.hub-directory-card-metric-value`) | **12px** (`--hub-table-body-size`) | 600 · `tabular-nums` | Card metric strip values (Hours / Sales / Shifts) — **not** `text-xs` |
+| `HUB_DIRECTORY_CARD_TITLE_TYPO_SSOT` (`.hub-directory-card-title`) | **12px** (`--hub-table-header-size`) | 600 | `HubDirectoryCardHeader` string titles — **not** `text-sm` |
+| `HUB_DIRECTORY_CARD_META_TYPO_SSOT` (`.hub-directory-card-meta`) | **12px** (`--hub-table-body-size`) | 400 | Card metadata rows — **not** `text-xs` |
 
 **Overlap fixes (hub-ui 0.2.27+):** chart titles no longer use 14px `--hub-chart-caption-size`; row label/value no longer stack `HUB_SHELL_LABEL_TYPO_CLASS` (was forcing 14px over CSS).
 
@@ -1366,9 +1500,9 @@ Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`
 | Slot | Golden contract |
 |------|-----------------|
 | Shell | `HubDirectoryScreen` + `*ChromeHeader` + `sectionRuleLabel` |
-| `filterToolbar` | `DirectorySearchToolbar` — `ViewToggle` · `showTimeRange` (when data has `updatedAt`) · `showTablePageSize` (`HubTablePageSizeSelect` / `tpage`) · `HubResultCount` · `trailing` extras |
-| `filterRowActions` | `HubDirectoryBulkActionBar` → `selectAll?` (card) + `Hub*DirectoryBulkActions` |
-| `filterToolbar` `selectionToolbar` | `HubDirectoryToolbarSelection` on table directories — **no** `HubResultCount` duplicate |
+| `filterToolbar` | `DirectorySearchToolbar` — `ViewToggle` · `showTimeRange` (when data has `updatedAt`) · `showTablePageSize` (`HubTablePageSizeSelect` / `tpage`) · `HubResultCount` (omit when `filterSelectionToolbar` registered) · `trailing` extras |
+| `filterRowActions` | `HubDirectoryBulkActionBar` → `selectAll?` (card; default **Select/Unselect**) + `Hub*DirectoryBulkActions` |
+| `filterSelectionToolbar` | `HubDirectoryToolbarSelection` x/y — table: toolbar leading · card: searchTrailing; auto-guard hides duplicate `HubResultCount` |
 | KPI / charts | `build*KpiItems` + `directoryChartBandNode` (`resolveVisibleChartKeys` + `*_CHART_DEFS`); `MiniBarChart` always top-3 + **Other** via `prepareChartItems` |
 | Card view | `HubPaginatedCardGrid` — **never** raw `HubPaginatedTableShell` + manual grid class |
 | Table view | `*DirectoryTable` + checkbox column + same bulk bar as card |
@@ -1377,9 +1511,9 @@ Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`
 
 | Tab | `filterRowActions` |
 |-----|-------------------|
-| Hub | Select all only (auto-sync; no manual sync/links bulk) |
-| Dashboard | Select all + `HubScreensDirectoryBulkActions` |
-| Users | Select all + `HubUsersDirectoryBulkActions` |
+| Hub | Select / Unselect only (auto-sync; no manual sync/links bulk) |
+| Dashboard | Select / Unselect + `HubScreensDirectoryBulkActions` |
+| Users | Select / Unselect + `HubUsersDirectoryBulkActions` |
 
 **Rules**
 
@@ -1413,8 +1547,8 @@ Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`
 
 **Rules**
 
-- **25 rows/page** default (`HUB_TABLE_PAGE_SIZE` / `readHubTablePageSize`) — E0001 `route-table-pager` visual parity (prev/next + `Page X of Y · Showing A–B of N`).
-- **Page size** 25/50/100 via Settings → Display → Page size (`tpage` URL param, `useHubTablePageSize()` in shells).
+- **20 rows/page** default (`HUB_TABLE_PAGE_SIZE` / `readHubTablePageSize`) — E0001 `route-table-pager` visual parity (prev/next + `Page X of Y · Showing A–B of N`).
+- **Page size** 20/25/50/100 via Settings → Display → Page size (`TABLE_PAGE_SIZE_OPTIONS`, `tpage` URL param, `useHubTablePageSize()` in shells).
 - Pass `resetKey` when filter/search changes (e.g. `` `${query}|${JSON.stringify(filterValues)}` ``); omit for auto signature from list head/tail.
 - Pager sits **below** the table (or card grid); **always visible** by default (even `totalCount ≤ pageSize`). Host may opt-in hide via `configureDirectoryPager({ hideWhenSinglePage: () => true })`.
 - Card directory views use `HubPaginatedCardGrid` (or `HubPaginatedTableShell` when the child supplies its own grid).
@@ -1442,7 +1576,7 @@ Pass as `filterRowActions` on `HubDirectoryScreen` — `FilterBar` aligns end (`
 | `HubPaginatedDataTable` | Modal table **≤6 columns**, simple rows, optional checkbox in `renderRow` (P0004 User Access tools) |
 | `HubRouteAccessDirectoryTable` | Route People & access — `HubPaginatedDataTable` + `--route-access-modal` (same wrap as User Tools) |
 | `HubRouteAccessDirectoryTableSkeleton` | Loading placeholder for route access table (7 columns incl. Activity) |
-| `HubUserToolsDirectoryTable` | User Access tools table — wraps `HubPaginatedDataTable` + `HUB_USER_TOOLS_*` meta; inject category/access cells only |
+| `HubUserToolsDirectoryTable` | User Access tools table — wraps `HubPaginatedDataTable` + `HUB_USER_TOOLS_*` meta; inject category/access/enterprise cells |
 | `HubUserToolsDirectoryTableSkeleton` | Loading placeholder for User Access tools table |
 | `HubDirectoryTableShell` | Lower-level directory table with sort, select-all, static columns (Hub/Users directory) |
 | `HubRouteAboutSummary` | Route detail About — stat chips row + Route TM + Note ID `CopyMetaChip` |

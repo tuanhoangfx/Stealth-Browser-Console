@@ -59,6 +59,16 @@ export function crmOrderProductIsMailSku(productName: string | null | undefined)
   return CRM_ORDER_MAIL_VAULT_SERVICES.some((label) => crmOrderProductMatchesService(product, label));
 }
 
+/**
+ * P0020 Mail Usage SSOT — only Acc Gmail seat SKUs (`Acc Gmail #1`, `#2`, `#3 1m`, …).
+ * Not Acc Gmail Edu / bare Acc Gmail 1m without `#N`.
+ */
+export function crmOrderProductIsAccGmailSeatSku(productName: string | null | undefined): boolean {
+  const product = productName?.trim() ?? "";
+  if (!product) return false;
+  return /^acc\s*gmail\s*#\s*\d+/i.test(product);
+}
+
 export function crmOrderVaultCandidateEligible(
   productName: string | null | undefined,
   row: Pick<CrmOrderVaultCandidate, "service">,
@@ -76,8 +86,13 @@ export function crmOrderVaultCandidateIdentityHits(
 ): boolean {
   const text = details ?? "";
   const tokens = new Set(extractCrmOrderDetailIdentityTokens(text));
-  const hitsIdentity = (raw: string) =>
-    expandCrmOrderGmailAliases(raw).some((alias) => alias.length >= 3 && tokens.has(alias));
+  const haystack = normalizeCrmOrderDetailsIdentifier(text);
+  const hitsIdentity = (raw: string) => {
+    const aliases = expandCrmOrderGmailAliases(raw).filter((alias) => alias.length >= 3);
+    if (aliases.some((alias) => tokens.has(alias))) return true;
+    // Non-email shop / profile Account (Kalowave) may only appear as a bare Details line.
+    return aliases.some((alias) => !alias.includes("@") && haystack.includes(alias));
+  };
   if (hitsIdentity(row.account ?? "")) return true;
   if (hitsIdentity(row.mailRecover ?? "")) return true;
   return false;
@@ -121,14 +136,36 @@ export function sameCrmOrderVaultAccountIds(
   return a.every((id, i) => id === b[i]);
 }
 
-/** `ChatGPT Plus #2 1m` → 2. Single-seat SKUs → 0. */
+/** Parse `#N` from product name (`Acc Gmail #2`, `ChatGPT Plus #2 1m` → 2). Single-seat → 0. */
 export function crmOrderMultiSeatSlot(productName: string | null | undefined): number {
   const match = (productName ?? "").match(/#(\d+)\b/);
   const slot = match ? Number(match[1]) : 0;
   return Number.isFinite(slot) && slot >= 2 ? slot : 0;
 }
 
-/** True when persisted Services ids are fewer than Details mailboxes (or a `#2+` SKU is still scalar-only). */
+/**
+ * Hard seat cap from SKU only when `#N` is sold-seat count.
+ * Acc Gmail #N → N. ChatGPT Plus #N is a package line — Details Account count wins (OI1809023).
+ */
+export function crmOrderSkuHardSeatCap(productName: string | null | undefined): number {
+  const product = productName?.trim() ?? "";
+  if (!product) return 0;
+  if (/^acc\s*gmail\s*#\s*\d+/i.test(product)) return crmOrderMultiSeatSlot(product);
+  return 0;
+}
+
+/** Target seat count for vault link / backfill: Acc Gmail hard-cap, else Details mailboxes. */
+export function crmOrderServicesVaultSeatTarget(
+  productName: string | null | undefined,
+  details: string | null | undefined,
+): number {
+  const mailboxes = countCrmOrderDetailMailboxes(details ?? "");
+  const hardCap = crmOrderSkuHardSeatCap(productName);
+  if (hardCap >= 2) return mailboxes > 0 ? Math.min(hardCap, mailboxes) : hardCap;
+  return mailboxes;
+}
+
+/** True when persisted Services ids are fewer than Details mailboxes (or Acc Gmail `#2+` still scalar-only). */
 export function crmOrderNeedsServicesVaultBackfill(row: {
   product_name?: string | null;
   twofa_account_id?: string | null;
@@ -136,17 +173,18 @@ export function crmOrderNeedsServicesVaultBackfill(row: {
   metadata?: Record<string, unknown> | null;
 }): boolean {
   const details = typeof row.metadata?.raw_details === "string" ? row.metadata.raw_details : "";
-  const mailboxes = countCrmOrderDetailMailboxes(details);
   const persisted = readCrmOrderServicesVaultIds(row);
-  const slot = crmOrderMultiSeatSlot(row.product_name);
-  const target = slot >= 2 ? Math.min(slot, mailboxes) : mailboxes;
+  const target = crmOrderServicesVaultSeatTarget(row.product_name, details);
   if (target < 2) return false;
   return persisted.length < target;
 }
 
 /**
  * Every eligible Services (or Mail SKU → Mail vault) hit — union, never pick-one-and-drop.
- * Keeps a still-eligible current link (Share seat) when Details email is a family seat.
+ * Keeps a still-eligible current link when it still identity-hits Details (Account or
+ * mailRecover), or when no identity hit exists yet (Share seat / incomplete candidates).
+ * Drops a stale link when Details uniquely identity-hit another Services vault
+ * (CapCut Recover Mail rematch — OI1906008 / policy N orders → Usage N).
  * Does not hop Capcut-recipe → Gmail (OTP-only).
  */
 export function resolveCrmOrderServicesVaultIds(
@@ -163,14 +201,25 @@ export function resolveCrmOrderServicesVaultIds(
   if (current) {
     const currentRow = candidates.find((row) => row.id === current);
     if (currentRow && crmOrderVaultCandidateEligible(order.productName, currentRow)) {
-      if (!ids.includes(current)) ids.unshift(current);
-      else return capCrmOrderServicesVaultIds(order, candidates, [current, ...ids.filter((id) => id !== current)]);
+      const currentStillHits = crmOrderVaultCandidateIdentityHits(order.details, currentRow);
+      if (currentStillHits) {
+        if (!ids.includes(current)) ids.unshift(current);
+        else
+          return capCrmOrderServicesVaultIds(order, candidates, [
+            current,
+            ...ids.filter((id) => id !== current),
+          ]);
+      } else if (ids.length === 0) {
+        // No identity match in the candidate set — keep Share / incomplete token lookup.
+        ids.unshift(current);
+      }
+      // else: stale current + ≥1 identity hit → prefer Details rematch (drop current).
     }
   }
   return capCrmOrderServicesVaultIds(order, candidates, ids);
 }
 
-/** One Services id per canonical mailbox; `#N` SKU caps at N (no gmail/googlemail twin dump). */
+/** One Services id per canonical mailbox; Acc Gmail `#N` hard-caps at N (no gmail/googlemail twin dump). */
 export function capCrmOrderServicesVaultIds(
   order: CrmOrderVaultLinkQuery,
   candidates: readonly CrmOrderVaultCandidate[],
@@ -181,10 +230,22 @@ export function capCrmOrderServicesVaultIds(
     const row = byId.get(id);
     return canonicalizeCrmOrderMailbox(row?.account || row?.mailRecover || "");
   };
-  const mailboxes = crmOrderDetailMailboxOrder(order.details ?? "");
-  const slot = crmOrderMultiSeatSlot(order.productName);
-  // Single-seat: one vault. `ids.length` used to attach every Recover-sharing clone.
-  const limit = slot >= 2 ? slot : mailboxes.length > 0 ? mailboxes.length : ids.length;
+  const details = order.details ?? "";
+  const mailboxes = crmOrderDetailMailboxOrder(details);
+  const hardCap = crmOrderSkuHardSeatCap(order.productName);
+  // Bare shop / profile lines (Kalowave) are extra seats beside the login mailbox.
+  // ChatGPT: Details Account count wins — `Plus #2` is package line, not seat cap (OI1809023).
+  // Acc Gmail #N: hard-cap at N even when Details lists more mailboxes.
+  const nonEmailIdentities = extractCrmOrderDetailIdentityTokens(details).filter(
+    (token) => !token.includes("@"),
+  ).length;
+  const identitySeats = mailboxes.length + nonEmailIdentities;
+  const limit =
+    hardCap >= 2
+      ? hardCap
+      : identitySeats > 0
+        ? identitySeats
+        : ids.length;
   const picked: string[] = [];
   const seen = new Set<string>();
   const tryAdd = (id: string) => {

@@ -49,6 +49,8 @@ html.hub-embed #hub-boot-loader.hub-boot-loader--pane::before {
 @media (max-width: 767.98px) {
   html {
     --hub-loader-inset-left: 0px;
+    /* Filter/search row — tighter than toolbar control-h (31px) on phone. */
+    --hub-filter-row-h: 28px;
   }
 
   /* Drawer is overlay — pin fill to the viewport even if an older hub-boot.css

@@ -107,7 +107,7 @@ export function MiniBarChart({
                 iconMeta={it.iconMeta}
                 emojiGlyph={it.emojiGlyph}
                 labelHint={it.labelHint}
-                colorDot={!it.iconSrc && !it.emojiGlyph ? color : undefined}
+                colorDot={!it.iconSrc && !it.emojiGlyph ? it.color : undefined}
               />
               <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-white/5">
                 <div

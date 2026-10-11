@@ -29,6 +29,8 @@ export type HubAdmClickDateFieldProps = {
   showCopyAction?: boolean;
   /** Optional control after the value (e.g. copy icon). Does not shrink. */
   trailingAction?: ReactNode;
+  /** Creation is month + year. Other dates keep the day grid. */
+  precision?: "day" | "month";
 };
 
 /** Account-detail modal — label + Todo calendar picker (click to open month grid). */
@@ -49,6 +51,7 @@ export function HubAdmClickDateField({
   copyToastLabel,
   showCopyAction,
   trailingAction,
+  precision = "day",
 }: HubAdmClickDateFieldProps) {
   const emoji = hideTriggerIcon ? undefined : (triggerEmoji ?? header.headerEmoji);
   const resolvedCopy = (copyValue ?? value.trim()).trim();
@@ -81,6 +84,7 @@ export function HubAdmClickDateField({
           hideTriggerIcon={hideTriggerIcon}
           compactTrigger={compactTrigger}
           disabled={disabled}
+          precision={precision}
         />
         {mergedTrailing ? (
           <span className="hub-adm-click-filter__trailing inline-flex shrink-0 items-center">{mergedTrailing}</span>

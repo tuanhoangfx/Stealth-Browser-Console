@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, Check, Trash2, X, type LucideIcon } from "lucide-react";
-import { HubToolDetailModal } from "./HubToolDetailModal";
 import {
+  HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-} from "./HubToolDetailModalActions";
+} from "./HubToolDetailModal";
 
 export type HubConfirmTone = "danger" | "warning" | "info";
 
@@ -48,7 +48,7 @@ export function HubConfirmDialog({
       titleId="hub-confirm-title"
       headerIcon={Icon}
       headerIconClassName={toneIconClass[tone]}
-      size="compact"
+      shellClassName="hub-tool-detail-modal--fit"
       ariaLabelledBy="hub-confirm-title"
       footer={
         <>

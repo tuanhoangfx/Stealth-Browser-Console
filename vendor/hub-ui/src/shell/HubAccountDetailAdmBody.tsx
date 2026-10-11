@@ -5,7 +5,7 @@ import {
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
 } from "./hubAccountDetailModal";
 import { HubTocHighlightContent, HubTocSectionHighlightProvider } from "./HubTocSectionHighlight";
-import { HubToolDetailModalTocLayout } from "./HubToolDetailModalTocLayout";
+import { HubToolDetailModalTocLayout } from "./HubToolDetailModal";
 
 export const HUB_ACCOUNT_DETAIL_ADM_FRAME_CLASS = "twofa-account-detail-modal__frame";
 

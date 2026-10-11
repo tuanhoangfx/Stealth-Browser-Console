@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { CopyPlus, Layers, UserRound, X } from "lucide-react";
-import { HubToolDetailModal } from "./HubToolDetailModal";
 import {
+  HubToolDetailModal,
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-} from "./HubToolDetailModalActions";
+} from "./HubToolDetailModal";
 import { HubAdmClickFilterField, HubAdmInlineFieldLabel } from "./HubAdmClickEditField";
 import { HubDetailFieldsGroup } from "./HubDetailFieldsScope";
 import type { FilterOption } from "./FilterBar";
@@ -39,7 +39,7 @@ function buildCountOptions(max: number): FilterOption[] {
 }
 
 /**
- * Hub-UI clone/duplicate confirm dialog — compact 28rem SSOT
+ * Hub-UI clone/duplicate confirm dialog — Layout 2 Modal SSOT
  * (`hub-adm-form-row--aligned-2`: Copies + Keep same Profile on one row).
  *
  * Shared by directory bulk Clone and account detail Clone.
@@ -81,8 +81,7 @@ export function HubCloneConfirmDialog({
       titleId="hub-clone-confirm-title"
       headerIcon={CopyPlus}
       headerIconClassName="text-sky-300"
-      size="compact"
-      shellClassName="hub-clone-confirm-modal"
+      shellClassName="hub-tool-detail-modal--fit hub-clone-confirm-modal"
       ariaLabelledBy="hub-clone-confirm-title"
       footer={
         <>
@@ -116,8 +115,8 @@ export function HubCloneConfirmDialog({
               options={countOptions}
               value={String(count)}
               onChange={(value) => setCount(Number(value))}
-              allowClear={false}
               disabled={busy}
+              allowClear={false}
             />
             {showKeepProfile ? (
               <div className="hub-adm-inline-field min-w-0">
@@ -150,10 +149,10 @@ export function HubCloneConfirmDialog({
             {keepProfile
               ? count === 1
                 ? "Keeps the source Profile — Account gets a +clone tag only if that Profile+email already exists."
-                : "The first copy keeps the source Profile; remaining copies use the smallest free Profile (fills gaps from 0001)."
+                : "The first copy keeps the source Profile; remaining copies use the next free Profile slots."
               : count === 1
-                ? "Assigns the smallest free Profile for this provider (fills gaps from 0001)."
-                : "Each clone gets the smallest free Profile (fills gaps from 0001)."}
+                ? "Assigns the next free Profile after the current max (same Account email)."
+                : "Each clone gets the next free Profile slot."}
           </p>
         ) : null}
       </div>

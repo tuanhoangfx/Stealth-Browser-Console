@@ -332,7 +332,7 @@ function StatLine({
 function SessionLine({ sessionMmSs }: { sessionMmSs: string }) {
   return (
     <div
-      className="app-tab-header__session app-tab-header__chrome-text inline-flex items-center gap-1.5 text-[var(--muted)]"
+      className="app-tab-header__chrome-text inline-flex items-center gap-1.5 text-[var(--muted)]"
       title={`Page session timer — ${sessionMmSs} since this tab opened`}
     >
       <Clock size={14} className="shrink-0 text-indigo-400/90" aria-hidden />
@@ -365,18 +365,14 @@ export function AppTabHeader({
   const sessionMmSs = usePageSessionSeconds();
   const positionClass = embedded ? "relative z-0" : pinSticky ? "sticky top-0 z-40" : "relative z-0";
   const chromeClass = embedded
-    ? "app-tab-header app-tab-header--embedded box-border grid items-center gap-x-3 bg-[var(--bg)]"
+    ? "app-tab-header box-border grid items-center gap-x-3 bg-[var(--bg)]"
     : `app-tab-header ${positionClass} -mx-6 mb-2 box-border grid items-center gap-x-3 bg-[var(--bg)] px-6${
         dividerBelow ? " border-b border-white/5" : ""
       }`;
   const hasCenterStats = Boolean(centerContent) || centerStats.length > 0;
-  const sparseCenter = !hasCenterStats && !statusSlot;
 
   return (
-    <header
-      className={`${chromeClass}${sparseCenter ? " app-tab-header--sparse" : ""}`}
-      aria-label={ariaLabel}
-    >
+    <header className={chromeClass} aria-label={ariaLabel}>
       <div className="app-tab-header__start flex min-w-0 items-center justify-self-start gap-x-2.5 overflow-hidden">
         {titleMenu?.length ? (
           <TitleWithMenu

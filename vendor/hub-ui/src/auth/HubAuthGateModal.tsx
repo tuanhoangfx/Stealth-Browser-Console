@@ -5,15 +5,7 @@ import { HubModalCloseButton } from "../shell/HubModalCloseButton";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { compactIconSize } from "../ui-scale";
 import { formatHubAuthToolInfo, type HubAuthToolInfo } from "./hub-auth-tool-info";
-import { normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
-import { HubAuthSysProgress } from "./HubAuthSysProgress";
-import {
-  isHubTechnicalAuthEmail,
-  looksLikeEmail,
-  prefetchHubResolveLogin,
-  sanitizeHubLoginInput,
-  warmHubAuthConnections,
-} from "@tool-workspace/hub-identity";
+import { formatHubAuthErrorMessage, normalizeHubAuthError, type NormalizeHubAuthErrorOptions } from "./normalize-hub-auth-error";
 
 type AuthMode = "signin" | "signup" | "anonymous";
 
@@ -24,6 +16,12 @@ export type HubAuthGateModalProps = {
   onAnonymous?: () => void;
   /** When false, × / backdrop / Escape do not dismiss (P0004 hub gate). */
   dismissible?: boolean;
+  /**
+   * `modal` (default) — portal overlay. CSS pads `--hub-sidebar-width` so the
+   * card centers in the content column, not on the full viewport.
+   * `inline` — paint inside the host pane (Orders / Referrer tab).
+   */
+  placement?: "modal" | "inline";
   title: string;
   toolInfo?: HubAuthToolInfo;
   /** @deprecated Use toolInfo */
@@ -39,7 +37,6 @@ export type HubAuthGateModalProps = {
     login: string,
     password: string,
     mode: Exclude<AuthMode, "anonymous">,
-    extras?: { contactEmail?: string },
   ) => Promise<void | { error?: string }>;
   onForgotPassword?: (login: string) => Promise<string | void>;
 };
@@ -50,6 +47,7 @@ export function HubAuthGateModal({
   onAuthed,
   onAnonymous,
   dismissible = true,
+  placement = "modal",
   title,
   toolInfo,
   subtitle,
@@ -62,26 +60,9 @@ export function HubAuthGateModal({
 }: HubAuthGateModalProps) {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
   const [mode, setMode] = useState<AuthMode>("signin");
   const [busy, setBusy] = useState(false);
-  const [busyLabel, setBusyLabel] = useState("");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    warmHubAuthConnections();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || mode === "anonymous") return;
-    const value = login.trim();
-    if (value.length < 3) return;
-    const timer = window.setTimeout(() => {
-      void prefetchHubResolveLogin(value);
-    }, 180);
-    return () => window.clearTimeout(timer);
-  }, [open, mode, login]);
 
   useEffect(() => {
     if (!open || !dismissible) return;
@@ -101,39 +82,19 @@ export function HubAuthGateModal({
     if (mode === "anonymous") return;
     if (submitDisabled) return;
     setBusy(true);
-    setBusyLabel("Checking account…");
     setMessage("");
-    const checkingTimer = window.setTimeout(() => {
-      setBusyLabel("Verifying password with Hub…");
-    }, 350);
-    const workspaceTimer = window.setTimeout(() => {
-      setBusyLabel("Connecting workspace data…");
-    }, 800);
     try {
-      const contact = sanitizeHubLoginInput(contactEmail).toLowerCase();
-      if (mode === "signup" && !looksLikeEmail(login) && !contact) {
-        setMessage("Enter a contact email for recovery.");
-        return;
-      }
-      if (mode === "signup" && contact && (isHubTechnicalAuthEmail(contact) || !looksLikeEmail(contact))) {
-        setMessage("Use a real contact email — @infix1.io.vn is retired.");
-        return;
-      }
-      const result = await onSubmit(login, password, mode, contact ? { contactEmail: contact } : undefined);
-      const intent = mode === "signup" ? "signup" : "signin";
+      const result = await onSubmit(login, password, mode);
       if (result && "error" in result && result.error) {
-        setMessage(normalizeHubAuthError(result.error, { ...errorOptions, intent }));
+        setMessage(normalizeHubAuthError(result.error, errorOptions));
+        setBusy(false);
         return;
       }
+      setBusy(false);
       onAuthed?.();
     } catch (err) {
-      const intent = mode === "signup" ? "signup" : "signin";
-      setMessage(normalizeHubAuthError(err, { ...errorOptions, intent }));
-    } finally {
-      window.clearTimeout(checkingTimer);
-      window.clearTimeout(workspaceTimer);
       setBusy(false);
-      setBusyLabel("");
+      setMessage(normalizeHubAuthError(err, errorOptions));
     }
   };
 
@@ -157,16 +118,24 @@ export function HubAuthGateModal({
     if (dismissible) onClose();
   };
 
-  return createPortal(
+  const inline = placement === "inline";
+  const rootClass = inline ? "auth-gate-root auth-gate-root--inline" : "auth-gate-root";
+  const panelClass = inline
+    ? "auth-gate-panel auth-gate-panel--modal hub-modal-frame w-full"
+    : "auth-gate-panel auth-gate-panel--modal hub-modal-frame";
+
+  const gate = (
     <div
-      className="auth-gate-root"
+      className={rootClass}
       role="dialog"
-      aria-modal="true"
+      aria-modal={inline ? undefined : "true"}
       aria-labelledby="auth-gate-title"
     >
-      <div className="auth-gate-backdrop" aria-hidden="true" onClick={handleBackdrop} />
-      <div className="auth-gate-panel auth-gate-panel--modal hub-modal-frame">
-        {dismissible ? (
+      {inline ? null : (
+        <div className="auth-gate-backdrop" aria-hidden="true" onClick={handleBackdrop} />
+      )}
+      <div className={panelClass}>
+        {dismissible && !inline ? (
           <HubModalCloseButton onClose={onClose} aria-label="Close sign in" />
         ) : null}
         {headerLeading ? <div className="auth-gate-brand">{headerLeading}</div> : null}
@@ -239,7 +208,7 @@ export function HubAuthGateModal({
               className="field auth-gate-field w-full"
               type="text"
               name="login"
-              placeholder="Username, email, or phone"
+              placeholder="User ID or email"
               autoComplete="username"
               {...HUB_NO_SPELLCHECK_PROPS}
               value={login}
@@ -247,20 +216,6 @@ export function HubAuthGateModal({
               disabled={busy || submitDisabled}
               required
             />
-            {mode === "signup" && !looksLikeEmail(login) ? (
-              <input
-                className="field auth-gate-field w-full"
-                type="email"
-                name="contact"
-                placeholder="Contact email"
-                autoComplete="email"
-                {...HUB_NO_SPELLCHECK_PROPS}
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                disabled={busy || submitDisabled}
-                required
-              />
-            ) : null}
             <div className="auth-gate-password-wrap">
               <input
                 className="field auth-gate-field w-full"
@@ -286,15 +241,22 @@ export function HubAuthGateModal({
               ) : null}
             </div>
             {message ? <p className="auth-gate-message">{message}</p> : null}
-            {busyLabel ? <HubAuthSysProgress label={busyLabel} /> : null}
             <button type="submit" className="auth-gate-submit" disabled={busy || submitDisabled}>
               <SubmitIcon size={compactIconSize(16)} aria-hidden />
-              <span>{mode === "signin" ? "Sign In" : "Sign Up"}</span>
+              <span>
+                {busy || submitDisabled
+                  ? "Please wait…"
+                  : mode === "signin"
+                    ? "Sign In"
+                    : "Sign Up"}
+              </span>
             </button>
           </form>
         )}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+
+  if (inline) return gate;
+  return createPortal(gate, document.body);
 }

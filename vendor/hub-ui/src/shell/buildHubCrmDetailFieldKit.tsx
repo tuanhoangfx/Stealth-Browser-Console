@@ -111,6 +111,7 @@ export function buildHubCrmDetailFieldKit(
     labelHint,
     empty,
     valueLayout,
+    trailingAction,
   }: {
     columnKey?: string;
     header?: HubTableColumnHeaderProps;
@@ -119,6 +120,8 @@ export function buildHubCrmDetailFieldKit(
     labelHint?: HubDirectoryColumnHintContent;
     empty?: boolean;
     valueLayout?: "text" | "inline";
+    /** After value — e.g. HubRelatedDetailOpenButton (copy stays inside value when using CopyText). */
+    trailingAction?: ReactNode;
   }) {
     const resolvedHeader = header ?? headerFor(columnKey ?? "");
     const resolvedHint =
@@ -131,6 +134,7 @@ export function buildHubCrmDetailFieldKit(
         className={className}
         empty={empty}
         valueLayout={valueLayout}
+        trailingAction={trailingAction}
       >
         {children}
       </HubAdmReadonlyField>
@@ -145,6 +149,7 @@ export function buildHubCrmDetailFieldKit(
     multiline = false,
     copiedLabel,
     display,
+    trailingAction,
   }: {
     columnKey: string;
     value: string;
@@ -153,11 +158,18 @@ export function buildHubCrmDetailFieldKit(
     multiline?: boolean;
     copiedLabel?: string;
     display?: ReactNode;
+    trailingAction?: ReactNode;
   }) {
     const text = value.trim();
     const label = fieldLabel(meta, columnKey);
     return (
-      <ReadonlyField columnKey={columnKey} className={className} labelHint={labelHint} empty={!text}>
+      <ReadonlyField
+        columnKey={columnKey}
+        className={className}
+        labelHint={labelHint}
+        empty={!text}
+        trailingAction={trailingAction}
+      >
         {text ? (
           <HubDirectoryReadonlyCopyText
             value={text}
@@ -311,9 +323,13 @@ export function buildHubCrmDetailFieldKit(
     panelSearchAsync,
     allowClear,
     clearLabel,
+    onPanelCreate,
+    panelCreateAriaLabel,
     allowCustom,
     customOptionLabel,
     renderDisplay,
+    pinSelected,
+    trailingAction,
   }: {
     columnKey: string;
     filterKey: string;
@@ -326,9 +342,14 @@ export function buildHubCrmDetailFieldKit(
     panelSearchAsync?: ComponentProps<typeof HubAdmClickFilterField>["panelSearchAsync"];
     allowClear?: boolean;
     clearLabel?: string;
+    onPanelCreate?: () => void;
+    panelCreateAriaLabel?: string;
     allowCustom?: boolean;
     customOptionLabel?: (query: string) => string;
     renderDisplay?: ComponentProps<typeof HubAdmClickFilterField>["renderValue"];
+    pinSelected?: boolean;
+    /** After auto-copy — e.g. HubRelatedDetailOpenButton for Order → Customer Detail. */
+    trailingAction?: ReactNode;
   }) {
     if (copyOnly) {
       return (
@@ -338,6 +359,7 @@ export function buildHubCrmDetailFieldKit(
           display={renderDisplay ? renderDisplay(value, optionLabelText(options, value)) : optionCopyDisplay(options, value)}
           className={className}
           labelHint={labelHint}
+          trailingAction={trailingAction}
         />
       );
     }
@@ -355,9 +377,13 @@ export function buildHubCrmDetailFieldKit(
         panelSearchAsync={panelSearchAsync}
         allowClear={allowClear}
         clearLabel={clearLabel}
+        onPanelCreate={onPanelCreate}
+        panelCreateAriaLabel={panelCreateAriaLabel}
         allowCustom={allowCustom}
         customOptionLabel={customOptionLabel}
         renderValue={renderDisplay}
+        pinSelected={pinSelected}
+        trailingAction={trailingAction}
       />
     );
   }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { LayoutTemplate, Save, X, type LucideIcon } from "lucide-react";
 import { HUB_NO_SPELLCHECK_PROPS } from "../lib/no-spellcheck";
 import { HubToolDetailModal } from "./HubToolDetailModal";
@@ -17,6 +17,7 @@ export type HubPromptDialogProps = {
   cancelLabel?: string;
   headerIcon?: LucideIcon;
   headerIconClassName?: string;
+  stacked?: boolean;
   onConfirm: (value: string) => void;
   onClose: () => void;
 };
@@ -32,14 +33,21 @@ export function HubPromptDialog({
   cancelLabel = "Cancel",
   headerIcon: HeaderIcon = LayoutTemplate,
   headerIconClassName = "text-indigo-300",
+  stacked = false,
   onConfirm,
   onClose,
 }: HubPromptDialogProps) {
   const inputId = useId();
   const [value, setValue] = useState(defaultValue);
+  const openRef = useRef(open);
 
   useEffect(() => {
-    if (open) setValue(defaultValue);
+    const justOpened = open && !openRef.current;
+    openRef.current = open;
+    if (!open) return;
+    // Seed only when the dialog opens — never while typing if the parent
+    // re-renders a live `defaultValue` (draft.campaign) and wipes the new name.
+    if (justOpened) setValue(defaultValue);
   }, [open, defaultValue]);
 
   function submit() {
@@ -57,10 +65,11 @@ export function HubPromptDialog({
       headerIcon={HeaderIcon}
       headerIconClassName={headerIconClassName}
       size="compact"
+      stacked={stacked}
       ariaLabelledBy="hub-prompt-title"
       footer={
         <>
-          <HubToolDetailModalSecondaryAction label={cancelLabel} onClick={onClose} icon={X} />
+          <HubToolDetailModalSecondaryAction label={cancelLabel} onClick={onClose} icon={X} close />
           <HubToolDetailModalPrimaryAction
             label={confirmLabel}
             onClick={submit}

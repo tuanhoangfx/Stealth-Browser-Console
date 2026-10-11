@@ -3,8 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { FileText } from "lucide-react";
 import { buildSemanticTocIcon } from "../lib/semantic-icon-registry";
 import { HubHeaderPanelButton } from "./HubHeaderPanelButton";
-import { HubToolDetailModal } from "./HubToolDetailModal";
-import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "./hubToolDetailModalChrome";
+import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import {
@@ -530,18 +529,20 @@ export function HubUsageLogPanel({
         headerIcon={logPanelIcon}
         headerIconClassName="text-cyan-300"
         headerTrailing={
-          (modalHeaderBadge != null && modalHeaderBadge > 0) || (showMarkAll && sessionUnread > 0) ? (
-            <>
-              {modalHeaderBadge != null && modalHeaderBadge > 0 ? (
-                <HubOpsPanelBadge count={modalHeaderBadge} tone="cyan" />
-              ) : null}
-              {showMarkAll && sessionUnread > 0 ? (
-                <HubOpsMarkAllReadButton onClick={markAllSessionRead} />
-              ) : null}
-            </>
+          modalHeaderBadge != null && modalHeaderBadge > 0 ? (
+            <HubOpsPanelBadge count={modalHeaderBadge} tone="cyan" />
           ) : undefined
         }
-        headerCenter={<HubOpsPanelSearch query={query} onQueryChange={setQuery} placeholder="Search logs…" />}
+        headerCenter={
+          <HubOpsPanelSearch
+            query={query}
+            onQueryChange={setQuery}
+            placeholder="Search logs…"
+          />
+        }
+        headerActions={
+          showMarkAll ? <HubOpsMarkAllReadButton onClick={markAllSessionRead} /> : undefined
+        }
         shellClassName="hub-header-panel-modal hub-ops-panel-modal"
         sectionIds={showToc && !typeTocEnabled ? sectionIds : undefined}
         toc={

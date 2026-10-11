@@ -53,6 +53,7 @@ export * from "./workspace-reauth";
 export * from "./use-force-login-missing-hub-jwt";
 export * from "./workspace-extra-auth-plane-registry";
 export * from "./hub-identity-relay";
+export * from "./jwt-payload";
 export * from "./workspace-auth-session";
 export * from "./hub-api-auth-token";
 export * from "./hub-token-refresh-scheduler";

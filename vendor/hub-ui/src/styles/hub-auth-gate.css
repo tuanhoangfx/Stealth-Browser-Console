@@ -20,6 +20,23 @@
   --muted: #8a93b2;
 }
 
+/* Checkout / shell sign-in is portaled to body. Centering on the full viewport
+   sits left of .hub-main by half the sidebar. Pad the sidebar so the card
+   centers in the content column. Backdrop stays inset:0 (full window). */
+.auth-gate-root:not(.auth-gate-root--inline) {
+  padding-left: calc(var(--hub-sidebar-width, 15rem) + 1.25rem);
+}
+
+@media (max-width: 767.98px) {
+  .auth-gate-root:not(.auth-gate-root--inline) {
+    padding-left: 1.25rem;
+  }
+}
+
+html.hub-embed .auth-gate-root:not(.auth-gate-root--inline) {
+  padding-left: 1.25rem;
+}
+
 .auth-gate-overlay {
   z-index: 1990;
 }
@@ -194,15 +211,22 @@
 }
 
 .auth-gate-field {
+  box-sizing: border-box;
+  min-height: 2.35rem;
+  line-height: 1.25;
+  overflow: hidden;
+  color-scheme: dark;
   font-size: 0.8125rem;
 }
 
+/* Fill the whole control. A failed var() leaves Cốc Cốc autofill as a text-sized black chip. */
 .auth-gate-field:-webkit-autofill,
 .auth-gate-field:-webkit-autofill:hover,
 .auth-gate-field:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--text);
-  caret-color: var(--text);
-  box-shadow: 0 0 0 1000px var(--panel-2) inset;
+  -webkit-text-fill-color: #e6e8ef;
+  caret-color: #e6e8ef;
+  box-shadow: 0 0 0 1000px #1a2140 inset;
+  background-color: #1a2140;
   transition: background-color 99999s ease-out 0s;
 }
 
@@ -571,6 +595,12 @@
   inset: auto;
   z-index: auto;
   padding: 0;
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
 .auth-gate-panel--boot {

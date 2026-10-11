@@ -68,7 +68,8 @@ export function HubDirectoryValuePopover({
       window.removeEventListener("scroll", onScrollOrResize, true);
       window.removeEventListener("resize", onScrollOrResize);
     };
-  }, [open, updatePosition, text, title, content]);
+    // `content` / `title` remint every parent paint — must not retrigger measure/setState (React #185).
+  }, [open, updatePosition, text]);
 
   if (!enabled || !text) {
     return <>{children}</>;
@@ -79,7 +80,7 @@ export function HubDirectoryValuePopover({
       ? createPortal(
           <div
             ref={popoverRef}
-            className="hub-directory-popover hub-directory-popover--value"
+            className="hub-directory-popover hub-directory-popover--value hub-scrollbar"
             style={{ top: pos.top, left: pos.left }}
             role="tooltip"
             onMouseEnter={show}

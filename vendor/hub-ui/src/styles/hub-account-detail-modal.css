@@ -592,35 +592,15 @@
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .hub-adm-inline-field__value,
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .twofa-adm-inline-field__value,
-:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row .twofa-adm-inline-field__value {
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row time,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .hub-copy-badge,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row .twofa-adm-inline-field__value,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row time,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row .hub-copy-badge {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-}
-
-/* Record-meta ID chip — field-value height; never ellipsis-clip to "#0". */
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row .hub-copy-badge,
-:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row .hub-copy-badge {
-  height: var(--hub-adm-value-h, var(--hub-control-h, 26px));
-  min-height: var(--hub-adm-value-h, var(--hub-control-h, 26px));
-  max-width: none;
-  flex-shrink: 0;
-  overflow: visible;
-  text-overflow: clip;
-  font-size: var(--hub-adm-type-size, 12px);
-  padding-inline: 0.45rem;
-}
-
-/* Identity header Task / Order ID — title-tier, not 22px metric chrome. */
-:is(.hub-account-detail-modal, .hub-add-modal) .user-access-modal__header-name .hub-copy-badge {
-  height: auto;
-  min-height: 1.75rem;
-  max-width: none;
-  overflow: visible;
-  padding-inline: 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.2;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2,
@@ -792,27 +772,6 @@
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-1 .hub-adm-click-edit__text--multiline {
   -webkit-line-clamp: 1;
-}
-
-/* Readonly copy cells (Contact / Customer Group) — `multilineHover` adds pre-wrap +
- * -webkit-box inside an inline-flex copy control, so line-clamp does not bound width.
- * Force one visual line + ellipsis; hover popover still shows the full value. */
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-1 :is(.hub-directory-copy-wrap, .twofa-copy-control-wrap, .hub-directory-copy-control, .twofa-copy-control) {
-  min-width: 0;
-  max-width: 100%;
-  width: 100%;
-}
-
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-1 :is(.hub-directory-copy-control__value, .twofa-copy-control__value, .hub-adm-click-edit__text--multiline) {
-  display: block;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  word-break: normal;
-  -webkit-line-clamp: unset;
-  -webkit-box-orient: initial;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--multiline-2 .hub-adm-click-edit__text--multiline {
@@ -1251,16 +1210,6 @@
   color: var(--hub-adm-type-muted-color, rgb(100, 116, 139));
 }
 
-/* ADM detail fields — status chip matches adjacent Job title/Team values (not 10px chrome). */
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-readonly-value .hub-users-status,
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value .hub-users-status {
-  font-size: var(--hub-adm-type-size, var(--hub-table-body-size, 12px));
-  font-weight: var(--hub-adm-type-value-weight, 400);
-  line-height: var(--hub-adm-type-line, var(--hub-table-body-line-height, 1.45));
-  color: var(--hub-adm-type-value-color, rgb(203 213 225));
-  text-transform: none;
-}
-
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-type-mono,
 :is(.hub-account-detail-modal, .hub-add-modal) .twofa-code-badge,
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-copy-badge {
@@ -1404,8 +1353,7 @@
   overflow: auto;
 }
 
-.hub-account-detail-modal .hub-adm-rail--log .twofa-adm-log-list,
-.hub-account-detail-modal .hub-adm-rail--note .twofa-adm-log-list {
+.hub-account-detail-modal .hub-adm-rail--log .twofa-adm-log-list {
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -1706,51 +1654,4 @@
 .hub-adm-note-textarea--searching::selection {
   color: transparent;
   background: rgba(129, 140, 248, 0.45);
-}
-
-/* Tablet: search under title — same stack as ops panels (Log / Notify). */
-@media (max-width: 1099.98px) {
-  :is(
-      .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
-      .hub-overview-adm-scaffold__shell.hub-account-detail-modal.twofa-account-detail-modal
-    )
-    .user-access-modal__header:has(.user-access-modal__header-center) {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    column-gap: 0.45rem;
-    row-gap: 0.45rem;
-    padding-right: 0.85rem;
-  }
-
-  :is(
-      .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
-      .hub-overview-adm-scaffold__shell.hub-account-detail-modal.twofa-account-detail-modal
-    )
-    .user-access-modal__header:has(.user-access-modal__header-center)
-    .user-access-modal__header-main {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-    min-width: 0;
-  }
-
-  :is(
-      .modal-shell.hub-tool-detail-modal.hub-account-detail-modal,
-      .hub-overview-adm-scaffold__shell.hub-account-detail-modal.twofa-account-detail-modal
-    )
-    .user-access-modal__header:has(.user-access-modal__header-center)
-    .user-access-modal__header-center {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
-    max-width: none;
-    justify-self: stretch;
-  }
-}
-
-/* CRM detail form stack — P0005 + P0015 (tighter than --hub-adm-field-gap). */
-.crm-detail-form-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
 }

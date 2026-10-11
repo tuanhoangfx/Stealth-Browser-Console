@@ -11,6 +11,17 @@ export type HubAccountDetailSectionKind =
 
 export type HubAccountDetailSectionTone = "indigo" | "emerald" | "amber" | "violet" | "sky";
 
+/**
+ * Layout 3 TOC and section titles use these emoji stickers.
+ * Do not pass a Lucide `icon` for Account or Job — the Lucide map below is legacy chrome only.
+ */
+export const HUB_ACCOUNT_DETAIL_NAVIGATE_EMOJI = "🧭";
+export const HUB_ACCOUNT_DETAIL_LOG_EMOJI = "📋";
+/** Account section — person, same sticker as the Account column. */
+export const HUB_ACCOUNT_DETAIL_ACCOUNT_EMOJI = "👤";
+/** Job section — folder, same sticker as the Jobs column. */
+export const HUB_ACCOUNT_DETAIL_JOB_EMOJI = "📁";
+
 type HubAccountDetailSectionMeta = {
   Icon: LucideIcon;
   tone: HubAccountDetailSectionTone;

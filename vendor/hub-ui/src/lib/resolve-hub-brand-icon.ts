@@ -68,8 +68,20 @@ export function resolveHubBrandIconByMatch(service: string): HubBrandIconMeta | 
   if (!key) return null;
   const cached = matchCache.get(key);
   if (cached !== undefined) return cached;
-  const hit = MATCHERS.find((item) => item.re.test(key))?.entry ?? null;
-  const resolved = hit ? withShell(hit) : null;
+  // Longest matched text wins so a dedicated brand (`google one`, `proxy mkvn`)
+  // beats a shorter family pattern (`google`, `proxy`) regardless of registry order.
+  let best: HubBrandIconMeta | null = null;
+  let bestLen = 0;
+  for (const item of MATCHERS) {
+    const matched = item.re.exec(key);
+    if (!matched) continue;
+    const len = matched[0].length;
+    if (len > bestLen) {
+      bestLen = len;
+      best = item.entry;
+    }
+  }
+  const resolved = best ? withShell(best) : null;
   matchCache.set(key, resolved);
   return resolved;
 }

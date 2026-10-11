@@ -6,6 +6,12 @@ export type ToolSessionSnapshot = {
   expires_at?: number | null;
   user_id: string | null;
   user_email: string | null;
+  /**
+   * Hub / Data `user_metadata.login_id` (e.g. `cs01290`).
+   * Required for Store Orders buyer paint when auth email is opaque
+   * (`u_…@auth.infi.internal`) — snapshot rebuild must not drop this.
+   */
+  login_id?: string | null;
   cached_at: number;
 };
 
@@ -26,6 +32,12 @@ export type ToolSessionCache = {
   getAccessToken: () => string | null;
 };
 
+function loginIdFromSession(session: Session): string | null {
+  const meta = session.user?.user_metadata ?? {};
+  const id = String(meta.login_id ?? "").trim();
+  return id || null;
+}
+
 function snapshotFromSession(session: Session): ToolSessionSnapshot {
   return {
     access_token: session.access_token,
@@ -33,6 +45,7 @@ function snapshotFromSession(session: Session): ToolSessionSnapshot {
     expires_at: session.expires_at ?? null,
     user_id: session.user?.id ?? null,
     user_email: session.user?.email ?? null,
+    login_id: loginIdFromSession(session),
     cached_at: Date.now(),
   };
 }
@@ -41,6 +54,7 @@ function sessionFromSnapshot(snap: ToolSessionSnapshot | null): Session | null {
   if (!snap?.access_token?.trim()) return null;
   // Orphan JWT rows (token without user_id) must not block auth gates after sign-out.
   if (!snap.user_id?.trim()) return null;
+  const loginId = String(snap.login_id ?? "").trim();
   return {
     access_token: snap.access_token,
     refresh_token: snap.refresh_token ?? "",
@@ -50,7 +64,7 @@ function sessionFromSnapshot(snap: ToolSessionSnapshot | null): Session | null {
       id: snap.user_id ?? "",
       email: snap.user_email ?? undefined,
       app_metadata: {},
-      user_metadata: {},
+      user_metadata: loginId ? { login_id: loginId } : {},
       aud: "authenticated",
       created_at: "",
     },
@@ -102,7 +116,9 @@ export function createToolSessionCache(config: ToolSessionCacheConfig): ToolSess
     if (
       prev?.access_token === snapshot.access_token &&
       prev?.refresh_token === snapshot.refresh_token &&
-      prev?.user_id === snapshot.user_id
+      prev?.user_id === snapshot.user_id &&
+      (prev?.login_id ?? null) === (snapshot.login_id ?? null) &&
+      (prev?.user_email ?? null) === (snapshot.user_email ?? null)
     ) {
       return;
     }

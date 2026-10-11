@@ -56,4 +56,9 @@ describe("workspace-tool-access-filter", () => {
     );
     expect(userHasToolAccess({ role: "user", toolCodes: [], loginId: "cs00001" }, "E0001")).toBe(true);
   });
+
+  it("lets Hub managers deny a tool with toolRoles none", () => {
+    expect(userHasToolAccess({ role: "manager", toolCodes: [] }, "P0015")).toBe(true);
+    expect(userHasToolAccess({ role: "manager", toolCodes: [], toolRoles: { P0015: "none" } }, "P0015")).toBe(false);
+  });
 });

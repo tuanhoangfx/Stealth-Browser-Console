@@ -207,6 +207,7 @@ export function createDataBoxDualSignIn(config: CreateDataBoxDualSignInConfig): 
           anonKey: target.anonKey,
           email: authEmail,
           password,
+          toolCode: config.toolCode || (String(config.logPrefix || "").toUpperCase().match(/P\d{4}/) || [])[0],
         });
         return { data: { session: granted.session }, error: granted.error };
       }

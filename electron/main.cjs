@@ -1,5 +1,5 @@
 require("./lib/ensure-packaged-module-paths.cjs");
-const { app, BrowserWindow, ipcMain, Menu, session, shell, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, session, shell, dialog } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { resolveAppIconPathIfExists } = require("./lib/desktop-app-icon.cjs");
@@ -979,55 +979,20 @@ function reloadAllRenderers() {
   return Promise.all(BrowserWindow.getAllWindows().map((win) => reloadRenderer(win)));
 }
 
+function requireDesktopAppMenu() {
+  const dev = path.join(__dirname, "..", "..", "scripts", "lib", "desktop-app-menu.cjs");
+  const packed = path.join(__dirname, "lib", "desktop-app-menu.cjs");
+  return require(fs.existsSync(dev) ? dev : packed);
+}
+
 function installDesktopMenu() {
-  const reloadItem = {
-    label: "Reload",
-    accelerator: "CmdOrCtrl+R",
-    click: () => void reloadAllRenderers(),
-  };
-  const forceReloadItem = {
-    label: "Force Reload",
-    accelerator: "Shift+F5",
-    click: () => void reloadAllRenderers(),
-  };
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      ...(process.platform === "darwin"
-        ? [{ role: "appMenu" }]
-        : [
-            {
-              label: "File",
-              submenu: [
-                {
-                  label: "Quit",
-                  accelerator: "Alt+F4",
-                  click: () => {
-                    void requestAppQuitWithConfirm("menu-quit");
-                  },
-                },
-              ],
-            },
-          ]),
-      { role: "editMenu" },
-      {
-        label: "View",
-        submenu: [
-          reloadItem,
-          forceReloadItem,
-          { type: "separator" },
-          { role: "toggleDevTools" },
-          { type: "separator" },
-          { role: "resetZoom" },
-          { role: "zoomIn" },
-          { role: "zoomOut" },
-          { type: "separator" },
-          { role: "togglefullscreen" },
-        ],
-      },
-      { role: "windowMenu" },
-      { role: "help", submenu: [] },
-    ]),
-  );
+  const { installDesktopAppMenu } = requireDesktopAppMenu();
+  installDesktopAppMenu({
+    onReload: () => void reloadAllRenderers(),
+    onForceReload: () => void reloadAllRenderers(),
+    onQuit: () => void requestAppQuitWithConfirm("menu-quit"),
+    helpSubmenu: [],
+  });
 }
 
 /**

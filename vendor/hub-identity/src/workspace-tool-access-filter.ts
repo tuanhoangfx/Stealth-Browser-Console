@@ -14,13 +14,22 @@ export function toolRoleGrantsAccess(role: string | null | undefined): boolean {
   return Boolean(r) && r !== HUB_TOOL_ROLE_NONE;
 }
 
+function deniedToolCodesFromRoles(toolRoles: Readonly<Record<string, string>> | null | undefined): string[] {
+  return Object.entries(toolRoles ?? {})
+    .filter(([, role]) => String(role ?? "").trim().toLowerCase() === HUB_TOOL_ROLE_NONE)
+    .map(([code]) => code);
+}
+
 /** Effective access: explicit tool_role, granted tool_codes, Hub-admin, or default tools. */
 export function userHasToolAccess(subject: HubToolAccessSubject, toolCode: string): boolean {
   const code = toolCode.trim();
   if (!code) return false;
-  if (toolRoleGrantsAccess(subject.toolRoles?.[code])) return true;
+  const explicit = subject.toolRoles?.[code] ?? subject.toolRoles?.[code.toLowerCase()];
+  if (String(explicit ?? "").trim().toLowerCase() === HUB_TOOL_ROLE_NONE) return false;
+  if (toolRoleGrantsAccess(explicit)) return true;
   return hasEffectiveHubToolAccess(String(subject.role ?? ""), code, subject.toolCodes ?? [], {
     loginId: subject.loginId,
+    deniedCodes: deniedToolCodesFromRoles(subject.toolRoles),
   });
 }
 

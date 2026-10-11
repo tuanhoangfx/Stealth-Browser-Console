@@ -9,19 +9,14 @@
  * flashing Access Denied — same contract as `verifyHubIntegratedToolAccess`.
  */
 
+import { parseJwtPayload } from "./jwt-payload";
+
 export const HUB_TOOL_ACCESS_FAST_CHECK_TIMEOUT_MS = 4_000;
 
 /** Hub `auth.users.id` from a GoTrue access token (`sub`). Dual-plane must not use the Data Box UUID. */
 export function hubJwtSubject(accessToken: string | null | undefined): string | null {
-  const token = String(accessToken ?? "").trim();
-  const payload = token.split(".")[1];
-  if (!payload) return null;
   try {
-    const padded = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
-    const json = atob(padded + pad);
-    const parsed = JSON.parse(json) as { sub?: unknown };
-    const sub = String(parsed.sub ?? "").trim();
+    const sub = String(parseJwtPayload(accessToken)?.sub ?? "").trim();
     return sub || null;
   } catch {
     return null;

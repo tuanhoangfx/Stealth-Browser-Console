@@ -23,7 +23,17 @@ export function mergeDefaultUserToolCodes(codes: Iterable<string>, loginId?: str
 
 export type HubDefaultToolAccessContext = {
   loginId?: string | null;
+  /** Explicit Denied tool codes (manager default Access can be overridden). */
+  deniedCodes?: Iterable<string> | null;
 };
+
+function deniedCodeSet(deniedCodes: Iterable<string> | null | undefined): Set<string> {
+  return new Set(
+    [...(deniedCodes ?? [])]
+      .map((code) => code.trim())
+      .filter(Boolean),
+  );
+}
 
 export function hasEffectiveHubToolAccess(
   role: string,
@@ -34,6 +44,7 @@ export function hasEffectiveHubToolAccess(
   const r = role.trim().toLowerCase();
   const code = toolCode.trim();
   if (r === "admin") return true;
+  if (deniedCodeSet(context.deniedCodes).has(code)) return false;
   if (r === "manager" && code !== "P0004") return true;
   if (isHubDefaultUserTool(code)) {
     return isHubCsBuyerLoginId(context.loginId);
@@ -54,7 +65,13 @@ export function isHubLockedDefaultGrantTool(
 
 /** Directory / modal display — implicit grants for Hub Admin + Manager (Manager excludes P0004). */
 export function resolveEffectiveHubUserToolCodes(
-  user: { role: string; toolCodes: readonly string[]; loginId?: string | null },
+  user: {
+    role: string;
+    toolCodes: readonly string[];
+    loginId?: string | null;
+    toolRoles?: Readonly<Record<string, string>> | null;
+    deniedToolCodes?: readonly string[] | null;
+  },
   catalogCodes?: readonly string[],
 ): string[] {
   const catalog = [
@@ -64,6 +81,12 @@ export function resolveEffectiveHubUserToolCodes(
         .filter(Boolean),
     ),
   ].sort((a, b) => a.localeCompare(b));
+  const denied = deniedCodeSet([
+    ...(user.deniedToolCodes ?? []),
+    ...Object.entries(user.toolRoles ?? {})
+      .filter(([, role]) => String(role ?? "").trim().toLowerCase() === "none")
+      .map(([code]) => code),
+  ]);
   if (user.role === "admin") {
     if (catalog.length) return catalog;
     return [...user.toolCodes].map((code) => code.trim().toUpperCase()).filter(Boolean).sort((a, b) => a.localeCompare(b));
@@ -72,9 +95,9 @@ export function resolveEffectiveHubUserToolCodes(
     const pool = catalog.length
       ? catalog
       : [...user.toolCodes].map((code) => code.trim().toUpperCase()).filter(Boolean);
-    return pool.filter((code) => code !== "P0004").sort((a, b) => a.localeCompare(b));
+    return pool.filter((code) => code !== "P0004" && !denied.has(code)).sort((a, b) => a.localeCompare(b));
   }
-  return mergeDefaultUserToolCodes(user.toolCodes, user.loginId);
+  return mergeDefaultUserToolCodes(user.toolCodes, user.loginId).filter((code) => !denied.has(code));
 }
 
 export function applyDefaultToolsToUserRow<

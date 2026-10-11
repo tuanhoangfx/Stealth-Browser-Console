@@ -1,0 +1,83 @@
+/**
+ * HubDirectoryEmptyFrame — directory body empty / loading.
+ * Loaded from hub-shell-layout.css (every product hub-ui-styles).
+ * Center in the pane. Do not use 100vw / position:fixed — that centers on the
+ * viewport and shifts left of `.hub-main` when the sidebar is present.
+ */
+
+.hub-directory-empty {
+  border-radius: 0.75rem;
+  border: 1px dashed rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.02);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.hub-directory-empty__mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: max-content;
+  margin: 0 auto 0.65rem;
+}
+
+.hub-directory-empty__icon,
+.hub-directory-empty__beam,
+.hub-directory-empty__beam-host {
+  grid-area: 1 / 1;
+  display: block;
+}
+
+.hub-directory-empty__beam-host {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.hub-directory-empty__mark--busy .hub-directory-empty__icon {
+  opacity: 0.42;
+}
+
+.hub-directory-empty__beam {
+  z-index: 1;
+  pointer-events: none;
+  fill: none;
+  stroke: none;
+}
+
+.hub-directory-empty__beam :is(path, circle, line, polyline, polygon, rect, ellipse) {
+  fill: none !important;
+  stroke: color-mix(in srgb, currentColor 28%, white);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* pathLength=100 on the glyph: bright bead, one outline lap in 2.4s. */
+  stroke-dasharray: 4 96;
+  animation: hub-directory-empty-beam 2.4s linear infinite;
+  filter:
+    drop-shadow(0 0 2px #fff)
+    drop-shadow(0 0 6px color-mix(in srgb, currentColor 90%, white));
+}
+
+@keyframes hub-directory-empty-beam {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+/*
+ * Keep the traveling beam even when OS reports prefers-reduced-motion
+ * (Windows "Show animations in Windows" off → Chromium reduce). Loading
+ * affordance must stay visible — do not display:none / freeze the beam.
+ * Soften only: slightly slower lap; base glyph stays dimmed.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .hub-directory-empty__beam :is(path, circle, line, polyline, polygon, rect, ellipse) {
+    animation-duration: 3.6s;
+  }
+
+  .hub-directory-empty__mark--busy .hub-directory-empty__icon {
+    opacity: 0.5;
+  }
+}

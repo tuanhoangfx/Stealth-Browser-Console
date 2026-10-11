@@ -138,7 +138,13 @@ export function resolveHubOpsTypeTocChrome(kind: HubActivityKindFilter): HubOpsT
 
 export function hubOpsTypeTocIcon(kind: HubActivityKindFilter): ReactNode {
   const { emoji, Icon, className } = resolveHubOpsTypeTocChrome(kind);
-  if (emoji) return <span className={`text-xs leading-none ${className}`} aria-hidden>{emoji}</span>;
+  if (emoji) {
+    return (
+      <span className={`hub-ops-toc-emoji text-xs leading-none ${className}`} aria-hidden>
+        {emoji}
+      </span>
+    );
+  }
   return Icon ? <Icon size={11} className={className} aria-hidden /> : null;
 }
 
@@ -195,7 +201,9 @@ export function buildHubOpsTypeTocEntries({
       kind,
       label,
       icon: emoji ? (
-        <span className={`text-xs leading-none ${className}`} aria-hidden>{emoji}</span>
+        <span className={`hub-ops-toc-emoji text-xs leading-none ${className}`} aria-hidden>
+          {emoji}
+        </span>
       ) : Icon ? (
         <Icon size={11} className={className} aria-hidden />
       ) : null,

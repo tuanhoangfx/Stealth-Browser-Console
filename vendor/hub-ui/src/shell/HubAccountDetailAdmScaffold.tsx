@@ -47,13 +47,12 @@ export function HubAccountDetailAdmScaffold({
   panelBodyClassName = "",
 }: HubAccountDetailAdmScaffoldProps) {
   const admHeader = panelAdmSectionKey ? hubAdmSectionHeader(panelAdmSectionKey) : null;
-  const PanelIcon = panelTitleEmoji
-    ? undefined
-    : admHeader?.icon ?? hubAccountDetailSectionIcon(panelSectionKey);
-  const panelIconClassName = panelTitleEmoji
+  const resolvedEmoji = panelTitleEmoji ?? admHeader?.headerEmoji;
+  const PanelIcon = resolvedEmoji ? undefined : admHeader?.icon ?? hubAccountDetailSectionIcon(panelSectionKey);
+  const panelIconClassName = resolvedEmoji
     ? undefined
     : admHeader?.iconClassName ?? hubAccountDetailSectionIconClass(panelSectionKey);
-  const panelTitleNode = panelTitleEmoji ? hubToolDetailTitleWithEmoji(panelTitle, panelTitleEmoji) : panelTitle;
+  const panelTitleNode = resolvedEmoji ? hubToolDetailTitleWithEmoji(panelTitle, resolvedEmoji) : panelTitle;
   const frameClass = [
     HUB_ACCOUNT_DETAIL_CONTENT_ROOT_CLASS,
     HUB_ACCOUNT_DETAIL_ADM_FRAME_CLASS,

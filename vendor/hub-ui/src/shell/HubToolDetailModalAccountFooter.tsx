@@ -4,7 +4,7 @@ import { Trash2, X } from "lucide-react";
 import {
   HubToolDetailModalPrimaryAction,
   HubToolDetailModalSecondaryAction,
-} from "./HubToolDetailModalActions";
+} from "./HubToolDetailModal";
 import {
   HUB_DETAIL_MODAL_CLOSE_LABEL,
   HUB_DETAIL_MODAL_SAVE_LABEL,

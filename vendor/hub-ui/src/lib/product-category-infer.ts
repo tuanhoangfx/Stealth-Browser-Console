@@ -77,8 +77,16 @@ export function stripProductPlanSuffix(productName: string): string {
   return base;
 }
 
-/** Extra service-group aliases — clean messy SKU prefixes before brand fallback. */
+/**
+ * Extra service-group aliases — clean messy SKU prefixes before brand fallback.
+ * Google Flow / One must win over the generic `google` brand match, or both
+ * collapse into one Service row and search "Google" never lists Google Flow.
+ * Google Drive belongs to the Google One service, not a third row.
+ */
 const SERVICE_GROUP_ALIASES: ReadonlyArray<{ re: RegExp; groupKey: string; groupLabel: string }> = [
+  { re: /^google\s*flow\b/i, groupKey: "google-flow", groupLabel: "Google Flow" },
+  { re: /^google\s*drive\b/i, groupKey: "google-one", groupLabel: "Google One" },
+  { re: /^google\s*one\b/i, groupKey: "google-one", groupLabel: "Google One" },
   { re: /^vpn\s*hma\b|hide\s*my\s*ass/i, groupKey: "hma", groupLabel: "HideMyAss" },
   { re: /^proxy\b/i, groupKey: "proxy", groupLabel: "Proxy" },
   { re: /^fpt\s*play/i, groupKey: "fpt-play", groupLabel: "FPT Play" },

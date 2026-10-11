@@ -1,11 +1,16 @@
 import { useEffect, useRef } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { decodeJwtPayloadBase64 } from "./jwt-payload";
 import { promiseWithTimeout } from "./promise-timeout";
 import { subscribeHubIdentity } from "./hub-identity-cache";
 import { shouldAcceptHubIdentityRelay } from "./workspace-sign-out";
 
-/** Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait. */
-export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 5_000;
+/**
+ * Cold boot cap — cached session paints immediately; this only bounds first `ensureAuth` wait.
+ * Home Server `setSession` → GET /auth/v1/user often takes 5–10s; 5s left P0004 on
+ * HubAuthBootPanel forever (optimistic JWT + toolAccess null, grant probe skipped).
+ */
+export const WORKSPACE_AUTH_BOOT_TIMEOUT_MS = 12_000;
 
 /** Dual sign-in (Hub + data plane) — User ID may resolve + try several auth emails sequentially.
  * Home Server GoTrue password grants often take 5–8s each; dual identity→data needs headroom. */
@@ -28,24 +33,13 @@ export type SessionExpiryFields = {
   access_token?: string | null;
 };
 
-/** Browser `atob`, else Node `globalThis.Buffer` — no `Buffer` global (Vite `types: vite/client`). */
-function decodeJwtPayloadBase64(padded: string): string {
-  if (typeof atob === "function") return atob(padded);
-  const nodeBuffer = (globalThis as { Buffer?: { from(data: string, enc: string): { toString(enc: string): string } } })
-    .Buffer;
-  if (!nodeBuffer) throw new Error("no-base64-decoder");
-  return nodeBuffer.from(padded, "base64").toString("utf8");
-}
-
 /** Decode JWT `exp` (seconds). Missing/malformed token → null. */
 export function readJwtExpSeconds(accessToken: string | null | undefined): number | null {
   const token = String(accessToken ?? "").trim();
   const payload = token.split(".")[1];
   if (!payload) return null;
   try {
-    const padded = payload.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (payload.length % 4)) % 4);
-    const json = decodeJwtPayloadBase64(padded);
-    const exp = (JSON.parse(json) as { exp?: unknown }).exp;
+    const exp = (JSON.parse(decodeJwtPayloadBase64(payload)) as { exp?: unknown }).exp;
     return typeof exp === "number" && exp > 0 ? exp : null;
   } catch {
     return null;

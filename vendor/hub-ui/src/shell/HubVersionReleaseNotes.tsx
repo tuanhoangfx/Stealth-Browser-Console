@@ -5,37 +5,23 @@ import type { HubActivityKindFilter } from "./HubActivityFeed";
 import {
   HubOpsPanelSearch,
   HubOpsTypeTocNav,
+  HubOpsKindBadge,
   useHubOpsTypeToc,
   type HubOpsTypeTocChrome,
 } from "./HubOpsPanelChrome";
 import { HubChromeActivityAge } from "./HubChromeActivityAge";
-import { HubToolDetailModal } from "./HubToolDetailModal";
-import { HUB_TOOL_DETAIL_SCROLL_ROOT } from "./hubToolDetailModalChrome";
+import { HubToolDetailModal, HUB_TOOL_DETAIL_SCROLL_ROOT } from "./HubToolDetailModal";
 import { HubToolDetailSection, HUB_TOOL_DETAIL_SECTIONS_CLASS } from "./HubToolDetailSection";
 import { HubTocSectionNav, type HubTocNavItem } from "./HubTocSectionNav";
 import { compactIconSize } from "../ui-scale";
-import { HUB_RELEASE_CHIP_CLASS } from "../lib/hub-release-chip-ssot";
 import {
-  HubVersionUpdateStatusIcon,
-  HubReleaseUpdateActionButton,
-  HubReleaseUpdateAvailableBadge,
-  hubDesktopUpdateActionLabel,
-  hubDesktopUpdateHighlightsEntry,
-  hubDesktopUpdateOwnsTrigger,
-  hubDesktopUpdateShouldRecheckOnOpen,
-  type HubVersionDesktopUpdate,
-} from "./HubVersionUpdateStatusIcon";
-import { useHubDesktopUpdateToasts } from "./useHubDesktopUpdateToasts";
-import {
-  hubReleaseNotesFetchUrl,
+  HUB_RELEASE_NOTES_URL,
   ensureHubReleaseNotesIncludeCurrent,
-  ensureHubReleaseNotesIncludePendingUpdate,
   hasUnseenHubReleaseNotes,
   hubReleaseNoteActivityAt,
   hubReleaseSummaryIsRedundant,
   markHubReleaseNotesSeen,
   normalizeReleaseNotesVersion,
-  extractHubReleaseNotesSemver,
   parseHubReleaseNotesPayload,
   readHubReleaseNotesSeen,
   type HubReleaseNoteEntry,
@@ -49,7 +35,7 @@ let hubReleaseNotesPromise: Promise<HubReleaseNoteEntry[]> | null = null;
 function loadHubReleaseNotes(): Promise<HubReleaseNoteEntry[]> {
   if (hubReleaseNotesCache) return Promise.resolve(hubReleaseNotesCache);
   if (!hubReleaseNotesPromise) {
-    hubReleaseNotesPromise = fetch(hubReleaseNotesFetchUrl(), { cache: "no-store" })
+    hubReleaseNotesPromise = fetch(HUB_RELEASE_NOTES_URL, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
       .then((json) => {
         hubReleaseNotesCache = parseHubReleaseNotesPayload(json);
@@ -110,14 +96,6 @@ const KIND_META: Record<
   },
 };
 
-/** Running bundle row — green Latest chip (P0010 release modal SSOT). */
-const RELEASE_LATEST_BADGE = {
-  label: "Latest",
-  Icon: CheckCircle2,
-  className: "text-emerald-400",
-  chip: "border-emerald-400/35 bg-emerald-500/15 text-emerald-100",
-} as const;
-
 /**
  * Fixed head of the release type TOC. Feed kinds are `new | improve | fix`; the
  * labels users see are New · Update · Fixed (same words as the row badges).
@@ -145,47 +123,7 @@ function releaseHeadline(entry: HubReleaseNoteEntry): string | null {
   if (/^release\s+v?[\d.]+$/i.test(raw)) return null;
   if (raw.toLowerCase() === `v${entry.version}`.toLowerCase()) return null;
   if (raw.toLowerCase() === entry.version.toLowerCase()) return null;
-  if (raw.toLowerCase() === "current version") return null;
   return raw;
-}
-
-/** Compare feed semver vs running bundle (tolerates header noise). */
-function releaseVersionsMatch(entryVersion: string, runningVersion: string): boolean {
-  const entryVer = extractHubReleaseNotesSemver(entryVersion);
-  const runVer = extractHubReleaseNotesSemver(runningVersion);
-  if (entryVer && runVer && entryVer === runVer) return true;
-  return normalizeReleaseNotesVersion(entryVersion) === normalizeReleaseNotesVersion(runningVersion);
-}
-
-/** Timeline kind chip — Lucide SSOT (Latest for running bundle, else New/Update/Fixed). */
-function ReleaseTimelineKindBadge({
-  entry,
-  entryIndex,
-  currentVersion,
-  showUpdateAvailableBadge = false,
-}: {
-  entry: HubReleaseNoteEntry;
-  entryIndex: number;
-  currentVersion: string;
-  showUpdateAvailableBadge?: boolean;
-}) {
-  const isRunningBundle =
-    !showUpdateAvailableBadge && releaseVersionsMatch(entry.version, currentVersion);
-  const isCurrentStub =
-    !showUpdateAvailableBadge &&
-    entryIndex === 0 &&
-    entry.userTitle?.trim() === "Current version";
-  const meta =
-    isRunningBundle || isCurrentStub
-      ? RELEASE_LATEST_BADGE
-      : KIND_META[entry.kind as HubReleaseNoteKind] ?? KIND_META.improve;
-  const Icon = meta.Icon;
-  return (
-    <span className={`${HUB_RELEASE_CHIP_CLASS} hub-release-kind-badge ${meta.chip}`}>
-      <Icon size={compactIconSize(12)} className={`shrink-0 ${meta.className}`} aria-hidden />
-      {meta.label}
-    </span>
-  );
 }
 
 /** Version + activity age — hub header chrome scale (`vX.Y.Z` · dot · `2h ago`). */
@@ -205,17 +143,7 @@ function ReleaseVersionMeta({ version, date, at }: { version: string; date: stri
   );
 }
 
-function ReleaseTimelineCard({
-  entry,
-  entryIndex,
-  currentVersion,
-  showUpdateAvailableBadge = false,
-}: {
-  entry: HubReleaseNoteEntry;
-  entryIndex: number;
-  currentVersion: string;
-  showUpdateAvailableBadge?: boolean;
-}) {
+function ReleaseTimelineCard({ entry }: { entry: HubReleaseNoteEntry }) {
   const headline = releaseHeadline(entry);
   const lines = entry.userHighlights.length ? entry.userHighlights : entry.bullets;
   const showSummary =
@@ -223,18 +151,10 @@ function ReleaseTimelineCard({
     !hubReleaseSummaryIsRedundant(entry.userSummary, headline ?? "", lines);
 
   return (
-    <article
-      className={`hub-release-timeline-card${showUpdateAvailableBadge ? " hub-release-timeline-card--update-available" : ""}`}
-    >
+    <article className="hub-release-timeline-card">
       <div className="hub-release-timeline-card__head app-tab-header__chrome-text">
-        <ReleaseTimelineKindBadge
-          entry={entry}
-          entryIndex={entryIndex}
-          currentVersion={currentVersion}
-          showUpdateAvailableBadge={showUpdateAvailableBadge}
-        />
+        <HubOpsKindBadge kind={entry.kind} />
         <ReleaseVersionMeta version={entry.version} date={entry.date} at={entry.at} />
-        {showUpdateAvailableBadge ? <HubReleaseUpdateAvailableBadge /> : null}
         {headline ? (
           <span className="hub-release-headline min-w-0 truncate font-semibold text-[var(--text)]">
             {headline}
@@ -278,11 +198,6 @@ export type HubVersionReleaseNotesProps = {
    */
   bundleStale?: boolean;
   onBundleReload?: () => void;
-  /**
-   * Desktop electron-updater — same trigger as Latest/Update/Download.
-   * Owns the icon only while checking / available / downloading / error.
-   */
-  desktopUpdate?: HubVersionDesktopUpdate | null;
 };
 
 /**
@@ -304,7 +219,6 @@ export function HubVersionReleaseNotes({
   className = "",
   bundleStale = false,
   onBundleReload,
-  desktopUpdate = null,
 }: HubVersionReleaseNotesProps) {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<HubReleaseNoteEntry[] | null>(hubReleaseNotesCache);
@@ -314,9 +228,7 @@ export function HubVersionReleaseNotes({
     hasUnseenHubReleaseNotes(version, readHubReleaseNotesSeen(code)),
   );
 
-  useHubDesktopUpdateToasts(desktopUpdate);
-
-  const currentVersion = extractHubReleaseNotesSemver(version);
+  const currentVersion = normalizeReleaseNotesVersion(version);
 
   useEffect(() => {
     if (!open) return;
@@ -343,22 +255,8 @@ export function HubVersionReleaseNotes({
 
   const resolvedEntries = useMemo(() => {
     if (!entries) return null;
-    const withCurrent = ensureHubReleaseNotesIncludeCurrent(entries, currentVersion, publishedAt);
-    if (
-      desktopUpdate &&
-      (desktopUpdate.state === "available" ||
-        desktopUpdate.state === "downloading" ||
-        desktopUpdate.state === "downloaded" ||
-        desktopUpdate.state === "installing")
-    ) {
-      return ensureHubReleaseNotesIncludePendingUpdate(
-        withCurrent,
-        currentVersion,
-        desktopUpdate.availableVersion,
-      );
-    }
-    return withCurrent;
-  }, [entries, currentVersion, publishedAt, desktopUpdate]);
+    return ensureHubReleaseNotesIncludeCurrent(entries, currentVersion, publishedAt);
+  }, [entries, currentVersion, publishedAt]);
 
   /** Search-only pass — drives the type TOC counts (same rule as Log · Notify). */
   const searched = useMemo(() => {
@@ -420,12 +318,6 @@ export function HubVersionReleaseNotes({
       const entry = filtered[index]!;
       const id = releaseSectionId(entry.version, index);
       const isLatest = entry.version === currentVersion || (index === 0 && !currentVersion);
-      const showUpdateBadge = hubDesktopUpdateHighlightsEntry(
-        entry.version,
-        index,
-        currentVersion,
-        desktopUpdate,
-      );
       const label = `v${entry.version}`;
       toc.push({ id, label, icon: freshnessTocIcon(isLatest) });
       ids.push(id);
@@ -436,51 +328,27 @@ export function HubVersionReleaseNotes({
               <span className="hub-release-timeline-dot" />
               {index < filtered.length - 1 ? <span className="hub-release-timeline-line" /> : null}
             </div>
-            <ReleaseTimelineCard
-              entry={entry}
-              entryIndex={index}
-              currentVersion={currentVersion}
-              showUpdateAvailableBadge={showUpdateBadge}
-            />
+            <ReleaseTimelineCard entry={entry} />
           </div>
         </HubToolDetailSection>,
       );
     }
 
     return { tocItems: toc, sectionIds: ids, body: sections };
-  }, [currentVersion, desktopUpdate, filtered, resolvedEntries?.length]);
+  }, [currentVersion, filtered, resolvedEntries?.length]);
 
   const headerEntry = resolvedEntries?.[0];
-  const desktopOwnsTrigger = Boolean(
-    desktopUpdate && hubDesktopUpdateOwnsTrigger(desktopUpdate.state),
-  );
-  const desktopActionLabel = desktopUpdate
-    ? hubDesktopUpdateActionLabel(desktopUpdate.state, desktopUpdate.progress)
-    : null;
   const triggerTitle = bundleStale
     ? `Older bundle — reload for v${currentVersion || version}`
-    : desktopUpdate
-      ? desktopOwnsTrigger
-        ? desktopUpdate.state === "downloaded"
-          ? "Update ready — open release notes to install"
-          : desktopUpdate.state === "available"
-            ? "New version available — open release notes"
-            : desktopUpdate.title || "Open release notes"
-        : desktopUpdate.title ||
-          (desktopUpdate.state === "idle"
-            ? "Check for updates — open release notes"
-            : "You are on the latest version — open release notes")
-      : unseen
-        ? "Update available — open release notes"
-        : "You are on the latest version — open release notes";
+    : unseen
+      ? "Update available — open release notes"
+      : "You are on the latest version — open release notes";
   const TriggerIcon = bundleStale ? Download : unseen ? RefreshCw : CheckCircle2;
   const triggerIconClass = bundleStale
     ? "text-amber-300"
     : unseen
       ? "text-amber-300"
       : "text-emerald-400";
-  const desktopActionIcon =
-    desktopUpdate?.state === "error" ? RefreshCw : Download;
 
   return (
     <span className={`relative inline-flex shrink-0 items-center ${className}`.trim()}>
@@ -497,21 +365,10 @@ export function HubVersionReleaseNotes({
             return;
           }
           setOpen(true);
-          if (desktopUpdate && hubDesktopUpdateShouldRecheckOnOpen(desktopUpdate.state)) {
-            desktopUpdate.onAction();
-          }
         }}
         className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm transition-opacity hover:opacity-90"
       >
-        {desktopUpdate ? (
-          <HubVersionUpdateStatusIcon
-            state={desktopUpdate.state}
-            progress={desktopUpdate.progress}
-            title={triggerTitle}
-          />
-        ) : (
-          <TriggerIcon size={compactIconSize(13)} className={`shrink-0 ${triggerIconClass}`} aria-hidden />
-        )}
+        <TriggerIcon size={compactIconSize(13)} className={`shrink-0 ${triggerIconClass}`} aria-hidden />
       </button>
 
       <HubToolDetailModal
@@ -519,22 +376,12 @@ export function HubVersionReleaseNotes({
         onClose={() => setOpen(false)}
         ariaLabel="Update Release"
         headerTrailing={
-          <div className="hub-release-header-version inline-flex min-w-0 items-center gap-2">
+          <div className="hub-release-header-version app-tab-header__chrome-text">
             <ReleaseVersionMeta
               version={currentVersion || headerEntry?.version || "—"}
               date={headerEntry?.date || ""}
               at={headerEntry?.at || publishedAt || undefined}
             />
-            {desktopActionLabel && desktopUpdate ? (
-              <HubReleaseUpdateActionButton
-                state={desktopUpdate.state}
-                label={desktopActionLabel}
-                icon={desktopActionIcon}
-                progress={desktopUpdate.progress}
-                disabled={desktopUpdate.disabled}
-                onClick={desktopUpdate.onAction}
-              />
-            ) : null}
           </div>
         }
         headerCenter={

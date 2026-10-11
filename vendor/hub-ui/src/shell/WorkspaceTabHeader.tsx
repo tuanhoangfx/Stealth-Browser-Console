@@ -9,9 +9,6 @@ import {
   type TabTitleMenuItem, hubMetaActivityAtString } from "./AppTabHeader";
 import { buildVersionMetaItems } from "./workspace-tab-header-meta";
 import { HubVersionReleaseNotes } from "./HubVersionReleaseNotes";
-import type { HubVersionDesktopUpdate } from "./HubVersionUpdateStatusIcon";
-import { HubDirectoryQueryPendingChip } from "./HubDirectoryQueryPendingChip";
-import { extractHubReleaseNotesSemver } from "../lib/hub-version-release-notes-core";
 
 export type WorkspaceTabHeaderProps = {
   ariaLabel: string;
@@ -31,7 +28,7 @@ export type WorkspaceTabHeaderProps = {
   /** ISO release/deploy time — activity dot + relative/stale label in header meta */
   publishedAt?: string | null;
   versionLive?: boolean;
-  /** @deprecated Use `versionReleaseNotesCode` — HubVersionReleaseNotes owns the sole update icon. */
+  /** Update / freshness icon beside version label (HubVersionUpdateStatusIcon). */
   versionAfter?: ReactNode;
   /**
    * Tool code (e.g. "P0020") — HubVersionReleaseNotes beside version meta.
@@ -41,18 +38,10 @@ export type WorkspaceTabHeaderProps = {
   /** Web bundle behind running tab — Download icon + reload (merged into release-notes trigger). */
   versionReleaseNotesBundleStale?: boolean;
   versionReleaseNotesOnBundleReload?: () => void;
-  /** Desktop electron-updater — folded into the single release-notes trigger. */
-  versionReleaseNotesDesktopUpdate?: HubVersionDesktopUpdate | null;
   extraMetaItems?: TabHeaderMetaItem[];
   centerStats: TabHeaderStatItem[];
   /** Sparse vault/sync status before center stats — idle null. */
   statusSlot?: ReactNode;
-  /** Same signal as FilterBar glyph — header chip beside Sync/Live. */
-  queryPending?: boolean;
-  /** Distinguishes Searching… vs Filtering… on the header chip. */
-  query?: string;
-  /** Facets / KPI keys active (sticky defaults ignored). */
-  filterActive?: boolean;
   pinSticky?: boolean;
   dividerBelow?: boolean;
   embedded?: boolean;
@@ -71,13 +60,9 @@ export function WorkspaceTabHeader({
   versionReleaseNotesCode,
   versionReleaseNotesBundleStale = false,
   versionReleaseNotesOnBundleReload,
-  versionReleaseNotesDesktopUpdate = null,
   extraMetaItems = [],
   centerStats,
   statusSlot,
-  queryPending = false,
-  query = "",
-  filterActive = false,
   ...header
 }: WorkspaceTabHeaderProps) {
   const metaItems = useMemo(() => {
@@ -99,11 +84,10 @@ export function WorkspaceTabHeader({
       versionReleaseNotesCode && items[0] ? (
         <HubVersionReleaseNotes
           code={versionReleaseNotesCode}
-          version={extractHubReleaseNotesSemver(items[0].value)}
+          version={items[0].value}
           publishedAt={hubMetaActivityAtString(publishedAt ?? items[0].activityAt)}
           bundleStale={versionReleaseNotesBundleStale}
           onBundleReload={versionReleaseNotesOnBundleReload}
-          desktopUpdate={versionReleaseNotesDesktopUpdate}
         />
       ) : null;
     // Single icon SSOT: release-notes owns Latest/Update/Download when present.
@@ -124,56 +108,10 @@ export function WorkspaceTabHeader({
     versionReleaseNotesBundleStale,
     versionReleaseNotesCode,
     versionReleaseNotesOnBundleReload,
-    versionReleaseNotesDesktopUpdate,
   ]);
 
   return (
-    <AppTabHeader
-      {...header}
-      metaItems={metaItems}
-      centerStats={centerStats}
-      statusSlot={
-        <WorkspaceTabHeaderQueryStatus
-          statusSlot={statusSlot}
-          queryPending={queryPending}
-          query={query}
-          filterActive={filterActive}
-        />
-      }
-    />
-  );
-}
-
-/** Isolated — field-pending / Filtered must not re-render version meta or center stats. */
-function WorkspaceTabHeaderQueryStatus({
-  statusSlot,
-  queryPending,
-  query,
-  filterActive,
-}: {
-  statusSlot?: ReactNode;
-  queryPending: boolean;
-  query: string;
-  filterActive: boolean;
-}) {
-  if (!statusSlot && !queryPending && !query.trim() && !filterActive) {
-    return (
-      <HubDirectoryQueryPendingChip
-        queryPending={queryPending}
-        query={query}
-        filterActive={filterActive}
-      />
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1.5">
-      {statusSlot}
-      <HubDirectoryQueryPendingChip
-        queryPending={queryPending}
-        query={query}
-        filterActive={filterActive}
-      />
-    </span>
+    <AppTabHeader {...header} metaItems={metaItems} centerStats={centerStats} statusSlot={statusSlot} />
   );
 }
 

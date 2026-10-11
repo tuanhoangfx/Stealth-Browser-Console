@@ -140,6 +140,53 @@ describe("createHubFullAccountAuthHandlers own profile", () => {
     expect(eq).toHaveBeenCalledWith("login_id", "duyceo01");
   });
 
+  it("falls back to contact email when Data Box id and login_id both miss", async () => {
+    const hubProfile = {
+      login_id: "CzPGo",
+      email: "czpgo@outlook.com",
+      contact_email: "czpgo@outlook.com",
+      full_name: "Tuấn Hoàng",
+      phone: "",
+      zalo: "",
+      telegram: "",
+      meta: "",
+      notes: "",
+      avatar_url: "",
+    };
+    const eq = vi.fn(() => ({
+      maybeSingle: async () => ({ data: null, error: null }),
+    }));
+    const ilike = vi.fn((column: string, value: string) => ({
+      maybeSingle: async () => {
+        if (column === "email" && value === "czpgo@outlook.com") {
+          return { data: hubProfile, error: null };
+        }
+        return { data: null, error: null };
+      },
+    }));
+    const client = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({ eq, ilike })),
+        update: vi.fn(),
+      })),
+      auth: {
+        getSession: async () => ({ data: { session: { user: { id: "databox-id" } } } }),
+        updateUser: vi.fn(),
+      },
+    } as never;
+    const handlers = createHubFullAccountAuthHandlers({
+      getClient: () => client,
+      getLoginId: () => "",
+      getProfileEmail: () => "CzPGo@outlook.com",
+    });
+    await expect(handlers.fetchOwnProfileFields("databox-id")).resolves.toMatchObject({
+      loginId: "CzPGo",
+      email: "czpgo@outlook.com",
+      fullName: "Tuấn Hoàng",
+    });
+    expect(ilike).toHaveBeenCalledWith("email", "czpgo@outlook.com");
+  });
+
   it("updates only self-edit profile columns", async () => {
     const { client, update } = makeClient();
     const handlers = createHubFullAccountAuthHandlers({ getClient: () => client });

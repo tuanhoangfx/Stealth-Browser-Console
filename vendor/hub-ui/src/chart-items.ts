@@ -58,9 +58,7 @@ export function withChartLegendIcon<T extends ChartRow>(row: T): T {
     return { ...row, iconMeta: null } as T;
   }
   /** Heat / status / quantity dots win — never force the folder sticker over an explicit color. */
-  if (row.color) {
-    return { ...row, iconMeta: null } as T;
-  }
+  if (row.color) return { ...row, iconMeta: null } as T;
   if (row.emojiGlyph) return row;
   const iconMeta = row.iconMeta ?? legendFor(row.label);
   return iconMeta ? { ...row, iconMeta } : row;

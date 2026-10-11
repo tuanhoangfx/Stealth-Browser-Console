@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -50,33 +49,31 @@ export function HubAccountDetailSearchProvider({ children }: { children: ReactNo
   const [matchRevealed, setMatchRevealed] = useState(false);
   const [totalMatches, setTotalMatches] = useState(0);
 
-  /** Keep the input snappy; defer mark/highlight work on heavy Team modals. */
-  const deferredQuery = useDeferredValue(searchQuery);
-
   const highlightTerms = useMemo(() => {
-    const highlight = getDirectorySearchHighlight(deferredQuery, { mixedRequiresWhitespace: false });
+    const highlight = getDirectorySearchHighlight(searchQuery, { mixedRequiresWhitespace: false });
     if (!highlight) return [];
     return [...highlight.textTerms, ...highlight.idTerms].filter(Boolean);
-  }, [deferredQuery]);
+  }, [searchQuery]);
 
   const noteHighlightTerms = useMemo(
-    () => getHubAccountDetailNoteHighlightTerms(deferredQuery),
-    [deferredQuery],
+    () => getHubAccountDetailNoteHighlightTerms(searchQuery),
+    [searchQuery],
   );
 
   const hasSearch = highlightTerms.length > 0;
 
   const matchLabel = useMemo(() => {
     if (!hasSearch) return "";
-    if (!totalMatches) return "0/0";
-    if (!matchRevealed) return `0/${totalMatches}`;
-    return `${activeMatch + 1}/${totalMatches}`;
-  }, [activeMatch, hasSearch, matchRevealed, totalMatches]);
+    const marks = collectModalMarks();
+    if (!marks.length) return "0/0";
+    if (!matchRevealed) return `0/${marks.length}`;
+    return `${activeMatch + 1}/${marks.length}`;
+  }, [activeMatch, hasSearch, matchRevealed, searchQuery]);
 
   useEffect(() => {
     setActiveMatch(0);
     setMatchRevealed(false);
-  }, [deferredQuery]);
+  }, [searchQuery]);
 
   const syncActiveMark = useCallback((index: number, revealed: boolean) => {
     const marks = collectModalMarks();
@@ -96,7 +93,7 @@ export function HubAccountDetailSearchProvider({ children }: { children: ReactNo
       return;
     }
     syncActiveMark(activeMatch, true);
-  }, [activeMatch, matchRevealed, deferredQuery, highlightTerms, syncActiveMark]);
+  }, [activeMatch, matchRevealed, searchQuery, syncActiveMark]);
 
   const revealFirst = useCallback(() => {
     const marks = collectModalMarks();

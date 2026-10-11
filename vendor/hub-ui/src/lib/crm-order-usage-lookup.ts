@@ -206,6 +206,10 @@ export function crmOrderUsageHitAllowedForSubject(
   if (subjectKeysInIdentity({ account: subject.account, mailRecover: "" }, identity)) {
     if (!linked.length) return true;
     if (vaultId && linked.includes(vaultId)) return true;
+    // Kalowave / non-email Account lines in Details are the shop seat itself — not a
+    // Recover hitchhiker. Allow Usage even when the order also links the login vault.
+    const account = subject.account?.trim() ?? "";
+    if (account && !account.includes("@")) return true;
     return false;
   }
 

@@ -18,9 +18,17 @@
   padding-right: var(--stealth-chrome-bleed);
 }
 
-/* Wide RAM chip: `18.2 / 32 GB · 57%` — hub-ui value cap is 7.5rem. */
+/* Wide RAM chip: `18.2 / 32 GB · 57%` — hub-ui value cap is 7.5rem; never ellipsis. */
+.stealth-hub-app .stealth-host-ram-stat {
+  flex-shrink: 0;
+  min-width: max-content;
+}
+
 .stealth-hub-app .stealth-host-ram-stat .app-tab-header-stat-value {
-  max-width: 16rem;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .stealth-hub-app .hub-chrome-sticky {

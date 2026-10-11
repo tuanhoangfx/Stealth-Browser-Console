@@ -20,6 +20,8 @@ export type WorkspaceAuthGateConfig = {
   toolInfo: HubAuthToolInfo;
   headerLeading?: ReactNode;
   submitDisabled?: boolean;
+  /** Pass through to HubAuthGateModal — Orders/Referrer tab use `inline`. */
+  placement?: HubAuthGateModalProps["placement"];
   onSubmit: HubAuthGateModalProps["onSubmit"];
   anonymousHint?: string;
   errorOptions?: NormalizeHubAuthErrorOptions;
@@ -62,6 +64,7 @@ export function WorkspaceAuthGate(config: WorkspaceAuthGateConfig) {
 export type CreateWorkspaceAuthGateOptions = CreateWorkspaceAuthGatePresetOptions & {
   headerLeading?: ReactNode;
   submitDisabled?: boolean;
+  placement?: HubAuthGateModalProps["placement"];
   onSubmit: HubAuthGateModalProps["onSubmit"];
   onAuthed?: () => void;
   onAnonymous?: () => void;
@@ -83,6 +86,7 @@ export function createWorkspaceAuthGate(options: CreateWorkspaceAuthGateOptions)
     title,
     headerLeading,
     submitDisabled,
+    placement,
     onSubmit,
     onAuthed,
     onAnonymous,
@@ -102,6 +106,7 @@ export function createWorkspaceAuthGate(options: CreateWorkspaceAuthGateOptions)
     errorOptions: preset.errorOptions,
     headerLeading,
     submitDisabled,
+    placement,
     onSubmit,
     forgotPassword: {
       ...preset.forgotPassword,

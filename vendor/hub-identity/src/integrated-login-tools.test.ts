@@ -54,6 +54,18 @@ describe("integrated-login-tools", () => {
     expect(hasIntegratedLoginToolAccess({ role: "manager", toolCodes: [] }, "P0004")).toBe(false);
   });
 
+  it("lets Hub managers explicitly deny a default-access tool", () => {
+    expect(
+      hasIntegratedLoginToolAccess({ role: "manager", toolCodes: [], toolRoles: { P0015: "none" } }, "P0015"),
+    ).toBe(false);
+    expect(
+      hasIntegratedLoginToolAccess({ role: "manager", toolCodes: [], toolRoles: { P0020: "none" } }, "P0020"),
+    ).toBe(false);
+    expect(hasIntegratedLoginToolAccess({ role: "manager", toolCodes: [], toolRoles: { P0015: "none" } }, "P0012")).toBe(
+      true,
+    );
+  });
+
   it("labels tool cells Access / Denied — never Hub Role", () => {
     expect(integratedLoginToolStatusLabel("admin")).toBe("Access");
     expect(integratedLoginToolStatusLabel("user")).toBe("Access");

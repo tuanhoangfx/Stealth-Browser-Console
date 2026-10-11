@@ -11,7 +11,7 @@ const SESSION = {
     id: "user-1",
     email: "a@corp.com",
     app_metadata: {},
-    user_metadata: {},
+    user_metadata: { login_id: "cs01290" },
     aud: "authenticated",
     created_at: "",
   },
@@ -30,7 +30,45 @@ describe("tool-session-cache", () => {
     });
     cache.cache(SESSION);
     expect(cache.read()?.access_token).toBe("access-1");
+    expect(cache.read()?.login_id).toBe("cs01290");
     expect(localStorage.getItem("p:test-session-v2")).toBeTruthy();
+  });
+
+  it("restores login_id into user_metadata (opaque Store buyer paint)", () => {
+    const cache = createToolSessionCache({
+      storageKey: "p:test-session-v2",
+      eventName: "p:test-session",
+    });
+    cache.cache({
+      ...SESSION,
+      user: {
+        ...SESSION.user,
+        email: "u_65f9ae5b-302a-4275-8b03-f600ea613fa2@auth.infi.internal",
+        user_metadata: { login_id: "cs01290", full_name: "Hiệu Nguyễn" },
+      },
+    } as typeof SESSION);
+    const restored = cache.sessionFromSnapshot(cache.read());
+    expect(restored?.user.email).toMatch(/^u_/);
+    expect(restored?.user.user_metadata?.login_id).toBe("cs01290");
+  });
+
+  it("backfills login_id when tokens unchanged but snapshot lacked it", () => {
+    const cache = createToolSessionCache({
+      storageKey: "p:test-session-v2",
+      eventName: "p:test-session",
+    });
+    localStorage.setItem(
+      "p:test-session-v2",
+      JSON.stringify({
+        access_token: "access-1",
+        refresh_token: "refresh-1",
+        user_id: "user-1",
+        user_email: "u_x@auth.infi.internal",
+        cached_at: Date.now(),
+      }),
+    );
+    cache.cache(SESSION);
+    expect(cache.read()?.login_id).toBe("cs01290");
   });
 
   it("normalizeToolSession rejects orphan session", () => {

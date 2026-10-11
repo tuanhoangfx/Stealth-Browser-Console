@@ -13,6 +13,7 @@ import { workspaceRoleLabel } from "./hub-workspace-role-icon";
 import {
   buildWorkspaceUserProfileRows,
   isUnstableWorkspaceFooterLabel,
+  workspaceAccountUsername,
   workspaceUserFooterLabel,
   workspaceUserInitials,
 } from "./workspace-user-session";
@@ -24,8 +25,19 @@ import {
 type FooterProfileFields = {
   fullName: string | null;
   loginId: string | null;
+  email: string | null;
+  contactEmail: string | null;
   avatarUrl: string | null;
 };
+
+function footerCacheUsername(cached: FooterProfileFields | undefined): string {
+  if (!cached) return "";
+  return workspaceAccountUsername({
+    username: cached.loginId,
+    profileEmail: cached.email,
+    contactEmail: cached.contactEmail,
+  });
+}
 
 /** Remount-safe cache — footer label must not re-hit profiles on every shell paint. */
 const footerProfileCache = new Map<string, FooterProfileFields>();
@@ -131,6 +143,8 @@ export function HubWorkspaceUserShell({
   const [open, setOpen] = useState(false);
   const [footerDisplayName, setFooterDisplayName] = useState<string | null>(null);
   const [footerUsername, setFooterUsername] = useState<string | null>(null);
+  const [footerProfileEmail, setFooterProfileEmail] = useState<string | null>(null);
+  const [footerContactEmail, setFooterContactEmail] = useState<string | null>(null);
   const [footerAvatarUrl, setFooterAvatarUrl] = useState<string | null>(null);
 
   const labels = labelsProp ?? hubSessionLabels(session);
@@ -165,6 +179,7 @@ export function HubWorkspaceUserShell({
         prepareClient,
         syncApiUrl,
         getLoginId: () => labels.loginId,
+        getProfileEmail: () => profileRoleEmail,
         mirrorAvatarUrl,
         getHubStorageConfig,
         getAvatarStorageConfig,
@@ -175,6 +190,7 @@ export function HubWorkspaceUserShell({
       prepareClient,
       syncApiUrl,
       labels.loginId,
+      profileRoleEmail,
       mirrorAvatarUrl,
       getHubStorageConfig,
       getAvatarStorageConfig,
@@ -195,13 +211,17 @@ export function HubWorkspaceUserShell({
     if (anonymous || !profileUserId) {
       setFooterDisplayName(null);
       setFooterUsername(null);
+      setFooterProfileEmail(null);
+      setFooterContactEmail(null);
       setFooterAvatarUrl(null);
       return;
     }
     const cached = footerProfileCache.get(profileUserId);
-    if (cached) {
+    if (cached && footerCacheUsername(cached)) {
       setFooterDisplayName(cached.fullName);
       setFooterUsername(cached.loginId);
+      setFooterProfileEmail(cached.email);
+      setFooterContactEmail(cached.contactEmail);
       setFooterAvatarUrl(cached.avatarUrl);
       return;
     }
@@ -213,16 +233,22 @@ export function HubWorkspaceUserShell({
         const next: FooterProfileFields = {
           fullName: fields?.fullName?.trim() || null,
           loginId: fields?.loginId?.trim() || null,
+          email: fields?.email?.trim() || null,
+          contactEmail: fields?.contactEmail?.trim() || null,
           avatarUrl: fields?.avatarUrl?.trim() || null,
         };
         writeFooterProfileCache(profileUserId, next);
         setFooterDisplayName(next.fullName);
         setFooterUsername(next.loginId);
+        setFooterProfileEmail(next.email);
+        setFooterContactEmail(next.contactEmail);
         setFooterAvatarUrl(next.avatarUrl);
       } catch {
         if (!cancelled) {
           setFooterDisplayName(null);
           setFooterUsername(null);
+          setFooterProfileEmail(null);
+          setFooterContactEmail(null);
           setFooterAvatarUrl(null);
         }
       }
@@ -240,6 +266,8 @@ export function HubWorkspaceUserShell({
     writeFooterProfileCache(profileUserId, {
       fullName: prev?.fullName ?? footerDisplayName,
       loginId: prev?.loginId ?? footerUsername,
+      email: prev?.email ?? footerProfileEmail,
+      contactEmail: prev?.contactEmail ?? footerContactEmail,
       avatarUrl: nextUrl,
     });
   };
@@ -250,8 +278,9 @@ export function HubWorkspaceUserShell({
     anonymous,
     anonymousLabel: anonymousFooterLabel,
     guestLabel: footerGuestLabel,
-    displayName: footerDisplayName,
     username: footerUsername,
+    profileEmail: footerProfileEmail,
+    contactEmail: footerContactEmail,
   });
   if (!anonymous && !isUnstableWorkspaceFooterLabel(rawFooterLabel)) {
     stickyFooterLabelRef.current = rawFooterLabel;
@@ -262,18 +291,14 @@ export function HubWorkspaceUserShell({
       : stickyFooterLabelRef.current || footerGuestLabel || "Sign in";
   const displayTitle =
     modalTitle ??
-    (footerUserLabel ||
-      labels.loginId ||
-      labels.displayName ||
-      labels.email ||
-      "User");
+    (footerUserLabel || labels.loginId || footerUsername || "User");
   const initials = useMemo(
     () =>
       workspaceUserInitials(
-        footerDisplayName || labels.displayName || labels.email || labels.loginId,
+        footerUsername || labels.loginId || footerUserLabel,
         session?.user?.id,
       ),
-    [footerDisplayName, labels.displayName, labels.email, labels.loginId, session?.user?.id],
+    [footerUsername, labels.loginId, footerUserLabel, session?.user?.id],
   );
   const profileRows = useMemo(
     () =>

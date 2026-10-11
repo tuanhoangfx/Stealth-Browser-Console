@@ -1,27 +1,11 @@
 [
   {
-    "id": "10kfl-net",
-    "label": "10kfl.net",
-    "match": "10kfl\\.net|\\b10kfl\\b",
-    "src": "/assets/brand-icons/10kfl-net.png",
-    "shell": "bare",
-    "faviconDomain": "10kfl.net"
-  },
-  {
     "id": "1password",
     "label": "1Password",
     "match": "1password|one.?password",
     "src": "/assets/brand-icons/1password.png",
     "shell": "bare",
     "faviconDomain": "1password.com"
-  },
-  {
-    "id": "2proxy-vn",
-    "label": "2proxy.vn",
-    "match": "2proxy\\.vn|\\b2proxy\\b",
-    "src": "/assets/brand-icons/2proxy-vn.png",
-    "shell": "bare",
-    "faviconDomain": "2proxy.vn"
   },
   {
     "id": "4shared",
@@ -80,14 +64,6 @@
     "faviconDomain": "acer.com"
   },
   {
-    "id": "adflex",
-    "label": "Adflex",
-    "match": "adflex|adflex",
-    "src": "/assets/brand-icons/adflex.png",
-    "shell": "bare",
-    "faviconDomain": "adflex.com"
-  },
-  {
     "id": "adobe",
     "label": "Adobe",
     "match": "adobe",
@@ -114,14 +90,10 @@
   {
     "id": "adser",
     "label": "Adser",
-    "match": "\\badser\\b|adser\\.vn",
+    "match": "adser",
     "src": "/assets/brand-icons/adser.png",
     "shell": "bare",
-    "faviconDomain": "adser.vn",
-    "faviconDomains": [
-      "adser.vn",
-      "app.adser.vn"
-    ]
+    "faviconDomain": "adser.vn"
   },
   {
     "id": "agoda",
@@ -212,252 +184,28 @@
     "faviconDomain": "aws.amazon.com"
   },
   {
-    "id": "buffsieutoc-shop",
-    "label": "buffsieutoc.shop",
-    "match": "buffsieutoc\\.shop|\\bbuffsieutoc\\b",
-    "src": "/assets/brand-icons/buffsieutoc-shop.png",
+    "id": "chungchi365",
+    "label": "Chungchi365",
+    "match": "chungchi\\s*365|chungchi365",
+    "src": "/assets/brand-icons/chungchi365.png",
     "shell": "bare",
-    "faviconDomain": "buffsieutoc.shop"
+    "faviconDomain": "chungchi365.com"
   },
   {
-    "id": "chothuesimcode",
-    "label": "Chothuesimcode",
-    "match": "chothuesimcode|chothuesimcode",
-    "src": "/assets/brand-icons/chothuesimcode.png",
+    "id": "gamikey",
+    "label": "Gamikey",
+    "match": "gamikey",
+    "src": "/assets/brand-icons/gamikey.png",
     "shell": "bare",
-    "faviconDomain": "chothuesimcode.net"
+    "faviconDomain": "gamikey.com"
   },
   {
-    "id": "etoplus",
-    "label": "Etoplus",
-    "match": "etoplus|etoplus",
-    "src": "/assets/brand-icons/etoplus.png",
+    "id": "google-one",
+    "label": "Google One",
+    "match": "google\\s*one|google\\s*flow|\\bveo\\b",
+    "src": "/assets/brand-icons/google-one.png",
     "shell": "bare",
-    "faviconDomain": "etoplus.com"
-  },
-  {
-    "id": "gamma",
-    "label": "Gamma",
-    "match": "\\bgamma\\b",
-    "src": "/assets/brand-icons/gamma.png",
-    "shell": "bare",
-    "faviconDomain": "gamma.app"
-  },
-  {
-    "id": "imindmap",
-    "label": "imindmap",
-    "match": "imindmap|imindmap",
-    "src": "/assets/brand-icons/imindmap.png",
-    "shell": "bare",
-    "faviconDomain": "imindmap.com"
-  },
-  {
-    "id": "installonair",
-    "label": "Installonair",
-    "match": "installonair|installonair",
-    "src": "/assets/brand-icons/installonair.png",
-    "shell": "bare",
-    "faviconDomain": "installonair.com"
-  },
-  {
-    "id": "jvzoo",
-    "label": "Jvzoo",
-    "match": "jvzoo|jvzoo",
-    "src": "/assets/brand-icons/jvzoo.png",
-    "shell": "bare",
-    "faviconDomain": "jvzoo.com"
-  },
-  {
-    "id": "keyword-tool",
-    "label": "Keyword Tool",
-    "match": "keyword\\s*tool|keywordtool",
-    "src": "/assets/brand-icons/keyword-tool.png",
-    "shell": "bare",
-    "faviconDomain": "keywordtool.net"
-  },
-  {
-    "id": "ldphone",
-    "label": "LDPhone",
-    "match": "ldphone|ldphone",
-    "src": "/assets/brand-icons/ldphone.png",
-    "shell": "bare",
-    "faviconDomain": "ldphone.com"
-  },
-  {
-    "id": "like-vn",
-    "label": "like.vn",
-    "match": "(^|[/.])like\\.vn(/|$)",
-    "src": "/assets/brand-icons/like-vn.png",
-    "shell": "bare",
-    "faviconDomain": "like.vn"
-  },
-  {
-    "id": "like68-vn",
-    "label": "like68.vn",
-    "match": "like68\\.vn|\\blike68\\b",
-    "src": "/assets/brand-icons/like68-vn.png",
-    "shell": "bare",
-    "faviconDomain": "like68.vn"
-  },
-  {
-    "id": "likesub123-com",
-    "label": "likesub123.com",
-    "match": "likesub123\\.com|\\blikesub123\\b",
-    "src": "/assets/brand-icons/likesub123-com.png",
-    "shell": "bare",
-    "faviconDomain": "likesub123.com"
-  },
-  {
-    "id": "lovart",
-    "label": "Lovart",
-    "match": "\\blovart\\b",
-    "src": "/assets/brand-icons/lovart.png",
-    "shell": "bare",
-    "faviconDomain": "www.lovart.ai"
-  },
-  {
-    "id": "manycam",
-    "label": "Manycam",
-    "match": "manycam|manycam",
-    "src": "/assets/brand-icons/manycam.png",
-    "shell": "bare",
-    "faviconDomain": "manycam.com"
-  },
-  {
-    "id": "mi-home",
-    "label": "Mi Home",
-    "match": "mi\\s*home|mihome",
-    "src": "/assets/brand-icons/mi-home.png",
-    "shell": "bare",
-    "faviconDomain": "mihome.vn"
-  },
-  {
-    "id": "minproxy",
-    "label": "MinProxy",
-    "match": "minproxy|minproxy",
-    "src": "/assets/brand-icons/minproxy.png",
-    "shell": "bare",
-    "faviconDomain": "minproxy.vn"
-  },
-  {
-    "id": "minsocial-vn",
-    "label": "minsocial.vn",
-    "match": "minsocial\\.vn|\\bminsocial\\b",
-    "src": "/assets/brand-icons/minsocial-vn.png",
-    "shell": "bare",
-    "faviconDomain": "minsocial.vn"
-  },
-  {
-    "id": "mmo4me",
-    "label": "MMO4ME",
-    "match": "mmo4me|mmo4me",
-    "src": "/assets/brand-icons/mmo4me.png",
-    "shell": "bare",
-    "faviconDomain": "mmo4me.com"
-  },
-  {
-    "id": "moonxbt",
-    "label": "Moonxbt",
-    "match": "moonxbt|moonxbt",
-    "src": "/assets/brand-icons/moonxbt.png",
-    "shell": "bare",
-    "faviconDomain": "moonxbt.net"
-  },
-  {
-    "id": "muaproxy",
-    "label": "Muaproxy",
-    "match": "muaproxy|muaproxy",
-    "src": "/assets/brand-icons/muaproxy.png",
-    "shell": "bare",
-    "faviconDomain": "muaproxy.vn"
-  },
-  {
-    "id": "muatim-com",
-    "label": "muatim.com",
-    "match": "muatim\\.com|\\bmuatim\\b",
-    "src": "/assets/brand-icons/muatim-com.png",
-    "shell": "bare",
-    "faviconDomain": "muatim.com"
-  },
-  {
-    "id": "neteller",
-    "label": "Neteller",
-    "match": "neteller|neteller",
-    "src": "/assets/brand-icons/neteller.png",
-    "shell": "bare",
-    "faviconDomain": "neteller.com"
-  },
-  {
-    "id": "nguyenlieufb-vn",
-    "label": "nguyenlieufb.vn",
-    "match": "nguyenlieufb\\.vn|\\bnguyenlieufb\\b",
-    "src": "/assets/brand-icons/nguyenlieufb-vn.png",
-    "shell": "bare",
-    "faviconDomain": "nguyenlieufb.vn"
-  },
-  {
-    "id": "notepad",
-    "label": "notepad",
-    "match": "notepad|notepad",
-    "src": "/assets/brand-icons/notepad.png",
-    "shell": "bare",
-    "faviconDomain": "notepad.com"
-  },
-  {
-    "id": "omocaptcha",
-    "label": "OmoCaptcha",
-    "match": "omocaptcha|omocaptcha",
-    "src": "/assets/brand-icons/omocaptcha.png",
-    "shell": "bare",
-    "faviconDomain": "omocaptcha.com"
-  },
-  {
-    "id": "ongtrum-pro",
-    "label": "ongtrum.pro",
-    "match": "ongtrum\\.pro|\\bongtrum\\b",
-    "src": "/assets/brand-icons/ongtrum-pro.png",
-    "shell": "bare",
-    "faviconDomain": "ongtrum.pro"
-  },
-  {
-    "id": "op-gg",
-    "label": "OP.GG",
-    "match": "op\\.gg|\\bop\\b",
-    "src": "/assets/brand-icons/op-gg.png",
-    "shell": "bare",
-    "faviconDomain": "op.gg"
-  },
-  {
-    "id": "parsec",
-    "label": "Parsec",
-    "match": "parsec|parsec",
-    "src": "/assets/brand-icons/parsec.png",
-    "shell": "bare",
-    "faviconDomain": "parsec.com"
-  },
-  {
-    "id": "pixlr",
-    "label": "Pixlr",
-    "match": "pixlr|pixlr",
-    "src": "/assets/brand-icons/pixlr.png",
-    "shell": "bare",
-    "faviconDomain": "pixlr.com"
-  },
-  {
-    "id": "poiiky-com",
-    "label": "poiiky.com",
-    "match": "poiiky\\.com|\\bpoiiky\\b",
-    "src": "/assets/brand-icons/poiiky-com.png",
-    "shell": "bare",
-    "faviconDomain": "poiiky.com"
-  },
-  {
-    "id": "popads",
-    "label": "Popads",
-    "match": "popads|popads",
-    "src": "/assets/brand-icons/popads.png",
-    "shell": "bare",
-    "faviconDomain": "popads.com"
+    "faviconDomain": "one.google.com"
   },
   {
     "id": "prime-video",
@@ -548,30 +296,6 @@
     "faviconDomain": "aol.com"
   },
   {
-    "id": "apimualike-com",
-    "label": "apimualike.com",
-    "match": "apimualike\\.com|\\bapimualike\\b",
-    "src": "/assets/brand-icons/apimualike-com.png",
-    "shell": "bare",
-    "faviconDomain": "apimualike.com"
-  },
-  {
-    "id": "app-aistudios-com",
-    "label": "App.aistudios.com",
-    "match": "app\\.aistudios\\.com|\\baistudios\\b",
-    "src": "/assets/brand-icons/app-aistudios-com.png",
-    "shell": "bare",
-    "faviconDomain": "aistudios.com"
-  },
-  {
-    "id": "app-mualike-net",
-    "label": "app.mualike.net",
-    "match": "app\\.mualike\\.net|\\bmualike\\b",
-    "src": "/assets/brand-icons/app-mualike-net.png",
-    "shell": "bare",
-    "faviconDomain": "mualike.net"
-  },
-  {
     "id": "apple",
     "label": "Apple",
     "match": "^apple$|apple\\.com|apple\\s*id",
@@ -630,7 +354,7 @@
   {
     "id": "atfx",
     "label": "ATFX",
-    "match": "atfx|atfx",
+    "match": "\\batfx\\b",
     "src": "/assets/brand-icons/atfx.png",
     "shell": "bare",
     "faviconDomain": "atfx.com"
@@ -674,22 +398,6 @@
     "src": "/assets/brand-icons/autolike.png",
     "shell": "bare",
     "faviconDomain": "autolike.vn"
-  },
-  {
-    "id": "autoviafb-com",
-    "label": "autoviafb.com",
-    "match": "autoviafb\\.com|\\bautoviafb\\b",
-    "src": "/assets/brand-icons/autoviafb-com.png",
-    "shell": "bare",
-    "faviconDomain": "autoviafb.com"
-  },
-  {
-    "id": "awesun",
-    "label": "AweSun",
-    "match": "awesun|awesun",
-    "src": "/assets/brand-icons/awesun.png",
-    "shell": "bare",
-    "faviconDomain": "awesun.com"
   },
   {
     "id": "bachhoaxanh",
@@ -772,14 +480,6 @@
     "faviconDomain": "bestbuy.com"
   },
   {
-    "id": "bestmoon-vn",
-    "label": "bestmoon.vn",
-    "match": "bestmoon\\.vn|\\bbestmoon\\b",
-    "src": "/assets/brand-icons/bestmoon-vn.png",
-    "shell": "bare",
-    "faviconDomain": "bestmoon.vn"
-  },
-  {
     "id": "bidv",
     "label": "BIDV",
     "match": "\\bbidv\\b",
@@ -828,14 +528,6 @@
     "faviconDomain": "bing.com"
   },
   {
-    "id": "bit-ly",
-    "label": "Bit.ly",
-    "match": "bit\\.ly|\\bbit\\b",
-    "src": "/assets/brand-icons/bit-ly.png",
-    "shell": "bare",
-    "faviconDomain": "bit.ly"
-  },
-  {
     "id": "bitbucket",
     "label": "Bitbucket",
     "match": "bitbucket|bitbucket\\.org",
@@ -850,14 +542,6 @@
     "src": "/assets/brand-icons/bitwarden.png",
     "shell": "bare",
     "faviconDomain": "bitwarden.com"
-  },
-  {
-    "id": "bizflow-vn",
-    "label": "bizflow.vn",
-    "match": "bizflow\\.vn|\\bbizflow\\b",
-    "src": "/assets/brand-icons/bizflow-vn.png",
-    "shell": "bare",
-    "faviconDomain": "bizflow.vn"
   },
   {
     "id": "blackbox",
@@ -904,6 +588,14 @@
     "label": "Box.com",
     "match": "box\\.com|\\bbox\\b",
     "src": "/assets/brand-icons/box.png",
+    "shell": "bare",
+    "faviconDomain": "box.com"
+  },
+  {
+    "id": "box-com",
+    "label": "Box.com",
+    "match": "(^|[/.])box\\.com(/|$)|\\bbox\\b",
+    "src": "/assets/brand-icons/box-com.png",
     "shell": "bare",
     "faviconDomain": "box.com"
   },
@@ -1036,14 +728,6 @@
     "faviconDomain": "chatgpt.com"
   },
   {
-    "id": "chaycodeso3-com",
-    "label": "chaycodeso3.com",
-    "match": "chaycodeso3\\.com|\\bchaycodeso3\\b",
-    "src": "/assets/brand-icons/chaycodeso3-com.png",
-    "shell": "bare",
-    "faviconDomain": "chaycodeso3.com"
-  },
-  {
     "id": "chess",
     "label": "Chess.com",
     "match": "chess|chess\\.com",
@@ -1066,14 +750,6 @@
     "src": "/assets/brand-icons/chrome.png",
     "shell": "bare",
     "faviconDomain": "google.com/chrome"
-  },
-  {
-    "id": "chungchi365",
-    "label": "Chungchi365",
-    "match": "chungchi\\s*365|chungchi365",
-    "src": "/assets/brand-icons/chungchi365.png",
-    "shell": "bare",
-    "faviconDomain": "chungchi365.com"
   },
   {
     "id": "circleci",
@@ -1137,14 +813,6 @@
     "faviconDomain": "cloudfly.vn"
   },
   {
-    "id": "cloudmini",
-    "label": "Cloudmini",
-    "match": "cloudmini|cloudmini",
-    "src": "/assets/brand-icons/cloudmini.png",
-    "shell": "bare",
-    "faviconDomain": "cloudmini.net"
-  },
-  {
     "id": "coda",
     "label": "Coda",
     "match": "coda|coda\\.io",
@@ -1167,14 +835,6 @@
     "src": "/assets/brand-icons/codepen.png",
     "shell": "bare",
     "faviconDomain": "codepen.io"
-  },
-  {
-    "id": "codesandbox",
-    "label": "CodeSandbox",
-    "match": "codesandbox|codesandbox\\.io",
-    "src": "/assets/brand-icons/codesandbox.png",
-    "shell": "bare",
-    "faviconDomain": "codesandbox.io"
   },
   {
     "id": "cohere",
@@ -1273,22 +933,6 @@
     "faviconDomain": "dafont.com"
   },
   {
-    "id": "dailyotp",
-    "label": "DailyOTP",
-    "match": "dailyotp|dailyotp",
-    "src": "/assets/brand-icons/dailyotp.png",
-    "shell": "bare",
-    "faviconDomain": "dailyotp.com"
-  },
-  {
-    "id": "daisysms",
-    "label": "Daisysms",
-    "match": "daisysms|daisysms",
-    "src": "/assets/brand-icons/daisysms.png",
-    "shell": "bare",
-    "faviconDomain": "daisysms.com"
-  },
-  {
     "id": "dantri",
     "label": "Dan Tri",
     "match": "dantri|dantri\\.com\\.vn",
@@ -1369,14 +1013,6 @@
     "faviconDomain": "dell.com"
   },
   {
-    "id": "device-info",
-    "label": "Device Info",
-    "match": "device\\s*info|deviceinfo",
-    "src": "/assets/brand-icons/device-info.png",
-    "shell": "bare",
-    "faviconDomain": "deviceinfo.net"
-  },
-  {
     "id": "devto",
     "label": "DEV",
     "match": "devto|dev\\.to",
@@ -1399,14 +1035,6 @@
     "src": "/assets/brand-icons/digitalocean.png",
     "shell": "bare",
     "faviconDomain": "digitalocean.com"
-  },
-  {
-    "id": "dinos",
-    "label": "dinos",
-    "match": "dinos|dinos",
-    "src": "/assets/brand-icons/dinos.png",
-    "shell": "bare",
-    "faviconDomain": "dinos.vn"
   },
   {
     "id": "discord",
@@ -1462,14 +1090,6 @@
     "src": "/assets/brand-icons/douyin.png",
     "shell": "bare",
     "faviconDomain": "douyin.com"
-  },
-  {
-    "id": "dreamfaceapp",
-    "label": "dreamfaceapp",
-    "match": "dreamfaceapp|dreamfaceapp",
-    "src": "/assets/brand-icons/dreamfaceapp.png",
-    "shell": "bare",
-    "faviconDomain": "dreamfaceapp.com"
   },
   {
     "id": "dropbox",
@@ -1528,14 +1148,6 @@
     "faviconDomain": "ea.com"
   },
   {
-    "id": "easy-markets",
-    "label": "Easy Markets",
-    "match": "easy\\s*markets|easymarkets",
-    "src": "/assets/brand-icons/easy-markets.png",
-    "shell": "bare",
-    "faviconDomain": "easymarkets.vn"
-  },
-  {
     "id": "ebay",
     "label": "eBay",
     "match": "ebay",
@@ -1568,36 +1180,12 @@
     "faviconDomain": "elevenlabs.com"
   },
   {
-    "id": "elsa-speak",
-    "label": "Elsa Speak",
-    "match": "elsa\\s*speak|elsaspeak",
-    "src": "/assets/brand-icons/elsa-speak.png",
-    "shell": "bare",
-    "faviconDomain": "elsaspeak.com"
-  },
-  {
-    "id": "eneba",
-    "label": "Eneba",
-    "match": "eneba|eneba",
-    "src": "/assets/brand-icons/eneba.png",
-    "shell": "bare",
-    "faviconDomain": "eneba.com"
-  },
-  {
     "id": "envato-elements",
     "label": "Envato Elements",
     "match": "envato\\s*elements",
     "src": "/assets/brand-icons/envato-elements.png",
     "shell": "bare",
     "faviconDomain": "elements.envato.com"
-  },
-  {
-    "id": "envato-market",
-    "label": "Envato market",
-    "match": "envato\\s*market|envatomarket|\\benvato\\b",
-    "src": "/assets/brand-icons/envato-market.png",
-    "shell": "bare",
-    "faviconDomain": "envato.com"
   },
   {
     "id": "epic-games",
@@ -1616,14 +1204,6 @@
     "faviconDomain": "etherscan.io"
   },
   {
-    "id": "etomarkets",
-    "label": "Etomarkets",
-    "match": "etomarkets|etomarkets",
-    "src": "/assets/brand-icons/etomarkets.png",
-    "shell": "bare",
-    "faviconDomain": "etomarkets.com"
-  },
-  {
     "id": "etoro",
     "label": "eToro",
     "match": "etoro|etoro\\.com",
@@ -1638,14 +1218,6 @@
     "src": "/assets/brand-icons/etsy.png",
     "shell": "bare",
     "faviconDomain": "etsy.com"
-  },
-  {
-    "id": "evernote",
-    "label": "Evernote",
-    "match": "evernote|evernote",
-    "src": "/assets/brand-icons/evernote.png",
-    "shell": "bare",
-    "faviconDomain": "evernote.com"
   },
   {
     "id": "eximbank",
@@ -1680,14 +1252,6 @@
     "faviconDomain": "expressvpn.com"
   },
   {
-    "id": "ezviz",
-    "label": "Ezviz",
-    "match": "ezviz|ezviz",
-    "src": "/assets/brand-icons/ezviz.png",
-    "shell": "bare",
-    "faviconDomain": "ezviz.com"
-  },
-  {
     "id": "facebook",
     "label": "Facebook",
     "match": "facebook|meta",
@@ -1704,22 +1268,6 @@
     "faviconDomain": "fastmail.com"
   },
   {
-    "id": "fastone",
-    "label": "Fastone",
-    "match": "fastone|fastone",
-    "src": "/assets/brand-icons/fastone.png",
-    "shell": "bare",
-    "faviconDomain": "fastone.net"
-  },
-  {
-    "id": "ffb-vn",
-    "label": "ffb.vn",
-    "match": "ffb\\.vn|\\bffb\\b",
-    "src": "/assets/brand-icons/ffb-vn.png",
-    "shell": "bare",
-    "faviconDomain": "ffb.vn"
-  },
-  {
     "id": "figma",
     "label": "Figma",
     "match": "figma",
@@ -1734,22 +1282,6 @@
     "src": "/assets/brand-icons/filmora.png",
     "shell": "bare",
     "faviconDomain": "filmora.com"
-  },
-  {
-    "id": "find-my-friend",
-    "label": "Find my friend",
-    "match": "find\\s*my\\s*friend|findmyfriend",
-    "src": "/assets/brand-icons/find-my-friend.png",
-    "shell": "bare",
-    "faviconDomain": "findmyfriend.com"
-  },
-  {
-    "id": "findphone-cmcm-com",
-    "label": "Findphone.cmcm.com",
-    "match": "findphone\\.cmcm\\.com|\\bcmcm\\b",
-    "src": "/assets/brand-icons/findphone-cmcm-com.png",
-    "shell": "bare",
-    "faviconDomain": "cmcm.com"
   },
   {
     "id": "firebase",
@@ -1774,22 +1306,6 @@
     "src": "/assets/brand-icons/fitroom.png",
     "shell": "bare",
     "faviconDomain": "fitroom.app"
-  },
-  {
-    "id": "flaticon",
-    "label": "Flaticon",
-    "match": "flaticon|flaticon",
-    "src": "/assets/brand-icons/flaticon.png",
-    "shell": "bare",
-    "faviconDomain": "flaticon.com"
-  },
-  {
-    "id": "flickr",
-    "label": "Flickr",
-    "match": "flickr|flickr",
-    "src": "/assets/brand-icons/flickr.png",
-    "shell": "bare",
-    "faviconDomain": "flickr.com"
   },
   {
     "id": "fliki",
@@ -1822,14 +1338,6 @@
     "src": "/assets/brand-icons/foxit.png",
     "shell": "bare",
     "faviconDomain": "foxit.com"
-  },
-  {
-    "id": "fplus",
-    "label": "Fplus",
-    "match": "fplus|fplus",
-    "src": "/assets/brand-icons/fplus.png",
-    "shell": "bare",
-    "faviconDomain": "fplus.net"
   },
   {
     "id": "fpt",
@@ -1872,14 +1380,6 @@
     "faviconDomain": "ff.garena.com"
   },
   {
-    "id": "freehostingeu-com",
-    "label": "freehostingeu.com",
-    "match": "freehostingeu\\.com|\\bfreehostingeu\\b",
-    "src": "/assets/brand-icons/freehostingeu-com.png",
-    "shell": "bare",
-    "faviconDomain": "freehostingeu.com"
-  },
-  {
     "id": "freepik",
     "label": "Freepik",
     "match": "freepik",
@@ -1912,36 +1412,12 @@
     "faviconDomain": "fshare.com"
   },
   {
-    "id": "fun88",
-    "label": "Fun88",
-    "match": "fun88|fun88",
-    "src": "/assets/brand-icons/fun88.png",
+    "id": "gamma",
+    "label": "Gamma",
+    "match": "\\bgamma\\b",
+    "src": "/assets/brand-icons/gamma.png",
     "shell": "bare",
-    "faviconDomain": "fun88.com"
-  },
-  {
-    "id": "fxcm",
-    "label": "FXCM",
-    "match": "fxcm|fxcm",
-    "src": "/assets/brand-icons/fxcm.png",
-    "shell": "bare",
-    "faviconDomain": "fxcm.com"
-  },
-  {
-    "id": "gametv",
-    "label": "GameTV",
-    "match": "gametv|gametv",
-    "src": "/assets/brand-icons/gametv.png",
-    "shell": "bare",
-    "faviconDomain": "gametv.vn"
-  },
-  {
-    "id": "gamikey",
-    "label": "Gamikey",
-    "match": "gamikey",
-    "src": "/assets/brand-icons/gamikey.png",
-    "shell": "bare",
-    "faviconDomain": "gamikey.com"
+    "faviconDomain": "gamma.app"
   },
   {
     "id": "garena",
@@ -1966,22 +1442,6 @@
     "src": "/assets/brand-icons/gemini.png",
     "shell": "bare",
     "faviconDomain": "gemini.com"
-  },
-  {
-    "id": "gemlogin",
-    "label": "GemLogin",
-    "match": "gemlogin|gemlogin",
-    "src": "/assets/brand-icons/gemlogin.png",
-    "shell": "bare",
-    "faviconDomain": "gemlogin.com"
-  },
-  {
-    "id": "generated-photos",
-    "label": "generated.photos",
-    "match": "generated\\.photos|\\bgenerated\\b",
-    "src": "/assets/brand-icons/generated-photos.png",
-    "shell": "bare",
-    "faviconDomain": "generated.photos"
   },
   {
     "id": "generic",
@@ -2119,44 +1579,12 @@
     "faviconDomain": "gojek.com"
   },
   {
-    "id": "gologin",
-    "label": "Gologin",
-    "match": "gologin|gologin",
-    "src": "/assets/brand-icons/gologin.png",
-    "shell": "bare",
-    "faviconDomain": "gologin.com"
-  },
-  {
     "id": "goodreads",
     "label": "Goodreads",
     "match": "goodreads|goodreads\\.com",
     "src": "/assets/brand-icons/goodreads.png",
     "shell": "bare",
     "faviconDomain": "goodreads.com"
-  },
-  {
-    "id": "google-drive",
-    "label": "Google Drive",
-    "match": "google\\s*drive|gdrive|drive\\.google",
-    "src": "/assets/brand-icons/google-drive.png",
-    "shell": "bare",
-    "faviconDomain": "drive.google.com"
-  },
-  {
-    "id": "google-fonts",
-    "label": "Google Fonts",
-    "match": "google\\s*fonts|fonts\\.google\\.com",
-    "src": "/assets/brand-icons/google-fonts.png",
-    "shell": "bare",
-    "faviconDomain": "fonts.google.com"
-  },
-  {
-    "id": "google-one",
-    "label": "Google One",
-    "match": "google\\s*one",
-    "src": "/assets/brand-icons/google-one.png",
-    "shell": "bare",
-    "faviconDomain": "one.google.com"
   },
   {
     "id": "google-ads",
@@ -2223,19 +1651,27 @@
     "faviconDomain": "play.google.com"
   },
   {
-    "id": "google-calendar",
-    "label": "Google Calendar",
-    "match": "google\\s*calendar",
-    "src": "/assets/brand-icons/google-calendar.png",
-    "shell": "bare",
-    "faviconDomain": "calendar.google.com"
-  },
-  {
     "id": "google",
     "label": "Google",
     "match": "google",
     "src": "/icons/google.svg",
     "shell": "bare"
+  },
+  {
+    "id": "google-drive",
+    "label": "Google Drive",
+    "match": "google\\s*drive|gdrive|drive\\.google",
+    "src": "/assets/brand-icons/google-drive.png",
+    "shell": "bare",
+    "faviconDomain": "drive.google.com"
+  },
+  {
+    "id": "google-fonts",
+    "label": "Google Fonts",
+    "match": "google\\s*fonts|fonts\\.google\\.com",
+    "src": "/assets/brand-icons/google-fonts.png",
+    "shell": "bare",
+    "faviconDomain": "fonts.google.com"
   },
   {
     "id": "gpmlogin",
@@ -2252,14 +1688,6 @@
     "src": "/assets/brand-icons/grab.png",
     "shell": "bare",
     "faviconDomain": "grab.com"
-  },
-  {
-    "id": "grabify-link",
-    "label": "Grabify.Link",
-    "match": "grabify\\.link|\\bgrabify\\b",
-    "src": "/assets/brand-icons/grabify-link.png",
-    "shell": "bare",
-    "faviconDomain": "grabify.link"
   },
   {
     "id": "grafana",
@@ -2366,14 +1794,6 @@
     "faviconDomain": "heroku.com"
   },
   {
-    "id": "heroui",
-    "label": "HeroUI",
-    "match": "heroui|heroui",
-    "src": "/assets/brand-icons/heroui.png",
-    "shell": "bare",
-    "faviconDomain": "heroui.com"
-  },
-  {
     "id": "hey-email",
     "label": "HEY",
     "match": "hey\\.com",
@@ -2388,22 +1808,6 @@
     "src": "/assets/brand-icons/heygen.png",
     "shell": "bare",
     "faviconDomain": "heygen.com"
-  },
-  {
-    "id": "hfm",
-    "label": "HFM",
-    "match": "hfm|hfm",
-    "src": "/assets/brand-icons/hfm.png",
-    "shell": "bare",
-    "faviconDomain": "hfm.com"
-  },
-  {
-    "id": "hhklikesub",
-    "label": "hhklikesub",
-    "match": "hhklikesub|hhklikesub",
-    "src": "/assets/brand-icons/hhklikesub.png",
-    "shell": "bare",
-    "faviconDomain": "hhklikesub.com"
   },
   {
     "id": "higgsfield",
@@ -2444,14 +1848,6 @@
     "src": "/assets/brand-icons/hotjar.png",
     "shell": "bare",
     "faviconDomain": "hotjar.com"
-  },
-  {
-    "id": "howkteam",
-    "label": "Howkteam",
-    "match": "howkteam|howkteam",
-    "src": "/assets/brand-icons/howkteam.png",
-    "shell": "bare",
-    "faviconDomain": "howkteam.com"
   },
   {
     "id": "hoyoverse",
@@ -2508,14 +1904,6 @@
     "src": "/assets/brand-icons/ibm.png",
     "shell": "bare",
     "faviconDomain": "ibm.com"
-  },
-  {
-    "id": "ic-markets",
-    "label": "IC Markets",
-    "match": "ic\\s*markets|icmarkets",
-    "src": "/assets/brand-icons/ic-markets.png",
-    "shell": "bare",
-    "faviconDomain": "icmarkets.com"
   },
   {
     "id": "icloud",
@@ -2646,36 +2034,12 @@
     "faviconDomain": "intuit.com"
   },
   {
-    "id": "investing-calendar",
-    "label": "Investing Calendar",
-    "match": "investing\\s*calendar|investingcalendar",
-    "src": "/assets/brand-icons/investing-calendar.png",
-    "shell": "bare",
-    "faviconDomain": "investingcalendar.com"
-  },
-  {
-    "id": "invideo",
-    "label": "Invideo",
-    "match": "invideo|invideo",
-    "src": "/assets/brand-icons/invideo.png",
-    "shell": "bare",
-    "faviconDomain": "invideo.com"
-  },
-  {
     "id": "iqiyi",
     "label": "iQIYI",
     "match": "\\biqiyi\\b",
     "src": "/assets/brand-icons/iqiyi.png",
     "shell": "bare",
     "faviconDomain": "iq.com"
-  },
-  {
-    "id": "istockphoto",
-    "label": "istockphoto",
-    "match": "istockphoto|istockphoto",
-    "src": "/assets/brand-icons/istockphoto.png",
-    "shell": "bare",
-    "faviconDomain": "istockphoto.com"
   },
   {
     "id": "itchio",
@@ -2708,14 +2072,6 @@
     "src": "/assets/brand-icons/jira.png",
     "shell": "bare",
     "faviconDomain": "jira.atlassian.com"
-  },
-  {
-    "id": "jsnguyenlieu-com",
-    "label": "jsnguyenlieu.com",
-    "match": "jsnguyenlieu\\.com|\\bjsnguyenlieu\\b",
-    "src": "/assets/brand-icons/jsnguyenlieu-com.png",
-    "shell": "bare",
-    "faviconDomain": "jsnguyenlieu.com"
   },
   {
     "id": "kaggle",
@@ -2806,14 +2162,6 @@
     "faviconDomain": "kienlongbank.com"
   },
   {
-    "id": "kimi",
-    "label": "Kimi",
-    "match": "kimi|kimi",
-    "src": "/assets/brand-icons/kimi.png",
-    "shell": "bare",
-    "faviconDomain": "kimi.com"
-  },
-  {
     "id": "kling",
     "label": "Kling",
     "match": "kling",
@@ -2852,22 +2200,6 @@
     "src": "/assets/brand-icons/kucoin.png",
     "shell": "bare",
     "faviconDomain": "kucoin.com"
-  },
-  {
-    "id": "ladipage",
-    "label": "LadiPage",
-    "match": "ladipage|ladipage",
-    "src": "/assets/brand-icons/ladipage.png",
-    "shell": "bare",
-    "faviconDomain": "ladipage.com"
-  },
-  {
-    "id": "larksuite",
-    "label": "Larksuite",
-    "match": "larksuite|larksuite",
-    "src": "/assets/brand-icons/larksuite.png",
-    "shell": "bare",
-    "faviconDomain": "larksuite.com"
   },
   {
     "id": "lastpass",
@@ -3014,12 +2346,12 @@
     "faviconDomain": "lovable.com"
   },
   {
-    "id": "lowendviet",
-    "label": "Lowendviet",
-    "match": "lowendviet|lowendviet",
-    "src": "/assets/brand-icons/lowendviet.png",
+    "id": "lovart",
+    "label": "Lovart",
+    "match": "\\blovart\\b",
+    "src": "/assets/brand-icons/lovart.png",
     "shell": "bare",
-    "faviconDomain": "lowendviet.com"
+    "faviconDomain": "www.lovart.ai"
   },
   {
     "id": "lpb",
@@ -3052,14 +2384,6 @@
     "src": "/assets/brand-icons/lyft.png",
     "shell": "bare",
     "faviconDomain": "lyft.com"
-  },
-  {
-    "id": "magiclightai",
-    "label": "MagiclightAI",
-    "match": "magiclightai|magiclightai",
-    "src": "/assets/brand-icons/magiclightai.png",
-    "shell": "bare",
-    "faviconDomain": "magiclightai.com"
   },
   {
     "id": "magnific",
@@ -3214,6 +2538,14 @@
     "faviconDomain": "teams.microsoft.com"
   },
   {
+    "id": "microsoft-todo",
+    "label": "Microsoft To Do",
+    "match": "microsoft\\s*to\\s*do|microsoft\\s*todo",
+    "src": "/assets/brand-icons/microsoft-todo.png",
+    "shell": "bare",
+    "faviconDomain": "todo.microsoft.com"
+  },
+  {
     "id": "office365",
     "label": "Office 365",
     "match": "office\\s*365|office\\.com|microsoft\\s*365",
@@ -3238,324 +2570,28 @@
     "faviconDomain": "outlook.com"
   },
   {
-    "id": "pxhere",
-    "label": "Pxhere",
-    "match": "pxhere|pxhere",
-    "src": "/assets/brand-icons/pxhere.png",
+    "id": "proxy-mkvn",
+    "label": "Proxy MKVN",
+    "match": "proxy\\s*mkvn|proxy-mkvn",
+    "src": "/assets/brand-icons/proxy-mkvn.png",
     "shell": "bare",
-    "faviconDomain": "pxhere.com"
+    "faviconDomain": "mkvn.net"
   },
   {
-    "id": "quizlet",
-    "label": "Quizlet",
-    "match": "quizlet|quizlet",
-    "src": "/assets/brand-icons/quizlet.png",
+    "id": "taphoammo",
+    "label": "TaphoaMMO",
+    "match": "taphoa\\s*mmo|taphoammo",
+    "src": "/assets/brand-icons/taphoammo.png",
     "shell": "bare",
-    "faviconDomain": "quizlet.com"
+    "faviconDomain": "taphoammo.net"
   },
   {
-    "id": "remitano",
-    "label": "Remitano",
-    "match": "remitano|remitano",
-    "src": "/assets/brand-icons/remitano.png",
+    "id": "vieon",
+    "label": "VieON",
+    "match": "vieon",
+    "src": "/assets/brand-icons/vieon.png",
     "shell": "bare",
-    "faviconDomain": "remitano.com"
-  },
-  {
-    "id": "secure-2co-com",
-    "label": "secure.2co.com",
-    "match": "secure\\.2co\\.com|\\b2co\\b",
-    "src": "/assets/brand-icons/secure-2co-com.png",
-    "shell": "bare",
-    "faviconDomain": "2co.com"
-  },
-  {
-    "id": "selltoolmmo",
-    "label": "selltoolmmo",
-    "match": "selltoolmmo|selltoolmmo",
-    "src": "/assets/brand-icons/selltoolmmo.png",
-    "shell": "bare",
-    "faviconDomain": "selltoolmmo.com"
-  },
-  {
-    "id": "servermin-selltoolmmo-com",
-    "label": "https://servermin.selltoolmmo.com/",
-    "match": "servermin\\.selltoolmmo\\.com|\\bselltoolmmo\\b",
-    "src": "/assets/brand-icons/servermin-selltoolmmo-com.png",
-    "shell": "bare",
-    "faviconDomain": "selltoolmmo.com"
-  },
-  {
-    "id": "shareprompt-net",
-    "label": "shareprompt.net",
-    "match": "shareprompt\\.net|\\bshareprompt\\b",
-    "src": "/assets/brand-icons/shareprompt-net.png",
-    "shell": "bare",
-    "faviconDomain": "shareprompt.net"
-  },
-  {
-    "id": "shipito-com",
-    "label": "Shipito.com",
-    "match": "shipito\\.com|\\bshipito\\b",
-    "src": "/assets/brand-icons/shipito-com.png",
-    "shell": "bare",
-    "faviconDomain": "shipito.com"
-  },
-  {
-    "id": "shipxanh",
-    "label": "Shipxanh",
-    "match": "shipxanh|shipxanh",
-    "src": "/assets/brand-icons/shipxanh.png",
-    "shell": "bare",
-    "faviconDomain": "shipxanh.com"
-  },
-  {
-    "id": "shopaccmmo",
-    "label": "Shopaccmmo",
-    "match": "shopaccmmo|shopaccmmo",
-    "src": "/assets/brand-icons/shopaccmmo.png",
-    "shell": "bare",
-    "faviconDomain": "shopaccmmo.net"
-  },
-  {
-    "id": "shoppy",
-    "label": "Shoppy",
-    "match": "shoppy|shoppy",
-    "src": "/assets/brand-icons/shoppy.png",
-    "shell": "bare",
-    "faviconDomain": "shoppy.com"
-  },
-  {
-    "id": "sieuthitool",
-    "label": "Sieuthitool",
-    "match": "sieuthitool|sieuthitool",
-    "src": "/assets/brand-icons/sieuthitool.png",
-    "shell": "bare",
-    "faviconDomain": "sieuthitool.com"
-  },
-  {
-    "id": "skynode-vn",
-    "label": "skynode.vn",
-    "match": "skynode\\.vn|\\bskynode\\b",
-    "src": "/assets/brand-icons/skynode-vn.png",
-    "shell": "bare",
-    "faviconDomain": "skynode.vn"
-  },
-  {
-    "id": "skype-web",
-    "label": "Skype Web",
-    "match": "skype\\s*web|web\\.skype\\.com",
-    "src": "/assets/brand-icons/skype-web.png",
-    "shell": "bare",
-    "faviconDomain": "web.skype.com"
-  },
-  {
-    "id": "soundraw",
-    "label": "Soundraw",
-    "match": "soundraw|soundraw",
-    "src": "/assets/brand-icons/soundraw.png",
-    "shell": "bare",
-    "faviconDomain": "soundraw.com"
-  },
-  {
-    "id": "splashtop",
-    "label": "Splashtop",
-    "match": "splashtop|splashtop",
-    "src": "/assets/brand-icons/splashtop.png",
-    "shell": "bare",
-    "faviconDomain": "splashtop.com"
-  },
-  {
-    "id": "storyblocks",
-    "label": "Storyblocks",
-    "match": "storyblocks|storyblocks",
-    "src": "/assets/brand-icons/storyblocks.png",
-    "shell": "bare",
-    "faviconDomain": "storyblocks.com"
-  },
-  {
-    "id": "storyboardhero",
-    "label": "Storyboardhero",
-    "match": "storyboardhero|storyboardhero",
-    "src": "/assets/brand-icons/storyboardhero.png",
-    "shell": "bare",
-    "faviconDomain": "storyboardhero.net"
-  },
-  {
-    "id": "taoviec-com",
-    "label": "taoviec.com",
-    "match": "taoviec\\.com|\\btaoviec\\b",
-    "src": "/assets/brand-icons/taoviec-com.png",
-    "shell": "bare",
-    "faviconDomain": "taoviec.com"
-  },
-  {
-    "id": "thuecloud-com",
-    "label": "thuecloud.com",
-    "match": "thuecloud\\.com|\\bthuecloud\\b",
-    "src": "/assets/brand-icons/thuecloud-com.png",
-    "shell": "bare",
-    "faviconDomain": "thuecloud.com"
-  },
-  {
-    "id": "thuetaikhoanbanquyen",
-    "label": "Thuetaikhoanbanquyen",
-    "match": "thuetaikhoanbanquyen|thuetaikhoanbanquyen",
-    "src": "/assets/brand-icons/thuetaikhoanbanquyen.png",
-    "shell": "bare",
-    "faviconDomain": "thuetaikhoanbanquyen.com"
-  },
-  {
-    "id": "tinypng",
-    "label": "TinyPNG",
-    "match": "tinypng|tinypng\\.com",
-    "src": "/assets/brand-icons/tinypng.png",
-    "shell": "bare",
-    "faviconDomain": "tinypng.com"
-  },
-  {
-    "id": "toolfb-vn",
-    "label": "toolfb.vn",
-    "match": "toolfb\\.vn|\\btoolfb\\b",
-    "src": "/assets/brand-icons/toolfb-vn.png",
-    "shell": "bare",
-    "faviconDomain": "toolfb.vn"
-  },
-  {
-    "id": "toolshop-vn",
-    "label": "toolshop.vn",
-    "match": "toolshop\\.vn|\\btoolshop\\b",
-    "src": "/assets/brand-icons/toolshop-vn.png",
-    "shell": "bare",
-    "faviconDomain": "toolshop.vn"
-  },
-  {
-    "id": "topmxh-vn",
-    "label": "topmxh.vn",
-    "match": "topmxh\\.vn|\\btopmxh\\b",
-    "src": "/assets/brand-icons/topmxh-vn.png",
-    "shell": "bare",
-    "faviconDomain": "topmxh.vn"
-  },
-  {
-    "id": "topproxy-vn",
-    "label": "topproxy.vn",
-    "match": "topproxy\\.vn|\\btopproxy\\b",
-    "src": "/assets/brand-icons/topproxy-vn.png",
-    "shell": "bare",
-    "faviconDomain": "topproxy.vn"
-  },
-  {
-    "id": "tplink",
-    "label": "TPLink",
-    "match": "tplink|tplink",
-    "src": "/assets/brand-icons/tplink.png",
-    "shell": "bare",
-    "faviconDomain": "tplink.net"
-  },
-  {
-    "id": "ultraviewer",
-    "label": "Ultraviewer",
-    "match": "ultraviewer|ultraviewer",
-    "src": "/assets/brand-icons/ultraviewer.png",
-    "shell": "bare",
-    "faviconDomain": "ultraviewer.vn"
-  },
-  {
-    "id": "via2fa-vn",
-    "label": "via2fa.vn",
-    "match": "via2fa\\.vn|\\bvia2fa\\b",
-    "src": "/assets/brand-icons/via2fa-vn.png",
-    "shell": "bare",
-    "faviconDomain": "via2fa.vn"
-  },
-  {
-    "id": "viaphi-com",
-    "label": "viaphi.com",
-    "match": "viaphi\\.com|\\bviaphi\\b",
-    "src": "/assets/brand-icons/viaphi-com.png",
-    "shell": "bare",
-    "faviconDomain": "viaphi.com"
-  },
-  {
-    "id": "videoscribe",
-    "label": "Videoscribe",
-    "match": "videoscribe|videoscribe",
-    "src": "/assets/brand-icons/videoscribe.png",
-    "shell": "bare",
-    "faviconDomain": "videoscribe.com"
-  },
-  {
-    "id": "vietpn",
-    "label": "VietPN",
-    "match": "vietpn|vietpn",
-    "src": "/assets/brand-icons/vietpn.png",
-    "shell": "bare",
-    "faviconDomain": "vietpn.com"
-  },
-  {
-    "id": "visualviet-com",
-    "label": "VisualViet.com",
-    "match": "visualviet\\.com|\\bvisualviet\\b",
-    "src": "/assets/brand-icons/visualviet-com.png",
-    "shell": "bare",
-    "faviconDomain": "visualviet.com"
-  },
-  {
-    "id": "vlclone-com",
-    "label": "vlclone.com",
-    "match": "vlclone\\.com|\\bvlclone\\b",
-    "src": "/assets/brand-icons/vlclone-com.png",
-    "shell": "bare",
-    "faviconDomain": "vlclone.com"
-  },
-  {
-    "id": "vpssieutoc",
-    "label": "VPSSieutoc",
-    "match": "vpssieutoc|vpssieutoc",
-    "src": "/assets/brand-icons/vpssieutoc.png",
-    "shell": "bare",
-    "faviconDomain": "vpssieutoc.vn"
-  },
-  {
-    "id": "vtv-go",
-    "label": "VTV Go",
-    "match": "vtv\\s*go|vtvgo",
-    "src": "/assets/brand-icons/vtv-go.png",
-    "shell": "bare",
-    "faviconDomain": "vtvgo.com"
-  },
-  {
-    "id": "wallhaven",
-    "label": "wallhaven",
-    "match": "wallhaven|wallhaven",
-    "src": "/assets/brand-icons/wallhaven.png",
-    "shell": "bare",
-    "faviconDomain": "wallhaven.com"
-  },
-  {
-    "id": "webmoney",
-    "label": "Webmoney",
-    "match": "webmoney|webmoney",
-    "src": "/assets/brand-icons/webmoney.png",
-    "shell": "bare",
-    "faviconDomain": "webmoney.com"
-  },
-  {
-    "id": "wink",
-    "label": "Wink",
-    "match": "\\bwink\\b",
-    "src": "/assets/brand-icons/wink.png",
-    "shell": "bare",
-    "faviconDomain": "wink.meitu.com"
-  },
-  {
-    "id": "xamvn",
-    "label": "Xamvn",
-    "match": "xamvn|xamvn",
-    "src": "/assets/brand-icons/xamvn.png",
-    "shell": "bare",
-    "faviconDomain": "xamvn.com"
+    "faviconDomain": "vieon.vn"
   },
   {
     "id": "xbox",
@@ -3694,28 +2730,12 @@
     "faviconDomain": "moz.com"
   },
   {
-    "id": "mql5",
-    "label": "MQL5",
-    "match": "mql5|mql5",
-    "src": "/assets/brand-icons/mql5.png",
-    "shell": "bare",
-    "faviconDomain": "mql5.com"
-  },
-  {
     "id": "msb",
     "label": "MSB",
     "match": "\\bmsb\\b",
     "src": "/assets/brand-icons/msb.png",
     "shell": "bare",
     "faviconDomain": "www.msb.com.vn"
-  },
-  {
-    "id": "muaproxyvietnam",
-    "label": "Muaproxyvietnam",
-    "match": "muaproxyvietnam|muaproxyvietnam",
-    "src": "/assets/brand-icons/muaproxyvietnam.png",
-    "shell": "bare",
-    "faviconDomain": "muaproxyvietnam.com"
   },
   {
     "id": "mullvad",
@@ -3726,28 +2746,12 @@
     "faviconDomain": "mullvad.net"
   },
   {
-    "id": "multcloud-com",
-    "label": "multcloud.com",
-    "match": "multcloud\\.com|\\bmultcloud\\b",
-    "src": "/assets/brand-icons/multcloud-com.png",
-    "shell": "bare",
-    "faviconDomain": "multcloud.com"
-  },
-  {
     "id": "myfonts",
     "label": "MyFonts",
     "match": "myfonts|myfonts\\.com",
     "src": "/assets/brand-icons/myfonts.png",
     "shell": "bare",
     "faviconDomain": "myfonts.com"
-  },
-  {
-    "id": "myspace",
-    "label": "Myspace",
-    "match": "myspace|myspace",
-    "src": "/assets/brand-icons/myspace.png",
-    "shell": "bare",
-    "faviconDomain": "myspace.com"
   },
   {
     "id": "namabank",
@@ -3812,30 +2816,6 @@
     "src": "/assets/brand-icons/newrelic.png",
     "shell": "bare",
     "faviconDomain": "newrelic.com"
-  },
-  {
-    "id": "nganluong-vn",
-    "label": "nganluong.vn",
-    "match": "nganluong\\.vn|\\bnganluong\\b",
-    "src": "/assets/brand-icons/nganluong-vn.png",
-    "shell": "bare",
-    "faviconDomain": "nganluong.vn"
-  },
-  {
-    "id": "nhanh-vn",
-    "label": "Nhanh.vn",
-    "match": "nhanh\\.vn|\\bnhanh\\b",
-    "src": "/assets/brand-icons/nhanh-vn.png",
-    "shell": "bare",
-    "faviconDomain": "nhanh.vn"
-  },
-  {
-    "id": "nhungoc-me",
-    "label": "nhungoc.me",
-    "match": "nhungoc\\.me|\\bnhungoc\\b",
-    "src": "/assets/brand-icons/nhungoc-me.png",
-    "shell": "bare",
-    "faviconDomain": "nhungoc.me"
   },
   {
     "id": "nintendo",
@@ -3917,14 +2897,6 @@
     "faviconDomain": "ocb.com.vn"
   },
   {
-    "id": "okko-tv",
-    "label": "okko.tv",
-    "match": "okko\\.tv|\\bokko\\b",
-    "src": "/assets/brand-icons/okko-tv.png",
-    "shell": "bare",
-    "faviconDomain": "okko.tv"
-  },
-  {
     "id": "okta",
     "label": "Okta",
     "match": "okta|okta\\.com",
@@ -4003,14 +2975,6 @@
     "src": "/assets/brand-icons/oppo.png",
     "shell": "bare",
     "faviconDomain": "oppo.com"
-  },
-  {
-    "id": "opusclip",
-    "label": "OpusClip",
-    "match": "opusclip|opusclip",
-    "src": "/assets/brand-icons/opusclip.png",
-    "shell": "bare",
-    "faviconDomain": "opusclip.com"
   },
   {
     "id": "oracle",
@@ -4205,14 +3169,6 @@
     "faviconDomain": "postman.com"
   },
   {
-    "id": "prismascribe",
-    "label": "prismascribe",
-    "match": "prismascribe|prismascribe",
-    "src": "/assets/brand-icons/prismascribe.png",
-    "shell": "bare",
-    "faviconDomain": "prismascribe.com"
-  },
-  {
     "id": "private-internet-access",
     "label": "PIA",
     "match": "pia|private.?internet|vpn\\s*pia",
@@ -4253,35 +3209,12 @@
     "faviconDomain": "protonvpn.com"
   },
   {
-    "id": "proxy-mkvn",
-    "label": "Proxy MKVN",
-    "match": "proxy\\s*mkvn|mkvn\\s*proxy|\\bmkvn\\b",
-    "src": "/assets/brand-icons/proxy-mkvn.png",
-    "shell": "bare",
-    "faviconDomain": "proxy.mkvn.net"
-  },
-  {
     "id": "proxy",
     "label": "Proxy",
-    "match": "^proxy$",
-    "src": "/icons/proxy.svg",
-    "shell": "bare"
-  },
-  {
-    "id": "proxy-seller",
-    "label": "Proxy-seller",
-    "match": "proxy\\s*seller|proxyseller",
-    "src": "/assets/brand-icons/proxy-seller.png",
+    "match": "^proxy\\b|\\bproxy\\b",
+    "src": "/assets/brand-icons/proxy.png",
     "shell": "bare",
-    "faviconDomain": "proxyseller.com"
-  },
-  {
-    "id": "proxyv6",
-    "label": "Proxyv6",
-    "match": "proxyv6|proxyv6",
-    "src": "/assets/brand-icons/proxyv6.png",
-    "shell": "bare",
-    "faviconDomain": "proxyv6.com"
+    "faviconDomain": "www.proxy.com"
   },
   {
     "id": "pubg",
@@ -4354,30 +3287,6 @@
     "src": "/assets/brand-icons/railway.png",
     "shell": "bare",
     "faviconDomain": "railway.app"
-  },
-  {
-    "id": "rapidapi",
-    "label": "RapidAPI",
-    "match": "rapidapi|rapidapi",
-    "src": "/assets/brand-icons/rapidapi.png",
-    "shell": "bare",
-    "faviconDomain": "rapidapi.com"
-  },
-  {
-    "id": "rawpixel",
-    "label": "rawpixel",
-    "match": "rawpixel|rawpixel",
-    "src": "/assets/brand-icons/rawpixel.png",
-    "shell": "bare",
-    "faviconDomain": "rawpixel.com"
-  },
-  {
-    "id": "razer",
-    "label": "Razer",
-    "match": "razer|razer",
-    "src": "/assets/brand-icons/razer.png",
-    "shell": "bare",
-    "faviconDomain": "razer.com"
   },
   {
     "id": "reddit",
@@ -4474,14 +3383,6 @@
     "src": "/assets/brand-icons/roblox.png",
     "shell": "bare",
     "faviconDomain": "roblox.com"
-  },
-  {
-    "id": "roboforex",
-    "label": "Roboforex",
-    "match": "roboforex|roboforex",
-    "src": "/assets/brand-icons/roboforex.png",
-    "shell": "bare",
-    "faviconDomain": "roboforex.com"
   },
   {
     "id": "rottentomatoes",
@@ -4668,28 +3569,12 @@
     "faviconDomain": "shopeepay.vn"
   },
   {
-    "id": "shophunter",
-    "label": "Shophunter",
-    "match": "shophunter|shophunter",
-    "src": "/assets/brand-icons/shophunter.png",
-    "shell": "bare",
-    "faviconDomain": "shophunter.com"
-  },
-  {
     "id": "shopify",
     "label": "Shopify",
     "match": "shopify|shopify\\.com",
     "src": "/assets/brand-icons/shopify.png",
     "shell": "bare",
     "faviconDomain": "shopify.com"
-  },
-  {
-    "id": "shopmini-net",
-    "label": "shopmini.net",
-    "match": "shopmini\\.net|\\bshopmini\\b",
-    "src": "/assets/brand-icons/shopmini-net.png",
-    "shell": "bare",
-    "faviconDomain": "shopmini.net"
   },
   {
     "id": "shopvia",
@@ -4780,12 +3665,12 @@
     "faviconDomain": "smodin.io"
   },
   {
-    "id": "smspool",
-    "label": "SmsPool",
-    "match": "smspool|smspool",
-    "src": "/assets/brand-icons/smspool.png",
+    "id": "sms-activate",
+    "label": "SMS-Activate",
+    "match": "sms\\s*activate|sms-activate",
+    "src": "/assets/brand-icons/sms-activate.png",
     "shell": "bare",
-    "faviconDomain": "smspool.com"
+    "faviconDomain": "sms-activate.io"
   },
   {
     "id": "smspva",
@@ -4810,14 +3695,6 @@
     "src": "/assets/brand-icons/snowflake.png",
     "shell": "bare",
     "faviconDomain": "snowflake.com"
-  },
-  {
-    "id": "social-blade",
-    "label": "Social Blade",
-    "match": "social\\s*blade|socialblade",
-    "src": "/assets/brand-icons/social-blade.png",
-    "shell": "bare",
-    "faviconDomain": "socialblade.com"
   },
   {
     "id": "solscan",
@@ -4898,14 +3775,6 @@
     "src": "/assets/brand-icons/stackoverflow.png",
     "shell": "bare",
     "faviconDomain": "stackoverflow.com"
-  },
-  {
-    "id": "startrader",
-    "label": "StarTrader",
-    "match": "startrader|startrader",
-    "src": "/assets/brand-icons/startrader.png",
-    "shell": "bare",
-    "faviconDomain": "startrader.com"
   },
   {
     "id": "statuspage",
@@ -5012,41 +3881,12 @@
     "faviconDomain": "tailscale.com"
   },
   {
-    "id": "tangtheodoi-vn",
-    "label": "tangtheodoi.vn",
-    "match": "tangtheodoi\\.vn|\\btangtheodoi\\b",
-    "src": "/assets/brand-icons/tangtheodoi-vn.png",
-    "shell": "bare",
-    "faviconDomain": "tangtheodoi.vn"
-  },
-  {
     "id": "taobao",
     "label": "Taobao",
     "match": "taobao|taobao\\.com",
     "src": "/assets/brand-icons/taobao.png",
     "shell": "bare",
     "faviconDomain": "taobao.com"
-  },
-  {
-    "id": "taobillnhanh-xyz",
-    "label": "taobillnhanh.xyz",
-    "match": "taobillnhanh\\.xyz|\\btaobillnhanh\\b",
-    "src": "/assets/brand-icons/taobillnhanh-xyz.png",
-    "shell": "bare",
-    "faviconDomain": "taobillnhanh.xyz"
-  },
-  {
-    "id": "taphoammo",
-    "label": "TaphoaMMO",
-    "match": "taphoa\\s*mmo|taphoammo",
-    "src": "/assets/brand-icons/taphoammo.png",
-    "shell": "bare",
-    "faviconDomain": "taphoammo.pro",
-    "faviconDomains": [
-      "taphoammo.net",
-      "taphoammo.pro",
-      "taphoammo.vn"
-    ]
   },
   {
     "id": "target",
@@ -5112,28 +3952,12 @@
     "faviconDomain": "tencent.com"
   },
   {
-    "id": "tenten",
-    "label": "Tenten",
-    "match": "tenten|tenten",
-    "src": "/assets/brand-icons/tenten.png",
-    "shell": "bare",
-    "faviconDomain": "tenten.vn"
-  },
-  {
     "id": "terraform",
     "label": "Terraform",
     "match": "terraform|terraform\\.io",
     "src": "/assets/brand-icons/terraform.png",
     "shell": "bare",
     "faviconDomain": "terraform.io"
-  },
-  {
-    "id": "text-blaze",
-    "label": "Text blaze",
-    "match": "text\\s*blaze|textblaze",
-    "src": "/assets/brand-icons/text-blaze.png",
-    "shell": "bare",
-    "faviconDomain": "textblaze.com"
   },
   {
     "id": "textnow",
@@ -5232,22 +4056,6 @@
     "faviconDomain": "timviecnhanh.com"
   },
   {
-    "id": "tino-vn",
-    "label": "Tino.vn",
-    "match": "tino\\.vn|\\btino\\b",
-    "src": "/assets/brand-icons/tino-vn.png",
-    "shell": "bare",
-    "faviconDomain": "tino.vn"
-  },
-  {
-    "id": "tinsoft",
-    "label": "Tinsoft",
-    "match": "tinsoft|tinsoft",
-    "src": "/assets/brand-icons/tinsoft.png",
-    "shell": "bare",
-    "faviconDomain": "tinsoft.com"
-  },
-  {
     "id": "tinypng-jpg",
     "label": "TinyJPG",
     "match": "tinypng\\s*jpg|tinyjpg\\.com",
@@ -5256,28 +4064,12 @@
     "faviconDomain": "tinyjpg.com"
   },
   {
-    "id": "tm-proxy",
-    "label": "TM Proxy",
-    "match": "tm\\s*proxy|tmproxy",
-    "src": "/assets/brand-icons/tm-proxy.png",
-    "shell": "bare",
-    "faviconDomain": "tmproxy.com"
-  },
-  {
     "id": "tmall",
     "label": "Tmall",
     "match": "tmall|tmall\\.com",
     "src": "/assets/brand-icons/tmall.png",
     "shell": "bare",
     "faviconDomain": "tmall.com"
-  },
-  {
-    "id": "tmgm",
-    "label": "TMGM",
-    "match": "tmgm|tmgm",
-    "src": "/assets/brand-icons/tmgm.png",
-    "shell": "bare",
-    "faviconDomain": "tmgm.com"
   },
   {
     "id": "todoist",
@@ -5384,14 +4176,6 @@
     "faviconDomain": "tuoitre.vn"
   },
   {
-    "id": "tuongtacmax-com",
-    "label": "tuongtacmax.com/",
-    "match": "tuongtacmax\\.com|\\btuongtacmax\\b",
-    "src": "/assets/brand-icons/tuongtacmax-com.png",
-    "shell": "bare",
-    "faviconDomain": "tuongtacmax.com"
-  },
-  {
     "id": "turboscribe",
     "label": "TurboScribe",
     "match": "turboscribe",
@@ -5464,28 +4248,12 @@
     "faviconDomain": "udemy.com"
   },
   {
-    "id": "ugphone",
-    "label": "UGphone",
-    "match": "ugphone|ugphone",
-    "src": "/assets/brand-icons/ugphone.png",
-    "shell": "bare",
-    "faviconDomain": "ugphone.com"
-  },
-  {
     "id": "umee",
     "label": "Umee",
     "match": "\\bumee\\b",
     "src": "/assets/brand-icons/umee.png",
     "shell": "bare",
     "faviconDomain": "umee.vn"
-  },
-  {
-    "id": "unext",
-    "label": "unext",
-    "match": "unext|unext",
-    "src": "/assets/brand-icons/unext.png",
-    "shell": "bare",
-    "faviconDomain": "unext.vn"
   },
   {
     "id": "uniswap",
@@ -5502,14 +4270,6 @@
     "src": "/assets/brand-icons/unity.png",
     "shell": "bare",
     "faviconDomain": "unity.com"
-  },
-  {
-    "id": "unkeyapp",
-    "label": "Unkeyapp",
-    "match": "unkeyapp|unkeyapp",
-    "src": "/assets/brand-icons/unkeyapp.png",
-    "shell": "bare",
-    "faviconDomain": "unkeyapp.com"
   },
   {
     "id": "unreal",
@@ -5536,14 +4296,6 @@
     "faviconDomain": "upstash.com"
   },
   {
-    "id": "v0-dev",
-    "label": "v0.dev",
-    "match": "v0\\.dev|\\bv0\\b",
-    "src": "/assets/brand-icons/v0-dev.png",
-    "shell": "bare",
-    "faviconDomain": "v0.dev"
-  },
-  {
     "id": "veed",
     "label": "Veed",
     "match": "veed",
@@ -5565,14 +4317,6 @@
     "match": "vercel",
     "src": "/icons/vercel.svg",
     "shell": "darkInk"
-  },
-  {
-    "id": "viafbstore-com",
-    "label": "viafbstore.com",
-    "match": "viafbstore\\.com|\\bviafbstore\\b",
-    "src": "/assets/brand-icons/viafbstore-com.png",
-    "shell": "bare",
-    "faviconDomain": "viafbstore.com"
   },
   {
     "id": "vib",
@@ -5597,14 +4341,6 @@
     "src": "/assets/brand-icons/vidiq.png",
     "shell": "bare",
     "faviconDomain": "vidiq.com"
-  },
-  {
-    "id": "vieon",
-    "label": "VieON",
-    "match": "vieon|vieon",
-    "src": "/assets/brand-icons/vieon.png",
-    "shell": "bare",
-    "faviconDomain": "vieon.vn"
   },
   {
     "id": "vietcombank",
@@ -5679,14 +4415,6 @@
     "faviconDomain": "vinaphone.com.vn"
   },
   {
-    "id": "viotp",
-    "label": "ViOTP",
-    "match": "viotp|viotp",
-    "src": "/assets/brand-icons/viotp.png",
-    "shell": "bare",
-    "faviconDomain": "viotp.com"
-  },
-  {
     "id": "visa",
     "label": "Visa",
     "match": "visa|visa\\.com",
@@ -5719,28 +4447,12 @@
     "faviconDomain": "vivo.com"
   },
   {
-    "id": "vmake",
-    "label": "Vmake",
-    "match": "vmake|vmake",
-    "src": "/assets/brand-icons/vmake.png",
-    "shell": "bare",
-    "faviconDomain": "vmake.net"
-  },
-  {
     "id": "vmware",
     "label": "VMware",
     "match": "vmware",
     "src": "/assets/brand-icons/vmware.png",
     "shell": "bare",
     "faviconDomain": "vmware.com"
-  },
-  {
-    "id": "vneid",
-    "label": "VNEID",
-    "match": "vneid|vneid",
-    "src": "/assets/brand-icons/vneid.png",
-    "shell": "bare",
-    "faviconDomain": "vneid.com"
   },
   {
     "id": "vnexpress",
@@ -5759,14 +4471,6 @@
     "faviconDomain": "vng.com.vn"
   },
   {
-    "id": "vnpay",
-    "label": "VNPAY",
-    "match": "vnpay|vnpay",
-    "src": "/assets/brand-icons/vnpay.png",
-    "shell": "bare",
-    "faviconDomain": "vnpay.vn"
-  },
-  {
     "id": "vnpt",
     "label": "VNPT",
     "match": "vnpt|vnpt\\.com\\.vn",
@@ -5781,14 +4485,6 @@
     "src": "/assets/brand-icons/vozforum.png",
     "shell": "bare",
     "faviconDomain": "voz.vn"
-  },
-  {
-    "id": "vozo",
-    "label": "Vozo",
-    "match": "vozo|vozo",
-    "src": "/assets/brand-icons/vozo.png",
-    "shell": "bare",
-    "faviconDomain": "vozo.com"
   },
   {
     "id": "vpbank",
@@ -5829,14 +4525,6 @@
     "src": "/assets/brand-icons/walmart.png",
     "shell": "bare",
     "faviconDomain": "walmart.com"
-  },
-  {
-    "id": "wavespeed",
-    "label": "WaveSpeed",
-    "match": "wavespeed|wavespeed",
-    "src": "/assets/brand-icons/wavespeed.png",
-    "shell": "bare",
-    "faviconDomain": "wavespeed.net"
   },
   {
     "id": "we-transfer",
@@ -5943,12 +4631,12 @@
     "faviconDomain": "windsurf.com"
   },
   {
-    "id": "winmail",
-    "label": "Winmail",
-    "match": "winmail|winmail",
-    "src": "/assets/brand-icons/winmail.png",
+    "id": "wink",
+    "label": "Wink",
+    "match": "\\bwink\\b",
+    "src": "/assets/brand-icons/wink.png",
     "shell": "bare",
-    "faviconDomain": "winmail.net"
+    "faviconDomain": "wink.meitu.com"
   },
   {
     "id": "wise",
@@ -6031,30 +4719,6 @@
     "faviconDomain": "xm.com"
   },
   {
-    "id": "xmind",
-    "label": "xmind",
-    "match": "xmind|xmind",
-    "src": "/assets/brand-icons/xmind.png",
-    "shell": "bare",
-    "faviconDomain": "xmind.com"
-  },
-  {
-    "id": "xomkey",
-    "label": "Xomkey",
-    "match": "xomkey|xomkey",
-    "src": "/assets/brand-icons/xomkey.png",
-    "shell": "bare",
-    "faviconDomain": "xomkey.com"
-  },
-  {
-    "id": "xtb",
-    "label": "XTB",
-    "match": "xtb|xtb",
-    "src": "/assets/brand-icons/xtb.png",
-    "shell": "bare",
-    "faviconDomain": "xtb.com"
-  },
-  {
     "id": "yahoo",
     "label": "Yahoo",
     "match": "yahoo|yahoo\\.com",
@@ -6126,14 +4790,6 @@
     "faviconDomain": "zendesk.com"
   },
   {
-    "id": "zenflowchart",
-    "label": "Zenflowchart",
-    "match": "zenflowchart|zenflowchart",
-    "src": "/assets/brand-icons/zenflowchart.png",
-    "shell": "bare",
-    "faviconDomain": "zenflowchart.com"
-  },
-  {
     "id": "zing",
     "label": "Zing",
     "match": "\\bzing\\b|zingmp3|id\\.zing",
@@ -6148,14 +4804,6 @@
     "src": "/assets/brand-icons/zingnews.png",
     "shell": "bare",
     "faviconDomain": "zingnews.vn"
-  },
-  {
-    "id": "zingproxy",
-    "label": "Zingproxy",
-    "match": "zingproxy|zingproxy",
-    "src": "/assets/brand-icons/zingproxy.png",
-    "shell": "bare",
-    "faviconDomain": "zingproxy.com"
   },
   {
     "id": "zoho",

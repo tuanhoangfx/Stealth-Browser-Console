@@ -4,10 +4,13 @@ $ErrorActionPreference = 'Stop'
 function Ensure-StealthTaskbarWinType {
   $cacheDir = Join-Path $env:TEMP 'stealth-taskbar-badges'
   if (-not (Test-Path -LiteralPath $cacheDir)) { New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null }
+  # v5: pin EnumWindows callbacks. Inline lambdas are not GC roots; once enough Chrome
+  # HWNDs exist (~10 profiles) the StringBuilder allocs inside the callback trigger GC,
+  # the delegate is collected mid-enum, and every later stamp fails (first wave keeps labels).
   # v4: title-prefix HWND fallback (burst-open pid=0). No WMI on the hot path.
   # v2: no RelaunchIconResource (Win11 ignores WM_SETICON when that property is set);
   # stamp SETICON on all top-level visible HWNDs for the browser PID.
-  $dll = Join-Path $cacheDir 'StealthTaskbarWin.v4.dll'
+  $dll = Join-Path $cacheDir 'StealthTaskbarWin.v5.dll'
   if (-not (Test-Path -LiteralPath $dll)) {
     Add-Type -TypeDefinition @"
 using System;
@@ -50,6 +53,10 @@ public static class StealthTaskbarWin {
   public static readonly PropertyKey PKEY_AppUserModel_RelaunchIconResource = new PropertyKey { fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 3 };
   public static readonly PropertyKey PKEY_AppUserModel_RelaunchDisplayNameResource = new PropertyKey { fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), pid = 4 };
   public static PropVariant MakeString(string value) { return new PropVariant { vt = 31, p = Marshal.StringToCoTaskMemUni(value) }; }
+  // Root EnumWindows procs for the whole call. Do not pass an inline lambda.
+  static EnumWindowsProc _cbFindVisible;
+  static EnumWindowsProc _cbFindAll;
+  static EnumWindowsProc _cbFindTitle;
   // Clear stale RelaunchIconResource so Win11 taskbar honors WM_SETICON again.
   public static void ApplyAppUserModel(IntPtr hwnd, string id, string displayName) {
     IPropertyStore store; Guid iid = IID_IPropertyStore;
@@ -64,7 +71,7 @@ public static class StealthTaskbarWin {
   }
   public static IntPtr FindVisibleHwnd(uint[] pids) {
     var set = new HashSet<uint>(pids); IntPtr best = IntPtr.Zero; int bestArea = -1; IntPtr emptyTitle = IntPtr.Zero;
-    EnumWindows((h, l) => {
+    _cbFindVisible = (h, l) => {
       if (!IsWindowVisible(h) && !IsIconic(h)) return true;
       uint pid; GetWindowThreadProcessId(h, out pid); if (!set.Contains(pid)) return true;
       RECT r; GetWindowRect(h, out r);
@@ -73,16 +80,20 @@ public static class StealthTaskbarWin {
       if (sb.Length == 0) { if (emptyTitle == IntPtr.Zero) emptyTitle = h; return true; }
       if (area > bestArea) { bestArea = area; best = h; }
       return true;
-    }, IntPtr.Zero);
+    };
+    EnumWindows(_cbFindVisible, IntPtr.Zero);
+    GC.KeepAlive(_cbFindVisible);
     if (best != IntPtr.Zero) return best; return emptyTitle;
   }
   public static IntPtr[] FindAllVisibleHwnds(uint[] pids) {
     var set = new HashSet<uint>(pids); var list = new List<IntPtr>();
-    EnumWindows((h, l) => {
+    _cbFindAll = (h, l) => {
       if (!IsWindowVisible(h) && !IsIconic(h)) return true;
       uint pid; GetWindowThreadProcessId(h, out pid); if (!set.Contains(pid)) return true;
       list.Add(h); return true;
-    }, IntPtr.Zero);
+    };
+    EnumWindows(_cbFindAll, IntPtr.Zero);
+    GC.KeepAlive(_cbFindAll);
     return list.ToArray();
   }
   public static void StampIcons(IntPtr hwnd, IntPtr hiSmall, IntPtr hiBig) {
@@ -105,7 +116,7 @@ public static class StealthTaskbarWin {
   public static IntPtr[] FindHwndsByTitlePrefix(string label) {
     var list = new List<IntPtr>();
     if (string.IsNullOrEmpty(label)) return list.ToArray();
-    EnumWindows((h, l) => {
+    _cbFindTitle = (h, l) => {
       if (!IsWindowVisible(h) && !IsIconic(h)) return true;
       var cls = new StringBuilder(64);
       GetClassName(h, cls, 64);
@@ -115,7 +126,9 @@ public static class StealthTaskbarWin {
       if (!TitleMatchesLabel(sb.ToString(), label)) return true;
       list.Add(h);
       return true;
-    }, IntPtr.Zero);
+    };
+    EnumWindows(_cbFindTitle, IntPtr.Zero);
+    GC.KeepAlive(_cbFindTitle);
     return list.ToArray();
   }
 }

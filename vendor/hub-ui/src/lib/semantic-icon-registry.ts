@@ -232,12 +232,12 @@ const REGISTRY: Record<SemanticIconKey, SemanticIconMeta> = {
   "filter.permission": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
   "filter.access": { icon: ShieldCheck, className: "text-emerald-300", tone: "emerald" },
   "filter.note": { icon: FileText, className: "text-indigo-300", tone: "indigo" },
+  "filter.team": { icon: Users, className: "text-sky-300", tone: "sky" },
   "filter.type": { icon: Layers, className: "text-indigo-300", tone: "indigo" },
   "filter.source": { icon: Link2, className: "text-emerald-300", tone: "emerald" },
   "filter.project": { icon: FolderOpen, className: "text-indigo-300", tone: "indigo" },
   "filter.priority": { icon: Star, className: "text-amber-400/90", tone: "amber" },
   "filter.creator": { icon: Users, className: "text-sky-300", tone: "sky" },
-  "filter.team": { icon: Users, className: "text-sky-300", tone: "sky" },
   "filter.category": { icon: Layers, className: "text-indigo-400", tone: "indigo" },
   "filter.deploy": { icon: Rocket, className: "text-sky-400", tone: "sky" },
   "filter.drift": { icon: AlertTriangle, className: "text-rose-400", tone: "rose" },
@@ -426,96 +426,13 @@ export function semanticFilterMeta(key: SemanticIconLookupKey): FilterIconMeta {
   return { icon, className };
 }
 
-/** KPI tile stickers are emoji only — Lucide stays on filters / TOC / header stats. */
-const KPI_STICKER_EMOJI: Partial<Record<SemanticIconKey, string>> = {
-  "kpi.total": "📊",
-  "kpi.live": "📡",
-  "kpi.catalog": "📁",
-  "kpi.orgs": "🏢",
-  "kpi.errors": "⚠️",
-  "kpi.restricted": "🔒",
-  "kpi.hosts": "🖥️",
-  "kpi.drift": "⚠️",
-  "kpi.toolsLinked": "🔗",
-  "kpi.ready": "✅",
-  "kpi.apiTotal": "📈",
-  "kpi.apiRest": "⏱️",
-  "kpi.agent.items": "📋",
-  "kpi.agent.rules": "📜",
-  "kpi.agent.skills": "🧩",
-  "kpi.agent.patterns": "✨",
-  "kpi.agent.subagents": "👥",
-  "kpi.agent.commands": "⌨️",
-  "kpi.agent.always": "📌",
-  "kpi.agent.requestable": "🙋",
-  "kpi.schema.fields": "🗃️",
-  "kpi.schema.groups": "📂",
-  "kpi.schema.input": "✏️",
-  "kpi.schema.options": "📝",
-  "kpi.schema.pk": "🔑",
-  "kpi.schema.auto": "🤖",
-  "kpi.schema.derive": "🔄",
-  "kpi.schema.readonly": "🔒",
-  "kpi.fanpages.pages": "📄",
-  "kpi.fanpages.linked": "🔗",
-  "kpi.fanpages.chatbotLive": "💬",
-  "kpi.fanpages.posts": "📰",
-  "kpi.fanpages.reactions": "❤️",
-  "kpi.groups.total": "👥",
-  "kpi.groups.listed": "✅",
-  "kpi.groups.off": "🚫",
-  "kpi.groups.selected": "☑️",
-  "kpi.groups.saved": "💾",
-  "kpi.channels.total": "📡",
-  "kpi.channels.connected": "🟢",
-  "kpi.channels.planned": "🟡",
-  "kpi.channels.setup": "🔧",
-  "kpi.personalities.total": "🧠",
-  "kpi.personalities.ragOn": "📚",
-  "kpi.personalities.noRag": "📭",
-  "kpi.inbox.threads": "💬",
-  "kpi.inbox.groups": "👥",
-  "kpi.inbox.dms": "✉️",
-  "kpi.inbox.unread": "🔔",
-  "kpi.inbox.zaloReplies": "💬",
-  "kpi.inbox.messengerReplies": "💬",
-  "kpi.bots.total": "🤖",
-  "kpi.bots.online": "🟢",
-  "kpi.bots.chatbotLive": "▶️",
-  "kpi.jobs.total": "🎬",
-  "kpi.jobs.completed": "✅",
-  "kpi.jobs.processing": "⏳",
-  "kpi.jobs.failed": "❌",
-  "kpi.fanpages.worker": "⚙️",
-  "kpi.fanpages.webhook": "🪝",
-  "kpi.fanpages.tokenHealth": "🛡️",
-  "kpi.fanpages.lastReply": "🕐",
-  "kpi.fanpages.rag": "🧠",
-  "template.total": "🧩",
-  "template.locked": "🔒",
-  "template.preview": "👁️",
-  "template.draft": "📝",
-  "template.published": "🌐",
-  "template.variants": "📚",
-  "template.features": "✨",
-  "template.archived": "📦",
-};
-
-const KPI_STICKER_FALLBACK_EMOJI = "📊";
-
 export function semanticKpiIcon(key: SemanticIconLookupKey): {
-  emojiGlyph: string;
-  tone: KpiStripTone;
-  /** Kept for non-KPI callers that still read `.icon` (filters / page glyphs). */
   icon: SemanticIconMeta["icon"];
+  tone: KpiStripTone;
+  brandIcon?: HubBrandIconId;
 } {
   const spec = resolveSemanticIcon(key);
-  const resolved = normalizeSemanticIconKey(key);
-  return {
-    emojiGlyph: KPI_STICKER_EMOJI[resolved] ?? KPI_STICKER_FALLBACK_EMOJI,
-    tone: spec.tone ?? "indigo",
-    icon: spec.icon,
-  };
+  return { icon: spec.icon, tone: spec.tone ?? "indigo", brandIcon: spec.brandIcon };
 }
 
 /** Tab header stat line — icon + Tailwind tone class. */
