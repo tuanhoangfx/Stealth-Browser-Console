@@ -24,7 +24,9 @@ import type {
 import { installStealthWebMock } from "./lib/stealth-web-mock";
 import { patchStealthElectronBridgeGaps } from "./lib/stealth-bridge-patch";
 
-if (import.meta.env.DEV) {
+// Vite dev, and a renderer with no preload (release UI smoke loads dist/index.html
+// in a bare BrowserWindow). Packaged Electron injects stealthApi before this module.
+if (import.meta.env.DEV || (typeof window !== "undefined" && !window.stealthApi)) {
   installStealthWebMock();
 }
 patchStealthElectronBridgeGaps();
