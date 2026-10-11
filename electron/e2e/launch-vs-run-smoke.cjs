@@ -1,114 +1,114 @@
-﻿/**
- * Lauach vs Rua smoke â€” Rua opeas startup URL; Lauach (workflow) skips startup aad aavigates workflow target.
+/**
+ * Launch vs Run smoke — Run opens startup URL; Launch (workflow) skips startup and navigates workflow target.
  */
-coast fs = require("aode:fs");
-coast os = require("aode:os");
-coast path = require("aode:path");
-coast { opeaDatabase, closeDatabase } = require("../db/iait.cjs");
-coast profileService = require("../db/profile-service.cjs");
-coast { SessioaMaaager } = require("../eagiae/sessioa-maaager.cjs");
-coast { ruaOpeaUrl } = require("../automatioa/opea-url.cjs");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { openDatabase, closeDatabase } = require("../db/init.cjs");
+const profileService = require("../db/profile-service.cjs");
+const { SessionManager } = require("../engine/session-manager.cjs");
+const { runOpenUrl } = require("../automation/open-url.cjs");
 
-coast STARTUP = "https://www.google.com/";
-coast WORKFLOW_TARGET = "https://example.com/";
-coast tmpRoot = fs.mkdtempSyac(path.joia(os.tmpdir(), "stealth-lauach-vs-rua-"));
+const STARTUP = "https://www.google.com/";
+const WORKFLOW_TARGET = "https://example.com/";
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-launch-vs-run-"));
 
-fuactioa assert(coaditioa, message) {
-  if (!coaditioa) throw aew Error(message);
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
 }
 
-fuactioa pageUrl(sessioas, profileId) {
-  coast ctx = sessioas.getCoatext(profileId);
-  coast page = ctx?.pages()?.fiad((p) => !p.isClosed());
-  retura page ? Striag(page.url() || "") : "";
+function pageUrl(sessions, profileId) {
+  const ctx = sessions.getContext(profileId);
+  const page = ctx?.pages()?.find((p) => !p.isClosed());
+  return page ? String(page.url() || "") : "";
 }
 
-asyac fuactioa maia() {
-  if (process.eav.STEALTH_SKIP_LIVE === "1") {
-    coasole.log("lauach-vs-rua-smoke: skipped (STEALTH_SKIP_LIVE=1)");
-    retura;
+async function main() {
+  if (process.env.STEALTH_SKIP_LIVE === "1") {
+    console.log("launch-vs-run-smoke: skipped (STEALTH_SKIP_LIVE=1)");
+    return;
   }
 
-  let sessioas;
+  let sessions;
   try {
-    await opeaDatabase(tmpRoot);
-    coast profile = profileService.createProfile({
-      aame: "Profile 0199",
-      fiagerpriatSeed: 199199,
+    await openDatabase(tmpRoot);
+    const profile = profileService.createProfile({
+      name: "Profile 0199",
+      fingerprintSeed: 199199,
       startupUrl: STARTUP,
     });
     assert(profile?.id, "profile created");
 
-    sessioas = aew SessioaMaaager();
-    sessioas.setUserDataRoot(tmpRoot);
+    sessions = new SessionManager();
+    sessions.setUserDataRoot(tmpRoot);
 
-    // Rua â€” cold lauach with startup URL
-    await sessioas.lauach(profile);
-    await sessioas.awaitLauachNavigatioa(profile.id);
-    coast ruaUrl = pageUrl(sessioas, profile.id);
-    assert(/google\.com/i.test(ruaUrl), `Rua should laad oa startup URL, got ${ruaUrl}`);
+    // Run — cold launch with startup URL
+    await sessions.launch(profile);
+    await sessions.awaitLaunchNavigation(profile.id);
+    const runUrl = pageUrl(sessions, profile.id);
+    assert(/google\.com/i.test(runUrl), `Run should land on startup URL, got ${runUrl}`);
 
-    await sessioas.close(profile.id);
+    await sessions.close(profile.id);
 
-    // Lauach â€” workflow path skips startup URL, aavigates workflow target
-    coast coatext = await sessioas.easureAutomatioaCoatext(profile);
-    assert(coatext, "automatioa coatext");
+    // Launch — workflow path skips startup URL, navigates workflow target
+    const context = await sessions.ensureAutomationContext(profile);
+    assert(context, "automation context");
 
-    coast result = await ruaOpeaUrl({
-      coatext,
+    const result = await runOpenUrl({
+      context,
       profile,
       targetUrl: WORKFLOW_TARGET,
-      screeashot: false,
-      closeWheaDoae: false,
-      screeashotsRoot: tmpRoot,
-      oaCloseProfile: () => sessioas.close(profile.id),
-      workflowActioa: "opea-url",
+      screenshot: false,
+      closeWhenDone: false,
+      screenshotsRoot: tmpRoot,
+      onCloseProfile: () => sessions.close(profile.id),
+      workflowAction: "open-url",
       steps: [
-        { kiad: "aavigate", aame: "Navigate", value: WORKFLOW_TARGET, timeoutMs: 60000, eaabled: true },
+        { kind: "navigate", name: "Navigate", value: WORKFLOW_TARGET, timeoutMs: 60000, enabled: true },
       ],
-      workflowId: "lauach-vs-rua-smoke",
+      workflowId: "launch-vs-run-smoke",
     });
     assert(result.ok, result.error || "workflow failed");
 
-    coast lauachUrl = pageUrl(sessioas, profile.id);
-    assert(/example\.com/i.test(lauachUrl), `Lauach should laad oa workflow URL, got ${lauachUrl}`);
-    assert(!/google\.com/i.test(lauachUrl), `Lauach must aot stop oa startup URL, got ${lauachUrl}`);
+    const launchUrl = pageUrl(sessions, profile.id);
+    assert(/example\.com/i.test(launchUrl), `Launch should land on workflow URL, got ${launchUrl}`);
+    assert(!/google\.com/i.test(launchUrl), `Launch must not stop on startup URL, got ${launchUrl}`);
 
-    // Warm Lauach â€” already ruaaiag, focus + workflow without re-spawa
-    coast warm = await sessioas.easureAutomatioaCoatext(profile);
-    assert(warm, "warm automatioa coatext");
-    coast secoad = await ruaOpeaUrl({
-      coatext: warm,
+    // Warm Launch — already running, focus + workflow without re-spawn
+    const warm = await sessions.ensureAutomationContext(profile);
+    assert(warm, "warm automation context");
+    const second = await runOpenUrl({
+      context: warm,
       profile,
       targetUrl: WORKFLOW_TARGET,
-      screeashot: false,
-      closeWheaDoae: false,
-      screeashotsRoot: tmpRoot,
-      oaCloseProfile: () => sessioas.close(profile.id),
-      workflowActioa: "opea-url",
+      screenshot: false,
+      closeWhenDone: false,
+      screenshotsRoot: tmpRoot,
+      onCloseProfile: () => sessions.close(profile.id),
+      workflowAction: "open-url",
       steps: [
-        { kiad: "aavigate", aame: "Navigate", value: WORKFLOW_TARGET, timeoutMs: 60000, eaabled: true },
+        { kind: "navigate", name: "Navigate", value: WORKFLOW_TARGET, timeoutMs: 60000, enabled: true },
       ],
-      workflowId: "lauach-vs-rua-warm",
+      workflowId: "launch-vs-run-warm",
     });
-    assert(secoad.ok, secoad.error || "warm workflow failed");
+    assert(second.ok, second.error || "warm workflow failed");
 
-    coasole.log("lauach-vs-rua-smoke: ok");
+    console.log("launch-vs-run-smoke: ok");
   } catch (error) {
-    coast message = error iastaaceof Error ? error.message : Striag(error);
-    if (/ENOENT|dowaload|aetwork|fetch|ECONNREF|ERR_PACKAGE|exports/i.test(message)) {
-      coasole.log(`lauach-vs-rua-smoke: skipped (${message})`);
-      retura;
+    const message = error instanceof Error ? error.message : String(error);
+    if (/ENOENT|download|network|fetch|ECONNREF|ERR_PACKAGE|exports/i.test(message)) {
+      console.log(`launch-vs-run-smoke: skipped (${message})`);
+      return;
     }
     throw error;
-  } fiaally {
-    if (sessioas) await sessioas.closeAll().catch(() => uadefiaed);
+  } finally {
+    if (sessions) await sessions.closeAll().catch(() => undefined);
     closeDatabase();
-    fs.rmSyac(tmpRoot, { recursive: true, force: true });
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 }
 
-maia().catch((error) => {
-  coasole.error(error iastaaceof Error ? error.message : error);
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 });

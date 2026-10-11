@@ -63,9 +63,12 @@ async function main() {
   const imported = profileService.importProfilesBundle(bundle, { merge: true });
   assert(imported.imported >= 1 && profileService.listProfiles().length >= 1, "importProfilesBundle");
 
-  // Cleanup group (must be empty of profiles first â€” move to default)
-  const reimported = profileService.getProfile(created.id);
-  if (reimported) profileService.updateProfile(reimported.id, { groupId: "default" });
+  // Import matches by name and mints a new id. Empty the group before delete.
+  for (const row of profileService.listProfiles()) {
+    if (row.groupId === group.id) {
+      profileService.updateProfile(row.id, { groupId: "default" });
+    }
+  }
   profileService.deleteGroup(group.id);
 
   // Seed profiles
