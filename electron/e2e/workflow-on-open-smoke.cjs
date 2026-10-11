@@ -22,7 +22,7 @@ async function main() {
   try {
     await openDatabase(tmpRoot);
     const profile = profileService.createProfile({
-      name: "Profile 0185",
+      name: "0185",
       fingerprintSeed: 185186,
       startupUrl: "https://www.google.com/",
     });
@@ -61,7 +61,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e.message || e);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error(e.message || e);
+    process.exit(1);
+  });

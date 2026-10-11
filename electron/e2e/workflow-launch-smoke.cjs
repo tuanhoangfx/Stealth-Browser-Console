@@ -27,7 +27,7 @@ async function main() {
   try {
     await openDatabase(tmpRoot);
     const profile = profileService.createProfile({
-      name: "Profile 0185",
+      name: "0185",
       fingerprintSeed: 185185,
       startupUrl: "https://www.google.com/",
     });
@@ -87,7 +87,9 @@ function isHttp(url) {
   return /^https?:\/\//i.test(url);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });

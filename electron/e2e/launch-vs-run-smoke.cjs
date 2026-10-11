@@ -33,7 +33,7 @@ async function main() {
   try {
     await openDatabase(tmpRoot);
     const profile = profileService.createProfile({
-      name: "Profile 0199",
+      name: "0199",
       fingerprintSeed: 199199,
       startupUrl: STARTUP,
     });
@@ -108,7 +108,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
