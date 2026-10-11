@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Guard: Update Release timeline row shows Latest (not Update) for running bundle.
+ * Guard: release-notes trigger copy for the running bundle stays in the minified dist.
+ * Hub-ui uses "You are on the latest version" (not a `label:"Latest"` badge).
  * Checks built dist bundle (no Electron required).
  */
 import fs from "node:fs";
@@ -18,11 +19,14 @@ function fail(msg) {
 const jsFiles = fs.readdirSync(distAssets).filter((f) => f.startsWith("index-") && f.endsWith(".js"));
 if (!jsFiles.length) fail("dist/assets/index-*.js missing — run vite build first");
 const bundle = fs.readFileSync(path.join(distAssets, jsFiles[0]), "utf8");
-if (!bundle.includes('label:"Latest"')) {
-  fail("dist bundle missing RELEASE_LATEST_BADGE label");
+if (!bundle.includes("You are on the latest version")) {
+  fail("dist bundle missing latest-version trigger copy");
 }
-if (!bundle.includes("extractHubReleaseNotesSemver")) {
-  fail("dist bundle missing extractHubReleaseNotesSemver");
+if (!bundle.includes("Update available")) {
+  fail("dist bundle missing update-available trigger copy");
+}
+if (!bundle.includes("release-notes.json")) {
+  fail("dist bundle missing release-notes.json fetch");
 }
 
 console.log(
