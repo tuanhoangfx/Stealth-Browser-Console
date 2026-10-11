@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { Radio, Smartphone, type LucideIcon } from "lucide-react";
 import {
   compactIconSize,
   hubAccountDetailSectionIcon,
@@ -20,6 +21,12 @@ const PROFILE_DETAIL_TOC_ICON: Record<(typeof PROFILE_DETAIL_TOC)[number]["id"],
   [PROFILE_DETAIL_SECTION_LOG]: "log",
 };
 
+/** Section headers are emoji-only. Navigate rail still needs a Lucide glyph. */
+const PROFILE_SECTION_LUCIDE: Partial<Record<HubAdmSectionKey, { Icon: LucideIcon; className: string }>> = {
+  profile: { Icon: Radio, className: "text-sky-300" },
+  device: { Icon: Smartphone, className: "text-cyan-300" },
+};
+
 function tocNavIcon(key: HubAdmSectionKey | "log") {
   if (key === "log") {
     const Icon = hubAccountDetailSectionIcon("log");
@@ -29,12 +36,13 @@ function tocNavIcon(key: HubAdmSectionKey | "log") {
       "aria-hidden": true,
     });
   }
+  const mapped = PROFILE_SECTION_LUCIDE[key];
   const header = hubAdmSectionHeader(key);
-  const Icon = header.icon;
+  const Icon = mapped?.Icon ?? header.icon;
   if (!Icon) return undefined;
   return createElement(Icon, {
     size: compactIconSize(12),
-    className: header.iconClassName,
+    className: mapped?.className ?? header.iconClassName,
     "aria-hidden": true,
   });
 }
