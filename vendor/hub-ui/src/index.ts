@@ -1403,10 +1403,13 @@ export {
   resolveHubBrandIconByMatch,
   resolveHubBrandFamilyHits,
   resolveHubBrandFallbackGlyph,
+  resolveHubServiceIdentity,
+  rewriteHubBrandPhrases,
+  hubServiceName,
   clearHubBrandIconMatchCache,
 } from "./lib/resolve-hub-brand-icon";
 export { useHubBrandImageGate } from "./lib/use-hub-brand-image-gate";
-export type { HubBrandIconId, HubBrandIconMeta } from "./lib/resolve-hub-brand-icon";
+export type { HubBrandIconId, HubBrandIconMeta, HubServiceIdentity } from "./lib/resolve-hub-brand-icon";
 export {
   HubSidebarNavGroup,
   HubSidebarNavGroupHeader,

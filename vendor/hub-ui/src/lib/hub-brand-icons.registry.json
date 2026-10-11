@@ -176,6 +176,14 @@
     "faviconDomain": "alipay.com"
   },
   {
+    "id": "arcads",
+    "label": "Arcads",
+    "match": "arcads",
+    "src": "/assets/brand-icons/arcads.png",
+    "shell": "bare",
+    "faviconDomain": "arcads.ai"
+  },
+  {
     "id": "aws",
     "label": "AWS",
     "match": "^aws$|amazon\\s*web\\s*services|aws\\.amazon",
@@ -202,10 +210,38 @@
   {
     "id": "google-one",
     "label": "Google One",
-    "match": "google\\s*one|google\\s*flow|\\bveo\\b",
+    "match": "google\\s*one|googleone|\\bveo\\b",
     "src": "/assets/brand-icons/google-one.png",
     "shell": "bare",
-    "faviconDomain": "one.google.com"
+    "faviconDomain": "one.google.com",
+    "phrases": [
+      {
+        "match": "google[\\s._-]*one\\b",
+        "label": "Google One"
+      }
+    ]
+  },
+  {
+    "id": "google-flow",
+    "label": "Google Flow",
+    "match": "google\\s*flow|googleflow",
+    "src": "/assets/brand-icons/google-one.png",
+    "shell": "bare",
+    "faviconDomain": "labs.google",
+    "phrases": [
+      {
+        "match": "google[\\s._-]*flow\\b",
+        "label": "Google Flow"
+      }
+    ]
+  },
+  {
+    "id": "invideo",
+    "label": "Invideo",
+    "match": "invideo|in\\s*video",
+    "src": "/assets/brand-icons/invideo.png",
+    "shell": "bare",
+    "faviconDomain": "invideo.io"
   },
   {
     "id": "prime-video",
@@ -501,7 +537,13 @@
     "match": "big\\s*spy|bigspy",
     "src": "/assets/brand-icons/bigspy.png",
     "shell": "bare",
-    "faviconDomain": "bigspy.com"
+    "faviconDomain": "bigspy.com",
+    "phrases": [
+      {
+        "match": "big[\\s._-]+spy\\b",
+        "label": "BigSpy"
+      }
+    ]
   },
   {
     "id": "bilibili",
@@ -709,7 +751,21 @@
     "match": "capcut|cap.?cut",
     "src": "/assets/brand-icons/capcut.png",
     "shell": "bare",
-    "faviconDomain": "capcut.com"
+    "faviconDomain": "capcut.com",
+    "phrases": [
+      {
+        "match": "cap[\\s._-]*cut[\\s._-]*team\\b",
+        "label": "CapCut Team"
+      },
+      {
+        "match": "cap[\\s._-]*cut[\\s._-]*pro\\b",
+        "label": "CapCut Pro"
+      },
+      {
+        "match": "cap[\\s._-]*cut\\b",
+        "label": "CapCut"
+      }
+    ]
   },
   {
     "id": "cashapp",
@@ -722,10 +778,53 @@
   {
     "id": "chatgpt",
     "label": "OpenAI",
+    "service": "ChatGPT",
     "match": "chatgpt|openai|gpt",
     "src": "/assets/brand-icons/chatgpt.png",
     "shell": "bare",
-    "faviconDomain": "chatgpt.com"
+    "faviconDomain": "chatgpt.com",
+    "phrases": [
+      {
+        "match": "chat[\\s._-]*gpt[\\s._-]*plus\\b",
+        "label": "ChatGPT Plus"
+      },
+      {
+        "match": "open[\\s._-]*ai[\\s._-]*plus\\b",
+        "label": "ChatGPT Plus"
+      },
+      {
+        "match": "\\bgpt[\\s._-]*plus\\b",
+        "label": "ChatGPT Plus"
+      },
+      {
+        "match": "chat[\\s._-]*gpt[\\s._-]*pro\\b",
+        "label": "ChatGPT Pro"
+      },
+      {
+        "match": "open[\\s._-]*ai[\\s._-]*pro\\b",
+        "label": "ChatGPT Pro"
+      },
+      {
+        "match": "chat[\\s._-]*gpt[\\s._-]*go\\b",
+        "label": "ChatGPT Go"
+      },
+      {
+        "match": "open[\\s._-]*ai[\\s._-]*chat[\\s._-]*gpt\\b",
+        "label": "ChatGPT"
+      },
+      {
+        "match": "chat[\\s._-]*gpt[\\s._-]*open[\\s._-]*ai\\b",
+        "label": "ChatGPT"
+      },
+      {
+        "match": "open[\\s._-]*ai\\b",
+        "label": "ChatGPT"
+      },
+      {
+        "match": "chat[\\s._-]*gpt\\b",
+        "label": "ChatGPT"
+      }
+    ]
   },
   {
     "id": "chess",
@@ -810,7 +909,13 @@
     "match": "cloudfly|cloud\\s*fly",
     "src": "/assets/brand-icons/cloudfly.png",
     "shell": "bare",
-    "faviconDomain": "cloudfly.vn"
+    "faviconDomain": "cloudfly.vn",
+    "phrases": [
+      {
+        "match": "cloud[\\s._-]+fly\\b",
+        "label": "CloudFly"
+      }
+    ]
   },
   {
     "id": "coda",
@@ -1177,7 +1282,13 @@
     "match": "elevenlabs|eleven.?labs",
     "src": "/assets/brand-icons/elevenlabs.png",
     "shell": "bare",
-    "faviconDomain": "elevenlabs.com"
+    "faviconDomain": "elevenlabs.com",
+    "phrases": [
+      {
+        "match": "eleven[\\s._-]+labs\\b",
+        "label": "ElevenLabs"
+      }
+    ]
   },
   {
     "id": "envato-elements",
@@ -1257,7 +1368,13 @@
     "match": "facebook|meta",
     "src": "/assets/brand-icons/facebook.png",
     "shell": "bare",
-    "faviconDomain": "facebook.com"
+    "faviconDomain": "facebook.com",
+    "phrases": [
+      {
+        "match": "face[\\s._-]+book\\b",
+        "label": "Facebook"
+      }
+    ]
   },
   {
     "id": "fastmail",
@@ -1660,6 +1777,8 @@
   {
     "id": "google-drive",
     "label": "Google Drive",
+    "service": "Google One",
+    "serviceId": "google-one",
     "match": "google\\s*drive|gdrive|drive\\.google",
     "src": "/assets/brand-icons/google-drive.png",
     "shell": "bare",
@@ -1807,7 +1926,13 @@
     "match": "heygen|hey.?gen",
     "src": "/assets/brand-icons/heygen.png",
     "shell": "bare",
-    "faviconDomain": "heygen.com"
+    "faviconDomain": "heygen.com",
+    "phrases": [
+      {
+        "match": "hey[\\s._-]+gen\\b",
+        "label": "HeyGen"
+      }
+    ]
   },
   {
     "id": "higgsfield",
@@ -1911,7 +2036,13 @@
     "match": "icloud",
     "src": "/assets/brand-icons/icloud.png",
     "shell": "bare",
-    "faviconDomain": "icloud.com"
+    "faviconDomain": "icloud.com",
+    "phrases": [
+      {
+        "match": "\\bi[\\s._-]+cloud\\b",
+        "label": "iCloud"
+      }
+    ]
   },
   {
     "id": "iconfinder",
@@ -1999,7 +2130,13 @@
     "match": "instagram",
     "src": "/assets/brand-icons/instagram.png",
     "shell": "bare",
-    "faviconDomain": "instagram.com"
+    "faviconDomain": "instagram.com",
+    "phrases": [
+      {
+        "match": "insta[\\s._-]+gram\\b",
+        "label": "Instagram"
+      }
+    ]
   },
   {
     "id": "intel",
@@ -2252,6 +2389,7 @@
   {
     "id": "leonardo",
     "label": "Leonardo AI",
+    "service": "Leonardo",
     "match": "leonardo",
     "src": "/assets/brand-icons/leonardo.png",
     "shell": "bare",
@@ -2586,6 +2724,14 @@
     "faviconDomain": "taphoammo.net"
   },
   {
+    "id": "v0",
+    "label": "v0.dev",
+    "match": "v0\\.?dev|\\bv0\\b",
+    "src": "/assets/brand-icons/v0.png",
+    "shell": "bare",
+    "faviconDomain": "v0.dev"
+  },
+  {
     "id": "vieon",
     "label": "VieON",
     "match": "vieon",
@@ -2615,7 +2761,13 @@
     "match": "midjourney",
     "src": "/assets/brand-icons/midjourney.png",
     "shell": "bare",
-    "faviconDomain": "midjourney.com"
+    "faviconDomain": "midjourney.com",
+    "phrases": [
+      {
+        "match": "mid[\\s._-]+journey\\b",
+        "label": "Midjourney"
+      }
+    ]
   },
   {
     "id": "minea",
@@ -3323,7 +3475,7 @@
   {
     "id": "render",
     "label": "Render",
-    "match": "render|render\\.com",
+    "match": "^render$|render\\.com",
     "src": "/assets/brand-icons/render.png",
     "shell": "bare",
     "faviconDomain": "render.com"
@@ -4037,7 +4189,13 @@
     "match": "tiktok",
     "src": "/assets/brand-icons/tiktok.png",
     "shell": "bare",
-    "faviconDomain": "tiktok.com"
+    "faviconDomain": "tiktok.com",
+    "phrases": [
+      {
+        "match": "tik[\\s._-]+tok\\b",
+        "label": "TikTok"
+      }
+    ]
   },
   {
     "id": "tiktok-ads",
@@ -4336,11 +4494,17 @@
   },
   {
     "id": "vidiq",
-    "label": "VidiQ",
+    "label": "VidIQ",
     "match": "vidiq",
     "src": "/assets/brand-icons/vidiq.png",
     "shell": "bare",
-    "faviconDomain": "vidiq.com"
+    "faviconDomain": "vidiq.com",
+    "phrases": [
+      {
+        "match": "vid[\\s._-]+iq\\b",
+        "label": "VidIQ"
+      }
+    ]
   },
   {
     "id": "vietcombank",
@@ -4763,7 +4927,13 @@
     "label": "YouTube",
     "match": "youtube",
     "src": "/icons/youtube.svg",
-    "shell": "bare"
+    "shell": "bare",
+    "phrases": [
+      {
+        "match": "you[\\s._-]+tube\\b",
+        "label": "YouTube"
+      }
+    ]
   },
   {
     "id": "zalo",

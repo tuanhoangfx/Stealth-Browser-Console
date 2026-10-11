@@ -10,7 +10,7 @@ export function SystemExtensionsChromeHeader({
   centerStats?: TabHeaderStatItem[];
   actions?: ReactNode;
 }) {
-  const { metaItems, desktopUpdate } = useStealthVersionMetaItems();
+  const { metaItems } = useStealthVersionMetaItems();
   return (
     <HubListChromeHeader
       ariaLabel="Extensions header"
@@ -19,7 +19,6 @@ export function SystemExtensionsChromeHeader({
       title="Extensions"
       metaItems={metaItems}
       versionReleaseNotesCode="P0003"
-      versionReleaseNotesDesktopUpdate={desktopUpdate}
       centerStats={centerStats ?? []}
       actions={actions}
     />

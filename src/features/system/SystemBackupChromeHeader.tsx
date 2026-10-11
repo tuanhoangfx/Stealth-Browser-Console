@@ -10,7 +10,7 @@ export function SystemBackupChromeHeader({
   centerStats?: TabHeaderStatItem[];
   actions?: ReactNode;
 }) {
-  const { metaItems, desktopUpdate } = useStealthVersionMetaItems();
+  const { metaItems } = useStealthVersionMetaItems();
   return (
     <HubListChromeHeader
       ariaLabel="Backup header"
@@ -19,7 +19,6 @@ export function SystemBackupChromeHeader({
       title="Backup"
       metaItems={metaItems}
       versionReleaseNotesCode="P0003"
-      versionReleaseNotesDesktopUpdate={desktopUpdate}
       centerStats={centerStats ?? []}
       actions={actions}
     />

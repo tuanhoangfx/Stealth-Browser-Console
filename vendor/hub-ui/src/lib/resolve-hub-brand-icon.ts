@@ -5,13 +5,39 @@ export type HubBrandIconId = (typeof registry)[number]["id"];
 
 export type HubBrandIconMeta = {
   id: HubBrandIconId;
+  /** Company or artwork title (tooltip). Not the catalog service name when `service` is set. */
   label: string;
+  /**
+   * Canonical service name for Service, Material, and Orders.
+   * Omit when `label` is already that name (`Canva`). Set when the title differs (`OpenAI` → `ChatGPT`).
+   */
+  service?: string;
+  /** Parent service row when this entry is only a glyph (`google-drive` → `google-one`). */
+  serviceId?: HubBrandIconId;
   match?: string;
   src: string;
   shell: HubBrandIconShell;
   faviconDomain?: string;
   /** Extra hosts for Cookie Bridge / route icons (e.g. Claude.ai + Claude.com). */
   faviconDomains?: string[];
+  /**
+   * Span rewrites for plan text (`chat gpt plus` → ChatGPT Plus).
+   * Longest `match` wins. Not used for icon identity.
+   */
+  phrases?: ReadonlyArray<{ match: string; label: string }>;
+};
+
+export type HubServiceIdentity = {
+  /** Catalog key shared by Service, Material, and Orders. */
+  id: HubBrandIconId;
+  /** Canonical service name. */
+  service: string;
+  /** Registry title (may be the company, not the service). */
+  label: string;
+  src: string;
+  shell: HubBrandIconShell;
+  /** Input is the service itself (`Canva`, `OpenAI`), not a longer SKU. */
+  coversWhole: boolean;
 };
 
 const ENTRIES = registry as HubBrandIconMeta[];
@@ -22,6 +48,38 @@ const MATCHERS = ENTRIES.filter((entry) => entry.match).map((entry) => ({
 }));
 
 const matchCache = new Map<string, HubBrandIconMeta | null>();
+
+let phraseRewriters: Array<{ re: RegExp; label: string }> | null = null;
+
+function brandPhraseRewriters(): Array<{ re: RegExp; label: string }> {
+  if (phraseRewriters) return phraseRewriters;
+  const rows: Array<{ match: string; label: string; index: number }> = [];
+  for (const entry of ENTRIES) {
+    for (const phrase of entry.phrases ?? []) {
+      const match = phrase.match?.trim();
+      const label = phrase.label?.trim();
+      if (!match || !label) continue;
+      rows.push({ match, label, index: rows.length });
+    }
+  }
+  rows.sort((a, b) => b.match.length - a.match.length || a.index - b.index);
+  phraseRewriters = rows.map((row) => ({ re: new RegExp(row.match, "gi"), label: row.label }));
+  return phraseRewriters;
+}
+
+/**
+ * Rewrite brand spans from registry `phrases` (longest pattern first).
+ * The rest of the string keeps its stored case.
+ */
+export function rewriteHubBrandPhrases(text: string): string {
+  if (!text) return text;
+  let out = text;
+  for (const { re, label } of brandPhraseRewriters()) {
+    re.lastIndex = 0;
+    out = out.replace(re, label);
+  }
+  return out;
+}
 
 function inferShell(entry: HubBrandIconMeta): HubBrandIconShell {
   if (entry.shell) return entry.shell;
@@ -60,6 +118,50 @@ export function resolveHubBrandFamilyHits(primary: HubBrandIconMeta | null): Hub
     push(resolveHubBrandIcon(root as HubBrandIconId));
   }
   return hits;
+}
+
+function compactServiceKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s._-]+/g, "");
+}
+
+/** Catalog service name — `service` override, else registry `label`. */
+export function hubServiceName(entry: Pick<HubBrandIconMeta, "label" | "service"> | null | undefined): string {
+  const service = entry?.service?.trim();
+  if (service) return service;
+  return entry?.label?.trim() ?? "";
+}
+
+/**
+ * One service + icon for every tool.
+ * `id` / `service` are the catalog row. `src` is that row's icon (parent when `serviceId` is set).
+ * Product glyphs that differ (Google Drive) still come from `resolveHubBrandIconByMatch`.
+ */
+export function resolveHubServiceIdentity(text: string): HubServiceIdentity | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const brand = resolveHubBrandIconByMatch(trimmed);
+  if (!brand) return null;
+  const serviceId = brand.serviceId ?? brand.id;
+  const parent = serviceId !== brand.id ? resolveHubBrandIcon(serviceId) : brand;
+  const icon = parent ?? brand;
+  const service = brand.service?.trim() || parent?.service?.trim() || parent?.label || brand.label;
+  const compact = compactServiceKey(trimmed);
+  const names = [service, brand.label, parent?.label, brand.id, serviceId].filter(
+    (item): item is string => Boolean(item),
+  );
+  let coversWhole = names.some((item) => compactServiceKey(item) === compact);
+  if (!coversWhole && brand.match) {
+    const matched = new RegExp(brand.match, "i").exec(trimmed.toLowerCase());
+    coversWhole = Boolean(matched && matched[0].length === trimmed.length);
+  }
+  return {
+    id: serviceId,
+    service,
+    label: brand.label,
+    src: icon.src,
+    shell: icon.shell,
+    coversWhole,
+  };
 }
 
 /** Resolve brand icon by service/platform label (Account vault, filters). */

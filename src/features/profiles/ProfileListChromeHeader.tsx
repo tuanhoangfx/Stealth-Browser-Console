@@ -13,7 +13,7 @@ export function ProfileListChromeHeader({
   actions?: ReactNode;
   statusSlot?: ReactNode;
 }) {
-  const { metaItems, desktopUpdate } = useStealthVersionMetaItems();
+  const { metaItems } = useStealthVersionMetaItems();
 
   return (
     <HubListChromeHeader
@@ -23,7 +23,6 @@ export function ProfileListChromeHeader({
       title="Profiles"
       metaItems={metaItems}
       versionReleaseNotesCode="P0003"
-      versionReleaseNotesDesktopUpdate={desktopUpdate}
       centerStats={centerStats ?? []}
       centerContent={centerContent}
       actions={actions}
