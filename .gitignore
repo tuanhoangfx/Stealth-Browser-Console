@@ -28,3 +28,6 @@ electron/packaged-node_modules/
 # OS
 Thumbs.db
 .DS_Store
+
+# Root E:/Dev pnpm workspace owns the lockfile (pnpm ignores a nested one)
+/pnpm-lock.yaml
