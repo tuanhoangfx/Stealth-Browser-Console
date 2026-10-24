@@ -2,6 +2,22 @@
 
 ## 2026-10-25 - FilterBar Progressive Collapse & Desktop Exe SSOT
 
+- Version: `9.1.67`
+- Timestamp: 2026-10-25 01:30 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (P0003).
+
+### Verification
+
+- pending
+
+---
+## 2026-10-25 - FilterBar Progressive Collapse & Desktop Exe SSOT
+
 - Version: `9.1.66`
 - Timestamp: 2026-10-25 01:05 (UTC+7)
 - Type: Patch
