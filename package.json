@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "9.1.14",
+  "version": "9.1.66",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -30,6 +30,7 @@
     "test:unit": "node scripts/run-unit-tests.mjs",
     "test:fast": "node scripts/run-unit-tests.mjs --fast",
     "test:smoke": "pnpm build",
+    "smoke:desktop": "node ../scripts/node-run.mjs ../scripts/smoke-desktop-ui.mjs --code P0003 --scenario profiles-real --port 9335",
     "engine:check-pin": "node scripts/check-cloakbrowser-pin.mjs",
     "engine:bump": "node scripts/bump-cloakbrowser.mjs",
     "preview": "vite preview --host 127.0.0.1",
@@ -67,8 +68,8 @@
     "@supabase/realtime-js": "2.108.2",
     "@supabase/storage-js": "2.108.2",
     "@supabase/supabase-js": "^2.108.2",
-    "@tool-workspace/hub-identity": "file:vendor/hub-identity",
-    "@tool-workspace/hub-ui": "file:vendor/hub-ui",
+    "@tool-workspace/hub-identity": "workspace:@dev/hub-identity@*",
+    "@tool-workspace/hub-ui": "workspace:*",
     "@types/dagre": "^0.7.54",
     "@vitejs/plugin-react": "^5.1.1",
     "@xyflow/react": "12.10.2",
@@ -129,7 +130,9 @@
       "shared/**",
       "build/icons/**",
       "package.json",
-      "RELEASE.md"
+      "RELEASE.md",
+      "!**/node_modules/@tool-workspace/**",
+      "!**/node_modules/{lucide-react,react,react-dom,vite,@vitejs,@xyflow}/**"
     ],
     "asar": true,
     "asarUnpack": [
@@ -139,6 +142,7 @@
       "**/node_modules/playwright-core/**",
       "**/electron/lib/*.ps1"
     ],
+    "afterExtract": "./electron/lib/electron-builder-pack-guard.cjs",
     "afterPack": "./electron/after-pack.cjs",
     "extraResources": [
       {

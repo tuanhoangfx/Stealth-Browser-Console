@@ -1,5 +1,838 @@
 # Changelog
 
+## 2026-10-25 - FilterBar Progressive Collapse & Desktop Exe SSOT
+
+- Version: `9.1.66`
+- Timestamp: 2026-10-25 01:05 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Adopt FilterBar progressive right-to-left collapse SSOT and delegate desktop-open.mjs to desktop-exe-products.mjs
+
+### Verification
+
+- desktop-exe-ssot --code P0003 --action pack --lane agent
+
+---
+## 2026-10-25 - Auto temp-pack cleanup & --sync-installed hot-swap in run-electron-package
+
+- Version: `9.1.65`
+- Timestamp: 2026-10-25 00:41 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added automatic %TEMP% packaging cleanup (--temp-only) after each electron-builder run and added --sync-installed hot-swap to update %LOCALAPPDATA%/Programs/stealth-browser-console/resources/app.asar and relaunch via desktop-open.mjs without touching user Chrome profiles.
+
+### Verification
+
+- node scripts/run-electron-package.mjs --publish never --installer-only --sync-installed
+
+---
+## 2026-10-24 - Canonical Windows realpath Vite build & CJS dynamic-import scan guard
+
+- Version: `9.1.64`
+- Timestamp: 2026-10-24 17:49 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Normalized root path via fs.realpathSync.native in run-build.mjs and run-electron-package.mjs to prevent Vite html-inline-proxy drive-letter case mismatch on Windows; ignored template-string interpolation in cloakbrowser-esm-scan.cjs; synced electron-builder-pack-guard.cjs and rebuilt NSIS installer.
+
+### Verification
+
+- node scripts/run-electron-package.mjs --publish never --skip-build --installer-only
+
+---
+## 2026-10-24 - Standardize packaging pipeline, guard CJS dynamic import(), and isolate unpackaged Electron from Prod :6003
+
+- Version: `9.1.63`
+- Timestamp: 2026-10-24 17:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add scanForbiddenDynamicImportsInCjsDir, fast SHA-256 stamp in stage-packaged-node-modules, better_sqlite3.node check in verify-packaged-unpacked/packaged-runtime-check, and pin unpackaged Electron to dev root :6004 in configureElectronUserData.
+
+### Verification
+
+- node scripts/verify-cloakbrowser-esm-deps.mjs && node scripts/verify-packaged-unpacked.mjs && node scripts/smoke-asar-ps1-resolve.mjs
+
+---
+## 2026-10-24 - Add packaged app.asar better-sqlite3 boot smoke guard & verify Prod runtime
+
+- Version: `9.1.62`
+- Timestamp: 2026-10-24 10:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Ensure seedAsarTreeFromDisk stages packaged-node_modules and run automated better-sqlite3 boot smoke check inside built app.asar before promoting package; verify Prod packaged runtime on :6003.
+
+### Verification
+
+- node --test electron/lib/shutdown-log.test.cjs + Prod packaged Stealth Browser Console.exe boot smoke
+
+---
+## 2026-10-24 - Fix packaged boot-database-failed by resolving app.asar.unpacked modules & nativeBinding
+
+- Version: `9.1.61`
+- Timestamp: 2026-10-24 09:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- In electron/lib/ensure-packaged-module-paths.cjs and electron/db/init.cjs, include app.asar.unpacked in module fallback roots, pass unpacked better_sqlite3.node nativeBinding directly, and wrap sql.js in createSqlJsAdapter before startup backfills.
+
+### Verification
+
+- Patched packaged app.asar and verified clean boot on :6003 (phase=ready, db-native-ready).
+
+---
+## 2026-10-24 - Skip navigation restamp timers on headless sessions
+
+- Version: `9.1.60`
+- Timestamp: 2026-10-24 08:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- In electron/engine/session-manager.cjs maybeRestampBadge, skip scheduling 700ms taskbar badge reinforce timers on page navigation when session.headless is true.
+
+### Verification
+
+- node --check electron/engine/session-manager.cjs clean.
+
+---
+## 2026-10-24 - Skip minimizeProfile and taskbar badge worker on headless agent smoke launches
+
+- Version: `9.1.59`
+- Timestamp: 2026-10-24 08:44 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- In electron/api-routes.cjs (POST /api/profiles/:id/launch), compute effectiveHeadless = Boolean(profile?.headless) || isAgentSmokeLaunch() to match session-manager.cjs launchMeta, preventing headless X-Stealth-Agent-Smoke launches from spawning stealth-taskbar-apply-worker.ps1 retries on windowless browsers.
+
+### Verification
+
+- node --check electron/api-routes.cjs clean.
+
+---
+## 2026-10-24 - Wire win-rename-retry into run-electron-package.mjs
+
+- Version: `9.1.58`
+- Timestamp: 2026-10-24 00:21 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added --require win-rename-retry.cjs to NODE_OPTIONS in run-electron-package.mjs to prevent Windows Defender EPERM on win-unpacked.tmp rename.
+
+### Verification
+
+- scripts/run-electron-package.mjs syntax check
+
+---
+## 2026-10-23 - Interactive winsta0\default desktop launch for dev and packaged Stealth windows
+
+- Version: `9.1.57`
+- Timestamp: 2026-10-23 23:43 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wired spawnInteractiveDesktopProcess (winsta0\default) into open-dev-electron-window.mjs and desktop-open.mjs so Stealth windows spawned from agent shells always appear on the user's interactive desktop.
+
+### Verification
+
+- node --check open-dev-electron-window.mjs desktop-open.mjs
+
+---
+## 2026-10-23 - Created timestamp hover popover on Profile ID cell in Profiles directory table
+
+- Version: `9.1.56`
+- Timestamp: 2026-10-23 21:59 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wrapped Profile ID cell in HubDirectoryValuePopover showing Profile ID, Group, and Created: hh:mm dd/mm/yy via formatHubTimestampCompact, with unit test coverage in stealth-profile-directory-cells.test.tsx
+
+### Verification
+
+- corepack pnpm --dir Tool/P0003-Stealth-Browser-Console exec vitest run src/features/profiles/stealth-profile-directory-cells.test.tsx; corepack pnpm --dir Tool/P0003-Stealth-Browser-Console exec tsc --noEmit
+
+---
+## 2026-10-23 - SQLite prepared statement cache in profile-service
+
+- Version: `9.1.55`
+- Timestamp: 2026-10-23 20:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Cache compiled SQLite statements per db instance via WeakMap (prepareCached) in electron/db/profile-service.cjs to eliminate statement compilation overhead across single and batch profile transactions.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/db/profile-service.cjs
+
+---
+## 2026-10-23 - Batch SQLite IPC for Extension Toggles, Bulk Create & Delete + Retire EditProfileModal
+
+- Version: `9.1.54`
+- Timestamp: 2026-10-23 20:03 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added extensionOverrideDelta support to bulkUpdateProfiles, wrapped bulk create/delete/startupUrl in SQLite transactions, wired CreateProfileModal bulk create and useProfileExtensionToggle to batch IPC, and retired deprecated EditProfileModal into ProfileDetailModal SSOT
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console build
+
+---
+## 2026-10-23 - Batch SQLite IPC bulkUpdateProfiles & cloneProfilesBatch + Workspace Modal Footer Gate
+
+- Version: `9.1.53`
+- Timestamp: 2026-10-23 19:41 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added single-transaction SQLite batch IPC/API bulkUpdateProfiles and cloneProfilesBatch in P0003 and wired ProfileDetailModal bulk edit/clone to use them; expanded hub-modal-detail-footer-gate to auto-discover all workspace active products and modal surfaces
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console build && node Tool/scripts/hub-modal-detail-footer-gate.mjs
+
+---
+## 2026-10-23 - ProfileDetailBulkBody Bulk Clone and Full Device Overrides
+
+- Version: `9.1.52`
+- Timestamp: 2026-10-23 19:28 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Bulk Clone (Clone (N)) and full Device section overrides (Platform, Color Scheme, Timezone, Locale, Window Mode) in ProfileDetailBulkBody.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/smoke-profile-modal-layout.mjs
+
+---
+## 2026-10-23 - Unify modal footer CTA order SSOT (Primary ? Secondary ? Close ? Delete)
+
+- Version: `9.1.51`
+- Timestamp: 2026-10-23 19:09 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Standardize modal footer action order and detail chrome onto HubToolDetailModalAccountFooter SSOT.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-23 - Version bump
+
+- Version: `9.1.50`
+- Timestamp: 2026-10-23 19:00 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Wire shared electron-builder-pack-guard.cjs (afterExtract + afterPack default_app.asar cleanup and app.asar byte-offset/SHA-256 integrity verification) and exclude workspace @tool-workspace/** + renderer-only node_modules from app.asar.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-23 - Detail modal footer SSOT
+
+- Version: `9.1.49`
+- Timestamp: 2026-10-23 16:18 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Unified ProfileDetailModal, CreateProfileModal, and ExtensionDetailModal footers onto HubToolDetailModalAccountFooter with HUB_DETAIL_MODAL_SAVE_LABEL ('Save') and HUB_DETAIL_MODAL_APPLY_LABEL ('Apply') placed before Close, plus optimistic save + clean-baseline dirty disable.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-23 - Version bump
+
+- Version: `9.1.48`
+- Timestamp: 2026-10-23 15:52 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Release v9.1.48.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Hover Popover Detail on Remaining HubUsersStatusLabel Directory Cells
+
+- Version: `9.1.47`
+- Timestamp: 2026-10-22 05:18 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Added title and popoverTitle hover detail to HubUsersStatusLabel in workflow-store-directory-cells.tsx, system-backup-directory-cells.tsx, and stealth-profile-directory-cells.tsx.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Version bump
+
+- Version: `9.1.46`
+- Timestamp: 2026-10-22 05:14 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Release v9.1.46.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Auto-sync shared Electron libs in run-electron-package & duplication parity gate
+
+- Version: `9.1.45`
+- Timestamp: 2026-10-22 04:39 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Release v9.1.45.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Shared Electron dev-boot recovery SSOT & hub-boot-fallback auto-reconnect
+
+- Version: `9.1.44`
+- Timestamp: 2026-10-22 04:23 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Release v9.1.44.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Patch bump for completed agent task
+
+- Version: `9.1.43`
+- Timestamp: 2026-10-22 04:13 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Workflow Store Live Status Dot Pulse & Directory Table Gate Compliance
+
+- Version: `9.1.42`
+- Timestamp: 2026-10-22 03:17 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Wired `live={isInstalling}` on `HubUsersStatusLabel` in `src/features/workflows/workflow-store-directory-cells.tsx` and `WorkflowStoreDirectoryTable.tsx` so installing workflow rows pulse with the shared Hub-UI status dot animation.
+- Synchronized `P0003` directory tables and multi-table `directory-column-meta.ts` block scoping in `Tool/scripts/hub-directory-table-gate.mjs` so `hub-directory-table-gate.mjs --code P0003` passes 100%.
+
+### Verification
+
+- `hub-directory-table-gate.mjs --code P0003` and `verify-product-task-patch-ssot.mjs --code P0003` pass.
+
+---
+## 2026-10-22 - Patch bump for completed agent task
+
+- Version: `9.1.41`
+- Timestamp: 2026-10-22 01:01 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Patch bump for completed agent task
+
+- Version: `9.1.40`
+- Timestamp: 2026-10-22 00:36 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Patch bump for completed agent task
+
+- Version: `9.1.39`
+- Timestamp: 2026-10-22 00:20 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-22 - Patch bump for completed agent task
+
+- Version: `9.1.38`
+- Timestamp: 2026-10-22 00:03 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.37`
+- Timestamp: 2026-10-21 20:30 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.36`
+- Timestamp: 2026-10-21 20:24 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.35`
+- Timestamp: 2026-10-21 20:06 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.34`
+- Timestamp: 2026-10-21 19:56 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.33`
+- Timestamp: 2026-10-21 19:40 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.32`
+- Timestamp: 2026-10-21 19:25 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.31`
+- Timestamp: 2026-10-21 19:00 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.30`
+- Timestamp: 2026-10-21 17:52 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.29`
+- Timestamp: 2026-10-21 17:50 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.28`
+- Timestamp: 2026-10-21 16:59 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-21 - Patch bump for completed agent task
+
+- Version: `9.1.27`
+- Timestamp: 2026-10-21 15:38 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-20 - Patch bump for completed agent task
+
+- Version: `9.1.26`
+- Timestamp: 2026-10-20 19:31 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-20 - Patch bump for completed agent task
+
+- Version: `9.1.25`
+- Timestamp: 2026-10-20 18:12 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-20 - Patch bump for completed agent task
+
+- Version: `9.1.24`
+- Timestamp: 2026-10-20 17:23 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-20 - Patch bump for completed agent task
+
+- Version: `9.1.23`
+- Timestamp: 2026-10-20 15:56 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-20 - Patch bump for completed agent task
+
+- Version: `9.1.22`
+- Timestamp: 2026-10-20 15:20 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-18 - Patch bump for completed agent task
+
+- Version: `9.1.21`
+- Timestamp: 2026-10-18 16:30 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-18 - Patch bump for completed agent task
+
+- Version: `9.1.20`
+- Timestamp: 2026-10-18 04:13 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-18 - Patch bump for completed agent task
+
+- Version: `9.1.19`
+- Timestamp: 2026-10-18 04:01 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-18 - Patch bump for completed agent task
+
+- Version: `9.1.18`
+- Timestamp: 2026-10-18 03:22 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-18 - Patch bump for completed agent task
+
+- Version: `9.1.17`
+- Timestamp: 2026-10-18 00:14 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-17 - Patch bump for completed agent task
+
+- Version: `9.1.16`
+- Timestamp: 2026-10-17 23:43 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-10-14 - Patch bump for completed agent task
+
+- Version: `9.1.15`
+- Timestamp: 2026-10-14 14:26 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
 ## 2026-10-11 - Patch bump for completed agent task (ship)
 
 - Version: `9.1.14`
