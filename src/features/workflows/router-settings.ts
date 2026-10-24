@@ -1,3 +1,4 @@
+import { routerHttp } from "./router-client";
 import { formatRouterError } from "./router-errors";
 
 export type RouterSettings = {
@@ -97,7 +98,6 @@ export async function pingRouter(settings: RouterSettings): Promise<{ ok: boolea
     return { ok: false, message: "API key is empty. Add config/router.local.json or Settings → 9Router AI." };
   }
   try {
-    const { routerHttp } = await import("./router-client");
     const response = await routerHttp(settings, "models", { method: "GET", timeoutMs: 12_000 });
     if (!response.ok) {
       const text = response.body;

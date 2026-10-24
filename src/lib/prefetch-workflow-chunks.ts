@@ -13,5 +13,4 @@ export function prefetchWorkflowChunks(): void {
 export function prefetchSystemChunks(): void {
   if (systemStarted) return;
   systemStarted = true;
-  void import("../views/SystemView");
 }
