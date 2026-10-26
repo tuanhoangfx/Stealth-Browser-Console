@@ -2,10 +2,11 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { initHubUserZoom, installHubPerfBlackbox, mountHubApp } from "@tool-workspace/hub-ui";
 import { App } from "./App";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { setupHubUi } from "./lib/hub-ui-setup";
 import { clearOfflineModeStorage } from "./lib/offlineMode";
 import { readStoredThemeMode, syncDocumentTheme } from "./theme";
-import "../vendor/hub-ui/src/styles/hub-boot.css";
+import "../../../packages/hub-ui/src/styles/hub-boot.css";
 import "./theme/p0008-globals.css";
 import "./theme/hub-appearance.css";
 import "./styles.css";
@@ -37,7 +38,9 @@ if (!rootEl) {
 mountHubApp(rootEl, () => {
   createRoot(rootEl).render(
     <React.StrictMode>
-      <App />
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
     </React.StrictMode>
   );
 });

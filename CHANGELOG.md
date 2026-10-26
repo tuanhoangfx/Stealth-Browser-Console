@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-26 - AppErrorBoundary + checkAndReloadIfBundleSkewed
+
+- Version: `9.1.70`
+- Timestamp: 2026-10-26 18:32 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wrap P0003 root in AppErrorBoundary with checkAndReloadIfBundleSkewed on uncaught render crash
+
+### Verification
+
+- node Tool/scripts/hub-ui-boot-check.mjs --code P0003
+
+---
 ## 2026-10-26 - Sync electron shared libs parity
 
 - Version: `9.1.69`
