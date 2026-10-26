@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-26 - Sync electron shared libs parity
+
+- Version: `9.1.69`
+- Timestamp: 2026-10-26 17:41 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Synced electron/lib/desktop-app-menu.cjs, electron-dev-boot-recovery.cjs, and electron-builder-pack-guard.cjs with workspace shared libs SSOT.
+
+### Verification
+
+- node Tool/scripts/hub-ui-duplication-check.mjs (OK)
+
+---
 ## 2026-10-25 - FilterBar Progressive Collapse & Desktop Exe SSOT
 
 - Version: `9.1.68`
