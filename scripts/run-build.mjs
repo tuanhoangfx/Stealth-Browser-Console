@@ -6,7 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveNodeExe, winSpawnOpts } from "./lib/win-spawn.mjs";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const rawRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = typeof fs.realpathSync?.native === "function" ? fs.realpathSync.native(rawRoot) : fs.realpathSync(rawRoot);
 const node = resolveNodeExe();
 const toolScriptsDir = path.join(root, "..", "scripts");
 /** Fast Release: skip hub-ui/identity/brand mirrors — Vite only (budget <2m). */
@@ -18,7 +19,13 @@ function findBin(pkg, bins) {
   for (let i = 0; i < 12; i++) {
     for (const rel of bins) {
       const candidate = path.join(dir, "node_modules", pkg, rel);
-      if (fs.existsSync(candidate)) return candidate;
+      if (fs.existsSync(candidate)) {
+        try {
+          return fs.realpathSync(candidate);
+        } catch {
+          return candidate;
+        }
+      }
     }
     const parent = path.dirname(dir);
     if (parent === dir) break;
@@ -91,3 +98,17 @@ const hubAuthSmoke = spawnSync(
   winSpawnOpts({ cwd: root, stdio: "inherit" }),
 );
 if ((hubAuthSmoke.status ?? 1) !== 0) process.exit(hubAuthSmoke.status ?? 1);
+
+if (process.env.STEALTH_SKIP_BUILD_HOT_SYNC !== "1") {
+  const hotPatchScript = path.join(root, "scripts", "sync-hot-patch.cjs");
+  if (fs.existsSync(hotPatchScript)) {
+    const hp = spawnSync(
+      node,
+      [hotPatchScript, "--apply-prod", "--stage-asar"],
+      winSpawnOpts({ cwd: root, stdio: "inherit" }),
+    );
+    if ((hp.status ?? 1) !== 0) {
+      console.warn("run-build: sync-hot-patch warning (continuing)");
+    }
+  }
+}

@@ -13,7 +13,10 @@ param(
   # UI-first release budget: skip install/tests/native/sign; prepackaged NSIS when win-unpacked warm.
   # Target: <120s. Opt out: DESKTOP_RELEASE_FAST=0. Force full pack: -IncludeUnpacked.
   [switch]$Fast,
-  [switch]$IncludeUnpacked
+  [switch]$IncludeUnpacked,
+  # After pack: real DB copy in isolated smoke profile (API :6005). Fail → evidence path printed.
+  [switch]$Smoke,
+  [string]$SmokeScenarios = "profiles-real"
 )
 
 $ErrorActionPreference = "Stop"
@@ -61,6 +64,11 @@ if ($Fast) {
   if (-not $SkipPreRelease) { $SkipPreRelease = $true }
 }
 
+if ($Smoke -and $Fast -and -not $IncludeUnpacked) {
+  Write-Host "==> -Smoke needs a fresh win-unpacked - enabling -IncludeUnpacked" -ForegroundColor Yellow
+  $IncludeUnpacked = $true
+}
+
 $hasDesktopDeps =
   (Test-Path (Join-Path $RepoRoot "node_modules\electron")) -and
   (Test-Path (Join-Path $RepoRoot "node_modules\electron-builder"))
@@ -104,7 +112,7 @@ try {
     }
   }
 
-  # Snapshot version once — parallel agents must not race package.json mid-build.
+  # Snapshot version once - parallel agents must not race package.json mid-build.
   $pkgVersion = (Get-Content -Raw package.json | ConvertFrom-Json).version
   $env:STEALTH_RELEASE_VERSION = $pkgVersion
 
@@ -118,7 +126,7 @@ try {
       }
     }
 
-    # Hard launch-speed gate (skipped on Fast — uses last recorded warm open).
+    # Hard launch-speed gate (skipped on Fast - uses last recorded warm open).
     Invoke-Step "Launch-speed regression gate (warm full-open < 1500ms)" {
       node scripts/check-launch-speed.mjs
     }
@@ -192,11 +200,24 @@ try {
 
   $targetLabel = if ($WithPortable) { "NSIS + portable" } else { "NSIS installer only" }
   Invoke-Step "Build Windows $targetLabel (publish: $PublishMode)" {
+    $env:P0003_RELEASE_DESKTOP_PS1 = "1"
     if ($Fast -and -not $IncludeUnpacked -and -not $WithPortable) {
       $env:DESKTOP_RELEASE_INSTALLER_ONLY = "1"
       $env:DESKTOP_RELEASE_FAST = "1"
     }
     node @packArgs
+  }
+
+  if ($Smoke) {
+    $scenarios = if ($SmokeScenarios.Trim()) { $SmokeScenarios.Trim() } else { "profiles-real" }
+    Invoke-Step "Desktop UI smoke ($scenarios)" {
+      & node (Join-Path $ToolScripts "node-run.mjs") `
+        (Join-Path $ToolScripts "smoke-desktop-ui.mjs") `
+        --code P0003 --scenario $scenarios --port 9335
+      if ($LASTEXITCODE -ne 0) {
+        throw "desktop UI smoke failed - see SMOKE FAIL evidence path above (card desktop-ui-smoke)"
+      }
+    }
   }
 
   if ($Publish) {
@@ -217,6 +238,10 @@ try {
 
     Invoke-Step "Snapshot known-good (installer backup)" {
       node scripts/snapshot-known-good.mjs --label "v$pkgVersion-stable"
+    }
+
+    Invoke-Step "Sync P0003-SITE landing (stealth.infi28.com)" {
+      node (Join-Path $ToolScripts "deploy-lenovo-static.mjs") --code P0003-SITE --force-build
     }
 
     Invoke-Step "Ship smoke checklist (manual gate)" {

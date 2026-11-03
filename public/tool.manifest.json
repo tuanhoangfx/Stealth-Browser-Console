@@ -2,24 +2,225 @@
   "schemaVersion": 1,
   "code": "P0003",
   "id": "stealth-browser-console",
+  "aliases": [
+    "P0003",
+    "Stealth",
+    "Stealth Browser Console"
+  ],
   "name": "Stealth Browser Console",
+  "type": "Desktop",
+  "owner": "Tool",
+  "status": "Beta",
+  "summary": "Standalone desktop console for CloakBrowser antidetect profiles and local automation.",
+  "stack": [
+    "Electron",
+    "React",
+    "Vite",
+    "CloakBrowser",
+    "SQLite"
+  ],
+  "devPort": 5175,
+  "uiShell": {
+    "golden": "P0020",
+    "mainMode": "directory",
+    "splitScreens": [
+      "profiles",
+      "android",
+      "workflow",
+      "system"
+    ],
+    "userFooter": "workspace"
+  },
+  "manualCheck": {
+    "packagedBuild": "pnpm desktop:run",
+    "packagedBuildScript": "node scripts/desktop-open.mjs",
+    "devReload": "node scripts/dev-icon-reload.mjs",
+    "profilesPartialPageSmoke": "node scripts/smoke-profiles-partial-page.mjs http://127.0.0.1:5175/?stealthSmokePager=1",
+    "neverTaskkillPackagedExe": true,
+    "notes": "User manual check: packaged = desktop:run (no --replace). Dev hot-reload = dev-icon-reload. Never taskkill Stealth Browser Console.exe unless user explicitly requests --replace."
+  },
+  "commands": {
+    "dev": "corepack pnpm dev",
+    "dev:web": "corepack pnpm dev:web",
+    "desktop:run": "node scripts/desktop-open.mjs",
+    "build": "corepack pnpm build",
+    "smoke": "corepack pnpm test:smoke",
+    "preview": "corepack pnpm preview",
+    "package": "corepack pnpm desktop:dist",
+    "release": "corepack pnpm desktop:release",
+    "desktop:release:patch": "corepack pnpm desktop:release:patch",
+    "desktop:release:minor": "corepack pnpm desktop:release:minor",
+    "desktop:release:major": "corepack pnpm desktop:release:major",
+    "desktop:snapshot-good": "node scripts/snapshot-known-good.mjs",
+    "desktop:restore-good": "powershell -ExecutionPolicy Bypass -File scripts/restore-known-good.ps1 -LaunchOnly -PurgeSurfshark"
+  },
+  "knownGood": {
+    "config": "config/known-good.json",
+    "tagSuffix": "-stable",
+    "snapshot": "node scripts/snapshot-known-good.mjs",
+    "restore": "powershell -ExecutionPolicy Bypass -File scripts/restore-known-good.ps1",
+    "workspaceSnapshot": "node ../scripts/snapshot-known-good.mjs --code P0003",
+    "workspaceRestore": "powershell -ExecutionPolicy Bypass -File ../scripts/restore-known-good.ps1 -Code P0003"
+  },
+  "docs": {
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "context": "PROJECT_CONTEXT.md",
+    "release": "RELEASE.md",
+    "architecture": "ARCHITECTURE.md"
+  },
+  "directoryDisplayPrefs": {
+    "ssot": "src/lib/stealth-display-panel-config.tsx",
+    "profiles": {
+      "module": "src/features/profiles/profile-directory-prefs.ts",
+      "scope": "Profiles tab directory table only",
+      "columnStorageKey": "p0003_profile_directory_columns",
+      "presetsStorageKey": "p0003_profile_directory_column_presets",
+      "displayPanelVariant": "panel",
+      "panelFillRows": "pageSize",
+      "partialPagePad": "invisible"
+    },
+    "workflowRail": {
+      "module": "src/features/workflows/workflow-directory-prefs.ts",
+      "scope": "Workflow split left rail (Run History + Console workspace)",
+      "columnStorageKey": "p0003_workflow_rail_directory_columns",
+      "presetsStorageKey": "p0003_workflow_rail_directory_column_presets",
+      "displayPanelVariant": "rail",
+      "fixedRows": 5,
+      "partialPagePad": "visible"
+    },
+    "workflowPanel": {
+      "module": "src/features/workflows/workflow-directory-prefs.ts",
+      "scope": "Workflow Scripts tab directory table",
+      "columnStorageKey": "p0003_workflow_panel_directory_columns",
+      "presetsStorageKey": "p0003_workflow_panel_directory_column_presets",
+      "displayPanelVariant": "panel",
+      "panelFillRows": "pageSize",
+      "partialPagePad": "invisible"
+    },
+    "notes": "Rail vs panel presets are independent localStorage scopes — never share storage keys across variants."
+  },
+  "smoke": {
+    "workflowRail": "scripts/smoke-workflow-rail.mjs",
+    "profilesPartialPage": "scripts/smoke-profiles-partial-page.mjs",
+    "liveDevUrl": "http://127.0.0.1:5175/?stealthSmokePager=1",
+    "profilesPagerSeed": {
+      "webMockQuery": "stealthSmokePager=1",
+      "minProfiles": 21,
+      "dbSeedScript": "scripts/lib/seed-smoke-profiles-pager.cjs",
+      "dbCleanupScript": "scripts/lib/cleanup-smoke-profiles-pager.cjs",
+      "electronNodeRunner": "scripts/run-electron-node.mjs",
+      "profileNameRange": "99001-99021"
+    }
+  },
+  "health": {
+    "status": "Beta",
+    "note": "Requires CloakBrowser binary (auto-download on first launch). No external antidetect app."
+  },
+  "engine": {
+    "package": "cloakbrowser",
+    "version": "0.4.8",
+    "pinned": true,
+    "bumpPolicy": "docs/ENGINE-CLOAKBROWSER.md#bump-policy",
+    "forkDecision": "docs/cloakbrowser-fork-evaluation.md#decision-record",
+    "updatedAt": "2026-07-06"
+  },
+  "uiScreens": [
+    {
+      "screen": "profiles",
+      "template": "inbox-split",
+      "layout": "split-workspace",
+      "golden": "P0020/notes",
+      "notes": "HubDirectoryScreen + Open URL rail"
+    },
+    {
+      "screen": "workflow",
+      "template": "inbox-split",
+      "layout": "split-workspace",
+      "golden": "P0004/hub-ui/workflows",
+      "notes": "HubSplitWorkspaceScreen header; WorkflowFilterPane in left pane"
+    },
+    {
+      "screen": "system",
+      "template": "system-panels",
+      "layout": "split-workspace",
+      "golden": "P0004/system",
+      "notes": "System panels — split overflow host"
+    },
+    {
+      "screen": "settings",
+      "template": "settings-modal",
+      "notes": "StealthDisplayPrefs modal — engine health, data dir, theme (not a nav tab)"
+    }
+  ],
+  "urls": {
+    "local": "http://127.0.0.1:5175",
+    "app": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases",
+    "site": "https://stealth.infi28.com/intro/"
+  },
+  "site": {
+    "deployTarget": "lenovo-static",
+    "registryKey": "P0003-SITE",
+    "platform": "P0008",
+    "siteId": "stealth",
+    "root": "Tool/P0008-Landing-Platform/sites/stealth",
+    "domain": "stealth.infi.io.vn",
+    "basePath": "/intro/",
+    "deploy": "node Tool/scripts/deploy-lenovo-static.mjs --code P0003-SITE"
+  },
   "deployTarget": "github-release",
+  "github": {
+    "repo": "tuanhoangfx/Stealth-Browser-Console",
+    "branch": "main",
+    "manifestPath": "tool.manifest.json",
+    "visibility": "public",
+    "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
+    "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
+  },
+  "manifestUpdatedAt": "2026-11-03T06:24:47.619Z",
   "release": {
-    "version": "9.1.70",
+    "version": "9.2.144",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v9.1.14",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.1.14",
-      "publishedAt": "2026-10-11T10:25:44.224Z"
+      "tag": "v9.2.144",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.144",
+      "publishedAt": "2026-11-03T06:23:10Z",
+      "asset": {
+        "name": "Stealth-Browser-Console-Setup-9.2.144.exe",
+        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.144/Stealth-Browser-Console-Setup-9.2.144.exe",
+        "size": 522689304,
+        "sha256": "7885b46fdd305769a13ff39995657bd47480957c83664022e303a3799319eb96",
+        "sha512": "nC6Vn4ejAm/VEKmIQm4XzUR4lctT3AZxSq3qJS2cdu4PsHAOlrkBkEnw31cZKyLFPejANGkmWoqYCsDwpdzSxw==",
+        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.144/latest.yml"
+      }
     }
   },
-  "urls": {
-    "local": "http://127.0.0.1:5175"
+  "ship": {
+    "schemaVersion": 1,
+    "fastPath": "Deploy",
+    "releasePath": "Release",
+    "deployTarget": "github-release",
+    "playbook": "Tool/docs/playbooks/release-fast-path.md",
+    "script": "powershell -File E:\\Dev\\Tool\\scripts\\ship-product.ps1",
+    "preShip": [
+      "check-version-sync",
+      "verify-untracked-imports",
+      "verify-no-sibling-tool-imports",
+      "hub-workspace-chrome-ssot",
+      "build"
+    ],
+    "preShipCommands": {
+      "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published",
+      "verify-untracked-imports": "node E:\\Dev\\Tool\\scripts\\verify-untracked-imports.mjs --product-root .",
+      "verify-no-sibling-tool-imports": "node E:\\Dev\\Tool\\scripts\\verify-no-sibling-tool-imports.mjs --product-root .",
+      "hub-workspace-chrome-ssot": "node E:\\Dev\\Tool\\scripts\\audit-hub-workspace-chrome-ssot.mjs --json",
+      "build": "corepack pnpm run build"
+    },
+    "syncedAt": "2026-08-19T22:47:57.996Z"
   },
-  "manifestUpdatedAt": "2026-10-26T11:32:30.604Z",
   "versions": {
-    "current": "9.1.70",
-    "latestPublished": "9.1.14"
+    "current": "9.2.144",
+    "latestPublished": "9.2.144"
   }
 }

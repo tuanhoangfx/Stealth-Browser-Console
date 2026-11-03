@@ -25,6 +25,7 @@
     "mainMode": "directory",
     "splitScreens": [
       "profiles",
+      "android",
       "workflow",
       "system"
     ],
@@ -154,7 +155,18 @@
   ],
   "urls": {
     "local": "http://127.0.0.1:5175",
-    "app": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases"
+    "app": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases",
+    "site": "https://stealth.infi28.com/intro/"
+  },
+  "site": {
+    "deployTarget": "lenovo-static",
+    "registryKey": "P0003-SITE",
+    "platform": "P0008",
+    "siteId": "stealth",
+    "root": "Tool/P0008-Landing-Platform/sites/stealth",
+    "domain": "stealth.infi.io.vn",
+    "basePath": "/intro/",
+    "deploy": "node Tool/scripts/deploy-lenovo-static.mjs --code P0003-SITE"
   },
   "deployTarget": "github-release",
   "github": {
@@ -165,22 +177,22 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-10-28T15:03:22.708Z",
+  "manifestUpdatedAt": "2026-11-03T06:24:47.619Z",
   "release": {
-    "version": "9.1.87",
+    "version": "9.2.144",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v9.1.14",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.1.14",
-      "publishedAt": "2026-10-11T10:24:52Z",
+      "tag": "v9.2.144",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.144",
+      "publishedAt": "2026-11-03T06:23:10Z",
       "asset": {
-        "name": "Stealth-Browser-Console-Setup-9.1.14.exe",
-        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.1.14/Stealth-Browser-Console-Setup-9.1.14.exe",
-        "size": 176776916,
-        "sha256": "a04fa7976f7eb81a8e07bc2bebd83bee586d6e848e3c1b977588057f0b0f2e5d",
-        "sha512": "79eBQMjigAS+5EhqF6Q76PidyHRP7Vitbg8OYfsY7gbCq6TXuqBbPz+Vtf1bFu4l7M7SW5HhKPfBA9Z2Abw9cw==",
-        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.1.14/latest.yml"
+        "name": "Stealth-Browser-Console-Setup-9.2.144.exe",
+        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.144/Stealth-Browser-Console-Setup-9.2.144.exe",
+        "size": 522689304,
+        "sha256": "7885b46fdd305769a13ff39995657bd47480957c83664022e303a3799319eb96",
+        "sha512": "nC6Vn4ejAm/VEKmIQm4XzUR4lctT3AZxSq3qJS2cdu4PsHAOlrkBkEnw31cZKyLFPejANGkmWoqYCsDwpdzSxw==",
+        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.144/latest.yml"
       }
     }
   },
@@ -208,7 +220,7 @@
     "syncedAt": "2026-08-19T22:47:57.996Z"
   },
   "versions": {
-    "current": "9.1.87",
-    "latestPublished": "9.1.14"
+    "current": "9.2.144",
+    "latestPublished": "9.2.144"
   }
 }
