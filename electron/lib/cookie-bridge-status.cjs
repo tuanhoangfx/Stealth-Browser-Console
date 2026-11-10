@@ -3,18 +3,34 @@ const path = require("node:path");
 const {
   COOKIE_BRIDGE_STORE_ID,
   cookieBridgeEnabled,
+  isVerifiedStoreExtension,
   resolveCachedExtensionDir,
+  useLocalDevExtension,
   workspaceExtensionDir,
   unpackedDir,
 } = require("./cookie-bridge-store.cjs");
+const { operatorStableRoot } = require("./operator-extension-stage.cjs");
 const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
+
+function readDirManifestVersion(dir) {
+  if (!dir) return null;
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
+    return String(manifest.version || "").trim() || null;
+  } catch {
+    return null;
+  }
+}
 
 function resolveExtensionSource(resolvedPath, userDataRoot) {
   if (!resolvedPath) return "missing";
   const workspace = workspaceExtensionDir();
   if (workspace && resolvedPath === workspace) return "workspace";
   const cache = unpackedDir(userDataRoot);
-  if (resolvedPath === cache) return "store-cache";
+  if (resolvedPath === cache) {
+    if (useLocalDevExtension()) return "workspace";
+    return "store-cache";
+  }
   return "custom";
 }
 
@@ -29,6 +45,7 @@ function getCookieBridgeStatus(userDataRoot) {
   );
   const workspacePath = workspaceExtensionDir();
   const cachePath = unpackedDir(userDataRoot);
+  const stageDir = path.join(operatorStableRoot(), COOKIE_BRIDGE_STORE_ID);
   let manifestName = "";
   let manifestVersion = "";
   if (manifestOk) {
@@ -43,10 +60,11 @@ function getCookieBridgeStatus(userDataRoot) {
   }
 
   const enabled = e0001On;
+  const sourceMode = useLocalDevExtension() ? "workspace" : "store";
 
   return {
     enabled,
-    profilesExtensionsEnabled: toggles.e0001 || toggles.surfshark || toggles.webStore,
+    profilesExtensionsEnabled: toggles.e0001 || toggles.e0002 !== false || toggles.surfshark || toggles.webStore,
     extensionToggles: toggles,
     productCode: "E0001",
     name: "E0001 Cookie Bridge",
@@ -54,9 +72,13 @@ function getCookieBridgeStatus(userDataRoot) {
     resolvedPath: resolvedPath || null,
     unpackedId: resolvedPath ? unpackedExtensionId(resolvedPath) : null,
     source: resolveExtensionSource(resolvedPath, userDataRoot),
+    sourceMode,
+    verifiedStore: Boolean(resolvedPath && isVerifiedStoreExtension(resolvedPath)),
     manifestOk,
     manifestName: manifestName || "E0001 Cookie Bridge",
     manifestVersion: manifestVersion || null,
+    workspaceVersion: readDirManifestVersion(workspacePath),
+    stageVersion: readDirManifestVersion(stageDir),
     workspacePath: workspacePath || null,
     cachePath,
     env: {

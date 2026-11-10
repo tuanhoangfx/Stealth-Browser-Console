@@ -99,16 +99,22 @@ const hubAuthSmoke = spawnSync(
 );
 if ((hubAuthSmoke.status ?? 1) !== 0) process.exit(hubAuthSmoke.status ?? 1);
 
-if (process.env.STEALTH_SKIP_BUILD_HOT_SYNC !== "1") {
+const releaseProd =
+  (process.argv.includes("--release-prod") || process.env.STEALTH_RELEASE_PROD === "1") &&
+  process.env.STEALTH_SKIP_BUILD_HOT_SYNC !== "1";
+
+if (releaseProd) {
   const hotPatchScript = path.join(root, "scripts", "sync-hot-patch.cjs");
   if (fs.existsSync(hotPatchScript)) {
     const hp = spawnSync(
       node,
-      [hotPatchScript, "--apply-prod", "--stage-asar"],
+      [hotPatchScript, "--release-prod", "--stage-asar"],
       winSpawnOpts({ cwd: root, stdio: "inherit" }),
     );
     if ((hp.status ?? 1) !== 0) {
       console.warn("run-build: sync-hot-patch warning (continuing)");
     }
   }
+} else {
+  console.log("run-build: Dev-only build complete. Prod (:6003) is strictly isolated until explicit Release (--release-prod).");
 }

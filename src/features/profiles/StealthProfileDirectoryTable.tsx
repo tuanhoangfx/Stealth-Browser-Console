@@ -1,6 +1,6 @@
 import {
   HubDirectoryTableShell,
-  buildDirectoryColgroupForShell,
+  buildChromeRemDirectoryColgroup,
   buildDirectoryColumns,
   hubDirectoryTableClass,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
@@ -11,6 +11,7 @@ import {
   STEALTH_PROFILE_COLUMN_META as STEALTH_PROFILE_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
+import { useStealthManualSortEnabled } from "../../lib/stealth-manual-sort-prefs";
 import {
   profileDirectoryColumnPrefs,
   readProfileDirectoryColumns,
@@ -24,8 +25,10 @@ export type StealthProfileSortKey =
   | "profile"
   | "group"
   | "e0001"
+  | "e0002"
   | "surfshark"
   | "status"
+  | "activityLog"
   | "updated"
   | "createdAt"
   | "startupUrl"
@@ -46,8 +49,13 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   allVisibleSelected,
   onOpen,
   onClose,
+  onBoostWaiting,
+  onResetProxy,
   onOpenDetail,
   runningHeadlessIds,
+  waitingReasons,
+  headlessReasons,
+  activityLogs,
   globalExtensionToggles,
   extensionIcons,
   emptyMessage,
@@ -66,8 +74,13 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
   allVisibleSelected: boolean;
   onOpen: (profile: ProfileRow) => void;
   onClose: (profile: ProfileRow) => void;
+  onBoostWaiting?: (profile: ProfileRow) => void;
+  onResetProxy?: (profile: ProfileRow) => void;
   onOpenDetail?: (profile: ProfileRow) => void;
   runningHeadlessIds?: ReadonlySet<string>;
+  waitingReasons?: Readonly<Record<string, string>>;
+  headlessReasons?: Readonly<Record<string, string>>;
+  activityLogs?: Readonly<Record<string, { text: string; updatedAt?: string; history?: Array<{ text: string; at: string }> }>>;
   globalExtensionToggles: ExtensionToggles;
   extensionIcons?: ExtensionIconMap;
   emptyMessage?: string;
@@ -127,14 +140,17 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
     return () => window.removeEventListener(profileDirectoryColumnPrefs.changeEvent, sync);
   }, []);
 
+  const manualSort = useStealthManualSortEnabled("p0003-profiles");
+
   const columns = useMemo(() => {
     const built = buildDirectoryColumns(
       visibleColumnKeys as StealthProfileSortKey[],
       toHubDirectoryColumnMeta(STEALTH_PROFILE_COLUMN_META),
+      { sortable: manualSort },
     );
     return built.map((col) => {
-      if (col.key === "e0001" || col.key === "surfshark") {
-        const src = extensionIcons?.[col.key];
+      if (col.key === "e0001" || col.key === "e0002" || col.key === "surfshark") {
+        const src = extensionIcons?.[col.key] ?? col.headerImageSrc;
         return {
           ...col,
           sortable: false,
@@ -150,17 +166,62 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
       }
       return col;
     });
-  }, [visibleColumnKeys, extensionIcons]);
+  }, [visibleColumnKeys, extensionIcons, manualSort]);
   const colgroup = useMemo(
-    () => buildDirectoryColgroupForShell(columns, { showSelect: true }),
+    () =>
+      buildChromeRemDirectoryColgroup(columns, [
+        "createdAt",
+        "updated",
+        "profile",
+        "group",
+        "status",
+        "activityLog",
+        "startupUrl",
+        "e0001",
+        "e0002",
+        "surfshark",
+      ]),
     [columns],
+  );
+
+  const renderRowCells = useCallback(
+    (profile: ProfileRow) => (
+      <>
+        {columns.map((col) =>
+          renderStealthProfileDirectoryBodyCell(col, profile, searchQuery, {
+            onOpen,
+            onClose,
+            onBoostWaiting,
+            onResetProxy,
+            runningHeadlessIds,
+            waitingReasons,
+            headlessReasons,
+            activityLogs,
+            globalExtensionToggles,
+          }),
+        )}
+      </>
+    ),
+    [
+      activityLogs,
+      columns,
+      globalExtensionToggles,
+      headlessReasons,
+      onBoostWaiting,
+      onClose,
+      onOpen,
+      onResetProxy,
+      runningHeadlessIds,
+      searchQuery,
+      waitingReasons,
+    ],
   );
 
   return (
     <HubDirectoryTableShell
       items={sorted}
       ariaLabel="Browser profiles"
-      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table`}
+      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table stealth-profile-directory-table`}
       wrapClassName={HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS}
       paginatedShellClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       flushWrap
@@ -188,24 +249,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
             }
           : undefined
       }
-      getRowClassName={(profile) => {
-        const selected = selectedIds.has(profileRowKey(profile)) ? " is-selected" : "";
-        const clickable = onOpenDetail ? " cursor-pointer" : "";
-        return `${selected}${clickable}`;
-      }}
       onRowClick={onOpenDetail}
-      renderRowCells={(profile) => (
-        <>
-          {columns.map((col) =>
-            renderStealthProfileDirectoryBodyCell(col, profile, searchQuery, {
-              onOpen,
-              onClose,
-              runningHeadlessIds,
-              globalExtensionToggles,
-            }),
-          )}
-        </>
-      )}
+      renderRowCells={renderRowCells}
     />
   );
 });

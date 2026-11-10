@@ -18,7 +18,12 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { ensureStoreExtension } = require("../electron/lib/webstore-extension.cjs");
+const {
+  compareExtensionVersions,
+  defaultUserDataRoot,
+  ensureStoreExtension,
+  unpackedDirForStoreId,
+} = require("../electron/lib/webstore-extension.cjs");
 const { COOKIE_BRIDGE_STORE_ID } = require("../electron/lib/stealth-extension-store-ids.cjs");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,8 +32,13 @@ const force = process.argv.includes("--force");
 
 const storeId = COOKIE_BRIDGE_STORE_ID;
 const targetDir = path.join(repoRoot, "build", "bundled-extensions", storeId, "unpacked");
+const targetLatestDir = path.join(repoRoot, "build", "bundled-extensions", storeId, "unpacked-latest");
+const scriptsCacheDir = path.join(repoRoot, "scripts", "extensions-cache", storeId, "unpacked");
+const workspaceDir = path.resolve(repoRoot, "..", "..", "Extension", "E0001-cookie-bridge");
 const targetManifest = path.join(targetDir, "manifest.json");
 const targetVerified = path.join(targetDir, "_metadata", "verified_contents.json");
+const { shouldCopyExtensionEntry } = require("../electron/lib/cloakbrowser-extension-stage.cjs");
+const { syncExtensionDirToCache } = require("../electron/lib/cookie-bridge-store.cjs");
 
 function readVersion(dir) {
   try {
@@ -38,10 +48,55 @@ function readVersion(dir) {
   }
 }
 
+function syncLatestWorkspaceSnapshot() {
+  if (!fs.existsSync(path.join(workspaceDir, "manifest.json"))) return;
+  const wsVer = readVersion(workspaceDir);
+  for (const dest of [targetLatestDir, scriptsCacheDir]) {
+    const curVer = readVersion(dest);
+    const staging = `${dest}.staging`;
+    if (fs.existsSync(staging)) {
+      try {
+        fs.rmSync(staging, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+    fs.mkdirSync(dest, { recursive: true });
+    fs.cpSync(workspaceDir, dest, {
+      recursive: true,
+      force: true,
+      filter: (entry) => shouldCopyExtensionEntry(path.relative(workspaceDir, entry)),
+    });
+    console.log(
+      `sync-bundled-e0001: synced latest workspace snapshot v${curVer || "none"} → v${wsVer} (${path.relative(repoRoot, dest)})`,
+    );
+  }
+  try {
+    syncExtensionDirToCache(workspaceDir, undefined, { force: true });
+  } catch {
+    /* ignore */
+  }
+}
+
+syncLatestWorkspaceSnapshot();
+
 const hasCommitted = fs.existsSync(targetManifest) && fs.existsSync(targetVerified);
 
 if (hasCommitted && !force) {
-  console.log(`sync-bundled-e0001: snapshot present (v${readVersion(targetDir)}), skipping download. Use --force to refresh.`);
+  const localCache = unpackedDirForStoreId(defaultUserDataRoot(), storeId);
+  const localVerified = path.join(localCache, "_metadata", "verified_contents.json");
+  const committedVer = readVersion(targetDir);
+  const cacheVer = fs.existsSync(localVerified) ? readVersion(localCache) : "";
+  if (cacheVer && compareExtensionVersions(cacheVer, committedVer) > 0) {
+    const staging = `${targetDir}.staging`;
+    if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+    fs.cpSync(localCache, staging, { recursive: true, force: true });
+    fs.rmSync(targetDir, { recursive: true, force: true });
+    fs.renameSync(staging, targetDir);
+    console.log(`sync-bundled-e0001: upgraded bundled snapshot v${committedVer} → v${cacheVer} from local verified cache.`);
+    process.exit(0);
+  }
+  console.log(`sync-bundled-e0001: snapshot present (v${committedVer}), skipping download. Use --force to refresh.`);
   process.exit(0);
 }
 

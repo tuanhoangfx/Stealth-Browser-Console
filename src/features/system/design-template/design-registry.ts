@@ -4,8 +4,14 @@
  */
 export const ACTIVE_DESIGN_COUNT = 0;
 
-/** Locked 2026-07-06 — Run History Design V1 Chip lanes. */
+/** Locked 2026-11-10 — Run History Design H1 (V1) Audit Trail & Session Summary (Before → After + Duration). */
 export const RUN_HISTORY_DESIGN_LOCK = "V1" as const;
+
+/** Locked 2026-11-10 — Runtime Console Log Design L1 Deep Action & Telemetry Stream ([COOKIE] · [PROXY] · [STEP] · [EXT]). */
+export const RUNTIME_CONSOLE_LOG_DESIGN_LOCK = "L1" as const;
+
+/** Locked 2026-11-10 — Profile KPI Tooltip Design K1 Grouped by Daemon / Process Pool (Headless & Waiting). */
+export const PROFILE_KPI_TOOLTIP_DESIGN_LOCK = "K1" as const;
 
 /**
  * Locked 2026-07-30 — System Console = live RunLogs only (v1.0.154 SSOT).

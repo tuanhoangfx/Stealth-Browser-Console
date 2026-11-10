@@ -5,10 +5,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 // @ts-expect-error shared embed (JS module) — VITE_APP_VERSION + VITE_APP_BUILT_AT
 import { hubAppVersionPlugin } from "./scripts/embed-app-version.mjs";
+import { createHubManualChunks, HUB_CHUNK_SIZE_WARNING_LIMIT_KB } from "../scripts/vite-hub-chunks.mjs";
 
 const rootDir = path.resolve(__dirname);
-const hubUiSrc = path.resolve(rootDir, "vendor/hub-ui/src");
-const hubIdentitySrc = path.resolve(rootDir, "vendor/hub-identity/src");
+const hubUiSrc = path.resolve(rootDir, "../../packages/hub-ui/src");
+const hubIdentitySrc = path.resolve(rootDir, "../../packages/hub-identity/src");
 const devRoot = path.resolve(rootDir, "../..");
 
 export default defineConfig(async ({ command }) => {
@@ -18,9 +19,13 @@ export default defineConfig(async ({ command }) => {
     {
       name: "electron-file-protocol-html",
       apply: "build" as const,
-      transformIndexHtml(html: string) {
-        // file:// + Vite `crossorigin` breaks Chromium Force Reload (Shift+F5).
-        return html.replace(/\s+crossorigin(?:="[^"]*")?/gi, "");
+      enforce: "post" as const,
+      transformIndexHtml: {
+        order: "post" as const,
+        handler(html: string) {
+          // file:// + Vite `crossorigin` breaks Chromium Force Reload (Shift+F5).
+          return html.replace(/\s+crossorigin(?:="[^"]*")?/gi, "");
+        },
       },
     },
   ];
@@ -55,7 +60,7 @@ export default defineConfig(async ({ command }) => {
   return {
     // Serve: absolute base so `/profiles` hard-refresh works. Build: `./` for Electron file://.
     base: command === "serve" ? "/" : "./",
-    appType: "spa",
+    appType: "spa" as const,
     plugins,
     resolve: {
       dedupe: ["react", "react-dom"],
@@ -72,7 +77,38 @@ export default defineConfig(async ({ command }) => {
       // Packaging writes under dist-desktop/ while Electron/Vite are up — ignore so
       // license/html changes do not force full client reloads / stack churn.
       watch: {
-        ignored: ["**/dist-desktop/**", "**/dist/**", "**/.tmp-asar-check/**"],
+        ignored: (p: string) => {
+          const norm = p.replace(/\\/g, "/");
+          if (
+            norm.includes("/node_modules/") ||
+            norm.includes("/dist-desktop/") ||
+            norm.includes("/dist/") ||
+            norm.includes("/.tmp-asar-check/") ||
+            norm.includes("/data/") ||
+            norm.includes("/.cache/") ||
+            norm.includes("/logs/") ||
+            norm.includes("/.ship/") ||
+            norm.includes("/.git/") ||
+            norm.includes("/.runtime/") ||
+            norm.includes("/build/bundled-extensions/") ||
+            norm.endsWith("/tool.manifest.json") ||
+            norm.endsWith("/CHANGELOG.md") ||
+            norm.endsWith("/.vite-active-lease.txt") ||
+            norm.endsWith(".log") ||
+            norm.endsWith(".pid") ||
+            norm.endsWith(".state.json") ||
+            norm.endsWith(".env.json")
+          ) {
+            return true;
+          }
+          if (
+            norm.includes("/Tool/") &&
+            !norm.includes("/Tool/P0003-Stealth-Browser-Console")
+          ) {
+            return true;
+          }
+          return false;
+        },
       },
       fs: {
         allow: [rootDir, hubUiSrc, hubIdentitySrc, path.resolve(rootDir, "../packages"), devRoot]
@@ -81,15 +117,18 @@ export default defineConfig(async ({ command }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
+      chunkSizeWarningLimit: HUB_CHUNK_SIZE_WARNING_LIMIT_KB,
       rollupOptions: {
         output: {
-          manualChunks(id: string) {
-            if (id.includes("node_modules/dagre") || id.includes("node_modules/@xyflow")) {
-              return "workflow-editor";
-            }
-          },
+          manualChunks: createHubManualChunks({
+            "vendor-workflow": (id: string) =>
+              id.includes("node_modules/dagre") || id.includes("node_modules/@xyflow"),
+          }),
         },
       },
+    },
+    test: {
+      maxWorkers: 3,
     },
   };
 });

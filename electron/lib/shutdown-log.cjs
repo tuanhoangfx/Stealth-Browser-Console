@@ -22,6 +22,10 @@ function setShutdownDetails(details = {}) {
   pendingShutdownDetails = { ...pendingShutdownDetails, ...details };
 }
 
+function peekShutdownReason() {
+  return pendingShutdownReason;
+}
+
 function consumeShutdownReason() {
   const reason = pendingShutdownReason;
   pendingShutdownReason = "unknown";
@@ -108,6 +112,7 @@ function writeBootLog(userDataRoot, details = {}) {
 module.exports = {
   setShutdownReason,
   setShutdownDetails,
+  peekShutdownReason,
   consumeShutdownReason,
   consumeShutdownDetails,
   appendLifecycleLog,

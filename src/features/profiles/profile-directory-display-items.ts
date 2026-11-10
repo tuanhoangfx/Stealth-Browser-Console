@@ -19,6 +19,15 @@ export function profileDirectoryColumnItemsWithExtensionIcons(
         brandIcon: undefined,
       };
     }
+    if (item.key === "e0002" && extensionIcons.e0002) {
+      return {
+        ...item,
+        imageSrc: extensionIcons.e0002,
+        icon: undefined,
+        iconClassName: undefined,
+        brandIcon: undefined,
+      };
+    }
     if (item.key === "surfshark" && extensionIcons.surfshark) {
       return {
         ...item,

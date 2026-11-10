@@ -5,10 +5,36 @@ const { readJson, writeJson } = require("./profile-chrome-json.cjs");
 
 /** Chromium Local State — prefer search over single-label intranet URL guesses. */
 const INTRANET_REDIRECT_BEHAVIOR = 1; // DisableInterceptionChecksDisableInfobar
+const _omniboxPreppedCache = new Map();
+const OMNIBOX_PREP_TTL_MS = 60_000;
+const OMNIBOX_POLICY_JSON = JSON.stringify({
+  DNSInterceptionChecksEnabled: false,
+  IntranetRedirectBehavior: INTRANET_REDIRECT_BEHAVIOR,
+  DefaultSearchProviderEnabled: true,
+  DefaultSearchProviderName: "Google",
+  DefaultSearchProviderKeyword: "google.com",
+  DefaultSearchProviderSearchURL: "https://www.google.com/search?q={searchTerms}",
+});
 
 function ensureProfileChromeOmniboxSearchPrefs(userDataDir) {
   if (!userDataDir) return { ok: false };
   const base = path.resolve(String(userDataDir));
+  const prefsFile = path.join(base, "Default", "Preferences");
+  const policyDir = path.join(base, "policies", "managed");
+  const policyFile = path.join(policyDir, "stealth-omnibox-search.json");
+
+  const nowMs = Date.now();
+  const cached = _omniboxPreppedCache.get(base);
+  if (cached && nowMs - cached.at < OMNIBOX_PREP_TTL_MS) {
+    try {
+      const st = fs.statSync(prefsFile);
+      if (st.size > 4096 && st.mtimeMs === cached.prefsMtime && fs.existsSync(policyFile)) {
+        return { ok: false, changed: 0 };
+      }
+    } catch {
+      /* fall through */
+    }
+  }
   let changed = 0;
 
   const localStateFile = path.join(base, "Local State");
@@ -24,7 +50,6 @@ function ensureProfileChromeOmniboxSearchPrefs(userDataDir) {
   }
   if (changed) writeJson(localStateFile, localState);
 
-  const prefsFile = path.join(base, "Default", "Preferences");
   const prefs = readJson(prefsFile) || {};
   let prefsChanged = false;
   if (prefs.default_search_provider_enabled !== true) {
@@ -51,21 +76,19 @@ function ensureProfileChromeOmniboxSearchPrefs(userDataDir) {
     changed += 1;
   }
 
-  const policyDir = path.join(base, "policies", "managed");
-  const policyFile = path.join(policyDir, "stealth-omnibox-search.json");
-  const policy = {
-    DNSInterceptionChecksEnabled: false,
-    IntranetRedirectBehavior: INTRANET_REDIRECT_BEHAVIOR,
-    DefaultSearchProviderEnabled: true,
-    DefaultSearchProviderName: "Google",
-    DefaultSearchProviderKeyword: "google.com",
-    DefaultSearchProviderSearchURL: "https://www.google.com/search?q={searchTerms}",
-  };
-  const policyJson = JSON.stringify(policy);
-  if (!fs.existsSync(policyFile) || fs.readFileSync(policyFile, "utf8") !== policyJson) {
+  if (!fs.existsSync(policyFile) || fs.readFileSync(policyFile, "utf8") !== OMNIBOX_POLICY_JSON) {
     fs.mkdirSync(policyDir, { recursive: true });
-    fs.writeFileSync(policyFile, policyJson, "utf8");
+    fs.writeFileSync(policyFile, OMNIBOX_POLICY_JSON, "utf8");
     changed += 1;
+  }
+
+  try {
+    const st = fs.statSync(prefsFile);
+    if (st.size > 4096) {
+      _omniboxPreppedCache.set(base, { at: Date.now(), prefsMtime: st.mtimeMs });
+    }
+  } catch {
+    /* ignore */
   }
 
   return { ok: changed > 0, changed };

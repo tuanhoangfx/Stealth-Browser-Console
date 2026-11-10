@@ -78,6 +78,14 @@ function trySyncRestoreCatalogIfEmpty(userDataPath, { currentProfiles = 0 } = {}
     candidates.push({ path: knownGood, bytes: stat.size, mtimeMs: stat.mtimeMs, tag: "known-good" });
   }
   for (const candidate of listBackupCandidates(dataDir)) {
+    const base = path.basename(candidate);
+    if (
+      base.includes(".corrupt.") ||
+      base.includes(".pre-seed.") ||
+      base.includes(".before-sync-restore.")
+    ) {
+      continue;
+    }
     try {
       const stat = fs.statSync(candidate);
       if (stat.size < 512 * 1024) continue;

@@ -52,6 +52,9 @@ export function stealthFilterHintContent(
     if (filterKey === "status") {
       return asFilterBarHint(stealthDisplayPrefHintContent("status", "profiles", label));
     }
+    if (filterKey === "proxy") {
+      return asFilterBarHint(stealthDisplayPrefHintContent("proxy", "profiles", label));
+    }
   }
 
   if (scope === "workflow") {

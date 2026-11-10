@@ -70,13 +70,23 @@ function resolveElectronLibScript(fileName, baseDir = __dirname) {
 
 
 
+function isDeprecatedProcessScanCommand(command) {
+  const s = String(command || "");
+  return (
+    s.includes("StealthRestartManager") ||
+    s.includes("rstrtmgr.dll") ||
+    (s.includes("Get-CimInstance") && s.includes("Win32_Process"))
+  );
+}
+
 function runPowerShellCommand(command, opts = {}) {
+  if (isDeprecatedProcessScanCommand(command)) return "";
 
   return execFileSync(
 
     resolvePowerShell(),
 
-    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+    ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-Command", command],
 
     { encoding: "utf8", windowsHide: true, timeout: 20_000, ...opts },
 
@@ -92,7 +102,7 @@ async function runPowerShellFile(ps1Path, args = [], opts = {}) {
 
     resolvePowerShell(),
 
-    ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", ps1Path, ...args],
+    ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-STA", "-ExecutionPolicy", "Bypass", "-File", ps1Path, ...args],
 
     { timeout: 15_000, windowsHide: true, ...opts },
 
@@ -103,12 +113,13 @@ async function runPowerShellFile(ps1Path, args = [], opts = {}) {
 
 
 async function runPowerShellCommandAsync(command, opts = {}) {
+  if (isDeprecatedProcessScanCommand(command)) return "";
 
   const { stdout } = await execFileAsync(
 
     resolvePowerShell(),
 
-    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+    ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-Command", command],
 
     { encoding: "utf8", windowsHide: true, timeout: 20_000, ...opts },
 

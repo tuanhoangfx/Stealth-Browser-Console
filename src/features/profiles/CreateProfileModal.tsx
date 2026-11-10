@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Copy, Hash, ListOrdered, UserPlus, X } from "lucide-react";
+import { ClipboardList, Copy, Hash, ListOrdered, RotateCcw, UserPlus } from "lucide-react";
 import {
   HubAccountDetailAdmScaffold,
   HubAccountDetailHeaderSearch,
@@ -8,11 +8,12 @@ import {
   HubAlert,
   HubTocSectionNav,
   HubToolDetailModal,
-  HubToolDetailModalPrimaryAction,
+  HubToolDetailModalAccountFooter,
   HubToolDetailModalSecondaryAction,
   HubToolDetailSection,
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
-  HUB_DETAIL_MODAL_CLOSE_LABEL,
+  HUB_DETAIL_MODAL_RESET_LABEL,
+  HUB_DETAIL_MODAL_RESET_TITLE,
   HUB_TOOL_DETAIL_SECTIONS_CLASS,
   HUB_TOOL_DETAIL_FORM_GRID_3_CLASS,
   KpiStrip,
@@ -22,10 +23,10 @@ import {
 } from "@tool-workspace/hub-ui";
 import { deviceConfigFromDefaults, defaultStartupUrlFromPrefs } from "../../lib/stealth-app-prefs";
 import { resolveStartupUrlSave, startupUrlSaveError } from "../../lib/startup-url";
-import { createProfile as apiCreateProfile, fetchProfilesAndGroups } from "../../api";
+import { fetchProfilesAndGroups } from "../../api";
 import { useProfilesRuntime } from "../../providers/ProfilesRuntimeProvider";
 import { randomFingerprintSeed } from "../../lib/stealth-profile-utils";
-import type { DeviceConfig, ProfileRow } from "../../types";
+import type { DeviceConfig, ProfileExtensionOverrides, ProfileRow } from "../../types";
 import { useAppToast } from "../../components/toast";
 import { ProfileFormFields } from "./ProfileFormFields";
 import { ProfileBasicsFields } from "./ProfileBasicsFields";
@@ -42,14 +43,14 @@ type CreateProfileTab = "single" | "bulk";
 type BulkCreateMode = "names" | "range";
 
 const CREATE_PROFILE_TABS = [
-  { id: "single", label: "Single", emoji: "🧍" },
-  { id: "bulk", label: "Bulk", emoji: "📦" },
+  { id: "single", label: "Single", emoji: "🧍", tooltip: "Create a single browser profile with custom device fingerprint and network settings" },
+  { id: "bulk", label: "Bulk", emoji: "📦", tooltip: "Batch-create multiple browser profiles at once using a number range or code list" },
 ] as const;
 
 const BULK_MODE_ITEMS = [
-  { id: "range", label: "Number range", emoji: "🔢" },
-  { id: "names", label: "Name list", emoji: "📝" },
-] as const satisfies readonly { id: BulkCreateMode; label: string; emoji: string }[];
+  { id: "range", label: "Number range", emoji: "🔢", tooltip: "Generate zero-padded 4-digit profile codes across a numeric range (e.g. 0000 to 0100)" },
+  { id: "names", label: "Name list", emoji: "📝", tooltip: "Paste a list of specific profile codes (one per line) to create missing profiles" },
+] as const satisfies readonly { id: BulkCreateMode; label: string; emoji: string; tooltip: string }[];
 
 /** Bulk number range — profile names are always zero-padded to 4 digits (0000). */
 const BULK_RANGE_PAD = 4;
@@ -87,6 +88,7 @@ function ProfileCreateModalToc({
               <button
                 type="button"
                 role="tab"
+                title={item.tooltip}
                 aria-selected={active}
                 aria-expanded={isBulk ? active : undefined}
                 className={`hub-toc-nav__item group relative z-[1] min-h-[var(--overview-toc-row-h,2rem)] w-full cursor-pointer text-left text-[13px] transition-colors${
@@ -113,6 +115,7 @@ function ProfileCreateModalToc({
                       <li key={modeItem.id}>
                         <button
                           type="button"
+                          title={modeItem.tooltip}
                           className={`hub-toc-nav__item group relative z-[1] w-full cursor-pointer text-left text-[12px] transition-colors${
                             modeActive ? " is-active" : ""
                           }`}
@@ -226,8 +229,8 @@ function previewBulkRange(startText: string, endText: string, profiles: ProfileR
   if (!Number.isInteger(end) || end < 0) {
     return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range end must be a non-negative integer." };
   }
-  if (end > 9999) {
-    return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range end must be <= 9999." };
+  if (end > 99999) {
+    return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range end must be <= 99999." };
   }
   if (start > end) {
     return { requested: 0, createNames: [], skippedNames: [], duplicateNames: [], error: "Range start must be less than or equal to range end." };
@@ -259,13 +262,15 @@ export function CreateProfileModal({
   onClose: () => void;
   onProfilesChanged?: () => void;
 }) {
-  const { createProfile, groups, refreshProfiles } = useProfilesRuntime();
+  const { createProfile, createProfilesBulkByNames, updateProfile, groups } = useProfilesRuntime();
   const { pushToast } = useAppToast();
   const [existingProfiles, setExistingProfiles] = useState<ProfileRow[]>([]);
   const [tab, setTab] = useState<CreateProfileTab>("single");
   const [name, setName] = useState("");
   const [groupId, setGroupId] = useState("default");
   const [proxy, setProxy] = useState("");
+  const [staticIp, setStaticIp] = useState(false);
+  const [extensionOverrides, setExtensionOverrides] = useState<ProfileExtensionOverrides>({});
   const [note, setNote] = useState("");
   const [fingerprintSeed, setFingerprintSeed] = useState(() => randomFingerprintSeed());
   const [device, setDevice] = useState<DeviceConfig>(() => deviceConfigFromDefaults());
@@ -336,11 +341,12 @@ export function CreateProfileModal({
     () => ({
       groupId,
       proxy: proxy.trim(),
+      staticIp,
       note: note.trim(),
       startupUrl: resolveStartupUrlSave(startupUrl, ""),
       ...device,
     }),
-    [device, groupId, note, proxy, startupUrl],
+    [device, groupId, note, proxy, startupUrl, staticIp],
   );
 
   const save = () => {
@@ -360,12 +366,19 @@ export function CreateProfileModal({
       name: parsed.code,
       groupId,
       proxy: proxy.trim(),
+      staticIp,
       note: note.trim(),
       fingerprintSeed,
       startupUrl: resolveStartupUrlSave(startupUrl, ""),
       ...device
     })
-      .then(() => {
+      .then(async (created) => {
+        if (extensionOverrides && Object.keys(extensionOverrides).length > 0) {
+          await updateProfile({
+            id: created.id,
+            extensionOverrides,
+          }).catch(() => undefined);
+        }
         onProfilesChanged?.();
         onClose();
       })
@@ -391,82 +404,42 @@ export function CreateProfileModal({
     const names = [...bulkPreview.createNames];
     setBusy(true);
     setError("");
-    setBulkActivityLog([]);
+    const startedAt = new Date().toISOString();
+    setBulkActivityLog([
+      {
+        id: `bulk-batch-${startedAt}`,
+        status: "running",
+        startedAt,
+        message: `Creating ${names.length} profile${names.length === 1 ? "" : "s"} in batch…`,
+      },
+    ]);
 
     void (async () => {
-      let created = 0;
-      let failed = 0;
-
-      for (const profileName of names) {
-        const startedAt = new Date().toISOString();
-        const runningId = `bulk-run-${profileName}-${startedAt}`;
-        setBulkActivityLog((prev) => [
-          ...prev,
-          {
-            id: runningId,
-            status: "running",
-            startedAt,
-            message: `Creating "${profileName}"…`,
-          },
-        ]);
-
-        try {
-          await apiCreateProfile({
-            name: profileName,
-            fingerprintSeed: randomFingerprintSeed(),
-            ...bulkDefaults,
-          });
-          const finishedAt = new Date().toISOString();
-          created += 1;
-          setBulkActivityLog((prev) =>
-            prev.map((entry) =>
-              entry.id === runningId
-                ? {
-                    ...entry,
-                    status: "success",
-                    finishedAt,
-                    message: `Created profile "${profileName}"`,
-                  }
-                : entry,
-            ),
-          );
-        } catch (err: unknown) {
-          const finishedAt = new Date().toISOString();
-          const message = err instanceof Error ? err.message : "Create failed";
-          failed += 1;
-          setBulkActivityLog((prev) =>
-            prev.map((entry) =>
-              entry.id === runningId
-                ? {
-                    ...entry,
-                    status: "failed",
-                    finishedAt,
-                    message: `Failed "${profileName}": ${message}`,
-                  }
-                : entry,
-            ),
-          );
-        }
-      }
+      const result = await createProfilesBulkByNames({
+        names,
+        ...bulkDefaults,
+      });
+      const finishedAt = new Date().toISOString();
+      const createdList = result.createdNames ?? names.slice(0, result.created);
+      setBulkActivityLog(
+        createdList.map((profileName) => ({
+          id: `bulk-run-${profileName}-${finishedAt}`,
+          status: "success" as const,
+          startedAt,
+          finishedAt,
+          message: `Created profile "${profileName}"`,
+        })),
+      );
 
       try {
         const data = await fetchProfilesAndGroups();
         setExistingProfiles(data.profiles);
       } catch {
-        // Preview refresh is best-effort; directory reload still runs below.
+        // Preview refresh is best-effort.
       }
 
-      await refreshProfiles();
       onProfilesChanged?.();
-
-      if (failed > 0) {
-        pushToast(
-          `Bulk create finished: ${created} created, ${failed} failed.`,
-          created > 0 ? "warn" : "error",
-        );
-      } else {
-        pushToast(`Created ${created} profile${created === 1 ? "" : "s"}.`, "success");
-      }
+      pushToast(`Created ${result.created} profile${result.created === 1 ? "" : "s"}.`, "success");
     })()
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Bulk create failed"))
       .finally(() => setBusy(false));
@@ -531,6 +504,10 @@ export function CreateProfileModal({
               setGroupId={setGroupId}
               proxy={proxy}
               setProxy={setProxy}
+              staticIp={staticIp}
+              setStaticIp={setStaticIp}
+              extensionOverrides={extensionOverrides}
+              setExtensionOverrides={setExtensionOverrides}
               startupUrl={startupUrl}
               setStartupUrl={setStartupUrl}
               groups={groups}
@@ -561,31 +538,45 @@ export function CreateProfileModal({
         />
       }
       footer={
-        <>
-          <HubToolDetailModalSecondaryAction
-            label={HUB_DETAIL_MODAL_CLOSE_LABEL}
-            onClick={onClose}
-            disabled={busy}
-            icon={X}
-          />
-          {tab === "single" ? (
-            <HubToolDetailModalPrimaryAction
-              label="Create profile"
-              onClick={save}
-              disabled={busy || !name.trim()}
-              busy={busy}
-              icon={UserPlus}
+        <HubToolDetailModalAccountFooter
+          onClose={onClose}
+          busy={busy}
+          onSave={tab === "single" ? save : saveBulk}
+          saveLabel={
+            tab === "single"
+              ? "Create profile"
+              : bulkPreview.createNames.length
+                ? `Create missing (${bulkPreview.createNames.length})`
+                : "Create missing"
+          }
+          saveIcon={UserPlus}
+          saveVariant="create"
+          saveDisabled={
+            busy ||
+            (tab === "single"
+              ? !name.trim()
+              : Boolean(bulkPreview.error) || !bulkPreview.createNames.length)
+          }
+          leading={
+            <HubToolDetailModalSecondaryAction
+              label={HUB_DETAIL_MODAL_RESET_LABEL}
+              title={HUB_DETAIL_MODAL_RESET_TITLE}
+              icon={RotateCcw}
+              disabled={busy}
+              onClick={() => {
+                setProxy("");
+                setStaticIp(false);
+                setExtensionOverrides({});
+                setDevice(deviceConfigFromDefaults());
+                setStartupUrl(defaultStartupUrlFromPrefs());
+                setFingerprintSeed(randomFingerprintSeed());
+                setNote("");
+                setError("");
+                pushToast("Reset form to default settings (📍 Local IP).", "success", 2500);
+              }}
             />
-          ) : (
-            <HubToolDetailModalPrimaryAction
-              label={bulkPreview.createNames.length ? `Create missing (${bulkPreview.createNames.length})` : "Create missing"}
-              onClick={saveBulk}
-              disabled={busy || Boolean(bulkPreview.error) || !bulkPreview.createNames.length}
-              busy={busy}
-              icon={UserPlus}
-            />
-          )}
-        </>
+          }
+        />
       }
     >
       {error ? <HubAlert tone="danger">{error}</HubAlert> : null}
@@ -609,6 +600,10 @@ export function CreateProfileModal({
                 setGroupId={setGroupId}
                 proxy={proxy}
                 setProxy={setProxy}
+                staticIp={staticIp}
+                setStaticIp={setStaticIp}
+                extensionOverrides={extensionOverrides}
+                setExtensionOverrides={setExtensionOverrides}
                 fingerprintSeed={fingerprintSeed}
                 setFingerprintSeed={setFingerprintSeed}
                 device={device}

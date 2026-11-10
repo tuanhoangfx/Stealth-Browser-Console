@@ -7,11 +7,12 @@ import {
 import type { ProfileRow } from "../../types";
 import { profileFilterValuesToState, profileStateToFilterValues } from "./profile-filters";
 
-/** Match catalogStatsToKpiNumbers — Running KPI includes profiles still opening. */
+/** Match catalogStatsToKpiNumbers — Running KPI includes profiles still opening; Ready KPI maps to Waiting agent headless queue. */
 const KPI_STATUS: Record<string, string[]> = {
   running: ["running", "opening"],
+  headless: ["headless"],
   failed: ["failed"],
-  ready: ["closed"],
+  ready: ["waiting"],
 };
 
 function sameFilterValues(current: FilterValues, key: string, values: string[]): boolean {
@@ -46,6 +47,7 @@ export function profileKpiFilterPatch(prefKey: string, current: FilterValues): F
     case "total":
       return hasActiveFilters(compact) ? {} : null;
     case "running":
+    case "headless":
     case "failed":
     case "ready":
       return setOrClear("status", KPI_STATUS[prefKey] ?? []);

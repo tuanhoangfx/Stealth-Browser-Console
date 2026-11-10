@@ -22,6 +22,8 @@ const unpacked = path.join(resources, "app.asar.unpacked");
 const asarPath = path.join(resources, "app.asar");
 
 const UNPACKED_REQUIRED = [
+  "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+  "node_modules/sql.js/dist/sql-wasm.wasm",
   "node_modules/playwright-core/index.js",
   "node_modules/cloakbrowser/package.json",
   "node_modules/tar/package.json",

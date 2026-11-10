@@ -915,7 +915,9 @@
   overflow: hidden;
 }
 
-.hub-main--profiles .stealth-profiles-workspace__body > .stealth-profile-layout {
+.hub-main--split .stealth-profiles-workspace__body > .stealth-profile-layout,
+.hub-main--profiles .stealth-profiles-workspace__body > .stealth-profile-layout,
+.hub-main--android .stealth-profiles-workspace__body > .stealth-profile-layout {
   flex: 1 1 0;
   min-height: 0;
 }

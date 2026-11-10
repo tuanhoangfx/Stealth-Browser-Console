@@ -8,6 +8,7 @@ const {
   DEFAULT_PROD_API_PORT,
   resolveStealthUserDataRoot,
   resolveStealthApiPort,
+  configureElectronUserData,
 } = require("./user-data-root.cjs");
 
 test("resolveStealthUserDataRoot uses prod folder by default when unpackaged", () => {
@@ -67,5 +68,37 @@ test("resolveStealthApiPort defaults prod unless isolated dev", () => {
     else process.env.STEALTH_API_PORT = prevPort;
     if (prevIso === undefined) delete process.env.STEALTH_DEV_ISOLATED;
     else process.env.STEALTH_DEV_ISOLATED = prevIso;
+  }
+});
+
+test("configureElectronUserData isolates unpackaged app to dev root + :6004 even if STEALTH_DEV_ISOLATED=0", () => {
+  const prevIso = process.env.STEALTH_DEV_ISOLATED;
+  const prevPort = process.env.STEALTH_API_PORT;
+  const prevUserData = process.env.STEALTH_USER_DATA;
+  const prevAllow = process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
+  process.env.STEALTH_DEV_ISOLATED = "0";
+  process.env.STEALTH_API_PORT = "6003";
+  delete process.env.STEALTH_USER_DATA;
+  delete process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
+  let configuredPath = "";
+  try {
+    const root = configureElectronUserData({
+      isPackaged: false,
+      setPath(_k, val) {
+        configuredPath = val;
+      },
+    });
+    assert.ok(root.endsWith(DEV_DIR));
+    assert.equal(configuredPath, root);
+    assert.equal(process.env.STEALTH_API_PORT, String(DEFAULT_DEV_API_PORT));
+  } finally {
+    if (prevIso === undefined) delete process.env.STEALTH_DEV_ISOLATED;
+    else process.env.STEALTH_DEV_ISOLATED = prevIso;
+    if (prevPort === undefined) delete process.env.STEALTH_API_PORT;
+    else process.env.STEALTH_API_PORT = prevPort;
+    if (prevUserData === undefined) delete process.env.STEALTH_USER_DATA;
+    else process.env.STEALTH_USER_DATA = prevUserData;
+    if (prevAllow === undefined) delete process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
+    else process.env.STEALTH_ALLOW_UNPACKAGED_PROD = prevAllow;
   }
 });

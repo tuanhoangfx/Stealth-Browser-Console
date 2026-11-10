@@ -119,14 +119,16 @@ function listAlternateFixedDriveRoots(userDataRoot) {
 }
 
 function driveFreeBytes(rootPath) {
-  if (process.platform !== "win32") {
-    try {
-      // Node 18+ on some builds; fail soft
-      const st = fs.statfsSync?.(rootPath);
-      if (st) return Number(st.bfree) * Number(st.bsize);
-    } catch {
-      /* ignore */
+  try {
+    const st = fs.statfsSync?.(rootPath);
+    if (st) {
+      const free = Number(st.bavail ?? st.bfree) * Number(st.bsize);
+      if (Number.isFinite(free) && free >= 0) return free;
     }
+  } catch {
+    /* fallback below on win32 */
+  }
+  if (process.platform !== "win32") {
     return 0;
   }
   const drive = String(rootPath).slice(0, 2);
@@ -165,10 +167,36 @@ function suggestProfilesRoot(userDataRoot) {
   return best ? best.candidate : fallback;
 }
 
+function isDevUserDataRoot(userDataRoot) {
+  const norm = path.resolve(String(userDataRoot || "")).toLowerCase();
+  return (
+    process.env.STEALTH_DEV_ISOLATED === "1" ||
+    norm.endsWith("\\stealth-browser-console-dev") ||
+    norm.endsWith("/stealth-browser-console-dev")
+  );
+}
+
 function resolveProfilesRoot(userDataRoot) {
-  const cfg = readProfilesLocationConfig(userDataRoot);
+  if (isDevUserDataRoot(userDataRoot) && process.env.STEALTH_DEV_SANDBOX_PROFILES === "1") {
+    const devSandboxRoot = path.join(path.resolve(String(userDataRoot || "")), "profiles-dev");
+    try {
+      fs.mkdirSync(devSandboxRoot, { recursive: true });
+    } catch {
+      /* ignore */
+    }
+    return devSandboxRoot;
+  }
+  const prodLookupRoot = isDevUserDataRoot(userDataRoot)
+    ? path.join(path.dirname(path.resolve(String(userDataRoot || ""))), "stealth-browser-console")
+    : userDataRoot;
+  const prodCfg = readProfilesLocationConfig(prodLookupRoot);
+  const localCfg = readProfilesLocationConfig(userDataRoot);
+  const cfg =
+    localCfg && localCfg.source !== "dev-isolated-sandbox"
+      ? localCfg
+      : prodCfg || localCfg;
   const configured = cfg?.profilesRoot ? String(cfg.profilesRoot).trim() : "";
-  const root = configured ? path.resolve(configured) : defaultProfilesRoot(userDataRoot);
+  const root = configured ? path.resolve(configured) : defaultProfilesRoot(prodLookupRoot);
   try {
     fs.mkdirSync(root, { recursive: true });
   } catch {

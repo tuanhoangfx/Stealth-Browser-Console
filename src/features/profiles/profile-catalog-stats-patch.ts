@@ -51,6 +51,13 @@ export function patchCatalogStatsForSessionEvent(
       inc("running");
       break;
     case "closed":
+    case "profile_close":
+    case "window-closed":
+    case "context-closed":
+    case "disconnected":
+    case "watchdog":
+    case "opening-stale":
+    case "reconcile":
     case "storage-released":
     case "startup-reconciled":
       if (next.running > 0) dec("running");
@@ -83,13 +90,28 @@ export function reconcileCatalogStats(stats: ProfileCatalogStats): ProfileCatalo
   return { ...stats, closed };
 }
 
-/** Header/KPI “Running” includes profiles still opening (launch in progress). */
-export function catalogStatsToKpiNumbers(stats: ProfileCatalogStats) {
+/**
+ * Header/KPI “Running” counts only headed user profiles (including launch in progress),
+ * excluding Agent Headless sessions which are already counted in the “Headless” KPI tile.
+ * “Waiting” (`ready` slot) counts the exact number of Headless Profiles queued/waiting
+ * for AI Agent execution (`stats.deferred ?? 0`).
+ */
+export function catalogStatsToKpiNumbers(stats: ProfileCatalogStats, runningHeadlessCount = 0) {
   const reconciled = reconcileCatalogStats(stats);
+  const activeTotal = reconciled.running + reconciled.opening;
+  const headedRunning =
+    reconciled.headedRunning !== undefined
+      ? Math.max(0, reconciled.headedRunning)
+      : Math.max(0, activeTotal - runningHeadlessCount);
+  const ready = Math.max(0, reconciled.deferred ?? 0);
   return {
     total: reconciled.total,
-    ready: reconciled.closed,
-    running: reconciled.running + reconciled.opening,
+    createToday: reconciled.createdToday ?? 0,
+    createWeek: reconciled.createdWeek ?? 0,
+    updateToday: reconciled.updatedToday ?? 0,
+    ready,
+    running: headedRunning,
+    headless: runningHeadlessCount,
     failed: reconciled.failed,
   };
 }

@@ -50,6 +50,31 @@ function buildFolderMap(profiles) {
 }
 
 const { resolveProfilesRoot } = require("./profiles-location.cjs");
+const { autoHealWipedProfileCookies, snapshotProfileCookiesIfHealthy, COOKIES_BAK_REL_PATH, COOKIES_REL_PATH, LOCAL_STATE_BAK_REL_PATH, LOCAL_STATE_REL_PATH } = require("./profile-cookie-guard.cjs");
+const { removeStaleProfileArtifacts, removeSidecarPid } = require("./profile-user-data-repair.cjs");
+
+const TRANSIENT_CACHE_DIRS = [
+  "Cache",
+  "Code Cache",
+  "GPUCache",
+  "DawnCache",
+  "DawnGraphiteCache",
+  "DawnWebGPUCache",
+  "ShaderCache",
+  "GrShaderCache",
+  "Crashpad",
+  "BrowserMetrics",
+];
+
+const TRANSIENT_LOCK_FILES = [
+  "SingletonLock",
+  "SingletonCookie",
+  "SingletonSocket",
+  "lockfile",
+  "DevToolsActivePort",
+  "stealth-pid.json",
+  "chrome_shutdown_ms.txt",
+];
 
 function profilesRoot(userDataRoot) {
   return resolveProfilesRoot(userDataRoot);
@@ -63,6 +88,9 @@ function zipWithPowerShell(sourceDir, zipPath) {
     "powershell",
     [
       "-NoProfile",
+      "-NonInteractive",
+      "-WindowStyle",
+      "Hidden",
       "-Command",
       [
         "Add-Type -AssemblyName System.IO.Compression.FileSystem",
@@ -84,6 +112,9 @@ function unzipWithPowerShell(zipPath, destDir) {
     "powershell",
     [
       "-NoProfile",
+      "-NonInteractive",
+      "-WindowStyle",
+      "Hidden",
       "-Command",
       `Expand-Archive -LiteralPath '${src}' -DestinationPath '${dest}' -Force`,
     ],
@@ -104,7 +135,7 @@ function copyDirRecursive(src, dest) {
   }
 }
 
-/** Windows robocopy — much faster than sync recursive copy for large Chrome profiles. */
+/** Windows robocopy — much faster than sync recursive copy for large Chrome profiles; excludes transient caches & locks. */
 function copyProfileDirFast(src, dest) {
   if (process.platform !== "win32") {
     copyDirRecursive(src, dest);
@@ -115,7 +146,25 @@ function copyProfileDirFast(src, dest) {
   if (fs.existsSync(dest)) rmDirSafe(dest);
   const result = spawnSync(
     "robocopy",
-    [src, dest, "/E", "/COPY:DAT", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS", "/nc", "/ns", "/np"],
+    [
+      src,
+      dest,
+      "/E",
+      "/COPY:DAT",
+      "/R:1",
+      "/W:1",
+      "/NFL",
+      "/NDL",
+      "/NJH",
+      "/NJS",
+      "/nc",
+      "/ns",
+      "/np",
+      "/XD",
+      ...TRANSIENT_CACHE_DIRS,
+      "/XF",
+      ...TRANSIENT_LOCK_FILES,
+    ],
     { stdio: "pipe", windowsHide: true },
   );
   const code = result.status ?? 8;
@@ -201,6 +250,11 @@ function backupProfilesState(userDataRoot, deps) {
     const src = path.join(root, String(entry.id));
     const dest = path.join(stagingProfiles, entry.folder);
     if (fs.existsSync(src)) {
+      try {
+        snapshotProfileCookiesIfHealthy(src);
+      } catch {
+        /* best-effort cookie guard before backup */
+      }
       copyProfileDirFast(src, dest);
       copied += 1;
       deps.onProgress?.({
@@ -310,8 +364,38 @@ function restoreProfilesState(userDataRoot, zipPath, deps) {
         continue;
       }
       const dest = path.join(root, String(localId));
+      // Preserve pre-restore Cookies.last-good.bak & Local State.last-good.bak in memory so a partial/empty zip never loses sessions
+      let preCookiesBakBuf = null;
+      let preLocalStateBakBuf = null;
+      try {
+        const existingBak = path.join(dest, COOKIES_BAK_REL_PATH);
+        const existingCk = path.join(dest, COOKIES_REL_PATH);
+        if (fs.existsSync(existingBak)) preCookiesBakBuf = fs.readFileSync(existingBak);
+        else if (fs.existsSync(existingCk)) preCookiesBakBuf = fs.readFileSync(existingCk);
+        const existingLsBak = path.join(dest, LOCAL_STATE_BAK_REL_PATH);
+        const existingLs = path.join(dest, LOCAL_STATE_REL_PATH);
+        if (fs.existsSync(existingLsBak)) preLocalStateBakBuf = fs.readFileSync(existingLsBak);
+        else if (fs.existsSync(existingLs)) preLocalStateBakBuf = fs.readFileSync(existingLs);
+      } catch {
+        /* ignore */
+      }
       rmDirSafe(dest);
       copyProfileDirFast(src, dest);
+      try {
+        removeStaleProfileArtifacts(dest);
+        removeSidecarPid(dest);
+        const destBak = path.join(dest, COOKIES_BAK_REL_PATH);
+        if (preCookiesBakBuf && !fs.existsSync(destBak)) {
+          fs.mkdirSync(path.dirname(destBak), { recursive: true });
+          fs.writeFileSync(destBak, preCookiesBakBuf);
+        }
+        const destLsBak = path.join(dest, LOCAL_STATE_BAK_REL_PATH);
+        if (preLocalStateBakBuf && !fs.existsSync(destLsBak)) {
+          fs.writeFileSync(destLsBak, preLocalStateBakBuf);
+        }
+      } catch {
+        /* best-effort post-restore cookie guard */
+      }
       restored += 1;
     }
     deps.onProgress?.({ phase: "done", current: total, total });

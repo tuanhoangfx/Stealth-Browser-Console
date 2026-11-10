@@ -12,8 +12,9 @@ const {
   allExtensionTogglesEnabled,
 } = require("./extension-toggles.cjs");
 
-test("default toggles enable E0001 only", () => {
+test("default toggles enable E0001 and E0002", () => {
   assert.equal(DEFAULT_EXTENSION_TOGGLES.e0001, true);
+  assert.equal(DEFAULT_EXTENSION_TOGGLES.e0002, true);
   assert.equal(DEFAULT_EXTENSION_TOGGLES.surfshark, false);
   assert.equal(DEFAULT_EXTENSION_TOGGLES.webStore, false);
 });
@@ -21,9 +22,11 @@ test("default toggles enable E0001 only", () => {
 test("normalizeExtensionToggles coerces booleans", () => {
   assert.deepEqual(normalizeExtensionToggles({ e0001: false, surfshark: true }), {
     e0001: false,
+    e0002: true,
     surfshark: true,
     webStore: false,
   });
+  assert.equal(normalizeExtensionToggles({ e0002: false }).e0002, false);
 });
 
 test("isLocalExtensionAllowed is shelved off", () => {
@@ -51,6 +54,7 @@ test("resolveEffectiveExtensionToggles merges profile overrides", () => {
   const global = { e0001: true, surfshark: false, webStore: false };
   assert.deepEqual(resolveEffectiveExtensionToggles(global, { surfshark: true }), {
     e0001: true,
+    e0002: true,
     surfshark: true,
     webStore: false,
   });

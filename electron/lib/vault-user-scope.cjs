@@ -87,10 +87,11 @@ function setVaultHubLoginEmail(email) {
     .trim()
     .toLowerCase();
   _hubLoginEmail = next || null;
+  globalThis._p0003VaultHubLoginEmail = _hubLoginEmail;
 }
 
 function getVaultHubLoginEmail() {
-  return _hubLoginEmail;
+  return _hubLoginEmail || globalThis._p0003VaultHubLoginEmail || null;
 }
 
 /**
@@ -103,7 +104,10 @@ function resolveVaultScopeEmail() {
     .toLowerCase();
   if (forced) return forced;
   if (isVaultDevScope()) return resolveDevVaultEmail();
-  if (_hubLoginEmail) return _hubLoginEmail;
+  const activeHubEmail = getVaultHubLoginEmail();
+  if (activeHubEmail) return activeHubEmail;
+  const fallbackDev = resolveDevVaultEmail();
+  if (fallbackDev) return fallbackDev;
   throw new Error(
     "Vault user scope missing — sign in to P0003 Hub (or set STEALTH_VAULT_SCOPE_EMAIL). Dev uses czpgo@outlook.com automatically.",
   );

@@ -1,79 +1,91 @@
-import {
-  AppWindow,
-  Bot,
-  Compass,
-  Fingerprint,
-  Ghost,
-  Globe2,
-  Languages,
-  MonitorSmartphone,
-  Palette,
-  Ruler,
-  Shield,
-  Tag,
-  type LucideIcon,
-} from "lucide-react";
 import type { HubTableColumnHeaderProps } from "@tool-workspace/hub-ui";
-import { resolveHubTableColumnMeta } from "@tool-workspace/hub-ui";
-import { STEALTH_PROFILE_COLUMN_META } from "./directory-column-meta";
+import { Cable, Cookie } from "lucide-react";
+import { DEFAULT_EXTENSION_ICONS } from "./default-extension-icons";
+import { PROFILE_FORM_FIELD_STICKER } from "./profile-form-stickers";
 import type { StealthFormFieldKey } from "./stealth-directory-column-hints";
 
 const PROFILE_FORM_FIELD_LABELS: Record<StealthFormFieldKey, string> = {
   name: "Name",
   group: "Group",
+  status: "Run",
   startupUrl: "Startup URL",
   proxyPreset: "Proxy preset",
-  proxy: "Proxy (optional)",
+  proxy: "Proxy",
+  staticIp: "Static IP",
+  ipStatus: "IP",
+  e0001: "E0001",
+  e0002: "E0002",
+  surfshark: "Surfshark",
+  cookieGuard: "Cookie Guard",
+  sessionCookies: "Cookies",
+  sessionBackup: "Backup",
+  sessionActions: "Actions",
+  mobileVault: "Mobile Vault",
   devicePreset: "Device preset",
-  platform: "Operating system",
+  advancedDevice: "Advanced",
+  platform: "Platform",
   colorScheme: "Color scheme",
   timezone: "Timezone",
   locale: "Locale",
   windowMode: "Window mode",
   viewport: "Viewport",
-  fingerprintSeed: "Fingerprint seed",
-  humanize: "Humanize",
+  fingerprintSeed: "Fingerprint",
+  humanize: "Mode",
   headless: "Headless",
   userAgent: "User-Agent",
   defaultStartupUrl: "Default startup URL",
 };
 
-function lucideHeader(
-  label: string,
-  icon: LucideIcon,
-  iconClassName: string,
-): HubTableColumnHeaderProps {
-  return { label, icon, iconClassName };
-}
-
-function directoryLucideHeader(key: keyof typeof STEALTH_PROFILE_COLUMN_META): HubTableColumnHeaderProps {
-  const meta = STEALTH_PROFILE_COLUMN_META[key];
-  const roleMeta = resolveHubTableColumnMeta(meta.role);
+function stickerHeader(key: StealthFormFieldKey): HubTableColumnHeaderProps {
   return {
-    label: meta.label,
-    icon: meta.headerIcon ?? roleMeta.icon,
-    iconClassName: meta.headerIconClassName ?? roleMeta.iconClassName,
+    label: PROFILE_FORM_FIELD_LABELS[key],
+    headerEmoji: PROFILE_FORM_FIELD_STICKER[key],
   };
 }
 
 const PROFILE_FORM_FIELD_HEADERS: Record<StealthFormFieldKey, HubTableColumnHeaderProps> = {
-  name: lucideHeader("Name", Tag, "hub-users-th-icon--name text-indigo-300"),
-  group: directoryLucideHeader("group"),
-  startupUrl: directoryLucideHeader("startupUrl"),
-  proxyPreset: lucideHeader("Proxy preset", Shield, "hub-users-th-icon--tools text-violet-300"),
-  proxy: directoryLucideHeader("proxy"),
-  devicePreset: lucideHeader("Device preset", MonitorSmartphone, "hub-adm-section-icon--teal"),
-  platform: lucideHeader("Operating system", MonitorSmartphone, "hub-adm-section-icon--teal"),
-  colorScheme: lucideHeader("Color scheme", Palette, "hub-users-th-icon--tools text-violet-300"),
-  timezone: lucideHeader("Timezone", Globe2, "hub-users-th-icon--id text-cyan-300"),
-  locale: lucideHeader("Locale", Languages, "hub-users-th-icon--role text-indigo-300"),
-  windowMode: lucideHeader("Window mode", AppWindow, "hub-users-th-icon--tools text-sky-300"),
-  viewport: lucideHeader("Viewport", Ruler, "hub-users-th-icon--tools text-slate-300"),
-  fingerprintSeed: lucideHeader("Fingerprint seed", Fingerprint, "hub-users-th-icon--id text-cyan-300"),
-  humanize: lucideHeader("Humanize", Bot, "hub-users-th-icon--tools text-emerald-300"),
-  headless: lucideHeader("Headless", Ghost, "hub-users-th-icon--tools text-amber-300"),
-  userAgent: lucideHeader("User-Agent", Compass, "hub-users-th-icon--id text-sky-300"),
-  defaultStartupUrl: directoryLucideHeader("startupUrl"),
+  name: stickerHeader("name"),
+  group: stickerHeader("group"),
+  status: stickerHeader("status"),
+  startupUrl: stickerHeader("startupUrl"),
+  proxyPreset: stickerHeader("proxyPreset"),
+  proxy: stickerHeader("proxy"),
+  staticIp: stickerHeader("staticIp"),
+  ipStatus: stickerHeader("ipStatus"),
+  e0001: {
+    label: PROFILE_FORM_FIELD_LABELS.e0001,
+    headerImageSrc: DEFAULT_EXTENSION_ICONS.e0001,
+    icon: Cookie,
+    iconClassName: "text-orange-300",
+  },
+  e0002: {
+    label: PROFILE_FORM_FIELD_LABELS.e0002,
+    headerImageSrc: DEFAULT_EXTENSION_ICONS.e0002,
+    icon: Cable,
+    iconClassName: "text-violet-300",
+  },
+  surfshark: {
+    label: PROFILE_FORM_FIELD_LABELS.surfshark,
+    headerImageSrc: DEFAULT_EXTENSION_ICONS.surfshark,
+  },
+  cookieGuard: stickerHeader("cookieGuard"),
+  sessionCookies: stickerHeader("sessionCookies"),
+  sessionBackup: stickerHeader("sessionBackup"),
+  sessionActions: stickerHeader("sessionActions"),
+  mobileVault: stickerHeader("mobileVault"),
+  devicePreset: stickerHeader("devicePreset"),
+  advancedDevice: stickerHeader("advancedDevice"),
+  platform: stickerHeader("platform"),
+  colorScheme: stickerHeader("colorScheme"),
+  timezone: stickerHeader("timezone"),
+  locale: stickerHeader("locale"),
+  windowMode: stickerHeader("windowMode"),
+  viewport: stickerHeader("viewport"),
+  fingerprintSeed: stickerHeader("fingerprintSeed"),
+  humanize: stickerHeader("humanize"),
+  headless: stickerHeader("headless"),
+  userAgent: stickerHeader("userAgent"),
+  defaultStartupUrl: stickerHeader("defaultStartupUrl"),
 };
 
 export function profileFormFieldLabel(key: StealthFormFieldKey): string {

@@ -18,7 +18,7 @@ export function ExtensionDetailLogRail({ focused = false }: { focused?: boolean 
       }`}
       ariaLabel={STEALTH_CONSOLE_RAIL_LABEL}
     >
-      <StealthConsoleContent logs={logs} emptyHint="System output will appear here…" />
+      <StealthConsoleContent logs={logs} emptyHint="No log entries recorded yet." />
     </HubToolDetailRail>
   );
 }

@@ -28,13 +28,15 @@ export const WORKFLOW_STORE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<Wor
   withDirectoryColumnLabelHints(
     withDirectoryColumnIcons(
       [
+        { key: "created", label: "Created" },
+        { key: "updated", label: "Update" },
         { key: "platform", label: "Platform" },
         { key: "name", label: "Name", required: true },
         { key: "version", label: "Version" },
         { key: "group", label: "Group" },
         { key: "status", label: "Status" },
         { key: "source", label: "Source" },
-        { key: "updated", label: "Update" },
+        { key: "activityLog", label: "Log" },
       ],
       WORKFLOW_STORE_COLUMN_PREF_ICONS,
     ),
@@ -42,19 +44,21 @@ export const WORKFLOW_STORE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<Wor
   );
 
 export const DEFAULT_WORKFLOW_STORE_DIRECTORY_COLUMNS = new Set<WorkflowStoreDirectoryColumnKey>([
+  "created",
+  "updated",
   "platform",
   "name",
   "version",
   "group",
   "status",
   "source",
-  "updated",
+  "activityLog",
 ]);
 
 export const WORKFLOW_STORE_DIRECTORY_COLUMNS_CHANGE = "stealth-workflow-store-directory-columns-change";
 
 export const workflowStoreDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
-  storageKey: "p0003_workflow_store_directory_columns",
+  storageKey: "p0003_workflow_store_directory_columns_v3",
   items: WORKFLOW_STORE_DIRECTORY_COLUMN_ITEMS,
   defaultKeys: DEFAULT_WORKFLOW_STORE_DIRECTORY_COLUMNS,
   changeEvent: WORKFLOW_STORE_DIRECTORY_COLUMNS_CHANGE,

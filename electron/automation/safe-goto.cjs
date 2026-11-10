@@ -34,7 +34,17 @@ function navigationLikelySucceeded(page, targetUrl) {
   try {
     const target = new URL(targetUrl);
     const cur = new URL(current);
-    if (cur.hostname === target.hostname) return true;
+    if (cur.hostname === target.hostname) {
+      if (target.hostname === "accounts.google.com" && target.pathname.includes("/signin") && cur.pathname === "/") {
+        return false;
+      }
+      return true;
+    }
+    // If navigating to accounts.google.com/signin and Google redirected to myaccount or mail, that's a real redirect.
+    // But if navigating to mail.google.com, being on myaccount.google.com or www.google.com is NOT a mail landing.
+    if (target.hostname === "mail.google.com") {
+      return cur.hostname === "mail.google.com" || cur.hostname === "accounts.google.com";
+    }
     if (isGoogleHost(target.hostname) && isGoogleHost(cur.hostname)) return true;
     return false;
   } catch {
@@ -100,8 +110,13 @@ async function safePageGoto(page, url, options = {}, retryOptions = {}) {
     try {
       if (attempt > 1) {
         await page.waitForTimeout?.(Math.min(retryDelayMs * attempt, 4000)).catch(() => undefined);
+        await awaitNavigationIdle(page, 4000);
+      } else {
+        const curUrl = readPageUrl(page);
+        if (curUrl && curUrl !== "about:blank" && !curUrl.startsWith("chrome://newtab")) {
+          await awaitNavigationIdle(page, 1200);
+        }
       }
-      await awaitNavigationIdle(page, 4000);
       const waitUntil = preferCommit || attempt >= 2 ? "commit" : options.waitUntil || "commit";
       markTrustedPageNavigation(page);
       try {

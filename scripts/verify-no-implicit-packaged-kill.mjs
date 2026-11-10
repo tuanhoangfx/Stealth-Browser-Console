@@ -13,6 +13,8 @@ const toolRoot = path.resolve(root, "..");
 const ALLOW_IMPORT = new Set([
   "scripts/close-packaged-stealth.mjs",
   "scripts/lib/close-stealth-prod-only.mjs",
+  "scripts/lib/dev-desktop-process.mjs",
+  "scripts/kill-port.cjs",
   "scripts/restore-stealth-catalog.mjs",
   "scripts/repair-stealth-db.mjs",
   "scripts/dev-desktop-only.mjs",
@@ -24,6 +26,11 @@ const PATTERNS = [
   /closeStealthProdOnly\s*\(/,
   /close-packaged-stealth/,
   /taskkill.*Stealth Browser Console/i,
+  /Stop-Process.*Stealth Browser Console/i,
+  /Stop-Process.*stealth-browser-console-dev/i,
+  /taskkill.*stealth-browser-console-dev/i,
+  /asar\s+pack[^\n]*stealth-browser-console[\\/]+resources[\\/]+app\.asar(?!\.staged|\.pending)/i,
+  /createPackage[^\n]*stealth-browser-console[\\/]+resources[\\/]+app\.asar(?!\.staged|\.pending)/i,
 ];
 
 function rel(file) {

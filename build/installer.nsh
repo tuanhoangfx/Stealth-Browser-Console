@@ -9,6 +9,8 @@
 !macroend
 
 !macro customInstall
+  ; Launch the exe, not the Start Menu .lnk. ShellExecute on a shortcut drops --updated.
+  StrCpy $launchLink "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
   ; Seed first-run prompt only when no profiles-location.json exists yet.
   IfFileExists "$APPDATA\stealth-browser-console\data\profiles-location.json" skip_profiles_hint 0
     CreateDirectory "$APPDATA\stealth-browser-console\data"

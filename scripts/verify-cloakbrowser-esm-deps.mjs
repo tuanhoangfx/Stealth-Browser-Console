@@ -36,6 +36,11 @@ if (!result.ok) {
       `verify-cloakbrowser-esm-deps: FAIL — missing transitive: ${result.missingTransitive.join(", ")}`,
     );
   }
+  if (result.forbiddenCjsDynamicImports?.length) {
+    console.error(
+      `verify-cloakbrowser-esm-deps: FAIL — bare dynamic import() in electron/**/*.cjs bypasses asar module resolver: ${JSON.stringify(result.forbiddenCjsDynamicImports)}`,
+    );
+  }
   process.exit(1);
 }
 

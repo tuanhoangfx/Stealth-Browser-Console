@@ -15,7 +15,7 @@ export type RouterLocalConfigPayload = Partial<RouterSettings> & { source?: stri
 export const ROUTER_SETTINGS_KEY = "stealth-console-router";
 
 const DEFAULT_ROUTER: RouterSettings = {
-  baseUrl: "https://9router.infi.io.vn/v1",
+  baseUrl: "https://9router.infi28.com/v1",
   apiKey: "",
   model: "xai/grok-3",
   fallbacks: ["xai/grok-3-mini"],
@@ -26,7 +26,7 @@ const DEFAULT_ROUTER: RouterSettings = {
 function mergeRouterSettings(base: RouterSettings, patch?: Partial<RouterSettings>): RouterSettings {
   if (!patch) return base;
   return {
-    baseUrl: String(patch.baseUrl || base.baseUrl).trim(),
+    baseUrl: String(patch.baseUrl || base.baseUrl).trim().replace("9router.infi.io.vn", "9router.infi28.com"),
     apiKey: String(patch.apiKey || base.apiKey).trim(),
     model: String(patch.model || base.model).trim(),
     fallbacks: Array.isArray(patch.fallbacks)

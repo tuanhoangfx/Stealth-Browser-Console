@@ -3,6 +3,7 @@ import {
   HubAdmClickEditField,
   HubAdmClickFilterField,
   HubAdmInlineFieldLabel,
+  HubAdmReadonlyField,
 } from "@tool-workspace/hub-ui";
 import { profileFormFieldHeaderProps, profileFormFieldLabel } from "../../lib/profile-form-field-meta";
 import { stealthFormFieldHintContent, type StealthFormFieldKey } from "../../lib/stealth-directory-column-hints";
@@ -38,6 +39,20 @@ export function ProfileDetailClickFilterField({ fieldKey, ...rest }: ClickFilter
     <HubAdmClickFilterField
       header={profileFormFieldHeaderProps(fieldKey)}
       fieldLabel={profileFormFieldLabel(fieldKey)}
+      labelHint={stealthFormFieldHintContent(fieldKey)}
+      {...rest}
+    />
+  );
+}
+
+type ReadonlyProps = Omit<ComponentProps<typeof HubAdmReadonlyField>, "header" | "labelHint"> & {
+  fieldKey: StealthFormFieldKey;
+};
+
+export function ProfileDetailReadonlyField({ fieldKey, ...rest }: ReadonlyProps) {
+  return (
+    <HubAdmReadonlyField
+      header={profileFormFieldHeaderProps(fieldKey)}
       labelHint={stealthFormFieldHintContent(fieldKey)}
       {...rest}
     />

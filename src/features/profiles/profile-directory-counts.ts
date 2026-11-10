@@ -1,14 +1,18 @@
-import type { ProfileCatalogStats, ProfileRow } from "../../types";
+import type { ProfileCatalogStats, ProfileProxyFilterMode, ProfileRow } from "../../types";
 
 export type ProfileDirectoryQuery = {
   search: string;
   groupIds: readonly string[];
   statuses: readonly ProfileRow["status"][];
+  proxyModes?: readonly ProfileProxyFilterMode[];
 };
 
 export function hasActiveProfileDirectoryFilters(query: ProfileDirectoryQuery): boolean {
   return (
-    query.search.trim().length > 0 || query.groupIds.length > 0 || query.statuses.length > 0
+    query.search.trim().length > 0 ||
+    query.groupIds.length > 0 ||
+    query.statuses.length > 0 ||
+    Boolean(query.proxyModes && query.proxyModes.length > 0)
   );
 }
 

@@ -177,22 +177,22 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-11-04T19:08:01.345Z",
+  "manifestUpdatedAt": "2026-11-10T21:30:51.220Z",
   "release": {
-    "version": "9.2.251",
+    "version": "9.2.361",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v9.2.251",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.251",
-      "publishedAt": "2026-11-04T19:07:42Z",
+      "tag": "v9.2.272",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.272",
+      "publishedAt": "2026-11-05T11:58:17Z",
       "asset": {
-        "name": "Stealth-Browser-Console-Setup-9.2.251.exe",
-        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.251/Stealth-Browser-Console-Setup-9.2.251.exe",
-        "size": 127460708,
-        "sha256": "a53c5d93a96cd7af265018ea1314ddb8a8ec648e50739a8d44a6f8adc58a3df2",
-        "sha512": "6Nt5BFTPcJeknxJkmMfAIeNgJbaBtwLV8dJnVRGDkadkpn/k+r1g0TMgzfzVWzJ6KTNoCUKVOOIk7e9dk3ij9g==",
-        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.251/latest.yml"
+        "name": "Stealth-Browser-Console-Setup-9.2.272.exe",
+        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.272/Stealth-Browser-Console-Setup-9.2.272.exe",
+        "size": 499120798,
+        "sha256": "40ef07f94bb8dd561860d71972a5f6e8290f4d429dac2378fba8db953e716cf2",
+        "sha512": "+LEmyPk7X4qb2SMQsomGsLzia5zYbWfWk5bCS8O7kdZbLKvEntsDME4tXf3WGarekh5TgwpENRkso4t7GuGtgA==",
+        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.272/latest.yml"
       }
     }
   },
@@ -220,7 +220,7 @@
     "syncedAt": "2026-08-19T22:47:57.996Z"
   },
   "versions": {
-    "current": "9.2.251",
-    "latestPublished": "9.2.251"
+    "current": "9.2.361",
+    "latestPublished": "9.2.272"
   }
 }

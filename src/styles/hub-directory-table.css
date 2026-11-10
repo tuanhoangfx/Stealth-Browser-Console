@@ -1,5 +1,5 @@
 /* P0003 directory table variants — col widths via buildDirectoryColgroup SSOT */
-@import "../../vendor/hub-ui/src/styles/hub-directory-table.css";
+@import "../../../../packages/hub-ui/src/styles/hub-directory-table.css";
 
 .hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table.hub-users-table--directory-6,
 .hub-users-table-wrap:not(.hub-directory-table-split) table.hub-users-table--directory-6 {
@@ -26,3 +26,33 @@
 .hub-split-directory-pane--fixed-rows table.hub-users-table--directory-5 {
   min-width: 0;
 }
+
+/* Compact centered Profile (4-digit ID) column in Profiles & System Backup directories */
+table.stealth-profile-directory-table col.hub-users-col--name,
+table.stealth-profile-directory-table[data-hub-directory-select] col.hub-users-col--name,
+table.stealth-profile-directory-table[data-hub-directory-select] th.hub-users-col--name,
+table.stealth-profile-directory-table[data-hub-directory-select] td.hub-users-col--name {
+  width: 6.5rem;
+  min-width: 6.5rem;
+  max-width: 6.5rem;
+  padding-left: 6px;
+  padding-right: 6px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+table.stealth-profile-directory-table[data-hub-directory-select] th.hub-users-col--activity,
+table.stealth-profile-directory-table[data-hub-directory-select] td.hub-users-col--activity {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+table.stealth-profile-directory-table th.hub-users-col--name .hub-users-th-btn {
+  justify-content: center;
+}
+
+table.stealth-profile-directory-table td.hub-users-col--name .hub-users-name-title {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+

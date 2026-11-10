@@ -1,5 +1,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolveProfilesRoot } = require("./profiles-location.cjs");
+const { peekProfileBackupDirectoryEntry } = require("./native-session-backup.cjs");
+const { inspectSqliteCookiesFile } = require("./profile-cookie-guard.cjs");
 
 function metaPath(userDataRoot) {
   return path.join(userDataRoot, "data", "profile-backup-meta.json");
@@ -40,10 +43,22 @@ function updateBackupMeta(userDataRoot, items) {
 
 function listBackupMeta(userDataRoot, profileIds) {
   const meta = readBackupMeta(userDataRoot);
-  return profileIds.map((id) => ({
-    id: String(id),
-    ...(meta[String(id)] || {}),
-  }));
+  const root = resolveProfilesRoot(userDataRoot);
+  return (profileIds || []).map((rawId) => {
+    const id = String(rawId);
+    const zipMeta = meta[id] || null;
+    const pDir = path.join(root, id);
+    const entry = peekProfileBackupDirectoryEntry(pDir, {
+      profileId: id,
+      zipMeta,
+      inspectSqliteCookiesFile,
+    });
+    return {
+      ...zipMeta,
+      ...entry,
+      id,
+    };
+  });
 }
 
 module.exports = {

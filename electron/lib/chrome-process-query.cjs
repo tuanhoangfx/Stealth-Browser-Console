@@ -130,7 +130,7 @@ function buildProfileBrowserPidsPs(userDataDir) {
     "Get-CimInstance Win32_Process | Where-Object {",
     "  $cmd = $_.CommandLine; $name = $_.Name;",
     "  if (-not $cmd) { return $false }",
-    "  if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }",
+    "  if ($name -ne 'chrome.exe' -and $name -ne 'chrome-headless.exe' -and $name -ne 'chromium.exe') { return $false }",
     "  foreach ($n in $needles) { if ($n -and ($cmd -like ('*' + $n + '*'))) { return $true } }",
     "  return $false",
     "} | ForEach-Object { $_.ProcessId }",
@@ -138,13 +138,38 @@ function buildProfileBrowserPidsPs(userDataDir) {
 }
 
 /** Focus browser window for a profile dir (root-scoped path needles + realpath aliases). */
-function buildFocusProfileWindowPs(userDataDir) {
+function buildFocusProfileWindowPs(userDataDir, targetWorkArea = null) {
+  const wa =
+    targetWorkArea &&
+    Number.isFinite(targetWorkArea.x) &&
+    Number.isFinite(targetWorkArea.y) &&
+    Number.isFinite(targetWorkArea.width) &&
+    Number.isFinite(targetWorkArea.height)
+      ? targetWorkArea
+      : null;
+  const moveLines = wa
+    ? [
+        `  $waX = ${Math.round(wa.x)}; $waY = ${Math.round(wa.y)}; $waW = ${Math.round(wa.width)}; $waH = ${Math.round(wa.height)}`,
+        "  $rc = New-Object StealthWin32+RECT",
+        "  if ([StealthWin32]::GetWindowRect($p.MainWindowHandle, [ref]$rc)) {",
+        "    $cx = [int](($rc.Left + $rc.Right) / 2); $cy = [int](($rc.Top + $rc.Bottom) / 2)",
+        "    $onTarget = ($cx -ge $waX -and $cx -lt ($waX + $waW) -and $cy -ge $waY -and $cy -lt ($waY + $waH))",
+        "    if (-not $onTarget) {",
+        "      $wasMax = [StealthWin32]::IsZoomed($p.MainWindowHandle)",
+        "      [StealthWin32]::ShowWindow($p.MainWindowHandle, 9) | Out-Null",
+        "      $nw = [Math]::Min(1440, [Math]::Max(800, $waW - 80)); $nh = [Math]::Min(900, [Math]::Max(600, $waH - 60))",
+        "      [StealthWin32]::MoveWindow($p.MainWindowHandle, $waX + 40, $waY + 30, $nw, $nh, $true) | Out-Null",
+        "      if ($wasMax) { [StealthWin32]::ShowWindow($p.MainWindowHandle, 3) | Out-Null }",
+        "    }",
+        "  }",
+      ]
+    : [];
   return [
     `$needles = ${needlesPsArrayLiteral(userDataDir)}`,
     "$pids = Get-CimInstance Win32_Process | Where-Object {",
     "  $cmd = $_.CommandLine; $name = $_.Name;",
     "  if (-not $cmd) { return $false }",
-    "  if ($name -ne 'chrome.exe' -and $name -ne 'chromium.exe') { return $false }",
+    "  if ($name -ne 'chrome.exe' -and $name -ne 'chrome-headless.exe' -and $name -ne 'chromium.exe') { return $false }",
     "  foreach ($n in $needles) { if ($n -and ($cmd -like ('*' + $n + '*'))) { return $true } }",
     "  return $false",
     "} | Select-Object -ExpandProperty ProcessId",
@@ -153,15 +178,21 @@ function buildFocusProfileWindowPs(userDataDir) {
     "using System;",
     "using System.Runtime.InteropServices;",
     "public class StealthWin32 {",
+    "  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }",
     "  [DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd);",
     "  [DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);",
+    "  [DllImport(\"user32.dll\")] public static extern bool IsIconic(IntPtr hWnd);",
+    "  [DllImport(\"user32.dll\")] public static extern bool IsZoomed(IntPtr hWnd);",
+    "  [DllImport(\"user32.dll\")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);",
+    "  [DllImport(\"user32.dll\")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);",
     "}",
     "'@",
     "$focused = $false",
     "foreach ($pid in $pids) {",
     "  $p = Get-Process -Id $pid -ErrorAction SilentlyContinue",
     "  if (-not $p -or $p.MainWindowHandle -eq 0) { continue }",
-    "  [StealthWin32]::ShowWindow($p.MainWindowHandle, 9) | Out-Null",
+    "  if ([StealthWin32]::IsIconic($p.MainWindowHandle)) { [StealthWin32]::ShowWindow($p.MainWindowHandle, 9) | Out-Null }",
+    ...moveLines,
     "  [StealthWin32]::SetForegroundWindow($p.MainWindowHandle) | Out-Null",
     "  $focused = $true",
     "  break",
@@ -175,7 +206,7 @@ function buildListLiveCloakWindowsPs({ firstOnly = false } = {}) {
   const lines = [
     "$rows = @()",
     "Get-CimInstance Win32_Process | Where-Object {",
-    "  $_.Name -eq 'chrome.exe' -and $_.CommandLine -match 'stealth-browser-console' -and $_.CommandLine -notmatch '--type='",
+    "  ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'chrome-headless.exe') -and $_.CommandLine -match 'stealth-browser-console' -and $_.CommandLine -notmatch '--type='",
     "} | ForEach-Object {",
     "  $dir = $null",
     "  if ($_.CommandLine -match '--user-data-dir=\"([^\"]+)\"') { $dir = $Matches[1] }",

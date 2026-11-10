@@ -12,7 +12,7 @@ export type ProfilesLocationInfo = {
 
 export type StealthScreen = "profiles" | "workflow" | "system";
 
-export type ProfileStatus = "closed" | "opening" | "running" | "failed";
+export type ProfileStatus = "closed" | "opening" | "running" | "failed" | "headless" | "waiting";
 
 export type StealthGroup = {
   id: string;
@@ -20,13 +20,26 @@ export type StealthGroup = {
   sortOrder?: number;
 };
 
+export type ProfileProxyFilterMode = "local" | "vpn" | "auto_vpn" | "custom" | "static";
+
 export type ProfileCatalogStats = {
   total: number;
   closed: number;
   opening: number;
   running: number;
   failed: number;
+  headedRunning?: number;
+  headlessRunning?: number;
+  deferred?: number;
+  waitingCodes?: string[];
+  waitingReasons?: Record<string, string>;
+  headlessReasons?: Record<string, string>;
+  activityLogs?: Record<string, { text: string; updatedAt?: string; history?: Array<{ text: string; at: string }> }>;
+  createdToday?: number;
+  createdWeek?: number;
+  updatedToday?: number;
   groupCounts: Record<string, number>;
+  proxyCounts?: Record<string, number>;
 };
 
 /** Spoofed OS reported by the CloakBrowser engine (`--fingerprint-platform`). */
@@ -69,6 +82,10 @@ export type StealthProfile = {
   groupId: string | null;
   groupName: string | null;
   proxy: string;
+  /** Keep proxy pinned after session close instead of auto-resetting to Local IP. */
+  staticIp?: boolean;
+  /** Runtime-only active VPN country code (e.g. "US") when an unpinned Local IP profile is running with an auto-resolved tunnel. */
+  activeVpnCountry?: string;
   fingerprintSeed: number;
   note: string;
   /** Optional URL opened automatically after profile launch (http/https/about:blank). */
@@ -79,6 +96,10 @@ export type StealthProfile = {
   createdAt: string;
   updatedAt: string;
   extensionOverrides?: ProfileExtensionOverrides;
+  /** In-memory / recent step log summary for the directory Log column. */
+  activityLog?: string;
+  /** Up to 5 recent timestamped steps for the Log column hover popover. */
+  activityLogHistory?: Array<{ text: string; at: string }>;
 } & DeviceConfig;
 
 export type ProfileRow = StealthProfile;
@@ -95,6 +116,215 @@ export type ProfileBackupMeta = {
   lastBackupAt?: string;
   lastBackupBytes?: number;
   lastBackupPath?: string;
+  folderExists?: boolean;
+  folderBytes?: number;
+  slotVersion?: number;
+  backupCount?: number;
+  hasSlotLatest?: boolean;
+  hasSlotPrevious?: boolean;
+  slotLatestAt?: string | null;
+  slotPreviousAt?: string | null;
+  slotLatestBytes?: number;
+  slotPreviousBytes?: number;
+  slotLatestCompressed?: boolean;
+  slotPreviousCompressed?: boolean;
+  slotLatestUncompressedBytes?: number;
+  slotPreviousUncompressedBytes?: number;
+  totalBackupBytes?: number;
+  totalUncompressedBackupBytes?: number;
+  avgBackupBytes?: number;
+  cookiesCount?: number;
+  domainsCount?: number;
+  authDomainsCount?: number;
+  hasGoogleAuth?: boolean;
+  hasOutlookAuth?: boolean;
+  hasFacebookAuth?: boolean;
+  hasTikTokAuth?: boolean;
+  historyBytes?: number;
+  historyUrlsCount?: number;
+  historyVisitsCount?: number;
+  localStorageBytes?: number;
+  stateFilesCount?: number;
+  stateBytes?: number;
+};
+
+export type ProfileNativeBackupSlotManifest = {
+  version: number;
+  slot: "latest" | "previous";
+  profileCode?: string;
+  createdAt: string;
+  rotatedAt?: string;
+  cookiesBytes: number;
+  cookiesSha256: string;
+  totalRows: number;
+  authDomainsCount: number;
+  hasGoogleAuth: boolean;
+  hasOutlookAuth: boolean;
+  hasFacebookAuth: boolean;
+  hasTikTokAuth: boolean;
+  hasLocalStateBackup?: boolean;
+  hasLocalStorageBackup?: boolean;
+  localStorageBackupBytes?: number;
+  hasHistoryBackup?: boolean;
+  historyBytes?: number;
+  stateFilesCount?: number;
+  stateBytes?: number;
+};
+
+export type ProfileCookieGuardSummary = {
+  exists: boolean;
+  readable?: boolean;
+  totalRows: number;
+  authDomainsCount: number;
+  hasGoogleAuth: boolean;
+  hasOutlookAuth: boolean;
+  hasFacebookAuth: boolean;
+  hasTikTokAuth: boolean;
+  hasLocalStateBackup?: boolean;
+  hasLocalStorageBackup?: boolean;
+  localStorageBackupBytes?: number;
+  hasHistoryBackup?: boolean;
+  historyBytes?: number;
+  stateFilesCount?: number;
+  stateBytes?: number;
+  updatedAt?: string | null;
+  byteSize: number;
+  slotLatest?: ProfileNativeBackupSlotManifest | null;
+  slotPrevious?: ProfileNativeBackupSlotManifest | null;
+};
+
+export type ProfileCookieGuardStatus = {
+  profileCode: string;
+  current: ProfileCookieGuardSummary;
+  backup: ProfileCookieGuardSummary;
+  slots?: {
+    latest?: ProfileNativeBackupSlotManifest | null;
+    previous?: ProfileNativeBackupSlotManifest | null;
+  };
+  vault: {
+    availableSources: string[];
+    totalVaultCookies: number;
+    facebookCount: number;
+    gmailCount: number;
+    outlookCount: number;
+    tiktokCount: number;
+    serviceCount: number;
+  };
+};
+
+export type ProfileCookieGuardRestoreResult = {
+  ok: boolean;
+  mode?: "live-cdp" | "disk-sqlite" | "native-bundle";
+  restoredSlot?: "latest" | "previous";
+  restoredCreatedAt?: string | null;
+  restoredFromBak?: boolean;
+  localStorageRestored?: boolean;
+  historyRestored?: boolean;
+  stateFilesRestored?: number;
+  dpapiRewrapped?: boolean;
+  vaultInjectedCount?: number;
+  vaultSources?: string[];
+  status?: ProfileCookieGuardStatus;
+  error?: string;
+};
+
+export type ProfileP0020ReconcileResult = {
+  ok: boolean;
+  checkedRows?: number;
+  patchedCount?: number;
+  loggedInServices?: string[];
+  patchedServices?: string[];
+  reason?: string;
+  status?: ProfileCookieGuardStatus;
+  error?: string;
+};
+
+export type ProfileP0020BulkReconcileResult = {
+  ok: boolean;
+  mode?: "selected" | "all";
+  profileCount?: number;
+  checkedRows?: number;
+  patchedCount?: number;
+  promotedToLoggedIn?: number;
+  loggedInServices?: string[];
+  byServicePromoted?: Record<string, number>;
+  error?: string;
+};
+
+export type ProfileMobileVaultStatus = {
+  ok: boolean;
+  profileCode: string;
+  androidIdentity: {
+    brand: string;
+    manufacturer: string;
+    model: string;
+    device: string;
+    release: string;
+    buildId: string;
+    imei: string;
+    androidId: string;
+    gsfId: string;
+    glRenderer: string;
+    macAddress: string;
+  };
+  iosIdentity: {
+    model: string;
+    deviceCode: string;
+    iosVersion: string;
+    udid: string;
+    craneContainerId: string;
+  };
+  device: {
+    connected: boolean;
+    serial: string;
+    isWireless?: boolean;
+    wifiAdbEndpoint?: string;
+    deviceModel: string;
+    activeProfileOnDevice: string;
+    isCurrentProfileActive: boolean;
+    globalHttpProxy: string;
+    proxyTunnelActive: boolean;
+    iosWdaOnline: boolean;
+  };
+  snapshot: {
+    exists: boolean;
+    sizeBytes: number;
+    updatedAt: string | null;
+    archivePath: string;
+    totalSnapshots: number;
+    snapshotProfiles?: string[];
+  };
+  modules: {
+    stagedCount: number;
+    stagedModules: string[];
+  };
+};
+
+export type ProfileMobileVaultActionResult = {
+  ok: boolean;
+  reason?: string;
+  serial?: string;
+  endpoint?: string;
+  host?: string;
+  port?: number;
+  cookiesCount?: number;
+  servicesUpdated?: string[];
+  cookieGuardStatus?: ProfileCookieGuardStatus | null;
+  restoredSnapshot?: boolean;
+  archivePath?: string;
+  proxyTunnel?: {
+    ok: boolean;
+    mode?: string;
+    globalHttpProxy?: string;
+    upstream?: {
+      protocol: string;
+      host: string;
+      port: number;
+      hasAuth: boolean;
+    } | null;
+  } | null;
+  status?: ProfileMobileVaultStatus;
+  error?: string;
 };
 
 export type ProfilesBackupProgressPayload = {
@@ -159,6 +389,8 @@ export type RunHistoryItem = {
   workflow: string;
   targetUrl?: string;
   status: "running" | "success" | "failed";
+  liveProfileStatus?: "closed" | "opening" | "running" | "failed";
+  sessionCount?: number;
   startedAt?: string;
   finishedAt?: string;
   durationMs?: number;
@@ -255,6 +487,7 @@ export type LaunchBenchBaseline = {
 
 export type ExtensionToggles = {
   e0001: boolean;
+  e0002: boolean;
   surfshark: boolean;
   webStore: boolean;
 };
@@ -272,12 +505,39 @@ export type CookieBridgeStatus = {
   resolvedPath: string | null;
   unpackedId: string | null;
   source: "workspace" | "store-cache" | "custom" | "missing";
+  sourceMode?: "store" | "workspace";
+  verifiedStore?: boolean;
   manifestOk: boolean;
   manifestName: string;
   manifestVersion?: string | null;
+  workspaceVersion?: string | null;
+  stageVersion?: string | null;
   workspacePath: string | null;
   cachePath: string;
   env: { STEALTH_COOKIE_BRIDGE: string; STEALTH_COOKIE_BRIDGE_LOCAL: string };
+};
+
+export type OperatorExtensionValidation = {
+  ok: boolean;
+  version?: string | null;
+  files: string[];
+  missing: string[];
+  contractErrors: string[];
+};
+
+export type OperatorExtensionStatus = {
+  enabled: boolean;
+  profilesExtensionsEnabled?: boolean;
+  extensionToggles?: ExtensionToggles;
+  productCode: string;
+  name: string;
+  unpackedId: string | null;
+  workspacePath: string | null;
+  stagePath: string | null;
+  manifestOk: boolean;
+  manifestVersion?: string | null;
+  stageVersion?: string | null;
+  validation?: OperatorExtensionValidation | null;
 };
 
 export type CachedStoreExtension = {
@@ -288,15 +548,41 @@ export type CachedStoreExtension = {
   name: string;
   version?: string;
   iconDataUri?: string;
+  /** ISO timestamp — when the extension folder/manifest was first created on disk. */
+  createdAt?: string;
   /** ISO timestamp — manifest mtime on disk. */
   updatedAt?: string;
+  /** Latest stage / reload / pin status summary for the Log column. */
+  activityLog?: string;
+  staged?: boolean;
+  autoPinned?: boolean;
 };
 
 export type ExtensionsStatus = {
   launchMode: "native" | "managed";
   nativeMode: boolean;
   cached: CachedStoreExtension[];
+  cookieBridge?: CookieBridgeStatus | null;
+  operatorExtension?: OperatorExtensionStatus | null;
+  reloadNonce?: number;
+  reloadTriggeredAt?: string | null;
   webStoreInstallHint: string;
+};
+
+export type ReloadOpenProfilesExtensionsResult = {
+  ok: boolean;
+  reloadNonce: number;
+  reloadTriggeredAt: string | null;
+  e0001Synced: boolean;
+  maintained?: {
+    profiles: number;
+    removed: number;
+    prefsCleaned: number;
+    skippedLive: number;
+    pinned: number;
+    pinnedBridge: number;
+  } | null;
+  status: ExtensionsStatus;
 };
 
 export type InstallStoreExtensionResult = {
@@ -349,6 +635,15 @@ export type StoreExtensionUpdateCheck = {
   results: StoreExtensionUpdateRow[];
 };
 
+export type BulkUpdateProfilesPatch = Partial<StealthProfile> & {
+  resetToDefaults?: boolean;
+  extensionOverrideDelta?: {
+    key: keyof ExtensionToggles;
+    enabled: boolean;
+    globalDefault: boolean;
+  };
+};
+
 declare global {
   interface Window {
     stealthApi: {
@@ -360,6 +655,7 @@ declare global {
         search?: string;
         groupIds?: string[];
         statuses?: ProfileRow["status"][];
+        proxyModes?: ProfileProxyFilterMode[];
         limit?: number;
         offset?: number;
         sort?: string;
@@ -376,6 +672,7 @@ declare global {
         name: string;
         groupId?: string;
         proxy?: string;
+        staticIp?: boolean;
         note?: string;
         fingerprintSeed?: number;
         startupUrl?: string;
@@ -389,18 +686,37 @@ declare global {
         pad?: number;
       } & BulkCreateProfileDefaults) => Promise<{ ok: boolean } & BulkCreateProfilesResult>;
       updateProfile: (payload: Partial<StealthProfile> & { id: string }) => Promise<{ ok: boolean; profile: StealthProfile }>;
-      bulkUpdateStartupUrl: (payload: { ids: string[]; startupUrl: string }) => Promise<{ ok: boolean; count: number }>;
+      bulkUpdateStartupUrl: (payload: {
+        ids: string[];
+        startupUrl: string;
+      }) => Promise<{ ok: boolean; count: number; profiles?: Array<StealthProfile & { lastChangeSummary?: string }> }>;
+      bulkUpdateProfiles: (payload: {
+        ids: string[];
+        patch: BulkUpdateProfilesPatch;
+      }) => Promise<{ ok: boolean; count: number; profiles?: Array<StealthProfile & { lastChangeSummary?: string }> }>;
+      cloneProfilesBatch: (payload: {
+        sourceIds: string[];
+        count?: number;
+        overrides?: Partial<StealthProfile>;
+      }) => Promise<{
+        ok: boolean;
+        created: number;
+        createdCodes: string[];
+        profiles?: Array<StealthProfile & { lastChangeSummary?: string }>;
+      }>;
       deleteProfile: (payload: { id: string }) => Promise<{
         ok: boolean;
         count?: number;
         names?: string[];
         storagePurged?: number;
+        deletedProfiles?: Array<{ id: string; name: string; lastChangeSummary?: string }>;
       }>;
       deleteProfiles: (payload: { ids: string[] }) => Promise<{
         ok: boolean;
         count: number;
         names?: string[];
         storagePurged?: number;
+        deletedProfiles?: Array<{ id: string; name: string; lastChangeSummary?: string }>;
       }>;
       launchProfile: (payload: { id: string; name?: string }) => Promise<{
         ok: boolean;
@@ -455,6 +771,26 @@ declare global {
         imported?: { imported?: number; updated?: number; created?: number };
         error?: string;
       }>;
+      getProfileCookieGuardStatus?: (payload: { id?: string; name?: string }) => Promise<{
+        ok: boolean;
+        status?: ProfileCookieGuardStatus;
+        error?: string;
+      }>;
+      snapshotProfileCookiesBackup?: (payload: { id?: string; name?: string; force?: boolean }) => Promise<{
+        ok: boolean;
+        snapshotted?: boolean;
+        reason?: string;
+        status?: ProfileCookieGuardStatus;
+        error?: string;
+      }>;
+      restoreProfileCookiesBackup?: (payload: {
+        id?: string;
+        name?: string;
+        slot?: "latest" | "previous";
+        sourceProfileId?: string;
+      }) => Promise<ProfileCookieGuardRestoreResult>;
+      reconcileProfileP0020Status?: (payload: { id?: string; name?: string }) => Promise<ProfileP0020ReconcileResult>;
+      reconcileProfilesP0020Bulk?: (payload?: { ids?: string[] }) => Promise<ProfileP0020BulkReconcileResult>;
       profileStorageStats: (payload: {
         profileIds: string[];
         includeBytes?: boolean;
@@ -539,7 +875,36 @@ declare global {
       clearLaunchPerf: () => Promise<{ ok: boolean }>;
       fetchLaunchBenchBaseline: () => Promise<{ ok: boolean; baseline: LaunchBenchBaseline | null }>;
       purgeLegacyIdentityToolbar: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
+      checkProfileProxy?: (payload: {
+        proxy: string;
+        rotateVpn?: boolean;
+        timeoutMs?: number;
+        profileId?: string;
+        profileName?: string;
+        manualCheck?: boolean;
+      }) => Promise<{
+        ok: boolean;
+        health?: {
+          alive: boolean;
+          exitIp?: string;
+          countryCode?: string;
+          timezone?: string;
+          latencyMs?: number;
+          source?: string;
+          localProxyUrl?: string;
+          reason?: string;
+        };
+        geoSync?: {
+          synced?: boolean;
+          summary?: string;
+        } | null;
+        error?: string;
+      }>;
       fetchCookieBridgeStatus: () => Promise<{ ok: boolean; status: CookieBridgeStatus }>;
+      setCookieBridgeSource: (payload: { mode: "store" | "workspace" }) => Promise<{ ok: boolean; status?: CookieBridgeStatus; error?: string }>;
+      fetchOperatorExtensionStatus?: () => Promise<{ ok: boolean; status?: OperatorExtensionStatus; error?: string }>;
+      reloadOperatorExtension?: () => Promise<{ ok: boolean; status?: OperatorExtensionStatus; error?: string }>;
+      reloadOpenProfilesExtensions?: () => Promise<ReloadOpenProfilesExtensionsResult & { error?: string }>;
       purgeBrokenExtensionPrefs: () => Promise<{ ok: boolean; profiles?: number; removed?: number; prefsCleaned?: number; error?: string }>;
       fetchExtensionsStatus: () => Promise<{ ok: boolean; status: ExtensionsStatus }>;
       fetchExtensionIcon: (payload: { storeId: string; size?: number }) => Promise<{ ok: boolean; storeId: string; iconDataUri?: string | null }>;

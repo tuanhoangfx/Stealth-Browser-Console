@@ -28,6 +28,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
       footer={
         <HubToolDetailModalSecondaryAction
           label={HUB_DETAIL_MODAL_CLOSE_LABEL}
+          title="Close the profile groups manager"
           onClick={onClose}
           disabled={busy}
           icon={X}
@@ -43,20 +44,22 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
               {editingId === group.id ? (
                 <>
                   <input className="hub-input flex-1" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                  <HubToolDetailModalPrimaryAction
-                    label="Save"
-                    icon={Save}
-                    onClick={() => {
-                      setBusy(true);
-                      setError("");
-                      void updateGroup(group.id, editName.trim())
-                        .then(() => setEditingId(null))
-                        .catch((err: unknown) => setError(err instanceof Error ? err.message : "Rename failed"))
-                        .finally(() => setBusy(false));
-                    }}
-                    disabled={busy || !editName.trim()}
-                    busy={busy}
-                  />
+                  <span title={`Save new name for group "${group.name}"`}>
+                    <HubToolDetailModalPrimaryAction
+                      label="Save"
+                      icon={Save}
+                      onClick={() => {
+                        setBusy(true);
+                        setError("");
+                        void updateGroup(group.id, editName.trim())
+                          .then(() => setEditingId(null))
+                          .catch((err: unknown) => setError(err instanceof Error ? err.message : "Rename failed"))
+                          .finally(() => setBusy(false));
+                      }}
+                      disabled={busy || !editName.trim()}
+                      busy={busy}
+                    />
+                  </span>
                 </>
               ) : (
                 <>
@@ -65,6 +68,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
                     <>
                       <HubToolDetailModalSecondaryAction
                         label="Rename"
+                        title={`Rename group "${group.name}"`}
                         icon={Pencil}
                         disabled={busy}
                         onClick={() => {
@@ -74,6 +78,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
                       />
                       <HubToolDetailModalSecondaryAction
                         label="Delete"
+                        title={`Delete group "${group.name}" (profiles inside will move to the default group)`}
                         icon={Trash2}
                         disabled={busy}
                         onClick={() => {
@@ -86,7 +91,7 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
                       />
                     </>
                   ) : (
-                    <span className="text-xs text-[var(--muted)]">System</span>
+                    <span className="text-xs text-[var(--muted)]" title="Built-in default group (cannot be renamed or deleted)">System</span>
                   )}
                 </>
               )}
@@ -103,21 +108,23 @@ export function ManageGroupsModal({ onClose }: { onClose: () => void }) {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
-            <HubToolDetailModalPrimaryAction
-              label="New"
-              variant="create"
-              icon={FolderPlus}
-              disabled={busy || !newName.trim()}
-              busy={busy}
-              onClick={() => {
-                setBusy(true);
-                setError("");
-                void createGroup(newName.trim())
-                  .then(() => setNewName(""))
-                  .catch((err: unknown) => setError(err instanceof Error ? err.message : "Create failed"))
-                  .finally(() => setBusy(false));
-              }}
-            />
+            <span title="Create a new profile group">
+              <HubToolDetailModalPrimaryAction
+                label="New"
+                variant="create"
+                icon={FolderPlus}
+                disabled={busy || !newName.trim()}
+                busy={busy}
+                onClick={() => {
+                  setBusy(true);
+                  setError("");
+                  void createGroup(newName.trim())
+                    .then(() => setNewName(""))
+                    .catch((err: unknown) => setError(err instanceof Error ? err.message : "Create failed"))
+                    .finally(() => setBusy(false));
+                }}
+              />
+            </span>
           </div>
         </label>
       </div>

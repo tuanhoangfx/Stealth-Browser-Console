@@ -20,6 +20,71 @@ const NON_RUNTIME_STAGE_DIRS = new Set([
   ".turbo",
 ]);
 
+function newestIconMtime(dir) {
+  const icons = path.join(dir, "icons");
+  if (!fs.existsSync(icons)) return 0;
+  let newest = 0;
+  for (const name of fs.readdirSync(icons)) {
+    if (!/\.(png|svg)$/i.test(name)) continue;
+    try {
+      newest = Math.max(newest, fs.statSync(path.join(icons, name)).mtimeMs);
+    } catch {
+      // a missing icon does not block the rest
+    }
+  }
+  return newest;
+}
+
+/** True when any Stealth profile has Chrome's lock. A leftover empty lockfile does not count. */
+function profileDirIsLive(dir) {
+  if (fs.existsSync(path.join(dir, "SingletonLock"))) return true;
+  const lock = path.join(dir, "lockfile");
+  if (!fs.existsSync(lock)) return false;
+  try {
+    const fd = fs.openSync(lock, "r+");
+    fs.closeSync(fd);
+    return false;
+  } catch (error) {
+    return error?.code === "EBUSY" || error?.code === "EPERM";
+  }
+}
+
+function anyProfileLive(options = {}) {
+  if (typeof options.isAnyProfileLive === "function") return Boolean(options.isAnyProfileLive());
+  try {
+    const { isDatabaseReady, getDb } = require("../db/init.cjs");
+    if (typeof isDatabaseReady === "function" && isDatabaseReady()) {
+      const row = getDb()
+        .prepare("SELECT 1 AS ok FROM profiles WHERE status IN ('running', 'opening') LIMIT 1")
+        .get();
+      return Boolean(row?.ok);
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const { resolveProfilesRoot } = require("./profiles-location.cjs");
+    const { resolveStealthUserDataRoot } = require("./user-data-root.cjs");
+    const roots = new Set();
+    for (const packaged of [true, false]) {
+      const profiles = resolveProfilesRoot(resolveStealthUserDataRoot({ packaged }));
+      if (profiles) roots.add(path.resolve(profiles));
+    }
+    for (const profiles of roots) {
+      if (!fs.existsSync(profiles)) continue;
+      let checked = 0;
+      for (const entry of fs.readdirSync(profiles, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        if (profileDirIsLive(path.join(profiles, entry.name))) return true;
+        if (++checked >= 32) break;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 function shouldCopyExtensionEntry(relativePath) {
   const rel = String(relativePath || "").replace(/\\/g, "/").toLowerCase();
   if (!rel || rel === ".") return true;
@@ -45,11 +110,92 @@ function resolveStageExtensionId(extensionDir) {
   return unpackedExtensionId(extensionDir);
 }
 
+function readManifestVersionSync(manifestPath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    return String(parsed?.version || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function hasCorruptedOrMismatchedRuntimeFiles(srcDir, destDir, rootSrc = srcDir) {
+  try {
+    if (!fs.existsSync(destDir)) return true;
+    for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+      const from = path.join(srcDir, entry.name);
+      if (!shouldCopyExtensionEntry(path.relative(rootSrc, from))) continue;
+      const to = path.join(destDir, entry.name);
+      if (entry.isDirectory()) {
+        if (hasCorruptedOrMismatchedRuntimeFiles(from, to, rootSrc)) return true;
+      } else if (entry.isFile()) {
+        const srcStat = fs.statSync(from);
+        if (!fs.existsSync(to)) return true;
+        const destStat = fs.statSync(to);
+        if (srcStat.size > 0 && destStat.size === 0) return true;
+        const isImageAsset = /\.(?:png|svg|ico|webp)$/i.test(entry.name);
+        if (!isImageAsset && srcStat.size !== destStat.size) return true;
+      }
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function copyExtensionTreeBestEffort(src, dest, rootSrc = src) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const from = path.join(src, entry.name);
+    if (!shouldCopyExtensionEntry(path.relative(rootSrc, from))) continue;
+    const to = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyExtensionTreeBestEffort(from, to, rootSrc);
+    } else if (entry.isFile()) {
+      try {
+        const srcStat = fs.statSync(from);
+        if (fs.existsSync(to)) {
+          const destStat = fs.statSync(to);
+          if (
+            destStat.size === srcStat.size &&
+            (srcStat.size === 0 || destStat.size > 0) &&
+            Math.abs(destStat.mtimeMs - srcStat.mtimeMs) < 1
+          ) {
+            continue;
+          }
+        }
+        const tmp = `${to}.tmp.${process.pid}.${Date.now()}`;
+        fs.copyFileSync(from, tmp);
+        try {
+          fs.utimesSync(tmp, srcStat.atime, srcStat.mtime);
+        } catch {
+          /* ignore */
+        }
+        try {
+          fs.renameSync(tmp, to);
+        } catch {
+          try {
+            fs.rmSync(tmp, { force: true });
+          } catch {
+            /* ignore */
+          }
+          fs.copyFileSync(from, to);
+        }
+      } catch {
+        // best-effort for locked binary/asset
+      }
+    }
+  }
+}
+
+const STAGE_CACHE_TTL_MS = 30_000;
+const _stageResultCache = new Map();
+
 /**
  * CloakBrowser Chromium resolves unpacked extensions under `<cacheDir>/<extId>/`.
  * Pre-stage files there so Chrome never shows "manifest missing" for the staging folder.
  */
-function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir) {
+function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir, options = {}) {
   const src = path.resolve(String(extensionDir || ""));
   const manifest = path.join(src, "manifest.json");
   if (!fs.existsSync(manifest)) return null;
@@ -61,7 +207,38 @@ function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir) {
   const stageDir = path.join(cacheRoot, extId);
   const stageManifest = path.join(stageDir, "manifest.json");
 
-  let needsCopy = !fs.existsSync(stageManifest);
+  const cacheKey = `${src}::${cacheRoot}`;
+  const nowMs = Date.now();
+  if (!options.force && typeof options.isAnyProfileLive !== "function") {
+    const cached = _stageResultCache.get(cacheKey);
+    if (cached && nowMs - cached.at < STAGE_CACHE_TTL_MS) {
+      try {
+        const curMtime = fs.statSync(manifest).mtimeMs;
+        if (
+          curMtime === cached.srcManifestMtime &&
+          fs.existsSync(stageManifest) &&
+          !hasCorruptedOrMismatchedRuntimeFiles(src, stageDir, src)
+        ) {
+          return cached.result;
+        }
+      } catch {
+        /* fall through to full check */
+      }
+    }
+  }
+
+  const srcVersion = readManifestVersionSync(manifest);
+  const stageVersion = fs.existsSync(stageManifest) ? readManifestVersionSync(stageManifest) : "";
+  const versionChanged = Boolean(srcVersion && stageVersion && srcVersion !== stageVersion);
+
+  const srcVerified = fs.existsSync(path.join(src, "_metadata", "verified_contents.json"));
+  const stageVerified = fs.existsSync(path.join(stageDir, "_metadata", "verified_contents.json"));
+  const verifiedChanged = srcVerified !== stageVerified;
+  const corruptedOrMismatched = hasCorruptedOrMismatchedRuntimeFiles(src, stageDir, src);
+  const criticalUpgrade =
+    Boolean(options.force) || versionChanged || verifiedChanged || corruptedOrMismatched;
+
+  let needsCopy = !fs.existsSync(stageManifest) || criticalUpgrade;
   if (!needsCopy) {
     try {
       needsCopy = fs.statSync(manifest).mtimeMs > fs.statSync(stageManifest).mtimeMs;
@@ -69,27 +246,55 @@ function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir) {
       needsCopy = true;
     }
   }
-  const srcVerified = fs.existsSync(path.join(src, "_metadata", "verified_contents.json"));
-  const stageVerified = fs.existsSync(path.join(stageDir, "_metadata", "verified_contents.json"));
   if (srcVerified && !stageVerified) needsCopy = true;
+  if (newestIconMtime(src) > newestIconMtime(stageDir)) needsCopy = true;
+
+  // A live profile junctions this same stage folder. Skip icon/mtime-only overwrites so its
+  // toolbar keeps the files it opened with, unless manifest version changed or force is set.
+  if (needsCopy && !criticalUpgrade && fs.existsSync(stageManifest) && anyProfileLive(options)) {
+    needsCopy = false;
+  }
+
+  // operator-extension-stage junctions `<cache>/<id>` → `extension-stage/<id>`;
+  // cpSync refuses to overwrite a link, so write through to its real folder.
+  let copyDir = stageDir;
+  try {
+    if (fs.lstatSync(stageDir).isSymbolicLink()) copyDir = fs.realpathSync(stageDir);
+  } catch {
+    // ENOENT — plain folder created below
+  }
 
   if (needsCopy) {
-    fs.mkdirSync(stageDir, { recursive: true });
-    fs.cpSync(src, stageDir, {
-      recursive: true,
-      force: true,
-      filter: (entry) => shouldCopyExtensionEntry(path.relative(src, entry)),
-    });
+    copyExtensionTreeBestEffort(src, copyDir, src);
+    if (!srcVerified) {
+      try {
+        fs.rmSync(path.join(copyDir, "_metadata"), { recursive: true, force: true });
+      } catch {
+        // best-effort when switching from verified store cache to workspace build
+      }
+    }
   }
 
   // Prune dev/publish dirs that older (unfiltered) stages may have already
   // copied — cpSync never removes stale entries, and Chromium re-validates the
   // whole unpacked folder on each new profile's first install, so a leftover
   // 98MB `.chrome-store-profile` keeps opens slow until pruned.
-  pruneNonRuntimeStageDirs(stageDir);
+  pruneNonRuntimeStageDirs(copyDir);
 
   if (!fs.existsSync(stageManifest)) return null;
-  return { extId, stageDir, sourceDir: src };
+  const result = { extId, stageDir, sourceDir: src };
+  if (typeof options.isAnyProfileLive !== "function") {
+    try {
+      _stageResultCache.set(cacheKey, {
+        at: nowMs,
+        srcManifestMtime: fs.statSync(manifest).mtimeMs,
+        result,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+  return result;
 }
 
 function pruneNonRuntimeStageDirs(stageDir) {
@@ -103,10 +308,10 @@ function pruneNonRuntimeStageDirs(stageDir) {
   }
 }
 
-function ensureCloakbrowserExtensionStages(extensionDirs, cloakCacheDir) {
+function ensureCloakbrowserExtensionStages(extensionDirs, cloakCacheDir, options = {}) {
   const staged = [];
   for (const dir of extensionDirs || []) {
-    const result = ensureCloakbrowserExtensionStage(dir, cloakCacheDir);
+    const result = ensureCloakbrowserExtensionStage(dir, cloakCacheDir, options);
     if (result) staged.push(result);
   }
   return staged;

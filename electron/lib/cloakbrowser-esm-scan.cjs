@@ -204,6 +204,51 @@ function cloakbrowserDistDir(projectRoot) {
   throw new Error("cloakbrowser dist not found — run pnpm install");
 }
 
+function stripJsComments(source) {
+  return String(source || "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+}
+
+/**
+ * Scan electron/ .cjs files (excluding packaged-node_modules & tests) for bare package
+ * dynamic `import("...")` calls. Inside app.asar, Node's ESM `import()` bypasses
+ * `Module._resolveFilename` in `ensure-packaged-module-paths.cjs` and fails for
+ * packages in `app.asar.unpacked` (e.g. `playwright-core`). Use `require(...)` instead.
+ */
+function scanForbiddenDynamicImportsInCjsDir(electronDir) {
+  /** @type {Array<{ file: string, specifier: string }>} */
+  const violations = [];
+  if (!fs.existsSync(electronDir)) return violations;
+
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === "packaged-node_modules" || entry.name === "node_modules") continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.name.endsWith(".cjs") && !entry.name.endsWith(".test.cjs")) {
+        const stripped = stripJsComments(fs.readFileSync(full, "utf8"));
+        const pattern = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+        let match;
+        while ((match = pattern.exec(stripped))) {
+          if (match[1].includes("${")) continue;
+          const pkg = packageNameFromSpecifier(match[1]);
+          if (pkg && !NODE_BUILTIN_PACKAGES.has(pkg)) {
+            violations.push({
+              file: path.relative(electronDir, full).replace(/\\/g, "/"),
+              specifier: match[1],
+            });
+          }
+        }
+      }
+    }
+  }
+
+  walk(electronDir);
+  return violations;
+}
+
 function verifyCloakEsmDeps(projectRoot) {
   const distDir = cloakbrowserDistDir(projectRoot);
   const allRaw = scanBareImportsFromDir(distDir);
@@ -238,8 +283,12 @@ function verifyCloakEsmDeps(projectRoot) {
   }
 
   const informational = directImports.filter((name) => !criticalImports.includes(name));
+  const forbiddenCjsDynamicImports = scanForbiddenDynamicImportsInCjsDir(path.join(projectRoot, "electron"));
 
-  const ok = missingDirectSeeds.length === 0 && missingTransitive.length === 0;
+  const ok =
+    missingDirectSeeds.length === 0 &&
+    missingTransitive.length === 0 &&
+    forbiddenCjsDynamicImports.length === 0;
 
   return {
     ok,
@@ -251,6 +300,7 @@ function verifyCloakEsmDeps(projectRoot) {
     missingDirectSeeds: missingDirectSeeds.sort(),
     missingTransitive: missingTransitive.sort(),
     unusedSeeds: unusedSeeds.sort(),
+    forbiddenCjsDynamicImports,
     requiredTransitive: [...requiredTransitive.keys()].sort(),
     seedTransitive: [...seedTransitive.keys()].sort(),
   };
@@ -263,6 +313,7 @@ module.exports = {
   packageNameFromSpecifier,
   scanBareImportsFromFile,
   scanBareImportsFromDir,
+  scanForbiddenDynamicImportsInCjsDir,
   filterPackagedEsmImports,
   collectTransitiveDeps,
   cloakbrowserDistDir,

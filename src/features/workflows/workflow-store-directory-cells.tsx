@@ -2,6 +2,7 @@ import {
   DirectoryTableBodyCell,
   HubDirectoryIconCell,
   HubDirectoryTimestampLabel,
+  HubDirectoryValuePopover,
   HubUsersStatusLabel,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
@@ -11,11 +12,19 @@ import type { StealthWorkflowStoreColumnKey } from "../../lib/directory-column-m
 import { DIRECTORY_CELL_TRUNCATE } from "../../lib/directory-cell-format";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import { workflowPlatformIconFor } from "./workflow-display";
-import { workflowStoreUpdatedMs } from "./workflow-store-meta";
+import { workflowStoreCreatedMs, workflowStoreUpdatedMs } from "./workflow-store-meta";
 import { resolveStoreEntryPresence } from "./workflow-store-kpi-items";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 import type { WorkflowStoreSortKey } from "./WorkflowStoreDirectoryTable";
 import { WorkflowStoreSourceDirectoryCell } from "./workflow-store-source-brand";
+
+function renderStoreCreatedCell(entry: WorkflowStoreEntry) {
+  const ms = workflowStoreCreatedMs(entry);
+  if (ms == null) {
+    return <span className="hub-directory-table-body-text">—</span>;
+  }
+  return <HubDirectoryTimestampLabel at={ms} />;
+}
 
 function renderStoreUpdatedCell(entry: WorkflowStoreEntry) {
   const ms = workflowStoreUpdatedMs(entry);
@@ -35,6 +44,7 @@ export function storeStatusLabel(entry: WorkflowStoreEntry, localIds: Set<string
 type RenderStoreCellOpts = {
   localIds: Set<string>;
   installedIds: Set<string>;
+  installing?: boolean;
 };
 
 /** Golden: one line per column — no stacked subtitle/badges in Name (P0004 Hub tools). */
@@ -82,9 +92,18 @@ export function renderWorkflowStoreDirectoryBodyCell(
       );
     case "status": {
       const status = storeStatusLabel(entry, opts.localIds, opts.installedIds);
+      const isInstalling = Boolean(opts.installing);
+      const statusLabel = isInstalling ? "Installing" : status.label;
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubUsersStatusLabel label={status.label} tone={status.tone} capitalize={false} />
+          <HubUsersStatusLabel
+            label={statusLabel}
+            tone={isInstalling ? "active" : status.tone}
+            capitalize={false}
+            live={isInstalling}
+            title={`Workflow ${entry.name} (v${entry.version}) is ${statusLabel}`}
+            popoverTitle="Workflow status"
+          />
         </DirectoryTableBodyCell>
       );
     }
@@ -94,12 +113,38 @@ export function renderWorkflowStoreDirectoryBodyCell(
           <WorkflowStoreSourceDirectoryCell source={entry.source} />
         </DirectoryTableBodyCell>
       );
+    case "created":
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          {renderStoreCreatedCell(entry)}
+        </DirectoryTableBodyCell>
+      );
     case "updated":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           {renderStoreUpdatedCell(entry)}
         </DirectoryTableBodyCell>
       );
+    case "activityLog": {
+      const status = storeStatusLabel(entry, opts.localIds, opts.installedIds);
+      const summaryText = `${status.label} · v${entry.version} · ${entry.description || entry.source}`;
+      const popoverLines = [
+        `Package: ${entry.name} (v${entry.version})`,
+        `ID: ${entry.id}`,
+        `Status: ${status.label} · Source: ${entry.source}`,
+        `Platform: ${entry.platform} · Group: ${entry.group}`,
+        `Summary: ${entry.description || "Ready to install from store catalog"}`,
+      ].join("\n");
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          <HubDirectoryValuePopover value={popoverLines} title="📋 Store Package Log">
+            <span className={`hub-directory-table-body-text text-[var(--muted)] ${DIRECTORY_CELL_TRUNCATE}`}>
+              {summaryText}
+            </span>
+          </HubDirectoryValuePopover>
+        </DirectoryTableBodyCell>
+      );
+    }
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>

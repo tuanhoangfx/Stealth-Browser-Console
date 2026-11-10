@@ -16,7 +16,7 @@ const P0007_CANDIDATES = [
 ];
 
 const LOCAL_BASE = "http://127.0.0.1:20128/v1";
-const CANONICAL_BASE = "https://9router.infi.io.vn/v1";
+const CANONICAL_BASE = "https://9router.infi28.com/v1";
 const SLOT = "platform-tools";
 const MODEL_CHAIN = ["xai/grok-3", "xai/grok-3-mini"];
 

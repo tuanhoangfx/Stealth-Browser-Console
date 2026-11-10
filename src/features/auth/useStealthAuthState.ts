@@ -72,13 +72,18 @@ function initialAuthState(): { session: Session | null; loading: boolean; offlin
 
 export function useStealthAuthState(): StealthAuthState {
   const initial = initialAuthState();
+  const authOptional = isStealthHubAuthOptional();
   const [session, setSession] = useState<Session | null>(initial.session);
   const [loading, setLoading] = useState(initial.loading);
   const [offline, setOffline] = useState(initial.offline);
-  const [toolAccess, setToolAccess] = useState<boolean | null>(initial.session ? null : false);
+  const [toolAccess, setToolAccess] = useState<boolean | null>(
+    authOptional ? true : initial.session ? null : false,
+  );
   const toolCheckGen = useRef(0);
-  const toolAccessRef = useRef<boolean | null>(initial.session ? null : false);
-  const toolAccessConfirmedRef = useRef(false);
+  const toolAccessRef = useRef<boolean | null>(
+    authOptional ? true : initial.session ? null : false,
+  );
+  const toolAccessConfirmedRef = useRef(authOptional);
   const signoutRecoveryRef = useRef(false);
 
   const commitToolAccess = useCallback((value: boolean | null) => {
@@ -235,7 +240,6 @@ export function useStealthAuthState(): StealthAuthState {
   }, []);
 
   const hubAuthEnabled = isStealthHubAuthEnabled();
-  const authOptional = isStealthHubAuthOptional();
   const hasHubSession = !isOfflineWorkspaceSession(session, offline);
 
   useHubIdentityRelayRequest({
@@ -310,7 +314,10 @@ export function useStealthAuthState(): StealthAuthState {
   const hubUserId = offline ? null : (session?.user?.id ?? null);
   const hasEstablishedSession =
     isRealHubWorkspaceSession(session) || isRealHubWorkspaceSession(readCachedHubSession());
-  const effectiveLoading = authRequired && (loading || !policyReady) && !hasEstablishedSession;
+  const effectiveAuthRequired = authOptional ? false : authRequired;
+  const effectivePolicyReady = authOptional ? true : policyReady;
+  const effectiveLoading =
+    effectiveAuthRequired && (loading || !effectivePolicyReady) && !hasEstablishedSession;
 
   // Push Hub login email → main vault scope (packaged). Dev always uses czpgo@outlook.com.
   useEffect(() => {
@@ -343,10 +350,10 @@ export function useStealthAuthState(): StealthAuthState {
     hubUserId,
     loading: effectiveLoading,
     offline,
-    toolAccess,
+    toolAccess: authOptional ? true : toolAccess,
     hubConfigured: isHubSupabaseConfigured,
-    authRequired,
-    policyReady,
+    authRequired: effectiveAuthRequired,
+    policyReady: effectivePolicyReady,
     refreshSession,
     recheckToolAccess,
     prepareHubSignIn,

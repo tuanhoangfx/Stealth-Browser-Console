@@ -19,9 +19,9 @@ const {
   probeStealthApiBases,
 } = await import("../../scripts/lib/stealth-browser-client.mjs");
 
-const preferredName = process.argv[2] || "0003";
-/** Prefer agent-pool codes when primary profile is locked by a live headed session. */
-const FALLBACK_NAMES = ["9990", "9991", "9992", "0003"];
+const preferredName = process.argv[2] || "9990";
+/** Always use agent-pool codes (9000–9999) for smoke tests — never touch user profiles 0001–0020. */
+const FALLBACK_NAMES = ["9990", "9991", "9992", "9000", "9001"];
 
 function profileUserDataDir(profileId, apiBase) {
   const rootName = String(apiBase).includes(":6004")
@@ -140,9 +140,9 @@ async function main() {
       await closeStealthProfile(profile.id).catch(() => {});
     }
 
-    if (headedLaunch.headless === true && profile.headless !== true) {
+    if (headedLaunch.headless !== true) {
       throw new Error(
-        `Interactive launch must not be headless without profile.headless — got ${JSON.stringify(headedLaunch)}`,
+        `Agent HTTP client launch must remain headless even when STEALTH_AGENT_SMOKE env is unset — got ${JSON.stringify(headedLaunch)}`,
       );
     }
 
@@ -154,7 +154,7 @@ async function main() {
           profile: profile.name,
           repair,
           agentLaunch: { headless: agentLaunch.headless, agentSmoke: agentLaunch.agentSmoke },
-          headedLaunch: { headless: headedLaunch.headless, agentSmoke: headedLaunch.agentSmoke },
+          unflaggedClientLaunch: { headless: headedLaunch.headless, agentSmoke: headedLaunch.agentSmoke },
         },
         null,
         2,

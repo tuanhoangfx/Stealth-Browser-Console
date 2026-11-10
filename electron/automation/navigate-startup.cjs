@@ -63,7 +63,7 @@ function isPlaceholderTabUrl(url) {
 function selectLaunchPlaceholderPages(pages, primaryPage, launchPages) {
   return pages.filter((candidate) => {
     if (candidate === primaryPage || candidate.isClosed?.()) return false;
-    if (!launchPages.has(candidate)) return false;
+    if (launchPages && !launchPages.has(candidate)) return false;
     try {
       return isPlaceholderTabUrl(candidate.url());
     } catch {
@@ -74,7 +74,8 @@ function selectLaunchPlaceholderPages(pages, primaryPage, launchPages) {
 
 async function navigateStartupUrl(context, targetUrl) {
   const launchPages = new Set(context.pages());
-  const page = await resolvePrimaryPage(context);
+  let page = await resolvePrimaryPage(context);
+  for (const p of context.pages()) launchPages.add(p);
   launchPages.add(page);
   if (!FAST_LAUNCH) {
     await page.waitForTimeout(250).catch(() => undefined);
@@ -84,6 +85,10 @@ async function navigateStartupUrl(context, targetUrl) {
   const settleBudget = FAST_LAUNCH ? 2000 : 8000;
 
   const tryGoto = async (mode) => {
+    if (!page || page.isClosed?.()) {
+      page = await resolvePrimaryPage(context);
+      launchPages.add(page);
+    }
     await safePageGoto(page, targetUrl, { waitUntil: mode, timeout: 60000 });
     await settlePage(page, settleBudget);
   };
@@ -100,12 +105,15 @@ async function navigateStartupUrl(context, targetUrl) {
   }
 
   try {
+    if (!page || page.isClosed?.()) {
+      page = await resolvePrimaryPage(context);
+      launchPages.add(page);
+    }
     const finalUrl = String(page.url() || "");
     const looksOk =
       targetUrl === "about:blank" ||
       finalUrl.startsWith("http://") ||
-      finalUrl.startsWith("https://") ||
-      finalUrl === "about:blank";
+      finalUrl.startsWith("https://");
     if (!looksOk) {
       if (!FAST_LAUNCH) await page.waitForTimeout(650).catch(() => undefined);
       await tryGoto(FAST_LAUNCH ? "commit" : "domcontentloaded");

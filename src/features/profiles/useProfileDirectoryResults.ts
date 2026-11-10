@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchProfileDirectoryPage } from "../../api";
-import type { ProfileRow } from "../../types";
+import type { ProfileProxyFilterMode, ProfileRow } from "../../types";
 import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
 import { profileDirectorySortParam } from "./profile-directory-sort";
 
@@ -9,6 +9,7 @@ export type ProfileDirectoryQuery = {
   search: string;
   groupIds: readonly string[];
   statuses: readonly ProfileRow["status"][];
+  proxyModes?: readonly ProfileProxyFilterMode[];
 };
 
 /**
@@ -33,15 +34,21 @@ export function useProfileDirectoryResults(
     directoryBusy: true,
   });
   const requestId = useRef(0);
+  const prevRefreshKeyRef = useRef(refreshKey);
 
   useEffect(() => {
     const req = ++requestId.current;
-    setState((prev) => ({ ...prev, directoryBusy: true }));
+    const isBackgroundRefreshOnly = prevRefreshKeyRef.current !== refreshKey;
+    prevRefreshKeyRef.current = refreshKey;
+    if (!isBackgroundRefreshOnly) {
+      setState((prev) => ({ ...prev, directoryBusy: true }));
+    }
 
     fetchProfileDirectoryPage({
       search: query.search,
       groupIds: [...query.groupIds],
       statuses: [...query.statuses],
+      proxyModes: query.proxyModes ? [...query.proxyModes] : [],
       limit: pageSize,
       offset: pageIndex * pageSize,
       sort: profileDirectorySortParam(sortKey),
@@ -63,12 +70,38 @@ export function useProfileDirectoryResults(
     query.search,
     query.groupIds,
     query.statuses,
+    query.proxyModes,
     pageIndex,
     pageSize,
     sortKey,
     sortDir,
     refreshKey,
   ]);
+
+  useEffect(() => {
+    const api = typeof window !== "undefined" ? window.stealthApi : undefined;
+    if (!api?.onProfileSession) return undefined;
+    const off = api.onProfileSession(({ profile }) => {
+      if (!profile?.id) return;
+      setState((prev) => {
+        const idx = prev.filteredProfiles.findIndex((row) => row.id === profile.id);
+        if (idx < 0) return prev;
+        const next = [...prev.filteredProfiles];
+        next[idx] = {
+          ...next[idx]!,
+          ...profile,
+          activeVpnCountry:
+            profile.status === "running"
+              ? profile.activeVpnCountry ?? next[idx]!.activeVpnCountry
+              : undefined,
+        };
+        return { ...prev, filteredProfiles: next };
+      });
+    });
+    return () => {
+      off?.();
+    };
+  }, []);
 
   return {
     filteredProfiles: state.filteredProfiles,

@@ -13,6 +13,10 @@ import type {
 import { DEFAULT_DEVICE, deviceConfigFromProfile } from "./device-presets";
 import { normalizeStartupUrl, resolveStartupUrlSave } from "./startup-url";
 import { matchesProfileDirectorySearch } from "../features/profiles/profile-directory-search";
+import {
+  matchesProfileProxyFilterMode,
+  PROFILE_PROXY_FILTER_OPTIONS,
+} from "../features/profiles/profile-filters";
 import { assertStealthApiChannelCoverage, buildStealthApiStubLayer } from "./stealth-api-mock-stubs";
 
 const DEMO_SEED = 424242;
@@ -41,6 +45,46 @@ function ensureSmokePagerCatalog() {
       note: "smoke pager seed — web mock",
     });
   }
+}
+
+let liveHydrated = false;
+let liveHydratePromise: Promise<void> | null = null;
+
+async function ensureLiveHydrated() {
+  if (liveHydrated || isSmokePagerSeedRequested()) return;
+  if (typeof window === "undefined" || (import.meta as { env?: { VITEST?: unknown } }).env?.VITEST) return;
+  const proto = String(window.location?.protocol || "");
+  if (!proto.startsWith("http")) return;
+  if (!liveHydratePromise) {
+    liveHydratePromise = (async () => {
+      for (const base of ["http://127.0.0.1:6003", "http://127.0.0.1:6004"]) {
+        try {
+          const [profRes, grpRes] = await Promise.all([
+            fetch(`${base}/api/profiles?limit=50000`, { signal: AbortSignal.timeout(3500) }),
+            fetch(`${base}/api/groups`, { signal: AbortSignal.timeout(2500) }).catch(() => null),
+          ]);
+          if (!profRes.ok) continue;
+          const profJson = await profRes.json();
+          const liveProfiles = Array.isArray(profJson?.profiles) ? profJson.profiles : [];
+          if (liveProfiles.length > 0) {
+            profiles.splice(0, profiles.length, ...liveProfiles);
+            if (grpRes && grpRes.ok) {
+              const grpJson = await grpRes.json().catch(() => null);
+              if (Array.isArray(grpJson?.groups) && grpJson.groups.length > 0) {
+                groups.splice(0, groups.length, ...grpJson.groups);
+              }
+            }
+            liveHydrated = true;
+            return;
+          }
+        } catch {
+          /* try next port or fall back to demo row */
+        }
+      }
+      liveHydrated = true;
+    })();
+  }
+  await liveHydratePromise;
 }
 
 function seedIfEmpty() {
@@ -115,7 +159,14 @@ function buildCatalogStats() {
   ensureSmokePagerCatalog();
   const total = profiles.length;
   const groupCounts: Record<string, number> = {};
-  const stats = { total, closed: 0, opening: 0, running: 0, failed: 0, groupCounts };
+  const proxyCounts: Record<string, number> = {
+    local: 0,
+    vpn: 0,
+    auto_vpn: 0,
+    custom: 0,
+    static: 0,
+  };
+  const stats = { total, closed: 0, opening: 0, running: 0, failed: 0, groupCounts, proxyCounts };
   for (const p of profiles) {
     if (p.status === "closed") stats.closed += 1;
     else if (p.status === "opening") stats.opening += 1;
@@ -123,6 +174,11 @@ function buildCatalogStats() {
     else if (p.status === "failed") stats.failed += 1;
     const gid = String(p.groupId ?? "");
     if (gid) groupCounts[gid] = (groupCounts[gid] ?? 0) + 1;
+    for (const opt of PROFILE_PROXY_FILTER_OPTIONS) {
+      if (matchesProfileProxyFilterMode(p, opt.value)) {
+        proxyCounts[opt.value] = (proxyCounts[opt.value] ?? 0) + 1;
+      }
+    }
   }
   return stats;
 }
@@ -152,11 +208,13 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
     }),
     updateBinary: async () => ({ ok: false, error: "Not available in web mock." }),
     listProfiles: async () => {
+      await ensureLiveHydrated();
       seedIfEmpty();
       ensureSmokePagerCatalog();
       return { ok: true, profiles: [...profiles], groups: [...groups] };
     },
     profileBootstrap: async () => {
+      await ensureLiveHydrated();
       seedIfEmpty();
       return { ok: true, groups: [...groups], stats: buildCatalogStats() };
     },
@@ -164,23 +222,33 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
       search?: string;
       groupIds?: string[];
       statuses?: StealthProfile["status"][];
+      proxyModes?: import("../types").ProfileProxyFilterMode[];
       limit?: number;
       offset?: number;
     } = {}) => {
+      await ensureLiveHydrated();
       seedIfEmpty();
       ensureSmokePagerCatalog();
       const term = String(input.search || "").trim();
       const groupIds = Array.isArray(input.groupIds) ? input.groupIds.map(String) : [];
       const statuses = Array.isArray(input.statuses) ? input.statuses.map(String) : [];
+      const proxyModes = Array.isArray(input.proxyModes) ? input.proxyModes : [];
       let rows = [...profiles];
       if (groupIds.length) rows = rows.filter((p) => groupIds.includes(String(p.groupId ?? "")));
       if (statuses.length) rows = rows.filter((p) => statuses.includes(p.status));
+      if (proxyModes.length) {
+        rows = rows.filter((p) => proxyModes.some((mode) => matchesProfileProxyFilterMode(p, mode)));
+      }
       if (term) rows = rows.filter((p) => matchesProfileDirectorySearch(p, term));
       const limit = Math.min(50_000, Math.max(1, Number(input.limit) || 100));
       const offset = Math.max(0, Number(input.offset) || 0);
       return { ok: true, profiles: rows.slice(offset, offset + limit), total: rows.length, limit, offset };
     },
-    catalogStats: async () => ({ ok: true, stats: buildCatalogStats() }),
+    catalogStats: async () => {
+      await ensureLiveHydrated();
+      seedIfEmpty();
+      return { ok: true, stats: buildCatalogStats() };
+    },
     createProfile: async (input) => ({ ok: true, profile: createMockProfile(input) }),
     createProfilesBulkByNames: async (payload) => {
       const lines = Array.isArray(payload.names)
@@ -240,6 +308,55 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
         if (existing) existing.startupUrl = normalized;
       }
       return { ok: true, count: ids.length };
+    },
+    bulkUpdateProfiles: async (payload) => {
+      const ids = (payload.ids || []).map(String);
+      const patch = payload.patch || {};
+      let count = 0;
+      for (const id of ids) {
+        const existing = findProfile(id);
+        if (existing) {
+          const { extensionOverrideDelta, ...restPatch } = patch;
+          let nextOverrides = existing.extensionOverrides;
+          if (extensionOverrideDelta) {
+            nextOverrides = { ...(existing.extensionOverrides || {}) };
+            if (Boolean(extensionOverrideDelta.enabled) === Boolean(extensionOverrideDelta.globalDefault)) {
+              delete nextOverrides[extensionOverrideDelta.key];
+            } else {
+              nextOverrides[extensionOverrideDelta.key] = Boolean(extensionOverrideDelta.enabled);
+            }
+          }
+          Object.assign(
+            existing,
+            restPatch,
+            extensionOverrideDelta ? { extensionOverrides: nextOverrides } : {},
+            { updatedAt: nowIso() },
+          );
+          count += 1;
+        }
+      }
+      return { ok: true, count };
+    },
+    cloneProfilesBatch: async (payload) => {
+      const sourceIds = (payload.sourceIds || []).map(String);
+      const copies = Math.min(50, Math.max(1, Number(payload.count) || 1));
+      const overrides = payload.overrides || {};
+      const exact = new Set(profiles.map((p) => String(p.name || "").trim()));
+      const createdCodes: string[] = [];
+      let nextNum = 1;
+      for (const sid of sourceIds) {
+        const src = findProfile(sid);
+        if (!src) continue;
+        for (let c = 0; c < copies; c += 1) {
+          while (nextNum <= 9999 && exact.has(String(nextNum).padStart(4, "0"))) nextNum += 1;
+          if (nextNum > 9999) break;
+          const code = String(nextNum++).padStart(4, "0");
+          exact.add(code);
+          createMockProfile({ ...src, ...overrides, name: code });
+          createdCodes.push(code);
+        }
+      }
+      return { ok: true, created: createdCodes.length, createdCodes };
     },
     deleteProfile: async (payload) => {
       const idx = profiles.findIndex((row) => row.id === String(payload.id));
@@ -356,7 +473,7 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
         configPath: "",
       },
       profileExtensionsEnabled: true,
-      extensionToggles: { e0001: true, surfshark: false, webStore: false },
+      extensionToggles: { e0001: true, e0002: true, surfshark: false, webStore: false },
     }),
     openDataFolder: async () => ({ ok: false, path: "" }),
     openProfilesFolder: async () => ({ ok: false, path: "" }),
@@ -391,12 +508,13 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
     setProfileExtensionsEnabled: async (payload) => ({ ok: true, enabled: Boolean(payload?.enabled) }),
     getExtensionToggles: async () => ({
       ok: true,
-      toggles: { e0001: true, surfshark: false, webStore: false },
+      toggles: { e0001: true, e0002: true, surfshark: false, webStore: false },
     }),
     setExtensionToggles: async (payload) => ({
       ok: true,
       toggles: {
         e0001: payload?.toggles?.e0001 !== false,
+        e0002: payload?.toggles?.e0002 !== false,
         surfshark: payload?.toggles?.surfshark === true,
         webStore: payload?.toggles?.webStore === true,
       },
@@ -410,7 +528,7 @@ function buildProfileOverrides(): Partial<NonNullable<typeof window.stealthApi>>
       status: {
         enabled: true,
         profilesExtensionsEnabled: true,
-        extensionToggles: { e0001: true, surfshark: false, webStore: false },
+        extensionToggles: { e0001: true, e0002: true, surfshark: false, webStore: false },
         productCode: "E0001",
         name: "E0001 Cookie Bridge",
         storeId: "kaaadageakdandpobcofplmfbjfjabdk",

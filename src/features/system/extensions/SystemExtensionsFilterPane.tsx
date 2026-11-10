@@ -1,15 +1,18 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   DirectorySearchToolbar,
+  HubDirectoryAdaptiveEditAction,
   HubDirectoryBulkActionBar,
+  HubDirectoryBulkMoreMenu,
   HubDirectoryCrudBulkActions,
-  HubDirectoryDetailAction,
   HubSplitDirectoryFilterBar,
   type FilterDef,
   type FilterValues,
+  type HubDirectoryBulkMoreAction,
 } from "@tool-workspace/hub-ui";
-import { Puzzle } from "lucide-react";
+import { BookOpen, Puzzle, RefreshCw } from "lucide-react";
 import { StealthDisplayBandToolbar } from "../../../components/StealthDisplayBandToolbar";
+import { openStealthGuide } from "../../../lib/app-meta";
 import { defaultsForPrefItems, isHubPrefVisible } from "../../../lib/display-pref-helpers";
 import { SYSTEM_EXTENSIONS_DISPLAY_PREFS } from "../../../lib/display-prefs-registry";
 import { applyStealthFilterLabelHints } from "../../../lib/stealth-filter-hints";
@@ -38,8 +41,10 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
   onToggleSelectAll,
   busy,
   onOpenDetailSingle,
+  onOpenBulkDetail,
   onOpenInstall,
   onDeleteSelected,
+  onReloadOpenProfiles,
 }: {
   cached: CachedStoreExtension[];
   search: string;
@@ -53,8 +58,10 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
   onToggleSelectAll: () => void;
   busy: boolean;
   onOpenDetailSingle: () => void;
+  onOpenBulkDetail?: () => void;
   onOpenInstall: () => void;
   onDeleteSelected: () => void;
+  onReloadOpenProfiles?: () => void;
 }) {
   const [filterTick, setFilterTick] = useState(0);
 
@@ -91,6 +98,30 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
       setSelectedKinds(extensionFilterValuesToState(values));
     },
     [setSelectedKinds],
+  );
+
+  const moreMenuItems = useMemo<HubDirectoryBulkMoreAction[]>(
+    () => [
+      ...(onReloadOpenProfiles
+        ? [
+            {
+              key: "reload-open-profiles",
+              label: "Reload Open Profiles",
+              icon: RefreshCw,
+              title: "Sync E0001 & E0002 stages and broadcast instant reload signal to all open profiles",
+              onClick: () => onReloadOpenProfiles(),
+            },
+          ]
+        : []),
+      {
+        key: "guide-docs",
+        label: "Guide & Docs",
+        icon: BookOpen,
+        title: "Open P0003 Landing & Illustrated Guide (stealth.infi28.com/intro/)",
+        onClick: () => openStealthGuide("guide/"),
+      },
+    ],
+    [onReloadOpenProfiles],
   );
 
   return (
@@ -141,12 +172,30 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
             primaryTitle="Install from Chrome Web Store"
             hideEdit
             beforeDelete={
-              <HubDirectoryDetailAction
-                disabled={selectedCount !== 1}
-                onClick={onOpenDetailSingle}
-              />
+              <>
+                {onReloadOpenProfiles ? (
+                  <button
+                    type="button"
+                    className="hub-btn hub-btn--ghost inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
+                    disabled={busy}
+                    title="Sync E0001 & E0002 stages and broadcast instant reload signal to all open profiles"
+                    onClick={onReloadOpenProfiles}
+                  >
+                    <RefreshCw size={13} className={busy ? "animate-spin" : ""} aria-hidden />
+                    <span>Reload Open Profiles</span>
+                  </button>
+                ) : null}
+                <HubDirectoryAdaptiveEditAction
+                  selectedCount={selectedCount}
+                  onEditSingle={onOpenDetailSingle}
+                  onEditBulk={onOpenBulkDetail ?? onOpenDetailSingle}
+                  singleLabel="Detail"
+                  bulkLabel="Detail"
+                />
+              </>
             }
           />
+          <HubDirectoryBulkMoreMenu actions={moreMenuItems} selectedCount={selectedCount} />
         </HubDirectoryBulkActionBar>
       }
     />

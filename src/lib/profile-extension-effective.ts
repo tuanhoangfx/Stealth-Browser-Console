@@ -2,6 +2,7 @@ import type { ExtensionToggles, ProfileExtensionOverrides, ProfileRow } from "..
 
 export const DEFAULT_EXTENSION_TOGGLES: ExtensionToggles = {
   e0001: true,
+  e0002: true,
   surfshark: false,
   webStore: false,
 };

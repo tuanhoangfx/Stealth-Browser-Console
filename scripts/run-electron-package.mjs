@@ -341,6 +341,21 @@ function syncUnpackedTaskbarPs1(unpackedDir) {
   return n;
 }
 
+function syncUnpackedBundledExtensions(unpackedDir) {
+  const srcDir = path.join(root, "build", "bundled-extensions");
+  const destDir = path.join(unpackedDir, "resources", "bundled-extensions");
+  if (!fs.existsSync(srcDir)) return false;
+  try {
+    rmDir(destDir);
+    copyDir(srcDir, destDir);
+    console.log("run-electron-package: synced build/bundled-extensions into resources/bundled-extensions");
+    return true;
+  } catch (e) {
+    console.warn(`run-electron-package: sync bundled-extensions skipped (${e && e.message})`);
+    return false;
+  }
+}
+
 function createAsarFromTree(treeRoot, asarPath) {
   const tmpAsar = path.join(os.tmpdir(), `p0003-app-${Date.now()}.asar`);
   const create = spawnSync(
@@ -812,6 +827,7 @@ if (canPrepackaged) {
   console.log(`run-electron-package: Fast prepackaged NSIS from ${unpackedLocal}`);
   asarWarmBackup = refreshUnpackedAppAsar(unpackedLocal);
   syncUnpackedTaskbarPs1(unpackedLocal);
+  syncUnpackedBundledExtensions(unpackedLocal);
   builderArgs.push("--prepackaged", unpackedLocal, "--win", "nsis", "--x64", "--publish", builderPublish);
 } else {
   builderArgs.push(

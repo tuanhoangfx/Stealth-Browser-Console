@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const {
   setShutdownReason,
+  peekShutdownReason,
   consumeShutdownReason,
   writeShutdownLog,
   writeBootLog,
@@ -25,6 +26,14 @@ test("setShutdownReason is consumed once on write", () => {
   assert.equal(row.kind, "shutdown");
   assert.equal(row.reason, "window-all-closed");
   assert.equal(row.runningProfiles, 2);
+});
+
+test("peekShutdownReason does not consume", () => {
+  setShutdownReason("update-install");
+  assert.equal(peekShutdownReason(), "update-install");
+  assert.equal(peekShutdownReason(), "update-install");
+  assert.equal(consumeShutdownReason(), "update-install");
+  assert.equal(peekShutdownReason(), "unknown");
 });
 
 test("writeBootLog appends boot row", () => {

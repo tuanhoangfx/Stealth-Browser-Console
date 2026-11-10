@@ -30,8 +30,16 @@ function cookieBridgeEnabled() {
 }
 
 function useLocalDevExtension() {
-  const raw = String(process.env.STEALTH_COOKIE_BRIDGE_LOCAL ?? "0").toLowerCase();
-  return raw === "1" || raw === "true" || raw === "on";
+  if (process.env.STEALTH_COOKIE_BRIDGE_LOCAL !== undefined) {
+    const raw = String(process.env.STEALTH_COOKIE_BRIDGE_LOCAL).toLowerCase();
+    return raw === "1" || raw === "true" || raw === "on";
+  }
+  try {
+    const { getCookieBridgeSourceMode } = require("./app-settings.cjs");
+    return getCookieBridgeSourceMode() === "workspace";
+  } catch {
+    return false;
+  }
 }
 
 function isVerifiedStoreExtension(extensionDir) {
@@ -39,10 +47,28 @@ function isVerifiedStoreExtension(extensionDir) {
   return fs.existsSync(path.join(base, "_metadata", "verified_contents.json"));
 }
 
-/** Live workspace copy under E:\\Dev\\Extension (dev builds). */
+/** Live workspace copy under E:\\Dev\\Extension (or bundled latest snapshot on standalone installs). */
 function workspaceExtensionDir() {
-  const local = path.resolve(__dirname, "..", "..", "..", "..", "Extension", "E0001-cookie-bridge");
-  return fs.existsSync(path.join(local, "manifest.json")) ? local : null;
+  const override = String(process.env.STEALTH_COOKIE_BRIDGE_WORKSPACE_DIR || "").trim();
+  const storeId = COOKIE_BRIDGE_STORE_ID;
+  const packagedLatest =
+    typeof process.resourcesPath === "string" && process.resourcesPath
+      ? path.join(process.resourcesPath, "bundled-extensions", storeId, "unpacked-latest")
+      : "";
+  const candidates = [
+    override,
+    path.resolve(__dirname, "..", "..", "..", "..", "Extension", "E0001-cookie-bridge"),
+    process.env.STEALTH_WORKSPACE_ROOT
+      ? path.resolve(process.env.STEALTH_WORKSPACE_ROOT, "Extension", "E0001-cookie-bridge")
+      : "",
+    path.resolve("E:/Dev/Extension/E0001-cookie-bridge"),
+    packagedLatest,
+    path.resolve(__dirname, "..", "..", "build", "bundled-extensions", storeId, "unpacked-latest"),
+  ].filter(Boolean);
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "manifest.json"))) return path.resolve(dir);
+  }
+  return null;
 }
 
 // Dev/publish dirs that are never runtime extension files. Must match
@@ -70,25 +96,150 @@ function shouldCopyExtensionEntry(relativePath) {
   return true;
 }
 
-function syncExtensionDirToCache(sourceDir, userDataRoot = defaultUserDataRoot()) {
+const CORE_RUNTIME_FILES = [
+  "manifest.json",
+  "build-info.js",
+  "background.js",
+  "auth-session.js",
+  "content-bridge.js",
+  "totp-clock.js",
+];
+
+function newestCoreRuntimeMtime(dir) {
+  let newest = 0;
+  for (const name of CORE_RUNTIME_FILES) {
+    try {
+      const st = fs.statSync(path.join(dir, name));
+      if (st.mtimeMs > newest) newest = st.mtimeMs;
+    } catch {
+      /* ignore missing file */
+    }
+  }
+  return newest;
+}
+
+function hasCorruptedOrMismatchedRuntimeFiles(srcDir, destDir, rootSrc = srcDir) {
+  try {
+    if (!fs.existsSync(destDir)) return true;
+    for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+      const from = path.join(srcDir, entry.name);
+      if (!shouldCopyExtensionEntry(path.relative(rootSrc, from))) continue;
+      const to = path.join(destDir, entry.name);
+      if (entry.isDirectory()) {
+        if (hasCorruptedOrMismatchedRuntimeFiles(from, to, rootSrc)) return true;
+      } else if (entry.isFile()) {
+        const srcStat = fs.statSync(from);
+        if (!fs.existsSync(to)) return true;
+        const destStat = fs.statSync(to);
+        if (srcStat.size > 0 && destStat.size === 0) return true;
+        if (srcStat.size !== destStat.size) return true;
+      }
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function syncExtensionFilesAtomically(srcDir, destDir, rootSrc = srcDir) {
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    const from = path.join(srcDir, entry.name);
+    if (!shouldCopyExtensionEntry(path.relative(rootSrc, from))) continue;
+    const to = path.join(destDir, entry.name);
+    if (entry.isDirectory()) {
+      syncExtensionFilesAtomically(from, to, rootSrc);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    try {
+      const srcStat = fs.statSync(from);
+      if (fs.existsSync(to)) {
+        const destStat = fs.statSync(to);
+        if (
+          destStat.size === srcStat.size &&
+          (srcStat.size === 0 || destStat.size > 0) &&
+          Math.abs(destStat.mtimeMs - srcStat.mtimeMs) < 1
+        ) {
+          continue;
+        }
+      }
+      const tmp = `${to}.tmp.${process.pid}.${Date.now()}`;
+      fs.copyFileSync(from, tmp);
+      try {
+        fs.utimesSync(tmp, srcStat.atime, srcStat.mtime);
+      } catch {
+        /* ignore utimes failure */
+      }
+      try {
+        fs.renameSync(tmp, to);
+      } catch {
+        try {
+          fs.rmSync(tmp, { force: true });
+        } catch {
+          /* ignore */
+        }
+        fs.copyFileSync(from, to);
+      }
+    } catch {
+      /* best-effort on locked file */
+    }
+  }
+}
+
+function syncExtensionDirToCache(
+  sourceDir,
+  userDataRoot = defaultUserDataRoot(),
+  { force = false, _skipMirror = false } = {},
+) {
   const src = path.resolve(String(sourceDir || ""));
   const dest = unpackedDir(userDataRoot);
   const srcManifest = path.join(src, "manifest.json");
   if (!fs.existsSync(srcManifest)) return null;
   const destManifest = path.join(dest, "manifest.json");
-  if (fs.existsSync(destManifest)) {
+  if (!force && fs.existsSync(destManifest) && !isVerifiedStoreExtension(dest)) {
     try {
-      if (fs.statSync(srcManifest).mtimeMs <= fs.statSync(destManifest).mtimeMs) return dest;
+      const srcVer = JSON.parse(fs.readFileSync(srcManifest, "utf8"))?.version;
+      const destVer = JSON.parse(fs.readFileSync(destManifest, "utf8"))?.version;
+      if (
+        srcVer === destVer &&
+        newestCoreRuntimeMtime(src) <= newestCoreRuntimeMtime(dest) &&
+        !hasCorruptedOrMismatchedRuntimeFiles(src, dest, src)
+      ) {
+        return dest;
+      }
     } catch {
       // fall through — refresh cache
     }
   }
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.cpSync(src, dest, {
-    recursive: true,
-    force: true,
-    filter: (entry) => shouldCopyExtensionEntry(path.relative(src, entry)),
-  });
+  const destMeta = path.join(dest, "_metadata");
+  if (!isVerifiedStoreExtension(src) && fs.existsSync(destMeta)) {
+    try {
+      fs.rmSync(destMeta, { recursive: true, force: true });
+    } catch {
+      /* best-effort */
+    }
+  }
+  syncExtensionFilesAtomically(src, dest, src);
+  if (!_skipMirror) {
+    try {
+      const defRoot = path.resolve(defaultUserDataRoot());
+      if (path.resolve(userDataRoot).toLowerCase() === defRoot.toLowerCase()) {
+        const altRoot = path.resolve("D:/StealthBrowser");
+        if (
+          fs.existsSync(path.join(altRoot, "extensions-cache")) &&
+          altRoot.toLowerCase() !== defRoot.toLowerCase()
+        ) {
+          syncExtensionDirToCache(src, altRoot, { force: true, _skipMirror: true });
+        }
+        const { syncOperatorChromiumStages } = require("./operator-extension-stage.cjs");
+        syncOperatorChromiumStages(dest, [], { force: true });
+      }
+    } catch {
+      // best-effort secondary mirror & stage update
+    }
+  }
   return dest;
 }
 
@@ -165,7 +316,12 @@ async function ensureCookieBridgeStoreExtension(userDataRoot = defaultUserDataRo
 
   if (!useLocalDevExtension()) {
     const cache = unpackedDir(userDataRoot);
-    if (fs.existsSync(path.join(cache, "manifest.json")) && !isVerifiedStoreExtension(cache)) {
+    const hasGithubReleaseMarker = fs.existsSync(path.join(cache, ".github-release.json"));
+    if (
+      fs.existsSync(path.join(cache, "manifest.json")) &&
+      !isVerifiedStoreExtension(cache) &&
+      !hasGithubReleaseMarker
+    ) {
       try {
         fs.rmSync(cacheRoot(userDataRoot), { recursive: true, force: true });
       } catch {
@@ -199,6 +355,91 @@ function resolveCookieBridgeExtensionDirSync(userDataRoot = defaultUserDataRoot(
   return resolveCachedExtensionDir(userDataRoot);
 }
 
+async function switchCookieBridgeSourceMode(userDataRoot = defaultUserDataRoot(), mode = "store") {
+  const { setCookieBridgeSourceMode } = require("./app-settings.cjs");
+  const normalized = setCookieBridgeSourceMode(mode);
+  let targetDir = null;
+  if (normalized === "workspace") {
+    const workspace = workspaceExtensionDir();
+    if (!workspace) {
+      throw new Error("Workspace E0001-cookie-bridge folder not found");
+    }
+    targetDir = syncExtensionDirToCache(workspace, userDataRoot, { force: true });
+    try {
+      const altRoot = path.resolve("D:/StealthBrowser");
+      if (
+        fs.existsSync(path.join(altRoot, "extensions-cache")) &&
+        path.resolve(userDataRoot).toLowerCase() !== altRoot.toLowerCase()
+      ) {
+        syncExtensionDirToCache(workspace, altRoot, { force: true });
+      }
+    } catch {
+      // secondary cache sync is best-effort
+    }
+  } else {
+    targetDir = await ensureCookieBridgeStoreExtension(userDataRoot);
+  }
+  if (targetDir) {
+    try {
+      const { syncOperatorChromiumStages } = require("./operator-extension-stage.cjs");
+      syncOperatorChromiumStages(targetDir, [], { force: true });
+    } catch {
+      // stage sync is best-effort
+    }
+  }
+  return { mode: normalized, resolvedPath: targetDir };
+}
+
+function startCookieBridgeWorkspaceAutoSync(userDataRoot = defaultUserDataRoot()) {
+  if (globalThis.__STEALTH_E0001_WORKSPACE_WATCHER__) {
+    return globalThis.__STEALTH_E0001_WORKSPACE_WATCHER__;
+  }
+  const workspace = workspaceExtensionDir();
+  if (!workspace || !fs.existsSync(path.join(workspace, "manifest.json"))) return null;
+  let debounceTimer = null;
+  const triggerSync = () => {
+    try {
+      if (!useLocalDevExtension()) return;
+      syncExtensionDirToCache(workspace, userDataRoot);
+    } catch {
+      /* ignore */
+    }
+  };
+  let watcher = null;
+  try {
+    watcher = fs.watch(workspace, { persistent: false }, (_eventType, filename) => {
+      const name = String(filename || "").toLowerCase();
+      if (name && (name.startsWith(".") || name.includes("node_modules"))) return;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(triggerSync, 400);
+      if (typeof debounceTimer.unref === "function") debounceTimer.unref();
+    });
+    if (typeof watcher.unref === "function") watcher.unref();
+  } catch {
+    /* fs.watch unavailable */
+  }
+  const interval = setInterval(triggerSync, 30_000);
+  if (typeof interval.unref === "function") interval.unref();
+  const state = {
+    workspace,
+    stop() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (watcher) {
+        try {
+          watcher.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      clearInterval(interval);
+      delete globalThis.__STEALTH_E0001_WORKSPACE_WATCHER__;
+    },
+  };
+  globalThis.__STEALTH_E0001_WORKSPACE_WATCHER__ = state;
+  triggerSync();
+  return state;
+}
+
 module.exports = {
   COOKIE_BRIDGE_STORE_ID,
   STORE_UPDATE_URL,
@@ -214,4 +455,6 @@ module.exports = {
   workspaceExtensionDir,
   unpackedDir,
   useLocalDevExtension,
+  switchCookieBridgeSourceMode,
+  startCookieBridgeWorkspaceAutoSync,
 };

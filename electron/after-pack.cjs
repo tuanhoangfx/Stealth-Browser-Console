@@ -7,6 +7,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { CLOAK_ESM_DEPS } = require("./lib/cloakbrowser-esm-deps.cjs");
+const { afterPack: runPackGuardAfterPack } = require("./lib/electron-builder-pack-guard.cjs");
 
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
@@ -19,6 +20,7 @@ function copyDir(src, dest) {
 }
 
 exports.default = async function afterPack(context) {
+  await runPackGuardAfterPack(context);
   const projectDir = context.packager.projectDir;
   const srcRoot = path.join(projectDir, "electron", "packaged-node_modules", "node_modules");
   const destRoot = path.join(context.appOutDir, "resources", "app.asar.unpacked", "node_modules");

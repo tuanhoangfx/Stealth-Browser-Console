@@ -1,5 +1,5 @@
 import type { FilterDef } from "@tool-workspace/hub-ui";
-import { matchesDirectoryTimeRange, resolveHubBrandIconByMatch, type TimeRange } from "@tool-workspace/hub-ui";
+import { matchesDirectoryTimeRange, resolveHubBrandIconByMatch, searchTextIncludes, type TimeRange } from "@tool-workspace/hub-ui";
 import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 
@@ -87,6 +87,6 @@ export function filterWorkflowStoreEntries(
     if (!matchesDirectoryTimeRange(entry.createdAt, timeRange, { staticAlwaysVisible: true })) return false;
     if (!query) return true;
     return [entry.id, entry.name, entry.description, entry.platform, entry.group, entry.version]
-      .some((value) => String(value).toLowerCase().includes(query));
+      .some((value) => searchTextIncludes(String(value), query));
   });
 }

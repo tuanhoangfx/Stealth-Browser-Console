@@ -42,4 +42,44 @@ describe("P0003 runtime console SSOT (v1.0.154 lock)", () => {
     expect(body).toMatch(/setHistory\(runs\)/);
     expect(body).not.toMatch(/mergeLogs/);
   });
+
+  it("Log and History panels follow P0020 HubChangeLogList SSOT (Field + Actor filters, Emoji icons, 2-line before -> after delta, no Clear button)", () => {
+    const src = readFileSync(panelPath, "utf8");
+    const historyHintSrc = readFileSync(path.join(here, "stealth-run-history-hint.tsx"), "utf8");
+    const profileServiceSrc = readFileSync(
+      path.join(here, "..", "..", "..", "electron", "db", "profile-service.cjs"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/>\s*Clear\s*<\/button>/);
+    expect(src).toMatch(/HubChangeLogFieldFilterBar/);
+    expect(src).toMatch(/HubChangeLogActorFilterBar/);
+    expect(src).toMatch(/twofa-adm-log-list shrink-0/);
+    expect(src).toMatch(/twofa-adm-log-row__values/);
+    expect(src).toMatch(/twofa-adm-log-row__arrow/);
+    expect(src).toMatch(/HubTwofaCopyControl/);
+    expect(historyHintSrc).toMatch(/PROFILE_MODAL_SECTION_STICKER\.history/);
+    expect(historyHintSrc).not.toMatch(/from\s+["']lucide-react["']/);
+    expect(profileServiceSrc).toMatch(/PROFILE_EVENTS_RETENTION_DAYS\s*=\s*365/);
+    expect(profileServiceSrc).toMatch(/buildProfileUpdateChangeSummary/);
+  });
+
+  it("History and Log lists and rows enforce flex-shrink: 0 so 50+ items never squash vertically inside flex-col scroll containers", () => {
+    const cssPath = path.join(
+      here,
+      "..",
+      "..",
+      "..",
+      "..",
+      "..",
+      "packages",
+      "hub-ui",
+      "src",
+      "styles",
+      "twofa-account-detail-modal.css",
+    );
+    const css = readFileSync(cssPath, "utf8");
+    expect(css).toMatch(/\.twofa-adm-log-list\s*\{[\s\S]*?flex-shrink:\s*0;/);
+    expect(css).toMatch(/\.twofa-adm-log-row\s*\{[\s\S]*?flex-shrink:\s*0;/);
+    expect(css).toMatch(/\.twofa-adm-log-row--detail\s*\{[\s\S]*?flex-shrink:\s*0;/);
+  });
 });

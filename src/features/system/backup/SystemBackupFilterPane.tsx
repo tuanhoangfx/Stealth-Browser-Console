@@ -32,6 +32,7 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   setSelectedGroupIds,
   selectedStatuses,
   setSelectedStatuses,
+  onSnapshotSelected,
   onBackupSelected,
   onBackupAll,
   onRestore,
@@ -53,6 +54,7 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
   setSelectedGroupIds: (values: string[]) => void;
   selectedStatuses: ProfileRow["status"][];
   setSelectedStatuses: (values: ProfileRow["status"][]) => void;
+  onSnapshotSelected?: () => void;
   onBackupSelected: () => void;
   onBackupAll: () => void;
   onRestore: () => void;
@@ -122,6 +124,7 @@ export const SystemBackupFilterPane = memo(function SystemBackupFilterPane({
             hasSelection={selectedCount > 0}
             restoreIntoSelected={selectedCount === 1}
             jobBusy={jobBusy}
+            onSnapshotSelected={onSnapshotSelected}
             onBackupSelected={onBackupSelected}
             onBackupAll={onBackupAll}
             onRestore={onRestore}

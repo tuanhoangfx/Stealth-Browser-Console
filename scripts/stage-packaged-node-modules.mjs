@@ -3,6 +3,7 @@
  * Copy main-process + electron-updater runtime deps into electron/packaged-node_modules
  * for asar (pnpm + narrow build.files). Run before electron-builder pack.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -13,19 +14,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { PACKAGED_RUNTIME_DEPS } = require("../electron/lib/packaged-updater-deps.cjs");
 
 const targetRoot = path.join(root, "electron", "packaged-node_modules");
+const stampPath = path.join(targetRoot, ".stage-stamp.json");
+const forceStage = process.argv.includes("--force");
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
 function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const from = path.join(src, entry.name);
-    const to = path.join(dest, entry.name);
-    if (entry.isDirectory()) copyDir(from, to);
-    else fs.copyFileSync(from, to);
-  }
+  fs.cpSync(src, dest, { recursive: true, force: true });
 }
 
 function resolveSearchPaths(fromDir) {
@@ -109,12 +106,37 @@ function packageDest(name) {
 
 function main() {
   const modules = collectDeps(PACKAGED_RUNTIME_DEPS);
+  const entries = [...modules.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const hash = crypto.createHash("sha256").update(JSON.stringify(entries)).digest("hex");
+
+  if (!forceStage && fs.existsSync(stampPath)) {
+    try {
+      const prev = readJson(stampPath);
+      const allPresent = entries.every(([name]) =>
+        fs.existsSync(path.join(packageDest(name), "package.json")),
+      );
+      if (prev?.hash === hash && allPresent) {
+        console.log(
+          `stage-packaged-node-modules: warm (${modules.size} module(s) verified in electron/packaged-node_modules/node_modules)`,
+        );
+        return;
+      }
+    } catch {
+      /* rebuild stage */
+    }
+  }
+
   fs.rmSync(targetRoot, { recursive: true, force: true });
   fs.mkdirSync(path.join(targetRoot, "node_modules"), { recursive: true });
 
-  for (const [name, src] of modules) {
+  for (const [name, src] of entries) {
     copyDir(src, packageDest(name));
   }
+  fs.writeFileSync(
+    stampPath,
+    JSON.stringify({ hash, count: modules.size, updatedAt: new Date().toISOString() }, null, 2),
+    "utf8",
+  );
 
   console.log(`stage-packaged-node-modules: copied ${modules.size} module(s) → electron/packaged-node_modules/node_modules`);
 }

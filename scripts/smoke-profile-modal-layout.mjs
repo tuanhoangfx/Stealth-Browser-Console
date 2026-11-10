@@ -36,7 +36,7 @@ const profilePrefsTs = fs.readFileSync(
 );
 
 if (editModalTsx.includes("ProfileExtensionFields") || editModalTsx.includes("trailingSections")) {
-  fail("EditProfileModal must not render Extensions in main column");
+  fail("ProfileDetailModal must not render Extensions in main column");
 }
 
 if (detailToc.includes("Extensions") || detailToc.includes("profile-extensions")) {
@@ -45,6 +45,22 @@ if (detailToc.includes("Extensions") || detailToc.includes("profile-extensions")
 
 if (!editModalTsx.includes("ProfileDetailNoteRail")) {
   fail("ProfileDetailModal edit mode must use ProfileDetailNoteRail");
+}
+
+if (!editModalTsx.includes("HubToolDetailModalAccountFooter")) {
+  fail("ProfileDetailModal must use HubToolDetailModalAccountFooter SSOT (Save/Apply before Close)");
+}
+
+if (!editModalTsx.includes("HUB_DETAIL_MODAL_SAVE_LABEL") || !editModalTsx.includes("HUB_DETAIL_MODAL_APPLY_LABEL")) {
+  fail("ProfileDetailModal must use HUB_DETAIL_MODAL_SAVE_LABEL and HUB_DETAIL_MODAL_APPLY_LABEL");
+}
+
+if (!editModalTsx.includes('label="Clone"') || !editModalTsx.includes("onDelete=")) {
+  fail("ProfileDetailModal must expose Clone (leading secondary) and Delete (onDelete) in HubToolDetailModalAccountFooter");
+}
+
+if (editModalTsx.includes('"Save changes"') || editModalTsx.includes('"Apply changes"')) {
+  fail("ProfileDetailModal must not use legacy 'Save changes' or 'Apply changes' button labels");
 }
 
 if (editModalTsx.includes("ProfileDetailHistoryRail")) {
@@ -129,6 +145,17 @@ if (shellTs.match(/PROFILE_EDIT_MODAL_SHELL_CLASS[^;]*hub-tool-detail-modal--fit
 const createModalTsx = fs.readFileSync(path.join(root, "src/features/profiles/CreateProfileModal.tsx"), "utf8");
 if (createModalTsx.match(/size=["']compact["']/)) {
   fail("CreateProfileModal must not use size=compact — Layout 3 New/Detail is 88rem");
+}
+if (!createModalTsx.includes("HubToolDetailModalAccountFooter")) {
+  fail("CreateProfileModal must use HubToolDetailModalAccountFooter (primary action before Close)");
+}
+
+const extensionModalTsx = fs.readFileSync(
+  path.join(root, "src/features/system/extensions/ExtensionDetailModal.tsx"),
+  "utf8",
+);
+if (!extensionModalTsx.includes("HubToolDetailModalAccountFooter")) {
+  fail("ExtensionDetailModal must use HubToolDetailModalAccountFooter (primary action before Close)");
 }
 
 if (!logRailTsx.includes("STEALTH_CONSOLE_RAIL_LABEL") || !logRailTsx.includes("showIcon")) {

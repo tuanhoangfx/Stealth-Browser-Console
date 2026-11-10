@@ -41,7 +41,7 @@ describe("profile-code CJS/TS sync", () => {
   }
 
   it("parseProfileCode parity", () => {
-    for (const raw of ["", "Lucy", "10000", "385", "9999"]) {
+    for (const raw of ["", "Lucy", "10000", "10001", "100000", "385", "9999"]) {
       const ts = parseProfileCode(raw);
       const cj = cjs.parseProfileCode(raw);
       expect(ts.ok).toBe(cj.ok);

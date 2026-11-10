@@ -4,12 +4,11 @@
  */
 import {
   formatTabHeaderTimestamp,
-  parseChangelogReleaseTimestamp,
   resolveHubProductVersionMeta,
   type AppVersionReleaseMeta,
   type ToolManifestReleaseSlice,
 } from "@tool-workspace/hub-ui";
-import changelogRaw from "../../CHANGELOG.md?raw";
+import releaseNotesJson from "../../public/release-notes.json";
 import { APP_VERSION, STEALTH_PRODUCT } from "./app-meta";
 import toolManifest from "../../tool.manifest.json";
 
@@ -21,10 +20,15 @@ function readBuiltAtIso(): string | undefined {
 }
 
 /** Same 4-source stamps as `stealthHostVersionMeta` — pass into `buildConsoleVersionMetaItems`. */
-export function stealthVersionClockInput() {
+export function stealthVersionClockInput(versionOverride?: string) {
+  const ver = versionOverride || APP_VERSION;
   return {
     builtAtIso: readBuiltAtIso(),
-    changelogPublishedAt: parseChangelogReleaseTimestamp(APP_VERSION, changelogRaw),
+    changelogPublishedAt:
+      releaseNotesJson.entries?.find((e) => e.version === ver)?.at ||
+      releaseNotesJson.entries?.find((e) => e.version === APP_VERSION)?.at ||
+      releaseNotesJson.entries?.[0]?.at ||
+      releaseNotesJson.generatedAt,
   };
 }
 

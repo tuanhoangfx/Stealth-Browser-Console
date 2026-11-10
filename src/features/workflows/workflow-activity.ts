@@ -1,10 +1,12 @@
-import { isLocalCalendarToday } from "../../lib/local-calendar-today";
+import { isLocalCalendarToday, isWithinLocalDays } from "../../lib/local-calendar-today";
 import type { WorkflowConfig } from "./workflow-types";
 
 export const WORKFLOW_ACTIVITY_KPI_KEYS = [
   "create_today",
+  "create_week",
   "update_today",
   "ran_today",
+  "with_steps",
   "idle",
   "empty",
 ] as const;
@@ -24,10 +26,14 @@ export function matchesWorkflowActivity(
   switch (key) {
     case "create_today":
       return isLocalCalendarToday(workflow.createdAt, now);
+    case "create_week":
+      return isWithinLocalDays(workflow.createdAt, now, 7);
     case "update_today":
       return isLocalCalendarToday(workflow.updatedAt, now);
     case "ran_today":
       return isLocalCalendarToday(workflow.lastRunAt, now);
+    case "with_steps":
+      return workflow.steps.length > 0;
     case "idle":
       return !workflow.lastRunAt?.trim();
     case "empty":

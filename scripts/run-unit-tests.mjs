@@ -29,6 +29,7 @@ runStep("profiles-location", "node", ["--test", "electron/lib/profiles-location.
 runStep("host-metrics", "node", ["--test", "electron/lib/host-metrics.test.cjs"]);
 runStep("microsoft-gate-gmail", "node", ["--test", "electron/automation/script-steps.microsoft-gate.test.cjs"]);
 runStep("captcha-stop-gmail", "node", ["--test", "electron/automation/script-steps.captcha-stop.test.cjs"]);
+runStep("recaptcha-vision-solver", "node", ["--test", "electron/automation/recaptcha-vision-solver.test.cjs"]);
 runStep("profile-window-title", "node", ["--test", "electron/lib/profile-window-title.test.cjs"]);
 runStep("taskbar-title-match", "node", ["--test", "electron/lib/taskbar-title-match.test.cjs"]);
 runStep("taskbar-badge-guard", "node", ["--test", "electron/lib/taskbar-badge-guard.test.cjs"]);
@@ -82,6 +83,7 @@ runStep("google-session-guard", "node", ["--test", "electron/automation/google-s
 runStep("google-session-detect", "node", ["--test", "electron/lib/google-session-detect.test.cjs"]);
 runStep("stealth-snapshot-types", "node", ["--test", "electron/lib/stealth-snapshot-types.test.cjs"]);
 runStep("stealth-resolve-targets", "node", ["--test", "electron/lib/stealth-resolve-targets.test.cjs"]);
+runStep("agent-login-stealth", "node", ["--test", "electron/lib/agent-login-stealth.test.cjs"]);
 runStep("profile-identity", "node", ["--test", "electron/profile-identity.test.cjs"]);
 runStep("desktop-app-icon", "node", ["--test", "electron/lib/desktop-app-icon.test.cjs"]);
 runStep("directory-id-search", "node", ["--test", "electron/lib/directory-id-search.test.cjs"]);
@@ -95,6 +97,8 @@ runStep("cloakbrowser-extension-stage", "node", ["--test", "electron/lib/cloakbr
 runStep("profile-browser-orphan", "node", ["--test", "electron/lib/profile-browser-orphan.test.cjs"]);
 runStep("profile-extension-pins", "node", ["--test", "electron/lib/profile-extension-pins.test.cjs"]);
 runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
+runStep("launch-purity-gate", "node", ["--experimental-sqlite", "--test", "electron/engine/launch-purity-gate.test.cjs"]);
+runStep("profile-cookie-guard", "node", ["--experimental-sqlite", "--test", "electron/lib/profile-cookie-guard.test.cjs"]);
 runStep("prepare-profile-launch", "node", ["--test", "electron/engine/prepare-profile-launch.test.cjs"]);
 runStep("check-launch-speed", "node", ["scripts/check-launch-speed.mjs"]);
 runStep("profile-ops", "electron-node", ["electron/services/profile-ops.test.cjs"]);

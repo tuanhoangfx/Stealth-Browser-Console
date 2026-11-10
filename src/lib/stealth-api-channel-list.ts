@@ -74,6 +74,18 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
     "web": "stub"
   },
   {
+    "method": "bulkUpdateProfiles",
+    "channel": "profile:bulkUpdate",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "cloneProfilesBatch",
+    "channel": "profile:cloneBatch",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
     "method": "deleteProfile",
     "channel": "profile:delete",
     "kind": "invoke",
@@ -82,6 +94,24 @@ export const STEALTH_API_CHANNELS: StealthApiChannelRow[] = [
   {
     "method": "deleteProfiles",
     "channel": "profile:deleteMany",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "getProfileCookieGuardStatus",
+    "channel": "profile:cookieGuardStatus",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "snapshotProfileCookiesBackup",
+    "channel": "profile:cookieGuardSnapshot",
+    "kind": "invoke",
+    "web": "stub"
+  },
+  {
+    "method": "restoreProfileCookiesBackup",
+    "channel": "profile:cookieGuardRestore",
     "kind": "invoke",
     "web": "stub"
   },

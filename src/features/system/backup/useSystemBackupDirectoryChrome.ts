@@ -29,7 +29,30 @@ export function useSystemBackupDirectoryChrome(
   const { groupIds, statuses, setGroupIds, setStatuses } = filter;
   const tabDisplay = useStealthSystemTabDisplayPrefs("backup");
   const hubPrefs = useStealthHubListPrefs();
-  const centerStats = useHostHeaderStats(hubPrefs.systemHeaderStats);
+  const baseCenterStats = useHostHeaderStats(hubPrefs.systemHeaderStats);
+  const centerStats = useMemo(
+    () => [
+      ...baseCenterStats,
+      {
+        key: "engine-diag",
+        emojiGlyph: "⚡",
+        label: "Engine",
+        value: "WAL · Worker :6004",
+        toneClass: "text-emerald-300",
+        labelHint: {
+          title: "SQLite WAL & Isolated Agent Worker",
+          lines: [
+            {
+              emoji: "⚡",
+              label: "WAL · Worker :6004",
+              detail: "Native SQLite incremental WAL mode active; headless agent tasks isolated on :6004.",
+            },
+          ],
+        },
+      },
+    ],
+    [baseCenterStats],
+  );
   const applyKpiFilter = useCallback(
     (next: { groupIds: string[]; statuses: ProfileRow["status"][] }) => {
       setGroupIds(next.groupIds);

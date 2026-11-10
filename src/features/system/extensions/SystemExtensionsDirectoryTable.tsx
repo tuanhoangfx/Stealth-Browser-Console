@@ -13,6 +13,7 @@ import {
   toHubDirectoryColumnMeta,
   type StealthExtensionsColumnKey,
 } from "../../../lib/directory-column-meta";
+import { useStealthManualSortEnabled } from "../../../lib/stealth-manual-sort-prefs";
 import type { CachedStoreExtension } from "../../../types";
 import { resolveExtensionDisplayName } from "../../../lib/extension-display-name";
 import {
@@ -36,10 +37,16 @@ function sortableExtensionValue(ext: CachedStoreExtension, key: StealthExtension
       return ext.version ?? "";
     case "storeId":
       return ext.storeId ?? ext.localKey ?? "";
+    case "createdAt": {
+      const ts = ext.createdAt ?? ext.updatedAt;
+      return ts ? Date.parse(ts) : 0;
+    }
     case "updated":
       return ext.updatedAt ? Date.parse(ext.updatedAt) : 0;
     case "path":
       return ext.unpackedPath;
+    case "activityLog":
+      return ext.activityLog ?? "";
     default:
       return "";
   }
@@ -82,13 +89,16 @@ export const SystemExtensionsDirectoryTable = memo(function SystemExtensionsDire
     return () => window.removeEventListener(extensionDirectoryColumnPrefs.changeEvent, sync);
   }, []);
 
+  const manualSort = useStealthManualSortEnabled("p0003-extensions");
+
   const columns = useMemo(
     () =>
       buildDirectoryColumns(
         visibleColumnKeys as StealthExtensionsColumnKey[],
         toHubDirectoryColumnMeta(STEALTH_EXTENSIONS_COLUMN_META),
+        { sortable: manualSort },
       ),
-    [visibleColumnKeys],
+    [visibleColumnKeys, manualSort],
   );
   const colgroup = useMemo(
     () => buildDirectoryColgroupForShell(columns, { showSelect: true }),

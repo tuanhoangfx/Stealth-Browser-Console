@@ -28,7 +28,7 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 .modal-shell.hub-tool-detail-modal.hub-tool-detail-modal--split.stealth-profile-create-modal
@@ -97,6 +97,9 @@
 .stealth-profile-detail-log-rail .hub-tool-detail-rail__body {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   gap: 0.35rem;
   padding: 0.45rem;
 }
@@ -392,12 +395,13 @@
 
 .stealth-profile-bulk-preview-kpi .hub-kpi-tile__value {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .stealth-profile-bulk-preview-kpi .hub-kpi-tile__hint {
-  font-size: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--hub-kpi-hint-size, 0.75rem);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 900px) {
@@ -454,4 +458,151 @@
   position: static;
   height: auto;
   overflow: visible;
+}
+
+/* ADM detail inline bars & action pills — 100% P0020 Service Modal typography & height parity */
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  :is(#profile-basics, #profile-session, #profile-device)
+  .hub-adm-section-block__rows {
+  display: grid;
+  grid-template-columns:
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr)
+    var(--hub-adm-label-w) minmax(0, 1fr);
+  column-gap: var(--hub-adm-field-gap);
+  row-gap: 0.55rem;
+  align-items: center;
+}
+
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  :is(#profile-basics, #profile-session, #profile-device)
+  .hub-adm-form-row--aligned {
+  display: contents;
+}
+
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  :is(#profile-basics, #profile-session, #profile-device)
+  .hub-adm-form-row--detail-line
+  .hub-adm-inline-field
+  > :is(.hub-adm-inline-field__label, .hub-directory-popover-anchor) {
+  grid-column: 1;
+  align-self: center;
+}
+
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  :is(#profile-basics, #profile-session, #profile-device)
+  .hub-adm-form-row--detail-line
+  .hub-adm-inline-field
+  > .hub-adm-inline-field__value {
+  grid-column: 2 / -1;
+  min-width: 0;
+  align-self: center;
+}
+
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  .stealth-adm-session-backup-field
+  > .hub-adm-inline-field__value {
+  grid-column: 4 / -1;
+  min-width: 0;
+}
+
+/* Proxy field — compact dropdown + inline P0020-parity RotateCcw reset button right beside label */
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  .stealth-adm-proxy-field
+  .hub-adm-inline-field__value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+}
+
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  .stealth-adm-proxy-field
+  .hub-adm-click-filter,
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  .stealth-adm-proxy-field
+  .hub-adm-click-filter.relative,
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  .stealth-adm-proxy-field
+  .hub-adm-click-filter__trigger,
+:is(.stealth-profile-detail-modal, .hub-add-modal)
+  .stealth-adm-proxy-field
+  .hub-adm-click-filter__trigger.hub-filter-trigger {
+  width: auto !important;
+  flex: 0 1 auto !important;
+}
+
+.stealth-adm-detail-inline-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  width: 100%;
+  height: var(--hub-adm-value-h, 26px);
+  min-height: var(--hub-adm-value-h, 26px);
+  max-height: var(--hub-adm-value-h, 26px);
+  font-size: var(--hub-adm-type-size, 12px);
+  line-height: 1.25;
+}
+
+.stealth-adm-action-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  height: var(--hub-adm-value-h, 26px);
+}
+
+.stealth-adm-action-pill {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.4rem;
+  padding: 0 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgb(226, 232, 240);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.stealth-adm-action-pill:hover:not(:disabled) {
+  border-color: rgba(129, 140, 248, 0.32);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgb(248, 250, 252);
+}
+
+.stealth-adm-action-pill.is-active {
+  border-color: rgba(129, 140, 248, 0.42);
+  background: rgba(79, 70, 229, 0.18);
+  color: rgb(224, 231, 255);
+}
+
+.stealth-adm-action-pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.stealth-adm-compact-num,
+.field.auth-gate-field.stealth-adm-control.stealth-adm-compact-num {
+  width: 2.85rem !important;
+  max-width: 3.35rem !important;
+  min-width: 2.25rem !important;
+  flex: 1 1 2.5rem !important;
+  height: 1.5rem !important;
+  min-height: 1.5rem !important;
+  padding: 0 0.28rem !important;
+  font-size: var(--hub-adm-type-size, 12px) !important;
+  font-variant-numeric: tabular-nums;
 }

@@ -1,5 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const { sampleHostMetrics, resetHostMetricsSample } = require("./host-metrics.cjs");
 
@@ -23,4 +25,10 @@ test("second sampleHostMetrics marks CPU ready after a short interval", () => {
   const second = sampleHostMetrics();
   assert.equal(second.cpuReady, true);
   assert.ok(second.cpuPercent >= 0 && second.cpuPercent <= 100);
+});
+
+test("packaged loader does not require a path that climbs out of app.asar", () => {
+  const src = fs.readFileSync(path.join(__dirname, "host-metrics.cjs"), "utf8");
+  assert.equal(src.includes('require("../../../../packages/'), false);
+  assert.equal(fs.existsSync(path.join(__dirname, "host-metrics.impl.cjs")), true);
 });

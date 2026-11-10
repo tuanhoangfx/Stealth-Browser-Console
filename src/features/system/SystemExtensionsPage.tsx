@@ -1,9 +1,17 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { HubConfirmDialog, useHubDirectorySelection } from "@tool-workspace/hub-ui";
+import {
+  HubConfirmDialog,
+  HubDirectoryBulkDetailModal,
+  searchTextIncludes,
+  useHubDirectorySelection,
+  type HubDirectoryBulkSelectedItem,
+} from "@tool-workspace/hub-ui";
+import { Puzzle, Trash2 } from "lucide-react";
 import {
   fetchExtensionsStatus,
   installStoreExtension,
   listProfiles,
+  reloadOpenProfilesExtensions,
   removeCachedExtensions,
 } from "../../api";
 import { COOKIE_BRIDGE_STORE_ID } from "../../lib/stealth-extension-store-ids";
@@ -14,6 +22,7 @@ import { useProfileDirectoryPageSize } from "../profiles/useProfileDirectoryPage
 import { ExtensionDetailModal } from "./extensions/ExtensionDetailModal";
 import { SystemExtensionsDirectoryPanel, extensionRowId } from "./extensions/SystemExtensionsDirectoryPanel";
 import type { ExtensionKindFilter } from "./extensions/extension-filters";
+import { matchesExtensionKpiFilter } from "./extensions/extension-kpi-filter";
 import {
   readExtensionDirectoryFilterUrl,
   writeExtensionDirectoryFilterUrl,
@@ -33,6 +42,7 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
   const [selectedKinds, setSelectedKinds] = useState<ExtensionKindFilter[]>(
     () => readExtensionDirectoryFilterUrl().kinds,
   );
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = useProfileDirectoryPageSize();
   const [storeInput, setStoreInput] = useState("");
@@ -41,6 +51,7 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
   const [busy, setBusy] = useState(true);
   const [jobLabel, setJobLabel] = useState<string | null>(null);
   const [detailExtension, setDetailExtension] = useState<CachedStoreExtension | null>(null);
+  const [bulkDetailOpen, setBulkDetailOpen] = useState(false);
   const [installModalOpen, setInstallModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -49,13 +60,16 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
     if (selectedKinds.length) {
       rows = rows.filter((ext) => selectedKinds.some((kind) => kind === ext.kind));
     }
-    const q = search.trim().toLowerCase();
+    if (activeKpi) {
+      rows = rows.filter((ext) => matchesExtensionKpiFilter(ext, activeKpi));
+    }
+    const q = search.trim();
     if (!q) return rows;
     return rows.filter((ext) => {
-      const hay = `${resolveExtensionDisplayName(ext)} ${ext.storeId ?? ""} ${ext.localKey ?? ""} ${ext.version ?? ""}`.toLowerCase();
-      return hay.includes(q);
+      const hay = `${resolveExtensionDisplayName(ext)} ${ext.storeId ?? ""} ${ext.localKey ?? ""} ${ext.version ?? ""}`;
+      return searchTextIncludes(hay, q);
     });
-  }, [cached, search, selectedKinds]);
+  }, [activeKpi, cached, search, selectedKinds]);
 
   const pageItems = useMemo(() => {
     const start = pageIndex * pageSize;
@@ -68,7 +82,7 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [search, selectedKinds, pageSize]);
+  }, [activeKpi, search, selectedKinds, pageSize]);
 
   useEffect(() => {
     const maxPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1);
@@ -97,6 +111,8 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
   const { kpis, centerStats } = useSystemExtensionsDirectoryChrome(cached, {
     selectedKinds,
     setSelectedKinds,
+    activeKpi,
+    setActiveKpi,
   });
 
   const openDetail = useCallback((extension: CachedStoreExtension) => {
@@ -174,6 +190,26 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
     setDeleteConfirmOpen(true);
   }, [selectedExtensions.length]);
 
+  const onReloadOpenProfiles = useCallback(async () => {
+    setBusy(true);
+    setJobLabel("Syncing stages & broadcasting live reload to open profiles…");
+    try {
+      const result = await reloadOpenProfilesExtensions();
+      setCached(result.status.cached);
+      const pinnedCount = result.maintained?.pinned ?? 0;
+      const e1Ver = result.status.cookieBridge?.stageVersion || result.status.cookieBridge?.manifestVersion || "latest";
+      const e2Ver = result.status.operatorExtension?.stageVersion || result.status.operatorExtension?.manifestVersion || "latest";
+      const message = `Reload signal #${String(result.reloadNonce).slice(-6)} sent — E0001 v${e1Ver} & E0002 v${e2Ver} synced (${pinnedCount} closed pins updated).`;
+      setJobLabel(message);
+      pushToast(message, "success");
+    } catch (err) {
+      setJobLabel(null);
+      pushToast(err instanceof Error ? err.message : String(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  }, [pushToast]);
+
   const onDeleteSelected = useCallback(async () => {
     if (!selectedExtensions.length) return;
     setBusy(true);
@@ -211,6 +247,17 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
 
   const modalOpen = Boolean(detailExtension) || installModalOpen;
 
+  const bulkDetailItems = useMemo<HubDirectoryBulkSelectedItem[]>(
+    () =>
+      selectedExtensions.map((ext) => ({
+        id: extensionRowId(ext),
+        label: resolveExtensionDisplayName(ext),
+        sublabel: `${ext.storeId ?? ext.localKey ?? "local"}${ext.version ? ` · v${ext.version}` : ""}`,
+        badge: ext.kind === "store" ? "Web Store" : "Local",
+      })),
+    [selectedExtensions],
+  );
+
   return (
     <>
       <SystemExtensionsDirectoryPanel
@@ -232,12 +279,44 @@ export const SystemExtensionsPage = memo(function SystemExtensionsPage({
         busy={busy}
         onOpenDetail={openDetail}
         onOpenDetailSingle={openDetailSingle}
+        onOpenBulkDetail={() => setBulkDetailOpen(true)}
         onOpenInstall={openInstall}
         onDeleteSelected={openDeleteSelected}
+        onReloadOpenProfiles={() => void onReloadOpenProfiles()}
         headerActions={headerActions}
         centerStats={centerStats}
         kpis={kpis}
         rail={<SystemExtensionsRail jobLabel={jobLabel} />}
+      />
+      <HubDirectoryBulkDetailModal
+        open={bulkDetailOpen}
+        onClose={() => setBulkDetailOpen(false)}
+        entitySingular="extension"
+        entityPlural="extensions"
+        headerIcon={Puzzle}
+        panelTitle="Batch Extension Operations"
+        panelTitleEmoji="🧩"
+        selectedItems={bulkDetailItems}
+        busy={busy}
+        sections={[
+          {
+            id: "danger",
+            label: "Cache Operations",
+            emoji: "🗑️",
+            actions: [
+              {
+                key: "delete-selected",
+                label: "Delete Selected Caches",
+                icon: <Trash2 size={14} aria-hidden />,
+                tone: "rose",
+                onClick: () => {
+                  setBulkDetailOpen(false);
+                  openDeleteSelected();
+                },
+              },
+            ],
+          },
+        ]}
       />
       {deleteConfirmOpen ? (
         <HubConfirmDialog

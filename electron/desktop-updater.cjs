@@ -302,7 +302,9 @@ function installDesktopUpdate() {
     updateState: updateStatus.state,
   });
   markAppQuitting();
-  setImmediate(() => autoUpdater.quitAndInstall(false, true));
+  // Silent so electron-updater keeps isForceRunAfter (non-silent ignores the flag).
+  // /S + --force-run: NSIS one-click still relaunches, and the process can exit first.
+  setImmediate(() => autoUpdater.quitAndInstall(true, true));
   return updateStatus;
 }
 

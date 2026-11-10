@@ -15,6 +15,7 @@ import {
   STEALTH_WORKFLOW_PANEL_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
+import { useStealthManualSortEnabled } from "../../lib/stealth-manual-sort-prefs";
 import { workflowDisplayId, workflowDisplayPlatform } from "./workflow-display";
 import { workflowCreatedMs, workflowLastRunMs, workflowStepCount, workflowUpdatedMs } from "./workflow-meta";
 import { renderStealthWorkflowDirectoryBodyCell } from "./stealth-workflow-directory-cells";
@@ -26,7 +27,15 @@ import {
   workflowRailDirectoryColumnPrefs,
 } from "./workflow-directory-prefs";
 
-export type StealthWorkflowSortKey = "id" | "name" | "platform" | "steps" | "created" | "updated" | "lastRun";
+export type StealthWorkflowSortKey =
+  | "id"
+  | "name"
+  | "platform"
+  | "steps"
+  | "created"
+  | "updated"
+  | "lastRun"
+  | "activityLog";
 
 function sortableWorkflowValue(workflow: WorkflowConfig, key: StealthWorkflowSortKey, defaultWorkflows: WorkflowConfig[]) {
   switch (key) {
@@ -44,6 +53,8 @@ function sortableWorkflowValue(workflow: WorkflowConfig, key: StealthWorkflowSor
       return String(workflowUpdatedMs(workflow) ?? 0).padStart(14, "0");
     case "lastRun":
       return String(workflowLastRunMs(workflow) ?? 0).padStart(14, "0");
+    case "activityLog":
+      return `${workflowStepCount(workflow)}:${workflow.action ?? ""}:${workflow.targetUrl ?? ""}`;
     default:
       return "";
   }
@@ -112,9 +123,18 @@ export const StealthWorkflowDirectoryTable = memo(function StealthWorkflowDirect
     "asc",
   );
 
+  const manualSort = useStealthManualSortEnabled(
+    isRail ? "p0003-workflow-rail" : "p0003-workflow-panel",
+  );
+
   const columns = useMemo(
-    () => buildDirectoryColumns([...visibleColumnKeys], toHubDirectoryColumnMeta(STEALTH_WORKFLOW_PANEL_COLUMN_META)),
-    [visibleColumnKeys],
+    () =>
+      buildDirectoryColumns(
+        [...visibleColumnKeys],
+        toHubDirectoryColumnMeta(STEALTH_WORKFLOW_PANEL_COLUMN_META),
+        { sortable: manualSort },
+      ),
+    [visibleColumnKeys, manualSort],
   );
 
   const colgroup = useMemo(() => buildDirectoryColgroupForShell(columns, { showSelect: true }), [columns]);

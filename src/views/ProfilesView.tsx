@@ -2,10 +2,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import { patchHubListPrefs, patchHubTablePageSizeValue, useDirectorySearchQuery, useHubDirectorySelection, DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS } from "@tool-workspace/hub-ui";
 import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import { useStealthShell } from "../context/stealth-shell-context";
-import type { ProfileRow } from "../types";
+import type { ProfileProxyFilterMode, ProfileRow } from "../types";
 import { ProfileDirectoryPanel } from "../features/profiles/ProfileDirectoryPanel";
 import { ProfilesWorkflowRail } from "../features/profiles/ProfilesWorkflowRail";
-import { CreateProfileModal } from "../features/profiles/CreateProfileModal";
 import { ProfileDetailModal } from "../features/profiles/ProfileDetailModal";
 import type { ProfileDetailModalProps } from "../features/profiles/profile-detail-modal-props";
 import { ManageGroupsModal } from "../features/profiles/ManageGroupsModal";
@@ -39,7 +38,7 @@ export const ProfilesView = memo(function ProfilesView({
   useEffect(() => {
     prefetchWorkflowChunks();
   }, []);
-  const { profiles, groups, catalogStats, openOne, closeOne, closeAllRunning, runningHeadlessIds, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
+  const { profiles, groups, catalogStats, openOne, closeOne, boostWaitingOne, updateProfile, closeAllRunning, runningHeadlessIds, deleteSelected, exportProfiles, importProfiles, setAutomationProfileSelection, refreshProfiles } =
     useProfilesRuntime();
   const directorySearch = useDirectorySearchQuery({ debounceMs: DIRECTORY_SEARCH_FETCH_DEBOUNCE_MS });
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
@@ -48,11 +47,13 @@ export const ProfilesView = memo(function ProfilesView({
   const [selectedStatuses, setSelectedStatuses] = useState<ProfileRow["status"][]>(
     () => readProfileDirectoryFilterUrl().statuses,
   );
+  const [selectedProxyModes, setSelectedProxyModes] = useState<ProfileProxyFilterMode[]>(
+    () => readProfileDirectoryFilterUrl().proxyModes,
+  );
   const pageSize = useProfileDirectoryPageSize();
   const [pageIndex, setPageIndex] = useState(0);
   const [sortKey, setSortKey] = useState<StealthProfileSortKey>("profile");
   const [sortDir, setSortDir] = useState<StealthProfileSortDirection>("asc");
-  const [showCreate, setShowCreate] = useState(false);
   const [detailModal, setDetailModal] = useState<ProfileDetailModalProps | null>(null);
   const [showGroups, setShowGroups] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -62,10 +63,10 @@ export const ProfilesView = memo(function ProfilesView({
   }, []);
 
   useEffect(() => {
-    writeProfileDirectoryFilterUrl(selectedGroupIds, selectedStatuses);
-  }, [selectedGroupIds, selectedStatuses]);
+    writeProfileDirectoryFilterUrl(selectedGroupIds, selectedStatuses, selectedProxyModes);
+  }, [selectedGroupIds, selectedStatuses, selectedProxyModes]);
 
-  const filterKey = `${directorySearch.query}|${selectedGroupIds.join(",")}|${selectedStatuses.join(",")}|${sortKey}|${sortDir}`;
+  const filterKey = `${directorySearch.query}|${selectedGroupIds.join(",")}|${selectedStatuses.join(",")}|${selectedProxyModes.join(",")}|${sortKey}|${sortDir}`;
   const prevFilterKey = useRef(filterKey);
   useEffect(() => {
     if (prevFilterKey.current !== filterKey) {
@@ -75,17 +76,23 @@ export const ProfilesView = memo(function ProfilesView({
   }, [filterKey]);
 
   const [directoryRefreshKey, setDirectoryRefreshKey] = useState(0);
+  const needsSessionPageRequeryRef = useRef(false);
+  needsSessionPageRequeryRef.current =
+    selectedStatuses.length > 0 ||
+    selectedProxyModes.includes("auto_vpn") ||
+    sortKey === "updated";
 
   useEffect(() => {
     const api = window.stealthApi;
     if (!api?.onProfileSession) return undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = api.onProfileSession(() => {
+      if (!needsSessionPageRequeryRef.current) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = undefined;
         setDirectoryRefreshKey((key) => key + 1);
-      }, 250);
+      }, 600);
     });
     return () => {
       if (timer) clearTimeout(timer);
@@ -107,11 +114,39 @@ export const ProfilesView = memo(function ProfilesView({
     [closeOne],
   );
 
+  const handleResetProxyOne = useCallback(
+    (profile: ProfileRow) => {
+      const cleanNote = String(profile.note || "")
+        .replace(/\[(?:pin-proxy|static-ip)\]\s*/gi, "")
+        .replace(/\[vpn:[A-Za-z]{2}\]\s*/gi, "")
+        .replace(/\bMuse US Proxy\b\s*\|?\s*/gi, "")
+        .replace(/^\s*Local IP\s*$/gi, "")
+        .trim();
+      void updateProfile({
+        id: profile.id,
+        proxy: "",
+        staticIp: false,
+        timezone: "",
+        locale: "",
+        note: cleanNote,
+      })
+        .then(() => {
+          setDirectoryRefreshKey((key) => key + 1);
+          pushToast(`Profile ${profile.name} reset to 📍 Local IP.`, "success", 3000);
+        })
+        .catch((err) => {
+          pushToast(err instanceof Error ? err.message : "Failed to reset proxy.", "error", 4500);
+        });
+    },
+    [pushToast, updateProfile],
+  );
+
   const { filteredProfiles, filteredTotal, directoryBusy } = useProfileDirectoryResults(
     {
       search: directorySearch.query,
       groupIds: selectedGroupIds,
       statuses: selectedStatuses,
+      proxyModes: selectedProxyModes,
     },
     pageIndex,
     pageSize,
@@ -138,6 +173,8 @@ export const ProfilesView = memo(function ProfilesView({
     statuses: selectedStatuses,
     setGroupIds: setSelectedGroupIds,
     setStatuses: setSelectedStatuses,
+    setSearch: directorySearch.setQueryInput,
+    runningHeadlessCount: runningHeadlessIds.size,
   });
 
   const handleSort = useCallback((key: StealthProfileSortKey) => {
@@ -174,8 +211,8 @@ export const ProfilesView = memo(function ProfilesView({
 
   const { globalToggles, setExtensionOnProfiles, extensionBusy } = useProfileExtensionToggle(bumpDirectoryRefresh);
 
-  const extensionSelectionState = useMemo<Record<"e0001" | "surfshark", ExtensionSelectionState>>(() => {
-    const resolveState = (key: "e0001" | "surfshark"): ExtensionSelectionState => {
+  const extensionSelectionState = useMemo<Record<"e0001" | "e0002" | "surfshark", ExtensionSelectionState>>(() => {
+    const resolveState = (key: "e0001" | "e0002" | "surfshark"): ExtensionSelectionState => {
       if (!selectedProfiles.length) return "mixed";
       const enabledCount = selectedProfiles.reduce(
         (count, profile) =>
@@ -188,13 +225,14 @@ export const ProfilesView = memo(function ProfilesView({
     };
     return {
       e0001: resolveState("e0001"),
+      e0002: resolveState("e0002"),
       surfshark: resolveState("surfshark"),
     };
   }, [globalToggles, selectedProfiles]);
 
   const handleExtensionSet = useCallback(
-    (key: "e0001" | "surfshark", enabled: boolean) => {
-      const label = key === "e0001" ? "Cookie Bridge" : "Surfshark";
+    (key: "e0001" | "e0002" | "surfshark", enabled: boolean) => {
+      const label = key === "e0001" ? "Cookie Bridge" : key === "e0002" ? "Browser Operator" : "Surfshark";
       void setExtensionOnProfiles(selectedProfiles, key, enabled)
         .then((updatedCount) => {
           if (!updatedCount) return;
@@ -243,6 +281,8 @@ export const ProfilesView = memo(function ProfilesView({
         setSelectedGroupIds={setSelectedGroupIds}
         selectedStatuses={selectedStatuses}
         setSelectedStatuses={setSelectedStatuses}
+        selectedProxyModes={selectedProxyModes}
+        setSelectedProxyModes={setSelectedProxyModes}
         pageSize={pageSize}
         pageIndex={pageIndex}
         onPageChange={setPageIndex}
@@ -259,14 +299,19 @@ export const ProfilesView = memo(function ProfilesView({
         allVisibleSelected={allVisibleSelected}
         openOne={handleOpenOne}
         closeOne={handleCloseOne}
+        boostWaitingOne={(profile) => void boostWaitingOne(profile)}
+        resetProxyOne={handleResetProxyOne}
         closeAllRunning={() => void closeAllRunning()}
         runningHeadlessIds={runningHeadlessIds}
         onOpenDetail={(profile) => setDetailModal({ mode: "edit", profile, onClose: () => setDetailModal(null) })}
         globalExtensionToggles={globalToggles}
         extensionBusy={extensionBusy}
         onExtensionSet={handleExtensionSet}
+        onProfilesChanged={bumpDirectoryRefresh}
         deleteSelected={handleDeleteSelected}
-        setShowCreate={setShowCreate}
+        setShowCreate={(open) => {
+          setDetailModal(open ? { mode: "create", onClose: () => setDetailModal(null) } : null);
+        }}
         onEditSingle={() => {
           if (selectedProfiles.length === 1) {
             setDetailModal({
@@ -294,12 +339,6 @@ export const ProfilesView = memo(function ProfilesView({
         centerStats={centerStats}
         rail={<ProfilesWorkflowRail />}
       />
-      {showCreate ? (
-        <CreateProfileModal
-          onClose={() => setShowCreate(false)}
-          onProfilesChanged={() => setDirectoryRefreshKey((key) => key + 1)}
-        />
-      ) : null}
       {detailModal ? (
         <ProfileDetailModal
           {...detailModal}

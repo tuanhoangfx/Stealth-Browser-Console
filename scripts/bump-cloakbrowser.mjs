@@ -14,9 +14,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pkgPath = path.join(root, "package.json");
 
 const next = String(process.argv[2] ?? "").trim();
+const forceUnfreeze = process.argv.includes("--force-unfreeze");
 
 if (!/^\d+\.\d+\.\d+$/.test(next)) {
-  console.error("Usage: node scripts/bump-cloakbrowser.mjs <semver>  (e.g. 0.4.1)");
+  console.error("Usage: node scripts/bump-cloakbrowser.mjs <semver> [--force-unfreeze]");
+  process.exit(1);
+}
+
+if (next !== "0.4.8" && !forceUnfreeze) {
+  console.error(
+    `bump-cloakbrowser: REFUSED (${next}). CloakBrowser is frozen at 0.4.8 (chromium-146.0.7680.177.5) because versions >=0.4.11 / 0.7.0 introduce server-side seat limits (exitCode=76: session limit reached for your plan). Pass --force-unfreeze only if you have an enterprise unlimited-seat license.`,
+  );
   process.exit(1);
 }
 

@@ -7,8 +7,9 @@ import {
 } from "./profile-kpi-filter";
 
 describe("profileKpiFilterPatch", () => {
-  it("sets Ready → closed status", () => {
-    expect(profileKpiFilterPatch("ready", {})).toEqual({ status: ["closed"] });
+  it("sets Waiting (ready) → waiting status and Headless → headless status", () => {
+    expect(profileKpiFilterPatch("ready", {})).toEqual({ status: ["waiting"] });
+    expect(profileKpiFilterPatch("headless", {})).toEqual({ status: ["headless"] });
   });
 
   it("toggles clear when already active", () => {
@@ -28,7 +29,7 @@ describe("profileKpiFilterPatch", () => {
   });
 
   it("wires header stats to the same patch as KPI tiles", () => {
-    const applied: Array<{ groupIds: string[]; statuses: string[] }> = [];
+    const applied: Array<{ groupIds: string[]; statuses: string[]; proxyModes?: string[] }> = [];
     const [stat] = withProfileHeaderStatFilterClicks(
       [{ key: "running", label: "Running", value: 2, toneClass: "" }],
       [],
@@ -37,7 +38,7 @@ describe("profileKpiFilterPatch", () => {
     );
     expect(stat.active).toBe(false);
     stat.onClick?.();
-    expect(applied).toEqual([{ groupIds: [], statuses: ["running", "opening"] }]);
+    expect(applied).toEqual([{ groupIds: [], statuses: ["running", "opening"], proxyModes: [] }]);
   });
 
   it("sets Running filter to running + opening", () => {
@@ -48,10 +49,12 @@ describe("profileKpiFilterPatch", () => {
     expect(applyProfileKpiFilterPatch("running", ["g1"], [])).toEqual({
       groupIds: ["g1"],
       statuses: ["running", "opening"],
+      proxyModes: [],
     });
     expect(applyProfileKpiFilterPatch("total", ["g1"], ["running"])).toEqual({
       groupIds: [],
       statuses: [],
+      proxyModes: [],
     });
   });
 });

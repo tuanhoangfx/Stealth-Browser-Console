@@ -165,10 +165,10 @@ try {
     return (ta.value || "").includes("note-smoke");
   }, marker);
 
-  // Save changes
+  // Save (SSOT label HUB_DETAIL_MODAL_SAVE_LABEL / HUB_DETAIL_MODAL_APPLY_LABEL)
   await page.evaluate(() => {
     const btn = [...document.querySelectorAll("button")].find((b) =>
-      /save changes|apply changes/i.test((b.textContent || "").trim()),
+      /^(save|save changes|apply|apply changes)$/i.test((b.textContent || "").trim()),
     );
     btn?.click();
   });

@@ -4,9 +4,11 @@ import type { StealthProfileSortKey } from "./StealthProfileDirectoryTable";
 
 const STATUS_RANK: Record<ProfileRow["status"], number> = {
   closed: 0,
-  opening: 1,
-  running: 2,
-  failed: 3
+  waiting: 1,
+  opening: 2,
+  headless: 3,
+  running: 4,
+  failed: 5,
 };
 
 export function sortableProfileValue(profile: ProfileRow, key: StealthProfileSortKey): string | number {
@@ -16,10 +18,13 @@ export function sortableProfileValue(profile: ProfileRow, key: StealthProfileSor
     case "group":
       return (profile.groupName || "Default").toLowerCase();
     case "e0001":
+    case "e0002":
     case "surfshark":
       return 0;
     case "status":
       return STATUS_RANK[profile.status] ?? 0;
+    case "activityLog":
+      return (profile.activityLog || "").toLowerCase();
     case "updated":
       return profile.lastOpenedAt ?? 0;
     case "createdAt":

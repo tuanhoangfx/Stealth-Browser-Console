@@ -10,6 +10,7 @@ import { ToastContainer, ToastProvider } from "./components/toast";
 import { StealthAppShell } from "./components/StealthAppShell";
 import { AuthSessionProvider } from "./features/auth/AuthSessionProvider";
 import { RunLogsProvider } from "./features/runtime/RunLogsContext";
+import type { StealthAndroidTab } from "./lib/stealth-android-tab";
 import type { StealthScreen } from "./lib/stealth-screen";
 import type { StealthSystemTab } from "./lib/stealth-system-tab";
 import type { StealthWorkflowTab } from "./lib/stealth-workflow-tab";
@@ -46,6 +47,7 @@ export function App() {
 function StealthAppRoot() {
   const [bootUrl] = useState(() => migrateStealthAppUrl());
   const [view, setView] = useState<StealthScreen>(() => bootUrl.screen);
+  const [androidTab, setAndroidTab] = useState<StealthAndroidTab>(() => bootUrl.androidTab);
   const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => bootUrl.systemTab);
   const [workflowTab, setWorkflowTab] = useState<StealthWorkflowTab>(() => bootUrl.workflowTab);
   const [visited, setVisited] = useState<Set<StealthScreen>>(
@@ -63,6 +65,7 @@ function StealthAppRoot() {
     const onPop = () => {
       const next = readStealthAppUrl();
       setView(next.screen);
+      setAndroidTab(next.androidTab);
       setSystemTab(next.systemTab);
       setWorkflowTab(next.workflowTab);
     };
@@ -71,8 +74,8 @@ function StealthAppRoot() {
   }, []);
 
   useEffect(() => {
-    writeStealthAppUrl({ screen: view, systemTab, workflowTab });
-  }, [systemTab, view, workflowTab]);
+    writeStealthAppUrl({ screen: view, androidTab, systemTab, workflowTab });
+  }, [androidTab, systemTab, view, workflowTab]);
 
   useLayoutEffect(() => {
     setVisited((prev) => {
@@ -91,9 +94,15 @@ function StealthAppRoot() {
 
   useHubActiveScreenSync(
     view,
-    view === "system" ? systemTab : view === "workflow" ? workflowTab : null,
+    view === "android"
+      ? androidTab
+      : view === "system"
+        ? systemTab
+        : view === "workflow"
+          ? workflowTab
+          : null,
   );
-  const activeScreenId = resolveStealthActiveScreenId(view, { systemTab, workflowTab });
+  const activeScreenId = resolveStealthActiveScreenId(view, { androidTab, systemTab, workflowTab });
   const effectiveVisited = useMemo(() => new Set(visited).add(view), [visited, view]);
   const logPersistKey = "P0003:anon";
 
@@ -114,6 +123,8 @@ function StealthAppRoot() {
         <StealthAppShell
           visited={effectiveVisited}
           mainRef={mainRef}
+          androidTab={androidTab}
+          onAndroidTabChange={setAndroidTab}
           systemTab={systemTab}
           onSystemTabChange={setSystemTab}
           workflowTab={workflowTab}

@@ -11,6 +11,7 @@ describe("profile-directory-url", () => {
     expect(readProfileDirectoryFilterUrl()).toEqual({
       groupIds: ["g1"],
       statuses: ["running", "closed"],
+      proxyModes: [],
     });
   });
 

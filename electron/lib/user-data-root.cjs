@@ -24,7 +24,20 @@ function isDevIsolated() {
   return process.env.STEALTH_DEV_ISOLATED === "1";
 }
 
+function isProdPath(p) {
+  if (!p) return false;
+  const norm = path.resolve(String(p)).toLowerCase();
+  return norm.endsWith(`\\${PROD_DIR}`) || norm.endsWith(`/${PROD_DIR}`);
+}
+
 function resolveStealthUserDataRoot({ packaged } = {}) {
+  const allowUnpackagedProd = process.env.STEALTH_ALLOW_UNPACKAGED_PROD === "1";
+  if (!packaged && !allowUnpackagedProd) {
+    if (process.env.STEALTH_USER_DATA && !isProdPath(process.env.STEALTH_USER_DATA)) {
+      return process.env.STEALTH_USER_DATA;
+    }
+    return path.join(roamingAppData(), DEV_DIR);
+  }
   if (process.env.STEALTH_USER_DATA) return process.env.STEALTH_USER_DATA;
   if (!packaged && isDevIsolated()) {
     return path.join(roamingAppData(), DEV_DIR);
@@ -33,7 +46,8 @@ function resolveStealthUserDataRoot({ packaged } = {}) {
 }
 
 function resolveStealthApiPort({ packaged } = {}) {
-  if (!packaged && isDevIsolated()) return DEFAULT_DEV_API_PORT;
+  const allowUnpackagedProd = process.env.STEALTH_ALLOW_UNPACKAGED_PROD === "1";
+  if (!packaged && (!allowUnpackagedProd || isDevIsolated())) return DEFAULT_DEV_API_PORT;
   const fromEnv = Number(process.env.STEALTH_API_PORT);
   if (Number.isFinite(fromEnv) && fromEnv > 0) return fromEnv;
   return DEFAULT_PROD_API_PORT;
@@ -41,10 +55,16 @@ function resolveStealthApiPort({ packaged } = {}) {
 
 /** Must run before app.ready — sets userData + default dev API port. */
 function configureElectronUserData(app) {
+  if (!app.isPackaged && process.env.STEALTH_ALLOW_UNPACKAGED_PROD !== "1") {
+    process.env.STEALTH_DEV_ISOLATED = "1";
+    if (isProdPath(process.env.STEALTH_USER_DATA)) {
+      delete process.env.STEALTH_USER_DATA;
+    }
+  }
   const root = resolveStealthUserDataRoot({ packaged: app.isPackaged });
   app.setPath("userData", root);
   if (!app.isPackaged) {
-    if (isDevIsolated()) {
+    if (isDevIsolated() || process.env.STEALTH_ALLOW_UNPACKAGED_PROD !== "1") {
       process.env.STEALTH_API_PORT = String(DEFAULT_DEV_API_PORT);
     } else if (!process.env.STEALTH_API_PORT) {
       process.env.STEALTH_API_PORT = String(DEFAULT_PROD_API_PORT);

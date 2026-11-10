@@ -15,7 +15,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { PROD_DIR, DEV_DIR, roamingAppData } = require("../../electron/lib/user-data-root.cjs");
 
-const DEFAULT_SEED_LIMIT = 80;
+const DEFAULT_SEED_LIMIT = 0;
 
 function rootFor(dirName) {
   return path.join(roamingAppData(), dirName);
@@ -148,30 +148,56 @@ async function writeSeededDevDb(prodDb, destDb, limit) {
 }
 
 function ensureProfilesJunction(prodProfiles, devProfiles) {
-  if (!fs.existsSync(prodProfiles)) return;
-  if (fs.existsSync(devProfiles)) {
-    const stat = fs.lstatSync(devProfiles);
-    if (stat.isSymbolicLink() || stat.isDirectory()) {
-      try {
-        fs.rmSync(devProfiles, { recursive: true, force: true });
-      } catch {
-        execSync(`cmd /c rmdir "${devProfiles}"`, { stdio: "ignore" });
+  const devRoot = path.dirname(devProfiles);
+  const sharedProfilesRoot = prodProfiles && fs.existsSync(prodProfiles) ? prodProfiles : path.join(devRoot, "profiles-dev");
+  try {
+    if (fs.existsSync(devProfiles)) {
+      const stat = fs.lstatSync(devProfiles);
+      if (stat.isSymbolicLink()) {
+        execSync(`cmd /c rmdir "${devProfiles}"`, { stdio: "ignore" , windowsHide: true });
       }
     }
+  } catch {
+    /* ignore */
   }
-  execSync(`cmd /c mklink /J "${devProfiles}" "${prodProfiles}"`, { stdio: "inherit" });
-  console.log(`[sync-dev-catalog] profiles junction → ${prodProfiles}`);
+  fs.mkdirSync(sharedProfilesRoot, { recursive: true });
+  try {
+    const locFile = path.join(devRoot, "data", "profiles-location.json");
+    fs.mkdirSync(path.dirname(locFile), { recursive: true });
+    fs.writeFileSync(
+      locFile,
+      JSON.stringify(
+        {
+          profilesRoot: sharedProfilesRoot,
+          suggestedProfilesRoot: sharedProfilesRoot,
+          promptPending: false,
+          source: "shared-with-prod",
+          version: 1,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf8",
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function syncDevCatalogFromProd({ force = false } = {}) {
   const prodRoot = rootFor(PROD_DIR);
   const devRoot = rootFor(DEV_DIR);
-  const prodDb = path.join(prodRoot, "data", "stealth-console.db");
+  const knownGoodProdDb = path.join(prodRoot, "data", "stealth-console.db.known-good.bak");
+  const liveProdDb = path.join(prodRoot, "data", "stealth-console.db");
+  const prodDb = fs.existsSync(knownGoodProdDb) ? knownGoodProdDb : liveProdDb;
   const devDb = path.join(devRoot, "data", "stealth-console.db");
   const { resolveProfilesRoot } = require("../../electron/lib/profiles-location.cjs");
   const prodProfiles = resolveProfilesRoot(prodRoot);
   const devProfiles = path.join(devRoot, "profiles");
   const limit = resolveSeedLimit();
+
+  ensureProfilesJunction(prodProfiles, devProfiles);
 
   if (!fs.existsSync(prodDb)) {
     console.warn("[sync-dev-catalog] production DB not found — skip");

@@ -11,7 +11,10 @@
  *
  * checkProxy phụ thuộc mạng → tách khỏi core thuần (parse/geo/pool) để test offline.
  */
+const fs = require("node:fs");
 const net = require("node:net");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 // ── Pure core (test được offline) ─────────────────────────────────────────
 
@@ -180,6 +183,42 @@ function geoUrl() {
 }
 
 /**
+ * Đo độ trễ TCP handshake thực tế tới host:port (hỗ trợ cả HTTP lẫn SOCKS5 / IP-whitelist proxy).
+ * @returns {Promise<{ tcpAlive: boolean, tcpLatencyMs: number|null, reason?: string }>}
+ */
+function probeTcpPort(host, port, { timeoutMs = 2000 } = {}) {
+  const cleanHost = String(host || "").trim();
+  const cleanPort = Number(port);
+  if (!cleanHost || !Number.isInteger(cleanPort) || cleanPort <= 0 || cleanPort > 65535) {
+    return Promise.resolve({ tcpAlive: false, tcpLatencyMs: null, reason: "invalid-host-port" });
+  }
+  const t0 = performance.now();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (val) => {
+      if (settled) return;
+      settled = true;
+      try {
+        socket.destroy();
+      } catch {}
+      resolve(val);
+    };
+    const socket = net.connect({ host: cleanHost, port: cleanPort });
+    socket.setTimeout(timeoutMs);
+    socket.on("connect", () =>
+      finish({
+        tcpAlive: true,
+        tcpLatencyMs: Math.max(1, Math.round(performance.now() - t0)),
+      }),
+    );
+    socket.on("timeout", () => finish({ tcpAlive: false, tcpLatencyMs: null, reason: "timeout" }));
+    socket.on("error", (err) =>
+      finish({ tcpAlive: false, tcpLatencyMs: null, reason: err?.code || err?.message || "error" }),
+    );
+  });
+}
+
+/**
  * Kiểm proxy sống + lấy exit IP/geo qua HTTP forward-proxy (GET absolute-URI).
  * Chỉ hỗ trợ proxy http(s); socks → trả alive:null (cần lib socks riêng).
  * @returns {Promise<{ alive: boolean|null, exitIp?: string, countryCode?: string, timezone?: string, latencyMs?: number, reason?: string }>}
@@ -248,4 +287,176 @@ function checkProxy(proxyInput, { timeoutMs = 8000 } = {}) {
   });
 }
 
-module.exports = { parseProxy, formatProxyForLaunch, toPlaywrightProxy, localeToCountry, geoConsistency, ProxyPool, checkProxy };
+/**
+ * Parse a country proxy shorthand (`vpn://US`, `proxy://VN`, `country:SG`, `surfshark://GB`, `nordvpn://JP`, or `[vpn:US]` in note).
+ */
+function parseCountryProxySpec(input, note = "", startupUrl = "") {
+  const raw = String(input || "").trim();
+  const m = raw.match(/^(?:vpn|proxy|country|surfshark|nordvpn):(?:\/\/)?([A-Za-z]{2})\b/i);
+  if (m) {
+    const providerHint = /^surfshark:/i.test(raw)
+      ? "surfshark"
+      : /^nordvpn:/i.test(raw)
+        ? "nordvpn"
+        : /^proxy:/i.test(raw)
+          ? "vault"
+          : "auto";
+    return { countryCode: m[1].toUpperCase(), providerHint };
+  }
+  if (!raw && note) {
+    const nm = String(note).match(/\[(?:vpn|proxy|country):([A-Za-z]{2})\]/i);
+    if (nm) return { countryCode: nm[1].toUpperCase(), providerHint: "auto" };
+  }
+  if (!raw && startupUrl && /claude\.ai/i.test(String(startupUrl))) {
+    return { countryCode: "US", providerHint: "auto" };
+  }
+  return null;
+}
+
+let vpnPoolModulePromise = null;
+let vpnPoolModuleMtimeMs = 0;
+function resolveVpnProxyPoolPath() {
+  const candidates = [
+    path.resolve(__dirname, "..", "..", "..", "scripts", "lib", "vpn-proxy-pool.mjs"),
+    process.env.STEALTH_WORKSPACE_ROOT
+      ? path.resolve(process.env.STEALTH_WORKSPACE_ROOT, "Tool", "scripts", "lib", "vpn-proxy-pool.mjs")
+      : "",
+    path.resolve("E:/Dev/Tool/scripts/lib/vpn-proxy-pool.mjs"),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function loadVpnProxyPoolModule() {
+  const candidate = resolveVpnProxyPoolPath();
+  if (!candidate) return Promise.resolve(null);
+  let curMtime = 0;
+  try {
+    curMtime = fs.statSync(candidate).mtimeMs;
+  } catch {
+    /* ignore */
+  }
+  if (!vpnPoolModulePromise || (curMtime && curMtime !== vpnPoolModuleMtimeMs)) {
+    vpnPoolModuleMtimeMs = curMtime;
+    const href = `${pathToFileURL(candidate).href}${curMtime ? `?v=${Math.floor(curMtime)}` : ""}`;
+    vpnPoolModulePromise = import(href).catch(() => null);
+  }
+  return vpnPoolModulePromise;
+}
+
+const COUNTRY_GEO_DEFAULTS = {
+  US: { timezone: "America/New_York", locale: "en-US" },
+  SG: { timezone: "Asia/Singapore", locale: "en-SG" },
+  JP: { timezone: "Asia/Tokyo", locale: "ja-JP" },
+  GB: { timezone: "Europe/London", locale: "en-GB" },
+  DE: { timezone: "Europe/Berlin", locale: "de-DE" },
+  KR: { timezone: "Asia/Seoul", locale: "ko-KR" },
+  FR: { timezone: "Europe/Paris", locale: "fr-FR" },
+  NL: { timezone: "Europe/Amsterdam", locale: "nl-NL" },
+  CA: { timezone: "America/Toronto", locale: "en-CA" },
+  AU: { timezone: "Australia/Sydney", locale: "en-AU" },
+  VN: { timezone: "Asia/Ho_Chi_Minh", locale: "vi-VN" },
+};
+
+/**
+ * Resolve a profile's country proxy shorthand (`vpn://US`, `[vpn:SG]` in note, or explicit `opts.country`)
+ * into a live local HTTP proxy (`http://127.0.0.1:<port>`) from the Multi-Country VPN & Proxy Pool.
+ */
+async function resolveProfileCountryProxy(profile = {}, opts = {}) {
+  const explicitCountry = String(opts.country || "").trim().toUpperCase();
+  const spec = explicitCountry
+    ? { countryCode: explicitCountry, providerHint: "auto" }
+    : parseCountryProxySpec(profile?.proxy, profile?.note, opts.targetUrl || profile?.startupUrl);
+  if (!spec) return null;
+
+  const mod = await loadVpnProxyPoolModule();
+  if (!mod || typeof mod.acquireCountryProxy !== "function") return null;
+
+  const preferVaultProxy =
+    opts.preferVaultProxy !== undefined
+      ? Boolean(opts.preferVaultProxy)
+      : spec.providerHint !== "surfshark" && spec.providerHint !== "nordvpn";
+  const acquired = await mod.acquireCountryProxy([spec.countryCode], { preferVaultProxy });
+  if (!acquired?.ok || !acquired.localProxyUrl) return null;
+  const cc = String(acquired.countryCode || spec.countryCode).toUpperCase();
+  const geoDef = COUNTRY_GEO_DEFAULTS[cc] || {};
+  return {
+    resolvedProxy: acquired.localProxyUrl,
+    countryCode: cc,
+    exitIp: acquired.exitIp,
+    timezone: acquired.timezone || geoDef.timezone || "",
+    locale: geoDef.locale || "",
+    latencyMs: acquired.latencyMs,
+    source: acquired.source,
+  };
+}
+
+/**
+ * Check a standard proxy or acquire/verify a country VPN tunnel (`vpn://VN`, `proxy://VN`, `country:US`, or `"local"`).
+ */
+async function checkOrAcquireProfileProxy(proxyInput, options = {}) {
+  const trimmed = String(proxyInput || "").trim();
+  if (!trimmed || trimmed.toLowerCase() === "local") {
+    const started = Date.now();
+    try {
+      const res = await fetch(geoUrl(), { signal: AbortSignal.timeout(Number(options.timeoutMs) || 6000) });
+      if (!res.ok) return { alive: false, reason: `HTTP ${res.status}` };
+      const geo = await res.json();
+      return {
+        alive: true,
+        exitIp: geo.query || geo.ip || "",
+        countryCode: geo.countryCode || geo.country_code || "",
+        timezone: geo.timezone || "",
+        latencyMs: Date.now() - started,
+        source: "local-direct",
+      };
+    } catch (err) {
+      return { alive: false, reason: err?.message || "Local IP check failed" };
+    }
+  }
+  const spec = parseCountryProxySpec(trimmed, options.note);
+  if (spec) {
+    const preferVaultProxy =
+      options.rotateVpn !== undefined
+        ? !options.rotateVpn
+        : options.preferVaultProxy !== undefined
+          ? Boolean(options.preferVaultProxy)
+          : spec.providerHint !== "surfshark" && spec.providerHint !== "nordvpn";
+    const resolved = await resolveProfileCountryProxy(
+      { proxy: trimmed, note: options.note },
+      { preferVaultProxy },
+    );
+    if (!resolved) {
+      return { alive: false, countryCode: spec.countryCode, reason: "VPN tunnel unavailable" };
+    }
+    return {
+      alive: true,
+      exitIp: resolved.exitIp,
+      countryCode: resolved.countryCode,
+      timezone: resolved.timezone,
+      latencyMs: resolved.latencyMs,
+      source: resolved.source,
+      localProxyUrl: resolved.resolvedProxy,
+    };
+  }
+  return checkProxy(trimmed, { timeoutMs: Number(options.timeoutMs) || 8000 });
+}
+
+module.exports = {
+  parseProxy,
+  formatProxyForLaunch,
+  toPlaywrightProxy,
+  localeToCountry,
+  geoConsistency,
+  ProxyPool,
+  probeTcpPort,
+  checkProxy,
+  parseCountryProxySpec,
+  COUNTRY_GEO_DEFAULTS,
+  resolveVpnProxyPoolPath,
+  loadVpnProxyPoolModule,
+  resolveProfileCountryProxy,
+  checkOrAcquireProfileProxy,
+};

@@ -15,7 +15,8 @@ const {
   digitGapsCsvForSizes,
 } = require("./profile-code.cjs");
 
-/** Design V4 — digits only on native Chromium icon; thousands → digit color (0=white, 1–9 vivid). */
+/** Design V4 — digits only on native Chromium icon; thousands → digit color (0=white, 1–9 vivid).
+ *  Keep in sync with StartKeeper in stealth-taskbar-apply-worker.ps1. */
 const BADGE_STYLE = "v4-digits-only-spaced8";
 /** Hot path for taskbar apply — 48/32/16 only (Win11 ~40–48; 16 small). Fewer sizes = faster cold ICO. */
 const HOT_ICO_SIZES = Object.freeze([48, 32, 16]);
@@ -148,7 +149,7 @@ function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, time
   void (async () => {
     const startedAt = Date.now();
     const deadline = startedAt + timeoutMs;
-    const lockProbeMs = [60, 150, 300, 550, 900, 1400];
+    const lockProbeMs = [250, 750, 1600];
     let lockProbeIdx = 0;
     while (Date.now() < deadline) {
       let pid = 0;
@@ -157,8 +158,16 @@ function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, time
       } catch {
         pid = 0;
       }
+      if (!pid && Number(debugPort) > 0) {
+        try {
+          const { resolveBrowserPidByDebugPort } = require("./profile-browser-orphan.cjs");
+          pid = await resolveBrowserPidByDebugPort(debugPort);
+        } catch {
+          pid = 0;
+        }
+      }
       if (pid > 0) {
-        writeSidecarPid(userDataDir, { pid, debugPort });
+        writeSidecarPid(userDataDir, { pid, debugPort, headless: false });
         return;
       }
       const elapsed = Date.now() - startedAt;
@@ -169,7 +178,7 @@ function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, time
           const lockPids = await listProfileBrowserPidsByLock(userDataDir);
           const lockPid = lockPids[0] || 0;
           if (lockPid > 0) {
-            writeSidecarPid(userDataDir, { pid: lockPid, debugPort });
+            writeSidecarPid(userDataDir, { pid: lockPid, debugPort, headless: false });
             return;
           }
         } catch {
@@ -182,7 +191,7 @@ function startBrowserPidSidecarPoll(userDataDir, getPidFn, { debugPort = 0, time
       const { listProfileBrowserPids } = require("./profile-browser-orphan.cjs");
       const pids = await listProfileBrowserPids(userDataDir);
       const pid = pids[0] || 0;
-      if (pid > 0) writeSidecarPid(userDataDir, { pid, debugPort });
+      if (pid > 0) writeSidecarPid(userDataDir, { pid, debugPort, headless: false });
     } catch {
       /* ignore */
     }
@@ -353,9 +362,6 @@ async function ensureBadgeIco(code, opts = {}) {
         throw new Error("badge ico write failed");
       }
     });
-    if (hot) {
-      void ensureBadgeIco(full).catch(() => undefined);
-    }
     return ico;
   })();
 
@@ -373,16 +379,23 @@ async function ensureBadgeIcoFast(code) {
 }
 
 /** Fire-and-forget: pre-build hot ICO for recently opened profiles (app boot). */
-function warmRecentBadgeIcosOnStartup(getProfiles, { limit = 16 } = {}) {
+function warmRecentBadgeIcosOnStartup(getProfiles, { limit = 4 } = {}) {
   if (process.platform !== "win32") return;
   pruneStaleBadgeCacheOnce();
+  // Do not spawn 16+ background PowerShell render-taskbar-badge.ps1 processes on boot
+  // (especially when recent profiles are headless farm sessions). On-demand ensureBadgeIcoFast
+  // renders headed profile badges in ~400ms and caches them on disk.
+  if (String(process.env.STEALTH_WARM_BADGE_ICOS_ON_BOOT || "") !== "1") return;
   let profiles = [];
   try {
     profiles = typeof getProfiles === "function" ? getProfiles(limit) : [];
   } catch {
     profiles = [];
   }
-  warmBadgeIcosForProfiles(profiles, { limit });
+  warmBadgeIcosForProfiles(
+    (profiles || []).filter((p) => !p?.headless),
+    { limit },
+  );
 }
 
 /** Pre-compile Win32 interop DLL + start persistent apply worker (~once per boot). */
@@ -551,6 +564,7 @@ function isRetryableTaskbarFailure(result) {
   const reason = String(result?.reason || result?.detail || "").toLowerCase();
   if (!reason || reason === "no-attempt") return true;
   if (reason.includes("timeout")) return true;
+  if (reason === "gdi_exhausted") return true;
   return (
     reason === "nohwnd" ||
     reason === "no-window" ||
@@ -564,6 +578,9 @@ function isRetryableTaskbarFailure(result) {
  * Focus only on NOHWND — focus-steal on every retry breaks multi-profile open.
  */
 async function applyNativeProfileTaskbarChromeWithRetry(userDataDir, title, code, opts = {}) {
+  if (shouldSkipTaskbarBadge(code || title, opts)) {
+    return { ok: false, reason: "skipped-headless" };
+  }
   const retryDelaysMs = opts.retryDelaysMs || [0, 300, 700, 1500, 3000, 6000, 12_000];
   const focusRetry = opts.focusRetry !== false;
   const firstPidWaitMs = Number(opts.pidWaitMs) > 0 ? Number(opts.pidWaitMs) : 160;
@@ -580,6 +597,7 @@ async function applyNativeProfileTaskbarChromeWithRetry(userDataDir, title, code
     const freshPid = readTaskbarHintPid(userDataDir, opts.browserPid);
     last = await applyNativeProfileTaskbarChrome(userDataDir, title, code, {
       browserPid: freshPid,
+      headless: Boolean(opts.headless),
       pidWaitMs: attempt === 0 ? firstPidWaitMs : 0,
       hwndWaitMs: attempt === 0 && Number(opts.hwndWaitMs) > 0 ? Number(opts.hwndWaitMs) : 0,
       icoWarm: attempt === 0 ? opts.icoWarm : undefined,

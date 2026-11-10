@@ -4,6 +4,7 @@ import { STEALTH_CONSOLE_RAIL_LABEL, STEALTH_RUN_HISTORY_RAIL_LABEL } from "../.
 export const EXTENSION_DETAIL_SECTION_METADATA = "extension-detail-metadata";
 export const EXTENSION_DETAIL_SECTION_INSTALL = "extension-detail-install";
 export const EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE = "extension-detail-cookie-bridge";
+export const EXTENSION_DETAIL_SECTION_OPERATOR = "extension-detail-operator";
 export const EXTENSION_DETAIL_SECTION_HISTORY = "extension-detail-history";
 export const EXTENSION_DETAIL_SECTION_LOG = "extension-detail-log";
 

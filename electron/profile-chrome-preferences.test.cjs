@@ -12,6 +12,12 @@ describe("profile-chrome-preferences", () => {
     const b = unpackedExtensionId(dir);
     assert.equal(a, b);
     assert.match(a, /^[a-p]{32}$/);
+    if (process.platform === "win32") {
+      assert.equal(
+        unpackedExtensionId("E:/Dev/Extension/E0002-browser-operator"),
+        "ckalnmjdalpecadefcppeohmdgocgjlj",
+      );
+    }
   });
 
   it("pins extension in Preferences before launch", () => {

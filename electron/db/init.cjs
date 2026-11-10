@@ -10,20 +10,151 @@ let initPromise = null;
 let persistTimer = null;
 let dbBackend = "unknown";
 
-const PERSIST_DEBOUNCE_MS = 300;
+const PERSIST_DEBOUNCE_MS = 1500;
 
 function schemaPath() {
   return path.join(__dirname, "schema.sql");
 }
 
+function bootPhase(userDataPath, phase) {
+  if (!process.versions.electron || !userDataPath) return;
+  try {
+    const { writeBootLog } = require("../lib/shutdown-log.cjs");
+    const { app } = require("electron");
+    writeBootLog(userDataPath, {
+      phase,
+      version: app.getVersion(),
+      packaged: app.isPackaged,
+    });
+  } catch {
+    /* boot log is diagnostic only */
+  }
+}
+
+function unpackedNodeModulesRoot() {
+  if (typeof process.resourcesPath === "string" && process.resourcesPath) {
+    const candidate = path.join(process.resourcesPath, "app.asar.unpacked", "node_modules");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return "";
+}
+
 function wasmPath() {
-  return path.join(path.dirname(require.resolve("sql.js/package.json")), "dist", "sql-wasm.wasm");
+  try {
+    return path.join(path.dirname(require.resolve("sql.js/package.json")), "dist", "sql-wasm.wasm");
+  } catch {
+    const unpackedNm = unpackedNodeModulesRoot();
+    if (unpackedNm) {
+      return path.join(unpackedNm, "sql.js", "dist", "sql-wasm.wasm");
+    }
+    throw new Error("sql.js/dist/sql-wasm.wasm not found");
+  }
+}
+
+function loadSqlJsInit() {
+  try {
+    return require("sql.js/dist/sql-wasm.js");
+  } catch (err) {
+    const unpackedNm = unpackedNodeModulesRoot();
+    if (unpackedNm) {
+      const fallback = path.join(unpackedNm, "sql.js", "dist", "sql-wasm.js");
+      if (fs.existsSync(fallback)) return require(fallback);
+    }
+    throw err;
+  }
+}
+
+function resolveBetterSqliteNativeBinding() {
+  const unpackedNm = unpackedNodeModulesRoot();
+  if (unpackedNm) {
+    const candidate = path.join(unpackedNm, "better-sqlite3", "build", "Release", "better_sqlite3.node");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+function createNodeSqliteDatabaseSyncCtor() {
+  try {
+    const { DatabaseSync } = require("node:sqlite");
+    if (typeof DatabaseSync !== "function") return null;
+    return class NodeSqliteCompatDatabase {
+      constructor(filePath, options = {}) {
+        this._db = new DatabaseSync(filePath, {
+          timeout: Number(options.timeout) || 5000,
+          readOnly: Boolean(options.readonly),
+        });
+      }
+      pragma(sql) {
+        const trimmed = String(sql || "").trim();
+        if (/=|\(/.test(trimmed)) {
+          this._db.exec(`PRAGMA ${trimmed}`);
+          return [];
+        }
+        return this._db.prepare(`PRAGMA ${trimmed}`).all();
+      }
+      exec(sql) {
+        this._db.exec(sql);
+      }
+      transaction(fn) {
+        return (...args) => {
+          this._db.exec("BEGIN");
+          try {
+            const res = fn(...args);
+            this._db.exec("COMMIT");
+            return res;
+          } catch (err) {
+            try {
+              this._db.exec("ROLLBACK");
+            } catch {
+              /* ignore */
+            }
+            throw err;
+          }
+        };
+      }
+      prepare(sql) {
+        const stmt = this._db.prepare(sql);
+        if (typeof stmt.setAllowBareNamedParameters === "function") {
+          stmt.setAllowBareNamedParameters(true);
+        }
+        return {
+          all: (...params) => stmt.all(...params),
+          get: (...params) => stmt.get(...params),
+          run: (...params) => stmt.run(...params),
+        };
+      }
+      close() {
+        this._db.close();
+      }
+    };
+  } catch {
+    return null;
+  }
 }
 
 function loadBetterSqliteCtor() {
+  if (!process.versions.electron) {
+    const nodeSqliteCtor = createNodeSqliteDatabaseSyncCtor();
+    if (nodeSqliteCtor) return nodeSqliteCtor;
+  }
   try {
     return require("better-sqlite3");
   } catch (error) {
+    const unpackedNm = unpackedNodeModulesRoot();
+    if (unpackedNm) {
+      const unpackedPkg = path.join(unpackedNm, "better-sqlite3");
+      if (fs.existsSync(unpackedPkg)) {
+        try {
+          return require(unpackedPkg);
+        } catch {
+          /* fall through to node:sqlite or warning */
+        }
+      }
+    }
+    const nodeSqliteCtor = createNodeSqliteDatabaseSyncCtor();
+    if (nodeSqliteCtor) {
+      return nodeSqliteCtor;
+    }
     const hint = error instanceof Error ? error.message : String(error);
     const isAbiMismatch =
       /NODE_MODULE_VERSION|was compiled against|not a valid Win32 application/i.test(hint);
@@ -66,6 +197,7 @@ function migrateProfilesTable(database) {
     ["startup_url", "TEXT"],
     ["last_opened_at", "INTEGER"],
     ["extension_overrides", "TEXT"],
+    ["static_ip", "INTEGER DEFAULT 0"],
   ];
   let addedWindowMode = false;
   for (const [name, decl] of additions) {
@@ -75,7 +207,17 @@ function migrateProfilesTable(database) {
     }
   }
 
-  if (addedWindowMode || existing.has("window_mode")) {
+  let hasWindowModeBackfill = false;
+  try {
+    const flagStmt = database.prepare("SELECT value FROM settings WHERE key = 'window_mode_backfill_v1'");
+    if (typeof flagStmt.get === "function") {
+      hasWindowModeBackfill = flagStmt.get()?.value === "1";
+    }
+  } catch {
+    /* settings table may not have flag yet */
+  }
+
+  if (addedWindowMode || (!hasWindowModeBackfill && existing.has("window_mode"))) {
     database.exec(`
       UPDATE profiles
       SET window_mode = CASE
@@ -84,7 +226,8 @@ function migrateProfilesTable(database) {
         THEN 'preset-viewport'
         ELSE 'host-maximized'
       END
-      WHERE window_mode IS NULL OR window_mode = ''
+      WHERE window_mode IS NULL OR window_mode = '';
+      INSERT OR REPLACE INTO settings (key, value) VALUES ('window_mode_backfill_v1', '1');
     `);
   }
 }
@@ -118,12 +261,41 @@ function backfillLastOpenedAt(database) {
     .run("last_opened_at_backfill_v1", "1");
 }
 
+function resetProfilesDefaultIpV1(database) {
+  const flag = database.prepare("SELECT value FROM settings WHERE key = ?").get("reset_all_profiles_default_ip_v1");
+  if (flag?.value === "1") return;
+  const now = new Date().toISOString();
+  database
+    .prepare(
+      `UPDATE profiles
+          SET proxy = NULL,
+              static_ip = 0,
+              timezone = NULL,
+              locale = NULL,
+              device_preset = 'custom',
+              platform = 'windows',
+              viewport_w = 0,
+              viewport_h = 0,
+              window_mode = 'host-maximized',
+              color_scheme = NULL,
+              user_agent = NULL,
+              note = NULLIF(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(note, ''), '[pin-proxy]', ''), '[static-ip]', ''), '[vpn:US]', ''), 'Muse US Proxy', ''), 'Local IP', '')), ''),
+              updated_at = ?`,
+    )
+    .run(now);
+  database
+    .prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`)
+    .run("reset_all_profiles_default_ip_v1", "1");
+}
+
 function flushSqlJsDatabase() {
   if (persistTimer) {
     clearTimeout(persistTimer);
     persistTimer = null;
   }
   if (!sqlDb || !dbFilePath) return;
+  // Never overwrite a WAL-mode database owned by better-sqlite3 — doing so corrupts the main DB file relative to -wal/-shm.
+  if (fs.existsSync(`${dbFilePath}-wal`) || fs.existsSync(`${dbFilePath}-shm`)) return;
   const { shouldBlockCatalogShrinkFlush } = require("../lib/catalog-persist-guard.cjs");
   if (shouldBlockCatalogShrinkFlush(sqlDb, dbFilePath)) return;
   const data = sqlDb.export();
@@ -155,24 +327,68 @@ function bindStatement(stmt, params) {
 }
 
 function createBetterSqliteAdapter(database) {
+  function healAndRetry(sql, method, params) {
+    let stmt = database.prepare(sql);
+    try {
+      return stmt[method](...params);
+    } catch (err) {
+      if (isCorruptSqliteError(err) && tryInPlaceSqliteIndexAndEventsRepair(database)) {
+        stmt = database.prepare(sql);
+        return stmt[method](...params);
+      }
+      throw err;
+    }
+  }
   return {
     pragma(sql) {
       database.pragma(sql);
     },
     exec(sql) {
-      database.exec(sql);
+      try {
+        database.exec(sql);
+      } catch (err) {
+        if (isCorruptSqliteError(err) && tryInPlaceSqliteIndexAndEventsRepair(database)) {
+          database.exec(sql);
+          return;
+        }
+        throw err;
+      }
+    },
+    transaction(fn) {
+      return database.transaction(fn);
     },
     prepare(sql) {
-      const stmt = database.prepare(sql);
+      let stmt = null;
+      try {
+        stmt = database.prepare(sql);
+      } catch (err) {
+        if (isCorruptSqliteError(err) && tryInPlaceSqliteIndexAndEventsRepair(database)) {
+          stmt = database.prepare(sql);
+        } else {
+          throw err;
+        }
+      }
       return {
         all(...params) {
-          return stmt.all(...params);
+          try {
+            return stmt.all(...params);
+          } catch (err) {
+            return healAndRetry(sql, "all", params);
+          }
         },
         get(...params) {
-          return stmt.get(...params);
+          try {
+            return stmt.get(...params);
+          } catch (err) {
+            return healAndRetry(sql, "get", params);
+          }
         },
         run(...params) {
-          return stmt.run(...params);
+          try {
+            return stmt.run(...params);
+          } catch (err) {
+            return healAndRetry(sql, "run", params);
+          }
         },
       };
     },
@@ -188,6 +404,24 @@ function createSqlJsAdapter(database) {
     exec(sql) {
       database.exec(sql);
       persistSqlJsDatabase();
+    },
+    transaction(fn) {
+      return (...args) => {
+        database.exec("BEGIN");
+        try {
+          const res = fn(...args);
+          database.exec("COMMIT");
+          persistSqlJsDatabase();
+          return res;
+        } catch (err) {
+          try {
+            database.exec("ROLLBACK");
+          } catch {
+            /* ignore */
+          }
+          throw err;
+        }
+      };
     },
     prepare(sql) {
       return {
@@ -279,13 +513,92 @@ function rotateCorruptDatabaseFile(filePath, { userDataPath = "" } = {}) {
 }
 
 function verifyBetterSqliteIntegrity(db) {
-  const rows = db.pragma("integrity_check");
-  return rows.every((row) => String(row.integrity_check || "").toLowerCase() === "ok");
+  const rows = db.pragma("quick_check");
+  return rows.every((row) => String(row.quick_check || row.integrity_check || "").toLowerCase() === "ok");
+}
+
+function ensureProfileEventsNoForeignKey(db) {
+  try {
+    const row = db
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'profile_events'")
+      .get();
+    const ddl = String(row?.sql || "");
+    if (!/FOREIGN\s+KEY/i.test(ddl)) return false;
+    try {
+      db.pragma?.("foreign_keys = OFF");
+    } catch {
+      /* ignore */
+    }
+    db.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE IF NOT EXISTS profile_events_nofk (
+        id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        level TEXT DEFAULT 'info',
+        message TEXT,
+        created_at TEXT NOT NULL
+      );
+      INSERT OR IGNORE INTO profile_events_nofk (id, profile_id, event_type, level, message, created_at)
+        SELECT id, profile_id, event_type, level, message, created_at
+        FROM profile_events;
+      DROP TABLE profile_events;
+      ALTER TABLE profile_events_nofk RENAME TO profile_events;
+      CREATE INDEX IF NOT EXISTS idx_profile_events_profile_created ON profile_events(profile_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON profile_events(created_at DESC);
+      COMMIT;
+    `);
+    try {
+      db.pragma?.("foreign_keys = ON");
+    } catch {
+      /* ignore */
+    }
+    return true;
+  } catch {
+    try {
+      db.exec("ROLLBACK;");
+    } catch {
+      /* ignore */
+    }
+    try {
+      db.pragma?.("foreign_keys = ON");
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+}
+
+function pruneProfileEventsRetention(db, retentionDays = 30) {
+  try {
+    ensureProfileEventsNoForeignKey(db);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON profile_events(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_profile_events_profile_created ON profile_events(profile_id, created_at DESC);
+    `);
+    const days = Math.max(7, Math.floor(Number(retentionDays) || 30));
+    const cutoffIso = new Date(Date.now() - days * 86_400_000).toISOString();
+    db.prepare("DELETE FROM profile_events WHERE created_at < ?").run(cutoffIso);
+    db.exec(`
+      DELETE FROM profile_events
+      WHERE rowid NOT IN (
+        SELECT rowid FROM profile_events ORDER BY created_at DESC LIMIT 5000
+      );
+      DELETE FROM runs
+      WHERE status != 'running'
+        AND rowid NOT IN (
+          SELECT rowid FROM runs ORDER BY started_at DESC LIMIT 500
+        );
+    `);
+    db.pragma("optimize");
+  } catch {
+    /* best effort retention prune */
+  }
 }
 
 function verifySqlJsIntegrity(database) {
   try {
-    const result = database.exec("PRAGMA integrity_check");
+    const result = database.exec("PRAGMA quick_check");
     const value = result[0]?.values?.[0]?.[0];
     return String(value || "").toLowerCase() === "ok";
   } catch {
@@ -298,9 +611,35 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   fs.mkdirSync(dbDir, { recursive: true });
   dbFilePath = path.join(dbDir, "stealth-console.db");
 
-  nativeDb = new DatabaseCtor(dbFilePath);
+  bootPhase(userDataPath, "db-construct");
+  const nativeBinding = resolveBetterSqliteNativeBinding();
+  nativeDb = new DatabaseCtor(dbFilePath, {
+    timeout: 15000,
+    ...(nativeBinding ? { nativeBinding } : {}),
+  });
+  bootPhase(userDataPath, "db-constructed");
+  nativeDb.pragma("busy_timeout = 15000");
   nativeDb.pragma("journal_mode = WAL");
+  nativeDb.pragma("synchronous = NORMAL");
+  nativeDb.pragma("temp_store = MEMORY");
+  nativeDb.pragma("cache_size = -65536");
+  nativeDb.pragma("mmap_size = 268435456");
+  nativeDb.pragma("wal_autocheckpoint = 4000");
+  nativeDb.pragma("journal_size_limit = 67108864");
   nativeDb.pragma("foreign_keys = ON");
+  bootPhase(userDataPath, "db-wal");
+  if (process.env.STEALTH_AGENT_WORKER === "1") {
+    if (!verifyBetterSqliteIntegrity(nativeDb)) {
+      tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
+    }
+    pruneProfileEventsRetention(nativeDb, 365);
+    dbBackend = "better-sqlite3";
+    console.info("[db] backend=better-sqlite3 (agent worker shared WAL)");
+    return createBetterSqliteAdapter(nativeDb);
+  }
+  if (!verifyBetterSqliteIntegrity(nativeDb)) {
+    tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
+  }
   if (!verifyBetterSqliteIntegrity(nativeDb)) {
     nativeDb.close();
     nativeDb = null;
@@ -311,6 +650,11 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   dropLegacyProfileChromeColumns(nativeDb);
   backfillEmptyStartupUrls(nativeDb);
   backfillLastOpenedAt(nativeDb);
+  resetProfilesDefaultIpV1(nativeDb);
+  pruneProfileEventsRetention(nativeDb, 365);
+  if (!verifyBetterSqliteIntegrity(nativeDb)) {
+    tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
+  }
   if (!verifyBetterSqliteIntegrity(nativeDb)) {
     nativeDb.close();
     nativeDb = null;
@@ -318,19 +662,86 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   }
 
   dbBackend = "better-sqlite3";
+  bootPhase(userDataPath, "db-native-ready");
   console.info("[db] backend=better-sqlite3 (incremental WAL)");
   return createBetterSqliteAdapter(nativeDb);
+}
+
+/**
+ * In-place SQLite index & profile_events table repair (`ok 1` hardening).
+ * Preserves 100% of `profiles` while rebuilding secondary indexes and trimming/rebuilding `profile_events`.
+ */
+function tryInPlaceSqliteIndexAndEventsRepair(db) {
+  try {
+    db.exec(`
+      BEGIN IMMEDIATE;
+      REINDEX profiles;
+      REINDEX profile_groups;
+      REINDEX runs;
+      REINDEX settings;
+      REINDEX stealth_sync_outbox;
+      DROP INDEX IF EXISTS idx_profile_events_profile_created;
+      DROP INDEX IF EXISTS idx_profile_events_created_at;
+      CREATE TABLE IF NOT EXISTS profile_events_clean (
+        id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        level TEXT DEFAULT 'info',
+        message TEXT,
+        created_at TEXT NOT NULL
+      );
+      INSERT OR IGNORE INTO profile_events_clean (id, profile_id, event_type, level, message, created_at)
+        SELECT id, profile_id, event_type, level, message, created_at
+        FROM (
+          SELECT id, profile_id, event_type, level, message, created_at
+          FROM profile_events NOT INDEXED
+          WHERE id IS NOT NULL AND profile_id IS NOT NULL AND event_type IS NOT NULL AND created_at IS NOT NULL
+          LIMIT 50000
+        );
+      DROP TABLE profile_events;
+      ALTER TABLE profile_events_clean RENAME TO profile_events;
+      CREATE INDEX IF NOT EXISTS idx_profile_events_profile_created ON profile_events(profile_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON profile_events(created_at DESC);
+      COMMIT;
+    `);
+    console.info("[db] in-place REINDEX + profile_events repair succeeded");
+    return true;
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK;");
+    } catch {
+      /* ignore */
+    }
+    console.warn("[db] in-place repair warning:", error instanceof Error ? error.message : error);
+    return false;
+  }
 }
 
 /** Re-export corrupt file via sql.js — fixes SQLITE_CORRUPT for better-sqlite3 open. */
 async function repairDatabaseFile(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return { ok: false, reason: "missing" };
+  const backup = `${filePath}.corrupt.bak`;
+  try {
+    fs.copyFileSync(filePath, backup);
+  } catch {
+    /* best effort */
+  }
   const BetterSqlite = loadBetterSqliteCtor();
   if (BetterSqlite) {
     try {
-      const preRepair = new BetterSqlite(filePath, { readonly: false });
+      const nativeBinding = resolveBetterSqliteNativeBinding();
+      const preRepair = new BetterSqlite(filePath, {
+        readonly: false,
+        ...(nativeBinding ? { nativeBinding } : {}),
+      });
+      tryInPlaceSqliteIndexAndEventsRepair(preRepair);
+      const healthy = verifyBetterSqliteIntegrity(preRepair);
       preRepair.pragma("wal_checkpoint(TRUNCATE)");
       preRepair.close();
+      if (healthy) {
+        console.info(`[db] repaired corrupt database in-place — backup ${backup}`);
+        return { ok: true, backup };
+      }
     } catch (error) {
       console.warn(
         "[db] pre-repair WAL checkpoint:",
@@ -338,11 +749,9 @@ async function repairDatabaseFile(filePath) {
       );
     }
   }
-  const initSqlJs = require("sql.js/dist/sql-wasm.js");
+  const initSqlJs = loadSqlJsInit();
   const SQL = await initSqlJs({ locateFile: () => wasmPath() });
-  const backup = `${filePath}.corrupt.bak`;
   try {
-    fs.copyFileSync(filePath, backup);
     const source = new SQL.Database(fs.readFileSync(filePath));
     const rebuilt = source.export();
     source.close();
@@ -364,11 +773,25 @@ function isCorruptSqliteError(error) {
 }
 
 async function openSqlJsDatabase(userDataPath) {
-  const initSqlJs = require("sql.js/dist/sql-wasm.js");
+  const initSqlJs = loadSqlJsInit();
   const SQL = await initSqlJs({ locateFile: () => wasmPath() });
   const dbDir = path.join(userDataPath, "data");
   fs.mkdirSync(dbDir, { recursive: true });
   dbFilePath = path.join(dbDir, "stealth-console.db");
+
+  // If WAL sidecars exist from another active process (:6003 or :6004), checkpoint via node:sqlite first so sql.js never sees torn WAL pages
+  if (fs.existsSync(`${dbFilePath}-wal`)) {
+    try {
+      const NodeSqliteCtor = createNodeSqliteDatabaseSyncCtor();
+      if (NodeSqliteCtor) {
+        const walSyncDb = new NodeSqliteCtor(dbFilePath, { timeout: 15000 });
+        walSyncDb.pragma("wal_checkpoint(PASSIVE)");
+        walSyncDb.close();
+      }
+    } catch {
+      /* best effort checkpoint before sql.js read */
+    }
+  }
 
   const loadFreshOrRestored = () => {
     if (fs.existsSync(dbFilePath)) {
@@ -381,7 +804,7 @@ async function openSqlJsDatabase(userDataPath) {
   if (fs.existsSync(dbFilePath)) {
     try {
       sqlDb = new SQL.Database(fs.readFileSync(dbFilePath));
-      if (!verifySqlJsIntegrity(sqlDb)) {
+      if (!verifySqlJsIntegrity(sqlDb) && !fs.existsSync(`${dbFilePath}-wal`)) {
         sqlDb.close();
         sqlDb = null;
         rotateCorruptDatabaseFile(dbFilePath, { userDataPath });
@@ -396,10 +819,7 @@ async function openSqlJsDatabase(userDataPath) {
         }
         sqlDb = null;
       }
-      if (isCorruptSqliteError(error) || /malformed|corrupt/i.test(String(error))) {
-        rotateCorruptDatabaseFile(dbFilePath, { userDataPath });
-      } else {
-        console.warn("[db] sql.js open failed — starting empty", error);
+      if (!fs.existsSync(`${dbFilePath}-wal`)) {
         rotateCorruptDatabaseFile(dbFilePath, { userDataPath });
       }
       loadFreshOrRestored();
@@ -408,29 +828,50 @@ async function openSqlJsDatabase(userDataPath) {
     sqlDb = new SQL.Database();
   }
 
+  const adapter = createSqlJsAdapter(sqlDb);
   sqlDb.exec(fs.readFileSync(schemaPath(), "utf8"));
   migrateProfilesTable(sqlDb);
   dropLegacyProfileChromeColumns(sqlDb);
-  backfillEmptyStartupUrls(sqlDb);
-  backfillLastOpenedAt(sqlDb);
+  backfillEmptyStartupUrls(adapter);
+  backfillLastOpenedAt(adapter);
+  resetProfilesDefaultIpV1(adapter);
   flushSqlJsDatabase();
 
   dbBackend = "sql.js";
   console.info("[db] backend=sql.js (full export on write)");
-  return createSqlJsAdapter(sqlDb);
+  return adapter;
 }
 
-async function openDatabase(userDataPath) {
+function resolveCatalogUserDataPath(userDataPath) {
+  const resolved = path.resolve(String(userDataPath || ""));
+  const norm = resolved.toLowerCase();
+  if (
+    process.env.STEALTH_ISOLATE_DEV_DB !== "1" &&
+    (norm.endsWith("\\stealth-browser-console-dev") || norm.endsWith("/stealth-browser-console-dev"))
+  ) {
+    const prodRoot = path.join(path.dirname(resolved), "stealth-browser-console");
+    if (fs.existsSync(path.join(prodRoot, "data", "stealth-console.db"))) {
+      return prodRoot;
+    }
+  }
+  return userDataPath;
+}
+
+async function openDatabase(rawUserDataPath) {
+  const userDataPath = resolveCatalogUserDataPath(rawUserDataPath);
   if (dbInstance) return dbInstance;
   if (!initPromise) {
     initPromise = (async () => {
       const forced = String(process.env.STEALTH_DB_BACKEND || "").toLowerCase();
       if (forced === "sql.js") {
+        bootPhase(userDataPath, "db-sqljs-forced");
         dbInstance = await openSqlJsDatabase(userDataPath);
         return dbInstance;
       }
 
+      bootPhase(userDataPath, "db-load-native");
       const BetterSqlite = loadBetterSqliteCtor();
+      if (!BetterSqlite) bootPhase(userDataPath, "db-native-missing");
       if (BetterSqlite) {
         try {
           dbInstance = await openBetterSqliteDatabase(BetterSqlite, userDataPath);
@@ -453,16 +894,30 @@ async function openDatabase(userDataPath) {
               rotateCorruptDatabaseFile(file, { userDataPath });
             }
           } else {
+            const NodeSqliteCtor = createNodeSqliteDatabaseSyncCtor();
+            if (NodeSqliteCtor && NodeSqliteCtor !== BetterSqlite) {
+              try {
+                dbInstance = await openBetterSqliteDatabase(NodeSqliteCtor, userDataPath);
+                return dbInstance;
+              } catch (nodeSqliteErr) {
+                console.warn("[db] node:sqlite fallback failed:", nodeSqliteErr);
+              }
+            }
             console.warn("[db] better-sqlite3 open failed — falling back to sql.js", error);
           }
         }
       }
 
+      bootPhase(userDataPath, "db-sqljs-fallback");
       dbInstance = await openSqlJsDatabase(userDataPath);
+      bootPhase(userDataPath, "db-sqljs-ready");
       return dbInstance;
     })();
   }
   const instance = await initPromise;
+  if (process.env.STEALTH_AGENT_WORKER === "1") {
+    return instance;
+  }
   try {
     const row = instance.prepare("SELECT COUNT(*) AS c FROM profiles").get();
     const currentProfiles = Number(row?.c) || 0;
@@ -478,9 +933,14 @@ async function openDatabase(userDataPath) {
     } else {
       setCatalogProfileBaseline(currentProfiles);
       if (dbBackend === "better-sqlite3" && nativeDb) {
-        nativeDb.pragma("wal_checkpoint(TRUNCATE)");
+        // PASSIVE returns instead of waiting for every reader. TRUNCATE on boot
+        // deadlocks when this connection still holds a read lock.
+        bootPhase(userDataPath, "db-checkpoint");
+        nativeDb.pragma("wal_checkpoint(PASSIVE)");
+        bootPhase(userDataPath, "db-checkpoint-done");
+        pinKnownGoodCatalogCopy(userDataPath, currentProfiles);
+        bootPhase(userDataPath, "db-pin-done");
       }
-      pinKnownGoodCatalogCopy(userDataPath, currentProfiles);
     }
   } catch (error) {
     console.warn("[db] catalog recovery probe failed:", error instanceof Error ? error.message : error);
@@ -588,4 +1048,5 @@ module.exports = {
   isCorruptSqliteError,
   recoverCorruptDatabase,
   rotateCorruptDatabaseFile,
+  ensureProfileEventsNoForeignKey,
 };

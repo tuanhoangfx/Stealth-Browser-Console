@@ -2,7 +2,12 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { listChromeProcessesPs, killOrphanProfileBrowser } = require("./profile-browser-orphan.cjs");
+const {
+  listChromeProcessesPs,
+  killOrphanProfileBrowser,
+  reapDuplicateTaskbarPwaProcessesNative,
+  findLiveHeadedBrowserPidNative,
+} = require("./profile-browser-orphan.cjs");
 
 const ROOT = path.join("C:", "Users", "me", "AppData", "Roaming", "stealth-browser-console");
 const PROFILE_A = path.join(ROOT, "profiles", "aaaaaaaa-1111-2222-3333-444444444444");
@@ -72,4 +77,19 @@ test("killOrphanProfileBrowser can invoke taskkill (execFileAsync wired)", async
   } finally {
     fs.rmSync(emptyDir, { recursive: true, force: true });
   }
+});
+
+test("reapDuplicateTaskbarPwaProcessesNative is disabled to protect multi-profile taskbar PWAs", () => {
+  const res = reapDuplicateTaskbarPwaProcessesNative();
+  assert.equal(res.killed, 0);
+  assert.equal(res.disabled, true);
+  assert.deepEqual(res.pids, []);
+});
+
+test("findLiveHeadedBrowserPidNative returns 0 for non-running userDataDir", () => {
+  const emptyDir = path.join(
+    require("node:os").tmpdir(),
+    `stealth-headed-check-${process.pid}`,
+  );
+  assert.equal(findLiveHeadedBrowserPidNative(emptyDir), 0);
 });

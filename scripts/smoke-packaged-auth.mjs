@@ -22,10 +22,11 @@ const indexPath = path.isAbsolute(arg) ? arg : path.join(root, arg);
 const url = `file:///${indexPath.replace(/\\/g, "/")}`;
 
 const LEGACY_HUB_HOST = "fmnrafpzctuhxjaaomzt.supabase.co";
-const HUB_API_HOST = "hub-api.infi.io.vn";
+const HUB_API_HOSTS = ["hub-api.infi28.com", "hub-api.infi.io.vn"];
+const HUB_API_HOST = HUB_API_HOSTS[0];
 
 const policy = packagedContentSecurityPolicy();
-const cspHubApiOk = new RegExp(`https://${HUB_API_HOST.replace(/\./g, "\\.")}`).test(policy);
+const cspHubApiOk = HUB_API_HOSTS.some((h) => new RegExp(`https://${h.replace(/\./g, "\\.")}`).test(policy));
 const cspSupabaseOk = /https:\/\/\*\.supabase\.co/.test(policy);
 if (!cspHubApiOk) {
   console.error(`smoke-packaged-auth: CSP missing https://${HUB_API_HOST} in connect-src`);
@@ -52,7 +53,7 @@ if (supabaseUrl.includes(LEGACY_HUB_HOST)) {
   console.error(`smoke-packaged-auth: .env.local still points at retired host ${LEGACY_HUB_HOST}`);
   process.exit(1);
 }
-if (!supabaseUrl.includes(HUB_API_HOST)) {
+if (!HUB_API_HOSTS.some((h) => supabaseUrl.includes(h))) {
   console.error(`smoke-packaged-auth: .env.local VITE_HUB_SUPABASE_URL must be https://${HUB_API_HOST}`);
   process.exit(1);
 }
@@ -78,11 +79,15 @@ if (fs.existsSync(indexPath)) {
   const cssMatch = html.match(/href="(\.\/assets\/[^"]+\.css)"/);
   if (assetMatch) {
     bundlePath = path.join(path.dirname(indexPath), assetMatch[1].replace(/^\.\//, ""));
+    const assetsDir = path.join(path.dirname(indexPath), "assets");
     if (fs.existsSync(bundlePath)) {
-      const js = fs.readFileSync(bundlePath, "utf8");
+      const jsFiles = fs.existsSync(assetsDir)
+        ? fs.readdirSync(assetsDir).filter((f) => f.endsWith(".js")).map((f) => path.join(assetsDir, f))
+        : [bundlePath];
+      const js = jsFiles.map((f) => fs.readFileSync(f, "utf8")).join("\n");
       iconOk = js.includes("favicon.svg") && !js.includes('"/favicon.svg"');
       authBrandOk = js.includes("hub-auth-brand-icon");
-      hubEnvOk = js.includes(HUB_API_HOST);
+      hubEnvOk = HUB_API_HOSTS.some((h) => js.includes(h));
       legacyHostBlocked = !js.includes(LEGACY_HUB_HOST);
       if (anonKey && !js.includes(anonKey)) {
         console.error("smoke-packaged-auth: dist bundle missing VITE_HUB_SUPABASE_ANON_KEY from .env.local");
@@ -91,11 +96,15 @@ if (fs.existsSync(indexPath)) {
     }
   }
   if (!authBrandOk && cssMatch) {
+    const assetsDir = path.join(path.dirname(indexPath), "assets");
     const cssPath = path.join(path.dirname(indexPath), cssMatch[1].replace(/^\.\//, ""));
-    if (fs.existsSync(cssPath)) {
-      const css = fs.readFileSync(cssPath, "utf8");
-      authBrandOk = /\.hub-auth-brand-icon/.test(css) && /drop-shadow\(0 0 12px rgb\(56 189 248/.test(css);
-    }
+    const cssFiles = fs.existsSync(assetsDir)
+      ? fs.readdirSync(assetsDir).filter((f) => f.endsWith(".css")).map((f) => path.join(assetsDir, f))
+      : fs.existsSync(cssPath)
+        ? [cssPath]
+        : [];
+    const css = cssFiles.map((f) => fs.readFileSync(f, "utf8")).join("\n");
+    authBrandOk = /\.hub-auth-brand-icon/.test(css) && /drop-shadow\(0 0 12px rgb\(56 189 248/.test(css);
   }
 }
 

@@ -1,5 +1,10 @@
 import { memo, useCallback, useEffect, useState } from "react";
-import { fetchCookieBridgeStatus, installStoreExtension, purgeBrokenExtensionPrefs } from "../../../api";
+import {
+  fetchCookieBridgeStatus,
+  installStoreExtension,
+  purgeBrokenExtensionPrefs,
+  setCookieBridgeSource,
+} from "../../../api";
 import { COOKIE_BRIDGE_STORE_ID } from "../../../lib/stealth-extension-store-ids";
 import { useAppToast } from "../../../components/toast";
 import type { CookieBridgeStatus } from "../../../types";
@@ -79,6 +84,27 @@ export const ExtensionDetailCookieBridgePanel = memo(function ExtensionDetailCoo
     }
   }, [pushToast, refresh]);
 
+  const onToggleSourceMode = useCallback(async () => {
+    setBusy(true);
+    setUpdateMsg("");
+    setError("");
+    const nextMode = status?.sourceMode === "workspace" || status?.source === "workspace" ? "store" : "workspace";
+    try {
+      const updated = await setCookieBridgeSource(nextMode);
+      setStatus(updated);
+      const label = nextMode === "workspace" ? "Workspace (local dev)" : "Chrome Web Store cache";
+      const message = `Switched E0001 source to ${label} (v${updated.manifestVersion || "?"}).`;
+      setUpdateMsg(message);
+      pushToast(message, "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      pushToast(message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }, [pushToast, status?.source, status?.sourceMode]);
+
   return (
     <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-3 text-xs">
       <p className="hub-analytics-caption uppercase tracking-wider text-cyan-300">E0001 Cookie Bridge</p>
@@ -101,6 +127,18 @@ export const ExtensionDetailCookieBridgePanel = memo(function ExtensionDetailCoo
         >
           Update Cookie Bridge
         </button>
+        {status?.workspacePath ? (
+          <button
+            type="button"
+            className="hub-btn hub-btn--ghost text-xs"
+            disabled={busy}
+            onClick={() => void onToggleSourceMode()}
+          >
+            {status.sourceMode === "workspace" || status.source === "workspace"
+              ? "Switch to Web Store"
+              : `Use Workspace${status.workspaceVersion ? ` (v${status.workspaceVersion})` : ""}`}
+          </button>
+        ) : null}
         <button type="button" className="hub-btn hub-btn--ghost text-xs" disabled={busy} onClick={() => void onRepair()}>
           Repair prefs
         </button>
@@ -133,7 +171,12 @@ export const ExtensionDetailCookieBridgePanel = memo(function ExtensionDetailCoo
             {status.manifestVersion ? (
               <div className="flex justify-between gap-2">
                 <dt className="text-[var(--muted)]">Version</dt>
-                <dd className="font-medium text-[var(--text)]">{status.manifestVersion}</dd>
+                <dd className="font-medium text-[var(--text)]">
+                  {status.manifestVersion}
+                  {status.stageVersion && status.stageVersion !== status.manifestVersion
+                    ? ` (stage v${status.stageVersion})`
+                    : ""}
+                </dd>
               </div>
             ) : null}
             <div>

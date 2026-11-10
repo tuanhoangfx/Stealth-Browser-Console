@@ -1,6 +1,11 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+delete process.env.STEALTH_AGENT_SMOKE;
+delete process.env.STEALTH_HEADLESS_SMOKE;
+delete process.env.ANTIGRAVITY_AGENT;
+delete process.env.CLAUDECODE;
+delete process.env.CODEX_SANDBOX;
 const { openDatabase, closeDatabase } = require("./init.cjs");
 const profileService = require("./profile-service.cjs");
 
@@ -118,6 +123,49 @@ async function main() {
     }
     if (!bulkByRange.createdNames.includes("0016")) {
       throw new Error(`bulk range should create 0016, got: ${bulkByRange.createdNames.join(", ")}`);
+    }
+
+    const staticProf = profileService.createProfile({ name: "0099", proxy: "http://static:8080", staticIp: true });
+    if (staticProf?.staticIp !== true) {
+      throw new Error(`expected staticIp=true on create, got ${staticProf?.staticIp}`);
+    }
+    const closedStatic = profileService.setProfileStatus(staticProf.id, "closed", { reason: "test-close-static" });
+    if (closedStatic?.proxy !== "http://static:8080") {
+      throw new Error(`expected staticIp=true profile to keep proxy on close, got ${closedStatic?.proxy}`);
+    }
+    const unpinnedProf = profileService.updateProfile(staticProf.id, {
+      staticIp: false,
+      proxy: "surfshark://HK",
+      timezone: "Asia/Hong_Kong",
+      locale: "zh-HK",
+    });
+    if (unpinnedProf?.staticIp !== false) {
+      throw new Error(`expected staticIp=false after update, got ${unpinnedProf?.staticIp}`);
+    }
+    const closedUnpinned = profileService.setProfileStatus(staticProf.id, "closed", { reason: "test-close-unpinned" });
+    if (closedUnpinned?.proxy !== "" || closedUnpinned?.timezone !== "" || closedUnpinned?.locale !== "") {
+      throw new Error(
+        `expected staticIp=false profile to reset proxy/timezone/locale to Local IP on close, got ${JSON.stringify(closedUnpinned)}`,
+      );
+    }
+    profileService.updateProfile(staticProf.id, {
+      proxy: "http://127.0.0.1:54321",
+      staticIp: true,
+      timezone: "Asia/Hong_Kong",
+      locale: "zh-HK",
+    });
+    const swept = profileService.sweepUnpinnedClosedProfileProxies();
+    if (swept < 1) {
+      throw new Error(`expected sweepUnpinnedClosedProfileProxies to clean ephemeral 127.0.0.1 proxy, got ${swept}`);
+    }
+    const afterSweep = profileService.getProfile(staticProf.id);
+    if (
+      afterSweep?.proxy !== "" ||
+      afterSweep?.staticIp !== false ||
+      afterSweep?.timezone !== "" ||
+      afterSweep?.locale !== ""
+    ) {
+      throw new Error(`expected swept ephemeral proxy to reset to Local IP, got ${JSON.stringify(afterSweep)}`);
     }
 
     console.log("profile-service.test: ok");

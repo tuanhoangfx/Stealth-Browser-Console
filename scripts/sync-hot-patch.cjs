@@ -207,16 +207,36 @@ function updateStagedAsarFromHotPatch() {
 }
 
 async function main() {
-  const applyProd =
-    process.argv.includes("--apply-prod") || process.env.STEALTH_ALLOW_PROD_SYNC === "1";
-  if (!applyProd) {
+  const releaseProd =
+    process.argv.includes("--release-prod") ||
+    process.env.STEALTH_RELEASE_PROD === "1";
+  const applyDevWorker =
+    process.argv.includes("--dev-only") || !releaseProd;
+
+  if (!releaseProd) {
+    // Dev-Only mode: NEVER touch C:\Users\CzP\AppData\Local\Programs\stealth-browser-console\resources\hot-patch
+    // and NEVER call :6003/api/system/hot-reload. Only reload :6004 (isolated worker / dev API) if running.
+    let devReload = { ok: false, reason: "offline" };
+    try {
+      const res = await fetch("http://127.0.0.1:6004/api/system/hot-reload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true, reloadUi: false }),
+        signal: AbortSignal.timeout(8000),
+      });
+      devReload = res.ok ? await res.json() : { ok: false, status: res.status };
+    } catch {
+      devReload = { ok: false, reason: "dev_worker_6004_offline" };
+    }
     console.log(
       JSON.stringify(
         {
           ok: true,
+          mode: "dev-isolated",
           skippedProd: true,
+          devWorker6004: devReload,
           reason:
-            "Prod (:6003) hot-patch & reload is locked by user rule unless --apply-prod is explicitly passed.",
+            "Prod (:6003) is strictly isolated for stability. Development updates only target Dev (:5103 / :6004). Pass --release-prod ONLY when the user explicitly requests a Prod Release.",
         },
         null,
         2,
@@ -224,13 +244,37 @@ async function main() {
     );
     return;
   }
+  void applyDevWorker;
   const reloadUi = !process.argv.includes("--no-reload-ui");
+  const allowProdUiReload =
+    process.argv.includes("--reload-prod-ui") || (releaseProd && reloadUi);
   const leaseAttempt = tryAcquireProductMaintenanceLease("P0003", {
-    ttlMs: 30_000,
+    ttlMs: 90_000,
     ports: [6003, 6004],
     reason: "sync-hot-patch",
   });
   try {
+    if (!process.argv.includes("--skip-build")) {
+      const { spawnSync } = require("node:child_process");
+      const buildRes = spawnSync(
+        process.execPath,
+        [path.join(srcRoot, "scripts", "run-build.mjs")],
+        { cwd: srcRoot, stdio: "inherit", windowsHide: true },
+      );
+      if (buildRes.status !== 0) {
+        throw new Error(`Vite build failed with exit code ${buildRes.status}`);
+      }
+    }
+
+    const orphanAppDir = path.join(installResources, "app");
+    if (fs.existsSync(orphanAppDir) && !fs.existsSync(path.join(orphanAppDir, "package.json"))) {
+      try {
+        fs.rmSync(orphanAppDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+
     fs.mkdirSync(hotPatchRoot, { recursive: true });
 
     const targets = ["electron", "dist", "package.json", "tool.manifest.json", "CHANGELOG.md"];
@@ -247,6 +291,42 @@ async function main() {
       synced.push(rel);
     }
 
+    try {
+      const preloadSrc = path.join(srcRoot, "electron", "preload.cjs");
+      const preloadUnpackedDest = path.join(installResources, "app.asar.unpacked", "electron", "preload.cjs");
+      if (fs.existsSync(preloadSrc)) {
+        fs.mkdirSync(path.dirname(preloadUnpackedDest), { recursive: true });
+        fs.copyFileSync(preloadSrc, preloadUnpackedDest);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const bundledExtensionsSynced = [];
+    try {
+      const repoRoot = path.resolve(srcRoot, "..", "..");
+      const bundledRoot = path.join(installResources, "bundled-extensions");
+      for (const extFolder of ["E0001-cookie-bridge", "E0002-browser-operator"]) {
+        const extSrc = path.join(repoRoot, "Extension", extFolder);
+        if (!fs.existsSync(path.join(extSrc, "manifest.json"))) continue;
+        const extDest = path.join(bundledRoot, extFolder);
+        fs.mkdirSync(extDest, { recursive: true });
+        fs.cpSync(extSrc, extDest, {
+          recursive: true,
+          force: true,
+          filter: (src) => {
+            const rel = path.relative(extSrc, src).replace(/\\/g, "/");
+            if (!rel) return true;
+            const first = rel.split("/")[0];
+            return !["node_modules", ".git", "tests", "scripts", ".cursor", "docs"].includes(first);
+          },
+        });
+        bundledExtensionsSynced.push(extFolder);
+      }
+    } catch {
+      /* ignore */
+    }
+
     const stageAsar = process.argv.includes("--stage-asar");
     const stagedPath = path.join(installResources, "app.asar.staged");
     let stagedAsarResult = { ok: true, skipped: true, reason: "hot_patch_dir_active" };
@@ -260,18 +340,73 @@ async function main() {
       }
     }
 
+    const baseAsarPath = path.join(installResources, "app.asar");
+    if (fs.existsSync(baseAsarPath)) {
+      try {
+        fs.chmodSync(baseAsarPath, 0o444);
+      } catch {
+        /* ignore */
+      }
+    }
+
     const results = {};
+    const extensionsReload = {};
     for (const port of [6003, 6004]) {
       try {
         const res = await fetch(`http://127.0.0.1:${port}/api/system/hot-reload`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force: true, reloadUi }),
-          signal: AbortSignal.timeout(6000),
+          body: JSON.stringify({
+            force: true,
+            releaseProd: true,
+            reloadUi,
+            allowProdUiReload: port === 6003 ? allowProdUiReload : true,
+          }),
+          signal: AbortSignal.timeout(30000),
         });
         results[port] = res.ok ? await res.json() : { ok: false, status: res.status };
       } catch {
         results[port] = { ok: false, reason: "offline_or_pre_v9_2_17" };
+      }
+      if (results[port]?.ok) {
+        try {
+          const extRes = await fetch(`http://127.0.0.1:${port}/api/extensions/reload-open`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason: "sync-hot-patch" }),
+            signal: AbortSignal.timeout(15000),
+          });
+          if (extRes.ok) {
+            const body = await extRes.json();
+            extensionsReload[port] = {
+              ok: Boolean(body?.ok),
+              reloadNonce: body?.reloadNonce ?? null,
+              reloadTriggeredAt: body?.reloadTriggeredAt ?? null,
+              e0001Synced: Boolean(body?.e0001Synced),
+              e0002Staged: Boolean(body?.e0002Staged),
+            };
+          } else {
+            extensionsReload[port] = { ok: false, status: extRes.status };
+          }
+        } catch {
+          extensionsReload[port] = { ok: false, reason: "reload_open_failed" };
+        }
+      }
+    }
+
+    if (!extensionsReload[6003]?.ok) {
+      try {
+        const { triggerOpenProfilesExtensionReload } = require("../electron/lib/extensions-status.cjs");
+        const direct = triggerOpenProfilesExtensionReload();
+        extensionsReload.direct = {
+          ok: Boolean(direct?.ok),
+          reloadNonce: direct?.reloadNonce ?? null,
+          reloadTriggeredAt: direct?.reloadTriggeredAt ?? null,
+          e0001Synced: Boolean(direct?.e0001Synced),
+          e0002Staged: Boolean(direct?.e0002Staged),
+        };
+      } catch {
+        /* ignore */
       }
     }
 
@@ -281,8 +416,10 @@ async function main() {
           ok: true,
           hotPatchRoot,
           synced,
+          bundledExtensionsSynced,
           stagedAsar: stagedAsarResult,
           hotReload: results,
+          extensionsReload,
           maintenanceLease: leaseAttempt.ok ? "acquired_and_released" : "coalesced",
         },
         null,

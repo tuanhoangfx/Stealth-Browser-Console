@@ -24,28 +24,32 @@ export const EXTENSION_DIRECTORY_GOLDEN_ORDER = [...STEALTH_EXTENSIONS_COLUMN_KE
 export const EXTENSION_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ExtensionDirectoryColumnKey>[] =
   withDirectoryColumnIcons(
     [
+      { key: "createdAt", label: "Created" },
+      { key: "updated", label: "Update" },
       { key: "extension", label: "Extension", required: true },
       { key: "kind", label: "Kind" },
       { key: "version", label: "Version" },
       { key: "storeId", label: "Store ID" },
-      { key: "updated", label: "Update" },
       { key: "path", label: "Path" },
+      { key: "activityLog", label: "Log" },
     ],
     EXTENSION_COLUMN_PREF_ICONS,
   );
 
 export const DEFAULT_EXTENSION_DIRECTORY_COLUMNS = new Set<ExtensionDirectoryColumnKey>([
+  "createdAt",
+  "updated",
   "extension",
   "kind",
   "version",
   "storeId",
-  "updated",
+  "activityLog",
 ]);
 
 export const EXTENSION_DIRECTORY_COLUMNS_CHANGE = "stealth-extension-directory-columns-change";
 
 export const extensionDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
-  storageKey: "p0003_extension_directory_columns",
+  storageKey: "p0003_extension_directory_columns_v3",
   items: EXTENSION_DIRECTORY_COLUMN_ITEMS,
   defaultKeys: DEFAULT_EXTENSION_DIRECTORY_COLUMNS,
   changeEvent: EXTENSION_DIRECTORY_COLUMNS_CHANGE,

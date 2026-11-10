@@ -12,18 +12,30 @@ import {
   STEALTH_WORKFLOW_STORE_COLUMN_META,
   toHubDirectoryColumnMeta,
 } from "../../lib/directory-column-meta";
+import { useStealthManualSortEnabled } from "../../lib/stealth-manual-sort-prefs";
 import {
   readWorkflowStoreDirectoryColumns,
   workflowStoreDirectoryColumnPrefs,
 } from "./workflow-store-directory-prefs";
 import { renderWorkflowStoreDirectoryBodyCell } from "./workflow-store-directory-cells";
-import { workflowStoreUpdatedMs } from "./workflow-store-meta";
+import { workflowStoreCreatedMs, workflowStoreUpdatedMs } from "./workflow-store-meta";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 
-export type WorkflowStoreSortKey = "platform" | "name" | "version" | "group" | "status" | "source" | "updated";
+export type WorkflowStoreSortKey =
+  | "created"
+  | "updated"
+  | "platform"
+  | "name"
+  | "version"
+  | "group"
+  | "status"
+  | "source"
+  | "activityLog";
 
 function sortableStoreValue(entry: WorkflowStoreEntry, key: WorkflowStoreSortKey, localIds: Set<string>) {
   switch (key) {
+    case "created":
+      return String(workflowStoreCreatedMs(entry) ?? 0).padStart(14, "0");
     case "platform":
       return entry.platform;
     case "name":
@@ -38,6 +50,8 @@ function sortableStoreValue(entry: WorkflowStoreEntry, key: WorkflowStoreSortKey
       return entry.source;
     case "updated":
       return String(workflowStoreUpdatedMs(entry) ?? 0).padStart(14, "0");
+    case "activityLog":
+      return `${entry.description || entry.name}`;
     default:
       return "";
   }
@@ -93,13 +107,16 @@ export const WorkflowStoreDirectoryTable = memo(function WorkflowStoreDirectoryT
     "asc",
   );
 
+  const manualSort = useStealthManualSortEnabled("p0003-workflow-store");
+
   const columns = useMemo(
     () =>
       buildDirectoryColumns(
         visibleColumnKeys as WorkflowStoreSortKey[],
         toHubDirectoryColumnMeta(STEALTH_WORKFLOW_STORE_COLUMN_META),
+        { sortable: manualSort },
       ),
-    [visibleColumnKeys],
+    [visibleColumnKeys, manualSort],
   );
 
   const colgroup = useMemo(() => buildDirectoryColgroupForShell(columns, { showSelect: true }), [columns]);
@@ -131,7 +148,11 @@ export const WorkflowStoreDirectoryTable = memo(function WorkflowStoreDirectoryT
       renderRowCells={(entry) => (
         <>
           {columns.map((col) =>
-            renderWorkflowStoreDirectoryBodyCell(col, entry, { localIds, installedIds }),
+            renderWorkflowStoreDirectoryBodyCell(col, entry, {
+              localIds,
+              installedIds,
+              installing: installingId === entry.id,
+            }),
           )}
         </>
       )}

@@ -32,6 +32,7 @@ function validateCreateProfilePayload(payload = {}) {
 function validateProfileDefaultsPayload(payload = {}) {
   const next = asObject(payload);
   if (next.proxy !== undefined) next.proxy = String(next.proxy).trim();
+  if (next.staticIp !== undefined) next.staticIp = Boolean(next.staticIp);
   if (next.note !== undefined) next.note = String(next.note).trim();
   if (next.groupId !== undefined) next.groupId = String(next.groupId).trim() || "default";
   if (next.startupUrl !== undefined) next.startupUrl = String(next.startupUrl).trim();
@@ -90,6 +91,8 @@ function validateOpenUrlPayload(payload = {}) {
   next.targetUrl = validateTargetUrl(next.targetUrl);
   next.screenshot = next.screenshot !== false;
   next.closeWhenDone = Boolean(next.closeWhenDone);
+  next.agentTask = Boolean(next.agentTask);
+  if (next.headless !== undefined) next.headless = Boolean(next.headless);
   next.inspectMode = Boolean(next.inspectMode);
   if (next.workflowAction !== undefined) {
     const action = String(next.workflowAction || "").trim();

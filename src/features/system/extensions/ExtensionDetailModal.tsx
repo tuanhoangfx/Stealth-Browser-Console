@@ -1,21 +1,18 @@
 import { memo, useMemo, useState } from "react";
-import { Puzzle, X } from "lucide-react";
+import { Puzzle } from "lucide-react";
 import {
   HubAccountDetailAdmScaffold,
   HubAccountDetailHeaderSearch,
   HubAccountDetailSearchProvider,
+  HubAdmPlainRelativeTime,
   HubAdmRecordMetaRow,
   HubToolDetailModal,
-  HubToolDetailModalPrimaryAction,
-  HubToolDetailModalSecondaryAction,
+  HubToolDetailModalAccountFooter,
   HubToolDetailRail,
   HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT,
+  HUB_ACCOUNT_DETAIL_NAVIGATE_EMOJI,
   HUB_ADM_TYPE_MONO_CLASS,
-  HUB_DETAIL_MODAL_CLOSE_LABEL,
-  hubAccountDetailSectionIcon,
-  hubAccountDetailSectionIconClass,
 } from "@tool-workspace/hub-ui";
-import { formatDateTime } from "../../../lib/run-display";
 import { resolveExtensionDisplayName } from "../../../lib/extension-display-name";
 import { COOKIE_BRIDGE_STORE_ID } from "../../../lib/stealth-extension-store-ids";
 import type { CachedStoreExtension } from "../../../types";
@@ -23,6 +20,7 @@ import { ExtensionDetailCookieBridgePanel } from "./ExtensionDetailCookieBridgeP
 import { ExtensionDetailHistoryRail } from "./ExtensionDetailHistoryRail";
 import { ExtensionDetailInstallPanel } from "./ExtensionDetailInstallPanel";
 import { ExtensionDetailLogRail } from "./ExtensionDetailLogRail";
+import { ExtensionDetailOperatorPanel } from "./ExtensionDetailOperatorPanel";
 import { ExtensionDetailTocNav } from "./ExtensionDetailTocNav";
 import { ExtensionKindBadge } from "./extension-kind-badge";
 import { extensionDetailTocNavItems } from "./extension-detail-toc-nav";
@@ -31,10 +29,15 @@ import {
   EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE,
   EXTENSION_DETAIL_SECTION_INSTALL,
   EXTENSION_DETAIL_SECTION_METADATA,
+  EXTENSION_DETAIL_SECTION_OPERATOR,
 } from "./extension-detail-toc";
 
 function isCookieBridgeExtension(ext: CachedStoreExtension) {
   return ext.storeId === COOKIE_BRIDGE_STORE_ID || /cookie bridge/i.test(ext.name);
+}
+
+function isOperatorExtension(ext: CachedStoreExtension) {
+  return ext.localKey === "e0002-browser-operator" || /e0002|browser operator/i.test(ext.name);
 }
 
 /** System → Extensions detail modal — Layout 3 SSOT (TOC | main | History + Console). */
@@ -69,14 +72,16 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
 }) {
   const [logRailFocused, setLogRailFocused] = useState(false);
   const showCookieBridge = extension ? isCookieBridgeExtension(extension) : false;
+  const showOperator = extension ? isOperatorExtension(extension) : false;
 
   const tocItems = useMemo(
     () =>
       extensionDetailTocNavItems({
         showInstall: installOnly,
         showCookieBridge,
+        showOperator,
       }),
-    [installOnly, showCookieBridge],
+    [installOnly, showCookieBridge, showOperator],
   );
 
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
@@ -104,11 +109,11 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
         shellClassName={EXTENSION_DETAIL_MODAL_SHELL_CLASS}
         sectionIds={sectionIds}
         scrollRootSelector={HUB_ACCOUNT_DETAIL_MAIN_SCROLL_ROOT}
+        busy={busy}
         toc={
           <HubToolDetailRail
             title="Navigate"
-            icon={hubAccountDetailSectionIcon("navigate")}
-            iconClassName={hubAccountDetailSectionIconClass("navigate")}
+            titleEmoji={HUB_ACCOUNT_DETAIL_NAVIGATE_EMOJI}
             className="twofa-adm-rail--toc stealth-profile-detail-toc-rail"
             scroll={false}
             ariaLabel="Sections"
@@ -117,22 +122,15 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
           </HubToolDetailRail>
         }
         footer={
-          <>
-            <HubToolDetailModalSecondaryAction
-              label={HUB_DETAIL_MODAL_CLOSE_LABEL}
-              onClick={onClose}
-              icon={X}
-            />
-            {installOnly ? (
-              <HubToolDetailModalPrimaryAction
-                label="Install from Web Store"
-                onClick={onInstallStore}
-                disabled={busy || !storeInput.trim()}
-                busy={busy}
-                icon={Puzzle}
-              />
-            ) : null}
-          </>
+          <HubToolDetailModalAccountFooter
+            onClose={onClose}
+            busy={busy}
+            onSave={installOnly ? onInstallStore : undefined}
+            saveLabel="Install from Web Store"
+            saveIcon={Puzzle}
+            saveVariant="create"
+            saveDisabled={busy || !storeInput.trim()}
+          />
         }
         ariaLabelledBy="extension-detail-title"
       >
@@ -153,12 +151,16 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
                         {extension.storeId || extension.localKey || "—"}
                       </span>
                     }
-                    created={undefined}
+                    created={
+                      extension.createdAt || extension.updatedAt ? (
+                        <HubAdmPlainRelativeTime at={(extension.createdAt ?? extension.updatedAt)!} />
+                      ) : (
+                        "—"
+                      )
+                    }
                     updated={
                       extension.updatedAt ? (
-                        <time dateTime={extension.updatedAt} title={formatDateTime(extension.updatedAt)}>
-                          {formatDateTime(extension.updatedAt)}
-                        </time>
+                        <HubAdmPlainRelativeTime at={extension.updatedAt} />
                       ) : (
                         "—"
                       )
@@ -172,12 +174,12 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
                       </dd>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <dt className="text-[var(--muted)]">Version</dt>
-                      <dd className="font-mono font-medium text-[var(--text)]">{extension.version || "—"}</dd>
+                      <dt className="font-medium text-[var(--muted)]">Version</dt>
+                      <dd className="font-normal tabular-nums text-[var(--text)]">{extension.version || "—"}</dd>
                     </div>
                     <div>
-                      <dt className="text-[var(--muted)]">Path</dt>
-                      <dd className="mt-0.5 break-all font-mono text-[10px] text-[var(--muted)]">
+                      <dt className="font-medium text-[var(--muted)]">Path</dt>
+                      <dd className="mt-0.5 break-all text-xs font-normal text-[var(--muted)]">
                         {extension.unpackedPath}
                       </dd>
                     </div>
@@ -201,6 +203,11 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
               {showCookieBridge ? (
                 <section id={EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE} className="scroll-mt-4">
                   <ExtensionDetailCookieBridgePanel jobLabel={jobLabel} />
+                </section>
+              ) : null}
+              {showOperator ? (
+                <section id={EXTENSION_DETAIL_SECTION_OPERATOR} className="scroll-mt-4">
+                  <ExtensionDetailOperatorPanel jobLabel={jobLabel} />
                 </section>
               ) : null}
             </>

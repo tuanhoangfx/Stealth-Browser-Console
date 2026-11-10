@@ -2,7 +2,7 @@ const { execSync } = require("node:child_process");
 const { createRequire } = require("node:module");
 
 const requireRoot = createRequire(__filename);
-const { DEFAULT_PROD_API_PORT } = requireRoot("../electron/lib/user-data-root.cjs");
+const { DEFAULT_PROD_API_PORT, DEFAULT_DEV_API_PORT } = requireRoot("../electron/lib/user-data-root.cjs");
 
 const ports = process.argv.slice(2).map((p) => Number(p)).filter((p) => p > 0);
 
@@ -24,7 +24,7 @@ if (process.env.STEALTH_KILL_ALLOW_PROD !== "1") {
 for (const port of ports) {
   try {
     if (process.platform === "win32") {
-      const out = execSync(`netstat -ano | findstr ":${port} "`, { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+      const out = execSync(`netstat -ano | findstr ":${port} "`, { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] , windowsHide: true });
       const pids = new Set();
       for (const line of out.split(/\r?\n/)) {
         if (!line.includes("LISTENING")) continue;
@@ -33,8 +33,19 @@ for (const port of ports) {
         if (pid && /^\d+$/.test(pid)) pids.add(pid);
       }
       for (const pid of pids) {
+        if (port === DEFAULT_DEV_API_PORT && process.env.STEALTH_FORCE_KILL_DEV !== "1") {
+          try {
+            const tl = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] });
+            if (/electron\.exe/i.test(tl)) {
+              console.log(`[kill-port] Protected Dev Exe GUI electron.exe on :${port} (PID ${pid}) — skipping kill without STEALTH_FORCE_KILL_DEV=1`);
+              continue;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         try {
-          execSync(`taskkill /PID ${pid} /F`, { stdio: "ignore" });
+          execSync(`taskkill /PID ${pid} /F`, { stdio: "ignore" , windowsHide: true });
           console.log(`[kill-port] Freed :${port} (PID ${pid})`);
         } catch {
           /* already gone */

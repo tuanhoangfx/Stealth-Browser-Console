@@ -1,11 +1,12 @@
 import type { KpiTileData } from "@tool-workspace/hub-ui";
-import { isLocalCalendarToday } from "../../lib/local-calendar-today";
+import { isLocalCalendarToday, isWithinLocalDays } from "../../lib/local-calendar-today";
 import { STEALTH_WORKFLOW_STORE_KPI_STICKER } from "../../lib/stealth-column-stickers";
 import type { WorkflowStoreEntry } from "./workflow-store-types";
 
 export const WORKFLOW_STORE_KPI_KEYS = [
   "total",
   "create_today",
+  "create_week",
   "update_today",
   "local",
   "installed",
@@ -17,11 +18,21 @@ export type WorkflowStoreKpiKey = (typeof WORKFLOW_STORE_KPI_KEYS)[number];
 
 export const DEFAULT_WORKFLOW_STORE_KPI_KEYS = new Set<string>(WORKFLOW_STORE_KPI_KEYS);
 
-/** Saved Store strip before Local was split from Installed. */
+/** Saved Store strip before Local was split from Installed or before create_week was added. */
 const LEGACY_STORE_KPI_MERGED_INSTALLED = new Set([
   "total",
   "create_today",
   "update_today",
+  "installed",
+  "available",
+  "selected",
+]);
+
+const LEGACY_7_STORE_KPI_KEYS = new Set([
+  "total",
+  "create_today",
+  "update_today",
+  "local",
   "installed",
   "available",
   "selected",
@@ -32,6 +43,7 @@ export type StoreEntryPresence = "local" | "installed" | "available";
 export type WorkflowStoreKpiNumbers = {
   total: number;
   createToday: number;
+  createWeek: number;
   updateToday: number;
   local: number;
   installed: number;
@@ -47,6 +59,7 @@ const STORE_KPI_TILES: Array<{
 }> = [
   { key: "total", label: "Store", tone: "sky", pick: (k) => k.total },
   { key: "create_today", label: "Create today", tone: "emerald", pick: (k) => k.createToday },
+  { key: "create_week", label: "Create This Week", tone: "indigo", pick: (k) => k.createWeek },
   { key: "update_today", label: "Update today", tone: "amber", pick: (k) => k.updateToday },
   { key: "local", label: "Local", tone: "indigo", pick: (k) => k.local },
   { key: "installed", label: "Installed", tone: "emerald", pick: (k) => k.installed },
@@ -82,6 +95,8 @@ export function matchesStoreActivity(
   switch (key) {
     case "create_today":
       return isLocalCalendarToday(entry.createdAt, now);
+    case "create_week":
+      return isWithinLocalDays(entry.createdAt, now, 7);
     case "update_today":
       return isLocalCalendarToday(entry.updatedAt, now);
     case "local":
@@ -101,12 +116,14 @@ export function computeWorkflowStoreKpiNumbers(
   now = new Date(),
 ): WorkflowStoreKpiNumbers {
   let createToday = 0;
+  let createWeek = 0;
   let updateToday = 0;
   let local = 0;
   let installed = 0;
   let available = 0;
   for (const entry of entries) {
     if (isLocalCalendarToday(entry.createdAt, now)) createToday += 1;
+    if (isWithinLocalDays(entry.createdAt, now, 7)) createWeek += 1;
     if (isLocalCalendarToday(entry.updatedAt, now)) updateToday += 1;
     const presence = resolveStoreEntryPresence(entry.id, localIds, installedIds);
     if (presence === "local") local += 1;
@@ -116,6 +133,7 @@ export function computeWorkflowStoreKpiNumbers(
   return {
     total: entries.length,
     createToday,
+    createWeek,
     updateToday,
     local,
     installed,
@@ -137,6 +155,7 @@ export function buildWorkflowStoreKpiItems(kpis: WorkflowStoreKpiNumbers): KpiTi
 export function resolveWorkflowStoreKpiVisibleKeys(stored: Set<string> | null): Set<string> {
   if (!stored) return DEFAULT_WORKFLOW_STORE_KPI_KEYS;
   if (isExactKeySet(stored, LEGACY_STORE_KPI_MERGED_INSTALLED)) return DEFAULT_WORKFLOW_STORE_KPI_KEYS;
+  if (isExactKeySet(stored, LEGACY_7_STORE_KPI_KEYS)) return DEFAULT_WORKFLOW_STORE_KPI_KEYS;
   const known = WORKFLOW_STORE_KPI_KEYS as readonly string[];
   const recognized = [...stored].filter((key) => known.includes(key));
   const hasForeign = [...stored].some((key) => !known.includes(key));

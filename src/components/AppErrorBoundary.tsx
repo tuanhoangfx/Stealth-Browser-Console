@@ -1,5 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { checkAndReloadIfBundleSkewed } from "@tool-workspace/hub-ui";
+import {
+  checkAndReloadIfBundleSkewed,
+  recordHubCaughtBoundaryError,
+} from "@tool-workspace/hub-ui";
 import packageJson from "../../package.json";
 
 type Props = {
@@ -13,15 +16,58 @@ type State = {
 
 export class AppErrorBoundary extends Component<Props, State> {
   state: State = { error: null, componentStack: null };
+  private devAutoRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastAutoRetriedMessage: string | null = null;
+  private readonly handleRecover = () => {
+    this.lastAutoRetriedMessage = null;
+    if (this.state.error) {
+      this.setState({ error: null, componentStack: null });
+    }
+  };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
+  componentDidMount() {
+    if (typeof window !== "undefined") {
+      window.addEventListener("popstate", this.handleRecover);
+    }
+    if (import.meta.hot) {
+      import.meta.hot.on("vite:afterUpdate", this.handleRecover);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.devAutoRetryTimer != null) {
+      clearTimeout(this.devAutoRetryTimer);
+      this.devAutoRetryTimer = null;
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener("popstate", this.handleRecover);
+    }
+    if (import.meta.hot && typeof import.meta.hot.off === "function") {
+      import.meta.hot.off("vite:afterUpdate", this.handleRecover);
+    }
+  }
+
   componentDidCatch(error: Error, info: ErrorInfo) {
+    recordHubCaughtBoundaryError("screen", error);
     console.error("[P0003] Uncaught render error:", error, info.componentStack);
     this.setState({ componentStack: info.componentStack ?? null });
     void checkAndReloadIfBundleSkewed(packageJson.version);
+    if (import.meta.env.DEV && this.lastAutoRetriedMessage !== error.message) {
+      this.lastAutoRetriedMessage = error.message;
+      if (this.devAutoRetryTimer != null) {
+        clearTimeout(this.devAutoRetryTimer);
+      }
+      this.devAutoRetryTimer = setTimeout(() => {
+        this.devAutoRetryTimer = null;
+        if (this.state.error) {
+          this.setState({ error: null, componentStack: null });
+        }
+      }, 800);
+    }
   }
 
   private handleReload = () => {

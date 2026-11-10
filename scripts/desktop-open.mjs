@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Launch packaged Stealth — never kills dev (:5175) or a running exe unless --replace. */
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,9 @@ function killPackagedOnly() {
     "powershell",
     [
       "-NoProfile",
+      "-NonInteractive",
+      "-WindowStyle",
+      "Hidden",
       "-ExecutionPolicy",
       "Bypass",
       "-Command",
@@ -45,15 +49,86 @@ if (!exePath) {
 }
 
 const version = readExeProductVersion(exePath) || "unknown";
+const { launchDesktopExeVerified, probeDesktopHealth } = await import("../../scripts/lib/desktop-exe-products.mjs");
+
+function isPackagedExeProcessRunning() {
+  if (process.platform !== "win32") return false;
+  try {
+    // Do NOT pass `/FI "IMAGENAME eq Stealth Browser Console.exe"` — Windows tasklist truncates
+    // the filter at 25 characters and falsely reports "No tasks are running"!
+    const r = spawnSync("tasklist", ["/FO", "CSV", "/NH"], {
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: 2500,
+    });
+    return Boolean(r.stdout && r.stdout.toLowerCase().includes(`"${PACKAGED_EXE_NAME.toLowerCase()}"`));
+  } catch {
+    return false;
+  }
+}
+
+const prodHealthyInitial = await probeDesktopHealth("http://127.0.0.1:6003/api/health", 3500);
+const allowEmergencyKillProd = process.env.STEALTH_EMERGENCY_HARD_KILL_PROD === "1";
 
 if (replaceRunning) {
-  killPackagedOnly();
-} else {
-  console.log("desktop:open: leaving dev + running Stealth untouched (use --replace to close packaged exe first).");
+  if ((prodHealthyInitial || isPackagedExeProcessRunning()) && !allowEmergencyKillProd) {
+    const syncHotPatchScript = path.join(root, "scripts", "sync-hot-patch.cjs");
+    if (fs.existsSync(syncHotPatchScript)) {
+      spawnSync(
+        process.execPath,
+        [syncHotPatchScript, "--apply-prod", "--reload-ui", "--stage-asar"],
+        winSpawnOpts({ stdio: "inherit", timeout: 20000 }),
+      );
+    }
+    console.log(
+      "desktop:open: Prod Stealth (:6003) is online; applied zero-restart hot-patch reload instead of killing running Prod exe.",
+    );
+    process.exit(0);
+  } else {
+    killPackagedOnly();
+  }
+} else if (prodHealthyInitial || isPackagedExeProcessRunning()) {
+  console.log("desktop:open: Prod Stealth (:6003) is already running; leaving running exe + app.asar untouched.");
+  process.exit(0);
+}
+
+// CRITICAL: Only promote staged/pending app.asar when Stealth Browser Console.exe is completely stopped!
+// Overwriting app.asar while Electron is running corrupts memory-mapped offsets and crashes the app.
+if (!isPackagedExeProcessRunning()) {
+  try {
+    const asar = require("@electron/asar");
+    const parseVer = (asarFile) => {
+      try {
+        const pkg = JSON.parse(asar.extractFile(asarFile, "package.json").toString("utf8"));
+        return String(pkg.version || "0.0.0");
+      } catch {
+        return "0.0.0";
+      }
+    };
+    const cmpVer = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+    const resDir = path.join(path.dirname(exePath), "resources");
+    const targetAsar = path.join(resDir, "app.asar");
+    const currentVer = fs.existsSync(targetAsar) ? parseVer(targetAsar) : "0.0.0";
+
+    for (const candidateName of ["app.asar.staged", "app.asar.pending"]) {
+      const candidatePath = path.join(resDir, candidateName);
+      if (!fs.existsSync(candidatePath)) continue;
+      const candVer = parseVer(candidatePath);
+      if (cmpVer(candVer, currentVer) >= 0) {
+        fs.copyFileSync(candidatePath, targetAsar);
+        fs.unlinkSync(candidatePath);
+        console.log(`desktop:open: promoted ${candidateName} (v${candVer}) -> resources/app.asar`);
+      } else {
+        fs.unlinkSync(candidatePath);
+        console.log(`desktop:open: removed stale ${candidateName} (v${candVer} < current v${currentVer})`);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 const env = packagedStealthSpawnEnv();
-const { launchDesktopExeVerified } = await import("../../scripts/lib/desktop-exe-products.mjs");
 const launchRes = await launchDesktopExeVerified({
   exePath,
   args: [],

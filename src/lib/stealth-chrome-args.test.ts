@@ -40,6 +40,7 @@ describe("buildLaunchOptions device surface", () => {
       {
         fingerprintSeed: 1,
         platform: "macos",
+        staticIp: true,
         timezone: "Asia/Tokyo",
         locale: "ja-JP",
         userAgent: "UA/1.0",
@@ -69,9 +70,18 @@ describe("buildLaunchOptions device surface", () => {
   });
 
   it("uses viewport null + start-maximized for host-maximized mode", () => {
-    const opts = buildLaunchOptions({ fingerprintSeed: 1, windowMode: "host-maximized" }, "/tmp/profile");
-    expect(opts.viewport).toBeNull();
-    expect(opts.args).toContain("--start-maximized");
+    const prevSmoke = process.env.STEALTH_AGENT_SMOKE;
+    const prevHeadlessSmoke = process.env.STEALTH_HEADLESS_SMOKE;
+    delete process.env.STEALTH_AGENT_SMOKE;
+    delete process.env.STEALTH_HEADLESS_SMOKE;
+    try {
+      const opts = buildLaunchOptions({ fingerprintSeed: 1, windowMode: "host-maximized" }, "/tmp/profile");
+      expect(opts.viewport).toBeNull();
+      expect(opts.args).toContain("--start-maximized");
+    } finally {
+      if (prevSmoke !== undefined) process.env.STEALTH_AGENT_SMOKE = prevSmoke;
+      if (prevHeadlessSmoke !== undefined) process.env.STEALTH_HEADLESS_SMOKE = prevHeadlessSmoke;
+    }
   });
 
   it("locks viewport for preset-viewport mode", () => {

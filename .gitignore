@@ -31,3 +31,16 @@ Thumbs.db
 
 # Root E:/Dev pnpm workspace owns the lockfile (pnpm ignores a nested one)
 /pnpm-lock.yaml
+
+# SSOT binary & build artifact guards
+release/
+*.tsbuildinfo
+.runtime/
+.logs/
+.data/
+.tmp/
+.hidden-detach-*.env.json
+.*.env.json
+desk-host.env.json
+.*.pid
+.*.state.json

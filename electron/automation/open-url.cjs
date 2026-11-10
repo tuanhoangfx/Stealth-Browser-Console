@@ -7,8 +7,7 @@ const { safePageGoto } = require("./safe-goto.cjs");
 const { extractProfileCode } = require("../lib/profile-code.cjs");
 const { diagnoseMailCredentials, patchMailAccountOutcome } = require("../lib/twofa-vault-bridge.cjs");
 const { buildStealthSnapshot } = require("../lib/stealth-snapshot-types.cjs");
-const { detectGoogleSession } = require("../lib/google-session-detect.cjs");
-const { detectMicrosoftSession } = require("../lib/microsoft-session-detect.cjs");
+const { stampStoredMailLoginSnapshot } = require("../lib/stealth-account-sync.cjs");
 
 const APP_VERSION = require("../../package.json").version;
 
@@ -26,50 +25,6 @@ function resolveMailVaultService(steps) {
     return "Outlook";
   }
   return "Gmail";
-}
-
-async function detectPreferredMailEmail(context, vaultService, logger) {
-  try {
-    if (vaultService === "Outlook") {
-      const detected = await detectMicrosoftSession(context);
-      const email = String(detected.email || "").trim().toLowerCase();
-      // Ignore non-Microsoft addresses scraped from unrelated tabs (e.g. Gmail aria-label).
-      const looksMicrosoft =
-        /@(outlook|hotmail|live|msn)\./i.test(email) ||
-        (/microsoft/i.test(detected.evidence || "") && Boolean(email));
-      if (email && !looksMicrosoft && /@gmail\.|@googlemail\./i.test(email)) {
-        logger.push("info", `Email detect (Microsoft): ignored non-MS address ${email}`);
-        return "";
-      }
-      if (email && looksMicrosoft) {
-        logger.push(
-          "info",
-          `Email detect (Microsoft): ${email} [${detected.status}/${detected.result_code}]`,
-        );
-        return email;
-      }
-      if (email) {
-        logger.push(
-          "info",
-          `Email detect (Microsoft): ${email} [${detected.status}/${detected.result_code}]`,
-        );
-        return email;
-      }
-      return "";
-    }
-    const detected = await detectGoogleSession(context);
-    const email = String(detected.email || "").trim().toLowerCase();
-    if (email) {
-      logger.push("info", `Email detect (Google): ${email} [${detected.status}/${detected.result_code}]`);
-    }
-    return email;
-  } catch (error) {
-    logger.push(
-      "warn",
-      `Email detect skipped: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return "";
-  }
 }
 
 function isGoogleCaptchaStop(error) {
@@ -98,10 +53,10 @@ async function markVaultCaptchaOutcome(profile, stepContext, logger) {
       service: vaultService || "Gmail",
       status: "error",
       snapshot,
-      logMessage: "Google reCAPTCHA — WF stopped, browser closed",
+      logMessage: "Google reCAPTCHA image grid. Password was not submitted.",
     });
     if (result.ok) {
-      logger.push("info", `Vault status → error (captcha) for ${result.patched} row(s)`);
+      logger.push("info", `Stealth challenged. Live Status set to Error for ${result.patched} row(s)`);
     } else {
       logger.push("warn", `Vault status update skipped: ${result.reason || "unknown"}`);
     }
@@ -109,6 +64,32 @@ async function markVaultCaptchaOutcome(profile, stepContext, logger) {
     logger.push(
       "warn",
       `Vault status update failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+async function stampAgentLoginStatus(context, profile, credentials, steps, logger) {
+  if (!credentials?.accountId) return;
+  try {
+    const vaultService = resolveMailVaultService(steps);
+    const result = await stampStoredMailLoginSnapshot(context, profile, {
+      accountId: credentials.accountId,
+      email: credentials.email,
+      serviceFamily: vaultService === "Outlook" ? "outlook" : "google",
+    });
+    if (result.ok) {
+      const vaultNote = result.vaultStatus ? ` / Status ${result.vaultStatus}` : " / Status unchanged";
+      logger.push(
+        "info",
+        `Stealth status → ${result.snapshot.status}${vaultNote} for stored ${credentials.email}`,
+      );
+    } else {
+      logger.push("warn", `Stealth status update skipped: ${result.reason || "unknown"}`);
+    }
+  } catch (error) {
+    logger.push(
+      "warn",
+      `Stealth status update failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -147,7 +128,9 @@ async function runOpenUrl({
   workflowAction,
   steps,
   inspectMode,
-  workflowId
+  workflowId,
+  agentTask = false,
+  isolateBackgroundTab = false,
 }) {
   const runId = randomUUID();
   const startedAtMs = Date.now();
@@ -156,6 +139,7 @@ async function runOpenUrl({
 
   let screenshotPath = "";
   let lastMailCredentials = null;
+  let isolatedPage = null;
 
   try {
     logger.push("info", `Stealth v${APP_VERSION} — automation start`);
@@ -175,8 +159,7 @@ async function runOpenUrl({
     if (hasMailPlaceholder) {
       const profileCode = extractProfileCode(profile.name, profile.id);
       const vaultService = resolveMailVaultService(steps);
-      const preferredEmail = await detectPreferredMailEmail(context, vaultService, logger);
-      const diagnosis = await diagnoseMailCredentials(profileCode, vaultService, { preferredEmail });
+      const diagnosis = await diagnoseMailCredentials(profileCode, vaultService, { allowInactive: true });
       if (diagnosis.ok && diagnosis.credentials) {
         stepContext.mailCredentials = diagnosis.credentials;
         lastMailCredentials = diagnosis.credentials;
@@ -194,7 +177,9 @@ async function runOpenUrl({
       }
     }
 
-    const page = await stabilizePrimaryPage(context);
+    const page = isolateBackgroundTab
+      ? ((isolatedPage = await context.newPage()), isolatedPage)
+      : await stabilizePrimaryPage(context);
 
     if (Array.isArray(steps) && steps.length) {
       screenshotPath = await runScriptSteps(page, steps, logger, stepContext);
@@ -212,6 +197,10 @@ async function runOpenUrl({
           screenshotsRoot
         });
       }
+    }
+
+    if (lastMailCredentials?.accountId) {
+      await stampAgentLoginStatus(context, profile, lastMailCredentials, steps, logger);
     }
 
     if (screenshot && !screenshotPath) {
@@ -244,7 +233,9 @@ async function runOpenUrl({
     logger.push("error", message);
     const captchaStop = isGoogleCaptchaStop(error);
     try {
-      const page = await stabilizePrimaryPage(context).catch(() => null);
+      const page = isolatedPage && !isolatedPage.isClosed()
+        ? isolatedPage
+        : await stabilizePrimaryPage(context).catch(() => null);
       if (page && screenshotsRoot) {
         const screenshotDir = path.join(screenshotsRoot, "screenshots", "inspect");
         await fs.mkdir(screenshotDir, { recursive: true });
@@ -255,14 +246,19 @@ async function runOpenUrl({
     } catch {
       // ignore screenshot failures on error path
     }
+    if (captchaStop && agentTask) {
+      logger.push("info", "Captcha — headless, no window. Status recorded and the process will close.");
+    }
     if (captchaStop) {
       await markVaultCaptchaOutcome(
         profile,
         { mailCredentials: lastMailCredentials, _steps: steps },
         logger,
       );
+    } else if (lastMailCredentials?.accountId) {
+      await stampAgentLoginStatus(context, profile, lastMailCredentials, steps, logger);
     }
-    if (closeWhenDone || captchaStop) {
+    if (closeWhenDone || (captchaStop && !agentTask)) {
       logger.push("info", captchaStop ? "Closing profile after reCAPTCHA stop" : "Closing profile after run");
       await onCloseProfile().catch((closeError) => {
         logger.push("error", `Unable to close profile: ${cleanMessage(closeError.message)}`);
@@ -282,6 +278,10 @@ async function runOpenUrl({
       error: message,
       captchaStop,
     };
+  } finally {
+    if (isolatedPage && !isolatedPage.isClosed()) {
+      await isolatedPage.close().catch(() => undefined);
+    }
   }
 }
 

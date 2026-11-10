@@ -1,5 +1,1766 @@
 # Changelog
 
+## 2026-11-11 - Host Metrics SSOT, HubVisitedTabPanel, Virtualization & Multiplatform Sync Modularization
+
+- Version: `9.2.361`
+- Timestamp: 2026-11-11 04:30 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Unified useHostMetrics onto Hub-UI SSOT, upgraded StealthAppShell/MobileFarmView to HubVisitedTabPanel + useHubVirtualRows, and sliced 9,507-line stealth-multiplatform-sync.cjs into 9 focused domain modules (-82.8%)
+
+### Verification
+
+- tsc --noEmit + 12 Electron unit test suites PASS
+
+---
+## 2026-11-11 - Hub-UI Typography SSOT & P0006 Video Lab OAuth Path Sync
+
+- Version: `9.2.360`
+- Timestamp: 2026-11-11 02:50 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Normalized 11px/micro-uppercase typography to Hub-UI SSOT across 7 UI views, synced Electron shared libs, and updated _p0006-oauth scripts to P0006-Video-Lab.
+
+### Verification
+
+- node Tool/scripts/hub-ui-duplication-check.mjs
+
+---
+## 2026-11-10 - Fix K1 KPI Popover Tooltip & Implement ok 1/2/3 L1 Telemetry
+
+- Version: `9.2.359`
+- Timestamp: 2026-11-10 23:59 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed K1 KPI tooltip HubDirectoryColumnHintContent lines schema & full-tile hover wrapper in KpiStrip (suppressing native browser title tooltip), added 1-click Daemon row filtering in K1 popover (ok 2), injected real SQLite cookie count & proxy/VPN telemetry into L1 launch/close events while eliminating opening state-flip noise (ok 1), synced live Cookie Guard telemetry into ProfileDetailModal Log rail (ok 3), and ensured sync-hot-patch.cjs runs Vite build before syncing dist.
+
+### Verification
+
+- vitest run src/features/profiles/profile-kpi-items.test.ts + Vite build + hot-patch :6003/:6004
+
+---
+## 2026-11-10 - Protect Microsoft Outlook Step-Up Re-Auth and /proofs/remind from false check_phone demotion
+
+- Version: `9.2.358`
+- Timestamp: 2026-11-10 23:45 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Treat account.live.com/names/manage and /proofs/(manage|remind|Add) as authenticated Microsoft URLs, ignore /proofs/Verify and /identity/confirm step-up prompts when Microsoft auth cookies or step-up params (uiflavor=host, mpcxt=CATB, ru=account.live.com) are present, and recognize /proofs/remind in verifyMicrosoftCookiesLiveViaHttp as loggedIn: true.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs
+
+---
+## 2026-11-10 - Lock H1 (History Audit Trail), L1 (Deep Action & Telemetry Log), and K1 (Daemon-Grouped Headless & Waiting KPI Tooltips)
+
+- Version: `9.2.357`
+- Timestamp: 2026-11-10 23:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Locked History to H1 (V1 Audit Trail Before -> After + Duration/Cookie/Ext summary), locked Log to L1 (Deep Action & Telemetry Stream with [COOKIE]/[PROXY]/[STEP]/[EXT]/[WARN] tags, deduplication xN, and zero open/close noise), locked Headless & Waiting KPI Tooltips to K1 (grouped by Daemon/Process Pool and waiting reason), and cleaned up design preview mocks (ACTIVE_DESIGN_COUNT = 0).
+
+### Verification
+
+- vitest run src/features/runtime/runtime-console-ssot.test.ts src/features/profiles/profile-kpi-items.test.ts
+
+---
+## 2026-11-10 - Fix Google Step-Up Re-Auth & Device Prompt false check_phone/checkpoint_qr demotion
+
+- Version: `9.2.356`
+- Timestamp: 2026-11-10 23:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prevent post-login myaccount.google.com step-up challenges (rapt/continue=myaccount.google.com) and 2FA Device Prompt (/challenge/dp) from falsely demoting verified logged-in Google accounts to check_phone/checkpoint_qr; broaden closed-window History post-login allowlist and auto-strip stale Wrong password notes on logged_in sync.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs
+
+---
+## 2026-11-10 - Lock History Design V3 (Session Outcome Scorecards) and add 5 Log variants (L1-L5) + 5 Headless/Waiting KPI Tooltip variants (K1-K5) in System -> Design
+
+- Version: `9.2.355`
+- Timestamp: 2026-11-10 22:47 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Locked Run History to Design V3 (Session Outcome Scorecards with score pill + target/cookie/extension chips), enriched live session logs to suppress open/close noise, and mounted 5 operational Log variants (L1-L5) plus 5 live Daemon/Process KPI Tooltip variants (K1-K5) in System -> Design.
+
+### Verification
+
+- vitest run src/features/runtime/runtime-console-ssot.test.ts && sync-hot-patch.cjs --apply-prod
+
+---
+## 2026-11-10 - Mount 5 Interactive History & Log Design Previews in System -> Design Tab
+
+- Version: `9.2.354`
+- Timestamp: 2026-11-10 22:30 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Mounted 5 interactive visual design mockups (V1-V5) for History and Log in System -> Design (ACTIVE_DESIGN_COUNT = 1) alongside fixing the KpiStrip ring crash on System -> Extensions and making Local auth optional.
+
+### Verification
+
+- vite build + sync-hot-patch
+
+---
+## 2026-11-10 - Fix System Extensions KPI Tone Crash & Make Local Runtime Auth Optional
+
+- Version: `9.2.353`
+- Timestamp: 2026-11-10 22:21 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed 'Cannot read properties of undefined (reading ring)' in KpiStrip when rendering create_week KPI tile on System Extensions, Workflow Scripts, and Workflow Store; bypassed mandatory Hub login gate on Local runtime (file://, window.stealthApi, localhost/127.0.0.1).
+
+### Verification
+
+- vite build + dev-desktop-reload + sync-hot-patch
+
+---
+## 2026-11-10 - Unified Directory Columns & 8-KPI SSOT Across All P0003 Tables
+
+- Version: `9.2.352`
+- Timestamp: 2026-11-10 22:09 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Log (activityLog) column to Workflow Scripts, Workflow Store, and System Backup directories; expanded Workflow Scripts and Workflow Store to the 8-KPI SSOT; wired click-to-filter on all System Extensions KPI tiles; guarded legacySm binding in api-routes.cjs.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run test:fast + live UI smoke
+
+---
+## 2026-11-10 - Extension Directory Log Column + 8-KPI SSOT & Workflow Store Created Column
+
+- Version: `9.2.351`
+- Timestamp: 2026-11-10 21:49 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add Log (activityLog) column and status dot to Extension Directory, expand System -> Extensions KPI strip to 8 standard KPIs, and add Created column at the start of Workflow -> Store Directory Table.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run test:fast; node --test Tool/P0003-Stealth-Browser-Console/electron/lib/cloakbrowser-extension-stage.test.cjs
+
+---
+## 2026-11-10 - Extension Directory Created Column SSOT & Auto-Reload Open Profiles on Sync
+
+- Version: `9.2.350`
+- Timestamp: 2026-11-10 21:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add Created (createdAt) column at the start of System -> Extensions Directory Table and Detail Modal per Hub-UI SSOT, and auto-trigger POST /api/extensions/reload-open in sync-hot-patch.cjs.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run test:fast; GET /api/extensions createdAt & sync-hot-patch extensionsReload verified
+
+---
+## 2026-11-10 - Reload Open Profiles, ExtensionDisableUnsupportedDeveloper Guard & 0-Byte Stage Gates
+
+- Version: `9.2.349`
+- Timestamp: 2026-11-10 20:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add Reload Open Profiles action bar button + POST /api/extensions/reload-open + instant reloadNonce listeners in E0001 v1.2.26 & E0002 v0.1.11, disable Chromium 146 ExtensionDisableUnsupportedDeveloper so runtime reload never disables unpacked extensions, and enforce 0-byte/stage integrity gates.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run test:fast; node Tool/scripts/verify-agent-docs-skills-ssot.mjs; live reload on 9997 & 9996
+
+---
+## 2026-11-10 - Reload Open Profiles UI action, bundled-extensions Prod sync & 0-byte gate
+
+- Version: `9.2.348`
+- Timestamp: 2026-11-10 18:19 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Reload Open Profiles button in Extensions bar, POST /api/extensions/reload-open endpoint, bundled-extensions v1.2.26/v0.1.11 Prod packaging, and 0-byte integrity gate.
+
+### Verification
+
+- pnpm build + POST /api/extensions/reload-open + headless smoke
+
+---
+## 2026-11-10 - Hot-patch E0001/E0002 atomic stage self-heal, Secure Preferences repair & auto-pin
+
+- Version: `9.2.347`
+- Timestamp: 2026-11-10 17:52 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed 0-byte file truncation in extensions-cache and CloakBrowser stage, repaired empty serviceworkerevents in Secure Preferences, aligned E0002 staged pin ID (kldoeipllnpkahkaceadgjpblglmdjck), and updated shortcuts + hot-reload eviction.
+
+### Verification
+
+- GET /api/extensions + headless 9xxx smoke
+
+---
+## 2026-11-10 - Zero-Throttle Orphan Sweeper & Taskbar Worker
+
+- Version: `9.2.346`
+- Timestamp: 2026-11-10 17:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed IDLE_PRIORITY_CLASS / BELOW_NORMAL_PRIORITY_CLASS throttling from profile-browser-orphan.cjs and taskbar-apply-worker.cjs and synced hot-patch resources.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.cjs
+
+---
+## 2026-11-10 - Auto-stamp gmail_cookie_header during multiplatform cookie sync
+
+- Version: `9.2.345`
+- Timestamp: 2026-11-10 11:29 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs to build and persist domain-scoped .google.com + mail.google.com Cookie header (gmail_cookie_header) into stealth_snapshot whenever Google/Gmail cookies are synced to P0020.
+
+### Verification
+
+- stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-10 - Gmail Dot-Insensitive Session Match
+
+- Version: `9.2.344`
+- Timestamp: 2026-11-10 10:14 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Compare Gmail and Googlemail addresses dot-insensitively in stealth-multiplatform-sync and verifyGoogleSignedInPageEmail so dotted DOM emails never trigger false account_mismatch.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-10 - Set quarantined_sms and mail_checking Skipped for checkpoint_qr in multiplatform sync
+
+- Version: `9.2.343`
+- Timestamp: 2026-11-10 05:55 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs so Google /challenge/iap and /qrcode live tab detection writes status = quarantined_sms (Skipped) and mail_checking = Skipped.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-10 - Auto-drain deferred-user-headed-queue.json on Stealth profile window close
+
+- Version: `9.2.342`
+- Timestamp: 2026-11-10 03:11 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added triggerDeferredExpiredOrderDrain in electron/api-routes.cjs so when a User Headed profile closes via reconcile or sessionManager.close, pending expired Action orders in Tool/P0020-Data-Box/scripts/deferred-user-headed-queue.json automatically drain in headless mode via nodew.exe
+
+### Verification
+
+- node Tool/P0020-Data-Box/scripts/revoke-expired-action-orders.mjs --drain-deferred --dry-run
+
+---
+## 2026-11-10 - Emit Pending and Skipped in Stealth session sync
+
+- Version: `9.2.341`
+- Timestamp: 2026-11-10 02:46 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated formatStealthSessionLogMessage in stealth-multiplatform-sync.cjs to emit ⏳ Pending (<detail>) and ⏭️ Skipped (<detail>)
+
+### Verification
+
+- stealth-multiplatform-sync.cjs syntax & Hub-UI SSOT alignment
+
+---
+## 2026-11-10 - Protect Video Lab.exe from 30m idle orphan reaper
+
+- Version: `9.2.340`
+- Timestamp: 2026-11-10 02:37 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add video lab.exe, video-lab-worker.exe, and auto livestream 24-7.exe to NEVER_TERMINATE_EXE_NAMES + NORMAL_PRIORITY_CLASS UI list, and never terminate running Video Lab.exe or its worker while Video Lab.exe is open
+
+### Verification
+
+- profile-browser-orphan.cjs audit
+
+---
+## 2026-11-10 - Emit Pending Login in Stealth session sync
+
+- Version: `9.2.339`
+- Timestamp: 2026-11-10 02:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated formatStealthSessionLogMessage in stealth-multiplatform-sync.cjs to emit ⏳ Pending Login (<detail>) for not_logged_in sessions
+
+### Verification
+
+- stealth-multiplatform-sync.cjs syntax & Hub-UI SSOT alignment
+
+---
+## 2026-11-10 - perf(engine): enforce unified >=5s headless launch stagger and strict per-caller eviction ceiling
+
+- Version: `9.2.338`
+- Timestamp: 2026-11-10 02:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Increased HEADLESS_LAUNCH_MIN_GAP_MS from 350ms to 5000ms (5s) in session-manager.cjs and tightened per-caller/global headless eviction ceilings so background batch scripts never burst-spawn Chromium instances concurrently.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run build
+
+---
+## 2026-11-10 - Unified Profile Session Log SSOT & Live Hot-Reload (ok 1 2 3)
+
+- Version: `9.2.337`
+- Timestamp: 2026-11-10 02:12 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Ensure ormatStealthSessionLogMessage in stealth-multiplatform-sync.cjs always emits #<code4> · <Service> (<account>) — <outcome> even for custom G1 Family/Support logs, and hot-reload stealth-multiplatform-sync.cjs in RAM on :6003.
+
+### Verification
+
+- node --test launch-purity-gate.test.cjs + POST :6003/api/system/hot-reload
+
+---
+## 2026-11-10 - perf(bundle): replace 524KB CHANGELOG.md?raw import in app-release.ts with compact release-notes.json
+
+- Version: `9.2.336`
+- Timestamp: 2026-11-10 01:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced 524.5KB CHANGELOG.md?raw import in src/lib/app-release.ts with public/release-notes.json.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run build
+
+---
+## 2026-11-09 - Fix recovery email selection excluding target Gmail mask on /challenge/selection
+
+- Version: `9.2.335`
+- Timestamp: 2026-11-09 23:15 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated matchMaskedRecoveryEmail and handleGoogleRecoveryEmailChallengeViaCdp in recaptcha-vision-solver.cjs to scan all masked email hints via matchAll, exclude self-masked target Gmail addresses (e.g. ch******@gmail.com), prioritize mailRecover (q2g3@outlook.com), and recognize post-recovery speedbump/changepassword navigation.
+
+### Verification
+
+- node Tool/P0020-Data-Box/scripts/solve-gmail-captcha-cdp.cjs 0852 --reset-on-wrong-password
+
+---
+## 2026-11-09 - Emit at most 1 session log per profile open without Stealth prefix
+
+- Version: `9.2.334`
+- Timestamp: 2026-11-09 23:15 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated formatStealthSessionLogMessage to omit Stealth prefix (#XXXX · Service (account) — ✅ Logged In), tracked per-launch session state via markStealthProfileLaunchWindowState and resolveStealthRowLaunchLogDecision so each profile open emits at most 1 log entry, and prevented false selfie_verification_required overrides when Google auth cookies are verified.
+
+### Verification
+
+- node inline assertions on formatStealthSessionLogMessage and resolveStealthRowLaunchLogDecision
+
+---
+## 2026-11-09 - Cap headless disk cache to 1MB & enable GPU zero-copy rasterization for headed browsers
+
+- Version: `9.2.333`
+- Timestamp: 2026-11-09 18:31 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added --disk-cache-size=1048576 & --media-cache-size=1048576 for headless instances to eliminate QLC SSD write IOPS, and --enable-gpu-rasterization --enable-zero-copy --num-raster-threads=4 for headed user browsers.
+
+### Verification
+
+- node Tool/scripts/audit-workstation-hardware-health.mjs
+
+---
+## 2026-11-09 - Cap headless disk cache to 1MB & enable GPU zero-copy rasterization for headed browsers
+
+- Version: `9.2.332`
+- Timestamp: 2026-11-09 18:31 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added --disk-cache-size=1048576 & --media-cache-size=1048576 for headless instances to eliminate QLC SSD write IOPS, and --enable-gpu-rasterization --enable-zero-copy --num-raster-threads=4 for headed user browsers.
+
+### Verification
+
+- node Tool/scripts/audit-workstation-hardware-health.mjs
+
+---
+## 2026-11-09 - SQLite 64MB RAM cache, 256MB mmap & temp_store=MEMORY for QLC SSD relief
+
+- Version: `9.2.331`
+- Timestamp: 2026-11-09 17:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Configured better-sqlite3 with temp_store=MEMORY, cache_size=-65536 (64MB RAM), mmap_size=268435456 (256MB), and wal_autocheckpoint=4000 to leverage 128GB RAM and cut random 4K writes on Kingston SNV2S.
+
+### Verification
+
+- node Tool/scripts/audit-workstation-hardware-health.mjs --fix
+
+---
+## 2026-11-09 - Live TCP Socket Ping & Stealth Session Status on /api/proxy/vpn-pool
+
+- Version: `9.2.330`
+- Timestamp: 2026-11-09 03:32 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added probeTcpPort RTT probe in electron/lib/proxy-pool.cjs and enriched GET /api/proxy/vpn-pool with live runningProfiles (headed/headless) and per-proxy TCP handshake telemetry
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/proxy-pool.test.cjs
+
+---
+## 2026-11-09 - Multi-Slot WireGuard US Proxy Pool Hot-Reload
+
+- Version: `9.2.329`
+- Timestamp: 2026-11-09 02:48 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated proxy-pool.cjs loadVpnProxyPoolModule with mtime cache-busting and integrated Multi-Slot ARIN US WireGuard Pool (51400..51410) for concurrent Stealth Browser sessions.
+
+### Verification
+
+- Verified 6 concurrent clean ARIN US WireGuard HTTP proxy slots (51400..51410 + 52272) alive and museAllowed=true.
+
+---
+## 2026-11-08 - Perf: batch profile_events window query in enrichProfilesWithActivityLog
+
+- Version: `9.2.328`
+- Timestamp: 2026-11-08 20:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replace 100x N+1 profile_events queries in enrichProfilesWithActivityLog with a single SQLite ROW_NUMBER() window query while preserving identical output and fallback.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/db/profile-service.test.cjs
+
+---
+## 2026-11-08 - Fix EBUSY Fallback to GUI chrome.exe in resolveHeadlessCuiExecutablePath
+
+- Version: `9.2.327`
+- Timestamp: 2026-11-08 20:14 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Probed chrome-headless.exe PE subsystem header via read-only handle ('r') before requesting write access ('r+') so concurrent headless browser launches never hit STATUS_SHARING_VIOLATION and fall back to GUI chrome.exe.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/engine/cloak-browser-engine.cjs
+
+---
+## 2026-11-08 - Perf: event-invalidated listProfilesLite cache & no-op setProfileStatus guard
+
+- Version: `9.2.326`
+- Timestamp: 2026-11-08 20:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Cache listProfilesLite() in memory with immediate 0ms invalidation on any profile write/status transition, skip redundant SQLite UPDATE + cache bust when setProfileStatus receives an unchanged status, add idx_runs_profile_started index, and ignore runtime log/pid/lease files in vite.config.ts watcher.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/db/profile-service.test.cjs
+
+---
+## 2026-11-08 - SQLite WAL cookie-vault.db, atomic compact JSON vaults, and stealth-console.db 83.98MB -> 7.05MB compaction
+
+- Version: `9.2.325`
+- Timestamp: 2026-11-08 17:39 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added O(1) SQLite WAL cookie-vault.db upsert + atomic .tmp rename + compact JSON serialization (25s debounce) + analytics cookie noise filter in stealth-multiplatform-sync.cjs, and pruned/vacuumed stealth-console.db from 83.98 MB down to 7.05 MB (179.5k -> 5k profile_events, 7.8k -> 500 runs) with automatic retention limits in electron/db/init.cjs.
+
+### Verification
+
+- stealth-console.db 83.98MB -> 7.05MB + cookie-vault.db WAL verified
+
+---
+## 2026-11-08 - Fix Google QR Checkpoint Recovery Sync on Profile Close & Disk Probe
+
+- Version: `9.2.324`
+- Timestamp: 2026-11-08 17:21 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Recognize strong DBSC/Gmail post-auth cookies (__Secure-1PSIDTS, __Host-GMAIL_SCH_GML) when promoting previously challenged/checkpoint_qr Google rows via ListAccounts, prevent closed-window History QR entries from overriding verified live Google cookies, and auto-strip stale [CHỜ QUÉT QR] notes upon promotion to active
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-08 - Debounce RunLogs localStorage writes and async mirror vault flushes
+
+- Version: `9.2.323`
+- Timestamp: 2026-11-08 15:01 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Debounce RunLogsContext localStorage writes by 2.5s in runtime to prevent Chromium LevelDB compaction storms and switch mirrorVaultWrite in scheduleDebouncedVaultJsonWrite to non-blocking fs.promises.writeFile.
+
+### Verification
+
+- Verified RunLogsContext.tsx and stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-08 - Sync Google Cloud (/restrictions/47) appeal to mail_cloud & preserve sibling Google services
+
+- Version: `9.2.322`
+- Timestamp: 2026-11-08 11:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs and recaptcha-vision-solver.cjs to classify /restrictions/47 (Google Cloud Platform) into mail_cloud (🚨 Appeal / 🚫 Disable) while keeping Gmail, Google One, and YouTube logged_in.
+
+### Verification
+
+- recheck-google-appeals-cdp.cjs verified on #0392, #0329, #0210, #0306, #0325
+
+---
+## 2026-11-08 - Zero-IO Pre-Flight Activity Log Filter & 60s Vault Config Cache
+
+- Version: `9.2.321`
+- Timestamp: 2026-11-08 10:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added 0ms pre-flight filtering in syncProfileActivityLogToP0020Rows to skip transient running steps, window open/close lifecycle events, and unscoped messages before network IO, plus 60s in-memory caching for .env.shared in twofa-vault-bridge.cjs.
+
+### Verification
+
+- unit-and-db-verified
+
+---
+## 2026-11-08 - Fix session-manager resolveSessionCallerId priority and protect priority-locked sessions from same-caller eviction
+
+- Version: `9.2.320`
+- Timestamp: 2026-11-08 08:46 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated resolveSessionCallerId(profile) to prefer stored profile.callerId/agentCaller before AsyncLocalStorage and excluded priorityLockedCodes/Ids from same-caller cap eviction.
+
+### Verification
+
+- Verified concurrent autoLoginFacebookProfile runs without cross-caller eviction
+
+---
+## 2026-11-08 - Preserve Claude Appeal State & Detect Trust-and-Safety Disabled Orgs
+
+- Version: `9.2.319`
+- Timestamp: 2026-11-08 03:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs to detect trust_and_safety disabled organizations on /api/organizations and preserve status=appeal when existing appeal evidence is present
+
+### Verification
+
+- Verified 0 false-positive active/disable overwrites on #0067 and #0199
+
+---
+## 2026-11-08 - Restore NORMAL_PRIORITY_CLASS on Stealth Console & User Chrome and add orphan-reaper-audit.jsonl
+
+- Version: `9.2.318`
+- Timestamp: 2026-11-08 03:03 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prevent node.exe BELOW_NORMAL inheritance from dropping Stealth Browser Console and User Headed Chrome tabs to IDLE_PRIORITY_CLASS, remove bogus :3002 live-sync-push spam, and log reaped processes to orphan-reaper-audit.jsonl.
+
+### Verification
+
+- node -c Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.cjs
+
+---
+## 2026-11-08 - Hard-protect IDE & WMI host processes in terminateProcessTreeNative and remove ppid cascade kill
+
+- Version: `9.2.317`
+- Timestamp: 2026-11-08 02:42 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prevent orphan/idle Vite reaper from ever terminating Antigravity, language_server, Cursor, or WmiPrvSE parent trees.
+
+### Verification
+
+- node -c Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.cjs
+
+---
+## 2026-11-08 - 30-min idle Vite/worker auto-reaper & strict supportChatProtected isolation
+
+- Version: `9.2.316`
+- Timestamp: 2026-11-08 01:56 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fix VITE_PORT_TO_PRODUCT_DIR mapping across all workspace ports, reap idle (>30m) Vite & on-demand workers natively, and restrict supportChatProtected to genuine support chat/priority sessions instead of normal active-agent-locks.
+
+### Verification
+
+- GET http://127.0.0.1:6003/api/health + reapOrphanAdbScrcpyProcessesNative
+
+---
+## 2026-11-08 - Zero-PowerShell Native Process Scan, Stuck PS Reaper & 30m Idle Vite Dev Server Reaper
+
+- Version: `9.2.315`
+- Timestamp: 2026-11-08 00:38 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed legacy StealthRestartManager C# Add-Type and Win32_Process PowerShell fallbacks from profile-browser-orphan.cjs and blocked them in powershell-exec.cjs; added Zero-OE stuck PowerShell reaper (>90s) and 30-minute idle Vite dev server reaper inside reapOrphanAdbScrcpyProcessesNative; updated ensure-dev-product.cjs and agent rules to wake project Vite servers on demand when editing.
+
+### Verification
+
+- POST /api/system/hot-reload + reapOrphanAdbScrcpyProcessesNative + verify-agent-docs-skills-ssot
+
+---
+## 2026-11-08 - Strict Account-Scoped P0020 Session & Activity Log Sync
+
+- Version: `9.2.314`
+- Timestamp: 2026-11-08 00:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Scoped P0003-to-P0020 session and activity logs strictly to the exact (service, account) row via filterActivityTargetRowsOnProfile, removed blanket profile window open/close logging across sibling accounts, and added lazy @supabase/supabase-js hot-patch resolution.
+
+### Verification
+
+- unit-and-live-db-e2e-verified
+
+---
+## 2026-11-07 - Clear stale stealth_cookies in twofa_accounts on account_mismatch
+
+- Version: `9.2.313`
+- Timestamp: 2026-11-07 23:50 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs so that when a session exhibits account_mismatch, stale stealth_cookies in P0020 twofa_accounts are cleared to prevent restoring mismatched UID cookies.
+
+### Verification
+
+- node --check electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-07 - Upleveling SMS OTP appeal solver & doubly-encoded Google restriction URL detection
+
+- Version: `9.2.312`
+- Timestamp: 2026-11-07 23:47 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added handleGoogleUplevelingSmsAppealViaCdp (GrizzlySMS OTP solver for /uplevelingstep/selection -> /challenge/iap -> /restrictions/54/appeal) and 2-level decodeURIComponent in resolveGoogleRestrictionInfo + workspace_admin_disabled classification.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs (19/19 pass) + live CDP appeal submission on #0210 & #0329
+
+---
+## 2026-11-07 - Cache native Chrome process scan and auto-heal stealth-pid.json sidecars to eliminate PowerShell/RestartManager spikes
+
+- Version: `9.2.311`
+- Timestamp: 2026-11-07 23:43 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add 1.2s TTL cache to scanChromeProcessesNative() and auto-heal stealth-pid.json across all live root Chrome processes so hasProfileBrowserProcess hits the 0.001ms fast path instead of spawning PowerShell/StealthRestartManager.
+
+### Verification
+
+- healedChrome: 28, killedZombieProcs: 23, hot-reload ok: true
+
+---
+## 2026-11-07 - Fix stale _unifiedSmV12 hot-reload cache, CDP headless relabel bug, and profile ceiling eviction of user/DataBox windows
+
+- Version: `9.2.310`
+- Timestamp: 2026-11-07 23:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Migrate live sessions into fresh UnifiedSessionManager (_unifiedSmV14) on hot-reload; prevent #tryAttachOrFocusOrphan/#registerPlaywrightSession from relabeling live headed windows as headless; guard deferredMap auto-drain and MAX_PER_CALLER=3 / MAX_CONCURRENT_HEADLESS=40 ceilings against ever evicting user or Taskbar PWA profiles (#0001-#0021, #8000-#8999).
+
+### Verification
+
+- POST /api/system/hot-reload + agent close probes on #8000-#8999, #0010, #0014 all return skipped: user_interactive_session
+
+---
+## 2026-11-07 - Record Stealth browser session & platform logs to P0020 Service/Mail account Log
+
+- Version: `9.2.309`
+- Timestamp: 2026-11-07 23:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wired syncProfilePlatformsToP0020IfChanged, syncProfileWindowLiveCdpStateToP0020, and recordProfileActivityLog to write log_tip_at, log_tip_message, and twofa_insert_vault_log_entries (origin: p0003:stealth) plus SSE logEntry broadcast.
+
+### Verification
+
+- node -c electron/lib/stealth-multiplatform-sync.cjs && hot-reload :6003
+
+---
+## 2026-11-07 - Preserve verified Claude logged_in sessions across passive and cross-service stealth syncs
+
+- Version: `9.2.308`
+- Timestamp: 2026-11-07 22:45 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated shouldPreserveChallengedState and verifyClaudeCookiesLiveViaHttp in stealth-multiplatform-sync.cjs so verified Claude sessions (p0020_live_auth_verify / claude_api_organizations) and appeal/check_phone states are never downgraded to not_logged_in by passive disk probes or other-service browser windows.
+
+### Verification
+
+- Verified 12 active Claude rows in origin-pg and stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-07 - Taskbar PWA & Buyer Profile #8000-#8003 Coexistence Guard
+
+- Version: `9.2.307`
+- Timestamp: 2026-11-07 16:01 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prevent killOrphanProfileBrowser and hotPatchedLaunch from terminating live Taskbar PWA windows (Data Box.lnk on #8000, #8002, #8003, #8999) when opening Buyer accounts assigned to the same 8000+ profile band; spawn --new-window alongside the existing PWA window instead of restarting the profile process.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.test.cjs + live hot-reload on :6003
+
+---
+## 2026-11-07 - Map Google restriction IDs to service labels and classify /uplevelingstep/selection
+
+- Version: `9.2.306`
+- Timestamp: 2026-11-07 15:54 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Mapped Google restriction IDs (54 -> Gmail, 47 -> Google Cloud Platform, 12 -> YouTube, 31 -> Google Payments) into human-readable labels in classifyGoogleLiveCdpTargets and scoped /uplevelingstep/selection QR/SMS step-up challenges by continue=/restrictions/<id>
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-07 - Scope Google /restrictions/<id> by service ID and auto-detect lifted /restrictions/54 appeals
+
+- Version: `9.2.305`
+- Timestamp: 2026-11-07 14:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added resolveGoogleRestrictionTargetServices and doesGoogleTargetRestrictionApplyToService in stealth-multiplatform-sync.cjs so /restrictions/47 (Google Cloud Platform) does not flip Gmail, Google One, or YouTube to Disable/Appeal, and added passive ServiceLogin?service=mail check to clear lifted /restrictions/54 appeals.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs (19/19 pass)
+
+---
+## 2026-11-07 - Headless Mid-Execution Eviction Guard & Lock Schema Unification
+
+- Version: `9.2.304`
+- Timestamp: 2026-11-07 13:47 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Protect ProfileHeadless sessions from premature mid-execution close: unify pid/ownerPid lock parsing in isCodeLockedByActiveAgent and enforceRunningCap, sort unlocked sessions before locked/priorityLocked in enforceHotPatchHeadlessCap without wiping priority-agent-locks.json, update lastActivityAt on page network responses for SPA flows, and raise worker-guard DEFAULT_MAX_IDLE_MS from 75s to 180s.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.test.cjs + live hot-reload on :6003
+
+---
+## 2026-11-07 - Taskbar PWA Auto-Close Fix & Headed Session Guard
+
+- Version: `9.2.303`
+- Timestamp: 2026-11-07 12:52 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Disable reapDuplicateTaskbarPwaProcessesNative 20s sweep that terminated multi-profile taskbar PWA shortcuts (databox.infi28.com / crm.infi28.com), add findLiveHeadedBrowserPidNative guard + stealth-pid.json auto-heal, and protect taskbar-pinned profiles (#4220, #8000-#8003, #8999) in sessionManager and agent-worker-memory-guard.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.test.cjs + live hot-reload on :6003
+
+---
+## 2026-11-07 - Preserve login_page and not_logged_in state during offline disk cookie scans
+
+- Version: `9.2.302`
+- Timestamp: 2026-11-07 03:30 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Included not_logged_in, login_page, google_one_logged_out, wrong_password, and account_locked_rejected in hasChallengedOrBlockedGoogleRow so offline disk cookie sweeps do not flip expired sessions back to google_cookies.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-07 - Purge Stuck Surfshark Proxy Entries in Chrome Secure Preferences
+
+- Version: `9.2.301`
+- Timestamp: 2026-11-07 03:23 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Extended isSurfsharkExtensionMeta and removeExtensionFromPrefs in profile-chrome-cleanup.cjs to detect and strip stuck Surfshark proxy servers inside Default/Secure Preferences (and protection.macs), curing net::ERR_INVALID_AUTH_CREDENTIALS across #0218 and 6 additional Stealth profiles
+
+### Verification
+
+- node Tool/P0020-Data-Box/scripts/audit-vault-db-health.mjs --fast
+
+---
+## 2026-11-07 - Prevent Window-Close Sync From Overwriting Google Service Restriction Appeals
+
+- Version: `9.2.300`
+- Timestamp: 2026-11-07 03:02 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs to exclude myaccount.google.com/restrictions/ and /speedbump/disabled from authenticated Google URLs, include /restrictions/ and /speedbump/disabled/ in closed History scans while excluding /challenge/iap/verify step-up URLs, and protect status=appeal (disabled_appeal_submitted) rows from passive cookie/history downgrades.
+
+### Verification
+
+- Verified classifyGoogleLiveCdpTargets and shouldPreserveChallengedState on #0320 and #2677
+
+---
+## 2026-11-07 - Restore Chromium native background tab & timer throttling for minimized/occluded windows
+
+- Version: `9.2.299`
+- Timestamp: 2026-11-07 02:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added --disable-background-timer-throttling, --disable-backgrounding-occluded-windows, and --disable-renderer-backgrounding to CLOAK_IGNORE_DEFAULT_ARGS in cloak-browser-engine.cjs so minimized/background Chrome tabs throttle natively instead of spinning at 170% CPU.
+
+### Verification
+
+- sync-hot-patch + CPU delta verification
+
+---
+## 2026-11-07 - Fix headless eviction lock bypass, hot-reload guard timer, and bare node.exe/headless-shell reaper
+
+- Version: `9.2.298`
+- Timestamp: 2026-11-07 02:18 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed hotPatchedUnifiedClose forcePriority check and _lockFileCache invalidation; re-bound startAgentWorkerMemoryGuard (75s maxIdleMs, 20s sweep) on hot-reload; added dead-PID lock cleanup, bare node.exe REPL reaper, and BELOW_NORMAL/IDLE priority shielding.
+
+### Verification
+
+- sync-hot-patch + live CPU/process delta verification
+
+---
+## 2026-11-07 - Guard secondary same-profile service rows against false account_mismatch
+
+- Version: `9.2.297`
+- Timestamp: 2026-11-07 00:41 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- When a Stealth profile holds multiple rows for the same service and the active session belongs to one of that profile's own rows, classify the secondary unauthenticated row as not_logged_in (login_page) instead of account_mismatch.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-06 - Gmail Dot-Insensitive Email Comparison & Same-Profile Microsoft Alias Mismatch Guard
+
+- Version: `9.2.296`
+- Timestamp: 2026-11-06 23:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added areComparableEmailsEqual in stealth-multiplatform-sync.cjs to treat dotted/undotted Gmail addresses as identical across ListAccounts and AI session checks, and expanded profileMicrosoftAliasEmails + allowedOutlookAliases to prevent false account_mismatch across same-profile Microsoft alias siblings.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs (18/18 PASS)
+
+---
+## 2026-11-06 - AI account_mismatch detection and Twitter/Instagram unassigned auto-match
+
+- Version: `9.2.295`
+- Timestamp: 2026-11-06 22:05 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added server-verified email account_mismatch detection for Cursor, ChatGPT, Claude, and Grok with anti-false-positive guards (mail_recover, Microsoft aliases, notes, and bound UID), and extended unassigned browser auto-matching to Twitter (X) and Instagram.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs (17/17 PASS)
+
+---
+## 2026-11-06 - Stealth Multiplatform Sync: Live Sidecar DebugPort & DBSC Cookie Verification
+
+- Version: `9.2.294`
+- Timestamp: 2026-11-06 22:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Resolved live debugPort from stealth-pid.json for running User Headed profiles when /api/profiles omits debugPort, and preserved valid closed DBSC Google sessions with trusted post-2FA markers while keeping checkpoint_qr strict
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-06 - Server-verified AI identity auto-matching (ChatGPT, Claude, Cursor, Grok, CapCut, ElevenLabs), instant logout sync, and anti-overwrite CI unit test suite
+
+- Version: `9.2.293`
+- Timestamp: 2026-11-06 21:48 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Extended syncProfilePlatformsToP0020IfChanged to auto-bind unassigned standalone AI service rows by server-verified email/UID while rejecting masked emails and protecting assigned profiles; added instant logout sync in session-manager.cjs; added Test 16 in google-session-detect.test.cjs
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs (16/16 PASS) + real live AI profile auto-match verification
+
+---
+## 2026-11-06 - Standardized Managed Daemon SSOT + Active Caller breakdown & Stop Caller UI
+
+- Version: `9.2.292`
+- Timestamp: 2026-11-06 21:41 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added callerId (agent:<slug>) and supportChatProtected to /api/settings/runtime headlessSessions; added stopCallerId handler in POST /api/settings/runtime; added Active Callers (Cap 3/caller) breakdown with 💬 Support badge and ✕ Stop button in Browser Defaults UI.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run build + GET/POST /api/settings/runtime
+
+---
+## 2026-11-06 - Reclaim pinned proxies from blocked checkpoint_qr/disable profiles (ok 3)
+
+- Version: `9.2.291`
+- Timestamp: 2026-11-06 21:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Allow resetProfileToLocalIpIfUnpinned({ forceReclaimIfBlocked: true }) to release static/pinned proxies on non-protected profiles (>0030) whose primary Gmail is stuck in checkpoint_qr or disable with 0 logged-in services
+
+### Verification
+
+- Reclaimed pinned proxies on #0429 and #0560 in stealth-console.db
+
+---
+## 2026-11-06 - Instant auth-cookie fast-lane sync (<1s) & verified-identity auto-binding for unassigned Gmail/Outlook/TikTok/Facebook rows
+
+- Version: `9.2.290`
+- Timestamp: 2026-11-06 21:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Hooked framenavigated + response auth-cookie signature diffing (600ms debounce) in session-manager.cjs to pass context.cookies() directly to syncProfilePlatformsToP0020IfChanged, and auto-matched unassigned (browser empty/null) Gmail, Outlook, and TikTok accounts by verified identity without overwriting already-assigned profiles
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs + 20-account real live-cookie & unassigned auto-bind verification (5 Facebook, 5 Gmail, 5 Outlook, 5 TikTok)
+
+---
+## 2026-11-06 - Strict Active Gaia Session Option in ListAccounts & Gmail Batch Sync
+
+- Version: `9.2.289`
+- Timestamp: 2026-11-06 20:57 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added opts.requireActiveGaiaSession in verifyGoogleCookiesLiveViaHttp 17-element ListAccounts parser and verified all unit tests.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-06 - sync(facebook): immediate Status & Profile promotion on live/close verified Facebook login
+
+- Version: `9.2.288`
+- Timestamp: 2026-11-06 20:42 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed 4 blocks in stealth-multiplatform-sync.cjs and session-manager.cjs that prevented Facebook accounts previously in appeal/challenged state from immediately promoting Status to active and Profile stealth_status to logged_in on login; added c_user UID lookup across twofa_accounts and reduced live-nav sync debounce to 2.5s with an 8s trailing timer.
+
+### Verification
+
+- node --test electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-06 - Fix Google ListAccounts signed-out/QR-checkpoint false positive (acc[14]=1, acc[9]=0)
+
+- Version: `9.2.287`
+- Timestamp: 2026-11-06 20:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Require (acc[15]===1 || acc[5]===1) && acc[9]!==0 when accounts.google.com auth cookies exist on disk, strip XSSI prefix before JSON.parse, and inspect Default/History on window close so QR-checkpointed profiles (#0112 ec6e5b26-3680-4360-a294-495d56a45484 + 81 fleet rows) are never falsely promoted to logged_in/active
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs (28/28 pass)
+
+---
+## 2026-11-06 - Prevent ping-pong eviction storm across concurrent inline-<ppid> tasks
+
+- Version: `9.2.286`
+- Timestamp: 2026-11-06 20:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Preserve agent:inline-<ppid> under the canonical agent:<slug> format and add 4.5s anti-thrash backoff when evicting recently active caller profiles.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/sync-hot-patch.cjs --release-prod --stage-asar --no-reload-ui
+
+---
+## 2026-11-06 - Canonical agent:<slug> callerId normalizer & worker-guard per-caller sweep
+
+- Version: `9.2.285`
+- Timestamp: 2026-11-06 20:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add normalizeAgentCallerId in agent-smoke-context.cjs to unify all Agent/Daemon callerIds into agent:<slug> (collapsing inline-<pid> & default-agent into agent:inline), enforce MAX_PER_CALLER = 3 in worker-guard sweeps, and set test.maxWorkers = 3.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/sync-hot-patch.cjs --release-prod --stage-asar --no-reload-ui
+
+---
+## 2026-11-06 - Auto-touch supportChatProtected lastActivityAt & unified cap of 3
+
+- Version: `9.2.284`
+- Timestamp: 2026-11-06 19:56 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-refresh session.lastActivityAt whenever an open Google Support chat page/frame is detected alive so long support conversations never expire, while preserving the unified MAX_PER_CALLER = 3 standard across all callers.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/sync-hot-patch.cjs --release-prod --stage-asar --no-reload-ui
+
+---
+## 2026-11-06 - 45s boot cooldown, Caller ID in worker-guard API, and 45m Support-Chat idle protection
+
+- Version: `9.2.283`
+- Timestamp: 2026-11-06 19:52 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add 45s boot cooldown for headless launches when os.uptime() < 90s; expose callerId & supportChatProtected in /api/system/worker-guard and /api/system/display-settings; protect Google Support chat sessions for 45m in agent-worker-memory-guard.cjs.
+
+### Verification
+
+- GET :6003/api/system/worker-guard
+
+---
+## 2026-11-06 - Deduplicate taskbar PWA instances & stage app.asar with 3-profile per-caller cap
+
+- Version: `9.2.282`
+- Timestamp: 2026-11-06 18:58 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add reapDuplicateTaskbarPwaProcessesNative in profile-browser-orphan.cjs and agent-worker-memory-guard.cjs; clear stale priority locks on MAX_PER_CALLER=3 eviction in api-routes.cjs; stage app.asar.
+
+### Verification
+
+- sync-hot-patch.cjs --release-prod --stage-asar
+
+---
+## 2026-11-06 - Per-caller 3-profile headless cap & native orphan ADB scrcpy reaper
+
+- Version: `9.2.281`
+- Timestamp: 2026-11-06 18:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Enforce MAX_PER_CALLER=3 headless profiles per agent/daemon in session-manager.cjs and api-routes.cjs; add native Win32 reapOrphanAdbScrcpyProcessesNative in profile-browser-orphan.cjs and agent-worker-memory-guard.cjs.
+
+### Verification
+
+- hot-reload :6003 + audit-agent-sessions-rca.mjs
+
+---
+## 2026-11-06 - Preserve companion SSO cookies across Canva, Perplexity, CapCut, ChatGPT/Sora, and GitHub on close sync
+
+- Version: `9.2.280`
+- Timestamp: 2026-11-06 18:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated SERVICE_COOKIE_MATCHERS and SERVICE_VAULT_DOMAINS in stealth-multiplatform-sync.cjs so window-close cookie harvesting retains companion SSO and region cookies (Canva XSRF-TOKEN/cid/canva.cn, Perplexity pplx.session-id and chunked NextAuth tokens, CapCut store-idc/cc-target-idc/sid_guard/uid_tt, ChatGPT/Sora _account/oai-did, GitHub dotcom_user/_gh_sess) with zero extra I/O overhead.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-06 - Preserve .adobelogin.com SSO cookies alongside .adobe.com on window close sync
+
+- Version: `9.2.279`
+- Timestamp: 2026-11-06 17:42 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added adobelogin.com to SERVICE_VAULT_DOMAINS.adobe and included companion SSO cookies (ftr_set, s_ac, ID, RMR, guid) in SERVICE_COOKIE_MATCHERS.adobe when harvesting decrypted profile cookies into service-cookie-vault.json and twofa_accounts.stealth_cookies with zero extra I/O overhead.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-06 - Ephemeral turn-only proxy & Agent staticIp pin guard
+
+- Version: `9.2.278`
+- Timestamp: 2026-11-06 17:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Support in-memory turn-only proxy/ephemeralProxy/timezone/locale overrides on /api/profiles/:id/launch, block automated Agent requests from setting staticIp=true or [pin-proxy] notes unless allowStaticIpPin=true, and unpin all 2,136 agent-pinned profiles back to Local IP default.
+
+### Verification
+
+- node:sqlite + live :6003 PATCH/close smoke test
+
+---
+## 2026-11-06 - CapCut Passport OAuth Zero-Connects Snapshot Guard
+
+- Version: `9.2.277`
+- Timestamp: 2026-11-06 16:18 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated stealth-multiplatform-sync.cjs so CapCut accounts with verifiedCapcutConnectsCount === 0 strip stale verified_mail_google and google_oauth_verified snapshot keys instead of re-stamping same-browser Gmail rows.
+
+### Verification
+
+- node --test Tool/P0020-Data-Box/scripts/lib/capcut-team-seat-swap.test.mjs
+
+---
+## 2026-11-06 - Non-blocking SendNotifyMessageW taskbar icons, zero-netstat koffi debugPort PID, O(1) RAM guard & Vite watch filter
+
+- Version: `9.2.276`
+- Timestamp: 2026-11-06 15:57 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced blocking cross-process SendMessageW(WM_SETICON) with SendNotifyMessageW and removed 10s EnumWindows polling in taskbar-apply-worker.cjs; resolved debugPort PID via native koffi scanChromeProcessesNative in profile-browser-orphan.cjs (0 netstat/conhost spawns); removed synchronous tasklist.exe spawnSync from agent-worker-memory-guard.cjs; skipped redundant shadow sync when userDataDir === primaryDir; switched vite.config.ts watch.ignored to path predicate function dropping Vite IOPS from 90,050/s to 0/s; fixed EPERM rename in sync-bundled-e0001.mjs.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/sync-bundled-e0001.mjs && node Tool/scripts/audit-agent-sessions-rca.mjs --days 1 --fix
+
+---
+## 2026-11-06 - Native koffi process scanner, async cache trim, lock JSON TTL cache & Vite watch ignore
+
+- Version: `9.2.275`
+- Timestamp: 2026-11-06 15:33 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed getOrphanNativeApi koffi resolution and UNICODE_STRING decoding in profile-browser-orphan.cjs to eliminate 245% CPU PowerShell fallback; switched post-close cache trim to non-blocking trimClosedProfileDisposableCacheAsync; added 2s in-memory TTL cache for lock/session JSON files; narrowed ACTIVE_CHAT_OR_TASK_URL_RE so idle headless login/checkpoint pages close cleanly; expanded vite.config.ts watch.ignored to stop 140% CPU Chokidar spin.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/lib/profile-browser-orphan.cjs && POST :6003/api/system/hot-reload
+
+---
+## 2026-11-05 - Support /api/v1/profiles/close and 4-digit code resolution on close/stop routes
+
+- Version: `9.2.274`
+- Timestamp: 2026-11-05 19:16 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Accept POST /api/v1/profiles/close, /api/profiles/close, and /api/(v1/)profiles/:id/(close|stop) with either UUID or 4-digit profile code so agent scripts never leak headless Chromium processes via 404 close calls.
+
+### Verification
+
+- POST http://127.0.0.1:6003/api/v1/profiles/close verified live (HTTP 400 on missing profileId, resolves 4-digit code to profile UUID).
+
+---
+## 2026-11-05 - Antidetect unified sidebar menu, Android 5/5 History+Log rail & clean interactive Mobile Farm
+
+- Version: `9.2.273`
+- Timestamp: 2026-11-05 19:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Group Profiles, Android, and Mobile Farm under Antidetect sidebar menu; replace Android right rail with 5/5 History+Log runtime rail; remove Patrol dashed swipe vector lines and giant top overlay on Mobile Farm screens; add direct Web/Netflix/FB launchers and deduplicate live display cards
+
+### Verification
+
+- run-build.mjs --release-prod --fast & hot-patch :6003
+
+---
+## 2026-11-05 - Bundle latest E0001 v1.2.24 snapshot in sync-bundled-e0001.mjs for offline installs
+
+- Version: `9.2.272`
+- Timestamp: 2026-11-05 18:37 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.272
+
+### Changes
+
+- Update sync-bundled-e0001.mjs and workspaceExtensionDir() to ship unpacked-latest v1.2.24 inside bundled-extensions alongside the verified store snapshot
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/sync-bundled-e0001.mjs
+
+---
+## 2026-11-05 - Fallback auto-update E0001 from databox/GitHub Releases in webstore-extension.cjs
+
+- Version: `9.2.271`
+- Timestamp: 2026-11-05 18:29 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Extend probeStoreExtensionUpdate and autoRefreshCookieBridgeFromStore to fallback to databox.infi28.com/releases/e0001-latest.json and GitHub Releases when CWS listing is in_review
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/cookie-bridge-store.test.cjs
+
+---
+## 2026-11-05 - Pixel 6a Hardware Rail & Mobile Farm: USB Unplugged (acPowered=false) warning badge
+
+- Version: `9.2.270`
+- Timestamp: 2026-11-05 18:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Show amber/rose USB Unplugged badge and alert banner on Pixel 6a Hardware Rail (AndroidLiveFarmRail.tsx) and MobileFarmView.tsx when usb/online=0 (acPowered=false), and align default endpoint to 192.168.0.208:5555
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run build
+
+---
+## 2026-11-05 - Live workspace watcher and /api/extensions/cookie-bridge-status endpoint for E0001 auto-update
+
+- Version: `9.2.269`
+- Timestamp: 2026-11-05 18:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add startCookieBridgeWorkspaceAutoSync watcher in cookie-bridge-store.cjs, attach cookieBridge metadata to GET /api/extensions, and expose GET /api/extensions/cookie-bridge-status on :6003
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/cookie-bridge-store.test.cjs
+
+---
+## 2026-11-05 - Auto-sync E0001 workspace extension across caches and CloakBrowser stage on startup and profile launch
+
+- Version: `9.2.268`
+- Timestamp: 2026-11-05 18:01 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Default cookie_bridge_source_v1 to workspace when E:/Dev/Extension/E0001-cookie-bridge exists, mirror syncExtensionDirToCache to D:/StealthBrowser and .cloakbrowser/extension-stage, and stage E0001 before FAST_PREP in prepareProfileExtensions
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/cookie-bridge-store.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/cloakbrowser-extension-stage.test.cjs
+
+---
+## 2026-11-05 - Decouple PC Android 14 Emulation Mode and Physical Pixel 6a Hardware Mode in Mobile Farm & Android Profiles
+
+- Version: `9.2.267`
+- Timestamp: 2026-11-05 17:27 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added independent FarmEngineMode (pc_emulation | pixel6a_hardware | unified) in MobileFarmView.tsx and collapsible Pixel 6a Hardware Rail + direct PC Browser Run/Stop toggle in AndroidProfilesView.tsx
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run build passed cleanly
+
+---
+## 2026-11-05 - Session Manager: Exempt Object-Map G1 Family Unlock Sessions from Idle Eviction
+
+- Version: `9.2.266`
+- Timestamp: 2026-11-05 17:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated isExemptActiveChatOrTaskSession in electron/engine/session-manager.cjs to support doc.sessions as an object map and check profileCode/senderCode so active Google One Support Live Chat profiles (#0030, #0031) are never reaped during idle sweeps.
+
+### Verification
+
+- Verified #0030 remains exempt in g1-family-unlock-sessions.json object map and priority-agent-locks.json.
+
+---
+## 2026-11-05 - Fix Google ListAccounts 17-element consumer @gmail.com session verification in verifyGoogleCookiesLiveViaHttp
+
+- Version: `9.2.265`
+- Timestamp: 2026-11-05 16:46 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Accept acc[15] === 1 or acc[5] === 1 on 17-element gaia.l.a ListAccounts responses where personal @gmail.com accounts have acc[9] === 0 and acc[14] === null; batch-healed 68 live Google rows across Stealth profiles (including #0024 lovelinhhien@gmail.com) on origin-pg.
+
+### Verification
+
+- verifyGoogleCookiesLiveViaHttp live check + 68 rows healed on origin-pg
+
+---
+## 2026-11-05 - Fix false-positive ExpressVPN logged_in status from pre-login AUTH_SESSION_ID cookie
+
+- Version: `9.2.264`
+- Timestamp: 2026-11-05 15:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced unauthenticated pre-login AUTH_SESSION_ID and _xv_web_session cookies in SERVICE_COOKIE_MATCHERS['vpn express'] with verified post-login Keycloak/Portal session cookies (KEYCLOAK_IDENTITY, KEYCLOAK_SESSION, access_session, id_session, refresh_session).
+
+### Verification
+
+- Verified against live SQLite Cookies DB on profile #0030 (authenticated on portal.expressvpn.com via Outlook OTP) vs #0042/#0025/#0034 (stopped on OTP challenge page).
+
+---
+## 2026-11-05 - Preserve Wrong 2FA lock across closed-profile History and live /signin/rejected syncs
+
+- Version: `9.2.263`
+- Timestamp: 2026-11-05 15:16 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Split /signin/rejected from /signin/v2/disabled in classifyGoogleLiveCdpTargets, remove transient /signin/rejected from closedHistoryGoogleTargets, and retain hasTotpSecretMismatchLock unless overridden by checkpoint_qr, account_disabled, or phone_sms_required
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-05 - Expand closed-window Google QR checkpoint history detector
+
+- Version: `9.2.262`
+- Timestamp: 2026-11-05 14:08 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Detect /signin/challenge/ipp/qrcode, /signin/challenge/iap/crossflow*, and /devicephoneverification/ in Default/History and classifyGoogleLiveCdpTargets
+
+### Verification
+
+- Verified fleet-wide History reconciliation on origin-pg
+
+---
+## 2026-11-05 - Sync closed-window Google Checkpoint QR and rejected states from SQLite History
+
+- Version: `9.2.261`
+- Timestamp: 2026-11-05 05:07 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Inspect Default/History via CAST(visit_time/1000000 AS INTEGER) when a profile window closes without Google auth cookies so /signin/challenge/iap/qrcode immediately updates P0020 to checkpoint_qr
+
+### Verification
+
+- Verified syncProfileWindowLiveCdpStateToP0020 on #0058
+
+---
+## 2026-11-05 - Stealth Proxy Geo Reset & Directory Gate Parity
+
+- Version: `9.2.260`
+- Timestamp: 2026-11-05 04:27 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Reset unpinned profile timezone/locale on close/Local IP and align Backup/Android detail modal with Hub-UI SSOT gates.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/db/profile-service.test.cjs & P0003 gates
+
+---
+## 2026-11-05 - Priority Profile Lock Guard on profiles.close
+
+- Version: `9.2.259`
+- Timestamp: 2026-11-05 04:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Extract normalized 4-digit profile code and pass profile id to isCodePriorityLocked in profiles.close so background sweeps cannot close an active priority-locked profile.
+
+### Verification
+
+- Verified via hot-reload on :6003 and live priority-locked recovery runs
+
+---
+## 2026-11-05 - Default Standard 2 (.zpack) backup compression & Backup Directory compression badges
+
+- Version: `9.2.258`
+- Timestamp: 2026-11-05 03:48 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Set compressSlot=true as default for all manual native session backups, compressed all 43 backup slots across #0001-#0040 to .zpack (277.10 MB total from 782.58 MB, -64.6%), and surfaced .zpack format badges and compression savings percentages in System -> Backup.
+
+### Verification
+
+- 40/40 profiles (#0001-#0040) verified in D:\\StealthBrowser\\backups; build + hot-patch synced
+
+---
+## 2026-11-05 - Zero-Overhead State Piggyback for Activity Log Column
+
+- Version: `9.2.257`
+- Timestamp: 2026-11-05 03:44 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Piggybacked live worker step + account details from .continuous-check-mail-worker.state.json and .gmail-permanent-forward-worker.state.json into P0003 activityLog with 5-step rolling RAM history and zero extra I/O.
+
+### Verification
+
+- sync-hot-patch.cjs + GET /api/profiles?status=waiting
+
+---
+## 2026-11-05 - Fix password honeypot selector & Microsoft sibling alias sync
+
+- Version: `9.2.256`
+- Timestamp: 2026-11-05 03:39 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Excluded Google hiddenPassword honeypot inputs in stepSelector and included primary Microsoft accounts alongside sibling aliases in profileMicrosoftAliasEmails during multiplatform sync.
+
+### Verification
+
+- node --check electron/automation/script-steps.cjs && node --check electron/lib/stealth-multiplatform-sync.cjs
+
+---
+## 2026-11-05 - Reset unpinned & Local IP profile timezone/locale on close & proxy change
+
+- Version: `9.2.255`
+- Timestamp: 2026-11-05 03:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-reset timezone and locale to NULL on unpinned closed profiles, ephemeral loopback sweeps, and proxy changes; prevent recordProfileProxyGeoSync from persisting temporary VPN locale/timezone on unpinned profiles and ignore stale foreign locale/timezone when launching on Local IP.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/db/profile-service.test.cjs
+
+---
+## 2026-11-05 - Standard 1 (#0001-#0020 -> #10001-#10020) vs Standard 2 Compressed (#0021-#0040 -> #10021-#10040) Verification
+
+- Version: `9.2.254`
+- Timestamp: 2026-11-05 03:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added compressSlot option to snapshotProfileNativeSession and guard-meta sync on restoreProfileNativeSession; executed 1-to-1 verification of Standard 1 (uncompressed Smart IndexedDB Trim on #0001-#0020 -> #10001-#10020) and Standard 2 (compressed .zpack on #0021-#0040 -> #10021-#10040).
+
+### Verification
+
+- Standard 1 (#0001-#0020 -> #10001-#10020) & Standard 2 (#0021-#0040 -> #10021-#10040) E2E + headless smoke
+
+---
+## 2026-11-05 - Truthful Google/Microsoft live session verification and reCAPTCHA post-solve selector retry
+
+- Version: `9.2.253`
+- Timestamp: 2026-11-05 02:57 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed Microsoft offline_proxy_safe and MSPAuth=Disabled false positives, added Google HTTP timeout retry for coherent LSID+SID, stamped login_verified_at for Google One/YouTube, retried waitForVisibleSelector after Vision reCAPTCHA solve, and excluded hiddenPassword honeypot inputs
+
+### Verification
+
+- Verified on #0074, #0122, and 2,389 fleet profiles
+
+---
+## 2026-11-05 - Zero-lag in-memory Log column (activityLog + 5-step popover) for Profiles directory
+
+- Version: `9.2.252`
+- Timestamp: 2026-11-05 02:17 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Log (activityLog) column with 1500ms RAM cache and 5-step hover history popover to StealthProfileDirectoryTable, plus POST /api/profiles/:id/activity-log and G1 Support live session step feed.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console build && GET /api/profiles?search=0031&limit=5
+
+---
 ## 2026-11-05 - Zero-Popup child_process windowsHide and headless shell PE GUI guard in packaged main
 
 - Version: `9.2.251`

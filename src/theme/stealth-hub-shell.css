@@ -55,7 +55,9 @@
 }
 
 /* Split-pane tabs: bottom inset handled by panes, not main padding */
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--split,
 .hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--profiles,
+.hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--android,
 .hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--workflow,
 .hub-app.stealth-hub-app > main.stealth-hub-main.hub-main--system {
   padding-bottom: 0;
@@ -79,6 +81,17 @@
 
 .stealth-hub-app .app-tab-header__start > h1 {
   line-height: 1.25;
+}
+
+/* Search stays in the split pane, so it never sits in .hub-chrome-sticky.
+   Flush the title the same way Orders does, or the pane frame sits a header pad lower. */
+.stealth-hub-app .hub-main--split .app-tab-header,
+.stealth-hub-app .hub-main--profiles .app-tab-header,
+.stealth-hub-app .hub-main--android .app-tab-header,
+.stealth-hub-app .hub-main--workflow .app-tab-header,
+.stealth-hub-app .hub-main--system .app-tab-header {
+  padding-bottom: 0;
+  min-height: calc(var(--app-tab-header-min-h) - var(--app-tab-header-py));
 }
 
 /* Directory table header — icon + label on one baseline */

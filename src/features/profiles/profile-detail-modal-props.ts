@@ -1,7 +1,12 @@
 import type { ProfileRow } from "../../types";
 
-/** Profile detail modal — single + bulk in one component (P0020 TwofaAccountDetailModal parity). */
+/** Profile detail modal — create + single edit + bulk edit in one component (P0020 TwofaAccountDetailModal parity). */
 export type ProfileDetailModalProps =
+  | {
+      mode: "create";
+      onClose: () => void;
+      onProfilesChanged?: () => void;
+    }
   | {
       mode: "edit";
       profile: ProfileRow;

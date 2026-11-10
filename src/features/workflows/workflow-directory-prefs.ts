@@ -27,20 +27,21 @@ export const WORKFLOW_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<StealthWo
   withDirectoryColumnLabelHints(
     withDirectoryColumnIcons(
       [
+        { key: "created", label: "Created" },
+        { key: "updated", label: "Update" },
         { key: "platform", label: "Platform" },
         { key: "name", label: "Name", required: true },
         { key: "id", label: "ID" },
         { key: "steps", label: "Steps" },
-        { key: "created", label: "Created" },
-        { key: "updated", label: "Update" },
         { key: "lastRun", label: "Last Run" },
+        { key: "activityLog", label: "Log" },
       ],
       WORKFLOW_COLUMN_PREF_ICONS,
     ),
     stealthWorkflowColumnHintContent,
   );
 
-/** Rail default — base 3 cols + Steps only (Created/Updated off). */
+/** Rail default — base 3 cols + Steps only (Created/Updated/Log off). */
 export const DEFAULT_WORKFLOW_RAIL_DIRECTORY_COLUMNS = new Set<StealthWorkflowPanelColumnKey>([
   "platform",
   "name",
@@ -57,6 +58,7 @@ export const DEFAULT_WORKFLOW_PANEL_DIRECTORY_COLUMNS = new Set<StealthWorkflowP
   "created",
   "updated",
   "lastRun",
+  "activityLog",
 ]);
 
 export const WORKFLOW_RAIL_DIRECTORY_COLUMNS_CHANGE = "stealth-workflow-rail-directory-columns-change";
@@ -70,7 +72,7 @@ export const workflowRailDirectoryColumnPrefs = createDirectoryTableColumnPrefs(
 });
 
 export const workflowPanelDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
-  storageKey: "p0003_workflow_panel_directory_columns",
+  storageKey: "p0003_workflow_panel_directory_columns_v2",
   items: WORKFLOW_DIRECTORY_COLUMN_ITEMS,
   defaultKeys: DEFAULT_WORKFLOW_PANEL_DIRECTORY_COLUMNS,
   changeEvent: WORKFLOW_PANEL_DIRECTORY_COLUMNS_CHANGE,

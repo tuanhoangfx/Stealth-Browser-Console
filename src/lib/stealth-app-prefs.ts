@@ -2,6 +2,8 @@ import type { DeviceConfig, DeviceColorScheme, DevicePlatform, WindowMode } from
 import { DEFAULT_DEVICE, applyDevicePreset, hostDefaultPlatform } from "./device-presets";
 import { DEFAULT_BROWSER_HOME_URL } from "./browser-home";
 
+export type TargetMonitorMode = "auto-secondary" | "primary" | "secondary" | "cursor";
+
 /**
  * App-level browser defaults — applied to every NEW profile so the operator
  * sets their fleet's baseline device once (Settings → Browser defaults).
@@ -18,9 +20,14 @@ export type BrowserDefaults = {
   windowMode: WindowMode;
   /** Default startup URL for new profiles (http/https). */
   defaultStartupUrl: string;
+  /** Default monitor placement for Console & headed Chrome profiles (default: auto-secondary = Monitor 2 on dual display). */
+  targetMonitor: TargetMonitorMode;
+  /** Max concurrent headless browser sessions before auto-reaping oldest idle session (default: 40). */
+  maxHeadlessSessions: number;
 };
 
 const STORAGE_KEY = "stealth-console-browser-defaults";
+const MAX_HEADLESS_40_MIGRATED_KEY = "stealth-console-max-headless-40-v1";
 
 export function defaultBrowserDefaults(): BrowserDefaults {
   return {
@@ -32,7 +39,9 @@ export function defaultBrowserDefaults(): BrowserDefaults {
     headless: false,
     humanize: true,
     windowMode: "host-maximized",
-    defaultStartupUrl: DEFAULT_BROWSER_HOME_URL
+    defaultStartupUrl: DEFAULT_BROWSER_HOME_URL,
+    targetMonitor: "auto-secondary",
+    maxHeadlessSessions: 40
   };
 }
 
@@ -42,6 +51,13 @@ export function readBrowserDefaults(): BrowserDefaults {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return base;
     const parsed = JSON.parse(raw) as Partial<BrowserDefaults>;
+    let rawMax = parsed.maxHeadlessSessions;
+    if (localStorage.getItem(MAX_HEADLESS_40_MIGRATED_KEY) !== "1") {
+      if (rawMax === undefined || rawMax === 25) {
+        rawMax = 40;
+      }
+      localStorage.setItem(MAX_HEADLESS_40_MIGRATED_KEY, "1");
+    }
     return {
       platform: (parsed.platform as DevicePlatform) || base.platform,
       devicePreset: parsed.devicePreset || base.devicePreset,
@@ -53,7 +69,21 @@ export function readBrowserDefaults(): BrowserDefaults {
       windowMode: (parsed.windowMode as WindowMode) || base.windowMode,
       defaultStartupUrl: parsed.defaultStartupUrl?.trim()
         ? parsed.defaultStartupUrl
-        : base.defaultStartupUrl
+        : base.defaultStartupUrl,
+      targetMonitor:
+        parsed.targetMonitor === "primary" ||
+        parsed.targetMonitor === "secondary" ||
+        parsed.targetMonitor === "cursor" ||
+        parsed.targetMonitor === "auto-secondary"
+          ? parsed.targetMonitor
+          : base.targetMonitor,
+      maxHeadlessSessions:
+        typeof rawMax === "number" &&
+        Number.isFinite(rawMax) &&
+        rawMax >= 1 &&
+        rawMax <= 200
+          ? Math.round(rawMax)
+          : base.maxHeadlessSessions
     };
   } catch {
     return base;

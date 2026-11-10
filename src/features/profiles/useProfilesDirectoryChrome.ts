@@ -18,9 +18,10 @@ import { withProfileKpiFilterClicks } from "./profile-kpi-filter";
 function resolveCatalogKpiNumbers(
   catalogStats: ProfileCatalogStats | null,
   profiles: ProfileRow[],
+  runningHeadlessCount = 0,
 ): ProfileKpiNumbers {
-  if (catalogStats) return catalogStatsToKpiNumbers(catalogStats);
-  return buildProfileKpiNumbers(profiles);
+  if (catalogStats) return catalogStatsToKpiNumbers(catalogStats, runningHeadlessCount);
+  return buildProfileKpiNumbers(profiles, runningHeadlessCount);
 }
 
 /** KPI strip + header stats wired to URL display prefs (P0004 Users parity). */
@@ -32,9 +33,11 @@ export function useProfilesDirectoryChrome(
     statuses: ProfileRow["status"][];
     setGroupIds: (values: string[]) => void;
     setStatuses: (values: ProfileRow["status"][]) => void;
+    setSearch?: (value: string) => void;
+    runningHeadlessCount?: number;
   },
 ) {
-  const { groupIds, statuses, setGroupIds, setStatuses } = filter;
+  const { groupIds, statuses, setGroupIds, setStatuses, setSearch, runningHeadlessCount = 0 } = filter;
   const hubPrefs = useStealthHubListPrefs();
   const centerStats = useHostHeaderStats(hubPrefs.headerStats);
   const applyKpiFilter = useCallback(
@@ -46,8 +49,8 @@ export function useProfilesDirectoryChrome(
   );
 
   const catalogKpis = useMemo(
-    () => resolveCatalogKpiNumbers(catalogStats, profiles),
-    [catalogStats, profiles],
+    () => resolveCatalogKpiNumbers(catalogStats, profiles, runningHeadlessCount),
+    [catalogStats, profiles, runningHeadlessCount],
   );
 
   const kpiNumbers = catalogKpis;
@@ -60,14 +63,27 @@ export function useProfilesDirectoryChrome(
   const kpis = useMemo<KpiTileData[]>(
     () =>
       withProfileKpiFilterClicks(
-        buildProfileKpiItems(kpiNumbers).filter(
-          (item) => !item.prefKey || isHubPrefVisible(hubPrefs.kpi, kpiDefaults, item.prefKey),
-        ),
+        buildProfileKpiItems(kpiNumbers, catalogStats)
+          .filter((item) => !item.prefKey || isHubPrefVisible(hubPrefs.kpi, kpiDefaults, item.prefKey))
+          .map((item) => {
+            if (!setSearch || (item.prefKey !== "headless" && item.prefKey !== "ready")) {
+              return item;
+            }
+            return {
+              ...item,
+              onHintLineAction: (codesQuery: string) => {
+                const trimmed = codesQuery.trim();
+                if (!trimmed) return;
+                setSearch(trimmed);
+                setStatuses(item.prefKey === "headless" ? ["headless"] : ["waiting"]);
+              },
+            };
+          }),
         groupIds,
         statuses,
         applyKpiFilter,
       ),
-    [applyKpiFilter, groupIds, statuses, kpiNumbers, hubPrefs.kpi, kpiDefaults],
+    [applyKpiFilter, catalogStats, groupIds, statuses, kpiNumbers, hubPrefs.kpi, kpiDefaults, setSearch, setStatuses],
   );
 
   return { kpis, centerStats };

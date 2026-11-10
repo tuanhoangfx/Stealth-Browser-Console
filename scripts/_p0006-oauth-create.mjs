@@ -5,8 +5,8 @@ import { fileURLToPath } from "url";
 
 const DEBUG_PORT = parseInt(process.env.P0003_DEBUG_PORT || "51169", 10);
 const PROJECT_ID = "our-foundry-442305-d3";
-const CLIENT_NAME = `P0006-Content-Studio-${Date.now().toString(36).slice(-4)}`;
-const SECRETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "P0006-Content-Studio", "worker", "secrets");
+const CLIENT_NAME = `P0006-Video-Lab-${Date.now().toString(36).slice(-4)}`;
+const SECRETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "P0006-Video-Lab", "worker", "secrets");
 mkdirSync(SECRETS_DIR, { recursive: true });
 
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${DEBUG_PORT}`);

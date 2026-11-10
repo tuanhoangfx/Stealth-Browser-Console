@@ -1,12 +1,15 @@
 import type { NavStructureEntry } from "@tool-workspace/hub-ui";
 import { isNavViewGroup, navBadgeIconClass } from "@tool-workspace/hub-ui";
-import { Archive, ClipboardList, Database, Palette, Puzzle, Settings2, Store } from "lucide-react";
+import { Archive, ClipboardList, Database, MonitorSmartphone, Palette, Puzzle, Settings2, Shield, Smartphone, Store } from "lucide-react";
+import type { StealthAndroidTab } from "./stealth-android-tab";
 import type { StealthScreen } from "./stealth-screen";
 import { isStealthDesignTabVisible, type StealthSystemTab } from "./stealth-system-tab";
 import type { StealthWorkflowTab } from "./stealth-workflow-tab";
 
 export const STEALTH_NAV_SUBNAV_PREFIX = "p0003";
-export const STEALTH_NAV_GROUP_IDS = ["workflow", "system"] as const;
+export const STEALTH_NAV_GROUP_IDS = ["antidetect", "workflow", "system"] as const;
+export const STEALTH_ANTIDETECT_GROUP_ID = "antidetect";
+export const STEALTH_ANDROID_GROUP_ID = "antidetect";
 export const STEALTH_SYSTEM_GROUP_ID = "system";
 export const STEALTH_WORKFLOW_GROUP_ID = "workflow";
 
@@ -37,9 +40,25 @@ export const STEALTH_WORKFLOW_TAB_ITEMS = [
   { id: "store" as const, label: "Store", icon: Store, iconTone: "sky" as const },
 ];
 
-/** Main nav — Profiles + Workflow (Scripts / Store) + System (Extensions / Backup; Design when reviewing). */
-export const STEALTH_NAV_STRUCTURE: NavStructureEntry<StealthScreen, (typeof STEALTH_NAV_GROUP_IDS)[number], StealthSystemTab | StealthWorkflowTab>[] = [
-  { kind: "screen", screen: "profiles", label: "Profiles", icon: Database, iconTone: "emerald" },
+/** Main nav — Antidetect (Profiles / Android / Mobile Farm) + Workflow (Scripts / Store) + System (Extensions / Backup; Design when reviewing). */
+export const STEALTH_NAV_STRUCTURE: NavStructureEntry<
+  StealthScreen,
+  (typeof STEALTH_NAV_GROUP_IDS)[number],
+  StealthAndroidTab | StealthSystemTab | StealthWorkflowTab
+>[] = [
+  {
+    kind: "group",
+    navMode: "screen",
+    id: "antidetect",
+    label: "Antidetect",
+    icon: Shield,
+    iconTone: "emerald",
+    defaultScreen: "profiles",
+    children: [
+      { screen: "profiles", label: "Profiles", icon: Database, iconTone: "emerald" },
+      { screen: "android", label: "Android", icon: Smartphone, iconTone: "cyan" },
+    ],
+  },
   {
     kind: "group",
     navMode: "view",
@@ -68,6 +87,24 @@ export const STEALTH_NAV_STRUCTURE: NavStructureEntry<StealthScreen, (typeof STE
 ];
 
 function stealthScreenNavEntry(screen: StealthScreen) {
+  if (screen === "profiles") {
+    return {
+      kind: "screen" as const,
+      screen: "profiles" as const,
+      label: "Profiles",
+      icon: Database,
+      iconTone: "emerald" as const,
+    };
+  }
+  if (screen === "android") {
+    return {
+      kind: "screen" as const,
+      screen: "android" as const,
+      label: "Android",
+      icon: Smartphone,
+      iconTone: "cyan" as const,
+    };
+  }
   const entry = STEALTH_NAV_STRUCTURE.find((item) => {
     if (item.kind === "screen" && item.screen === screen) return true;
     if (item.kind === "group" && item.navMode === "view" && item.screen === screen) return true;

@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#6366f1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=a6c83e40" />
     <!-- Fonts: Inter via hub-fonts.css (self-host). No Google Fonts CDN for Inter. -->
-    <link rel="stylesheet" href="/hub-boot.css" />
+    <link rel="stylesheet" href="/hub-boot.css?v=mobile2" />
     <title>Stealth Browser Console</title>
     <style>
       html,
@@ -21,6 +21,23 @@
       #root {
         min-height: 100%;
         height: 100%;
+      }
+          @media (max-width: 767.98px) {
+        :root {
+          --hub-sidebar-width: 0px;
+          --hub-loader-inset-left: 0px;
+        }
+        #hub-boot-loader.hub-boot-loader--pane,
+        .hub-tab-loader-fill {
+          left: 0 !important;
+          right: 0 !important;
+          width: 100% !important;
+        }
+        #hub-boot-loader.hub-boot-loader--pane::before {
+          display: none !important;
+          content: none !important;
+          width: 0 !important;
+        }
       }
     </style>
     <script>
@@ -38,7 +55,7 @@
         <span class="hub-boot-orb__ring hub-boot-orb__ring--dash"></span>
         <span class="hub-boot-orb__ring hub-boot-orb__ring--inner"></span>
         <span class="hub-boot-orb__core">
-          <img src="/icons/tools/P0003.svg" alt="" width="20" height="20" decoding="async" />
+          <img src="/icons/tools/P0003.svg?v=a6c83e40" alt="" width="20" height="20" decoding="async" />
         </span>
       </div>
     </div>

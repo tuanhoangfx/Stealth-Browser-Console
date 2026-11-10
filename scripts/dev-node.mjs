@@ -23,6 +23,13 @@ import { winSpawnOpts } from "./lib/win-spawn.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const useProdData = args.includes("--prod-data");
+if (useProdData && process.env.CURSOR_AGENT === "1" && process.env.STEALTH_ALLOW_PROD_DATA !== "1") {
+  console.error(
+    "[dev-node] Refusing --prod-data for agents. Call the packaged Prod exe on http://127.0.0.1:6003. " +
+      "Source Electron on production userData closes the installed exe.",
+  );
+  process.exit(1);
+}
 const PORT = 5175;
 const node = process.execPath;
 const viteBin = path.join(root, "node_modules", "vite", "bin", "vite.js");
@@ -164,7 +171,15 @@ try {
   } else {
     console.log(`[dev-node] DEV_READY web=http://127.0.0.1:${PORT}/`);
   }
-  spawnElectron();
+  const prodRunningOn6003 = await isDevPortListening(6003);
+  const forceDevElectron = args.includes("--with-electron") || process.env.STEALTH_SPAWN_DEV_ELECTRON === "1";
+  if (prodRunningOn6003 && !forceDevElectron) {
+    console.log(
+      `[dev-node] Prod Stealth (:6003) is active — keeping Vite (:5175) up without spawning duplicate Dev Electron.`,
+    );
+  } else {
+    spawnElectron();
+  }
 } catch (error) {
   console.error("[dev-node]", error instanceof Error ? error.message : error);
   shutdown(1);

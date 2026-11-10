@@ -16,9 +16,11 @@ function fail(msg) {
   process.exit(1);
 }
 
-const jsFiles = fs.readdirSync(distAssets).filter((f) => f.startsWith("index-") && f.endsWith(".js"));
+const jsFiles = fs
+  .readdirSync(distAssets)
+  .filter((f) => (f.startsWith("index-") || f.startsWith("vendor-hub-ui-")) && f.endsWith(".js"));
 if (!jsFiles.length) fail("dist/assets/index-*.js missing — run vite build first");
-const bundle = fs.readFileSync(path.join(distAssets, jsFiles[0]), "utf8");
+const bundle = jsFiles.map((f) => fs.readFileSync(path.join(distAssets, f), "utf8")).join("\n");
 if (!bundle.includes("You are on the latest version")) {
   fail("dist bundle missing latest-version trigger copy");
 }

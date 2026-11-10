@@ -12,6 +12,9 @@ const CHECKPOINT = path.join(path.dirname(fileURLToPath(import.meta.url)), "lib"
 export function closePackagedStealth() {
   if (process.platform !== "win32") return { killed: 0 };
   spawnSync(process.execPath, [CHECKPOINT], winSpawnOpts({ stdio: "ignore", timeout: 5000 }));
+  if (process.env.STEALTH_EMERGENCY_HARD_KILL_PROD !== "1") {
+    return { killed: 0, skippedProtectedProd: true };
+  }
   const ps = spawnSync(
     "powershell",
     [

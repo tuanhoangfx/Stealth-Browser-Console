@@ -13,6 +13,7 @@ import {
   EXTENSION_DETAIL_SECTION_INSTALL,
   EXTENSION_DETAIL_SECTION_LOG,
   EXTENSION_DETAIL_SECTION_METADATA,
+  EXTENSION_DETAIL_SECTION_OPERATOR,
   EXTENSION_DETAIL_TOC,
 } from "./extension-detail-toc";
 
@@ -22,6 +23,7 @@ const EXTENSION_DETAIL_TOC_ICON: Partial<Record<string, ExtensionTocIconKey>> = 
   [EXTENSION_DETAIL_SECTION_METADATA]: "record",
   [EXTENSION_DETAIL_SECTION_INSTALL]: "new",
   [EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE]: "service",
+  [EXTENSION_DETAIL_SECTION_OPERATOR]: "service",
   [EXTENSION_DETAIL_SECTION_LOG]: "log",
 };
 
@@ -55,9 +57,11 @@ function tocNavIcon(key: ExtensionTocIconKey) {
 export function extensionDetailTocNavItems(options?: {
   showInstall?: boolean;
   showCookieBridge?: boolean;
+  showOperator?: boolean;
 }): HubTocNavItem[] {
   const showInstall = options?.showInstall ?? false;
   const showCookieBridge = options?.showCookieBridge ?? false;
+  const showOperator = options?.showOperator ?? false;
 
   const ids = EXTENSION_DETAIL_TOC.filter((item) => {
     if (item.id === EXTENSION_DETAIL_SECTION_INSTALL) return showInstall;
@@ -65,22 +69,23 @@ export function extensionDetailTocNavItems(options?: {
     return true;
   }).map((item) => item.id);
 
-  const withCookieBridge = showCookieBridge
-    ? ids.flatMap((id) =>
-        id === EXTENSION_DETAIL_SECTION_METADATA
-          ? [id, EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE]
-          : [id],
-      )
-    : ids;
+  const withExtraSections = ids.flatMap((id) => {
+    if (id !== EXTENSION_DETAIL_SECTION_METADATA) return [id];
+    const extras: string[] = [id];
+    if (showCookieBridge) extras.push(EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE);
+    if (showOperator) extras.push(EXTENSION_DETAIL_SECTION_OPERATOR);
+    return extras;
+  });
 
   const labels: Record<string, string> = {
     [EXTENSION_DETAIL_SECTION_METADATA]: "Metadata",
     [EXTENSION_DETAIL_SECTION_INSTALL]: "New",
     [EXTENSION_DETAIL_SECTION_COOKIE_BRIDGE]: "Cookie Bridge",
+    [EXTENSION_DETAIL_SECTION_OPERATOR]: "Browser Operator",
     [EXTENSION_DETAIL_SECTION_LOG]: "Console",
   };
 
-  return withCookieBridge.map((id) => ({
+  return withExtraSections.map((id) => ({
     id,
     label: labels[id] ?? id,
     icon: tocNavIcon(EXTENSION_DETAIL_TOC_ICON[id] ?? "record"),

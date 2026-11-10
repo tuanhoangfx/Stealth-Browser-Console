@@ -2,6 +2,9 @@
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'stealth-taskbar-apply-lib.ps1')
 Ensure-StealthTaskbarWinType | Out-Null
+# One worker holds the mutex and puts the number badge back within ~2s after Chrome's favicon.
+# Style must match BADGE_STYLE in profile-taskbar-native.cjs.
+[StealthTaskbarWin]::StartKeeper((Join-Path $env:TEMP 'stealth-taskbar-badges'), 'v4-digits-only-spaced8') | Out-Null
 Write-Output '{"ready":true}'
 
 while ($true) {
@@ -12,6 +15,11 @@ while ($true) {
     $req = $line | ConvertFrom-Json
     if ($req.warm -eq $true) {
       Write-Output (@{ id = $req.id; result = 'OK_WARM'; wmiSkipped = $true } | ConvertTo-Json -Compress)
+      continue
+    }
+    if ($req.assignGroup -eq $true) {
+      $moved = [StealthTaskbarWin]::AssignProcessTreeToGroup([int]$req.HintPid, [int]$req.TargetGroup)
+      Write-Output (@{ id = $req.id; result = 'OK_GROUP'; movedThreads = $moved; wmiSkipped = $true } | ConvertTo-Json -Compress)
       continue
     }
     $out = Invoke-StealthTaskbarApply `

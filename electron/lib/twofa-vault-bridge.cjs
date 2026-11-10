@@ -1,8 +1,31 @@
-const { createClient } = require("@supabase/supabase-js");
 const fs = require("node:fs");
 const path = require("node:path");
 const { resolveStealthUserDataRoot } = require("./user-data-root.cjs");
 const vaultUserScope = require("./vault-user-scope.cjs");
+
+let _createClient = null;
+function getSupabaseCreateClient() {
+  if (_createClient) return _createClient;
+  const candidates = [
+    "@supabase/supabase-js",
+    typeof process.resourcesPath === "string" && process.resourcesPath
+      ? path.join(process.resourcesPath, "app.asar", "node_modules", "@supabase", "supabase-js")
+      : "",
+    "E:\\Dev\\Tool\\P0003-Stealth-Browser-Console\\node_modules\\@supabase\\supabase-js",
+  ].filter(Boolean);
+  for (const modPath of candidates) {
+    try {
+      const mod = require(modPath);
+      if (typeof mod?.createClient === "function") {
+        _createClient = mod.createClient;
+        return _createClient;
+      }
+    } catch {
+      /* try next candidate */
+    }
+  }
+  throw new Error("Cannot load @supabase/supabase-js from hot-patch or app.asar");
+}
 
 /** Legacy cloud 2FA vault — opt-in via STEALTH_TWOFA_VAULT_REF only. */
 const LEGACY_VAULT_REF = "zurfouqanjcubgneuctp";
@@ -36,16 +59,31 @@ function envSharedCandidates() {
   return files;
 }
 
+let _envFileContentCache = { content: null, expiresAt: 0 };
+let _vaultConfigCache = { value: null, expiresAt: 0 };
+let _scopedUserCache = { value: null, expiresAt: 0 };
+
 function readEnvValue(name) {
   const fromEnv = String(process.env[name] || "").trim();
   if (fromEnv) return fromEnv;
-  const pattern = new RegExp(`^${name}=(.+)$`, "m");
-  for (const envPath of envSharedCandidates()) {
-    if (!envPath || !fs.existsSync(envPath)) continue;
-    const content = fs.readFileSync(envPath, "utf8");
-    const match = content.match(pattern);
-    if (match?.[1]?.trim()) return match[1].trim().replace(/^["']|["']$/g, "");
+  const now = Date.now();
+  let mergedContent = _envFileContentCache.expiresAt > now ? _envFileContentCache.content : null;
+  if (mergedContent == null) {
+    const chunks = [];
+    for (const envPath of envSharedCandidates()) {
+      if (!envPath || !fs.existsSync(envPath)) continue;
+      try {
+        chunks.push(fs.readFileSync(envPath, "utf8"));
+      } catch {
+        /* ignore */
+      }
+    }
+    mergedContent = chunks.join("\n");
+    _envFileContentCache = { content: mergedContent, expiresAt: now + 60_000 };
   }
+  const pattern = new RegExp(`^${name}=(.+)$`, "m");
+  const match = mergedContent.match(pattern);
+  if (match?.[1]?.trim()) return match[1].trim().replace(/^["']|["']$/g, "");
   return "";
 }
 
@@ -54,16 +92,22 @@ function readEnvValue(name) {
  * Legacy cloud ref only when STEALTH_TWOFA_VAULT_REF is set explicitly.
  */
 function resolveVaultConfig() {
+  const now = Date.now();
+  if (_vaultConfigCache.value && _vaultConfigCache.expiresAt > now) {
+    return _vaultConfigCache.value;
+  }
   const legacyRef = String(process.env.STEALTH_TWOFA_VAULT_REF || "").trim().toLowerCase();
   if (legacyRef) {
     const key =
       readEnvValue(`SUPABASE_REF_${legacyRef}_SERVICE_ROLE`) ||
       readEnvValue(`SUPABASE_REF_${legacyRef}_SECRET_KEY`);
-    return {
+    const cfg = {
       url: `https://${legacyRef}.supabase.co`,
       key,
       source: `legacy:${legacyRef}`,
     };
+    _vaultConfigCache = { value: cfg, expiresAt: now + 60_000 };
+    return cfg;
   }
 
   let url = "";
@@ -79,7 +123,9 @@ function resolveVaultConfig() {
     if (key) break;
   }
 
-  return { url, key, source: "lenovo-databox" };
+  const cfg = { url, key, source: "lenovo-databox" };
+  _vaultConfigCache = { value: cfg, expiresAt: now + 60_000 };
+  return cfg;
 }
 
 function getClient() {
@@ -92,7 +138,7 @@ function getClient() {
       "Vault service role missing — set DATABOX_SUPABASE_SERVICE_ROLE (Lenovo) in E:\\Dev\\.env.shared",
     );
   }
-  _client = createClient(config.url, config.key, {
+  _client = getSupabaseCreateClient()(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   _clientConfigKey = configKey;
@@ -135,10 +181,12 @@ function isVaultScopeErrorMessage(message) {
 
 function rowToCredentials(data) {
   return {
+    accountId: data.id || "",
     email: data.account || "",
     password: data.password || "",
     secret: data.secret || "",
     mailRecover: data.mail_recover || "",
+    backupCode: data.backup_code || "",
   };
 }
 
@@ -197,16 +245,14 @@ async function resolveScopedVaultUserId() {
   return { userId, email };
 }
 
-async function queryVaultRow(client, { service, code, userId, preferredEmail = "", useSnapshotFallback = false }) {
+async function queryVaultRow(client, { service, code, userId, preferredEmail = "", useSnapshotFallback = false, allowInactive = false }) {
   if (!userId) throw new Error("Vault query missing user_id scope");
-  const baseSelect = "account, password, secret, mail_recover, browser, stealth_snapshot, service";
-  const filters = (query) =>
-    query
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .eq("status", "active")
-      .order("updated_at", { ascending: false })
-      .limit(1);
+  const baseSelect = "id, account, password, secret, mail_recover, backup_code, browser, stealth_snapshot, service";
+  const filters = (query) => {
+    let next = query.eq("user_id", userId).is("deleted_at", null);
+    if (!allowInactive) next = next.eq("status", "active");
+    return next.order("updated_at", { ascending: false }).limit(1);
+  };
 
   const aliases = vaultServiceAliases(service);
   const preferred = String(preferredEmail || "")
@@ -260,19 +306,20 @@ async function queryVaultRow(client, { service, code, userId, preferredEmail = "
 /**
  * Count active vault rows for browser + service family (multi-Outlook guard).
  */
-async function listMailVaultAccountsForBrowser(browserCode, service = "Gmail") {
+async function listMailVaultAccountsForBrowser(browserCode, service = "Gmail", { allowInactive = false } = {}) {
   const variants = browserCodeVariants(browserCode);
   if (!variants.length) return [];
   const { userId } = await resolveScopedVaultUserId();
   const client = getClient();
   const aliases = vaultServiceAliases(service);
-  const { data, error } = await client
+  let query = client
     .from("twofa_accounts")
     .select("id, account, browser, service, updated_at")
     .eq("user_id", userId)
     .in("browser", variants)
-    .is("deleted_at", null)
-    .eq("status", "active");
+    .is("deleted_at", null);
+  if (!allowInactive) query = query.eq("status", "active");
+  const { data, error } = await query;
   if (error) throw error;
   const aliasSet = new Set(aliases.map((a) => normalizeServiceName(a)));
   return (data || []).filter((row) => aliasSet.has(normalizeServiceName(row.service)));
@@ -282,12 +329,13 @@ async function listMailVaultAccountsForBrowser(browserCode, service = "Gmail") {
  * Diagnose mail credential lookup — used for fail-fast Gmail/Outlook workflow errors.
  * @param {string} browserCode
  * @param {string} [service="Gmail"]
- * @param {{ preferredEmail?: string }} [opts]
+ * @param {{ preferredEmail?: string, allowInactive?: boolean }} [opts]
  */
 async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}) {
   const preferredEmail = String(opts?.preferredEmail || "")
     .trim()
     .toLowerCase();
+  const allowInactive = Boolean(opts?.allowInactive);
   const variants = browserCodeVariants(browserCode);
   const browserCodeLabel = variants[variants.length - 1] || String(browserCode || "").trim();
   if (!browserCodeLabel) {
@@ -321,7 +369,7 @@ async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}
       return cached.diagnosis;
     }
 
-    const siblings = await listMailVaultAccountsForBrowser(browserCodeLabel, service);
+    const siblings = await listMailVaultAccountsForBrowser(browserCodeLabel, service, { allowInactive });
     if (!preferredEmail && siblings.length > 1) {
       const accounts = siblings.map((row) => String(row.account || "").trim()).filter(Boolean);
       const diagnosis = {
@@ -352,6 +400,7 @@ async function diagnoseMailCredentials(browserCode, service = "Gmail", opts = {}
         userId,
         preferredEmail,
         useSnapshotFallback: true,
+        allowInactive,
       });
       if (data?.account) {
         credentials = rowToCredentials(data);
@@ -539,31 +588,59 @@ async function findGmailAccountsByBrowser(browserCode) {
  * Patch stealth_snapshot for a vault row (service role).
  * @returns {Promise<{ ok: boolean, reason?: string }>}
  */
-async function patchStealthSnapshotByAccountId(accountId, snapshot) {
+function vaultErrorText(error) {
+  const message = String(error?.message || error || "vault update failed");
+  if (/<!DOCTYPE|<html|cloudflare/i.test(message)) return "vault API returned HTML (gateway)";
+  return message.replace(/\s+/g, " ").slice(0, 180);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function updateVaultRow(client, id, userId, patch) {
+  let last = "vault update failed";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const { error, count } = await client
+        .from("twofa_accounts")
+        .update(patch, { count: "exact" })
+        .eq("id", id);
+      if (!error && count !== 0) return { ok: true };
+      last = error ? vaultErrorText(error) : `vault row id=${id} not found (userId=${userId})`;
+      if (!error || attempt === 3 || !/gateway|fetch|network|timeout|5\d\d/i.test(last)) {
+        return { ok: false, reason: last };
+      }
+    } catch (error) {
+      last = vaultErrorText(error);
+      if (attempt === 3 || !/gateway|fetch|network|timeout/i.test(last)) {
+        return { ok: false, reason: last };
+      }
+    }
+    await sleep(700 * attempt);
+  }
+  return { ok: false, reason: last };
+}
+
+async function patchStealthSnapshotByAccountId(accountId, snapshot, { status = null, cookies = null } = {}) {
   const id = String(accountId || "").trim();
   if (!id) return { ok: false, reason: "missing account id" };
   const checkedAt = snapshot?.checked_at || new Date().toISOString();
+  const nextStatus = String(status || "").trim();
   try {
     const { userId } = await resolveScopedVaultUserId();
     const client = getClient();
-    const { error, count } = await client
-      .from("twofa_accounts")
-      .update(
-        {
-          stealth_snapshot: snapshot,
-          stealth_checked_at: checkedAt,
-          // Bump updated_at so P0020 watermark delta pulls stealth telemetry.
-          updated_at: checkedAt,
-        },
-        { count: "exact" },
-      )
-      .eq("id", id)
-      .eq("user_id", userId);
-    if (error) return { ok: false, reason: error.message };
-    if (count === 0) return { ok: false, reason: "vault row not found for current user scope" };
-    return { ok: true };
+    const patch = {
+      stealth_snapshot: snapshot,
+      stealth_checked_at: checkedAt,
+      // Bump updated_at so P0020 watermark delta pulls stealth telemetry.
+      updated_at: checkedAt,
+    };
+    if (nextStatus) patch.status = nextStatus;
+    if (Array.isArray(cookies) && cookies.length > 0) patch.stealth_cookies = cookies;
+    return await updateVaultRow(client, id, userId, patch);
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    return { ok: false, reason: vaultErrorText(error) };
   }
 }
 
@@ -614,30 +691,29 @@ async function patchMailAccountOutcome({
 
     const checkedAt = snapshot?.checked_at || new Date().toISOString();
     const tip = String(logMessage || "").trim().slice(0, 240);
+    const nextStatus = String(status || "").trim();
     let patched = 0;
+    let lastReason = "";
     for (const row of rows) {
       const patch = {
-        status: String(status || "error").trim() || "error",
         updated_at: checkedAt,
         stealth_checked_at: checkedAt,
       };
+      if (nextStatus) patch.status = nextStatus;
+      else if (String(row.status || "") === "error") patch.status = "active";
       if (snapshot) patch.stealth_snapshot = snapshot;
       if (tip) {
-        patch.log = tip;
         patch.log_tip_at = checkedAt;
         patch.log_tip_message = tip;
       }
-      const { error: upErr } = await client
-        .from("twofa_accounts")
-        .update(patch)
-        .eq("id", row.id)
-        .eq("user_id", userId);
-      if (!upErr) patched += 1;
+      const updated = await updateVaultRow(client, row.id, userId, patch);
+      if (updated.ok) patched += 1;
+      else lastReason = updated.reason || lastReason;
     }
     clearCredentialsCache();
-    return { ok: patched > 0, patched };
+    return { ok: patched > 0, patched, reason: patched > 0 ? undefined : lastReason || "vault row not updated" };
   } catch (error) {
-    return { ok: false, patched: 0, reason: error instanceof Error ? error.message : String(error) };
+    return { ok: false, patched: 0, reason: vaultErrorText(error) };
   }
 }
 

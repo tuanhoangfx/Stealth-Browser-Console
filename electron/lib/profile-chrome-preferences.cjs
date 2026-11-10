@@ -58,14 +58,17 @@ function unpinExtensionFromProfile(userDataDir, { storeId, unpackedPath } = {}) 
   return { changed, ids: [...ids] };
 }
 
-/** Chrome unpacked extension id from absolute path (stable per machine/path). */
+/** Chrome unpacked extension id from the absolute path Chromium hashes. */
 function unpackedExtensionId(extensionDir) {
-  const normalized = path.resolve(extensionDir).replace(/\\/g, "/").toLowerCase();
-  const hash = crypto.createHash("sha256").update(normalized, "utf8").digest();
+  const resolved = path.resolve(String(extensionDir || ""));
+  const hash = crypto.createHash("sha256");
+  if (process.platform === "win32") hash.update(Buffer.from(resolved, "utf16le"));
+  else hash.update(resolved, "utf8");
+  const digest = hash.digest();
   const alphabet = "abcdefghijklmnop";
   let id = "";
   for (let i = 0; i < 16; i += 1) {
-    const byte = hash[i];
+    const byte = digest[i];
     id += alphabet[(byte >> 4) & 0x0f];
     id += alphabet[byte & 0x0f];
   }
@@ -86,6 +89,68 @@ function writeJson(file, data) {
 }
 
 /**
+ * Self-heal MV3 Service Worker & toolbar pin state inside `Default/Secure Preferences`
+ * when a profile previously recorded `serviceworkerevents: []` or `disable_reasons`
+ * during a corrupted/0-byte extension stage or interrupted launch.
+ */
+function healSecurePreferencesExtensionState(userDataDir, extId, absPath) {
+  if (!userDataDir || !extId) return false;
+  const secureFile = path.join(userDataDir, "Default", "Secure Preferences");
+  if (!fs.existsSync(secureFile)) return false;
+  const securePrefs = readJson(secureFile);
+  if (!securePrefs || typeof securePrefs !== "object" || !securePrefs.extensions) return false;
+
+  let changed = false;
+  for (const key of PIN_KEYS) {
+    if (Array.isArray(securePrefs.extensions[key]) && !securePrefs.extensions[key].includes(extId)) {
+      securePrefs.extensions[key] = mergePinnedList(securePrefs.extensions[key], extId);
+      changed = true;
+    }
+  }
+  if (
+    securePrefs.extensions.toolbar &&
+    Array.isArray(securePrefs.extensions.toolbar.pinned_extension_ids) &&
+    !securePrefs.extensions.toolbar.pinned_extension_ids.includes(extId)
+  ) {
+    securePrefs.extensions.toolbar.pinned_extension_ids = mergePinnedList(
+      securePrefs.extensions.toolbar.pinned_extension_ids,
+      extId,
+    );
+    changed = true;
+  }
+
+  const sEntry = securePrefs.extensions.settings?.[extId];
+  if (sEntry && typeof sEntry === "object") {
+    if (sEntry.disable_reasons !== undefined) {
+      delete sEntry.disable_reasons;
+      changed = true;
+    }
+    if (Number(sEntry.state) !== 1) {
+      sEntry.state = 1;
+      changed = true;
+    }
+    if (absPath && sEntry.path && normalizeExtensionPath(sEntry.path) !== normalizeExtensionPath(absPath)) {
+      sEntry.path = absPath;
+      changed = true;
+    }
+    if (Array.isArray(sEntry.serviceworkerevents) && sEntry.serviceworkerevents.length === 0) {
+      delete sEntry.serviceworkerevents;
+      delete sEntry.service_worker_registration_info;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    try {
+      writeJson(secureFile, securePrefs);
+    } catch {
+      return false;
+    }
+  }
+  return changed;
+}
+
+/**
  * Auto-pin toolbar extension before Chrome reads Preferences at launch.
  * chrome.management has no pin API — merge Chromium prefs (same as enterprise policy targets).
  */
@@ -95,14 +160,21 @@ function pinToolbarExtension(userDataDir, extensionDir) {
   const prefsFile = path.join(userDataDir, "Default", "Preferences");
   const prefs = readJson(prefsFile);
 
+  healSecurePreferencesExtensionState(userDataDir, extId, absPath);
+
   prefs.extensions = prefs.extensions || {};
   const alreadyPinned =
-    Array.isArray(prefs.extensions.pinned_extensions) && prefs.extensions.pinned_extensions[0] === extId;
+    Array.isArray(prefs.extensions.pinned_extensions) &&
+    prefs.extensions.pinned_extensions.includes(extId) &&
+    Array.isArray(prefs.extensions.toolbar?.pinned_extension_ids) &&
+    prefs.extensions.toolbar.pinned_extension_ids.includes(extId);
   const existingSettings = prefs.extensions.settings?.[extId];
   if (
     alreadyPinned &&
     existingSettings?.path === absPath &&
-    Number(existingSettings?.state) === 1
+    Number(existingSettings?.state) === 1 &&
+    existingSettings?.disable_reasons === undefined &&
+    !(Array.isArray(existingSettings?.serviceworkerevents) && existingSettings.serviceworkerevents.length === 0)
   ) {
     return extId;
   }
@@ -118,7 +190,12 @@ function pinToolbarExtension(userDataDir, extensionDir) {
   );
 
   prefs.extensions.settings = prefs.extensions.settings || {};
-  const existing = prefs.extensions.settings[extId] || {};
+  const existing = { ...(prefs.extensions.settings[extId] || {}) };
+  delete existing.disable_reasons;
+  if (Array.isArray(existing.serviceworkerevents) && existing.serviceworkerevents.length === 0) {
+    delete existing.serviceworkerevents;
+    delete existing.service_worker_registration_info;
+  }
   let manifest = existing.manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(path.join(absPath, "manifest.json"), "utf8"));
@@ -150,13 +227,19 @@ function pinStoreExtension(userDataDir, extId, extensionDir) {
   const prefsFile = path.join(userDataDir, "Default", "Preferences");
   const prefs = readJson(prefsFile);
 
+  healSecurePreferencesExtensionState(userDataDir, extId, absPath);
+
   prefs.extensions = prefs.extensions || {};
   const existingSettings = prefs.extensions.settings?.[extId];
   if (
     Array.isArray(prefs.extensions.pinned_extensions) &&
-    prefs.extensions.pinned_extensions[0] === extId &&
+    prefs.extensions.pinned_extensions.includes(extId) &&
+    Array.isArray(prefs.extensions.toolbar?.pinned_extension_ids) &&
+    prefs.extensions.toolbar.pinned_extension_ids.includes(extId) &&
     existingSettings?.path === absPath &&
-    Number(existingSettings?.state) === 1
+    Number(existingSettings?.state) === 1 &&
+    existingSettings?.disable_reasons === undefined &&
+    !(Array.isArray(existingSettings?.serviceworkerevents) && existingSettings.serviceworkerevents.length === 0)
   ) {
     return extId;
   }
@@ -172,7 +255,12 @@ function pinStoreExtension(userDataDir, extId, extensionDir) {
   );
 
   prefs.extensions.settings = prefs.extensions.settings || {};
-  const existing = prefs.extensions.settings[extId] || {};
+  const existing = { ...(prefs.extensions.settings[extId] || {}) };
+  delete existing.disable_reasons;
+  if (Array.isArray(existing.serviceworkerevents) && existing.serviceworkerevents.length === 0) {
+    delete existing.serviceworkerevents;
+    delete existing.service_worker_registration_info;
+  }
   let manifest = existing.manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(path.join(absPath, "manifest.json"), "utf8"));
@@ -201,6 +289,7 @@ function pinStoreExtension(userDataDir, extId, extensionDir) {
 module.exports = {
   pinToolbarExtension,
   pinStoreExtension,
+  healSecurePreferencesExtensionState,
   unpinExtensionFromProfile,
   unpackedExtensionId,
 };

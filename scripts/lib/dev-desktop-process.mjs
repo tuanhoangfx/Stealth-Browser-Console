@@ -25,8 +25,10 @@ export function isStealthDevCommandLine(commandLine) {
   const cmd = String(commandLine || "");
   if (!cmd) return false;
   if (PRODUCT_ROOT_RE.test(cmd) && DEV_SCRIPT_RE.test(cmd)) return true;
-  // dev-desktop-only stores `node …/electron/cli.js .` — hoisted path has no P0003 folder in cmdline.
-  if (ELECTRON_CLI_RE.test(cmd) && /\s\.\s*$/.test(cmd.trim())) return true;
+  if (PRODUCT_ROOT_RE.test(cmd) && ELECTRON_CLI_RE.test(cmd)) return true;
+  // dev-desktop-only stores `node …/electron/cli.js .` or `…/electron.exe "."` — hoisted path has no P0003 folder in cmdline.
+  if (ELECTRON_CLI_RE.test(cmd) && /\s"?\."?\s*$/.test(cmd.trim())) return true;
+  if (/electron\.exe/i.test(cmd) && /\s"?\."?\s*$/.test(cmd.trim())) return true;
   return false;
 }
 
@@ -131,17 +133,28 @@ function killOrphanDevElectron() {
       "-Command",
       [
         "$procs = Get-CimInstance Win32_Process -Filter \"Name='electron.exe'\" -ErrorAction SilentlyContinue",
-        "| Where-Object { $_.CommandLine -match 'stealth-browser-console-dev' }",
-        "foreach ($p in $procs) {",
-        "  Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue",
+        "| Where-Object { $_.CommandLine -match 'stealth-browser-console-dev|P0003-Stealth-Browser-Console' }",
+        "$ids = @($procs | ForEach-Object { $_.ProcessId; $_.ParentProcessId } | Where-Object { $_ -gt 0 } | Select-Object -Unique)",
+        "foreach ($id in $ids) {",
+        "  $p = Get-CimInstance Win32_Process -Filter \"ProcessId=$id\" -ErrorAction SilentlyContinue",
+        "  if ($p -and ($p.Name -match 'electron|node')) {",
+        "    cmd /c \"taskkill /PID $id /T /F >nul 2>&1\"",
+        "  }",
         "}",
-      ].join(" "),
+      ].join("; "),
     ],
     winSpawnOpts({ stdio: "ignore" }),
   );
 }
 
-export function killStealthDev() {
+export function killStealthDev({ force = false } = {}) {
+  const allowKill = force || process.env.STEALTH_FORCE_KILL_DEV === "1";
+  if (!allowKill && isStealthDevRunning()) {
+    console.log(
+      `[dev-desktop] Dev Exe (:${DEFAULT_DEV_API_PORT}) is already running — skipping kill without STEALTH_FORCE_KILL_DEV=1`,
+    );
+    return;
+  }
   const pid = readDevPid();
   if (pid && isStealthDevPid(pid)) {
     try {
@@ -159,28 +172,25 @@ export function killStealthDev() {
     );
   }
   clearPidFile();
-  killOrphanDevElectron();
+  if (allowKill) {
+    killOrphanDevElectron();
+  }
   killWatchBuild();
   killDevPorts();
 }
 
 /** Spawn dev-node detached — one process, log to .dev-desktop.log, Electron window only. */
 export function startDevDetached() {
-  const logFd = fs.openSync(LOG_FILE, "a");
-  fs.writeFileSync(
-    LOG_FILE,
-    `\n--- dev start ${new Date().toISOString()} ---\n`,
-    { flag: "a" },
-  );
-  const child = spawn(process.execPath, [path.join(root, "scripts", "dev-node.mjs")], winSpawnOpts({
+  const { startHiddenDetachedProcess } = require("../../../scripts/lib/win-shell-env.cjs");
+  return startHiddenDetachedProcess({
+    command: process.execPath,
+    args: [path.join(root, "scripts", "dev-node.mjs")],
     cwd: root,
-    detached: true,
-    stdio: ["ignore", logFd, logFd],
+    logFile: LOG_FILE,
+    pidFile: PID_FILE,
+    writePid: (file, childPid) => fs.writeFileSync(file, String(childPid)),
     env: stealthElectronEnv({ STEALTH_DEV_LOG: "1" }),
-  }));
-  child.unref();
-  fs.writeFileSync(PID_FILE, String(child.pid));
-  return child.pid;
+  });
 }
 
 export function focusStealthWindow() {

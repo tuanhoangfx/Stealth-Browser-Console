@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   name TEXT NOT NULL,
   group_id TEXT REFERENCES profile_groups(id),
   proxy TEXT,
+  static_ip INTEGER DEFAULT 0,
   fingerprint_seed INTEGER NOT NULL,
   note TEXT,
   status TEXT DEFAULT 'closed',
@@ -58,24 +59,26 @@ INSERT OR IGNORE INTO profile_groups (id, name, sort_order) VALUES ('default', '
 
 -- Indexes — cần khi catalog lớn (vài nghìn → 10k+ profile). exec mỗi lần mở DB.
 CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON profiles(updated_at);
+CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name);
+CREATE INDEX IF NOT EXISTS idx_profiles_last_opened_at ON profiles(last_opened_at DESC);
 CREATE INDEX IF NOT EXISTS idx_profiles_group_id ON profiles(group_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_fingerprint_seed ON profiles(fingerprint_seed);
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON profiles(status);
 CREATE INDEX IF NOT EXISTS idx_runs_started_at ON runs(started_at);
 CREATE INDEX IF NOT EXISTS idx_runs_profile_id ON runs(profile_id);
 
--- profile lifecycle events (launch / close / save)
+-- profile lifecycle events (launch / close / save / delete / geo-sync)
 CREATE TABLE IF NOT EXISTS profile_events (
   id TEXT PRIMARY KEY,
   profile_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   level TEXT DEFAULT 'info',
   message TEXT,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+  created_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_profile_events_profile_created ON profile_events(profile_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profile_events_created_at ON profile_events(created_at DESC);
 
 -- P0020 stealth snapshot sync queue (local-first)
 CREATE TABLE IF NOT EXISTS stealth_sync_outbox (

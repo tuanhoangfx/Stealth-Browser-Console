@@ -247,7 +247,7 @@ const CSS_SNIPPET = `
 `;
 
 const hubTargets = [
-  path.join(root, "vendor/hub-ui"),
+  path.join(root, "../../packages/hub-ui"),
   path.join(devRoot, "Tool/P0020-Data-Box/vendor/hub-ui"),
   path.join(devRoot, "Tool/P0004-Tool-Hub/vendor/hub-ui"),
   path.join(devRoot, "packages/hub-ui"),

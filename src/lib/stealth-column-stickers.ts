@@ -7,17 +7,18 @@ import type {
 } from "./directory-column-keys";
 
 /** P0003 sheet-parity stickers — directory table headers (emoji over Lucide).
- *  e0001 / surfshark use real icons via `withExtensionColumnHeaderIcons` — no emoji stickers. */
+ *  e0001 / e0002 / surfshark use real icons via `withExtensionColumnHeaderIcons` — no emoji stickers. */
 export const STEALTH_PROFILE_COLUMN_STICKER = {
   profile: "📡",
   group: "📁",
   status: "▶️",
-  updated: "🕒",
+  activityLog: "📋",
+  updated: "🔄",
   createdAt: "📅",
   startupUrl: "🔗",
   proxy: "🛡️",
   note: "✍️",
-} as const satisfies Record<Exclude<StealthProfileColumnKey, "e0001" | "surfshark">, string>;
+} as const satisfies Record<Exclude<StealthProfileColumnKey, "e0001" | "e0002" | "surfshark">, string>;
 
 export const STEALTH_WORKFLOW_COLUMN_STICKER = {
   platform: "🌐",
@@ -25,38 +26,52 @@ export const STEALTH_WORKFLOW_COLUMN_STICKER = {
   id: "🆔",
   steps: "📋",
   created: "📅",
-  updated: "🕒",
+  updated: "🔄",
   lastRun: "▶️",
+  activityLog: "📋",
 } as const satisfies Record<StealthWorkflowPanelColumnKey, string>;
 
 export const STEALTH_WORKFLOW_STORE_COLUMN_STICKER = {
+  created: "📅",
+  updated: "🔄",
   platform: "🌐",
   name: "📜",
   version: "🏷️",
   group: "📁",
   status: "🚦",
   source: "📦",
-  updated: "🕒",
+  activityLog: "📋",
 } as const satisfies Record<StealthWorkflowStoreColumnKey, string>;
 
 export const STEALTH_BACKUP_COLUMN_STICKER = {
+  createdAt: "📅",
+  updated: "🔄",
   profile: "📡",
   group: "📁",
-  updated: "🕒",
+  status: "⚡",
+  backupSlots: "🛡️",
   dataSize: "💾",
+  cookies: "🍪",
+  historyState: "📚",
   folder: "📂",
+  activityLog: "📋",
 } as const satisfies Record<StealthBackupColumnKey, string>;
 
 export const STEALTH_PROFILE_KPI_STICKER = {
   total: "📡",
+  create_today: "📅",
+  create_week: "🗓️",
+  update_today: "🔄",
   running: "▶️",
+  headless: "👻",
+  ready: "⏳",
   failed: "⚠️",
-  ready: "✅",
 } as const;
 
 export const STEALTH_PROFILE_FILTER_STICKER = {
-  group: "📁",
-  status: "🚦",
+  group: STEALTH_PROFILE_COLUMN_STICKER.group,
+  status: STEALTH_PROFILE_COLUMN_STICKER.status,
+  proxy: STEALTH_PROFILE_COLUMN_STICKER.proxy,
 } as const;
 
 export const STEALTH_PROFILE_HEADER_STAT_STICKER = {
@@ -67,8 +82,10 @@ export const STEALTH_PROFILE_HEADER_STAT_STICKER = {
 export const STEALTH_WORKFLOW_KPI_STICKER = {
   total: "📜",
   create_today: "📅",
+  create_week: "🗓️",
   update_today: "🕒",
   ran_today: "▶️",
+  with_steps: "⚡",
   idle: "💤",
   empty: "📭",
 } as const;
@@ -76,6 +93,7 @@ export const STEALTH_WORKFLOW_KPI_STICKER = {
 export const STEALTH_WORKFLOW_STORE_KPI_STICKER = {
   total: "🛒",
   create_today: "📅",
+  create_week: "🗓️",
   update_today: "🕒",
   local: "📝",
   installed: "✅",
@@ -101,7 +119,13 @@ export const STEALTH_WORKFLOW_STORE_FILTER_STICKER = {
 
 export const STEALTH_EXTENSIONS_KPI_STICKER = {
   cached: "🧩",
+  create_today: "📅",
+  create_week: "🗓️",
+  update_today: "🔄",
   store: "🛒",
+  local: "🛠️",
+  staged: "✅",
+  pinned: "📌",
 } as const;
 
 export const STEALTH_EXTENSIONS_HEADER_STAT_STICKER = {

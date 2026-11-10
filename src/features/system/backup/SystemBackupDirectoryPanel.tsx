@@ -7,7 +7,7 @@ import {
   type KpiTileData,
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
-import type { ProfileRow, ProfileStorageStat } from "../../../types";
+import type { ProfileBackupMeta, ProfileRow, ProfileStorageStat } from "../../../types";
 import { useProfileDirectoryPageSize } from "../../profiles/useProfileDirectoryPageSize";
 import { SystemBackupHubChrome } from "../SystemBackupHubChrome";
 import { SystemBackupDirectoryTable } from "./SystemBackupDirectoryTable";
@@ -30,11 +30,18 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
   jobBusy,
   storageById,
   lastBackupById,
+  backupMetaById,
+  runningHeadlessIds,
+  rowActionBusyId,
+  onRunToggle,
+  onRowSnapshot,
+  onRowRestoreSlot,
   selectedIds,
   selectedCount,
   allVisibleSelected,
   onToggleSelect,
   onToggleSelectAll,
+  onSnapshotSelected,
   onBackupSelected,
   onBackupAll,
   onRestore,
@@ -64,11 +71,18 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
   jobBusy: boolean;
   storageById: Record<string, ProfileStorageStat>;
   lastBackupById: Record<string, string | undefined>;
+  backupMetaById?: Record<string, ProfileBackupMeta | undefined>;
+  runningHeadlessIds?: ReadonlySet<string>;
+  rowActionBusyId?: string | null;
+  onRunToggle?: (profile: ProfileRow) => void;
+  onRowSnapshot?: (profile: ProfileRow) => void;
+  onRowRestoreSlot?: (profile: ProfileRow, slot: "latest" | "previous") => void;
   selectedIds: Set<string>;
   selectedCount: number;
   allVisibleSelected: boolean;
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
+  onSnapshotSelected?: () => void;
   onBackupSelected: () => void;
   onBackupAll: () => void;
   onRestore: () => void;
@@ -128,6 +142,7 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
           setSelectedStatuses(values);
           onPageChange(0);
         }}
+        onSnapshotSelected={onSnapshotSelected}
         onBackupSelected={onBackupSelected}
         onBackupAll={onBackupAll}
         onRestore={onRestore}
@@ -145,6 +160,7 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
       onEditSingle,
       onPageChange,
       onRestore,
+      onSnapshotSelected,
       profiles.length,
       queryPending,
       search,
@@ -180,6 +196,12 @@ export const SystemBackupDirectoryPanel = memo(function SystemBackupDirectoryPan
                 allVisibleSelected={allVisibleSelected}
                 storageById={storageById}
                 lastBackupById={lastBackupById}
+                backupMetaById={backupMetaById}
+                runningHeadlessIds={runningHeadlessIds}
+                rowActionBusyId={rowActionBusyId}
+                onRunToggle={onRunToggle}
+                onRowSnapshot={onRowSnapshot}
+                onRowRestoreSlot={onRowRestoreSlot}
                 emptyMessage={emptyMessage}
                 resetKey={listResetKey}
                 pageSize={pageSize}

@@ -1,29 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { RotateCcw } from "lucide-react";
 import {
   HubDisplayPrefs,
-  HubToolDetailModalSecondaryAction,
-  DirectoryTableColumnsSettings,
   patchHubListPrefs,
   readHubListPrefsCore,
-  type HubDisplayPrefsProps
+  type HubDisplayPrefsProps,
 } from "@tool-workspace/hub-ui";
 import { SCREEN_DISPLAY_PREFS, resolveScreenDisplayPrefs } from "../lib/display-prefs-registry";
 import type { StealthScreen } from "../lib/stealth-screen";
 import {
   useStealthGeneralSettingsToolSections,
-  useStealthProfileSettingsToolSections
+  useStealthProfileSettingsToolSections,
 } from "../features/settings/stealth-settings-tool-sections";
-import { StealthProfileSettingsFooterSave } from "../features/settings/StealthProfileSettingsFooterSave";
-import { StealthSettingsSaveProvider } from "../features/settings/stealth-settings-save-context";
 import {
-  countHiddenProfileDirectoryColumns,
-  PROFILE_DIRECTORY_COLUMNS_CHANGE,
-  profileDirectoryColumnPrefs,
-  resetProfileDirectoryColumns,
-} from "../features/profiles/profile-directory-prefs";
-import { profileDirectoryColumnItemsWithExtensionIcons } from "../features/profiles/profile-directory-display-items";
-import { useExtensionIcons } from "../features/profiles/useExtensionIcons";
+  StealthSettingsSaveProvider,
+  useStealthSettingsSave,
+} from "../features/settings/stealth-settings-save-context";
 
 export type StealthSettingsMode = "general" | "profile" | "tab";
 
@@ -34,42 +24,25 @@ type StealthDisplayPrefsProps = {
   settingsMode?: StealthSettingsMode;
 };
 
-/** Settings modal — HubToolDetailModal · TOC · general (sidebar) vs tab screen panels. */
-export function StealthDisplayPrefs({
+function StealthDisplayPrefsInner({
   screen,
   sidebarRow = false,
   scope = "global",
-  settingsMode: settingsModeProp
+  settingsMode: settingsModeProp,
 }: StealthDisplayPrefsProps) {
+  const { runAllSaves } = useStealthSettingsSave();
   const isGeneral =
     settingsModeProp === "general" || (!settingsModeProp && (scope === "global" || sidebarRow));
-  const showTabProfilePanels = scope === "tab" && screen === "profiles";
+  const showTabProfilePanels = scope === "tab" && (screen === "profiles" || screen === "android");
 
   const generalSections = useStealthGeneralSettingsToolSections();
   const profileSections = useStealthProfileSettingsToolSections();
 
-  const toolSections = isGeneral ? generalSections : showTabProfilePanels ? profileSections : [];
-
-  const extensionIcons = useExtensionIcons();
-  const profileColumnItems = useMemo(
-    () => (showTabProfilePanels ? profileDirectoryColumnItemsWithExtensionIcons(extensionIcons) : []),
-    [extensionIcons, showTabProfilePanels],
-  );
-
-  const [hiddenProfileCols, setHiddenProfileCols] = useState(() =>
-    showTabProfilePanels ? countHiddenProfileDirectoryColumns() : 0
-  );
-
-  useEffect(() => {
-    if (!showTabProfilePanels) return;
-    const sync = () => setHiddenProfileCols(countHiddenProfileDirectoryColumns());
-    window.addEventListener(PROFILE_DIRECTORY_COLUMNS_CHANGE, sync);
-    return () => window.removeEventListener(PROFILE_DIRECTORY_COLUMNS_CHANGE, sync);
-  }, [showTabProfilePanels]);
+  const toolSections = isGeneral ? generalSections : showTabProfilePanels ? profileSections : generalSections;
 
   const screenPrefs = resolveScreenDisplayPrefs(screen) ?? SCREEN_DISPLAY_PREFS[screen];
 
-  const hub = (
+  return (
     <HubDisplayPrefs
       title="Settings"
       sidebarRow={sidebarRow}
@@ -77,7 +50,7 @@ export function StealthDisplayPrefs({
       showRange={false}
       showLimit={false}
       filtersFromUrl={false}
-      showHeaderPin={isGeneral}
+      showHeaderPin={true}
       readPrefs={readHubListPrefsCore}
       patchPrefs={(patch) => patchHubListPrefs(patch)}
       getScreen={() => screen}
@@ -91,31 +64,16 @@ export function StealthDisplayPrefs({
       defaultFilterKeys={screenPrefs?.defaultFilterKeys}
       defaultHeaderStatKeys={screenPrefs?.defaultHeaderStatKeys}
       toolSections={toolSections}
-      footerActions={showTabProfilePanels ? <StealthProfileSettingsFooterSave /> : undefined}
-      tablePanel={
-        showTabProfilePanels ? (
-          <DirectoryTableColumnsSettings
-            items={profileColumnItems}
-            prefs={profileDirectoryColumnPrefs}
-          />
-        ) : undefined
-      }
-      tableActiveCount={showTabProfilePanels ? hiddenProfileCols : 0}
-      tableSectionActions={
-        showTabProfilePanels ? (
-          <HubToolDetailModalSecondaryAction
-            label="Reset columns"
-            onClick={() => resetProfileDirectoryColumns()}
-            icon={RotateCcw}
-          />
-        ) : undefined
-      }
+      onSaveExtra={() => runAllSaves()}
     />
   );
+}
 
-  if (showTabProfilePanels) {
-    return <StealthSettingsSaveProvider>{hub}</StealthSettingsSaveProvider>;
-  }
-
-  return hub;
+/** Settings modal — HubToolDetailModal · TOC · unified P0020 SSOT layout. */
+export function StealthDisplayPrefs(props: StealthDisplayPrefsProps) {
+  return (
+    <StealthSettingsSaveProvider>
+      <StealthDisplayPrefsInner {...props} />
+    </StealthSettingsSaveProvider>
+  );
 }

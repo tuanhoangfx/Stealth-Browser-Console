@@ -24,7 +24,7 @@ describe("twofa-vault-bridge", () => {
     const config = resolveVaultConfig();
     if (prevLegacy !== undefined) process.env.STEALTH_TWOFA_VAULT_REF = prevLegacy;
     expect(config.source).toBe("lenovo-databox");
-    expect(config.url).toMatch(/sb-api\.infi\.io\.vn$/);
+    expect(config.url).toMatch(/sb-api\.(infi28\.com|infi\.io\.vn)$/);
   });
 });
 
@@ -52,7 +52,7 @@ describe("vault-user-scope", () => {
     setVaultHubLoginEmail("x1e3@outlook.com");
     expect(resolveVaultScopeEmail()).toBe("x1e3@outlook.com");
     setVaultHubLoginEmail(null);
-    expect(() => resolveVaultScopeEmail()).toThrow(/Vault user scope missing/);
+    expect(resolveVaultScopeEmail()).toBe(DEFAULT_DEV_VAULT_EMAIL);
     if (prevDev === undefined) delete process.env.STEALTH_VAULT_DEV_SCOPE;
     else process.env.STEALTH_VAULT_DEV_SCOPE = prevDev;
     if (prevPackaged === undefined) delete process.env.STEALTH_PACKAGED;

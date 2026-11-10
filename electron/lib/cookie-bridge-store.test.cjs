@@ -117,3 +117,53 @@ test("E0001 bundled snapshot seeds a fresh cache with no download", (t) => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("getCookieBridgeStatus reports workspace vs store-cache source mode and stageVersion", (t) => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const mod = loadFresh();
+  const { getCookieBridgeStatus } = require("./cookie-bridge-status.cjs");
+
+  if (!mod.workspaceExtensionDir()) {
+    t.skip("workspace E0001 not present");
+    return;
+  }
+
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "e0001-status-"));
+  const prevLocal = process.env.STEALTH_COOKIE_BRIDGE_LOCAL;
+  try {
+    process.env.STEALTH_COOKIE_BRIDGE_LOCAL = "1";
+    const wsStatus = getCookieBridgeStatus(root);
+    assert.equal(wsStatus.source, "workspace");
+    assert.equal(wsStatus.sourceMode, "workspace");
+    assert.ok(wsStatus.workspaceVersion);
+
+    process.env.STEALTH_COOKIE_BRIDGE_LOCAL = "0";
+    const storeStatus = getCookieBridgeStatus(root);
+    assert.equal(storeStatus.source, "store-cache");
+    assert.equal(storeStatus.sourceMode, "store");
+  } finally {
+    if (prevLocal === undefined) delete process.env.STEALTH_COOKIE_BRIDGE_LOCAL;
+    else process.env.STEALTH_COOKIE_BRIDGE_LOCAL = prevLocal;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("autoRefreshCookieBridgeFromStore skips non-E0001 storeId and local workspace mode", async () => {
+  const { autoRefreshCookieBridgeFromStore } = require("./webstore-extension.cjs");
+  const { COOKIE_BRIDGE_STORE_ID } = require("./stealth-extension-store-ids.cjs");
+
+  const nonBridge = await autoRefreshCookieBridgeFromStore(undefined, "ailoabdmgclmfmhdagmlohpjlbpffblp");
+  assert.equal(nonBridge, null);
+
+  const prevLocal = process.env.STEALTH_COOKIE_BRIDGE_LOCAL;
+  try {
+    process.env.STEALTH_COOKIE_BRIDGE_LOCAL = "1";
+    const localSkip = await autoRefreshCookieBridgeFromStore(undefined, COOKIE_BRIDGE_STORE_ID);
+    assert.equal(localSkip, null);
+  } finally {
+    if (prevLocal === undefined) delete process.env.STEALTH_COOKIE_BRIDGE_LOCAL;
+    else process.env.STEALTH_COOKIE_BRIDGE_LOCAL = prevLocal;
+  }
+});

@@ -1,26 +1,12 @@
-/** Resolve packaged Stealth exe — prefer newest build / NSIS install over stale win-unpacked. */
+/** Resolve packaged Stealth exe — installed Prod first, never a repo win-unpacked build. */
 import fs from "node:fs";
 import path from "node:path";
+import { readPeProductVersion } from "../../../scripts/lib/win-native-utils.mjs";
 
 export const PACKAGED_EXE_NAME = "Stealth Browser Console.exe";
 
 export function readExeProductVersion(exePath) {
-  if (process.platform !== "win32" || !fs.existsSync(exePath)) return "";
-  try {
-    const { spawnSync } = require("node:child_process");
-    const ps = spawnSync(
-      "powershell",
-      [
-        "-NoProfile",
-        "-Command",
-        `(Get-Item '${exePath.replace(/'/g, "''")}').VersionInfo.ProductVersion`,
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-    );
-    return String(ps.stdout || "").trim();
-  } catch {
-    return "";
-  }
+  return readPeProductVersion(exePath);
 }
 
 function versionKey(version) {
@@ -41,9 +27,10 @@ export function packagedStealthSpawnEnv(baseEnv = process.env) {
 
 export function resolvePackagedStealthExe(root) {
   const localAppData = process.env.LOCALAPPDATA || "";
+  const installed = path.join(localAppData, "Programs", "stealth-browser-console", PACKAGED_EXE_NAME);
+  if (fs.existsSync(installed)) return installed;
   const candidates = [
     path.join(root, "dist-desktop", "win-unpacked-pending", PACKAGED_EXE_NAME),
-    path.join(localAppData, "Programs", "stealth-browser-console", PACKAGED_EXE_NAME),
     path.join(root, "dist-desktop", "win-unpacked", PACKAGED_EXE_NAME),
     path.join(root, "out", "win-unpacked", PACKAGED_EXE_NAME),
   ].filter((candidate) => fs.existsSync(candidate));

@@ -2,6 +2,10 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { safePageGoto } = require("./safe-goto.cjs");
 const { isGoogleWorkflowUrl, assertGoogleSession } = require("./google-session-guard.cjs");
+const {
+  solveGoogleRecaptchaOnPlaywrightPage,
+  solveUniversalCaptchaOnPlaywrightPage,
+} = require("./recaptcha-vision-solver.cjs");
 
 function cleanMessage(message) {
   return String(message || "Automation failed.").replace(/\u001b\[[0-9;]*m/g, "");
@@ -228,7 +232,12 @@ function assertResolvedStepValue(value, label) {
 }
 
 function stepSelector(step) {
-  return String(step.selector || "").trim();
+  const raw = String(step.selector || "").trim();
+  if (!raw) return "";
+  return raw.replace(
+    /input\[type=["']password["']\](?!:not)/gi,
+    'input[type="password"]:not([name="hiddenPassword"]):not([aria-hidden="true"])',
+  );
 }
 
 function isGoogleEmailStep(step) {
@@ -264,44 +273,23 @@ function isMicrosoftAlreadySignedInUrl(url) {
   return false;
 }
 
+const MICROSOFT_COOKIE_DOMAIN_RE =
+  /(^|\.)(live|microsoft|microsoftonline|hotmail|outlook|msn|office|office365)\.com$/i;
+
 function isMicrosoftCookieDomain(domain) {
   const d = String(domain || "").replace(/^\./, "").toLowerCase();
-  return (
-    /(^|\.)live\.com$|(^|\.)microsoft\.com$|(^|\.)microsoftonline\.com$|(^|\.)hotmail\.com$|(^|\.)outlook\.com$|(^|\.)msn\.com$|(^|\.)office\.com$|(^|\.)office365\.com$/i.test(
-      d,
-    )
-  );
+  return MICROSOFT_COOKIE_DOMAIN_RE.test(d);
 }
 
-/** Drop Microsoft auth cookies only — keep Google/other services on the same profile. */
+/** Drop Microsoft auth cookies only — keep Google/other services on the same profile without ever clearing non-Microsoft domains. */
 async function clearMicrosoftCookies(context, logger) {
   if (!context?.cookies || !context?.clearCookies) return 0;
   const all = await context.cookies().catch(() => []);
   const ms = all.filter((c) => isMicrosoftCookieDomain(c.domain));
   if (!ms.length) return 0;
-  const keep = all.filter((c) => !isMicrosoftCookieDomain(c.domain));
-  await context.clearCookies();
-  if (keep.length) {
-    const restored = keep
-      .map((c) => {
-        if (!c.name) return null;
-        return {
-          name: c.name,
-          value: c.value || "",
-          domain: c.domain,
-          path: c.path || "/",
-          expires: c.expires,
-          httpOnly: c.httpOnly,
-          secure: c.secure,
-          sameSite: c.sameSite,
-        };
-      })
-      .filter(Boolean);
-    if (restored.length) {
-      await context.addCookies(restored).catch(() => undefined);
-    }
-  }
-  logger.push("info", `Cleared ${ms.length} Microsoft cookies (kept ${keep.length} other)`);
+  const keepCount = all.length - ms.length;
+  await context.clearCookies({ domain: MICROSOFT_COOKIE_DOMAIN_RE });
+  logger.push("info", `Cleared ${ms.length} Microsoft cookies (kept ${keepCount} other)`);
   return ms.length;
 }
 
@@ -578,6 +566,28 @@ async function ensureMicrosoftPasswordScreen(page, logger, context = {}) {
       );
     }
 
+    // Check if Microsoft Arkose FunCaptcha or HIP text captcha is blocking progression (`ok 3`)
+    if (context?.solveCaptchaWithVision !== false) {
+      const hasMsCaptcha = await page
+        .locator(
+          'iframe[src*="arkoselabs"], iframe[src*="funcaptcha"], #enforcementFrame, input[id*="wlspispSolutionElement"]',
+        )
+        .count()
+        .catch(() => 0);
+      if (hasMsCaptcha > 0) {
+        logger.push("info", "Microsoft Arkose/HIP captcha detected — attempting Vision solve...");
+        const capRes = await solveUniversalCaptchaOnPlaywrightPage(page, {
+          maxRounds: Number(context?.captchaVisionMaxRounds) || 8,
+          onLog: (lvl, msg) => logger.push(lvl === "warn" ? "info" : lvl, msg),
+        }).catch(() => null);
+        if (capRes?.solved && !capRes?.skipped) {
+          logger.push("success", `Microsoft captcha solved via Vision (${capRes.reason || "ok"})`);
+          await settlePage(page, 2500);
+          continue;
+        }
+      }
+    }
+
     await settlePage(page, 1200);
     if (loops === 1 || loops % 4 === 0) {
       await captureMicrosoftAuthDiag(page, logger, `ensure-pwd-${loops}`);
@@ -646,27 +656,114 @@ function isGoogleAuthenticatorTotpVisible(page) {
 function googleChallengeKind(url) {
   const href = String(url || "");
   if (/signin\/rejected/i.test(href)) return "rejected";
+  if (/challenge\/(ipp|iap)/i.test(href)) return "phone";
+  if (/challenge\/kpe/i.test(href)) return "recovery_email";
   if (/challenge\/selection/i.test(href)) return "selection";
   if (/challenge\/dp/i.test(href)) return "push";
   if (/challenge\/totp/i.test(href)) return "totp";
+  if (/gds\.google\.com|\/speedbump\//i.test(href)) return "speedbump";
+  if (/myaccount\.google\.com|mail\.google\.com|one\.google\.com/i.test(href) && !/signin|challenge/i.test(href)) {
+    return "signed_in";
+  }
   return "other";
 }
 
-/** Push-notification 2FA → Try another way → Google Authenticator TOTP input. */
-async function ensureGoogleAuthenticatorTotpScreen(page, logger) {
+/** Push-notification 2FA → Try another way → Google Authenticator TOTP input (or recovery email / speedbump). */
+async function ensureGoogleAuthenticatorTotpScreen(page, logger, context = {}) {
   if (await isGoogleAuthenticatorTotpVisible(page)) {
     logger.push("info", "Google Authenticator TOTP input already visible");
     return true;
   }
 
-  const deadline = Date.now() + 45_000;
+  const deadline = Date.now() + 14_000;
   let triedAnotherWay = false;
+  let filledRecoveryEmail = false;
+  let retriedPwdSubmit = false;
+  const recoveryEmail = String(context?.mailCredentials?.mailRecover || "").trim();
+
   while (Date.now() < deadline) {
-    const kind = googleChallengeKind(page.url?.() || "");
+    const currentUrl = String(page.url?.() || "");
+    const kind = googleChallengeKind(currentUrl);
     if (kind === "rejected") {
       throw new Error("Google sign-in rejected — complete verification manually, then re-run.");
     }
+    if (kind === "phone") {
+      throw new Error(`Google SMS/Phone verification required (${currentUrl})`);
+    }
+    if (kind === "signed_in") {
+      logger.push("info", `Google session already signed in at ${currentUrl} — skip 2FA wait`);
+      return "already_signed_in";
+    }
+    if (await detectGoogleCaptcha(page)) {
+      await assertNotGoogleCaptcha(page, logger, context);
+    }
+    if (/challenge\/pwd/i.test(currentUrl)) {
+      const pwdState = await page
+        .evaluate(() => {
+          const text = String(document.body?.innerText || "");
+          if (/Wrong password|Sai mật khẩu|Mật khẩu không chính xác|Your password was changed/i.test(text)) {
+            return "wrong_password";
+          }
+          const inp = document.querySelector('input[name="Passwd"]');
+          if (inp && inp.offsetParent !== null) {
+            return inp.value ? "has_value" : "empty";
+          }
+          return "other";
+        })
+        .catch(() => "other");
+      if (pwdState === "wrong_password") {
+        throw new Error(`Google wrong password on challenge/pwd (${currentUrl})`);
+      }
+      if (!retriedPwdSubmit && (pwdState === "has_value" || pwdState === "empty")) {
+        retriedPwdSubmit = true;
+        if (pwdState === "empty" && context?.mailCredentials?.password) {
+          await page.locator('input[name="Passwd"]').first().fill(context.mailCredentials.password).catch(() => undefined);
+        }
+        await page.locator('input[name="Passwd"]').first().press("Enter").catch(() => undefined);
+        await settlePage(page, 3000);
+        continue;
+      }
+    }
+    if (kind === "speedbump") {
+      await clickFirst(
+        page,
+        "Dismiss Google speedbump",
+        [
+          page.getByRole("button", { name: /^(not now|skip|continue|i agree|got it|để sau|bỏ qua|tiếp tục|tôi đồng ý)$/i }),
+          page.locator('button:has-text("Not now"), button:has-text("Skip"), button:has-text("Continue"), button:has-text("I agree"), button:has-text("Để sau"), button:has-text("Bỏ qua")'),
+        ],
+        logger,
+        { optional: true, verb: "clicked" },
+      );
+      await settlePage(page, 2500);
+      return "already_signed_in";
+    }
     if (await isGoogleAuthenticatorTotpVisible(page)) return true;
+
+    // Handle "Confirm your recovery email" input if visible
+    if (recoveryEmail && !filledRecoveryEmail) {
+      const recovInput = page
+        .locator('#knowledge-preregistered-email-response, input[name="knowledgePreregisteredEmailResponse"]')
+        .first();
+      const recovVisible = await recovInput.isVisible({ timeout: 400 }).catch(() => false);
+      if (recovVisible) {
+        filledRecoveryEmail = true;
+        logger.push("info", `Filling Google recovery email confirmation (${recoveryEmail})`);
+        await recovInput.fill(recoveryEmail, { timeout: 5000 }).catch(() => undefined);
+        await clickFirst(
+          page,
+          "Next after recovery email",
+          [
+            page.getByRole("button", { name: /^(Next|Tiếp theo)$/i }),
+            page.locator('button:has-text("Next"), button:has-text("Tiếp theo")'),
+          ],
+          logger,
+          { optional: true, verb: "clicked" },
+        );
+        await settlePage(page, 4000);
+        continue;
+      }
+    }
 
     if (kind === "push" && !triedAnotherWay) {
       const clicked = await clickFirst(
@@ -683,7 +780,7 @@ async function ensureGoogleAuthenticatorTotpScreen(page, logger) {
       );
       triedAnotherWay = clicked;
       if (clicked) {
-        await settlePage(page, 5000);
+        await settlePage(page, 4000);
         continue;
       }
     }
@@ -704,15 +801,295 @@ async function ensureGoogleAuthenticatorTotpScreen(page, logger) {
         { optional: true, verb: "selected" },
       );
       if (clickedAuthApp) {
-        await settlePage(page, 5000);
+        await settlePage(page, 4000);
         continue;
+      }
+
+      if (recoveryEmail && !filledRecoveryEmail) {
+        const clickedRecovOption = await clickFirst(
+          page,
+          "Confirm your recovery email option",
+          [
+            page.getByText(/Confirm your recovery email/i),
+            page.getByText(/Xác nhận email khôi phục/i),
+            page.locator('div[role="link"]:has-text("Confirm your recovery email")'),
+            page.locator('li:has-text("Confirm your recovery email")'),
+          ],
+          logger,
+          { optional: true, verb: "selected" },
+        );
+        if (clickedRecovOption) {
+          await settlePage(page, 3500);
+          continue;
+        }
       }
     }
 
     await settlePage(page, 1200);
   }
 
+  const finalKind = googleChallengeKind(String(page.url?.() || ""));
+  if (finalKind === "signed_in" || finalKind === "speedbump") return "already_signed_in";
   return isGoogleAuthenticatorTotpVisible(page);
+}
+
+function extractFirst8DigitBackupCode(rawBackupCode = "") {
+  const s = String(rawBackupCode || "");
+  const m = s.match(/\b(\d{4})[\s-]?(\d{4})\b/) || s.match(/\b(\d{8})\b/);
+  if (!m) return "";
+  return m[2] ? `${m[1]}${m[2]}` : m[1];
+}
+
+async function verifyGoogleSignedInPageEmail(page, expectedEmail = "") {
+  const want = String(expectedEmail || "").trim().toLowerCase();
+  const url = String(page.url?.() || "");
+  if (/\/intro\b|\/about\b|ServiceLogin|signin|AccountChooser|workspace\.google\.com/i.test(url)) {
+    return { signedIn: false, matched: false, foundEmails: [] };
+  }
+  const extractEmailsFromDom = async () =>
+    page
+      .evaluate(() => {
+        const emailRe = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+        const found = new Set();
+        const addMatches = (txt) => {
+          for (const m of String(txt || "").matchAll(emailRe)) {
+            found.add(m[0].toLowerCase());
+          }
+        };
+        addMatches(document.title || "");
+        for (const el of document.querySelectorAll('[data-email], [data-identifier], a[aria-label*="@"], div[aria-label*="@"]')) {
+          addMatches(el.getAttribute("data-email") || "");
+          addMatches(el.getAttribute("data-identifier") || "");
+          addMatches(el.getAttribute("aria-label") || "");
+          addMatches(el.textContent || "");
+        }
+        if (found.size === 0 && document.body) {
+          addMatches((document.body.innerText || "").slice(0, 12000));
+        }
+        return [...found];
+      })
+      .catch(() => []);
+
+  let foundEmails = await extractEmailsFromDom();
+  if (foundEmails.length === 0 && /mail\.google\.com\/mail/i.test(url)) {
+    await settlePage(page, 2500);
+    foundEmails = await extractEmailsFromDom();
+  }
+  if (!want) {
+    return { signedIn: foundEmails.length > 0 || /mail\.google\.com\/mail/i.test(url), matched: true, foundEmails };
+  }
+  const canonEmail = (em) => {
+    const s = String(em || "").trim().toLowerCase();
+    const at = s.indexOf("@");
+    if (at <= 0) return s;
+    const local = s.slice(0, at);
+    const domain = s.slice(at + 1);
+    if (domain === "gmail.com" || domain === "googlemail.com") {
+      return `${local.split("+")[0].replace(/\./g, "")}@gmail.com`;
+    }
+    return s;
+  };
+  const wantCanon = canonEmail(want);
+  const matched = foundEmails.some((em) => canonEmail(em) === wantCanon);
+  const signedIn = matched || (foundEmails.length === 0 && /mail\.google\.com\/mail\/u\/\d+\/#inbox/i.test(String(page.url?.() || "")));
+  return { signedIn, matched: matched || (foundEmails.length === 0 && signedIn), foundEmails };
+}
+
+async function completePostGoogleAuthChallenges(page, logger, context = {}) {
+  const recoveryEmail = String(context?.mailCredentials?.mailRecover || "").trim();
+  const backupCode = extractFirst8DigitBackupCode(context?.mailCredentials?.backupCode || "");
+  const deadline = Date.now() + 28_000;
+  let triedAnotherWayFromTotp = false;
+  let filledRecoveryEmail = false;
+  let filledBackupCode = false;
+  let requestedEmailOtp = false;
+
+  while (Date.now() < deadline) {
+    const currentUrl = String(page.url?.() || "");
+    if (!/google\.com/i.test(currentUrl)) return;
+    const kind = googleChallengeKind(currentUrl);
+    if (kind === "signed_in") {
+      logger.push("info", `Google post-auth landed on signed-in URL: ${currentUrl}`);
+      return;
+    }
+    if (kind === "rejected" || kind === "phone") return;
+
+    if (kind === "speedbump") {
+      await clickFirst(
+        page,
+        "Dismiss Google speedbump",
+        [
+          page.getByRole("button", { name: /^(not now|skip|continue|i agree|got it|để sau|bỏ qua|tiếp tục|tôi đồng ý)$/i }),
+          page.locator('button:has-text("Not now"), button:has-text("Skip"), button:has-text("Continue"), button:has-text("I agree"), button:has-text("Để sau"), button:has-text("Bỏ qua")'),
+        ],
+        logger,
+        { optional: true, verb: "clicked" },
+      );
+      await settlePage(page, 2500);
+      return;
+    }
+
+    // 1. Direct "Confirm your recovery email" input visible
+    if (recoveryEmail && !filledRecoveryEmail) {
+      const recovInput = page
+        .locator('#knowledge-preregistered-email-response, input[name="knowledgePreregisteredEmailResponse"], input[type="email"][name*="email" i]')
+        .first();
+      const recovVisible = await recovInput.isVisible({ timeout: 400 }).catch(() => false);
+      if (recovVisible) {
+        filledRecoveryEmail = true;
+        logger.push("info", `Filling post-auth Google recovery email confirmation (${recoveryEmail})`);
+        await recovInput.fill(recoveryEmail, { timeout: 5000 }).catch(() => undefined);
+        await clickFirst(
+          page,
+          "Next after recovery email",
+          [
+            page.getByRole("button", { name: /^(Next|Tiếp theo|Send|Gửi)$/i }),
+            page.locator('button:has-text("Next"), button:has-text("Tiếp theo"), button:has-text("Send")'),
+          ],
+          logger,
+          { optional: true, verb: "clicked" },
+        );
+        await settlePage(page, 4500);
+        continue;
+      }
+    }
+
+    // 2. Direct 8-digit Backup Code input visible
+    if (backupCode && !filledBackupCode) {
+      const bkpInput = page
+        .locator('#backupCodePin, input[name="backupCodePin"], input[id*="backupCode"]')
+        .first();
+      const bkpVisible = await bkpInput.isVisible({ timeout: 400 }).catch(() => false);
+      if (bkpVisible) {
+        filledBackupCode = true;
+        logger.push("info", `Filling Google 8-digit backup code`);
+        await bkpInput.fill(backupCode, { timeout: 5000 }).catch(() => undefined);
+        await clickFirst(
+          page,
+          "Next after backup code",
+          [
+            page.locator("#backupCodeNext button, #backupCodeNext"),
+            page.getByRole("button", { name: /^(Next|Tiếp theo)$/i }),
+            page.locator('button:has-text("Next"), button:has-text("Tiếp theo")'),
+          ],
+          logger,
+          { optional: true, verb: "clicked" },
+        );
+        await settlePage(page, 4500);
+        continue;
+      }
+    }
+
+    // 2b. Email verification OTP input (#idvPin / input[name="Pin"]) when recovery email is @getnada.com
+    if (recoveryEmail && /@getnada\.com$/i.test(recoveryEmail) && !requestedEmailOtp) {
+      const idvInput = page.locator('#idvPin, input[name="Pin"], input[id*="idvPin" i]').first();
+      const idvVisible = await idvInput.isVisible({ timeout: 400 }).catch(() => false);
+      if (idvVisible) {
+        requestedEmailOtp = true;
+        try {
+          const { pollGetnadaSecurityCode } = require("../lib/getnada-inbox.cjs");
+          logger.push("info", `Polling getnada for Google verification code (${recoveryEmail})…`);
+          const got = await pollGetnadaSecurityCode(recoveryEmail, {
+            timeoutMs: 45_000,
+            sinceMs: Date.now() - 30_000,
+          });
+          if (got?.ok && got?.code) {
+            await idvInput.fill(String(got.code), { timeout: 5000 });
+            await clickFirst(
+              page,
+              "Next after email verification OTP",
+              [
+                page.locator("#idvPreregisteredEmailNext button, #idvPreregisteredEmailNext"),
+                page.getByRole("button", { name: /^(Next|Tiếp theo)$/i }),
+                page.locator('button:has-text("Next"), button:has-text("Tiếp theo")'),
+              ],
+              logger,
+              { optional: true, verb: "clicked" },
+            );
+            await settlePage(page, 4500);
+            continue;
+          }
+        } catch (err) {
+          logger.push("warn", `Google recovery email OTP poll failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+
+    // 3. If still stuck on /challenge/totp (e.g. "Wrong code. Try again."), click "Try another way"
+    if (kind === "totp" && !triedAnotherWayFromTotp && (recoveryEmail || backupCode)) {
+      const wrongCodeVisible = await page
+        .locator('text=/Wrong code|Try again|Mã không đúng|Thử lại/i')
+        .first()
+        .isVisible({ timeout: 400 })
+        .catch(() => false);
+      if (wrongCodeVisible || (await isGoogleAuthenticatorTotpVisible(page))) {
+        triedAnotherWayFromTotp = true;
+        logger.push("info", "TOTP rejected or still on TOTP screen — clicking Try another way for recovery email / backup code fallback");
+        const clickedTryAnother = await clickFirst(
+          page,
+          "Try another way (post-TOTP fallback)",
+          [
+            page.getByRole("button", { name: /try another way|thử cách khác/i }),
+            page.getByRole("link", { name: /try another way|thử cách khác/i }),
+            page.locator('button:has-text("Try another way"), button:has-text("Thử cách khác")'),
+            page.locator('text=/Try another way|Thử cách khác/i'),
+          ],
+          logger,
+          { optional: true, verb: "clicked" },
+        );
+        if (clickedTryAnother) {
+          await settlePage(page, 3500);
+          continue;
+        }
+      }
+    }
+
+    // 4. On /challenge/selection, pick "Confirm your recovery email" (knowledge challenge, no OTP needed) or "8-digit backup codes"
+    if (kind === "selection" || kind === "other") {
+      if (recoveryEmail && !filledRecoveryEmail) {
+        const clickedRecovOption = await clickFirst(
+          page,
+          "Confirm your recovery email option",
+          [
+            page.locator('[data-challengetype="12"]'),
+            page.getByText(/Confirm your recovery email/i),
+            page.getByText(/Xác nhận email khôi phục/i),
+            page.locator('div[role="link"]:has-text("Confirm your recovery email")'),
+            page.locator('li:has-text("Confirm your recovery email")'),
+          ],
+          logger,
+          { optional: true, verb: "selected" },
+        );
+        if (clickedRecovOption) {
+          await settlePage(page, 3500);
+          continue;
+        }
+      }
+      if (backupCode && !filledBackupCode) {
+        const clickedBkpOption = await clickFirst(
+          page,
+          "8-digit backup codes option",
+          [
+            page.locator('[data-challengetype="9"]'),
+            page.getByText(/Enter one of your 8-digit backup codes/i),
+            page.getByText(/8-digit backup codes|mã dự phòng/i),
+            page.locator('div[role="link"]:has-text("backup codes")'),
+            page.locator('li:has-text("backup codes")'),
+          ],
+          logger,
+          { optional: true, verb: "selected" },
+        );
+        if (clickedBkpOption) {
+          await settlePage(page, 3500);
+          continue;
+        }
+      }
+      // If neither knowledge recovery email nor backup code is available on selection screen, stop waiting
+      break;
+    }
+
+    await settlePage(page, 1200);
+  }
 }
 
 async function detectGoogleCaptcha(page) {
@@ -749,29 +1126,133 @@ class GoogleCaptchaStopError extends Error {
   }
 }
 
-async function assertNotGoogleCaptcha(page, logger, context) {
-  if (!(await detectGoogleCaptcha(page))) return;
-  const url = page.url?.() || "";
-  logger.push("error", `Google reCAPTCHA challenge detected — stopping workflow (${url})`);
-  if (context?.screenshotsRoot) {
-    await saveStepScreenshot(page, context.profileName, "captcha_stop", logger, true, context.screenshotsRoot);
-  }
-  throw new GoogleCaptchaStopError(url);
-}
-
-async function tryClickRecaptchaCheckbox(page, logger) {
+async function recaptchaImageChallengeVisible(page) {
   try {
-    const frame = page.frameLocator('iframe[src*="recaptcha/api2/anchor"]');
-    await frame.locator("#recaptcha-anchor").click({ timeout: 8000 });
-    logger.push("info", "Clicked reCAPTCHA checkbox");
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    return true;
+    const frame = page
+      .locator('iframe[src*="recaptcha/api2/bframe"], iframe[src*="recaptcha/enterprise/bframe"]')
+      .first();
+    return await frame.isVisible({ timeout: 400 }).catch(() => false);
   } catch {
     return false;
   }
 }
 
+async function tryClickRecaptchaCheckbox(page, logger) {
+  const frames = typeof page.frames === "function" ? page.frames() : [];
+  for (const frame of frames) {
+    const frameUrl = String(frame?.url?.() || "");
+    if (!/recaptcha\/(?:api2|enterprise)\/anchor/i.test(frameUrl)) continue;
+    try {
+      const anchor = frame.locator("#recaptcha-anchor");
+      if (!(await anchor.count().catch(() => 0))) continue;
+      await anchor.click({ timeout: 8000 });
+      logger.push("info", "Clicked reCAPTCHA checkbox");
+      return true;
+    } catch {
+      /* try the next anchor frame */
+    }
+  }
+  return false;
+}
+
+async function waitForRecaptchaClear(page, waitMs) {
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    if (await recaptchaImageChallengeVisible(page)) return "image";
+    if (!(await detectGoogleCaptcha(page))) return "clear";
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  if (await recaptchaImageChallengeVisible(page)) return "image";
+  if (!(await detectGoogleCaptcha(page))) return "clear";
+  return "stuck";
+}
+
+async function credentialPromptVisible(page) {
+  const password = await page
+    .locator('input[name="Passwd"]')
+    .first()
+    .isVisible({ timeout: 400 })
+    .catch(() => false);
+  if (password) return "password";
+  if (await isGoogleAuthenticatorTotpVisible(page)) return "totp";
+  if (/challenge\/(pwd|selection|totp|ipp|iap)/i.test(String(page.url?.() || ""))) return "challenge";
+  return "";
+}
+
+async function tryContinuePastRecaptcha(page, logger) {
+  if (typeof page.getByRole !== "function") return false;
+  const nextClicked = await clickFirst(
+    page,
+    "Next after reCAPTCHA",
+    [
+      page.getByRole("button", { name: /^(Next|Tiếp theo)$/i }),
+      page.locator('button:has-text("Next")'),
+      page.locator('button:has-text("Tiếp theo")'),
+    ],
+    logger,
+    { optional: true, verb: "clicked" },
+  );
+  if (nextClicked) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const afterUrl = String(page.url?.() || "");
+    if (/\/signin\/rejected/i.test(afterUrl)) return false;
+    const prompt = await credentialPromptVisible(page);
+    if (prompt || !(await detectGoogleCaptcha(page))) {
+      logger.push("info", `Continuing login after reCAPTCHA (${prompt || "left challenge"})`);
+      return true;
+    }
+  }
+  return false;
+}
+
+async function assertNotGoogleCaptcha(page, logger, context) {
+  if (!(await detectGoogleCaptcha(page))) return;
+  const gate = context || {};
+  gate.captchaAttempts = (Number(gate.captchaAttempts) || 0) + 1;
+  if (gate.captchaAttempts <= 3) {
+    gate.captchaCheckboxAttempted = true;
+    const clicked = await tryClickRecaptchaCheckbox(page, logger);
+    let outcome = "stuck";
+    if (!clicked) {
+      logger.push("info", "reCAPTCHA checkbox was not on the page");
+    } else {
+      outcome = await waitForRecaptchaClear(page, Number(gate.captchaClearWaitMs) || 6000);
+      if (outcome === "clear") {
+        logger.push("success", "reCAPTCHA checkbox accepted");
+        await tryContinuePastRecaptcha(page, logger).catch(() => false);
+        return;
+      }
+      if (outcome === "image") {
+        logger.push("info", "reCAPTCHA image grid is up — invoking Vision solver before submitting.");
+      }
+    }
+    if (gate.solveCaptchaWithVision !== false) {
+      const visionRes = await solveGoogleRecaptchaOnPlaywrightPage(page, {
+        maxRounds: Number(gate.captchaVisionMaxRounds) || 10,
+        onLog: (lvl, msg) => logger.push(lvl === "warn" ? "info" : lvl, msg),
+      });
+      if (visionRes?.solved) {
+        logger.push("success", `reCAPTCHA solved via Vision (${visionRes.reason || "ok"})`);
+        await tryContinuePastRecaptcha(page, logger).catch(() => false);
+        return;
+      }
+    }
+    if (outcome !== "image" && (await tryContinuePastRecaptcha(page, logger))) return;
+  }
+  const url = page.url?.() || "";
+  logger.push("error", `Google reCAPTCHA challenge detected — stopping workflow (${url})`);
+  if (gate.screenshotsRoot) {
+    await saveStepScreenshot(page, gate.profileName, "captcha_stop", logger, true, gate.screenshotsRoot);
+  }
+  throw new GoogleCaptchaStopError(url);
+}
+
 async function waitForVisibleSelector(page, selector, timeout, logger, context) {
+  const initialUrl = String(page.url?.() || "");
+  if (/accounts\.google\.com\/.*(?:\/signin\/rejected|\/disabled\/)/i.test(initialUrl)) {
+    logger.push("error", `Google sign-in rejected or disabled at ${initialUrl} before waiting for ${selector}`);
+    throw new Error(`Google sign-in rejected or disabled at ${initialUrl}`);
+  }
   try {
     await page.locator(selector).first().waitFor({ state: "visible", timeout: timeout || 15000 });
     logger.push("success", `Visible: ${selector}`);
@@ -781,6 +1262,24 @@ async function waitForVisibleSelector(page, selector, timeout, logger, context) 
     logger.push("error", `Wait failed at ${pageUrl}: ${cleanMessage(waitError.message)}`);
     if (await detectGoogleCaptcha(page)) {
       await assertNotGoogleCaptcha(page, logger, context);
+      await page.locator(selector).first().waitFor({ state: "visible", timeout: timeout || 15000 });
+      logger.push("success", `Visible after Google reCAPTCHA solve: ${selector}`);
+      return;
+    }
+    if (
+      context?.solveCaptchaWithVision !== false &&
+      /login\.live\.com|account\.live\.com|facebook\.com\/checkpoint|fbsbx\.com\/captcha/i.test(pageUrl)
+    ) {
+      const uniRes = await solveUniversalCaptchaOnPlaywrightPage(page, {
+        maxRounds: Number(context?.captchaVisionMaxRounds) || 8,
+        onLog: (lvl, msg) => logger.push(lvl === "warn" ? "info" : lvl, msg),
+      }).catch(() => null);
+      if (uniRes?.solved && !uniRes?.skipped) {
+        logger.push("success", `Universal captcha solved at ${pageUrl} (${uniRes.reason || "ok"}) — retrying wait`);
+        await page.locator(selector).first().waitFor({ state: "visible", timeout: timeout || 15000 });
+        logger.push("success", `Visible after captcha solve: ${selector}`);
+        return;
+      }
     }
     throw waitError;
   }
@@ -812,6 +1311,7 @@ async function runScriptSteps(page, steps, logger, context) {
       const keep =
         step.kind === "screenshot" ||
         (step.kind === "navigate" && /outlook\.(live|office)/i.test(navTarget)) ||
+        (step.kind === "navigate" && /mail\.google\.com/i.test(navTarget)) ||
         (step.kind === "delay" && /login complete|inbox/i.test(label));
       if (!keep) {
         logger.push("info", `Skipped (session active): ${label}`);
@@ -951,42 +1451,183 @@ async function runScriptSteps(page, steps, logger, context) {
         }
         if (isGoogleEmailStep(step)) {
           const signinUrl = activePage.url?.() || "";
-          if (/myaccount\.google\.com|mail\.google\.com/i.test(signinUrl) && !/signin/i.test(signinUrl)) {
-            skipLogin = true;
-            logger.push("info", "Google session already active — skip login steps");
-            continue;
+          if (/myaccount\.google\.com|mail\.google\.com|one\.google\.com/i.test(signinUrl) && !/signin|accounts\.google\.com/i.test(signinUrl)) {
+            const pageEmailCheck = await verifyGoogleSignedInPageEmail(activePage, context.mailCredentials?.email);
+            if (pageEmailCheck.signedIn && pageEmailCheck.matched) {
+              skipLogin = true;
+              logger.push("info", `Google session already active (${pageEmailCheck.foundEmails[0] || context.mailCredentials?.email || "verified"}) — skip login steps`);
+              continue;
+            }
+            logger.push(
+              "info",
+              `Google page at ${signinUrl} has emails [${pageEmailCheck.foundEmails.join(", ")}] instead of ${context.mailCredentials?.email || "(target)"} — clearing wrong Google session cookies and navigating to ServiceLogin`,
+            );
+            await activePage.context().clearCookies({ domain: /google\.com$/i }).catch(() => undefined);
+            await safePageGoto(
+              activePage,
+              "https://accounts.google.com/ServiceLogin?hl=en&service=mail&continue=https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F",
+              { waitUntil: "commit", timeout: 30000 },
+            );
+            await settlePage(activePage, 3500);
           }
           if (/challenge\/pwd/i.test(signinUrl) && !(await isGoogleVisibleEmailInput(activePage))) {
             logger.push("info", "On password challenge — skip email wait");
             continue;
           }
           if (!(await isGoogleVisibleEmailInput(activePage))) {
+            const targetEmailLower = String(context.mailCredentials?.email || "").trim().toLowerCase();
+            if (targetEmailLower) {
+              const wrongIdentifierOnPage = await activePage
+                .evaluate((emailWant) => {
+                  const isVis = (el) => Boolean(el && el.offsetParent !== null);
+                  const idEls = Array.from(document.querySelectorAll("[data-identifier], [data-email]")).filter(isVis);
+                  if (!idEls.length) return false;
+                  const anyMatch = idEls.some(
+                    (r) =>
+                      (
+                        r.getAttribute("data-identifier") ||
+                        r.getAttribute("data-email") ||
+                        r.textContent ||
+                        ""
+                      )
+                        .trim()
+                        .toLowerCase() === emailWant,
+                  );
+                  return !anyMatch;
+                }, targetEmailLower)
+                .catch(() => false);
+              if (wrongIdentifierOnPage) {
+                logger.push(
+                  "info",
+                  `Google sign-in page showed different identifier than ${targetEmailLower} — clearing ACCOUNT_CHOOSER & wrong Google session cookies`,
+                );
+                await activePage.context().clearCookies({ domain: /google\.com$/i }).catch(() => undefined);
+                await safePageGoto(
+                  activePage,
+                  "https://accounts.google.com/ServiceLogin?hl=en&service=mail&continue=https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F",
+                  { waitUntil: "commit", timeout: 30000 },
+                );
+                await settlePage(activePage, 3500);
+              }
+            }
             if (await isGooglePasswordStepReady(activePage)) {
               logger.push("info", "Google email prefilled — continuing to password");
               continue;
             }
-            const advanced = await clickFirst(
-              activePage,
-              "Confirm identifier",
-              [
-                activePage.getByRole("button", { name: /^next$/i }),
-                activePage.getByRole("button", { name: /tiếp theo/i }),
-                activePage.locator("#identifierNext button"),
-              ],
-              logger,
-              { optional: true, verb: "clicked" },
-            );
-            if (advanced) {
-              await settlePage(activePage, 4000);
-              const urlAfter = activePage.url?.() || "";
-              if (/challenge\/pwd/i.test(urlAfter)) {
-                logger.push("info", "On password challenge after confirm — skip email wait");
-                continue;
+            // 1. AccountChooser ("Choose an account" / "Signed out"): click matching [data-identifier] row or "Use another account"
+            const curUrlBeforeChooser = activePage.url?.() || "";
+            if (!/confirmidentifier|challenge\//i.test(curUrlBeforeChooser)) {
+              const chooserState = await activePage
+                .evaluate((emailWant) => {
+                  const isVis = (el) => Boolean(el && el.offsetParent !== null);
+                  const nextBtn = Array.from(
+                    document.querySelectorAll('#identifierNext button, #identifierNext'),
+                  ).find(isVis);
+                  if (nextBtn) return { action: "" };
+                  const rows = Array.from(document.querySelectorAll('[data-identifier], [data-email]')).filter(isVis);
+                  if (!rows.length) return { action: "" };
+                  const match = emailWant
+                    ? rows.find(
+                        (r) =>
+                          (r.getAttribute("data-identifier") || r.getAttribute("data-email") || "").toLowerCase() ===
+                          emailWant,
+                      )
+                    : rows[0];
+                  if (match) {
+                    return {
+                      action: "matched",
+                      email: (match.getAttribute("data-identifier") || match.getAttribute("data-email") || "").toLowerCase(),
+                    };
+                  }
+                  return { action: "use_another" };
+                }, targetEmailLower)
+                .catch(() => ({ action: "" }));
+              if (chooserState.action === "matched") {
+                await clickFirst(
+                  activePage,
+                  `Google AccountChooser row (${chooserState.email || targetEmailLower})`,
+                  [
+                    activePage.locator(`[data-identifier="${chooserState.email}"], [data-email="${chooserState.email}"]`),
+                  ],
+                  logger,
+                  { optional: true, verb: "clicked" },
+                );
+                logger.push("info", `Selected matching account (${targetEmailLower}) in Google AccountChooser`);
+                const pwdWaitEnd = Date.now() + 6000;
+                while (Date.now() < pwdWaitEnd) {
+                  await settlePage(activePage, 800);
+                  if (
+                    (await isGooglePasswordStepReady(activePage)) ||
+                    /challenge\/|confirmidentifier/i.test(activePage.url?.() || "")
+                  ) {
+                    break;
+                  }
+                }
+                await assertNotGoogleCaptcha(activePage, logger, context);
+              } else if (chooserState.action === "use_another") {
+                const clickedUseAnother = await clickFirst(
+                  activePage,
+                  "Use another account in AccountChooser",
+                  [
+                    activePage.locator('[jsname="rwl3qc"]'),
+                    activePage.getByText(/Use another account|Sử dụng một tài khoản khác|Add account|Thêm tài khoản/i),
+                    activePage.locator('li:has-text("Use another account"), li:has-text("Sử dụng một tài khoản khác"), div[role="link"]:has-text("Use another account")'),
+                  ],
+                  logger,
+                  { optional: true, verb: "clicked" },
+                );
+                if (clickedUseAnother) {
+                  logger.push("info", `Clicked 'Use another account' in AccountChooser for ${targetEmailLower}`);
+                  await settlePage(activePage, 3500);
+                }
+                if (!(await isGoogleVisibleEmailInput(activePage))) {
+                  logger.push("info", "AccountChooser did not open email input — navigating directly to GlifWebSignIn AddSession identifier");
+                  await safePageGoto(
+                    activePage,
+                    "https://accounts.google.com/signin/v2/identifier?service=mail&passive=true&continue=https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F&flowName=GlifWebSignIn&flowEntry=AddSession",
+                    { waitUntil: "commit", timeout: 30000 },
+                  );
+                  await settlePage(activePage, 3500);
+                }
               }
-              if (await isGooglePasswordStepReady(activePage)) {
-                logger.push("info", "Advanced from confirmidentifier to password");
-                continue;
+            }
+            // 2. /confirmidentifier ("Verify it's you — Please sign in again to continue — Next")
+            if (!(await isGoogleVisibleEmailInput(activePage)) && !(await isGooglePasswordStepReady(activePage))) {
+              const advanced = await clickFirst(
+                activePage,
+                "Confirm identifier",
+                [
+                  activePage.getByRole("button", { name: /^next$/i }),
+                  activePage.getByRole("button", { name: /tiếp theo/i }),
+                  activePage.locator("#identifierNext button"),
+                  activePage.locator("#identifierNext"),
+                ],
+                logger,
+                { optional: true, verb: "clicked" },
+              );
+              if (advanced) {
+                const pwdWaitEnd = Date.now() + 6000;
+                while (Date.now() < pwdWaitEnd) {
+                  await settlePage(activePage, 800);
+                  if (
+                    (await isGooglePasswordStepReady(activePage)) ||
+                    (await isGoogleAuthenticatorTotpVisible(activePage)) ||
+                    /challenge\//i.test(activePage.url?.() || "")
+                  ) {
+                    break;
+                  }
+                }
+                await assertNotGoogleCaptcha(activePage, logger, context);
               }
+            }
+            const urlAfter = activePage.url?.() || "";
+            if (
+              /challenge\/(pwd|totp|selection|dp|iap|kpe)/i.test(urlAfter) ||
+              (await isGooglePasswordStepReady(activePage)) ||
+              (await isGoogleAuthenticatorTotpVisible(activePage))
+            ) {
+              logger.push("info", "Advanced past Google identifier step — skip email wait");
+              continue;
             }
           }
         }
@@ -998,7 +1639,12 @@ async function runScriptSteps(page, steps, logger, context) {
           }
         }
         if (isTotpRelated(step) && !skip2fa) {
-          await ensureGoogleAuthenticatorTotpScreen(activePage, logger);
+          const totpScreen = await ensureGoogleAuthenticatorTotpScreen(activePage, logger, context);
+          if (totpScreen === "already_signed_in") {
+            skip2fa = true;
+            logger.push("info", "Google already signed in without TOTP prompt — skipping remaining 2FA steps");
+            continue;
+          }
         }
         try {
           await waitForVisibleSelector(activePage, selector, timeout || 15000, logger, context);
@@ -1021,10 +1667,16 @@ async function runScriptSteps(page, steps, logger, context) {
               );
             }
           }
-          if (isGoogleEmailStep(step) && /myaccount\.google\.com|mail\.google\.com/i.test(activePage.url?.() || "")) {
-            skipLogin = true;
-            logger.push("info", "Google session already active — skip login steps");
-            continue;
+          if (isGoogleEmailStep(step)) {
+            const failUrl = activePage.url?.() || "";
+            if (/^https?:\/\/(?:myaccount|mail|one)\.google\.com\//i.test(failUrl)) {
+              const failEmailCheck = await verifyGoogleSignedInPageEmail(activePage, context.mailCredentials?.email);
+              if (failEmailCheck.signedIn && failEmailCheck.matched) {
+                skipLogin = true;
+                logger.push("info", "Google session already active — skip login steps");
+                continue;
+              }
+            }
           }
           if (isTotpRelated(step)) {
             const pageUrl = activePage.url?.() || "";
@@ -1036,14 +1688,11 @@ async function runScriptSteps(page, steps, logger, context) {
                 continue;
               }
             }
-            const navigated = await ensureGoogleAuthenticatorTotpScreen(activePage, logger);
-            if (navigated) {
-              try {
-                await waitForVisibleSelector(activePage, selector, timeout || 15000, logger, context);
-                continue;
-              } catch {
-                // fall through
-              }
+            const curKindAfterWait = googleChallengeKind(pageUrl);
+            if (curKindAfterWait === "signed_in" || curKindAfterWait === "speedbump") {
+              skip2fa = true;
+              logger.push("info", "Google already signed in — skipping remaining 2FA steps");
+              continue;
             }
             // Outlook / Microsoft OTC often absent when password-only — soft skip.
             if (isMicrosoftLoginUrl(activePage.url?.() || "") || isMicrosoftAuthProgressUrl(activePage.url?.() || "") || !context.mailCredentials?.secret) {
@@ -1071,12 +1720,14 @@ async function runScriptSteps(page, steps, logger, context) {
       const selector = stepSelector(step);
       if (!selector) throw new Error(`${label} is missing a selector.`);
       if (
-        isGoogleEmailStep(step) &&
+        (isGoogleEmailStep(step) || /identifierNext|next.*\(email\)/i.test(`${selector} ${label}`)) &&
         /identifierNext|next.*email/i.test(`${selector} ${label}`) &&
         !(await isGoogleVisibleEmailInput(activePage)) &&
-        (await isGooglePasswordStepReady(activePage))
+        ((await isGooglePasswordStepReady(activePage)) ||
+          (await isGoogleAuthenticatorTotpVisible(activePage)) ||
+          /challenge\/(pwd|totp|selection|dp|iap|kpe)/i.test(activePage.url?.() || ""))
       ) {
-        logger.push("info", "Skipped email Next — already on password step");
+        logger.push("info", "Skipped email Next — already past identifier step");
         continue;
       }
       if (isMicrosoftEmailNextClick(step, activePage.url?.() || "")) {
@@ -1153,7 +1804,11 @@ async function runScriptSteps(page, steps, logger, context) {
       const selector = stepSelector(step);
       if (!selector) throw new Error(`${label} is missing a selector.`);
       if (isGoogleEmailStep(step) && !(await isGoogleVisibleEmailInput(activePage))) {
-        if (await isGooglePasswordStepReady(activePage)) {
+        if (
+          (await isGooglePasswordStepReady(activePage)) ||
+          (await isGoogleAuthenticatorTotpVisible(activePage)) ||
+          /challenge\/(pwd|totp|selection|dp|iap|kpe)/i.test(activePage.url?.() || "")
+        ) {
           logger.push("info", "Skipped type email — identifier already confirmed");
           continue;
         }
@@ -1191,6 +1846,9 @@ async function runScriptSteps(page, steps, logger, context) {
       const delayMs = Number(step.value || timeout || 1000);
       await new Promise((resolve) => setTimeout(resolve, Math.max(0, delayMs)));
       logger.push("success", `Delayed ${Math.max(0, delayMs)}ms`);
+      if (/login complete/i.test(label) && !skipLogin) {
+        await completePostGoogleAuthChallenges(activePage, logger, context);
+      }
       continue;
     }
 
@@ -1244,6 +1902,7 @@ module.exports = {
   runGoogleFormAgAppeal,
   settlePage,
   detectGoogleCaptcha,
+  assertNotGoogleCaptcha,
   GoogleCaptchaStopError,
   // Exported for unit tests — Microsoft soft-skip must stay URL-gated
   isMicrosoftLoginUrl,

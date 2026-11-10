@@ -18,10 +18,10 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@tool-workspace/hub-ui": ["vendor/hub-ui/src/index.ts"],
-      "@tool-workspace/hub-ui/*": ["vendor/hub-ui/src/*"],
-      "@tool-workspace/hub-identity": ["vendor/hub-identity/src/index.ts"],
-      "@tool-workspace/hub-identity/*": ["vendor/hub-identity/src/*"]
+      "@tool-workspace/hub-ui": ["../../packages/hub-ui/src/index.ts"],
+      "@tool-workspace/hub-ui/*": ["../../packages/hub-ui/src/*"],
+      "@tool-workspace/hub-identity": ["../../packages/hub-identity/src/index.ts"],
+      "@tool-workspace/hub-identity/*": ["../../packages/hub-identity/src/*"]
     }
   },
   "include": ["src", "public/workflow-store/**/*.json"],

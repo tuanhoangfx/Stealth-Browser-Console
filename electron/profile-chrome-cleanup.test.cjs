@@ -129,4 +129,188 @@ describe("profile-chrome-cleanup", () => {
 
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it("reconcile drops a missing cloakbrowser path and an off operator pin, skips live profiles", () => {
+    const { reconcileClosedProfileExtensionPrefs } = require("./lib/profile-chrome-cleanup.cjs");
+    const { unpackedExtensionId } = require("./lib/profile-chrome-preferences.cjs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-reconcile-"));
+    const closedDir = path.join(root, "profiles", "closed");
+    const liveDir = path.join(root, "profiles", "live");
+    const operator = path.join(root, "operator");
+    fs.mkdirSync(operator, { recursive: true });
+    fs.writeFileSync(path.join(operator, "manifest.json"), "{}", "utf8");
+    const operatorId = unpackedExtensionId(operator);
+    const missing = path.join(root, ".cloakbrowser", "chromium-old", "deaddeaddeaddeaddeaddeaddeaddead");
+    for (const dir of [closedDir, liveDir]) {
+      fs.mkdirSync(path.join(dir, "Default"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "Default", "Preferences"),
+        JSON.stringify({
+          extensions: {
+            settings: {
+              deaddeaddeaddeaddeaddeaddeaddead: { path: missing, state: 1 },
+              [operatorId]: { path: operator.replace(/\\/g, "/"), state: 1 },
+            },
+          },
+        }),
+      );
+    }
+    fs.writeFileSync(path.join(liveDir, "lockfile"), "1", "utf8");
+
+    const result = reconcileClosedProfileExtensionPrefs(root, {
+      operatorDir: operator,
+      operatorEnabled: false,
+    });
+    assert.equal(result.skippedLive, 1);
+    assert.ok(result.prefsCleaned >= 1);
+    const closed = JSON.parse(fs.readFileSync(path.join(closedDir, "Default", "Preferences"), "utf8"));
+    assert.equal(closed.extensions.settings.deaddeaddeaddeaddeaddeaddeaddead, undefined);
+    assert.equal(closed.extensions.settings[operatorId], undefined);
+    const live = JSON.parse(fs.readFileSync(path.join(liveDir, "Default", "Preferences"), "utf8"));
+    assert.ok(live.extensions.settings[operatorId]);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("reconcile pins E0002 on a closed profile and leaves a live profile alone", () => {
+    const { reconcileClosedProfileExtensionPrefs } = require("./lib/profile-chrome-cleanup.cjs");
+    const { unpackedExtensionId } = require("./lib/profile-chrome-preferences.cjs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-pin-operator-"));
+    const closedDir = path.join(root, "profiles", "closed");
+    const liveDir = path.join(root, "profiles", "live");
+    const operator = path.join(root, "operator");
+    fs.mkdirSync(operator, { recursive: true });
+    fs.writeFileSync(path.join(operator, "manifest.json"), JSON.stringify({ name: "E0002" }), "utf8");
+    const operatorId = unpackedExtensionId(operator);
+    for (const dir of [closedDir, liveDir]) {
+      fs.mkdirSync(path.join(dir, "Default"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "Default", "Preferences"),
+        JSON.stringify({ extensions: { settings: {}, pinned_extensions: [] } }),
+        "utf8",
+      );
+    }
+    fs.writeFileSync(path.join(liveDir, "SingletonLock"), "", "utf8");
+
+    const result = reconcileClosedProfileExtensionPrefs(root, {
+      operatorDir: operator,
+      operatorEnabled: true,
+    });
+    assert.equal(result.skippedLive, 1);
+    assert.equal(result.pinned, 1);
+    const closed = JSON.parse(fs.readFileSync(path.join(closedDir, "Default", "Preferences"), "utf8"));
+    assert.ok(closed.extensions.pinned_extensions.includes(operatorId));
+    assert.equal(closed.extensions.settings[operatorId].state, 1);
+    assert.equal(
+      closed.extensions.settings[operatorId].path,
+      operator.replace(/\\/g, "/"),
+    );
+    const live = JSON.parse(fs.readFileSync(path.join(liveDir, "Default", "Preferences"), "utf8"));
+    assert.equal(live.extensions.settings[operatorId], undefined);
+
+    const again = reconcileClosedProfileExtensionPrefs(root, {
+      operatorDir: operator,
+      operatorEnabled: true,
+    });
+    assert.equal(again.pinned, 0);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("reconcile pins E0001 on a closed profile and removes it when the toggle is off", () => {
+    const { reconcileClosedProfileExtensionPrefs } = require("./lib/profile-chrome-cleanup.cjs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-pin-bridge-"));
+    const closedDir = path.join(root, "profiles", "closed");
+    const bridgeId = "kaaadageakdandpobcofplmfbjfjabdk";
+    const bridgeDir = path.join(root, "stage", bridgeId);
+    fs.mkdirSync(path.join(closedDir, "Default"), { recursive: true });
+    fs.mkdirSync(path.join(bridgeDir, "_metadata"), { recursive: true });
+    fs.writeFileSync(path.join(bridgeDir, "manifest.json"), JSON.stringify({ name: "E0001" }), "utf8");
+    fs.writeFileSync(path.join(bridgeDir, "_metadata", "verified_contents.json"), "[]", "utf8");
+    fs.writeFileSync(
+      path.join(closedDir, "Default", "Preferences"),
+      JSON.stringify({ extensions: { settings: {}, pinned_extensions: [] } }),
+      "utf8",
+    );
+
+    const pinned = reconcileClosedProfileExtensionPrefs(root, {
+      operatorEnabled: false,
+      bridgeId,
+      bridgeDir,
+      bridgeEnabled: true,
+    });
+    assert.equal(pinned.pinnedBridge, 1);
+    const prefs = JSON.parse(fs.readFileSync(path.join(closedDir, "Default", "Preferences"), "utf8"));
+    assert.equal(prefs.extensions.settings[bridgeId].state, 1);
+    assert.ok(prefs.extensions.pinned_extensions.includes(bridgeId));
+
+    const again = reconcileClosedProfileExtensionPrefs(root, {
+      operatorEnabled: false,
+      bridgeId,
+      bridgeDir,
+      bridgeEnabled: true,
+    });
+    assert.equal(again.pinnedBridge, 0);
+
+    const removed = reconcileClosedProfileExtensionPrefs(root, {
+      operatorEnabled: false,
+      bridgeId,
+      bridgeDir,
+      bridgeEnabled: false,
+    });
+    assert.ok(removed.removed >= 1);
+    const after = JSON.parse(fs.readFileSync(path.join(closedDir, "Default", "Preferences"), "utf8"));
+    assert.equal(after.extensions.settings[bridgeId], undefined);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("trims HTTP Cache, Service Worker CacheStorage/ScriptCache, and Shared Dictionary on closed profiles while preserving session state and skipping live profiles", () => {
+    const {
+      trimClosedProfileDisposableCache,
+      trimAllClosedProfilesDisposableCache,
+    } = require("./lib/profile-chrome-cleanup.cjs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-trim-cache-"));
+    const closedDir = path.join(root, "profiles", "closed");
+    const liveDir = path.join(root, "profiles", "live");
+
+    for (const dir of [closedDir, liveDir]) {
+      fs.mkdirSync(path.join(dir, "Default", "Cache", "Cache_Data"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "Default", "Cache", "Cache_Data", "f_0001"), "cache-bytes", "utf8");
+      fs.mkdirSync(path.join(dir, "Default", "Service Worker", "CacheStorage", "sw1"), { recursive: true });
+      fs.mkdirSync(path.join(dir, "Default", "Service Worker", "ScriptCache"), { recursive: true });
+      fs.mkdirSync(path.join(dir, "Default", "Service Worker", "Database"), { recursive: true });
+      fs.mkdirSync(path.join(dir, "Default", "Shared Dictionary", "cache"), { recursive: true });
+      fs.mkdirSync(path.join(dir, "Default", "Network"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "Default", "Network", "Cookies"), "sqlite-cookies", "utf8");
+      fs.mkdirSync(path.join(dir, "Default", "Local Storage", "leveldb"), { recursive: true });
+      fs.mkdirSync(path.join(dir, "Default", "IndexedDB"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "Default", "Preferences"), "{}", "utf8");
+    }
+    fs.writeFileSync(path.join(liveDir, "lockfile"), "1", "utf8");
+
+    const singleLive = trimClosedProfileDisposableCache(liveDir);
+    assert.equal(singleLive.skipped, true);
+    assert.equal(fs.existsSync(path.join(liveDir, "Default", "Cache")), true);
+
+    const sweep = trimAllClosedProfilesDisposableCache(root);
+    assert.equal(sweep.profiles, 2);
+    assert.equal(sweep.cleanedProfiles, 1);
+    assert.equal(sweep.skippedLive, 1);
+    assert.ok(sweep.removedCount >= 4);
+
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Cache")), false);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Service Worker", "CacheStorage")), false);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Service Worker", "ScriptCache")), false);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Shared Dictionary")), false);
+
+    // Crucial auth/session state preserved
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Service Worker", "Database")), true);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Network", "Cookies")), true);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Local Storage", "leveldb")), true);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "IndexedDB")), true);
+    assert.equal(fs.existsSync(path.join(closedDir, "Default", "Preferences")), true);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });

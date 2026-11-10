@@ -6,13 +6,13 @@
   "group": "Account Check",
   "platform": "Google",
   "action": "open-url",
-  "targetUrl": "https://accounts.google.com/signin",
+  "targetUrl": "https://accounts.google.com/ServiceLogin?service=mail&passive=true&continue=https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F",
   "takeScreenshot": true,
   "closeWhenDone": false,
   "inspectMode": false,
   "concurrency": 1,
   "steps": [
-    { "id": "step-navigate", "kind": "navigate", "name": "Open Gmail sign-in", "value": "https://accounts.google.com/signin", "enabled": true, "timeoutMs": 60000 },
+    { "id": "step-navigate", "kind": "navigate", "name": "Open Gmail sign-in", "value": "https://accounts.google.com/ServiceLogin?service=mail&passive=true&continue=https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F", "enabled": true, "timeoutMs": 60000 },
     { "id": "step-wait-email", "kind": "wait", "name": "Wait for email input", "selector": "#identifierId, input[type=\"email\"]", "enabled": true, "timeoutMs": 15000 },
     { "id": "step-type-email", "kind": "type", "name": "Type email", "selector": "#identifierId, input[type=\"email\"]", "value": "{{gmailEmail}}", "enabled": true, "timeoutMs": 10000 },
     { "id": "step-next-email", "kind": "click", "name": "Click Next (email)", "selector": "#identifierNext button, #identifierNext, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 10000 },
@@ -26,6 +26,8 @@
     { "id": "step-type-2fa", "kind": "type", "name": "Type TOTP code", "selector": "input[type=\"tel\"][id=\"totpPin\"], input[name=\"totpPin\"], input[type=\"tel\"]", "value": "{{gmailTotpCode}}", "enabled": true, "timeoutMs": 5000 },
     { "id": "step-next-2fa", "kind": "click", "name": "Click Next (2FA)", "selector": "#totpNext button, button:has-text(\"Next\"), button:has-text(\"Tiếp theo\")", "enabled": true, "timeoutMs": 5000 },
     { "id": "step-delay-done", "kind": "delay", "name": "Wait for login complete", "value": "3000", "enabled": true, "timeoutMs": 5000 },
+    { "id": "step-open-inbox", "kind": "navigate", "name": "Open Gmail inbox", "value": "https://mail.google.com/mail/u/0/", "enabled": true, "timeoutMs": 60000 },
+    { "id": "step-delay-inbox", "kind": "delay", "name": "Wait for inbox", "value": "3000", "enabled": true, "timeoutMs": 5000 },
     { "id": "step-screenshot", "kind": "screenshot", "name": "Capture login result", "enabled": true, "timeoutMs": 10000 }
   ]
 }

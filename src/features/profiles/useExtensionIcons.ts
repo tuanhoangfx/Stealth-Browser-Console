@@ -1,41 +1,60 @@
 import { useEffect, useState } from "react";
-import { fetchExtensionIcon } from "../../api";
-import { isStealthDesktop } from "../../api";
-import { resolveHubBrandAssetSrc } from "../../lib/hub-brand-asset-src";
-import { resolveHubBrandIcon } from "@tool-workspace/hub-ui";
+import { fetchExtensionIcon, isStealthDesktop } from "../../api";
+import { DEFAULT_EXTENSION_ICONS } from "../../lib/default-extension-icons";
 import { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } from "../../lib/stealth-extension-store-ids";
 
-const SURFSHARK_BRAND_SRC = resolveHubBrandAssetSrc(resolveHubBrandIcon("surfshark")?.src ?? "");
+export type ExtensionIconMap = Record<"e0001" | "e0002" | "surfshark", string | null>;
 
-export type ExtensionIconMap = Record<"e0001" | "surfshark", string | null>;
+const cache: ExtensionIconMap = {
+  e0001: DEFAULT_EXTENSION_ICONS.e0001,
+  e0002: DEFAULT_EXTENSION_ICONS.e0002,
+  surfshark: DEFAULT_EXTENSION_ICONS.surfshark,
+};
+let inFlight: Promise<ExtensionIconMap> | null = null;
+let resolved = false;
 
-const cache: ExtensionIconMap = { e0001: null, surfshark: null };
-let fetched = false;
+function loadExtensionIconsOnce(): Promise<ExtensionIconMap> {
+  if (resolved) return Promise.resolve(cache);
+  if (!isStealthDesktop()) {
+    resolved = true;
+    return Promise.resolve(cache);
+  }
+  if (!inFlight) {
+    inFlight = Promise.allSettled([
+      fetchExtensionIcon(COOKIE_BRIDGE_STORE_ID, 48),
+      fetchExtensionIcon("e0002", 48),
+      fetchExtensionIcon(SURFSHARK_STORE_ID, 48),
+    ]).then(([e0001Result, e0002Result, surfsharkResult]) => {
+      if (e0001Result.status === "fulfilled" && e0001Result.value) {
+        cache.e0001 = e0001Result.value;
+      }
+      if (e0002Result.status === "fulfilled" && e0002Result.value) {
+        cache.e0002 = e0002Result.value;
+      }
+      if (surfsharkResult.status === "fulfilled" && surfsharkResult.value) {
+        cache.surfshark = surfsharkResult.value;
+      }
+      resolved = true;
+      return { ...cache };
+    });
+  }
+  return inFlight;
+}
 
 /**
- * Resolve actual extension icons from manifest.json via IPC.
- * Falls back to static PNGs in dev/web mode.
+ * Resolve actual extension icons from manifest.json via IPC, seeded with real bundled 48x48 PNGs.
  */
 export function useExtensionIcons(): ExtensionIconMap {
-  const [icons, setIcons] = useState<ExtensionIconMap>(cache);
+  const [icons, setIcons] = useState<ExtensionIconMap>(() => ({ ...cache }));
 
   useEffect(() => {
-    if (fetched) return;
-    if (!isStealthDesktop()) {
-      fetched = true;
-      setIcons({ e0001: null, surfshark: SURFSHARK_BRAND_SRC || null });
-      return;
-    }
-    fetched = true;
-    Promise.allSettled([
-      fetchExtensionIcon(COOKIE_BRIDGE_STORE_ID, 48),
-      fetchExtensionIcon(SURFSHARK_STORE_ID, 48),
-    ]).then(([e0001Result, surfsharkResult]) => {
-      cache.e0001 = e0001Result.status === "fulfilled" ? e0001Result.value : null;
-      const surfsharkIpc = surfsharkResult.status === "fulfilled" ? surfsharkResult.value : null;
-      cache.surfshark = surfsharkIpc || SURFSHARK_BRAND_SRC || null;
-      setIcons({ ...cache });
+    let active = true;
+    void loadExtensionIconsOnce().then((next) => {
+      if (active) setIcons({ ...next });
     });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return icons;

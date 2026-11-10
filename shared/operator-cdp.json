@@ -1,0 +1,48 @@
+{
+  "productCode": "E0002",
+  "name": "E0002 Browser Operator",
+  "role": "In-profile operator for every platform tool. Attach to the P0003 session CDP port. Do not launch a second browser or a second protocol.",
+  "stageDirName": "extension-stage",
+  "pin": "toolbar",
+  "maintain": "maintainOperatorExtension",
+  "attach": {
+    "host": "127.0.0.1",
+    "port": "session.debugPort",
+    "url": "http://127.0.0.1:{debugPort}",
+    "client": "playwright.chromium.connectOverCDP",
+    "api": "P0003 session getDebugPort"
+  },
+  "page": {
+    "hostPermissions": ["http://*/*", "https://*/*"],
+    "contentScripts": [
+      {
+        "matches": ["http://*/*", "https://*/*"],
+        "js": ["content-mark.js"],
+        "run_at": "document_start"
+      },
+      {
+        "matches": ["https://muse.ai/*"],
+        "js": ["content-muse.js"],
+        "run_at": "document_idle"
+      },
+      {
+        "matches": ["https://www.facebook.com/groups/*"],
+        "js": ["content-groups.js"],
+        "run_at": "document_idle"
+      },
+      {
+        "matches": [
+          "https://*.facebook.com/*",
+          "https://*.arkoselabs.com/*",
+          "https://*.funcaptcha.com/*",
+          "https://*.recaptcha.net/*",
+          "https://www.google.com/recaptcha/*",
+          "https://accounts.google.com/*"
+        ],
+        "js": ["content-fb-auth.js"],
+        "run_at": "document_idle",
+        "all_frames": true
+      }
+    ]
+  }
+}

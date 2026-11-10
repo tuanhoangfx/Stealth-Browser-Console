@@ -411,6 +411,8 @@ export const DEFAULT_WORKFLOWS: WorkflowConfig[] = [
       createStep("type", { name: "Type TOTP code", selector: 'input[type="tel"][id="totpPin"], input[name="totpPin"], input[type="tel"]', value: "{{gmailTotpCode}}", timeoutMs: 5000, enabled: true }),
       createStep("click", { name: "Click Next (2FA)", selector: '#totpNext button, button:has-text("Next"), button:has-text("Tiếp theo")', timeoutMs: 5000, enabled: true }),
       createStep("delay", { name: "Wait for login complete", value: "3000", timeoutMs: 5000 }),
+      createStep("navigate", { name: "Open Gmail inbox", value: "https://mail.google.com/mail/u/0/", timeoutMs: 60000 }),
+      createStep("delay", { name: "Wait for inbox", value: "3000", timeoutMs: 5000 }),
       createStep("screenshot", { name: "Capture login result" }),
     ]
   }

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const vendorFilterBar = readFileSync(
-  path.resolve(here, "../../vendor/hub-ui/src/shell/FilterBar.tsx"),
+  path.resolve(here, "../../../../packages/hub-ui/src/shell/FilterBar.tsx"),
   "utf8",
 );
 

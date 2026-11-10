@@ -1,30 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import type { TabHeaderStatItem } from "@tool-workspace/hub-ui";
+import { useMemo } from "react";
+import { useHeaderWide, type TabHeaderStatItem } from "@tool-workspace/hub-ui";
 import { defaultsForPrefItems } from "../lib/display-pref-helpers";
 import { PROFILES_DISPLAY_PREFS } from "../lib/display-prefs-registry";
-import {
-  buildHostHeaderStats,
-  HOST_HEADER_WIDE_MQ,
-  resolveHostHeaderVisibleKeys,
-} from "../lib/host-header-metrics";
+import { buildHostHeaderStats, resolveHostHeaderVisibleKeys } from "../lib/host-header-metrics";
 import { useHostMetrics } from "./useHostMetrics";
 
-/** Matches hub-ui `.app-tab-header` 3-column layout (`min-width: 1101px`). */
-export function useHeaderWide(): boolean {
-  const [wide, setWide] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia(HOST_HEADER_WIDE_MQ).matches : true,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia(HOST_HEADER_WIDE_MQ);
-    const sync = () => setWide(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  return wide;
-}
+export { useHeaderWide };
 
 /** CPU / RAM header chips — Display prefs + wide/narrow RAM text. */
 export function useHostHeaderStats(stored: Set<string> | null = null): TabHeaderStatItem[] {

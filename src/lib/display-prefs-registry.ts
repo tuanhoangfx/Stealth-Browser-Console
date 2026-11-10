@@ -31,24 +31,74 @@ export type ScreenDisplayPrefsConfig = {
   defaultHeaderStatKeys: Set<string>;
 };
 
-/** P0003 — profiles directory KPIs (running/failed/ready). */
+/** P0003 — profiles directory 8-KPI SSOT (P0004 Users / P0020 Services parity). */
 export const PROFILES_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "total", label: "Profiles" },
+    { key: "create_today", label: "Create Today" },
+    { key: "create_week", label: "Create This Week" },
+    { key: "update_today", label: "Update Today" },
     { key: "running", label: "Running" },
+    { key: "headless", label: "Headless" },
+    { key: "ready", label: "Waiting" },
     { key: "failed", label: "Failed" },
-    { key: "ready", label: "Ready" },
   ],
   charts: [],
   filters: [
     { key: "group", label: "Group" },
+    { key: "status", label: "Status" },
+    { key: "proxy", label: "Proxy" },
+  ],
+  headerStats: [
+    { key: "cpu", label: "CPU" },
+    { key: "ram", label: "RAM" },
+  ],
+  defaultKpiKeys: new Set([
+    "total",
+    "create_today",
+    "create_week",
+    "update_today",
+    "running",
+    "headless",
+    "ready",
+    "failed",
+  ]),
+  defaultChartKeys: new Set(),
+  defaultFilterKeys: new Set(["group", "status", "proxy"]),
+  defaultHeaderStatKeys: new Set(["cpu", "ram"]),
+};
+
+/** Android screen — 8 standard KPIs & 2 directory filters (Brand, Status). */
+export const ANDROID_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
+  kpis: [
+    { key: "total", label: "Profiles" },
+    { key: "create_today", label: "Create Today" },
+    { key: "create_week", label: "Create This Week" },
+    { key: "update_today", label: "Update Today" },
+    { key: "running", label: "Mounted" },
+    { key: "headless", label: "Auto-Sync" },
+    { key: "ready", label: "Cookie Synced" },
+    { key: "failed", label: "Snapshots" },
+  ],
+  charts: [],
+  filters: [
+    { key: "group", label: "Brand" },
     { key: "status", label: "Status" },
   ],
   headerStats: [
     { key: "cpu", label: "CPU" },
     { key: "ram", label: "RAM" },
   ],
-  defaultKpiKeys: new Set(["total", "running", "failed", "ready"]),
+  defaultKpiKeys: new Set([
+    "total",
+    "create_today",
+    "create_week",
+    "update_today",
+    "running",
+    "headless",
+    "ready",
+    "failed",
+  ]),
   defaultChartKeys: new Set(),
   defaultFilterKeys: new Set(["group", "status"]),
   defaultHeaderStatKeys: new Set(["cpu", "ram"]),
@@ -61,11 +111,17 @@ export const SYSTEM_BACKUP_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   defaultChartKeys: new Set<string>(),
 };
 
-/** System → Extensions — extension cache KPIs; default off. */
+/** System → Extensions — 8-KPI SSOT (Profiles / Android parity). */
 export const SYSTEM_EXTENSIONS_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "cached", label: "Cached" },
+    { key: "create_today", label: "Create Today" },
+    { key: "create_week", label: "Create This Week" },
+    { key: "update_today", label: "Update Today" },
     { key: "store", label: "Store" },
+    { key: "local", label: "Local Operator" },
+    { key: "staged", label: "Stage Ready" },
+    { key: "pinned", label: "Auto-Pinned" },
   ],
   charts: [],
   filters: [{ key: "kind", label: "Kind" }],
@@ -73,7 +129,16 @@ export const SYSTEM_EXTENSIONS_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
     { key: "cpu", label: "CPU" },
     { key: "ram", label: "RAM" },
   ],
-  defaultKpiKeys: new Set<string>(),
+  defaultKpiKeys: new Set<string>([
+    "cached",
+    "create_today",
+    "create_week",
+    "update_today",
+    "store",
+    "local",
+    "staged",
+    "pinned",
+  ]),
   defaultChartKeys: new Set<string>(),
   defaultFilterKeys: new Set<string>(["kind"]),
   defaultHeaderStatKeys: new Set(["cpu", "ram"]),
@@ -83,8 +148,10 @@ export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "total", label: "Scripts" },
     { key: "create_today", label: "Create today" },
+    { key: "create_week", label: "Create This Week" },
     { key: "update_today", label: "Update today" },
     { key: "ran_today", label: "Ran today" },
+    { key: "with_steps", label: "Ready Scripts" },
     { key: "idle", label: "Idle" },
     { key: "empty", label: "Empty" },
   ],
@@ -97,17 +164,27 @@ export const WORKFLOW_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
     { key: "cpu", label: "CPU" },
     { key: "ram", label: "RAM" },
   ],
-  defaultKpiKeys: new Set(["total", "create_today", "update_today", "ran_today", "idle", "empty"]),
+  defaultKpiKeys: new Set([
+    "total",
+    "create_today",
+    "create_week",
+    "update_today",
+    "ran_today",
+    "with_steps",
+    "idle",
+    "empty",
+  ]),
   defaultChartKeys: new Set(),
   defaultFilterKeys: new Set(["group", "platform"]),
   defaultHeaderStatKeys: new Set(["cpu", "ram"]),
 };
 
-/** Workflow → Store — P0005 Service analog + Local vs Installed. */
+/** Workflow → Store — 8-KPI SSOT (P0005 Service analog + Local vs Installed). */
 export const WORKFLOW_STORE_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   kpis: [
     { key: "total", label: "Store" },
     { key: "create_today", label: "Create today" },
+    { key: "create_week", label: "Create This Week" },
     { key: "update_today", label: "Update today" },
     { key: "local", label: "Local" },
     { key: "installed", label: "Installed" },
@@ -127,6 +204,7 @@ export const WORKFLOW_STORE_DISPLAY_PREFS: ScreenDisplayPrefsConfig = {
   defaultKpiKeys: new Set([
     "total",
     "create_today",
+    "create_week",
     "update_today",
     "local",
     "installed",
@@ -142,6 +220,7 @@ let resolvedWorkflowStoreDisplayPrefs: ScreenDisplayPrefsConfig | undefined;
 
 export const SCREEN_DISPLAY_PREFS: Partial<Record<StealthScreen, ScreenDisplayPrefsConfig>> = {
   profiles: PROFILES_DISPLAY_PREFS,
+  android: ANDROID_DISPLAY_PREFS,
   workflow: WORKFLOW_DISPLAY_PREFS,
 };
 
@@ -153,7 +232,7 @@ export function resolveScreenDisplayPrefs(screen: StealthScreen): ScreenDisplayP
   if (!cfg) return undefined;
 
   let resolved: ScreenDisplayPrefsConfig;
-  if (screen === "profiles") {
+  if (screen === "profiles" || screen === "android") {
     resolved = {
       ...cfg,
       kpis: stealthProfilesDisplayPrefItems(

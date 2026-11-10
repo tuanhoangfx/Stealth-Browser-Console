@@ -46,7 +46,7 @@ export function hubAppVersionPlugin(options = {}) {
       };
     },
     transformIndexHtml(html) {
-      if (!version) version = readPkgVersion(root);
+      version = readPkgVersion(root) || version;
       if (!version) return html;
       return injectAppVersionMeta(html, version);
     },

@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  HUB_FILTER_DROPDOWN_PANEL_CLASS,
   HubBulkActionButton,
   HubDirectoryAdaptiveEditAction,
   HubDirectoryBulkMoreMenu,
   HubDirectoryNewBulkAction,
 } from "@tool-workspace/hub-ui";
-import { Blocks, FolderTree, Layers, Play, Square, Trash2, Download, Upload, Cookie, Shield } from "lucide-react";
+import { Blocks, Cable, CloudUpload, Cookie, FolderTree, Layers, Pin, Play, RotateCcw, Square, Trash2, Download, Upload, Shield } from "lucide-react";
 import { profileAdaptiveEditLabelHint } from "./profile-bulk-action-hints";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
@@ -29,9 +28,10 @@ function ToggleSwitch({ on }: { on: boolean }) {
   );
 }
 
-function ExtensionIcon({ kind, src, size = 14 }: { kind: "e0001" | "surfshark"; src?: string | null; size?: number }) {
-  const Fallback = kind === "e0001" ? Cookie : Shield;
-  const fallbackClass = kind === "e0001" ? "text-orange-300" : "text-cyan-300";
+function ExtensionIcon({ kind, src, size = 14 }: { kind: "e0001" | "e0002" | "surfshark"; src?: string | null; size?: number }) {
+  const Fallback = kind === "e0001" ? Cookie : kind === "e0002" ? Cable : Shield;
+  const fallbackClass =
+    kind === "e0001" ? "text-orange-300" : kind === "e0002" ? "text-violet-300" : "text-cyan-300";
   const [broken, setBroken] = useState(false);
   if (!src || broken) {
     return <Fallback size={size} className={`shrink-0 ${fallbackClass}`} aria-hidden />;
@@ -58,7 +58,7 @@ function ExtensionToggleRow({
   onToggle,
 }: {
   icon?: string;
-  iconKind?: "e0001" | "surfshark";
+  iconKind?: "e0001" | "e0002" | "surfshark";
   label: string;
   state: ExtensionSelectionState;
   disabled?: boolean;
@@ -99,7 +99,7 @@ export function StealthProfilesDirectoryBulkActions({
   hasSelection,
   runningCount = 0,
   selectedCount = 0,
-  extensionState = { e0001: "mixed", surfshark: "mixed" },
+  extensionState = { e0001: "mixed", e0002: "mixed", surfshark: "mixed" },
   extensionIcons,
   syncBusy,
   launchBusy = false,
@@ -116,12 +116,18 @@ export function StealthProfilesDirectoryBulkActions({
   onGroups,
   onExport,
   onImport,
+  onSyncP0020,
+  syncP0020Busy = false,
+  onResetLocalIp,
+  onPinStaticIp,
+  allSelectedStaticIp = false,
+  proxyBulkBusy = false,
   onExtensionSet,
 }: {
   hasSelection: boolean;
   runningCount?: number;
   selectedCount?: number;
-  extensionState?: Record<"e0001" | "surfshark", ExtensionSelectionState>;
+  extensionState?: Record<"e0001" | "e0002" | "surfshark", ExtensionSelectionState>;
   extensionIcons?: ExtensionIconMap;
   syncBusy: boolean;
   launchBusy?: boolean;
@@ -138,43 +144,51 @@ export function StealthProfilesDirectoryBulkActions({
   onGroups: () => void;
   onExport: () => void;
   onImport: () => void;
-  onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
+  onSyncP0020?: () => void;
+  syncP0020Busy?: boolean;
+  onResetLocalIp?: () => void;
+  onPinStaticIp?: (pinned: boolean) => void;
+  allSelectedStaticIp?: boolean;
+  proxyBulkBusy?: boolean;
+  onExtensionSet: (key: "e0001" | "e0002" | "surfshark", enabled: boolean) => void;
 }) {
   const extDisabled = !hasSelection || syncBusy || extensionBusy;
   const closeAllMode = !hasSelection && runningCount > 0;
   const closeEnabled = hasSelection || runningCount > 0;
   const closeTitle = hasSelection
-    ? "Close selected profiles"
+    ? `Close selected profiles (${selectedCount})`
     : runningCount > 0
       ? `Close all running profiles (${runningCount})`
       : "No profiles selected or running";
   const [extensionOpen, setExtensionOpen] = useState(false);
-  const extensionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!extensionOpen) return;
-    const onDoc = (event: MouseEvent) => {
-      if (!extensionRef.current?.contains(event.target as Node)) {
-        setExtensionOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [extensionOpen]);
 
   const allState = useMemo<ExtensionSelectionState>(() => {
-    if (extensionState.e0001 === "all-on" && extensionState.surfshark === "all-on") return "all-on";
-    if (extensionState.e0001 === "all-off" && extensionState.surfshark === "all-off") return "all-off";
+    if (
+      extensionState.e0001 === "all-on" &&
+      extensionState.e0002 === "all-on" &&
+      extensionState.surfshark === "all-on"
+    ) {
+      return "all-on";
+    }
+    if (
+      extensionState.e0001 === "all-off" &&
+      extensionState.e0002 === "all-off" &&
+      extensionState.surfshark === "all-off"
+    ) {
+      return "all-off";
+    }
     return "mixed";
-  }, [extensionState.e0001, extensionState.surfshark]);
+  }, [extensionState.e0001, extensionState.e0002, extensionState.surfshark]);
 
   const handleAllToggle = (enabled: boolean) => {
     onExtensionSet("e0001", enabled);
+    onExtensionSet("e0002", enabled);
     onExtensionSet("surfshark", enabled);
     setExtensionOpen(false);
   };
 
   const e0001Icon = extensionIcons?.e0001 ?? null;
+  const e0002Icon = extensionIcons?.e0002 ?? null;
   const surfsharkIcon = extensionIcons?.surfshark ?? null;
 
   return (
@@ -197,21 +211,136 @@ export function StealthProfilesDirectoryBulkActions({
         title={closeTitle}
         tone="rose"
         disabled={!closeEnabled || syncBusy}
-        selectedCount={closeAllMode ? runningCount : hasSelection ? selectedCount : undefined}
         onClick={closeAllMode ? onCloseAllRunning : onClose}
       />
-      <div ref={extensionRef} className="relative">
-        <HubBulkActionButton
-          icon={<Blocks size={14} className="text-sky-300" aria-hidden />}
-          label="Extension"
-          title={hasSelection ? "Set extensions for selected profiles" : "Select profiles first"}
-          tone="sky"
-          disabled={extDisabled}
-          onClick={() => setExtensionOpen((v) => !v)}
-        />
-        {extensionOpen ? (
-          <div role="menu" className={`${HUB_FILTER_DROPDOWN_PANEL_CLASS} right-0 w-56`}>
+      <HubDirectoryBulkMoreMenu
+        title="Launch, Extension, Delete, Groups, Export, Import"
+        actions={[
+          {
+            key: "launch",
+            label: "Launch",
+            icon: Play,
+            iconClassName: "text-emerald-300",
+            title: launchTitle,
+            tone: "emerald",
+            disabled: !hasSelection || syncBusy || launchBusy || launchDisabled,
+            selectedCount: hasSelection ? selectedCount : undefined,
+            onClick: onLaunch,
+          },
+          {
+            key: "extension",
+            label: "Extension",
+            icon: Blocks,
+            iconClassName: "text-violet-300",
+            title: hasSelection
+              ? "Toggle Cookie Bridge, Browser Operator, or Surfshark VPN for selected profiles"
+              : "Select one or more profiles first to configure extensions",
+            tone: "indigo",
+            disabled: extDisabled,
+            selectedCount: hasSelection ? selectedCount : undefined,
+            keepOpenOnClick: true,
+            onClick: () => setExtensionOpen((v) => !v),
+          },
+          {
+            key: "delete",
+            label: "Delete",
+            icon: Trash2,
+            iconClassName: "text-rose-400",
+            title: "Delete selected profiles",
+            tone: "rose",
+            disabled: !hasSelection || syncBusy,
+            onClick: onDelete,
+          },
+          {
+            key: "groups",
+            label: "Groups",
+            icon: FolderTree,
+            iconClassName: "text-amber-300",
+            title: "Manage profile groups (create, rename, or delete groups)",
+            tone: "amber",
+            onClick: onGroups,
+          },
+          {
+            key: "export",
+            label: "Export",
+            icon: Download,
+            iconClassName: "text-sky-300",
+            title: hasSelection
+              ? `Export selected profiles (${selectedCount}) configuration to JSON bundle`
+              : "Select one or more profiles first to export their configuration",
+            tone: "sky",
+            disabled: !hasSelection || syncBusy,
+            onClick: onExport,
+          },
+          {
+            key: "import",
+            label: "Import",
+            icon: Upload,
+            iconClassName: "text-teal-300",
+            title: "Import profiles configuration from a JSON bundle",
+            tone: "emerald",
+            onClick: onImport,
+          },
+          ...(onResetLocalIp
+            ? [
+                {
+                  key: "reset-local-ip",
+                  label: hasSelection ? "Reset to Local IP" : "Reset All to Local IP",
+                  icon: RotateCcw,
+                  iconClassName: "text-amber-300",
+                  title: hasSelection
+                    ? `Reset selected profiles (${selectedCount}) to 📍 Local IP and default auto-geo settings`
+                    : "Reset all profiles in catalog to 📍 Local IP and default auto-geo settings so agents auto-select IP per task",
+                  tone: "amber" as const,
+                  disabled: syncBusy || proxyBulkBusy,
+                  selectedCount: hasSelection ? selectedCount : undefined,
+                  onClick: onResetLocalIp,
+                },
+              ]
+            : []),
+          ...(onPinStaticIp
+            ? [
+                {
+                  key: "pin-static-ip",
+                  label: allSelectedStaticIp ? "Unpin Static IP" : "Pin Static IP",
+                  icon: Pin,
+                  iconClassName: "text-indigo-300",
+                  title: hasSelection
+                    ? allSelectedStaticIp
+                      ? `Unpin 📌 Static IP on selected profiles (${selectedCount}) so they auto-reset to Local IP on close`
+                      : `Pin 📌 Static IP on selected profiles (${selectedCount}) so their proxy never resets on close`
+                    : "Select one or more profiles first to pin or unpin Static IP",
+                  tone: "indigo" as const,
+                  disabled: !hasSelection || syncBusy || proxyBulkBusy,
+                  selectedCount: hasSelection ? selectedCount : undefined,
+                  onClick: () => onPinStaticIp(!allSelectedStaticIp),
+                },
+              ]
+            : []),
+          ...(onSyncP0020
+            ? [
+                {
+                  key: "sync-p0020",
+                  label: syncP0020Busy ? "Syncing P0020…" : "Sync P0020 Status",
+                  icon: CloudUpload,
+                  iconClassName: "text-cyan-300",
+                  title: hasSelection
+                    ? `Scan selected profiles (${selectedCount}) on-disk Cookies & Local Storage and sync their login status to P0020 DataBox`
+                    : "Scan all profiles' on-disk Cookies & Local Storage and reconcile login status with P0020 DataBox",
+                  tone: "sky" as const,
+                  disabled: syncBusy || syncP0020Busy,
+                  selectedCount: hasSelection ? selectedCount : undefined,
+                  onClick: onSyncP0020,
+                },
+              ]
+            : []),
+        ]}
+        footer={
+          extensionOpen ? (
             <div className="space-y-0.5 p-1.5">
+              <div className="hub-analytics-caption px-2.5 py-1 text-violet-300/80">
+                Extensions ({selectedCount} selected)
+              </div>
               <ExtensionToggleRow
                 icon="layers"
                 label="All"
@@ -229,7 +358,17 @@ export function StealthProfilesDirectoryBulkActions({
                 selectedCount={selectedCount}
                 onToggle={(enabled) => {
                   onExtensionSet("e0001", enabled);
-                  setExtensionOpen(false);
+                }}
+              />
+              <ExtensionToggleRow
+                icon={e0002Icon ?? undefined}
+                iconKind="e0002"
+                label="Browser Operator"
+                state={extensionState.e0002}
+                disabled={extDisabled}
+                selectedCount={selectedCount}
+                onToggle={(enabled) => {
+                  onExtensionSet("e0002", enabled);
                 }}
               />
               <ExtensionToggleRow
@@ -241,55 +380,11 @@ export function StealthProfilesDirectoryBulkActions({
                 selectedCount={selectedCount}
                 onToggle={(enabled) => {
                   onExtensionSet("surfshark", enabled);
-                  setExtensionOpen(false);
                 }}
               />
             </div>
-          </div>
-        ) : null}
-      </div>
-      <HubDirectoryBulkMoreMenu
-        title="Launch, Delete, Groups, Export, Import"
-        actions={[
-          {
-            key: "launch",
-            label: "Launch",
-            icon: Play,
-            title: launchTitle,
-            tone: "emerald",
-            disabled: !hasSelection || syncBusy || launchBusy || launchDisabled,
-            selectedCount: hasSelection ? selectedCount : undefined,
-            onClick: onLaunch,
-          },
-          {
-            key: "delete",
-            label: "Delete",
-            icon: Trash2,
-            title: "Delete selected profiles",
-            tone: "rose",
-            disabled: !hasSelection || syncBusy,
-            onClick: onDelete,
-          },
-          {
-            key: "groups",
-            label: "Groups",
-            icon: FolderTree,
-            onClick: onGroups,
-          },
-          {
-            key: "export",
-            label: "Export",
-            icon: Download,
-            disabled: !hasSelection || syncBusy,
-            onClick: onExport,
-          },
-          {
-            key: "import",
-            label: "Import",
-            icon: Upload,
-            onClick: onImport,
-          },
-        ]}
+          ) : null
+        }
       />
     </>
   );

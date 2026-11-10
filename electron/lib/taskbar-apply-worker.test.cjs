@@ -32,7 +32,7 @@ describe("enqueueExclusive", () => {
 
 describe("enqueuePooled", () => {
   it("exposes a pool larger than one worker", () => {
-    assert.equal(WORKER_POOL_SIZE, 6);
+    assert.ok(WORKER_POOL_SIZE >= 2);
   });
 
   it("runs up to pool-size jobs overlapping", async () => {

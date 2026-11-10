@@ -1,1 +1,1 @@
-export type StealthScreen = "profiles" | "workflow" | "system";
+export type StealthScreen = "profiles" | "android" | "workflow" | "system";

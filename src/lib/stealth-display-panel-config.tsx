@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DirectoryTableLegacyDisplaySettings,
+  HubDirectoryFreezeColumnsSetting,
   patchHubListPrefs,
   readHubListPrefsCore,
   type HubDirectoryDisplayPanelProps,
@@ -52,6 +53,15 @@ import {
   extensionDirectoryColumnPresetsProp,
   resetExtensionDirectoryColumns,
 } from "../features/system/extensions/extension-directory-prefs";
+import {
+  ANDROID_DIRECTORY_COLUMNS_CHANGE,
+  ANDROID_DIRECTORY_COLUMN_ITEMS,
+  androidDirectoryColumnPrefs,
+  androidDirectoryColumnPresetsProp,
+  androidDirectoryFreezePrefs,
+  countHiddenAndroidDirectoryColumns,
+  resetAndroidDirectoryColumns,
+} from "../features/android/android-directory-prefs";
 import type { StealthScreen } from "./stealth-screen";
 import type { StealthSystemTab } from "./stealth-system-tab";
 import {
@@ -110,6 +120,9 @@ export function useStealthDisplayPanelConfig(
   const [hiddenProfileCols, setHiddenProfileCols] = useState(() =>
     screen === "profiles" ? countHiddenProfileDirectoryColumns() : 0,
   );
+  const [hiddenAndroidCols, setHiddenAndroidCols] = useState(() =>
+    screen === "android" ? countHiddenAndroidDirectoryColumns() : 0,
+  );
   const [hiddenBackupCols, setHiddenBackupCols] = useState(() =>
     systemTab === "backup" ? countHiddenBackupDirectoryColumns() : 0,
   );
@@ -131,6 +144,13 @@ export function useStealthDisplayPanelConfig(
     const sync = () => setHiddenProfileCols(countHiddenProfileDirectoryColumns());
     window.addEventListener(PROFILE_DIRECTORY_COLUMNS_CHANGE, sync);
     return () => window.removeEventListener(PROFILE_DIRECTORY_COLUMNS_CHANGE, sync);
+  }, [screen]);
+
+  useEffect(() => {
+    if (screen !== "android") return;
+    const sync = () => setHiddenAndroidCols(countHiddenAndroidDirectoryColumns());
+    window.addEventListener(ANDROID_DIRECTORY_COLUMNS_CHANGE, sync);
+    return () => window.removeEventListener(ANDROID_DIRECTORY_COLUMNS_CHANGE, sync);
   }, [screen]);
 
   useEffect(() => {
@@ -193,6 +213,20 @@ export function useStealthDisplayPanelConfig(
         />
       );
     }
+    if (screen === "android") {
+      return (
+        <>
+          <HubDirectoryFreezeColumnsSetting prefs={androidDirectoryFreezePrefs} max={6} />
+          <DirectoryTableLegacyDisplaySettings
+            id="p0003-android"
+            items={ANDROID_DIRECTORY_COLUMN_ITEMS}
+            prefs={androidDirectoryColumnPrefs}
+            primaryDefault={{ sortKey: "profile", sortDir: "asc" }}
+            sortRows={[{ id: "profile", label: "Profile", directionHint: "0001 → 9999" }]}
+          />
+        </>
+      );
+    }
     if (systemTab === "backup") {
       return (
         <DirectoryTableLegacyDisplaySettings
@@ -245,6 +279,13 @@ export function useStealthDisplayPanelConfig(
     if (screen === "profiles") {
       return (
         <button type="button" className="btn secondary text-xs" onClick={() => resetProfileDirectoryColumns()}>
+          Reset columns
+        </button>
+      );
+    }
+    if (screen === "android") {
+      return (
+        <button type="button" className="btn secondary text-xs" onClick={() => resetAndroidDirectoryColumns()}>
           Reset columns
         </button>
       );
@@ -316,28 +357,32 @@ export function useStealthDisplayPanelConfig(
       tableColumnPresets:
         screen === "profiles"
           ? profileDirectoryColumnPresetsProp
-          : systemTab === "backup"
-            ? backupDirectoryColumnPresetsProp
-            : systemTab === "extensions"
-              ? extensionDirectoryColumnPresetsProp
-              : isWorkflowStore
-                ? workflowStoreDirectoryColumnPresetsProp
-                : isWorkflowPanel
-                  ? workflowPanelDirectoryColumnPresetsProp
-                  : isWorkflowRail
-                    ? workflowRailDirectoryColumnPresetsProp
-                    : undefined,
+          : screen === "android"
+            ? androidDirectoryColumnPresetsProp
+            : systemTab === "backup"
+              ? backupDirectoryColumnPresetsProp
+              : systemTab === "extensions"
+                ? extensionDirectoryColumnPresetsProp
+                : isWorkflowStore
+                  ? workflowStoreDirectoryColumnPresetsProp
+                  : isWorkflowPanel
+                    ? workflowPanelDirectoryColumnPresetsProp
+                    : isWorkflowRail
+                      ? workflowRailDirectoryColumnPresetsProp
+                      : undefined,
       tableSectionActions,
       tableActiveCount:
         screen === "profiles"
           ? hiddenProfileCols
-          : systemTab === "backup"
-            ? hiddenBackupCols
-            : systemTab === "extensions"
-              ? hiddenExtensionCols
-              : workflowColumnsOnly
-                ? hiddenWorkflowCols
-                : 0,
+          : screen === "android"
+            ? hiddenAndroidCols
+            : systemTab === "backup"
+              ? hiddenBackupCols
+              : systemTab === "extensions"
+                ? hiddenExtensionCols
+                : workflowColumnsOnly
+                  ? hiddenWorkflowCols
+                  : 0,
       showPageSize: !workflowColumnsOnly,
       readPrefs: readHubListPrefsCore,
       patchPrefs: patchHubListPrefs,
@@ -352,6 +397,7 @@ export function useStealthDisplayPanelConfig(
     getScreen,
     getSubTab,
     getSystemTab,
+    hiddenAndroidCols,
     hiddenBackupCols,
     hiddenExtensionCols,
     hiddenProfileCols,

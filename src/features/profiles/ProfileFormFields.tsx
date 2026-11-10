@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Dices, RotateCcw } from "lucide-react";
 import {
   HubAdmSectionBlock,
   HubAdmGridSlotPad,
@@ -10,31 +11,41 @@ import {
   applyDevicePreset,
 } from "../../lib/device-presets";
 import {
+  applyBrowserRuntimeMode,
   browserColorSchemeFilterOptions,
   browserPlatformFilterOptions,
+  browserRuntimeModeFilterOptions,
   browserTimezoneFilterOptions,
   browserWindowModeFilterOptions,
   devicePresetFilterOptions,
   localeFilterOptions,
+  resolveBrowserRuntimeMode,
 } from "../../lib/device-filter-options";
-import type { DeviceConfig, StealthGroup } from "../../types";
-import { ProfileBasicsFields } from "./ProfileBasicsFields";
+import type { DeviceConfig, ProfileExtensionOverrides, ProfileRow, StealthGroup } from "../../types";
+import { PROFILE_MODAL_SECTION_STICKER } from "../../lib/profile-form-stickers";
+import { PROFILE_DETAIL_SECTION_SESSION } from "./profile-detail-toc";
+import { ProfileBasicsFields, ProfileSessionFields } from "./ProfileBasicsFields";
 import {
   PROFILE_ADM_CONTROL_CLASS,
   PROFILE_DETAIL_FORM_ROW_ALIGNED_3,
-  PROFILE_DETAIL_FORM_ROW_DETAIL_LINE,
   ProfileDetailClickEditField,
   ProfileDetailClickFilterField,
-  ProfileDetailInlineFieldLabel,
+  ProfileDetailReadonlyField,
 } from "./ProfileDetailField";
 
 export type ProfileFormFieldsProps = {
+  profileId?: string;
+  profileRow?: ProfileRow;
   name: string;
   setName: (value: string) => void;
   groupId: string;
   setGroupId: (value: string) => void;
   proxy: string;
   setProxy: (value: string) => void;
+  staticIp?: boolean;
+  setStaticIp?: (value: boolean) => void;
+  extensionOverrides?: ProfileExtensionOverrides;
+  setExtensionOverrides?: (value: ProfileExtensionOverrides) => void;
   fingerprintSeed: number;
   setFingerprintSeed: (value: number) => void;
   device: DeviceConfig;
@@ -47,12 +58,18 @@ export type ProfileFormFieldsProps = {
 };
 
 export function ProfileFormFields({
+  profileId,
+  profileRow,
   name,
   setName,
   groupId,
   setGroupId,
   proxy,
   setProxy,
+  staticIp = false,
+  setStaticIp,
+  extensionOverrides,
+  setExtensionOverrides,
   fingerprintSeed,
   setFingerprintSeed,
   device,
@@ -64,7 +81,6 @@ export function ProfileFormFields({
   layout = "hub-sections",
 }: ProfileFormFieldsProps) {
   const [deviceExpanded, setDeviceExpanded] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const editDevice = (patch: Partial<DeviceConfig>) => onDeviceChange({ ...patch, devicePreset: "custom" });
 
   const devicePresetOptions = useMemo(() => devicePresetFilterOptions(), []);
@@ -74,15 +90,22 @@ export function ProfileFormFields({
 
   const basics = (
     <ProfileBasicsFields
+      profileId={profileId}
+      profileRow={profileRow}
       name={name}
       setName={setName}
       groupId={groupId}
       setGroupId={setGroupId}
       proxy={proxy}
       setProxy={setProxy}
+      staticIp={staticIp}
+      setStaticIp={setStaticIp}
+      extensionOverrides={extensionOverrides}
+      setExtensionOverrides={setExtensionOverrides}
       startupUrl={startupUrl}
       setStartupUrl={setStartupUrl}
       groups={groups}
+      onAutoGeoSync={(geo) => editDevice({ timezone: geo.timezone, locale: geo.locale })}
     />
   );
 
@@ -96,18 +119,24 @@ export function ProfileFormFields({
           value={device.devicePreset}
           onChange={(presetId) => onDeviceChange(applyDevicePreset(device, presetId))}
         />
-        <HubAdmGridSlotPad filledCount={1} />
+        <ProfileDetailReadonlyField fieldKey="advancedDevice" valueLayout="inline">
+          <button
+            type="button"
+            aria-expanded={deviceExpanded}
+            onClick={() => setDeviceExpanded((v) => !v)}
+            className={`stealth-adm-action-pill${deviceExpanded ? " is-active" : ""}`}
+            title="Show or hide custom OS, timezone, locale, viewport, fingerprint seed, and User-Agent overrides"
+          >
+            {deviceExpanded ? (
+              <ChevronDown size={11} className="text-indigo-300" aria-hidden />
+            ) : (
+              <ChevronRight size={11} className="text-slate-400" aria-hidden />
+            )}
+            <span>{deviceExpanded ? "Hide overrides" : "Customize"}</span>
+          </button>
+        </ProfileDetailReadonlyField>
+        <HubAdmGridSlotPad filledCount={2} />
       </div>
-
-      <label className="stealth-settings-form__check self-start">
-        <input
-          type="checkbox"
-          checked={deviceExpanded}
-          onChange={(e) => setDeviceExpanded(e.target.checked)}
-          aria-expanded={deviceExpanded}
-        />
-        Advanced device settings
-      </label>
 
       {deviceExpanded ? (
         <>
@@ -150,85 +179,94 @@ export function ProfileFormFields({
               value={device.windowMode}
               onChange={(value) => editDevice({ windowMode: value as DeviceConfig["windowMode"] })}
             />
-            <HubAdmGridSlotPad filledCount={2} />
-          </div>
-
-          <div className={`${PROFILE_DETAIL_FORM_ROW_DETAIL_LINE} hub-adm-inline-field min-w-0`}>
-            <ProfileDetailInlineFieldLabel fieldKey="viewport" />
-            <div className="hub-adm-inline-field__value hub-adm-inline-field__value--editing flex min-w-0 items-center gap-2">
-              <input
-                className={`${PROFILE_ADM_CONTROL_CLASS} flex-1`}
-                type="number"
-                min={0}
-                max={7680}
-                value={device.viewportW}
-                onChange={(e) => editDevice({ viewportW: Number(e.target.value) || 0 })}
-              />
-              <span className="text-[var(--muted)]">×</span>
-              <input
-                className={`${PROFILE_ADM_CONTROL_CLASS} flex-1`}
-                type="number"
-                min={0}
-                max={4320}
-                value={device.viewportH}
-                onChange={(e) => editDevice({ viewportH: Number(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-
-          {showFingerprint ? (
-            <div className={`${PROFILE_DETAIL_FORM_ROW_DETAIL_LINE} hub-adm-inline-field min-w-0`}>
-              <ProfileDetailInlineFieldLabel fieldKey="fingerprintSeed" />
-              <div className="hub-adm-inline-field__value hub-adm-inline-field__value--editing flex min-w-0 gap-2">
+            <ProfileDetailReadonlyField fieldKey="viewport" valueLayout="inline">
+              <div className="stealth-adm-detail-inline-bar">
                 <input
-                  className={`${PROFILE_ADM_CONTROL_CLASS} flex-1`}
+                  className={`${PROFILE_ADM_CONTROL_CLASS} stealth-adm-compact-num`}
                   type="number"
-                  min={10000}
-                  max={99999}
-                  value={fingerprintSeed}
-                  onChange={(e) => setFingerprintSeed(Number(e.target.value) || randomFingerprintSeed())}
+                  min={0}
+                  max={7680}
+                  value={device.viewportW}
+                  onChange={(e) => editDevice({ viewportW: Number(e.target.value) || 0 })}
+                  aria-label="Viewport width"
                 />
-                <button
-                  type="button"
-                  className="hub-btn shrink-0"
-                  onClick={() => setFingerprintSeed(randomFingerprintSeed())}
-                >
-                  Randomize
-                </button>
+                <span className="hub-adm-detail-value-text text-[var(--muted)]">×</span>
+                <input
+                  className={`${PROFILE_ADM_CONTROL_CLASS} stealth-adm-compact-num`}
+                  type="number"
+                  min={0}
+                  max={4320}
+                  value={device.viewportH}
+                  onChange={(e) => editDevice({ viewportH: Number(e.target.value) || 0 })}
+                  aria-label="Viewport height"
+                />
               </div>
-            </div>
-          ) : null}
-
-          <div className="stealth-settings-form__checks">
-            <label className="stealth-settings-form__check">
-              <input type="checkbox" checked={device.humanize} onChange={(e) => editDevice({ humanize: e.target.checked })} />
-              <ProfileDetailInlineFieldLabel fieldKey="humanize" />
-            </label>
-            <label className="stealth-settings-form__check">
-              <input type="checkbox" checked={device.headless} onChange={(e) => editDevice({ headless: e.target.checked })} />
-              <ProfileDetailInlineFieldLabel fieldKey="headless" />
-              <span className="stealth-settings-form__warn">easier to detect</span>
-            </label>
+            </ProfileDetailReadonlyField>
           </div>
 
-          <button
-            type="button"
-            className="self-start text-xs text-[var(--accent-2)] underline-offset-2 hover:underline"
-            onClick={() => setShowAdvanced((v) => !v)}
-          >
-            {showAdvanced ? "Hide User-Agent override" : "Advanced (User-Agent override)"}
-          </button>
-
-          {showAdvanced ? (
-            <div className={PROFILE_DETAIL_FORM_ROW_DETAIL_LINE}>
-              <ProfileDetailClickEditField
-                fieldKey="userAgent"
-                value={device.userAgent}
-                onChange={(value) => editDevice({ userAgent: value })}
-                placeholder="Mozilla/5.0 …"
-              />
-            </div>
-          ) : null}
+          <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+            {showFingerprint ? (
+              <ProfileDetailReadonlyField fieldKey="fingerprintSeed" valueLayout="inline">
+                <div className="stealth-adm-detail-inline-bar">
+                  <input
+                    className={`${PROFILE_ADM_CONTROL_CLASS} stealth-adm-compact-num flex-1`}
+                    type="number"
+                    min={10000}
+                    max={99999}
+                    value={fingerprintSeed}
+                    onChange={(e) => setFingerprintSeed(Number(e.target.value) || randomFingerprintSeed())}
+                    aria-label="Fingerprint seed"
+                  />
+                  <button
+                    type="button"
+                    className="stealth-adm-action-pill"
+                    title="Generate a new random fingerprint seed (10000–99999) for coherent hardware, canvas, WebGL, and audio spoofing"
+                    onClick={() => setFingerprintSeed(randomFingerprintSeed())}
+                  >
+                    <Dices size={11} className="text-cyan-300" aria-hidden />
+                  </button>
+                </div>
+              </ProfileDetailReadonlyField>
+            ) : null}
+            <ProfileDetailClickFilterField
+              fieldKey="humanize"
+              filterKey="browser-runtime-mode"
+              options={browserRuntimeModeFilterOptions()}
+              value={resolveBrowserRuntimeMode(device)}
+              onChange={(mode) => editDevice(applyBrowserRuntimeMode(mode))}
+            />
+            <ProfileDetailClickEditField
+              fieldKey="userAgent"
+              value={device.userAgent}
+              onChange={(value) => editDevice({ userAgent: value })}
+              placeholder="⚙️ Auto (Coherent UA)"
+              trailingAction={
+                Boolean(String(device.userAgent || "").trim()) ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      editDevice({ userAgent: "" });
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        editDevice({ userAgent: "" });
+                      }
+                    }}
+                    className="hub-reset-btn inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md opacity-80 transition-opacity hover:opacity-100 focus:opacity-100"
+                    title="Reset User-Agent to ⚙️ Auto (CloakBrowser coherent UA)"
+                    aria-label="Reset User-Agent to Auto"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                  </span>
+                ) : undefined
+              }
+            />
+            {!showFingerprint ? <HubAdmGridSlotPad filledCount={2} /> : null}
+          </div>
         </>
       ) : null}
     </>
@@ -240,6 +278,16 @@ export function ProfileFormFields({
         <HubAdmSectionBlock id="profile-basics" sectionKey="profile">
           {basics}
         </HubAdmSectionBlock>
+        {profileId ? (
+          <HubAdmSectionBlock
+            id={PROFILE_DETAIL_SECTION_SESSION}
+            label="Session"
+            emoji={PROFILE_MODAL_SECTION_STICKER.session}
+            blockClassName="hub-adm-section-block--status"
+          >
+            <ProfileSessionFields profileId={profileId} name={name} profileRow={profileRow} />
+          </HubAdmSectionBlock>
+        ) : null}
         <HubAdmSectionBlock id="profile-device" sectionKey="device">
           {deviceSection}
         </HubAdmSectionBlock>

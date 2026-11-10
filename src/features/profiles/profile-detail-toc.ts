@@ -4,12 +4,14 @@ import { STEALTH_CONSOLE_RAIL_LABEL } from "../runtime/stealth-runtime-rail-labe
 
 export const PROFILE_DETAIL_SECTION_CREDENTIALS = "profile-detail-credentials";
 export const PROFILE_DETAIL_SECTION_PROFILE = "profile-basics";
+export const PROFILE_DETAIL_SECTION_SESSION = "profile-session";
 export const PROFILE_DETAIL_SECTION_DEVICE = "profile-device";
 export const PROFILE_DETAIL_SECTION_LOG = "profile-detail-log";
 export const PROFILE_DETAIL_SECTION_NOTE = "profile-detail-note";
 
 export const PROFILE_DETAIL_TOC = [
   { id: PROFILE_DETAIL_SECTION_PROFILE, label: "Profile" },
+  { id: PROFILE_DETAIL_SECTION_SESSION, label: "Session" },
   { id: PROFILE_DETAIL_SECTION_DEVICE, label: "Device" },
   { id: PROFILE_DETAIL_SECTION_LOG, label: "Console" },
 ] as const;

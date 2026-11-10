@@ -114,21 +114,31 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
   { value: "America/New_York", label: "America/New_York (US East)" },
   { value: "America/Chicago", label: "America/Chicago (US Central)" },
   { value: "America/Los_Angeles", label: "America/Los_Angeles (US West)" },
+  { value: "America/Toronto", label: "America/Toronto (Canada)" },
   { value: "Europe/London", label: "Europe/London" },
   { value: "Europe/Berlin", label: "Europe/Berlin" },
+  { value: "Europe/Paris", label: "Europe/Paris" },
+  { value: "Europe/Amsterdam", label: "Europe/Amsterdam" },
   { value: "Asia/Ho_Chi_Minh", label: "Asia/Ho_Chi_Minh" },
   { value: "Asia/Singapore", label: "Asia/Singapore" },
-  { value: "Asia/Tokyo", label: "Asia/Tokyo" }
+  { value: "Asia/Tokyo", label: "Asia/Tokyo" },
+  { value: "Asia/Seoul", label: "Asia/Seoul" },
+  { value: "Australia/Sydney", label: "Australia/Sydney" }
 ];
 
 export const LOCALE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Engine default" },
   { value: "en-US", label: "en-US" },
   { value: "en-GB", label: "en-GB" },
+  { value: "en-SG", label: "en-SG" },
+  { value: "en-CA", label: "en-CA" },
+  { value: "en-AU", label: "en-AU" },
   { value: "vi-VN", label: "vi-VN" },
   { value: "de-DE", label: "de-DE" },
   { value: "fr-FR", label: "fr-FR" },
-  { value: "ja-JP", label: "ja-JP" }
+  { value: "nl-NL", label: "nl-NL" },
+  { value: "ja-JP", label: "ja-JP" },
+  { value: "ko-KR", label: "ko-KR" }
 ];
 
 export function hostDefaultPlatform(): DevicePlatform {

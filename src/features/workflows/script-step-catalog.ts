@@ -1,3 +1,4 @@
+import { searchTextIncludes } from "@tool-workspace/hub-ui";
 import type { LucideIcon } from "lucide-react";
 import {
   Camera,
@@ -115,10 +116,10 @@ export function filterScriptStepCatalog(query: string): ScriptStepCatalogEntry[]
   if (!q) return SCRIPT_STEP_CATALOG;
   return SCRIPT_STEP_CATALOG.filter(
     (entry) =>
-      entry.kind.includes(q) ||
-      entry.label.toLowerCase().includes(q) ||
-      entry.description.toLowerCase().includes(q) ||
-      catalogCategoryLabel(entry.category).toLowerCase().includes(q) ||
-      entry.keywords.some((kw) => kw.includes(q)),
+      searchTextIncludes(entry.kind, q) ||
+      searchTextIncludes(entry.label, q) ||
+      searchTextIncludes(entry.description, q) ||
+      searchTextIncludes(catalogCategoryLabel(entry.category), q) ||
+      entry.keywords.some((kw) => searchTextIncludes(kw, q)),
   );
 }

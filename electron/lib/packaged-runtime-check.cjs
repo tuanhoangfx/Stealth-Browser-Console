@@ -6,6 +6,8 @@ const RELEASE_URL = "https://github.com/tuanhoangfx/Stealth-Browser-Console/rele
 
 /** Relative paths under resources/app.asar.unpacked required at runtime. */
 const REQUIRED_UNPACKED = [
+  "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+  "node_modules/sql.js/dist/sql-wasm.wasm",
   "node_modules/playwright-core/index.js",
   "node_modules/cloakbrowser/package.json",
   "node_modules/tar/package.json",

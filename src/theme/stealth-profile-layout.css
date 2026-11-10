@@ -15,7 +15,9 @@
   overflow: hidden;
 }
 
+.hub-main.hub-main--split,
 .hub-main.hub-main--profiles,
+.hub-main.hub-main--android,
 .hub-main.hub-main--workflow,
 .hub-main.hub-main--system {
   display: flex;
@@ -24,11 +26,21 @@
   overscroll-behavior: none;
 }
 
+.hub-main--split > div,
+.hub-main--split .hub-tab-chrome-stack,
+.hub-main--split .hub-tab-content-zone,
+.hub-main--split .hub-tab-body-zone--split,
+.hub-main--split .stealth-profile-layout,
 .hub-main--profiles > div,
 .hub-main--profiles .hub-tab-chrome-stack,
 .hub-main--profiles .hub-tab-content-zone,
 .hub-main--profiles .hub-tab-body-zone--split,
 .hub-main--profiles .stealth-profile-layout,
+.hub-main--android > div,
+.hub-main--android .hub-tab-chrome-stack,
+.hub-main--android .hub-tab-content-zone,
+.hub-main--android .hub-tab-body-zone--split,
+.hub-main--android .stealth-profile-layout,
 .hub-main--workflow > div,
 .hub-main--workflow .hub-tab-chrome-stack,
 .hub-main--workflow .hub-tab-content-zone,
@@ -52,21 +64,27 @@
   flex-direction: column;
 }
 
+.hub-main--split .hub-tab-body-zone--split,
 .hub-main--profiles .hub-tab-body-zone--split,
+.hub-main--android .hub-tab-body-zone--split,
 .hub-main--workflow .hub-tab-body-zone--split,
 .hub-main--system .hub-tab-body-zone--split {
   padding-bottom: 0.625rem;
 }
 
 /* Tab header — avoid clipping sticky bleed + keep Inter metrics aligned with action buttons. */
+.hub-main--split .app-tab-header,
 .hub-main--profiles .app-tab-header,
+.hub-main--android .app-tab-header,
 .hub-main--workflow .app-tab-header,
 .hub-main--system .app-tab-header {
   overflow: visible;
   align-items: center;
 }
 
+.hub-main--split .app-tab-header h1,
 .hub-main--profiles .app-tab-header h1,
+.hub-main--android .app-tab-header h1,
 .hub-main--workflow .app-tab-header h1,
 .hub-main--system .app-tab-header h1 {
   font-family: var(--font-sans);
@@ -75,14 +93,18 @@
   line-height: 1.25;
 }
 
+.hub-main--split .app-tab-header-center-stats,
 .hub-main--profiles .app-tab-header-center-stats,
+.hub-main--android .app-tab-header-center-stats,
 .hub-main--workflow .app-tab-header-center-stats,
 .hub-main--system .app-tab-header-center-stats {
   align-items: center;
   padding-block: 1px;
 }
 
+.hub-main--split .stealth-profile-layout,
 .hub-main--profiles .stealth-profile-layout,
+.hub-main--android .stealth-profile-layout,
 .hub-main--workflow .stealth-profile-layout,
 .hub-main--system .stealth-profile-layout {
   display: grid;
@@ -153,6 +175,15 @@
 .stealth-profile-directory-frame .stealth-profile-status-cell .hub-directory-icon-cell__label,
 .stealth-profile-directory-frame .hub-directory-icon-cell__label {
   font-weight: 600;
+}
+
+/* Profiles Run column — icon + Stop + headless glyph on one line (table-layout: fixed). */
+.stealth-profile-directory-frame:not(.stealth-system-backup-directory-frame):not(
+    .stealth-system-extensions-directory-frame
+  )
+  table.hub-directory-frame-table
+  col.hub-users-col--tools {
+  width: 5.5rem;
 }
 
 .stealth-profile-directory-frame .hub-split-directory-pane__body {

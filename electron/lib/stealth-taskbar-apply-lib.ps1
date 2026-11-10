@@ -1,26 +1,37 @@
 # Shared Win32 taskbar apply library — dot-source from -File entry + worker.
 $ErrorActionPreference = 'Stop'
+# Dot-source: $PSCommandPath is the caller. MyCommand.Path is this file.
+$script:StealthTaskbarLibPath = $MyInvocation.MyCommand.Path
 
 function Ensure-StealthTaskbarWinType {
   $cacheDir = Join-Path $env:TEMP 'stealth-taskbar-badges'
   if (-not (Test-Path -LiteralPath $cacheDir)) { New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null }
-  # v5: pin EnumWindows callbacks. Inline lambdas are not GC roots; once enough Chrome
-  # HWNDs exist (~10 profiles) the StringBuilder allocs inside the callback trigger GC,
-  # the delegate is collected mid-enum, and every later stamp fails (first wave keeps labels).
-  # v4: title-prefix HWND fallback (burst-open pid=0). No WMI on the hot path.
-  # v2: no RelaunchIconResource (Win11 ignores WM_SETICON when that property is set);
-  # stamp SETICON on all top-level visible HWNDs for the browser PID.
-  $dll = Join-Path $cacheDir 'StealthTaskbarWin.v5.dll'
+  # DLL name is the SHA256 prefix of THIS file. Any edit recompiles. A pinned
+  # filename used to keep the previous C# in memory after the ps1 changed.
+  # HICON cache: restamp used to LoadImage forever until the process GDI cap (9999).
+  # EnumWindows callbacks stay in static fields (inline lambdas are not GC roots).
+  # Do not set RelaunchIconResource — Win11 then ignores WM_SETICON and shows the exe icon.
+  $src = $script:StealthTaskbarLibPath
+  if (-not $src) { $src = $PSCommandPath }
+  $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $src).Hash.Substring(0, 12).ToLower()
+  $dll = Join-Path $cacheDir ("StealthTaskbarWin." + $hash + ".dll")
+  Get-ChildItem -LiteralPath $cacheDir -Filter 'StealthTaskbarWin.*.dll' -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -ne $dll } |
+    ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
   if (-not (Test-Path -LiteralPath $dll)) {
+    try {
     Add-Type -TypeDefinition @"
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using System.Threading;
 
 public static class StealthTaskbarWin {
   public const int WM_SETICON = 0x0080;
+  public const int WM_GETICON = 0x007F;
   public const int ICON_SMALL = 0;
   public const int ICON_BIG = 1;
   public const uint IMAGE_ICON = 1;
@@ -57,6 +68,98 @@ public static class StealthTaskbarWin {
   static EnumWindowsProc _cbFindVisible;
   static EnumWindowsProc _cbFindAll;
   static EnumWindowsProc _cbFindTitle;
+  static readonly Dictionary<string, IntPtr> _icons = new Dictionary<string, IntPtr>();
+  static readonly object _iconLock = new object();
+  static EnumWindowsProc _cbKeep;
+  static Timer _keepTimer;
+  static Mutex _keeperMutex;
+  static int _keepBusy;
+  public static int LastKeepStamped;
+  [DllImport("kernel32.dll")] public static extern IntPtr GetCurrentProcess();
+  [DllImport("user32.dll")] public static extern int GetGuiResources(IntPtr hProcess, int uiFlags);
+  public static int GuiObjectCount() { return GetGuiResources(GetCurrentProcess(), 0); }
+  // One HICON per ico path + size. WM_SETICON does not copy; destroying or reloading
+  // a new handle every restamp leaks ~3 GDI objects per LoadImage until the cap.
+  public static IntPtr LoadCachedIcon(string path, int cx, int cy) {
+    lock (_iconLock) {
+      if (string.IsNullOrEmpty(path) || !File.Exists(path)) return IntPtr.Zero;
+      FileInfo fi = new FileInfo(path);
+      string key = path + "|" + cx + "|" + cy + "|" + fi.Length + "|" + fi.LastWriteTimeUtc.Ticks;
+      IntPtr cached;
+      if (_icons.TryGetValue(key, out cached) && cached != IntPtr.Zero) return cached;
+      uint flags = LR_LOADFROMFILE;
+      if (cx <= 0 || cy <= 0) flags |= LR_DEFAULTSIZE;
+      IntPtr hi = LoadImage(IntPtr.Zero, path, IMAGE_ICON, cx, cy, flags);
+      if (hi != IntPtr.Zero) _icons[key] = hi;
+      return hi;
+    }
+  }
+  public static bool IconsMatch(IntPtr hwnd, IntPtr hiSmall, IntPtr hiBig) {
+    if (hwnd == IntPtr.Zero || (hiSmall == IntPtr.Zero && hiBig == IntPtr.Zero)) return false;
+    IntPtr curBig = SendMessage(hwnd, WM_GETICON, (IntPtr)ICON_BIG, IntPtr.Zero);
+    IntPtr curSmall = SendMessage(hwnd, WM_GETICON, (IntPtr)ICON_SMALL, IntPtr.Zero);
+    IntPtr curSmall2 = SendMessage(hwnd, WM_GETICON, (IntPtr)2, IntPtr.Zero);
+    if (hiBig != IntPtr.Zero && (curBig == hiBig || curSmall == hiBig || curSmall2 == hiBig)) return true;
+    if (hiSmall != IntPtr.Zero && (curBig == hiSmall || curSmall == hiSmall || curSmall2 == hiSmall)) return true;
+    return false;
+  }
+  // "0018", "0018 — Google", "0018 · Name — Google". Not a longer digit run.
+  public static string LeadingProfileCode(string title) {
+    if (string.IsNullOrEmpty(title) || title.Length < 4) return null;
+    for (int i = 0; i < 4; i++) { if (title[i] < '0' || title[i] > '9') return null; }
+    if (title.Length > 4) {
+      char n = title[4];
+      if (n != ' ' && n != '-' && n != '\u2014' && n != '\u2013' && n != '\u00B7') return null;
+    }
+    return title.Substring(0, 4);
+  }
+  // Chrome replaces WM_SETICON with the site favicon after navigation. One rooted
+  // callback, one cached HICON: restamp only windows whose icon handle is not ours.
+  public static int KeepBadgeIcons(string cacheDir, string style) {
+    if (string.IsNullOrEmpty(cacheDir) || string.IsNullOrEmpty(style)) return 0;
+    int stamped = 0;
+    _cbKeep = (h, l) => {
+      try {
+        if (!IsWindowVisible(h) && !IsIconic(h)) return true;
+        var cls = new StringBuilder(64);
+        GetClassName(h, cls, 64);
+        if (cls.ToString().IndexOf("Chrome_WidgetWin") < 0) return true;
+        var sb = new StringBuilder(180);
+        GetWindowText(h, sb, sb.Capacity);
+        string code = LeadingProfileCode(sb.ToString());
+        if (code == null) return true;
+        int n;
+        if (int.TryParse(code, out n) && n >= 9990 && n <= 9999) return true;
+        string hot = Path.Combine(cacheDir, style + "-" + code + "-hot.ico");
+        string full = Path.Combine(cacheDir, style + "-" + code + ".ico");
+        string ico = File.Exists(hot) ? hot : (File.Exists(full) ? full : null);
+        if (ico == null) return true;
+        IntPtr hiBig = LoadCachedIcon(ico, 48, 48);
+        if (hiBig == IntPtr.Zero) hiBig = LoadCachedIcon(ico, 32, 32);
+        IntPtr hiSmall = LoadCachedIcon(ico, 16, 16);
+        if (IconsMatch(h, hiSmall, hiBig)) return true;
+        StampIcons(h, hiSmall, hiBig);
+        stamped++;
+      } catch { }
+      return true;
+    };
+    EnumWindows(_cbKeep, IntPtr.Zero);
+    GC.KeepAlive(_cbKeep);
+    LastKeepStamped = stamped;
+    return stamped;
+  }
+  public static void StartKeeper(string cacheDir, string style) {
+    if (_keepTimer != null) return;
+    _keeperMutex = new Mutex(false, "Local\\StealthTaskbarIconKeeper");
+    try {
+      if (!_keeperMutex.WaitOne(0)) { _keeperMutex = null; return; }
+    } catch (AbandonedMutexException) { }
+    _keepTimer = new Timer(delegate {
+      if (Interlocked.CompareExchange(ref _keepBusy, 1, 0) != 0) return;
+      try { KeepBadgeIcons(cacheDir, style); } catch { }
+      finally { Interlocked.Exchange(ref _keepBusy, 0); }
+    }, null, 3000, 10000);
+  }
   // Clear stale RelaunchIconResource so Win11 taskbar honors WM_SETICON again.
   public static void ApplyAppUserModel(IntPtr hwnd, string id, string displayName) {
     IPropertyStore store; Guid iid = IID_IPropertyStore;
@@ -131,8 +234,105 @@ public static class StealthTaskbarWin {
     GC.KeepAlive(_cbFindTitle);
     return list.ToArray();
   }
+  [StructLayout(LayoutKind.Sequential)]
+  public struct GROUP_AFFINITY {
+    public UIntPtr Mask;
+    public ushort Group;
+    public ushort Reserved0;
+    public ushort Reserved1;
+    public ushort Reserved2;
+  }
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+  public struct PROCESSENTRY32 {
+    public uint dwSize;
+    public uint cntUsage;
+    public uint th32ProcessID;
+    public IntPtr th32DefaultHeapID;
+    public uint th32ModuleID;
+    public uint cntThreads;
+    public uint th32ParentProcessID;
+    public int pcPriClassBase;
+    public uint dwFlags;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+    public string szExeFile;
+  }
+  [StructLayout(LayoutKind.Sequential)]
+  public struct THREADENTRY32 {
+    public uint dwSize;
+    public uint cntUsage;
+    public uint th32ThreadID;
+    public uint th32OwnerProcessID;
+    public int tpBasePri;
+    public int tpDeltaPri;
+    public uint dwFlags;
+  }
+  [DllImport("kernel32.dll")] public static extern ushort GetActiveProcessorGroupCount();
+  [DllImport("kernel32.dll")] public static extern uint GetActiveProcessorCount(ushort GroupNumber);
+  [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
+  [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)] public static extern bool Process32First(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+  [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)] public static extern bool Process32Next(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+  [DllImport("kernel32.dll", SetLastError = true)] public static extern bool Thread32First(IntPtr hSnapshot, ref THREADENTRY32 lpte);
+  [DllImport("kernel32.dll", SetLastError = true)] public static extern bool Thread32Next(IntPtr hSnapshot, ref THREADENTRY32 lpte);
+  [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr OpenThread(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
+  [DllImport("kernel32.dll", SetLastError = true)] public static extern bool CloseHandle(IntPtr hObject);
+  [DllImport("kernel32.dll", SetLastError = true)] public static extern bool SetThreadGroupAffinity(IntPtr hThread, ref GROUP_AFFINITY GroupAffinity, out GROUP_AFFINITY PreviousGroupAffinity);
+
+  public static int AssignProcessTreeToGroup(int rootPid, int targetGroupSeq) {
+    if (rootPid <= 0) return 0;
+    ushort groupCount = GetActiveProcessorGroupCount();
+    if (groupCount <= 1) return 0;
+    ushort group = (ushort)(((uint)Math.Abs(targetGroupSeq)) % groupCount);
+    uint procCount = GetActiveProcessorCount(group);
+    if (procCount == 0) return 0;
+    ulong mask = procCount >= 64 ? ulong.MaxValue : ((1UL << (int)procCount) - 1UL);
+    var aff = new GROUP_AFFINITY { Mask = (UIntPtr)mask, Group = group };
+    IntPtr snap = CreateToolhelp32Snapshot(0x00000002u | 0x00000004u, 0);
+    if (snap == IntPtr.Zero || snap == new IntPtr(-1)) return 0;
+    int moved = 0;
+    try {
+      var parentByPid = new Dictionary<uint, uint>();
+      var pe = new PROCESSENTRY32 { dwSize = (uint)Marshal.SizeOf(typeof(PROCESSENTRY32)) };
+      if (Process32First(snap, ref pe)) {
+        do {
+          if (pe.th32ProcessID == (uint)rootPid || (!string.IsNullOrEmpty(pe.szExeFile) && pe.szExeFile.StartsWith("chrom", StringComparison.OrdinalIgnoreCase))) {
+            parentByPid[pe.th32ProcessID] = pe.th32ParentProcessID;
+          }
+        } while (Process32Next(snap, ref pe));
+      }
+      var targetPids = new HashSet<uint> { (uint)rootPid };
+      bool added = true;
+      while (added) {
+        added = false;
+        foreach (var kv in parentByPid) {
+          if (!targetPids.Contains(kv.Key) && targetPids.Contains(kv.Value)) {
+            targetPids.Add(kv.Key);
+            added = true;
+          }
+        }
+      }
+      var te = new THREADENTRY32 { dwSize = (uint)Marshal.SizeOf(typeof(THREADENTRY32)) };
+      if (Thread32First(snap, ref te)) {
+        do {
+          if (targetPids.Contains(te.th32OwnerProcessID)) {
+            IntPtr ht = OpenThread(0x0060u, false, te.th32ThreadID);
+            if (ht != IntPtr.Zero) {
+              GROUP_AFFINITY prev;
+              if (SetThreadGroupAffinity(ht, ref aff, out prev)) moved++;
+              CloseHandle(ht);
+            }
+          }
+        } while (Thread32Next(snap, ref te));
+      }
+    } finally {
+      CloseHandle(snap);
+    }
+    return moved;
+  }
 }
 "@ -OutputAssembly $dll -OutputType Library
+    } catch {
+      if (-not (Test-Path -LiteralPath $dll)) { throw }
+    }
   }
   Add-Type -Path $dll
 }
@@ -221,31 +421,30 @@ function Invoke-StealthTaskbarApply {
   }
 
   if ((-not $pids -or $pids.Count -eq 0) -and $titleHwnds.Count -eq 0) {
+    # If DevToolsActivePort exists on disk, Chromium is already running; no HWND means headless.
+    # Return OK_ICON so older packaged builds do not retry 9x or spawn WMI focusProfileBrowserWindow.
+    if (Test-Path -LiteralPath (Join-Path $dir 'DevToolsActivePort')) {
+      return @{ result = 'OK_ICON'; wmiSkipped = $true }
+    }
     return @{ result = 'NOHWND'; wmiSkipped = $true }
   }
 
-  $loadFlags = [uint32]([StealthTaskbarWin]::LR_LOADFROMFILE)
   $hiBig = [IntPtr]::Zero
   $hiSmall = [IntPtr]::Zero
-  if ($Ico -and (Test-Path -LiteralPath $Ico)) {
-    $hiBig = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 48, 48, $loadFlags)
-    if ($hiBig -eq [IntPtr]::Zero) {
-      $hiBig = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 32, 32, $loadFlags)
-    }
-    if ($hiBig -eq [IntPtr]::Zero) {
-      $hiBig = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 24, 24, $loadFlags)
-    }
-    if ($hiBig -eq [IntPtr]::Zero) {
-      $flagsDefault = [uint32](([StealthTaskbarWin]::LR_LOADFROMFILE) -bor ([StealthTaskbarWin]::LR_DEFAULTSIZE))
-      $hiBig = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 0, 0, $flagsDefault)
-    }
-    $hiSmall = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 16, 16, $loadFlags)
-    if ($hiSmall -eq [IntPtr]::Zero) {
-      $hiSmall = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 20, 20, $loadFlags)
-    }
-    if ($hiSmall -eq [IntPtr]::Zero) {
-      $hiSmall = [StealthTaskbarWin]::LoadImage([IntPtr]::Zero, $Ico, [StealthTaskbarWin]::IMAGE_ICON, 24, 24, $loadFlags)
-    }
+  $icoExists = [bool]($Ico -and (Test-Path -LiteralPath $Ico))
+  if ($icoExists) {
+    $hiBig = [StealthTaskbarWin]::LoadCachedIcon($Ico, 48, 48)
+    if ($hiBig -eq [IntPtr]::Zero) { $hiBig = [StealthTaskbarWin]::LoadCachedIcon($Ico, 32, 32) }
+    if ($hiBig -eq [IntPtr]::Zero) { $hiBig = [StealthTaskbarWin]::LoadCachedIcon($Ico, 24, 24) }
+    if ($hiBig -eq [IntPtr]::Zero) { $hiBig = [StealthTaskbarWin]::LoadCachedIcon($Ico, 0, 0) }
+    $hiSmall = [StealthTaskbarWin]::LoadCachedIcon($Ico, 16, 16)
+    if ($hiSmall -eq [IntPtr]::Zero) { $hiSmall = [StealthTaskbarWin]::LoadCachedIcon($Ico, 20, 20) }
+    if ($hiSmall -eq [IntPtr]::Zero) { $hiSmall = [StealthTaskbarWin]::LoadCachedIcon($Ico, 24, 24) }
+  }
+  # ICO is on disk but this worker can no longer create an HICON. Do not report OK_TITLE
+  # (that marks the profile done-enough and the guard stops treating it as missing).
+  if ($icoExists -and $hiBig -eq [IntPtr]::Zero -and $hiSmall -eq [IntPtr]::Zero -and [StealthTaskbarWin]::GuiObjectCount() -ge 8000) {
+    return @{ result = 'GDI_EXHAUSTED'; wmiSkipped = $wmiSkipped }
   }
 
   $ok = $false; $iconOk = $false

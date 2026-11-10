@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v9.1.13-stable",
-  "version": "9.1.13",
+  "label": "v9.2.126-cloak-0.4.8-cookie-pure",
+  "version": "9.2.126",
   "gitCommit": null,
-  "gitTag": "v9.1.13-stable",
+  "gitTag": "v9.2.126-cloak-0.4.8-cookie-pure",
   "packagedFrom": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
   "notes": "v9.1.1: Release Major bump 8.1.4→9.1.1. Fast prepackaged rebuild seeded build/icons into app.asar.",
   "backup": {
     "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-9.1.13.exe",
+    "installer": "Stealth-Browser-Console-Setup-9.2.126.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "6epsQ2zp5d7zdxMKOpD/Gedr/VbpRr8FnwhDIG2TPXJgEGaUrJeiFQ3SMmGv5r23Y326/VfnWata1blUr48M8Q==",
-    "capturedAt": "2026-10-11T10:07:41.295Z"
+    "sha512": null,
+    "capturedAt": "2026-11-02T19:38:25.370Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

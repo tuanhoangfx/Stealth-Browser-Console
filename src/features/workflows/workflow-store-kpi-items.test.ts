@@ -35,6 +35,7 @@ describe("computeWorkflowStoreKpiNumbers", () => {
     ).toEqual({
       total: 3,
       createToday: 1,
+      createWeek: 1,
       updateToday: 1,
       local: 1,
       installed: 1,
@@ -62,6 +63,7 @@ describe("buildWorkflowStoreKpiItems", () => {
     const items = buildWorkflowStoreKpiItems({
       total: 5,
       createToday: 1,
+      createWeek: 2,
       updateToday: 1,
       local: 1,
       installed: 2,
@@ -71,6 +73,7 @@ describe("buildWorkflowStoreKpiItems", () => {
     expect(items.map((item) => [item.prefKey, item.label])).toEqual([
       ["total", "Store"],
       ["create_today", "Create today"],
+      ["create_week", "Create This Week"],
       ["update_today", "Update today"],
       ["local", "Local"],
       ["installed", "Installed"],
@@ -82,12 +85,23 @@ describe("buildWorkflowStoreKpiItems", () => {
 
 describe("resolveWorkflowStoreKpiVisibleKeys", () => {
   it("ignores Profile URL keys and upgrades the merged Installed strip", () => {
-    expect([...resolveWorkflowStoreKpiVisibleKeys(new Set(["total", "running"]))]).toHaveLength(7);
+    expect([...resolveWorkflowStoreKpiVisibleKeys(new Set(["total", "running"]))]).toHaveLength(8);
     expect(
       resolveWorkflowStoreKpiVisibleKeys(
         new Set(["total", "create_today", "update_today", "installed", "available", "selected"]),
       ),
-    ).toEqual(new Set(["total", "create_today", "update_today", "local", "installed", "available", "selected"]));
+    ).toEqual(
+      new Set([
+        "total",
+        "create_today",
+        "create_week",
+        "update_today",
+        "local",
+        "installed",
+        "available",
+        "selected",
+      ]),
+    );
     expect(resolveWorkflowStoreKpiVisibleKeys(new Set(["total", "available"]))).toEqual(
       new Set(["total", "available"]),
     );

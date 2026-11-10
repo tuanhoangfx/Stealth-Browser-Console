@@ -17,15 +17,17 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
 describe("profile-code", () => {
-  it("normalizes 1–4 digit names to 0000–9999", () => {
+  it("normalizes 1–5 digit names to 0000–99999", () => {
     assert.equal(normalizeProfileNameOrThrow("1"), "0001");
     assert.equal(normalizeProfileNameOrThrow("385"), "0385");
     assert.equal(normalizeProfileNameOrThrow("9999"), "9999");
+    assert.equal(normalizeProfileNameOrThrow("10001"), "10001");
+    assert.equal(normalizeProfileNameOrThrow("10002"), "10002");
   });
 
   it("rejects non-numeric and out-of-range names", () => {
     assert.equal(parseProfileCode("Lucy").ok, false);
-    assert.equal(parseProfileCode("10000").ok, false);
+    assert.equal(parseProfileCode("100000").ok, false);
     assert.equal(parseProfileCode("").ok, false);
   });
 
@@ -76,6 +78,6 @@ describe("profile-code", () => {
 
   it("range constants", () => {
     assert.equal(PROFILE_CODE_MIN, 0);
-    assert.equal(PROFILE_CODE_MAX, 9999);
+    assert.equal(PROFILE_CODE_MAX, 99999);
   });
 });

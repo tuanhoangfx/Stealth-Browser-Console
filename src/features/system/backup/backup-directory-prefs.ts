@@ -24,27 +24,39 @@ export const BACKUP_DIRECTORY_GOLDEN_ORDER = [...STEALTH_BACKUP_COLUMN_KEYS] as 
 export const BACKUP_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<BackupDirectoryColumnKey>[] =
   withDirectoryColumnIcons(
     [
+      { key: "createdAt", label: "Created" },
+      { key: "updated", label: "Update" },
       { key: "profile", label: "Profile", required: true },
       { key: "group", label: "Group" },
-      { key: "updated", label: "Update" },
-      { key: "dataSize", label: "Data size" },
+      { key: "status", label: "Backup" },
+      { key: "backupSlots", label: "Slots" },
+      { key: "dataSize", label: "Data" },
+      { key: "cookies", label: "Cookies" },
+      { key: "historyState", label: "History" },
       { key: "folder", label: "Folder" },
+      { key: "activityLog", label: "Log" },
     ],
     BACKUP_COLUMN_PREF_ICONS,
   );
 
 export const DEFAULT_BACKUP_DIRECTORY_COLUMNS = new Set<BackupDirectoryColumnKey>([
+  "createdAt",
+  "updated",
   "profile",
   "group",
-  "updated",
+  "status",
+  "backupSlots",
   "dataSize",
+  "cookies",
+  "historyState",
   "folder",
+  "activityLog",
 ]);
 
 export const BACKUP_DIRECTORY_COLUMNS_CHANGE = "stealth-backup-directory-columns-change";
 
 export const backupDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
-  storageKey: "p0003_backup_directory_columns",
+  storageKey: "p0003_backup_directory_columns_v4",
   items: BACKUP_DIRECTORY_COLUMN_ITEMS,
   defaultKeys: DEFAULT_BACKUP_DIRECTORY_COLUMNS,
   changeEvent: BACKUP_DIRECTORY_COLUMNS_CHANGE,
@@ -52,7 +64,7 @@ export const backupDirectoryColumnPrefs = createDirectoryTableColumnPrefs({
 
 export const backupDirectoryColumnPresetManager = createDirectoryTableColumnPresetManager({
   prefs: backupDirectoryColumnPrefs,
-  presetsStorageKey: "p0003_backup_directory_column_presets",
+  presetsStorageKey: "p0003_backup_directory_column_presets_v2",
   itemKeys: BACKUP_DIRECTORY_GOLDEN_ORDER,
   defaultVisible: DEFAULT_BACKUP_DIRECTORY_COLUMNS,
 });

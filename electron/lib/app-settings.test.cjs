@@ -8,9 +8,9 @@ function loadFresh() {
   return require(MODULE_PATH);
 }
 
-test("extension toggles default to E0001 only", () => {
+test("extension toggles default to E0001 and E0002", () => {
   const mod = loadFresh();
-  assert.deepEqual(mod.getExtensionToggles(), { e0001: true, surfshark: false, webStore: false });
+  assert.deepEqual(mod.getExtensionToggles(), { e0001: true, e0002: true, surfshark: false, webStore: false });
 });
 
 test("getProfileExtensionsEnabled true when E0001 default on", () => {

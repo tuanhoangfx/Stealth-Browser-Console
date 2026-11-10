@@ -12,13 +12,42 @@ function countGoogleAuthCookies(cookies) {
 
 function classifyUrl(url) {
   const value = String(url || "");
-  if (/accounts\.google\.com/i.test(value) && /signin|ServiceLogin|challenge|interstitial|v3\/signin/i.test(value)) {
+  let host = "";
+  let pathname = "";
+  try {
+    const parsed = new URL(value);
+    host = parsed.hostname.toLowerCase();
+    pathname = parsed.pathname;
+  } catch {
+    if (
+      /accounts\.google\.com/i.test(value) &&
+      /signin|ServiceLogin|AccountChooser|CookieMismatch|confirmidentifier|rejected|challenge|interstitial|v3\/signin/i.test(
+        value,
+      )
+    ) {
+      return "challenge";
+    }
+    return "other";
+  }
+  if (
+    host === "accounts.google.com" &&
+    /signin|ServiceLogin|AccountChooser|CookieMismatch|confirmidentifier|rejected|challenge|interstitial|v3\/signin/i.test(
+      value,
+    )
+  ) {
     return "challenge";
   }
-  if (/mail\.google\.com/i.test(value) && !/signin|ServiceLogin/i.test(value)) {
+  if (
+    host === "workspace.google.com" ||
+    /\/gmail\/about/i.test(pathname) ||
+    ((host === "myaccount.google.com" || host === "one.google.com") && /^\/(intro|about)\b/i.test(pathname))
+  ) {
+    return "logged_out_landing";
+  }
+  if (host === "mail.google.com" && !/signin|ServiceLogin/i.test(pathname)) {
     return "inbox";
   }
-  if (/myaccount\.google\.com/i.test(value)) {
+  if ((host === "myaccount.google.com" || host === "one.google.com") && !/signin|ServiceLogin/i.test(pathname)) {
     return "account";
   }
   return "other";
@@ -28,10 +57,18 @@ function isGoogleSessionUrl(url) {
   return classifyUrl(url) !== "other";
 }
 
+function evalWithTimeout(page, fn, ms = 2000) {
+  if (!page?.evaluate) return Promise.resolve("");
+  return Promise.race([
+    page.evaluate(fn).catch(() => ""),
+    new Promise((resolve) => setTimeout(() => resolve(""), ms)),
+  ]);
+}
+
 async function extractGoogleEmail(page) {
   if (!page) return "";
   try {
-    const fromDom = await page.evaluate(() => {
+    const fromDom = await evalWithTimeout(page, () => {
       const selectors = [
         'a[aria-label*="@"]',
         '[data-email]',
@@ -49,7 +86,7 @@ async function extractGoogleEmail(page) {
       const titleMatch = title.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
       if (titleMatch) return titleMatch[0].toLowerCase();
       return "";
-    });
+    }, 2000);
     if (fromDom) return fromDom;
   } catch {
     /* page may be closing */
@@ -68,6 +105,42 @@ async function extractGoogleEmail(page) {
   }
 
   return "";
+}
+
+function classifyGoogleChallenge(url, text) {
+  const blob = `${url || ""}\n${text || ""}`.toLowerCase();
+  if (/account (has been |was )?disabled|this account has been disabled|vô hiệu hóa/.test(blob)) {
+    return "account_disabled";
+  }
+  if (/appeal this|request a review|submit an appeal|kháng nghị/.test(blob)) {
+    return "account_appeal";
+  }
+  if (/wrong password|incorrect password|password is incorrect|mật khẩu không đúng|mật khẩu sai/.test(blob)) {
+    return "password_rejected";
+  }
+  if (/challenge\/(dp|iap|sk)\b|enter (a |your )?phone|verify (it's |it is )?your phone|số điện thoại|phone number/.test(blob)) {
+    return "phone_challenge";
+  }
+  if (/challenge\/(kpe|ipe|ootp)\b|recovery email|confirm your recovery|email khôi phục|check your (recovery )?email/.test(blob)) {
+    return "mail_challenge";
+  }
+  if (/challenge\/(totp|ipp|az)\b|authenticator|2fa|totp/.test(blob)) {
+    return "2fa_pending";
+  }
+  return "google_challenge";
+}
+
+async function readChallengeText(page) {
+  if (!page?.evaluate) return "";
+  try {
+    const text = await evalWithTimeout(page, () => {
+      const body = document.body && document.body.innerText ? document.body.innerText : "";
+      return String(body).slice(0, 1800);
+    }, 2000);
+    return String(text || "");
+  } catch {
+    return "";
+  }
 }
 
 function pickPage(context) {
@@ -111,11 +184,21 @@ async function detectGoogleSession(context) {
       // best Google tab is still a sign-in/challenge/error page (e.g. wrong password /
       // "Couldn't verify your information"). Stale SID/HSID/SSID must NOT stamp Logged in
       // into Data Box — that caused Profile 0001 false positives (challenge_url+auth_cookies).
+      const text = await readChallengeText(page);
       return {
         status: "challenged",
-        result_code: /2fa|authenticator|totp/i.test(page.url()) ? "2fa_pending" : "google_challenge",
+        result_code: classifyGoogleChallenge(page.url(), text),
         email,
         evidence: authCount >= 2 ? "challenge_url+stale_auth_cookies" : "challenge_url",
+      };
+    }
+
+    if (urlKind === "logged_out_landing") {
+      return {
+        status: "not_logged_in",
+        result_code: "login_page",
+        email,
+        evidence: "logged_out_landing_url",
       };
     }
 
@@ -151,6 +234,7 @@ async function detectGoogleSession(context) {
 
 module.exports = {
   detectGoogleSession,
+  classifyGoogleChallenge,
   countGoogleAuthCookies,
   classifyUrl,
   isGoogleSessionUrl,

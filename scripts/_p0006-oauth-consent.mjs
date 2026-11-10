@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 
 const DEBUG_PORT = parseInt(process.env.P0003_DEBUG_PORT || "53214", 10);
 const ACCOUNT_EMAIL = process.env.P0006_OAUTH_EMAIL || "maxxmedia001@gmail.com";
-const SECRETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "P0006-Content-Studio", "worker", "secrets");
+const SECRETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "P0006-Video-Lab", "worker", "secrets");
 const REDIRECT_PORT = 19027;
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
@@ -147,7 +147,7 @@ writeFileSync(
     {
       project_id: creds.project_id,
       client_id: clientId,
-      drive_folder_name: "P0006-Content-Studio",
+      drive_folder_name: "P0006-Video-Lab",
       account_email: ACCOUNT_EMAIL,
       stealth_profile: "0098",
     },

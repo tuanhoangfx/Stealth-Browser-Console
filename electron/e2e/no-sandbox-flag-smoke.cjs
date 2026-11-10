@@ -16,7 +16,7 @@ function findBrowserCommandLine() {
   try {
     const out = execSync(
       'powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -match \'chrome|chromium|cloak\' -and $_.CommandLine -match \'fingerprint=\' } | Select-Object -ExpandProperty CommandLine"',
-      { encoding: "utf8", timeout: 15000 }
+      { encoding: "utf8", timeout: 15000 , windowsHide: true }
     );
     return out.trim() || null;
   } catch {

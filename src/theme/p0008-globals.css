@@ -75,6 +75,13 @@
   --hub-inline-gap-meta: 5px;
   --hub-inline-gap-comfort: 6px;
   --hub-inline-gap-name: 8px;
+  /* Release modal chips — kind badge + header Check/Latest/Dev CTA (hub-release-modal-chip-ssot) */
+  --hub-release-chip-font-size: 12px;
+  --hub-release-chip-min-h: 22px;
+  --hub-release-chip-pad-x: 0.45rem;
+  --hub-release-chip-pad-y: 0.15rem;
+  --hub-release-chip-gap: 0.3rem;
+  --hub-release-chip-radius: 0.4rem;
   /* Search match mark — P0020 Sheet indigo lock (directory + ADM + Sheet/Todo/Inbox) */
   --hub-search-highlight-bg: rgba(99, 102, 241, 0.38);
   --hub-search-highlight-fg: rgb(224, 231, 255);
@@ -124,6 +131,11 @@ html {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.hub-ui-zoom-row--embedded {
+  width: 100%;
+  padding: 0.15rem 0 0.35rem;
 }
 
 .hub-ui-zoom-row__label {

@@ -3,7 +3,7 @@
  * Taskbar overlay Design V4: colored last3 on icon (no scrim/plate). 0xxx=white; 1–9 vivid hues.
  */
 const PROFILE_CODE_MIN = 0;
-const PROFILE_CODE_MAX = 9999;
+const PROFILE_CODE_MAX = 99999;
 
 /**
  * Digit ink RGB by thousands 0–9.
@@ -79,12 +79,12 @@ function isUuidFolderId(value) {
 function parseProfileCode(raw) {
   const trimmed = String(raw ?? "").trim();
   if (!trimmed) return { ok: false, error: "Profile name is required." };
-  if (!/^\d{1,4}$/.test(trimmed)) {
-    return { ok: false, error: "Profile name must be a 4-digit code from 0000 to 9999." };
+  if (!/^\d{1,5}$/.test(trimmed)) {
+    return { ok: false, error: "Profile name must be a 4–5 digit code from 0000 to 99999." };
   }
   const n = Number(trimmed);
   if (!Number.isInteger(n) || n < PROFILE_CODE_MIN || n > PROFILE_CODE_MAX) {
-    return { ok: false, error: "Profile name must be a code from 0000 to 9999." };
+    return { ok: false, error: "Profile name must be a code from 0000 to 99999." };
   }
   return { ok: true, code: String(n).padStart(4, "0"), n };
 }
@@ -97,19 +97,23 @@ function normalizeProfileNameOrThrow(raw) {
 }
 
 function extractFourDigitCode(name, id = "") {
-  const rawName = isUuidFolderId(name) ? "" : String(name ?? "");
-  const rawId = isUuidFolderId(id) ? "" : String(id ?? "");
+  const rawName = isUuidFolderId(name) ? "" : String(name ?? "").trim();
+  const rawId = isUuidFolderId(id) ? "" : String(id ?? "").trim();
+  const fourMatch = rawName.match(/(?:^|\D)(\d{4,5})(?:\D|$)/);
+  if (fourMatch) {
+    return fourMatch[1];
+  }
+  if (/^\d{1,5}$/.test(rawName)) {
+    const parsed = parseProfileCode(rawName);
+    if (parsed.ok) return parsed.code;
+  }
   const fromName = digitsOnly(rawName);
   if (fromName.length >= 4) {
-    const slice = fromName.slice(-4);
+    const slice = fromName.length === 5 ? fromName : fromName.slice(-4);
     const n = Number(slice);
     if (Number.isInteger(n) && n >= PROFILE_CODE_MIN && n <= PROFILE_CODE_MAX) {
       return String(n).padStart(4, "0");
     }
-  }
-  if (/^\d{1,4}$/.test(rawName.trim())) {
-    const parsed = parseProfileCode(rawName);
-    if (parsed.ok) return parsed.code;
   }
   const fromIdRaw = String(rawId || "").replace(/-/g, "");
   const fromIdDigits = digitsOnly(fromIdRaw).slice(0, 4);
@@ -124,7 +128,7 @@ function badgeLast3(code) {
 
 function badgeThousands(code) {
   const n = Number(extractFourDigitCode(code));
-  return Math.min(9, Math.max(0, Math.floor(n / 1000)));
+  return Math.min(9, Math.max(0, Math.floor(n / 1000) % 10));
 }
 
 function digitArgbForCode(code) {

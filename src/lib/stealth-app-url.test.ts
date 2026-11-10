@@ -9,6 +9,7 @@ describe("stealth-app-url", () => {
   it("reads legacy ?screen=system&stab=extensions then migrates to /system", () => {
     window.history.replaceState(null, "", "/?screen=system&stab=extensions");
     expect(readStealthAppUrl()).toEqual({
+      androidTab: "profiles",
       screen: "system",
       systemTab: "extensions",
       workflowTab: "editor",

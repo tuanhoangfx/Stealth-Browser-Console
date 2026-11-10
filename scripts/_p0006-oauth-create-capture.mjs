@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 
 const PROJECT_ID = "our-foundry-442305-d3";
 const CLIENT_NAME = `P0006-CS-${Date.now().toString(36).slice(-4)}`;
-const SECRETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "P0006-Content-Studio", "worker", "secrets");
+const SECRETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "P0006-Video-Lab", "worker", "secrets");
 
 const browser = await chromium.connectOverCDP("http://127.0.0.1:51169");
 const context = browser.contexts()[0];

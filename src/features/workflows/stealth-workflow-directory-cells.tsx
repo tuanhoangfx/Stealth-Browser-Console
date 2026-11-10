@@ -4,8 +4,10 @@ import {
   HubCopyBadge,
   HubDirectoryIconCell,
   HubDirectoryTimestampLabel,
+  HubDirectoryValuePopover,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
+import { DIRECTORY_CELL_TRUNCATE } from "../../lib/directory-cell-format";
 import type { StealthWorkflowColumnKey } from "../../lib/directory-column-meta";
 import {
   workflowDisplayId,
@@ -106,6 +108,35 @@ export function renderStealthWorkflowDirectoryBodyCell(
           {renderWorkflowTimestampCell(workflowLastRunMs(workflow))}
         </DirectoryTableBodyCell>
       );
+    case "activityLog": {
+      const stepsCount = workflowStepCount(workflow);
+      const firstStep = workflow.steps[0];
+      const stepSummary = firstStep
+        ? `${stepsCount} step${stepsCount === 1 ? "" : "s"} · ${firstStep.name || firstStep.kind}`
+        : `0 steps · ${workflow.action || "open-url"}`;
+      const targetPart = workflow.targetUrl ? ` · ${workflow.targetUrl}` : "";
+      const inlineText = `${stepSummary}${targetPart}`;
+      const popoverLines = [
+        `Script: ${workflow.name} (${displayId})`,
+        `Platform: ${displayPlatform} · Group: ${workflow.group || "Default"}`,
+        `Entry Action: ${workflow.action || "open-url"}${workflow.targetUrl ? ` → ${workflow.targetUrl}` : ""}`,
+        `Steps (${stepsCount}):`,
+        ...(workflow.steps.length
+          ? workflow.steps
+              .slice(0, 8)
+              .map((s, idx) => `  ${idx + 1}. [${s.kind}] ${s.name || s.selector || s.value || "Step"}`)
+          : ["  (No steps configured)"]),
+      ].join("\n");
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          <HubDirectoryValuePopover value={popoverLines} title="📋 Script Activity & Steps Log">
+            <span className={`hub-directory-table-body-text text-[var(--muted)] ${DIRECTORY_CELL_TRUNCATE}`}>
+              {inlineText}
+            </span>
+          </HubDirectoryValuePopover>
+        </DirectoryTableBodyCell>
+      );
+    }
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>

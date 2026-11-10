@@ -1,7 +1,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { resolveProfilesRoot } = require("./profiles-location.cjs");
-const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
+const {
+  unpackedExtensionId,
+  pinToolbarExtension,
+  pinStoreExtension,
+  healSecurePreferencesExtensionState,
+} = require("./profile-chrome-preferences.cjs");
 const { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } = require("./stealth-extension-store-ids.cjs");
 
 /** Legacy E0001 ids pinned when loading from workspace or Web Store path. */
@@ -108,6 +113,12 @@ function collectIdentityExtensionIds(prefs) {
 
 function isSurfsharkExtensionMeta(meta) {
   if (!meta || typeof meta !== "object") return false;
+  const proxyServer = String(
+    meta?.preferences?.proxy?.server ||
+      meta?.regular_only_preferences?.proxy?.server ||
+      "",
+  ).toLowerCase();
+  if (proxyServer.includes("surfshark")) return true;
   const extensionPath = String(meta.path || "").replace(/\\/g, "/").toLowerCase();
   if (extensionPath.includes(SURFSHARK_STORE_ID) || extensionPath.includes("/surfshark")) return true;
   const name = String(meta.manifest?.name || "").toLowerCase();
@@ -255,6 +266,9 @@ function removeExtensionFromPrefs(prefs, extId) {
 
   if (prefs.extensions.settings?.[extId]) {
     delete prefs.extensions.settings[extId];
+    if (prefs.protection?.macs?.extensions?.settings?.[extId]) {
+      delete prefs.protection.macs.extensions.settings[extId];
+    }
     changed = true;
   }
 
@@ -469,6 +483,154 @@ function purgeBrokenExtensionPrefs(userDataDir) {
   return { removed };
 }
 
+function chromeProfileIsLive(userDataDir) {
+  return (
+    fs.existsSync(path.join(userDataDir, "lockfile")) ||
+    fs.existsSync(path.join(userDataDir, "SingletonLock"))
+  );
+}
+
+function effectiveExtensionFlag(override, key, fallback) {
+  if (override && override[key] !== undefined && override[key] !== null) return Boolean(override[key]);
+  return fallback;
+}
+
+function operatorToolbarPinIsCurrent(userDataDir, operatorDir, operatorId) {
+  const prefs = readJson(path.join(userDataDir, "Default", "Preferences"));
+  if (!prefs || !operatorId) return false;
+  const absPath = path.resolve(operatorDir).replace(/\\/g, "/");
+  const settings = prefs.extensions?.settings?.[operatorId];
+  const pinned = prefs.extensions?.pinned_extensions;
+  return (
+    Array.isArray(pinned) &&
+    pinned.includes(operatorId) &&
+    settings?.path === absPath &&
+    Number(settings?.state) === 1 &&
+    !isBrokenExtensionPath(settings?.path)
+  );
+}
+
+/** True when the store id is already pinned and its folder still has a manifest. Path may be an older chromium dir. */
+function cookieBridgePinIsCurrent(userDataDir, bridgeId) {
+  const prefs = readJson(path.join(userDataDir, "Default", "Preferences"));
+  const settings = prefs?.extensions?.settings?.[bridgeId];
+  const pinned = prefs?.extensions?.pinned_extensions;
+  return (
+    Boolean(settings) &&
+    Array.isArray(pinned) &&
+    pinned.includes(bridgeId) &&
+    Number(settings.state) === 1 &&
+    !isBrokenExtensionPath(settings.path)
+  );
+}
+
+/**
+ * Closed profiles only. One walk for E0001 and E0002: drop prefs whose path has
+ * no manifest, pin a missing toolbar entry when that profile's toggle is on,
+ * unpin when it is off. Live Chrome dirs are skipped.
+ */
+function reconcileClosedProfileExtensionPrefs(userDataRoot, options = {}) {
+  const empty = { profiles: 0, removed: 0, prefsCleaned: 0, skippedLive: 0, pinned: 0, pinnedBridge: 0 };
+  if (!userDataRoot) return empty;
+  const profilesDir = resolveProfilesRoot(userDataRoot);
+  let profiles = 0;
+  let removed = 0;
+  let prefsCleaned = 0;
+  let skippedLive = 0;
+  let pinned = 0;
+  let pinnedBridge = 0;
+  if (!fs.existsSync(profilesDir)) return { profiles, removed, prefsCleaned, skippedLive, pinned, pinnedBridge };
+
+  const operatorDir = options.operatorDir ? path.resolve(String(options.operatorDir)) : "";
+  const operatorId = operatorDir ? unpackedExtensionId(operatorDir) : "";
+  const legacyOperatorIds = new Set(
+    (Array.isArray(options.legacyOperatorDirs) ? options.legacyOperatorDirs : [])
+      .filter(Boolean)
+      .map((d) => unpackedExtensionId(path.resolve(String(d))))
+      .filter((id) => id && id !== operatorId),
+  );
+  const operatorReady = Boolean(operatorDir) && fs.existsSync(path.join(operatorDir, "manifest.json"));
+  const operatorEnabled = options.operatorEnabled !== false;
+  const bridgeId = String(options.bridgeId || "").trim().toLowerCase();
+  const bridgeDir = options.bridgeDir ? path.resolve(String(options.bridgeDir)) : "";
+  const bridgeReady = Boolean(bridgeId) && Boolean(bridgeDir) && fs.existsSync(path.join(bridgeDir, "manifest.json"));
+  const bridgeVerified =
+    bridgeReady && fs.existsSync(path.join(bridgeDir, "_metadata", "verified_contents.json"));
+  const bridgeUnpackedId = bridgeReady ? unpackedExtensionId(bridgeDir) : "";
+  const bridgeEnabled = options.bridgeEnabled !== false && Boolean(bridgeId);
+  const overridesById = options.overridesById instanceof Map ? options.overridesById : null;
+
+  for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    profiles += 1;
+    const userDataDir = path.join(profilesDir, entry.name);
+    if (chromeProfileIsLive(userDataDir)) {
+      skippedLive += 1;
+      continue;
+    }
+    const override = overridesById?.get(entry.name);
+    const operatorOn = effectiveExtensionFlag(override, "e0002", operatorEnabled);
+    const bridgeOn = effectiveExtensionFlag(override, "e0001", bridgeEnabled);
+    let changedCount = 0;
+    for (const prefsFile of chromePrefsFiles(userDataDir)) {
+      const prefs = readJson(prefsFile);
+      if (!prefs) continue;
+      const toRemove = new Set(collectBrokenExtensionIds(prefs));
+      for (const legacyOpId of legacyOperatorIds) {
+        if (
+          prefs.extensions?.settings?.[legacyOpId] ||
+          prefs.extensions?.pinned_extensions?.includes?.(legacyOpId) ||
+          prefs.extensions?.toolbar?.pinned_extension_ids?.includes?.(legacyOpId)
+        ) {
+          toRemove.add(legacyOpId);
+        }
+      }
+      if (operatorId && !operatorOn) toRemove.add(operatorId);
+      if (bridgeId && !bridgeOn) {
+        toRemove.add(bridgeId);
+        if (bridgeUnpackedId) toRemove.add(bridgeUnpackedId);
+        for (const legacyId of COOKIE_BRIDGE_LEGACY_PIN_IDS) toRemove.add(legacyId);
+      } else if (bridgeId && bridgeOn && bridgeReady && !bridgeVerified) {
+        if (prefs.extensions?.settings?.[bridgeId]) toRemove.add(bridgeId);
+      }
+      if (!toRemove.size) continue;
+      let changed = false;
+      for (const extId of toRemove) {
+        if (removeExtensionFromPrefs(prefs, extId)) changed = true;
+        removeExtensionStore(userDataDir, extId);
+        changedCount += 1;
+      }
+      if (changed) writeJson(prefsFile, prefs);
+    }
+    removed += changedCount;
+    if (changedCount > 0) prefsCleaned += 1;
+    const prefsFile = path.join(userDataDir, "Default", "Preferences");
+    if (!fs.existsSync(prefsFile)) continue;
+    if (operatorOn && operatorReady) {
+      healSecurePreferencesExtensionState(userDataDir, operatorId, operatorDir.replace(/\\/g, "/"));
+      if (!operatorToolbarPinIsCurrent(userDataDir, operatorDir, operatorId)) {
+        pinToolbarExtension(userDataDir, operatorDir);
+        pinned += 1;
+      }
+    }
+    if (bridgeOn && bridgeReady) {
+      const targetBridgePinId = bridgeVerified ? bridgeId : bridgeUnpackedId;
+      healSecurePreferencesExtensionState(userDataDir, targetBridgePinId, bridgeDir.replace(/\\/g, "/"));
+      if (bridgeVerified && !cookieBridgePinIsCurrent(userDataDir, bridgeId)) {
+        pinStoreExtension(userDataDir, bridgeId, bridgeDir);
+        pinned += 1;
+        pinnedBridge += 1;
+      } else if (!bridgeVerified && !operatorToolbarPinIsCurrent(userDataDir, bridgeDir, bridgeUnpackedId)) {
+        pinToolbarExtension(userDataDir, bridgeDir);
+        pinned += 1;
+        pinnedBridge += 1;
+      }
+    }
+  }
+
+  return { profiles, removed, prefsCleaned, skippedLive, pinned, pinnedBridge };
+}
+
 /** Bulk scrub broken extension prefs across every profile Chrome dir. */
 function purgeAllProfilesBrokenExtensionPrefs(userDataRoot) {
   if (!userDataRoot) return { profiles: 0, removed: 0, prefsCleaned: 0 };
@@ -599,10 +761,177 @@ function purgeLegacyProfileIdentityChrome(userDataDir, userDataRoot, profileId) 
   }
 }
 
+/**
+ * Disposable HTTP/ServiceWorker/GPU/Shader/Code/Crashpad/BrowserMetrics paths inside a closed Chromium profile.
+ * NEVER touches Cookies, Local Storage, Session Storage, IndexedDB, Extensions, Login Data,
+ * Web Data, Bookmarks, History, or Preferences.
+ */
+const DISPOSABLE_PROFILE_CACHE_REL_PATHS = [
+  "GraphiteDawnCache",
+  "GrShaderCache",
+  "ShaderCache",
+  "DawnCache",
+  "BrowserMetrics",
+  "BrowserMetrics-spare.pma",
+  path.join("Crashpad", "reports"),
+  path.join("Crashpad", "attachments"),
+  path.join("Default", "Cache"),
+  path.join("Default", "Service Worker", "CacheStorage"),
+  path.join("Default", "Service Worker", "ScriptCache"),
+  path.join("Default", "Shared Dictionary"),
+  path.join("Default", "DawnGraphiteCache"),
+  path.join("Default", "DawnWebGPUCache"),
+  path.join("Default", "GPUCache"),
+  path.join("Default", "Code Cache", "js"),
+  path.join("Default", "Code Cache", "wasm"),
+  path.join("Default", "Network", "Cookies.vault-hydrated.json"),
+];
+
+/**
+ * Ephemeral Agent Pool (`9000`–`9999` / `9xxx`) Post-Close Storage Wipe:
+ * User stores zero persistent data in `9000`–`9999`. Wipes Cookies, LocalStorage, SessionStorage,
+ * and IndexedDB on close so the next sequential Agent task starts with a clean slate.
+ */
+const EPHEMERAL_AGENT_POOL_STORAGE_REL_PATHS = [
+  path.join("Default", "Network", "Cookies"),
+  path.join("Default", "Network", "Cookies-journal"),
+  path.join("Default", "Network", "Cookies-wal"),
+  path.join("Default", "Network", "Cookies-shm"),
+  path.join("Default", "Network", "Cookies.last-good.bak"),
+  path.join("Default", "Cookies"),
+  path.join("Default", "Cookies-journal"),
+  path.join("Default", "Local Storage", "leveldb"),
+  path.join("Default", "Session Storage"),
+  path.join("Default", "IndexedDB"),
+];
+
+function wipeEphemeralAgentPoolProfileStorage(userDataDir) {
+  if (!userDataDir || typeof userDataDir !== "string") {
+    return { ok: false, skipped: true, reason: "invalid-dir", removedCount: 0 };
+  }
+  try {
+    if (!fs.existsSync(userDataDir) || chromeProfileIsLive(userDataDir)) {
+      return { ok: false, skipped: true, reason: "profile-live", removedCount: 0 };
+    }
+  } catch {
+    return { ok: false, skipped: true, reason: "stat-error", removedCount: 0 };
+  }
+  let removedCount = 0;
+  for (const rel of EPHEMERAL_AGENT_POOL_STORAGE_REL_PATHS) {
+    const targetPath = path.join(userDataDir, rel);
+    try {
+      if (fs.existsSync(targetPath)) {
+        fs.rmSync(targetPath, { recursive: true, force: true });
+        removedCount += 1;
+      }
+    } catch {
+      // ignore if file handle is still releasing
+    }
+  }
+  return { ok: true, skipped: false, removedCount };
+}
+
+/**
+ * Instant On-Close Cache Trim (`ok 1` & `ok 2`):
+ * Purges disposable HTTP/ServiceWorker/GPU/Shader/Dawn/Code/Crashpad/BrowserMetrics caches for a single closed profile.
+ * Skips immediately if the profile directory is still live/locked.
+ */
+function trimClosedProfileDisposableCache(userDataDir) {
+  if (!userDataDir || typeof userDataDir !== "string") {
+    return { ok: false, skipped: true, reason: "invalid-dir", removedCount: 0 };
+  }
+  try {
+    if (!fs.existsSync(userDataDir) || chromeProfileIsLive(userDataDir)) {
+      return { ok: false, skipped: true, reason: "profile-live", removedCount: 0 };
+    }
+  } catch {
+    return { ok: false, skipped: true, reason: "stat-error", removedCount: 0 };
+  }
+  let removedCount = 0;
+  for (const rel of DISPOSABLE_PROFILE_CACHE_REL_PATHS) {
+    const targetPath = path.join(userDataDir, rel);
+    try {
+      if (fs.existsSync(targetPath)) {
+        fs.rmSync(targetPath, { recursive: true, force: true });
+        removedCount += 1;
+      }
+    } catch {
+      // ignore if file handle is still releasing
+    }
+  }
+  return { ok: true, skipped: false, removedCount };
+}
+
+/**
+ * Non-blocking Libuv Thread-Pool On-Close Cache Trim:
+ * Uses `fs.promises.rm` instead of `fs.rmSync` so deleting thousands of HTTP/GPU/Shader cache files
+ * never blocks Electron's Main GUI Thread or Win32 message queue when headless browsers close.
+ */
+async function trimClosedProfileDisposableCacheAsync(userDataDir) {
+  if (!userDataDir || typeof userDataDir !== "string") {
+    return { ok: false, skipped: true, reason: "invalid-dir", removedCount: 0 };
+  }
+  try {
+    if (!fs.existsSync(userDataDir) || chromeProfileIsLive(userDataDir)) {
+      return { ok: false, skipped: true, reason: "profile-live", removedCount: 0 };
+    }
+  } catch {
+    return { ok: false, skipped: true, reason: "stat-error", removedCount: 0 };
+  }
+  let removedCount = 0;
+  await Promise.all(
+    DISPOSABLE_PROFILE_CACHE_REL_PATHS.map(async (rel) => {
+      const targetPath = path.join(userDataDir, rel);
+      try {
+        await fs.promises.rm(targetPath, { recursive: true, force: true });
+        removedCount += 1;
+      } catch {
+        // ignore if file handle is still releasing
+      }
+    }),
+  );
+  return { ok: true, skipped: false, removedCount };
+}
+
+/**
+ * Bulk sweep disposable caches across all closed profiles under `userDataRoot` (or direct `profilesDir`).
+ */
+function trimAllClosedProfilesDisposableCache(userDataRoot) {
+  if (!userDataRoot) return { profiles: 0, cleanedProfiles: 0, skippedLive: 0, removedCount: 0 };
+  const profilesDir = resolveProfilesRoot(userDataRoot);
+  if (!fs.existsSync(profilesDir)) {
+    return { profiles: 0, cleanedProfiles: 0, skippedLive: 0, removedCount: 0 };
+  }
+  let profiles = 0;
+  let cleanedProfiles = 0;
+  let skippedLive = 0;
+  let removedCount = 0;
+  for (const entry of fs.readdirSync(profilesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    profiles += 1;
+    const res = trimClosedProfileDisposableCache(path.join(profilesDir, entry.name));
+    if (res.skipped) {
+      skippedLive += 1;
+    } else if (res.removedCount > 0) {
+      cleanedProfiles += 1;
+      removedCount += res.removedCount;
+    }
+  }
+  return { profiles, cleanedProfiles, skippedLive, removedCount };
+}
+
 module.exports = {
+  DISPOSABLE_PROFILE_CACHE_REL_PATHS,
+  EPHEMERAL_AGENT_POOL_STORAGE_REL_PATHS,
+  trimClosedProfileDisposableCache,
+  trimClosedProfileDisposableCacheAsync,
+  trimAllClosedProfilesDisposableCache,
+  wipeEphemeralAgentPoolProfileStorage,
   purgeLegacyProfileIdentityChrome,
   purgeProfileIdentityToolbar,
   purgeBrokenExtensionPrefs,
+  reconcileClosedProfileExtensionPrefs,
+  chromeProfileIsLive,
   purgeStaleCookieBridgePrefs,
   purgeAllProfilesStaleCookieBridgePrefs,
   purgeAllProfilesBrokenExtensionPrefs,

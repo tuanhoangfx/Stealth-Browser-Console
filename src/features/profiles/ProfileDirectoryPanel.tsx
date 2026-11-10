@@ -7,7 +7,13 @@ import {
   type KpiTileData,
   type TabHeaderStatItem,
 } from "@tool-workspace/hub-ui";
-import type { ExtensionToggles, ProfileRow, ProfileCatalogStats, StealthGroup } from "../../types";
+import type {
+  ExtensionToggles,
+  ProfileCatalogStats,
+  ProfileProxyFilterMode,
+  ProfileRow,
+  StealthGroup,
+} from "../../types";
 import { useWorkflowRuntime } from "../../context/workflow-runtime-context";
 import { ProfilesHubChrome } from "./ProfilesHubChrome";
 import type { ExtensionSelectionState } from "./StealthProfilesDirectoryBulkActions";
@@ -34,6 +40,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   setSelectedGroupIds,
   selectedStatuses,
   setSelectedStatuses,
+  selectedProxyModes = [],
+  setSelectedProxyModes,
   pageSize,
   pageIndex = 0,
   onPageChange,
@@ -49,6 +57,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected,
   openOne,
   closeOne,
+  boostWaitingOne,
+  resetProxyOne,
   closeAllRunning,
   runningHeadlessIds,
   onOpenDetail,
@@ -56,6 +66,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   extensionState,
   extensionBusy,
   onExtensionSet,
+  onProfilesChanged,
   deleteSelected,
   setShowCreate,
   onEditSingle,
@@ -83,6 +94,8 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   setSelectedGroupIds: (values: string[]) => void;
   selectedStatuses: ProfileRow["status"][];
   setSelectedStatuses: (values: ProfileRow["status"][]) => void;
+  selectedProxyModes?: ProfileProxyFilterMode[];
+  setSelectedProxyModes?: (values: ProfileProxyFilterMode[]) => void;
   pageSize: number;
   pageIndex?: number;
   onPageChange?: (index: number) => void;
@@ -98,13 +111,16 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   allVisibleSelected: boolean;
   openOne: (profile: ProfileRow) => void;
   closeOne: (profile: ProfileRow) => void;
+  boostWaitingOne?: (profile: ProfileRow) => void;
+  resetProxyOne?: (profile: ProfileRow) => void;
   closeAllRunning: () => void;
   runningHeadlessIds: ReadonlySet<string>;
   onOpenDetail?: (profile: ProfileRow) => void;
   globalExtensionToggles: ExtensionToggles;
-  extensionState: Record<"e0001" | "surfshark", ExtensionSelectionState>;
+  extensionState: Record<"e0001" | "e0002" | "surfshark", ExtensionSelectionState>;
   extensionBusy?: boolean;
-  onExtensionSet: (key: "e0001" | "surfshark", enabled: boolean) => void;
+  onExtensionSet: (key: "e0001" | "e0002" | "surfshark", enabled: boolean) => void;
+  onProfilesChanged?: () => void;
   deleteSelected: () => void;
   setShowCreate: (value: boolean) => void;
   onEditSingle: () => void;
@@ -122,8 +138,13 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
   const extensionIcons = useExtensionIcons();
   const filterSearch = filterSearchProp ?? search;
   const directoryQuery = useMemo(
-    () => ({ search: filterSearch, groupIds: selectedGroupIds, statuses: selectedStatuses }),
-    [filterSearch, selectedGroupIds, selectedStatuses],
+    () => ({
+      search: filterSearch,
+      groupIds: selectedGroupIds,
+      statuses: selectedStatuses,
+      proxyModes: selectedProxyModes,
+    }),
+    [filterSearch, selectedGroupIds, selectedStatuses, selectedProxyModes],
   );
   const catalogTotal = resolveCatalogTotal(catalogStats, profiles.length);
   const directoryVisibleTotal = resolveProfileDirectoryVisibleTotal(
@@ -147,12 +168,15 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     setSelectedGroupIds,
     selectedStatuses,
     setSelectedStatuses,
+    selectedProxyModes,
+    setSelectedProxyModes,
     syncBusy,
     selectedProfiles,
     allVisibleSelected,
     onToggleSelectAll,
     closeOne,
     closeAllRunning,
+    runningHeadlessCount: runningHeadlessIds.size,
     deleteSelected,
     setShowCreate,
     onEditSingle,
@@ -164,6 +188,7 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
     extensionIcons,
     extensionBusy,
     onExtensionSet,
+    onProfilesChanged,
   });
 
   const listResetKey = hubDirectoryListResetKey(filterSearch, chrome.filterValues);
@@ -218,8 +243,13 @@ export const ProfileDirectoryPanel = memo(function ProfileDirectoryPanel({
                 onToggleSelectAll={onToggleSelectAll}
                 allVisibleSelected={allVisibleSelected}
                 runningHeadlessIds={runningHeadlessIds}
+                waitingReasons={catalogStats?.waitingReasons}
+                headlessReasons={catalogStats?.headlessReasons}
+                activityLogs={catalogStats?.activityLogs}
                 onOpen={openOne}
                 onClose={closeOne}
+                onBoostWaiting={boostWaitingOne}
+                onResetProxy={resetProxyOne}
                 onOpenDetail={onOpenDetail}
                 globalExtensionToggles={globalExtensionToggles}
                 extensionIcons={extensionIcons}

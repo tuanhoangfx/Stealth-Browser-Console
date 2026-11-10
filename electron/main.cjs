@@ -4,10 +4,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { resolveAppIconPathIfExists } = require("./lib/desktop-app-icon.cjs");
 const { configureElectronUserData, resolveStealthApiPort, isDevIsolated } = require("./lib/user-data-root.cjs");
+const {
+  applyElectronDevAppId,
+  formatElectronWindowTitle,
+  attachElectronDevWindowBadge,
+} = require("./lib/electron-dev-badge.cjs");
 
 configureElectronUserData(app);
+applyElectronDevAppId(app, "com.stealth.console", !app.isPackaged || isDevIsolated());
 const {
   setShutdownReason,
+  peekShutdownReason,
   writeShutdownLog,
   writeBootLog,
   readLifecycleLog,
@@ -22,7 +29,43 @@ for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGEN
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   setShutdownReason("second-instance-blocked");
-  app.quit();
+  const noFocus = Array.isArray(process.argv) && process.argv.some((a) => a === "--no-focus" || a === "--background");
+  if (!noFocus) {
+    try {
+      const http = require("node:http");
+      const port = resolveStealthApiPort({ packaged: app.isPackaged });
+      const payload = JSON.stringify({ showWindow: true });
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/system/hot-reload",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(payload),
+          },
+          timeout: 800,
+        },
+        (res) => {
+          res.resume();
+          app.exit(0);
+        },
+      );
+      req.on("error", () => app.exit(0));
+      req.on("timeout", () => {
+        req.destroy();
+        app.exit(0);
+      });
+      req.write(payload);
+      req.end();
+      setTimeout(() => app.exit(0), 900).unref();
+    } catch {
+      app.quit();
+    }
+  } else {
+    app.quit();
+  }
 }
 
 const {
@@ -81,6 +124,11 @@ const {
   validateRouterRequestPayload
 } = require("./ipc-contracts.cjs");
 const { bindRendererReloadShortcuts } = require("./lib/renderer-reload.cjs");
+const { attachElectronDevBootRecovery } = require(
+  fs.existsSync(path.join(__dirname, "..", "..", "scripts", "lib", "electron-dev-boot-recovery.cjs"))
+    ? path.join(__dirname, "..", "..", "scripts", "lib", "electron-dev-boot-recovery.cjs")
+    : "./lib/electron-dev-boot-recovery.cjs",
+);
 
 const sessionManager = new SessionManager();
 const sessionTray = createSessionTray(sessionManager);
@@ -99,8 +147,15 @@ function userDataRoot() {
 }
 
 function showMainConsoleWindow() {
-  const win = mainBrowserWindow;
-  if (!win || win.isDestroyed()) return;
+  let win = mainBrowserWindow;
+  if (!win || win.isDestroyed()) {
+    win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) || null;
+    if (win) mainBrowserWindow = win;
+  }
+  if (!win || win.isDestroyed()) {
+    if (mainBootReady) void createWindow();
+    return;
+  }
   if (win.isMinimized()) win.restore();
   if (!win.isVisible()) win.show();
   win.focus();
@@ -174,15 +229,36 @@ function bindIpc() {
   });
 
   ipcMain.handle("profile:listPage", (_event, payload = {}) => {
+    try {
+      sessionManager.reconcileActiveStatuses();
+    } catch {
+      /* ignore reconcile errors on page fetch */
+    }
     const page = profileService.listProfilesPage(payload);
-    return { ok: true, ...page };
+    const profiles = Array.isArray(page.profiles)
+      ? page.profiles.map((p) => {
+          const activeVpnCountry = sessionManager.getActiveVpnCountry(p.id);
+          return activeVpnCountry ? { ...p, activeVpnCountry } : p;
+        })
+      : page.profiles;
+    return { ok: true, ...page, profiles };
   });
 
   ipcMain.handle("profile:catalogStats", () => {
+    try {
+      sessionManager.reconcileActiveStatuses();
+    } catch {
+      /* ignore */
+    }
     return { ok: true, stats: profileService.getCatalogStats() };
   });
 
   ipcMain.handle("profile:bootstrap", () => {
+    try {
+      sessionManager.reconcileActiveStatuses();
+    } catch {
+      /* ignore */
+    }
     return {
       ok: true,
       groups: profileService.listGroups(),
@@ -241,16 +317,53 @@ function bindIpc() {
     return { ok: true, ...result };
   });
 
+  ipcMain.handle("profile:bulkUpdate", async (_event, payload = {}) => {
+    const ids = Array.isArray(payload.ids) ? payload.ids.map(String).filter(Boolean) : [];
+    const patch = payload.patch && typeof payload.patch === "object" ? payload.patch : {};
+    const result = profileService.bulkUpdateProfiles(ids, patch);
+    if (patch.extensionOverrides !== undefined && result.profiles?.length) {
+      const { ensureProfileExtensionPins } = require("./services/profile-ops.cjs");
+      const root = userDataRoot();
+      for (const p of result.profiles) {
+        await ensureProfileExtensionPins(p, root);
+      }
+    }
+    return { ok: true, count: result.count, profiles: result.profiles };
+  });
+
+  ipcMain.handle("profile:cloneBatch", async (_event, payload = {}) => {
+    const sourceIds = Array.isArray(payload.sourceIds) ? payload.sourceIds.map(String).filter(Boolean) : [];
+    const count = Number(payload.count) || 1;
+    const overrides = payload.overrides && typeof payload.overrides === "object" ? payload.overrides : {};
+    const result = profileService.cloneProfilesBatch(sourceIds, count, overrides);
+    if (result.profiles?.length) {
+      const { ensureProfileExtensionPins } = require("./services/profile-ops.cjs");
+      const root = userDataRoot();
+      for (const p of result.profiles) {
+        if (p.extensionOverrides && Object.keys(p.extensionOverrides).length > 0) {
+          await ensureProfileExtensionPins(p, root);
+        }
+      }
+    }
+    return {
+      ok: true,
+      created: result.created,
+      createdCodes: result.createdCodes,
+      profiles: result.profiles,
+    };
+  });
+
   ipcMain.handle("profile:delete", async (_event, payload = {}) => {
     const id = validateProfileId(payload.id);
     const profile = profileService.getProfile(id);
     const release = await sessionManager.releaseProfileStorage(id);
-    profileService.deleteProfile(id);
+    const delResult = profileService.deleteProfile(id);
     return {
       ok: true,
       count: 1,
       names: [profile?.name || id],
       storagePurged: release.storagePurged ? 1 : 0,
+      deletedProfiles: delResult.deletedProfiles || [],
     };
   });
 
@@ -263,7 +376,13 @@ function bindIpc() {
       if (release.storagePurged) storagePurged += 1;
     }
     const result = profileService.deleteProfiles(ids);
-    return { ok: true, count: result.count, names, storagePurged };
+    return {
+      ok: true,
+      count: result.count,
+      names,
+      storagePurged,
+      deletedProfiles: result.deletedProfiles || [],
+    };
   });
 
   ipcMain.handle("profile:launch", async (_event, payload = {}) => {
@@ -286,10 +405,18 @@ function bindIpc() {
     );
   });
 
-  ipcMain.handle("profile:closeAll", async () => {
-    const sessions = sessionManager.listRunning();
+  ipcMain.handle("profile:closeAll", async (_event, payload = {}) => {
+    const includeHeadless = Boolean(payload?.includeHeadless);
+    const allSessions = sessionManager.listRunning();
+    const headedSessions = allSessions.filter((row) => !row.headless);
+    if (!includeHeadless && headedSessions.length > 0 && headedSessions.length < allSessions.length) {
+      for (const s of headedSessions) {
+        await closeProfileOp({ sessionManager, profileService }, { id: s.id });
+      }
+      return { ok: true, count: headedSessions.length, ids: headedSessions.map((row) => row.id) };
+    }
     await sessionManager.closeAll();
-    return { ok: true, count: sessions.length, ids: sessions.map((row) => row.id) };
+    return { ok: true, count: allSessions.length, ids: allSessions.map((row) => row.id) };
   });
 
   ipcMain.handle("profile:focus", async (_event, payload = {}) => {
@@ -438,6 +565,184 @@ function bindIpc() {
     }
   });
 
+  ipcMain.handle("profile:cookieGuardStatus", (_event, payload = {}) => {
+    try {
+      const { getProfileCookieGuardStatus } = require("./lib/profile-cookie-guard.cjs");
+      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const { extractProfileCode } = require("./lib/profile-code.cjs");
+      const profile = profileService.resolveProfileForLaunch({
+        id: payload.id || payload.profileId || "",
+        name: payload.name || payload.profileName || "",
+      });
+      if (!profile) return { ok: false, error: "Profile not found." };
+      const userDataDir = path.join(resolveProfilesRoot(userDataRoot()), String(profile.id));
+      const profileCode = extractProfileCode(profile.name, profile.id);
+      return {
+        ok: true,
+        status: getProfileCookieGuardStatus(userDataDir, { profileCode }),
+      };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("profile:cookieGuardSnapshot", (_event, payload = {}) => {
+    try {
+      const { snapshotProfileCookiesIfHealthy, getProfileCookieGuardStatus } = require("./lib/profile-cookie-guard.cjs");
+      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const { extractProfileCode } = require("./lib/profile-code.cjs");
+      const profile = profileService.resolveProfileForLaunch({
+        id: payload.id || payload.profileId || "",
+        name: payload.name || payload.profileName || "",
+      });
+      if (!profile) return { ok: false, error: "Profile not found." };
+      const userDataDir = path.join(resolveProfilesRoot(userDataRoot()), String(profile.id));
+      const profileCode = extractProfileCode(profile.name, profile.id);
+      const snap = snapshotProfileCookiesIfHealthy(userDataDir, {
+        profileCode,
+        force: payload.force !== false,
+      });
+      return {
+        ok: true,
+        snapshotted: snap.snapshotted,
+        reason: snap.reason,
+        status: getProfileCookieGuardStatus(userDataDir, { profileCode }),
+      };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("profile:cookieGuardRestore", async (_event, payload = {}) => {
+    try {
+      const { restoreProfileCookiesManual } = require("./lib/profile-cookie-guard.cjs");
+      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const { extractProfileCode } = require("./lib/profile-code.cjs");
+      const profile = profileService.resolveProfileForLaunch({
+        id: payload.id || payload.profileId || "",
+        name: payload.name || payload.profileName || "",
+      });
+      if (!profile) return { ok: false, error: "Profile not found." };
+      const profilesRoot = resolveProfilesRoot(userDataRoot());
+      const userDataDir = path.join(profilesRoot, String(profile.id));
+      const profileCode = extractProfileCode(profile.name, profile.id);
+      const isRunning = sessionManager.isRunning(profile.id);
+      const context = isRunning ? sessionManager.getContext(profile.id) : null;
+      const slot = payload.slot === "previous" ? "previous" : "latest";
+      let sourceUserDataDir = "";
+      const rawSource = String(payload.sourceProfileId || payload.sourceProfileName || "").trim();
+      if (rawSource) {
+        const srcProfile = profileService.resolveProfileForLaunch({ id: rawSource, name: rawSource });
+        if (srcProfile) {
+          sourceUserDataDir = path.join(profilesRoot, String(srcProfile.id));
+        }
+      }
+      return await restoreProfileCookiesManual(userDataDir, {
+        profileCode,
+        slot,
+        sourceUserDataDir,
+        isRunning,
+        context,
+      });
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("profile:cookieGuardReconcileP0020", async (_event, payload = {}) => {
+    try {
+      const { getProfileCookieGuardStatus } = require("./lib/profile-cookie-guard.cjs");
+      const {
+        syncLiveContextCookiesToVaultIfChanged,
+        syncProfilePlatformsToP0020IfChanged,
+      } = require("./lib/stealth-multiplatform-sync.cjs");
+      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const { extractProfileCode } = require("./lib/profile-code.cjs");
+      const profile = profileService.resolveProfileForLaunch({
+        id: payload.id || payload.profileId || "",
+        name: payload.name || payload.profileName || "",
+      });
+      if (!profile) return { ok: false, error: "Profile not found." };
+      const userDataDir = path.join(resolveProfilesRoot(userDataRoot()), String(profile.id));
+      const profileCode = extractProfileCode(profile.name, profile.id);
+      const isRunning = sessionManager.isRunning(profile.id);
+      const context = isRunning ? sessionManager.getContext(profile.id) : null;
+      let cookiePairs = null;
+      if (context && typeof context.cookies === "function") {
+        await syncLiveContextCookiesToVaultIfChanged(context, { profileCode }).catch(() => undefined);
+        const liveCookies = await context.cookies().catch(() => []);
+        cookiePairs = liveCookies;
+      }
+      const syncRes = await syncProfilePlatformsToP0020IfChanged({
+        userDataDir,
+        profileCode,
+        profileId: String(profile.id),
+        cookiePairs,
+        source: "p0003_manual_reconcile",
+      });
+      return {
+        ...syncRes,
+        status: getProfileCookieGuardStatus(userDataDir, { profileCode }),
+      };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("profile:cookieGuardReconcileP0020Bulk", async (_event, payload = {}) => {
+    try {
+      const {
+        syncProfilePlatformsToP0020IfChanged,
+        reconcileAllProfilesDiskCookiesToP0020,
+      } = require("./lib/stealth-multiplatform-sync.cjs");
+      const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const baseDir = resolveProfilesRoot(userDataRoot());
+      const rawIds = Array.isArray(payload.ids) ? payload.ids.map((id) => String(id || "").trim()).filter(Boolean) : [];
+      const sinceHours = Number(payload.sinceHours) || 0;
+      if (rawIds.length === 0) {
+        const fullRes = await reconcileAllProfilesDiskCookiesToP0020({ baseDir, sinceHours, dryRun: false });
+        return {
+          ok: Boolean(fullRes.ok),
+          mode: sinceHours > 0 ? `recent_${sinceHours}h` : "all",
+          sinceHours,
+          profileCount: fullRes.candidateProfiles ?? fullRes.totalChecked ?? 0,
+          checkedRows: fullRes.totalChecked || 0,
+          patchedCount: fullRes.appliedPatches || 0,
+          promotedToLoggedIn: fullRes.promotedToLoggedIn || 0,
+          byServicePromoted: fullRes.byServicePromoted || {},
+        };
+      }
+      let checkedRows = 0;
+      let patchedCount = 0;
+      const loggedInSet = new Set();
+      for (const rawId of rawIds) {
+        const profile = profileService.resolveProfileForLaunch({ id: rawId, name: rawId });
+        if (!profile) continue;
+        const userDataDir = path.join(baseDir, String(profile.id));
+        const profileCode = extractProfileCode(profile.name, profile.id);
+        const res = await syncProfilePlatformsToP0020IfChanged({
+          userDataDir,
+          profileCode,
+          profileId: String(profile.id),
+          source: "p0003_bulk_reconcile",
+        });
+        checkedRows += Number(res.checkedRows) || 0;
+        patchedCount += Number(res.patchedCount) || 0;
+        for (const s of res.loggedInServices || []) loggedInSet.add(s);
+      }
+      return {
+        ok: true,
+        mode: "selected",
+        profileCount: rawIds.length,
+        checkedRows,
+        patchedCount,
+        loggedInServices: Array.from(loggedInSet),
+      };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   ipcMain.handle("runs:list", (_event, payload = {}) => {
     const limit = validateRunsLimit(payload.limit);
     return { ok: true, runs: profileService.listRuns(limit) };
@@ -459,8 +764,38 @@ function bindIpc() {
     );
   });
 
-  const { sampleHostMetrics } = require("./lib/host-metrics.cjs");
-  ipcMain.handle("host:metrics", () => sampleHostMetrics());
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "before-host-metrics",
+  });
+  let sampleHostMetrics = () => ({ ok: false, error: "host metrics unavailable" });
+  try {
+    ({ sampleHostMetrics } = require("./lib/host-metrics.cjs"));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[boot] host metrics", message);
+    writeBootLog(userDataRoot(), {
+      version: app.getVersion(),
+      packaged: app.isPackaged,
+      phase: "host-metrics-failed",
+      message: message.slice(0, 300),
+    });
+  }
+  ipcMain.handle("host:metrics", () => {
+    const base = sampleHostMetrics();
+    let dbBackend = "better-sqlite3";
+    try {
+      dbBackend = require("./db/init.cjs").getDbBackend?.() || "better-sqlite3";
+    } catch {
+      /* ignore */
+    }
+    return {
+      ...base,
+      dbBackend,
+      agentWorkerPort: Number(process.env.STEALTH_AGENT_WORKER_PORT || 6004),
+    };
+  });
 
   ipcMain.handle("app:info", () => {
     const {
@@ -469,10 +804,39 @@ function bindIpc() {
     } = require("./lib/profiles-location.cjs");
     ensureProfilesLocationInitialized(userDataRoot());
     const profilesLocation = getProfilesLocationInfo(userDataRoot());
+    let dbBackend = "better-sqlite3";
+    try {
+      dbBackend = require("./db/init.cjs").getDbBackend?.() || "better-sqlite3";
+    } catch {
+      /* ignore */
+    }
+    let liveVersion = app.getVersion();
+    try {
+      const { resolveHotPatchRoot } = require("./lib/hot-patch-loader.cjs");
+      for (const candidatePkg of [
+        path.join(__dirname, "..", "package.json"),
+        path.join(resolveHotPatchRoot(), "package.json"),
+      ]) {
+        if (!fs.existsSync(candidatePkg)) continue;
+        const parsed = JSON.parse(fs.readFileSync(candidatePkg, "utf8"));
+        if (
+          parsed?.version &&
+          String(parsed.version).localeCompare(liveVersion, undefined, { numeric: true, sensitivity: "base" }) >= 0
+        ) {
+          liveVersion = String(parsed.version);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     return {
       name: app.getName(),
-      version: app.getVersion(),
+      version: liveVersion,
       isPackaged: app.isPackaged,
+      isDev: !app.isPackaged || isDevIsolated(),
+      apiPort: resolveStealthApiPort({ packaged: app.isPackaged }),
+      agentWorkerPort: Number(process.env.STEALTH_AGENT_WORKER_PORT || 6004),
+      dbBackend,
       userDataPath: userDataRoot(),
       profilesPath: profilesLocation.profilesRoot,
       profilesLocation,
@@ -532,7 +896,18 @@ function bindIpc() {
 
   ipcMain.handle("app:setExtensionToggles", (_event, payload = {}) => {
     const patch = payload.toggles && typeof payload.toggles === "object" ? payload.toggles : payload;
-    return { ok: true, toggles: setExtensionToggles(patch) };
+    const toggles = setExtensionToggles(patch);
+    setImmediate(() => {
+      try {
+        const { maintainOperatorExtension } = require("./lib/native-extension-load.cjs");
+        void getBinaryInfoCached()
+          .then((binary) => maintainOperatorExtension(userDataRoot(), binary.cacheDir))
+          .catch(() => undefined);
+      } catch {
+        // stage retries on next launch
+      }
+    });
+    return { ok: true, toggles };
   });
 
   ipcMain.handle("app:getProfileExtensionsEnabled", () => ({
@@ -673,10 +1048,91 @@ function bindIpc() {
     return { ok: true, ...result };
   });
 
+  ipcMain.handle("proxy:check", async (_event, payload = {}) => {
+    const { checkOrAcquireProfileProxy } = require("./lib/proxy-pool.cjs");
+    const proxy = String(payload.proxy || "").trim();
+    if (!proxy) return { ok: false, error: "Proxy is empty (using Local IP)." };
+    try {
+      const health = await checkOrAcquireProfileProxy(proxy, {
+        rotateVpn: Boolean(payload.rotateVpn),
+        timeoutMs: Number(payload.timeoutMs) || 8000,
+      });
+      const targetProfile = String(payload.profileId || payload.profileName || "").trim();
+      let geoSync = null;
+      if (health?.alive && targetProfile && typeof profileService.recordProfileProxyGeoSync === "function") {
+        geoSync = profileService.recordProfileProxyGeoSync(targetProfile, {
+          ...health,
+          manualCheck: Boolean(payload.manualCheck),
+        });
+      }
+      return { ok: true, health, geoSync };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
   ipcMain.handle("extension:cookieBridgeStatus", () => ({
     ok: true,
     status: getCookieBridgeStatus(userDataRoot()),
   }));
+
+  ipcMain.handle("extension:operatorStatus", () => {
+    const { getOperatorExtensionStatus } = require("./lib/native-extension-load.cjs");
+    return {
+      ok: true,
+      status: getOperatorExtensionStatus(),
+    };
+  });
+
+  ipcMain.handle("extension:reloadOperator", async () => {
+    try {
+      const { maintainOperatorExtension, getOperatorExtensionStatus } = require("./lib/native-extension-load.cjs");
+      const binary = await getBinaryInfoCached();
+      const maintained = maintainOperatorExtension(userDataRoot(), binary.cacheDir, { force: true });
+      return {
+        ok: true,
+        status: getOperatorExtensionStatus(),
+        maintained,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcMain.handle("extension:reloadOpenProfiles", async () => {
+    try {
+      const { triggerOpenProfilesExtensionReload } = require("./lib/extensions-status.cjs");
+      return triggerOpenProfilesExtensionReload(userDataRoot());
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcMain.handle("extension:setCookieBridgeSource", async (_event, payload = {}) => {
+    const mode = String(payload.mode || payload.sourceMode || "").trim().toLowerCase() === "workspace" ? "workspace" : "store";
+    try {
+      const { switchCookieBridgeSourceMode } = require("./lib/cookie-bridge-store.cjs");
+      await switchCookieBridgeSourceMode(userDataRoot(), mode);
+      return {
+        ok: true,
+        status: getCookieBridgeStatus(userDataRoot()),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
 
   ipcMain.handle("extension:purgeBrokenPrefs", () => {
     const result = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
@@ -696,9 +1152,31 @@ function bindIpc() {
   ipcMain.handle("extension:icon", (_event, payload = {}) => {
     const storeId = String(payload.storeId ?? "").trim();
     if (!storeId) return { ok: false, error: "storeId is required" };
-    const { unpackedDirForStoreId, resolveExtensionIconDataUri } = require("./lib/webstore-extension.cjs");
+    const size = Number(payload.size) || 48;
+    const {
+      defaultUserDataRoot,
+      unpackedDirForStoreId,
+      resolveExtensionIconDataUri,
+    } = require("./lib/webstore-extension.cjs");
+    if (storeId === "e0002" || storeId === "e0002-browser-operator") {
+      const { resolveOperatorExtensionDir } = require("./lib/native-extension-load.cjs");
+      const operatorDir = resolveOperatorExtensionDir();
+      const iconDataUri = operatorDir ? resolveExtensionIconDataUri(operatorDir, size) : null;
+      return { ok: true, storeId, iconDataUri };
+    }
     const unpackedPath = unpackedDirForStoreId(userDataRoot(), storeId);
-    const iconDataUri = resolveExtensionIconDataUri(unpackedPath, Number(payload.size) || 48);
+    let iconDataUri = resolveExtensionIconDataUri(unpackedPath, size);
+    if (!iconDataUri) {
+      const prodPath = unpackedDirForStoreId(defaultUserDataRoot(), storeId);
+      iconDataUri = resolveExtensionIconDataUri(prodPath, size);
+    }
+    if (!iconDataUri) {
+      const { COOKIE_BRIDGE_STORE_ID, resolveCookieBridgeExtensionDirSync } = require("./lib/cookie-bridge-store.cjs");
+      if (storeId === COOKIE_BRIDGE_STORE_ID || storeId === "e0001") {
+        const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
+        if (bridgeDir) iconDataUri = resolveExtensionIconDataUri(bridgeDir, size);
+      }
+    }
     return { ok: true, storeId, iconDataUri };
   });
 
@@ -829,8 +1307,10 @@ function loadP0007ApiKey() {
     keys["platform-tools"] || keys["other-tools"] || keys["stealth-console"] || keys["cursor-ide"] || "",
   ).trim();
   if (!apiKey) return null;
-  const baseUrl = String(parsed.canonicalBaseUrl || parsed.activeBaseUrl || "").trim();
-  return { apiKey, baseUrl: baseUrl || "https://9router.infi.io.vn/v1", source: hit.source };
+  const baseUrl = String(parsed.canonicalBaseUrl || parsed.activeBaseUrl || "")
+    .trim()
+    .replace("9router.infi.io.vn", "9router.infi28.com");
+  return { apiKey, baseUrl: baseUrl || "https://9router.infi28.com/v1", source: hit.source };
 }
 
 function bindRouterApi() {
@@ -931,7 +1411,13 @@ async function resolveDevServerUrl() {
 }
 
 function distIndexPath() {
-  return path.join(__dirname, "..", "dist", "index.html");
+  const defaultPath = path.join(__dirname, "..", "dist", "index.html");
+  try {
+    const { resolveHotPatchedDistIndexHtml } = require("./lib/hot-patch-loader.cjs");
+    return resolveHotPatchedDistIndexHtml(defaultPath);
+  } catch {
+    return defaultPath;
+  }
 }
 
 async function loadApplication(win) {
@@ -952,6 +1438,13 @@ async function loadApplication(win) {
       return;
     }
     await win.loadURL(devServerUrl);
+    attachElectronDevBootRecovery(win, {
+      isPackaged: app.isPackaged,
+      onPackagedFallback: fs.existsSync(distIndexPath())
+        ? async (targetWin) => targetWin.loadFile(distIndexPath())
+        : null,
+      logPrefix: "[stealth]",
+    });
     return;
   }
   const indexPath = distIndexPath();
@@ -980,19 +1473,31 @@ function reloadAllRenderers() {
 }
 
 function requireDesktopAppMenu() {
-  const dev = path.join(__dirname, "..", "..", "scripts", "lib", "desktop-app-menu.cjs");
+  // path.resolve collapses `..`. path.join through `app.asar\\..` makes existsSync hang.
+  const dev = path.resolve(__dirname, "..", "..", "scripts", "lib", "desktop-app-menu.cjs");
   const packed = path.join(__dirname, "lib", "desktop-app-menu.cjs");
-  return require(fs.existsSync(dev) ? dev : packed);
+  const fromAsar = __dirname.includes(`${path.sep}app.asar${path.sep}`);
+  return require(!fromAsar && fs.existsSync(dev) ? dev : packed);
 }
 
 function installDesktopMenu() {
-  const { installDesktopAppMenu } = requireDesktopAppMenu();
-  installDesktopAppMenu({
-    onReload: () => void reloadAllRenderers(),
-    onForceReload: () => void reloadAllRenderers(),
-    onQuit: () => void requestAppQuitWithConfirm("menu-quit"),
-    helpSubmenu: [],
-  });
+  try {
+    const { installDesktopAppMenu } = requireDesktopAppMenu();
+    installDesktopAppMenu({
+      onReload: () => void reloadAllRenderers(),
+      onForceReload: () => void reloadAllRenderers(),
+      onQuit: () => void requestAppQuitWithConfirm("menu-quit"),
+      helpSubmenu: [],
+    });
+  } catch (error) {
+    console.error("[boot] menu failed:", error instanceof Error ? error.message : error);
+    writeBootLog(userDataRoot(), {
+      phase: "menu-failed",
+      version: app.getVersion(),
+      packaged: app.isPackaged,
+      message: error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300),
+    });
+  }
 }
 
 /**
@@ -1022,6 +1527,24 @@ function broadcastProfileSession(profile, event) {
   }
 }
 
+function windowTitle() {
+  return formatElectronWindowTitle(
+    "Stealth Browser Console",
+    app.getVersion(),
+    !app.isPackaged || isDevIsolated(),
+  );
+}
+
+function preloadPath() {
+  const defaultPath = path.join(__dirname, "preload.cjs");
+  try {
+    const { resolveHotPatchedPreloadPath } = require("./lib/hot-patch-loader.cjs");
+    return resolveHotPatchedPreloadPath(defaultPath);
+  } catch {
+    return defaultPath;
+  }
+}
+
 async function createWindow() {
   const iconPath = resolveAppIconPathIfExists(path.join(__dirname, ".."));
   const win = new BrowserWindow({
@@ -1030,11 +1553,11 @@ async function createWindow() {
     minWidth: 1100,
     minHeight: 720,
     backgroundColor: "#0b1020",
-    title: "Stealth Browser Console",
+    title: windowTitle(),
     show: false,
     ...(iconPath ? { icon: iconPath } : {}),
     webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
+      preload: preloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -1042,6 +1565,12 @@ async function createWindow() {
   });
 
   mainBrowserWindow = win;
+
+  attachElectronDevWindowBadge(win, {
+    productName: "Stealth Browser Console",
+    version: app.getVersion(),
+    isDev: !app.isPackaged || isDevIsolated(),
+  });
 
   win.on("close", (event) => {
     if (isAppQuitting() || appShutdownDone) return;
@@ -1066,11 +1595,23 @@ async function createWindow() {
   });
 
   win.webContents.on("render-process-gone", (_event, details) => {
-    console.error(`[load] render gone ${details.reason}`);
+    console.error(`[load] render gone ${details.reason} — auto-recovering`);
+    if (win.isDestroyed()) return;
+    setTimeout(() => {
+      if (!win.isDestroyed()) {
+        void loadApplication(win).catch(() => undefined);
+      }
+    }, 350);
+  });
+
+  win.webContents.on("unresponsive", () => {
+    console.warn("[load] renderer unresponsive — reloading");
+    if (!win.isDestroyed()) {
+      void loadApplication(win).catch(() => undefined);
+    }
   });
 
   bindRendererReloadShortcuts(win, reloadRenderer);
-  await loadApplication(win);
 
   const showWindow = () => {
     if (win.isDestroyed()) return;
@@ -1083,7 +1624,10 @@ async function createWindow() {
   };
 
   win.once("ready-to-show", showWindow);
-  // ready-to-show may fire before listener attaches when loading from file:// or fast dev server.
+  // loadFile can stall; still surface the window.
+  const showTimer = setTimeout(showWindow, 1500);
+  await loadApplication(win);
+  clearTimeout(showTimer);
   setImmediate(showWindow);
 
   attachDesktopUpdaterWindow(win);
@@ -1091,12 +1635,18 @@ async function createWindow() {
 }
 
 if (gotSingleInstanceLock) {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    const noFocus = Array.isArray(argv) && argv.some((a) => a === "--no-focus" || a === "--background");
     const existing = BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
     if (existing) {
-      if (existing.isMinimized()) existing.restore();
-      existing.show();
-      existing.focus();
+      if (!noFocus) {
+        if (existing.isMinimized()) existing.restore();
+        existing.show();
+        existing.focus();
+      }
+      if (existing.webContents.isCrashed()) {
+        void loadApplication(existing).catch(() => undefined);
+      }
       return;
     }
     // Never open a renderer before bindIpc — empty Profiles + "No handler registered for profile:bootstrap".
@@ -1113,6 +1663,14 @@ app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
   configureAutoUpdater();
   bindDesktopUpdaterIpc();
+
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "before-db",
+    updated: process.argv.includes("--updated"),
+    apiPort: resolveStealthApiPort({ packaged: app.isPackaged }),
+  });
 
   try {
     await openDatabase(userDataRoot());
@@ -1140,9 +1698,23 @@ app.whenReady().then(async () => {
 
   // Bind IPC + API before any BrowserWindow. A blocking runtime-repair modal used to run
   // first; second-instance could then createWindow with zero profile handlers.
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "after-db",
+  });
   bindContentSecurityPolicy();
-  installDesktopMenu();
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "after-csp",
+  });
   bindIpc();
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "after-ipc",
+  });
   mainBootReady = true;
   const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
   const { startApiServer } = require("./api-server.cjs");
@@ -1151,6 +1723,12 @@ app.whenReady().then(async () => {
     console.log(`[user-data] path=${userDataRoot()} isolated=${isDevIsolated() ? "1" : "0"} apiPort=${apiPort}`);
   }
   startApiServer({ sessionManager, profileService, userDataRoot: userDataRoot(), port: apiPort });
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "after-api",
+    apiPort,
+  });
   sessionManager.setOnSessionChange((_id, profile, event) => {
     broadcastProfileSession(profile, event);
     sessionTray.refresh();
@@ -1164,7 +1742,13 @@ app.whenReady().then(async () => {
   bindRouterApi();
   sessionManager.setUserDataRoot(userDataRoot());
 
+  writeBootLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    phase: "before-window",
+  });
   await createWindow();
+  setImmediate(() => installDesktopMenu());
   if (pendingBootWindow && BrowserWindow.getAllWindows().every((win) => win.isDestroyed())) {
     pendingBootWindow = false;
     await createWindow();
@@ -1174,6 +1758,8 @@ app.whenReady().then(async () => {
   writeBootLog(userDataRoot(), {
     version: app.getVersion(),
     packaged: app.isPackaged,
+    phase: "ready",
+    updated: process.argv.includes("--updated"),
     apiPort: resolveStealthApiPort({ packaged: app.isPackaged }),
   });
 
@@ -1187,6 +1773,17 @@ app.whenReady().then(async () => {
     await reloadAllRenderers();
   }
   require("./lib/stealth-sync-outbox.cjs").startStealthSyncWorker();
+  try {
+    const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+    require("./lib/stealth-multiplatform-sync.cjs").startStaleRunningP0020Healer({
+      profileService,
+      sessionManager,
+      baseDir: resolveProfilesRoot(userDataRoot()),
+      startupReconcileSinceHours: 0,
+    });
+  } catch {
+    /* optional */
+  }
   profileService.backfillProfileEvents();
   profileService.ensureSeedProfiles();
   try {
@@ -1242,12 +1839,37 @@ app.whenReady().then(async () => {
             const binary = await getBinaryInfoCached();
             const { ensureCloakbrowserExtensionStage } = require("./lib/cloakbrowser-extension-stage.cjs");
             ensureCloakbrowserExtensionStage(bridgeDir, binary.cacheDir);
+            try {
+              const { syncOperatorChromiumStages } = require("./lib/operator-extension-stage.cjs");
+              syncOperatorChromiumStages(bridgeDir, binary.cacheDir ? [binary.cacheDir] : []);
+              const { startCookieBridgeWorkspaceAutoSync } = require("./lib/cookie-bridge-store.cjs");
+              if (typeof startCookieBridgeWorkspaceAutoSync === "function") {
+                startCookieBridgeWorkspaceAutoSync(root);
+              }
+            } catch {
+              /* best-effort stable stage sync */
+            }
           }
         } catch (error) {
           console.warn("[cookie-bridge] warm cache:", error instanceof Error ? error.message : error);
         }
       } else {
         console.warn("[cookie-bridge] warm cache unavailable: missing startup hook");
+      }
+      try {
+        if (!FAST_PREP) {
+          const { maintainOperatorExtension } = require("./lib/native-extension-load.cjs");
+          const binary = await getBinaryInfoCached();
+          const maintained = maintainOperatorExtension(userDataRoot(), binary.cacheDir);
+          const result = maintained.prefs;
+          if (result && (result.removed > 0 || result.pinned > 0)) {
+            console.log(
+              `[operator-ext] profiles=${result.profiles} removed=${result.removed} pinned=${result.pinned} skippedLive=${result.skippedLive}`,
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("[operator-ext] stage:", error instanceof Error ? error.message : error);
       }
       try {
         const { checkCachedStoreExtensionsOnStartup } = require("./lib/webstore-extension.cjs");
@@ -1334,6 +1956,7 @@ app.whenReady().then(async () => {
   setImmediate(() => {
     try {
       purgeIdentityToolbarRoot(userDataRoot());
+      if (FAST_PREP) return;
       const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
       if (bulk.removed > 0) {
         console.log(
@@ -1387,6 +2010,32 @@ app.whenReady().then(async () => {
           }
         }
       }
+      // Schedule automatic 12-hour background disk hygiene sweep (closed profile caches, orphan dirs, D:\Temp)
+      const pruneScript = path.join(__dirname, "..", "scripts", "prune-closed-profile-caches.cjs");
+      if (fs.existsSync(pruneScript)) {
+        const runBgDiskHygiene = () => {
+          try {
+            const { spawn } = require("node:child_process");
+            const nodeBin = fs.existsSync("E:\\Dev\\.tools\\nodew.exe")
+              ? "E:\\Dev\\.tools\\nodew.exe"
+              : process.execPath;
+            const env = { ...process.env, STEALTH_USER_DATA: userDataRoot(), ELECTRON_RUN_AS_NODE: "1" };
+            const child = spawn(nodeBin, [pruneScript], {
+              stdio: "ignore",
+              windowsHide: true,
+              detached: true,
+              env,
+            });
+            child.unref();
+          } catch {
+            // best-effort background sweep
+          }
+        };
+        const bootSweepTimer = setTimeout(runBgDiskHygiene, 5 * 60 * 1000);
+        if (typeof bootSweepTimer.unref === "function") bootSweepTimer.unref();
+        const dailySweepTimer = setInterval(runBgDiskHygiene, 12 * 60 * 60 * 1000);
+        if (typeof dailySweepTimer.unref === "function") dailySweepTimer.unref();
+      }
     } catch {
       // best-effort — drop cached identity-toolbar bundles from pre-v0.5.23 installs
     }
@@ -1405,8 +2054,57 @@ app.whenReady().then(async () => {
   console.error("[boot] whenReady failed:", error instanceof Error ? error.stack || error.message : error);
 });
 
+function isUpdateExitReason(reason) {
+  return reason === "update-install" || reason === "update-quit-auto";
+}
+
+/** Checkpoint and exit immediately so NSIS does not kill the process mid-shutdown. */
+function finishUpdateShutdownSync() {
+  const runningProfiles = sessionManager.listRunning().length;
+  try {
+    sessionTray.stop();
+  } catch (error) {
+    console.warn("[shutdown] tray:", error instanceof Error ? error.message : error);
+  }
+  try {
+    const { flushScheduledLastOpenedCheckpoint } = require("./db/last-opened-durability.cjs");
+    flushScheduledLastOpenedCheckpoint(require("./db/init.cjs").checkpointDatabase);
+  } catch (error) {
+    console.warn("[shutdown] update checkpoint:", error instanceof Error ? error.message : error);
+  }
+  const { getUpdateStatus } = require("./desktop-updater.cjs");
+  const updater = getUpdateStatus();
+  writeShutdownLog(userDataRoot(), {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    runningProfiles,
+    fast: true,
+    ...(updater.updateVersion ? { updateVersion: updater.updateVersion } : {}),
+    ...(updater.state && !["idle", "latest", "dev"].includes(updater.state)
+      ? { updateState: updater.state }
+      : {}),
+  });
+  try {
+    closeDatabase();
+  } catch (error) {
+    console.warn("[shutdown] close db:", error instanceof Error ? error.message : error);
+  }
+  try {
+    app.releaseSingleInstanceLock();
+  } catch {
+    /* already released */
+  }
+  appShutdownDone = true;
+  app.exit(0);
+}
+
 app.on("before-quit", (event) => {
   if (appShutdownDone) return;
+  if (isUpdateExitReason(peekShutdownReason())) {
+    event.preventDefault();
+    finishUpdateShutdownSync();
+    return;
+  }
   event.preventDefault();
   sessionTray.stop();
   void (async () => {
@@ -1430,6 +2128,12 @@ app.on("before-quit", (event) => {
           : {}),
       });
       closeDatabase();
+      try {
+        const { scheduleStagedAsarSwapOnQuit } = require("./lib/agent-worker-memory-guard.cjs");
+        scheduleStagedAsarSwapOnQuit();
+      } catch {
+        /* ignore */
+      }
       appShutdownDone = true;
       app.quit();
     }

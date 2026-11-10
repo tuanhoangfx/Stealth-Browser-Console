@@ -3,6 +3,7 @@ import {
   getDirectorySearchHighlight,
   HubDirectorySearchHighlightText,
   HubDirectoryTimestampLabel,
+  HubDirectoryValuePopover,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import type { CachedStoreExtension } from "../../../types";
@@ -15,6 +16,15 @@ function renderUpdatedCell(iso?: string) {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return <span className="hub-directory-table-body-text">—</span>;
   return <HubDirectoryTimestampLabel at={iso} />;
+}
+
+function defaultExtensionLog(ext: CachedStoreExtension): string {
+  if (ext.activityLog) return ext.activityLog;
+  const ver = ext.version ? `v${ext.version}` : "latest";
+  if (ext.storeId === "kaaadageakdandpobcofplmfbjfjabdk" || ext.localKey === "e0002-browser-operator") {
+    return `🟢 Staged ${ver} · Auto-Pinned`;
+  }
+  return `📦 Cached ${ver} · Web Store Ready`;
 }
 
 export function renderSystemExtensionsDirectoryBodyCell(
@@ -59,15 +69,21 @@ export function renderSystemExtensionsDirectoryBodyCell(
     case "version":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text font-mono">{ext.version || "—"}</span>
+          <span className="hub-directory-table-body-text tabular-nums">{ext.version || "—"}</span>
         </DirectoryTableBodyCell>
       );
     case "storeId":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text font-mono text-[10px]">
+          <span className="hub-directory-table-body-text hub-users-cell-muted">
             {ext.storeId || ext.localKey || "—"}
           </span>
+        </DirectoryTableBodyCell>
+      );
+    case "createdAt":
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          {renderUpdatedCell(ext.createdAt ?? ext.updatedAt)}
         </DirectoryTableBodyCell>
       );
     case "updated":
@@ -79,11 +95,30 @@ export function renderSystemExtensionsDirectoryBodyCell(
     case "path":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text max-w-[18rem] truncate font-mono text-[10px]" title={ext.unpackedPath}>
+          <span className="hub-directory-table-body-text hub-users-cell-muted max-w-[18rem] truncate" title={ext.unpackedPath}>
             {ext.unpackedPath}
           </span>
         </DirectoryTableBodyCell>
       );
+    case "activityLog": {
+      const logText = defaultExtensionLog(ext);
+      const popoverValue = [
+        `Extension: ${displayName}`,
+        `Kind: ${ext.kind === "store" ? "Chrome Web Store" : "Local Operator"}`,
+        `Version: ${ext.version || "—"}`,
+        `Status: ${logText}`,
+        `Path: ${ext.unpackedPath}`,
+      ].join("\n");
+      return (
+        <DirectoryTableBodyCell key={key} colClass={colClass}>
+          <HubDirectoryValuePopover value={popoverValue} title="📋 Extension Activity Log">
+            <span className="hub-directory-table-body-text max-w-[14rem] truncate text-emerald-300/90">
+              {logText}
+            </span>
+          </HubDirectoryValuePopover>
+        </DirectoryTableBodyCell>
+      );
+    }
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>

@@ -9,7 +9,19 @@ export function resolveNodeExe() {
   return process.execPath;
 }
 
+export function canonicalRealpathSync(targetPath) {
+  if (!targetPath) return targetPath;
+  try {
+    return typeof fs.realpathSync?.native === "function"
+      ? fs.realpathSync.native(targetPath)
+      : fs.realpathSync(targetPath);
+  } catch {
+    return targetPath;
+  }
+}
+
 export function winSpawnOpts(opts = {}) {
-  if (process.platform !== "win32") return opts;
-  return { ...opts, windowsHide: true };
+  const next = opts.cwd ? { ...opts, cwd: canonicalRealpathSync(opts.cwd) } : { ...opts };
+  if (process.platform !== "win32") return next;
+  return { ...next, windowsHide: true };
 }

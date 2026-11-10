@@ -1,6 +1,6 @@
 import {
   HubDirectoryTableShell,
-  buildDirectoryColgroupForShell,
+  buildChromeRemDirectoryColgroup,
   buildDirectoryColumns,
   hubDirectoryTableClass,
   HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS,
@@ -11,7 +11,8 @@ import {
   toHubDirectoryColumnMeta,
   type StealthBackupColumnKey,
 } from "../../../lib/directory-column-meta";
-import type { ProfileRow, ProfileStorageStat } from "../../../types";
+import { useStealthManualSortEnabled } from "../../../lib/stealth-manual-sort-prefs";
+import type { ProfileBackupMeta, ProfileRow, ProfileStorageStat } from "../../../types";
 import { renderSystemBackupDirectoryBodyCell } from "./system-backup-directory-cells";
 import {
   backupDirectoryColumnPrefs,
@@ -30,6 +31,12 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
   allVisibleSelected,
   storageById,
   lastBackupById,
+  backupMetaById,
+  runningHeadlessIds,
+  rowActionBusyId,
+  onRunToggle,
+  onRowSnapshot,
+  onRowRestoreSlot,
   emptyMessage,
   resetKey,
   pageSize,
@@ -44,6 +51,12 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
   allVisibleSelected: boolean;
   storageById: Record<string, ProfileStorageStat>;
   lastBackupById: Record<string, string | undefined>;
+  backupMetaById?: Record<string, ProfileBackupMeta | undefined>;
+  runningHeadlessIds?: ReadonlySet<string>;
+  rowActionBusyId?: string | null;
+  onRunToggle?: (profile: ProfileRow) => void;
+  onRowSnapshot?: (profile: ProfileRow) => void;
+  onRowRestoreSlot?: (profile: ProfileRow, slot: "latest" | "previous") => void;
   emptyMessage?: string;
   resetKey?: string;
   pageSize: number;
@@ -63,16 +76,32 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
     return () => window.removeEventListener(backupDirectoryColumnPrefs.changeEvent, sync);
   }, []);
 
+  const manualSort = useStealthManualSortEnabled("p0003-backup");
+
   const columns = useMemo(
     () =>
       buildDirectoryColumns(
         visibleColumnKeys as StealthBackupColumnKey[],
         toHubDirectoryColumnMeta(STEALTH_BACKUP_COLUMN_META),
+        { sortable: manualSort },
       ),
-    [visibleColumnKeys],
+    [visibleColumnKeys, manualSort],
   );
   const colgroup = useMemo(
-    () => buildDirectoryColgroupForShell(columns, { showSelect: true }),
+    () =>
+      buildChromeRemDirectoryColgroup(columns, [
+        "createdAt",
+        "updated",
+        "profile",
+        "group",
+        "status",
+        "backupSlots",
+        "dataSize",
+        "cookies",
+        "historyState",
+        "folder",
+        "activityLog",
+      ]),
     [columns],
   );
 
@@ -93,7 +122,7 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
     <HubDirectoryTableShell
       items={items}
       ariaLabel="Profile backup directory"
-      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table`}
+      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table stealth-profile-directory-table`}
       wrapClassName={HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS}
       flushWrap
       colgroup={colgroup}
@@ -128,6 +157,12 @@ export const SystemBackupDirectoryTable = memo(function SystemBackupDirectoryTab
               searchQuery,
               storage: storageById[profile.id],
               lastBackupAt: lastBackupById[profile.id],
+              backupMeta: backupMetaById?.[profile.id],
+              runningHeadlessIds,
+              rowActionBusyId,
+              onRunToggle,
+              onRowSnapshot,
+              onRowRestoreSlot,
             }),
           )}
         </>

@@ -1,37 +1,25 @@
-import { Archive, Bot, Puzzle, Workflow, Zap, type LucideIcon } from "lucide-react";
 import {
   colHint,
   type HubDirectoryColumnHintContent,
   type HubDirectoryColumnHintLine,
 } from "@tool-workspace/hub-ui";
 
-const channelLine = (
-  icon: LucideIcon,
-  toneClass: string,
-  label: string,
-  detail: string,
-): HubDirectoryColumnHintLine => ({
-  icon,
-  toneClass,
-  label,
-  detail,
-});
-
-/** Console channel pills — parity `StealthConsoleChannelBadge` + P0020 directory header hints. */
+/** Log channel options — parity `HubChangeLogList` + P0020 directory header hints (Emoji SSOT). */
 export const STEALTH_CONSOLE_CHANNEL_HINT_LINES: HubDirectoryColumnHintLine[] = [
-  channelLine(Workflow, "text-indigo-300", "Workflow", "Script runs, steps, and workflow engine output"),
-  channelLine(Bot, "text-emerald-300", "Profile", "Browser session events — source is the profile name"),
-  channelLine(Archive, "text-amber-300", "Backup", "Export, restore, and catalog backup jobs"),
-  channelLine(Puzzle, "text-cyan-300", "Extensions", "Web Store install, force update, Cookie Bridge"),
-  channelLine(Zap, "text-violet-300", "System", "Groups, profiles bulk ops, and app-wide events"),
+  { emoji: "🖥️", label: "Profile", detail: "Browser session events — launch, stop, and profile state" },
+  { emoji: "👻", label: "Headless", detail: "Background AI Agent & headless worker sessions" },
+  { emoji: "⚡", label: "Workflow", detail: "Script runs, steps, and workflow engine output" },
+  { emoji: "📦", label: "Backup", detail: "Export, restore, and catalog backup jobs" },
+  { emoji: "🧩", label: "Extensions", detail: "Web Store install, force update, Cookie Bridge" },
+  { emoji: "⚙️", label: "System", detail: "Groups, profiles bulk ops, and app-wide events" },
 ];
 
 /** Directory-column hint SSOT — same popover as P0020 service table headers. */
 export const STEALTH_CONSOLE_HINT_CONTENT: HubDirectoryColumnHintContent = {
   ...colHint(
-    "Console",
-    "Live automation output, newest first. Colored pills on each line match these channels.",
+    "Log",
+    "Live session & automation log output, newest first. Filter by Field or Actor in the header.",
     STEALTH_CONSOLE_CHANNEL_HINT_LINES,
   ),
-  optionsLabel: "Channel",
+  optionsLabel: "Field",
 };

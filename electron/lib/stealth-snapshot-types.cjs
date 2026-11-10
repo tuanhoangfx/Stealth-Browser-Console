@@ -16,6 +16,11 @@ const STEALTH_RESULT_CODES = Object.freeze([
   "google_challenge",
   "microsoft_challenge",
   "2fa_pending",
+  "phone_challenge",
+  "mail_challenge",
+  "password_rejected",
+  "account_disabled",
+  "account_appeal",
   "google_cookies",
   "microsoft_cookies",
   "partial_auth_cookies",
@@ -42,9 +47,18 @@ function buildStealthSnapshot(partial = {}) {
       ? partial.mismatch
       : Boolean(assigned && actual && assigned !== actual);
 
+  const normStatus = normalizeStealthStatus(partial.status);
   return {
     v: STEALTH_SNAPSHOT_VERSION,
-    status: normalizeStealthStatus(partial.status),
+    status: normStatus,
+    session_status: normStatus,
+    logged_in: normStatus === "logged_in",
+    auth_state:
+      normStatus === "logged_in"
+        ? "authenticated"
+        : normStatus === "challenged"
+          ? "challenged"
+          : "not_authenticated",
     result_code: normalizeStealthResultCode(partial.result_code),
     checked_at: partial.checked_at || new Date().toISOString(),
     source: String(partial.source || "auto").trim() || "auto",

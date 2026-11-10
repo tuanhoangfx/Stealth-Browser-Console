@@ -78,4 +78,11 @@ if (installed !== declared) {
   process.exit(1);
 }
 
-console.log(`check-cloakbrowser-pin: ok cloakbrowser@${declared} (installed matches pin)`);
+if (declared !== "0.4.8" && process.env.STEALTH_ALLOW_UNFROZEN_CLOAKBROWSER !== "1") {
+  console.error(
+    `check-cloakbrowser-pin: cloakbrowser is frozen at 0.4.8 (chromium-146.0.7680.177.5, free unlimited-session tier). Got "${declared}". Versions >=0.4.11 / 0.7.0 enforce server-side seat limits (exitCode=76).`,
+  );
+  process.exit(1);
+}
+
+console.log(`check-cloakbrowser-pin: ok cloakbrowser@${declared} (installed matches frozen pin)`);

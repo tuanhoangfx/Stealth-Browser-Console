@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Blocks, Cookie, Shield } from "lucide-react";
+import { Blocks, Cable, Cookie, Shield } from "lucide-react";
 import { HubAdmSectionBlock } from "@tool-workspace/hub-ui";
 import { fetchExtensionToggles } from "../../api";
 import type { ExtensionToggles, ProfileExtensionOverrides } from "../../types";
@@ -47,12 +47,13 @@ function OverrideIcon({
   kind,
   icons,
 }: {
-  kind: "e0001" | "surfshark" | "webStore";
+  kind: "e0001" | "e0002" | "surfshark" | "webStore";
   icons: ExtensionIconMap;
 }) {
   if (kind === "webStore") return <Blocks size={15} className="text-sky-300" aria-hidden />;
-  const Fallback = kind === "e0001" ? Cookie : Shield;
-  const fallbackClass = kind === "e0001" ? "text-orange-300" : "text-cyan-300";
+  const Fallback = kind === "e0001" ? Cookie : kind === "e0002" ? Cable : Shield;
+  const fallbackClass =
+    kind === "e0001" ? "text-orange-300" : kind === "e0002" ? "text-violet-300" : "text-cyan-300";
   const src = icons[kind];
   const [broken, setBroken] = useState(false);
   if (!src || broken) {
@@ -103,7 +104,7 @@ function ExtensionOverrideRow({
   onChange,
   extensionIcons,
 }: {
-  kind: "e0001" | "surfshark" | "webStore";
+  kind: "e0001" | "e0002" | "surfshark" | "webStore";
   label: string;
   globalEnabled: boolean;
   mode: OverrideMode;
@@ -169,6 +170,7 @@ export function ProfileExtensionFields({
   const extensionIcons = useExtensionIcons();
   const [globalToggles, setGlobalToggles] = useState<ExtensionToggles>({
     e0001: true,
+    e0002: true,
     surfshark: false,
     webStore: false,
   });
@@ -200,6 +202,15 @@ export function ProfileExtensionFields({
           mode={modeFor(overrides, "e0001")}
           disabled={disabled}
           onChange={(mode) => setMode("e0001", mode)}
+          extensionIcons={extensionIcons}
+        />
+        <ExtensionOverrideRow
+          kind="e0002"
+          label="E0002 Browser Operator"
+          globalEnabled={globalToggles.e0002}
+          mode={modeFor(overrides, "e0002")}
+          disabled={disabled}
+          onChange={(mode) => setMode("e0002", mode)}
           extensionIcons={extensionIcons}
         />
         <ExtensionOverrideRow

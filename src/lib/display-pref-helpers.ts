@@ -9,5 +9,6 @@ export function defaultsForPrefItems(allItems: readonly { key: string }[], defau
 }
 
 export function isHubPrefVisible(set: Set<string> | null, defaults: Set<string>, key: string) {
-  return set === null ? defaults.has(key) : set.has(key);
+  const active = set !== null && typeof set?.has === "function" ? set : defaults;
+  return typeof active?.has === "function" ? active.has(key) : true;
 }

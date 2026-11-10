@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 /** Smoke test thuáº§n Node cho auth gate, job queue vÃ  route registry (khÃ´ng cáº§n Electron). */
 const assert = require("node:assert");
 
@@ -105,7 +105,7 @@ function test(name, fn) {
   });
 
   console.log("proxy-pool:");
-  const { parseProxy, formatProxyForLaunch, toPlaywrightProxy, geoConsistency, ProxyPool } = require("./lib/proxy-pool.cjs");
+  const { parseProxy, formatProxyForLaunch, toPlaywrightProxy, geoConsistency, ProxyPool, parseCountryProxySpec, COUNTRY_GEO_DEFAULTS } = require("./lib/proxy-pool.cjs");
   await test("parseProxy â€” cÃ¡c Ä‘á»‹nh dáº¡ng", () => {
     assert.deepStrictEqual(parseProxy("http://u:p@1.2.3.4:8080"), { protocol: "http", host: "1.2.3.4", port: 8080, username: "u", password: "p" });
     assert.deepStrictEqual(parseProxy("1.2.3.4:8080:u:p"), { protocol: "http", host: "1.2.3.4", port: 8080, username: "u", password: "p" });
@@ -144,6 +144,14 @@ function test(name, fn) {
     const bad = geoConsistency({ timezone: "America/New_York", locale: "en-US" }, { timezone: "Asia/Bangkok", countryCode: "TH" });
     assert.strictEqual(bad.consistent, false);
     assert.strictEqual(bad.warnings.length, 2);
+  });
+  await test("parseCountryProxySpec + COUNTRY_GEO_DEFAULTS geoConsistency", () => {
+    assert.deepStrictEqual(parseCountryProxySpec("vpn://JP"), { countryCode: "JP", providerHint: "auto" });
+    assert.deepStrictEqual(parseCountryProxySpec("surfshark://DE"), { countryCode: "DE", providerHint: "surfshark" });
+    for (const [cc, def] of Object.entries(COUNTRY_GEO_DEFAULTS)) {
+      const check = geoConsistency(def, { timezone: def.timezone, countryCode: cc });
+      assert.strictEqual(check.consistent, true, `COUNTRY_GEO_DEFAULTS[${cc}] must be 100% geoConsistent`);
+    }
   });
   await test("ProxyPool â€” round-robin + cooldown", () => {
     const pool = new ProxyPool(["p1", "p2", "p3"]);

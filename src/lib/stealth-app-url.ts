@@ -1,3 +1,8 @@
+import {
+  defaultStealthAndroidTab,
+  isStealthAndroidTab,
+  type StealthAndroidTab,
+} from "./stealth-android-tab";
 import type { StealthScreen } from "./stealth-screen";
 import { coerceStealthSystemTab, defaultStealthSystemTab, type StealthSystemTab } from "./stealth-system-tab";
 import {
@@ -6,16 +11,18 @@ import {
   type StealthWorkflowTab,
 } from "./stealth-workflow-tab";
 
-const SCREENS = new Set<StealthScreen>(["profiles", "workflow", "system"]);
+const SCREENS = new Set<StealthScreen>(["profiles", "android", "workflow", "system"]);
 
 const SCREEN_PATH: Record<StealthScreen, string> = {
   profiles: "/profiles",
+  android: "/android",
   workflow: "/workflow",
   system: "/system",
 };
 
 export type StealthAppUrlState = {
   screen: StealthScreen;
+  androidTab: StealthAndroidTab;
   systemTab: StealthSystemTab;
   workflowTab: StealthWorkflowTab;
 };
@@ -29,6 +36,7 @@ function pathnameToScreen(pathname: string): StealthScreen | null {
   // `/` is ambiguous — prefer legacy `?screen=` before defaulting to profiles.
   if (normalized === "/") return null;
   if (normalized === "/profiles" || normalized.startsWith("/profiles/")) return "profiles";
+  if (normalized === "/android" || normalized.startsWith("/android/")) return "android";
   if (normalized === "/workflow" || normalized.startsWith("/workflow/")) return "workflow";
   if (normalized === "/system" || normalized.startsWith("/system/")) return "system";
   return null;
@@ -40,10 +48,12 @@ function readStateFromLocation(): StealthAppUrlState {
   const screenRaw = sp.get("screen") ?? "";
   const screen: StealthScreen =
     fromPath ?? (SCREENS.has(screenRaw as StealthScreen) ? (screenRaw as StealthScreen) : "profiles");
+  const atab = sp.get("atab") ?? "";
   const stab = sp.get("stab") ?? "";
   const wtab = sp.get("wtab") ?? "";
   return {
     screen,
+    androidTab: isStealthAndroidTab(atab) ? atab : defaultStealthAndroidTab(),
     systemTab: coerceStealthSystemTab(stab),
     workflowTab: isStealthWorkflowTab(wtab) ? wtab : defaultStealthWorkflowTab(),
   };
@@ -54,6 +64,11 @@ function buildStealthUrl(state: StealthAppUrlState): string {
   // Drop screen noise; keep unrelated prefs.
   sp.delete("screen");
 
+  if (state.screen === "android" && state.androidTab !== defaultStealthAndroidTab()) {
+    sp.set("atab", state.androidTab);
+  } else {
+    sp.delete("atab");
+  }
   if (state.screen === "system" && state.systemTab !== defaultStealthSystemTab()) {
     sp.set("stab", state.systemTab);
   } else {
@@ -82,6 +97,7 @@ export function readStealthAppUrl(): StealthAppUrlState {
   if (typeof window === "undefined") {
     return {
       screen: "profiles",
+      androidTab: defaultStealthAndroidTab(),
       systemTab: defaultStealthSystemTab(),
       workflowTab: defaultStealthWorkflowTab(),
     };

@@ -27,13 +27,15 @@ export const PROFILE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ProfileDir
   withDirectoryColumnLabelHints(
     withDirectoryColumnIcons(
       [
+        { key: "createdAt", label: "Created" },
+        { key: "updated", label: "Update" },
         { key: "profile", label: "Profile", required: true },
         { key: "group", label: "Group" },
         { key: "e0001", label: "Cookie Bridge" },
+        { key: "e0002", label: "Browser Operator" },
         { key: "surfshark", label: "Surfshark" },
         { key: "status", label: "Running" },
-        { key: "updated", label: "Update" },
-        { key: "createdAt", label: "Created" },
+        { key: "activityLog", label: "Log" },
         { key: "startupUrl", label: "Startup URL" },
         { key: "proxy", label: "Proxy" },
         { key: "note", label: "Note" },
@@ -43,14 +45,17 @@ export const PROFILE_DIRECTORY_COLUMN_ITEMS: DirectoryTableColumnItem<ProfileDir
     stealthProfileColumnHintContent,
   );
 
-/** Default visible data columns + checkbox (includes Note). */
+/** Default visible data columns + checkbox (includes Created, Update, Log, and Note). */
 export const DEFAULT_PROFILE_DIRECTORY_COLUMNS = new Set<ProfileDirectoryColumnKey>([
+  "createdAt",
+  "updated",
   "profile",
   "group",
   "e0001",
+  "e0002",
   "surfshark",
   "status",
-  "updated",
+  "activityLog",
   "startupUrl",
   "proxy",
   "note",
@@ -95,10 +100,63 @@ export function readProfileDirectoryColumns(): ProfileDirectoryColumnKey[] {
     profileDirectoryColumnPrefs.write(visible);
     writeNoteColumnPromotedFlag();
   }
+  // One-shot promote E0002 beside E0001. After promote, Display may hide it again.
+  if (!visible.has("e0002") && !readOperatorColumnPromotedFlag()) {
+    visible.add("e0002");
+    profileDirectoryColumnPrefs.write(visible);
+    writeOperatorColumnPromotedFlag();
+  }
+  // One-shot promote Created beside Update at the leading edge.
+  if (!visible.has("createdAt") && !readCreatedColumnPromotedFlag()) {
+    visible.add("createdAt");
+    profileDirectoryColumnPrefs.write(visible);
+    writeCreatedColumnPromotedFlag();
+  }
+  // One-shot promote Log beside Run.
+  if (!visible.has("activityLog") && !readActivityLogColumnPromotedFlag()) {
+    visible.add("activityLog");
+    profileDirectoryColumnPrefs.write(visible);
+    writeActivityLogColumnPromotedFlag();
+  }
   return PROFILE_DIRECTORY_GOLDEN_ORDER.filter((key) => visible.has(key));
 }
 
 const NOTE_COLUMN_PROMOTED_KEY = "p0003_profile_note_column_promoted_v1";
+const OPERATOR_COLUMN_PROMOTED_KEY = "p0003_profile_e0002_column_promoted_v1";
+const CREATED_COLUMN_PROMOTED_KEY = "p0003_profile_created_column_promoted_v1";
+const ACTIVITY_LOG_COLUMN_PROMOTED_KEY = "p0003_profile_activity_log_column_promoted_v1";
+
+function readActivityLogColumnPromotedFlag(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(ACTIVITY_LOG_COLUMN_PROMOTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeActivityLogColumnPromotedFlag() {
+  try {
+    globalThis.localStorage?.setItem(ACTIVITY_LOG_COLUMN_PROMOTED_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function readCreatedColumnPromotedFlag(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(CREATED_COLUMN_PROMOTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCreatedColumnPromotedFlag() {
+  try {
+    globalThis.localStorage?.setItem(CREATED_COLUMN_PROMOTED_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 function readNoteColumnPromotedFlag(): boolean {
   try {
@@ -111,6 +169,22 @@ function readNoteColumnPromotedFlag(): boolean {
 function writeNoteColumnPromotedFlag() {
   try {
     globalThis.localStorage?.setItem(NOTE_COLUMN_PROMOTED_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function readOperatorColumnPromotedFlag(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(OPERATOR_COLUMN_PROMOTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeOperatorColumnPromotedFlag() {
+  try {
+    globalThis.localStorage?.setItem(OPERATOR_COLUMN_PROMOTED_KEY, "1");
   } catch {
     /* ignore quota / private mode */
   }

@@ -81,11 +81,28 @@ async function purgeProfileUserDataDir(userDataDir) {
 const SIDECAR_PID_FILE = "stealth-pid.json";
 
 /** Write PID/CDP metadata into profile dir so orphan recovery can find it fast. */
-function writeSidecarPid(userDataDir, { pid, debugPort = 0 }) {
+function writeSidecarPid(userDataDir, { pid = 0, debugPort = 0, headless } = {}) {
   if (!userDataDir) return;
   try {
     const file = path.join(userDataDir, SIDECAR_PID_FILE);
-    fs.writeFileSync(file, JSON.stringify({ pid, debugPort, launchedAt: Date.now() }));
+    const payload = {
+      pid: Number(pid) || 0,
+      debugPort: Number(debugPort) || 0,
+      launchedAt: Date.now(),
+    };
+    if (typeof headless === "boolean") {
+      payload.headless = headless;
+    } else {
+      try {
+        if (fs.existsSync(file)) {
+          const prev = JSON.parse(fs.readFileSync(file, "utf8"));
+          if (typeof prev?.headless === "boolean") payload.headless = prev.headless;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    fs.writeFileSync(file, JSON.stringify(payload));
   } catch {
     // best-effort — dir may not exist yet
   }
@@ -98,7 +115,13 @@ function readSidecarPid(userDataDir) {
     const file = path.join(userDataDir, SIDECAR_PID_FILE);
     if (!fs.existsSync(file)) return null;
     const data = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (data && typeof data.pid === "number" && data.pid > 0) return data;
+    if (
+      data &&
+      ((typeof data.pid === "number" && data.pid > 0) ||
+        (typeof data.debugPort === "number" && data.debugPort > 0))
+    ) {
+      return data;
+    }
     return null;
   } catch {
     return null;
