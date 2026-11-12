@@ -1,6 +1,36 @@
 {
-  "generatedAt": "2026-11-12T09:59:26.176Z",
+  "generatedAt": "2026-11-12T10:11:47.220Z",
   "entries": [
+    {
+      "version": "9.2.396",
+      "date": "2026-11-12",
+      "at": "2026-11-12T17:11:00+07:00",
+      "title": "Explicit preload.cjs updateBridge method keys for sync-stealth-api-surface",
+      "bullets": [
+        "Bound explicit getUpdateStatus, checkForUpdates, downloadUpdate, installUpdate, and onUpdateStatus keys in electron/preload.cjs so sync-stealth-api-surface passes during desktop release."
+      ],
+      "kind": "improve",
+      "userTitle": "Explicit update Bridge method keys for sync-stealth-api-surface",
+      "userSummary": "",
+      "userHighlights": [
+        "Bound explicit get Update Status, check For Updates, download Update, install Update, and on Upda…"
+      ]
+    },
+    {
+      "version": "9.2.395",
+      "date": "2026-11-12",
+      "at": "2026-11-12T17:10:00+07:00",
+      "title": "Stamp openai_trial_claimed_at and last_stripe_decline_code in p0020-cards-cache.json",
+      "bullets": [
+        "Added recordCardStripeOutcome, POST /api/billing-vault/report-card-outcome, and automatic exclusion of trial-claimed, Stripe-declined, and locked-STK cards in resolveCandidateBillingCardsFromVault."
+      ],
+      "kind": "improve",
+      "userTitle": "Stamp openai trial claimed at and last stripe decline code in p0020-c…",
+      "userSummary": "",
+      "userHighlights": [
+        "Added record Card Stripe Outcome, POST api billing-vault report-card-outcome, and automatic exclu…"
+      ]
+    },
     {
       "version": "9.2.394",
       "date": "2026-11-12",
@@ -149,36 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Enhanced with Stripe Payment Address Element selectors , prioritized fresh Visa 484804 cards ahea…"
-      ]
-    },
-    {
-      "version": "9.2.384",
-      "date": "2026-11-12",
-      "at": "2026-11-12T01:41:00+07:00",
-      "title": "Native koffi GetDiskFreeSpaceExW & p0020-reconcile-worker module/unref fix",
-      "bullets": [
-        "Replaced PowerShell Get-PSDrive fallback in profiles-location.cjs with native Win32 GetDiskFreeSpaceExW via koffi, wired packaged module resolution + proper worker.unref lifecycle in p0020-reconcile-worker.cjs, and migrated mobile-stealth-bridge.cjs to openGuardSqlite."
-      ],
-      "kind": "improve",
-      "userTitle": "Native koffi Get Disk Free Space Ex W & p0020-reconcile-worker module…",
-      "userSummary": "",
-      "userHighlights": [
-        "Replaced Power Shell Get-PSDrive fallback in with native Win32 Get Disk Free Space Ex W via koffi…"
-      ]
-    },
-    {
-      "version": "9.2.383",
-      "date": "2026-11-12",
-      "at": "2026-11-12T01:40:00+07:00",
-      "title": "Profiles & System Extensions directory cells: HubDirectoryValuePopover hover parity",
-      "bullets": [
-        "Wrapped System Extensions path cell in HubDirectoryValuePopover and removed redundant native title= inside Stealth Profiles proxy popover."
-      ],
-      "kind": "improve",
-      "userTitle": "Profiles & System Extensions directory cells: Hub Directory Value Pop…",
-      "userSummary": "",
-      "userHighlights": [
-        "Wrapped System Extensions path cell in Hub Directory Value Popover and removed redundant native t…"
       ]
     }
   ]

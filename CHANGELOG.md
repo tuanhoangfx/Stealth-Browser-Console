@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-11-12 - Explicit preload.cjs updateBridge method keys for sync-stealth-api-surface
+
+- Version: `9.2.396`
+- Timestamp: 2026-11-12 17:11 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Bound explicit getUpdateStatus, checkForUpdates, downloadUpdate, installUpdate, and onUpdateStatus keys in electron/preload.cjs so sync-stealth-api-surface passes during desktop release.
+
+### Verification
+
+- run-unit-tests.mjs PASS
+
+---
+## 2026-11-12 - Stamp openai_trial_claimed_at and last_stripe_decline_code in p0020-cards-cache.json
+
+- Version: `9.2.395`
+- Timestamp: 2026-11-12 17:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added recordCardStripeOutcome, POST /api/billing-vault/report-card-outcome, and automatic exclusion of trial-claimed, Stripe-declined, and locked-STK cards in resolveCandidateBillingCardsFromVault.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
 ## 2026-11-12 - Preserve STEALTH_USER_DOWNLOAD_URL & STEALTH_LATEST_RELEASE_URL in sync-app-version.mjs
 
 - Version: `9.2.394`
