@@ -5,7 +5,8 @@
 - Version: `9.2.397`
 - Timestamp: 2026-11-12 17:36 (UTC+7)
 - Type: Patch
-- Status: Committed
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.397
 
 ### Changes
 
