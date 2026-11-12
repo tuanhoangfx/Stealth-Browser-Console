@@ -1,184 +1,184 @@
 {
-  "generatedAt": "2026-11-10T15:09:55.981Z",
+  "generatedAt": "2026-11-12T09:43:49.960Z",
   "entries": [
     {
-      "version": "9.2.352",
-      "date": "2026-11-10",
-      "at": "2026-11-10T22:09:00+07:00",
-      "title": "Unified Directory Columns & 8-KPI SSOT Across All P0003 Tables",
+      "version": "9.2.393",
+      "date": "2026-11-12",
+      "at": "2026-11-12T16:43:00+07:00",
+      "title": "Verify packaged resources/app-update.yml in unpacked & desktop SSOT gates",
       "bullets": [
-        "Added Log (activityLog) column to Workflow Scripts, Workflow Store, and System Backup directories; expanded Workflow Scripts and Workflow Store to the 8-KPI SSOT; wired click-to-filter on all System Extensions KPI tiles; guarded legacySm binding in api-routes.cjs."
+        "Added resources/app-update.yml validation to verify-packaged-unpacked.mjs and verify-desktop-exe-ssot.mjs."
       ],
       "kind": "improve",
-      "userTitle": "Unified Directory Columns & 8-stats shared UI Across All P0003 Tables",
+      "userTitle": "Verify packaged resources app-update.yml in unpacked & desktop shared…",
       "userSummary": "",
       "userHighlights": [
-        "Added Log column to Workflow Scripts, Workflow Store, and System Backup directories"
+        "Added resources app-update.yml validation to and ."
       ]
     },
     {
-      "version": "9.2.351",
-      "date": "2026-11-10",
-      "at": "2026-11-10T21:49:00+07:00",
-      "title": "Extension Directory Log Column + 8-KPI SSOT & Workflow Store Created Column",
+      "version": "9.2.392",
+      "date": "2026-11-12",
+      "at": "2026-11-12T15:34:00+07:00",
+      "title": "Normalize batch -pXXXX caller slugs and scope supportChatProtected locks",
       "bullets": [
-        "Add Log (activityLog) column and status dot to Extension Directory, expand System -> Extensions KPI strip to 8 standard KPIs, and add Created column at the start of Workflow -> Store Directory Table."
+        "Strip routine -pXXXX suffixes in resolveAgentCallerIdFromHeaders and restrict priority-agent-locks supportChatProtected immunity to support/chat/appeal reasons so MAX_PER_CALLER=3 holds"
       ],
       "kind": "improve",
-      "userTitle": "Extension Directory Log Column + 8-stats shared UI & Workflow Store C…",
+      "userTitle": "Normalize batch -p XXXX caller slugs and scope support Chat Protected…",
       "userSummary": "",
       "userHighlights": [
-        "Add Log column and status dot to Extension Directory, expand System -> Extensions stats strip to…"
+        "Strip routine -p XXXX suffixes in resolve Agent Caller Id From Headers and restrict priority-agen…"
       ]
     },
     {
-      "version": "9.2.350",
-      "date": "2026-11-10",
-      "at": "2026-11-10T21:35:00+07:00",
-      "title": "Extension Directory Created Column SSOT & Auto-Reload Open Profiles on Sync",
+      "version": "9.2.391",
+      "date": "2026-11-12",
+      "at": "2026-11-12T15:17:00+07:00",
+      "title": "NSIS Uninstall.exe upgrade unlock & end-user update/intro links",
       "bullets": [
-        "Add Created (createdAt) column at the start of System -> Extensions Directory Table and Detail Modal per Hub-UI SSOT, and auto-trigger POST /api/extensions/reload-open in sync-hot-patch.cjs."
+        "Added customFiles_x64 NSIS uninstaller unlock macro, atomic .part updater download + single-flight guard, seeded resources/app-update.yml on warm --prepackaged builds, disabled autoInstallOnAppQuit collision, and added 1-click User update link (/intro/download/) + Intro & user guide (/intro/) in Update Release modal and Settings -> About."
       ],
       "kind": "improve",
-      "userTitle": "Extension Directory Created Column shared UI & Auto-Reload Open Profi…",
+      "userTitle": "NSIS Uninstall.exe upgrade unlock & end-user update intro links",
       "userSummary": "",
       "userHighlights": [
-        "Add Created column at the start of System -> Extensions Directory Table and Detail Modal per Hub-…"
+        "Added custom Files x64 NSIS uninstaller unlock macro, atomic .part updater download + single-flig…"
       ]
     },
     {
-      "version": "9.2.349",
-      "date": "2026-11-10",
-      "at": "2026-11-10T20:20:00+07:00",
-      "title": "Reload Open Profiles, ExtensionDisableUnsupportedDeveloper Guard & 0-Byte Stage Gates",
+      "version": "9.2.390",
+      "date": "2026-11-12",
+      "at": "2026-11-12T07:26:00+07:00",
+      "title": "Add Mage.space Firebase IDB & Leonardo better-auth disk session matchers",
       "bullets": [
-        "Add Reload Open Profiles action bar button + POST /api/extensions/reload-open + instant reloadNonce listeners in E0001 v1.2.26 & E0002 v0.1.11, disable Chromium 146 ExtensionDisableUnsupportedDeveloper so runtime reload never disables unpacked extensions, and enforce 0-byte/stage integrity gates."
+        "Extend service-cookie-matchers.cjs to detect Mage.space firebaseLocalStorageDb and Leonardo AI __Secure-better-auth.session_token cookies"
       ],
       "kind": "improve",
-      "userTitle": "Reload Open Profiles, Extension Disable Unsupported Developer Guard &…",
+      "userTitle": "Add Mage.space Firebase IDB & Leonardo better-auth disk session matchers",
       "userSummary": "",
       "userHighlights": [
-        "Add Reload Open Profiles action bar button + POST api extensions reload-open + instant reload Non…"
+        "Extend to detect Mage.space firebase Local Storage Db and Leonardo AI Secure-better-auth.session…"
       ]
     },
     {
-      "version": "9.2.348",
-      "date": "2026-11-10",
-      "at": "2026-11-10T18:19:00+07:00",
-      "title": "Reload Open Profiles UI action, bundled-extensions Prod sync & 0-byte gate",
+      "version": "9.2.389",
+      "date": "2026-11-12",
+      "at": "2026-11-12T05:07:00+07:00",
+      "title": "Zero-PowerShell and zero-netstat dev orchestrator & kill-port in P0003 scripts",
       "bullets": [
-        "Added Reload Open Profiles button in Extensions bar, POST /api/extensions/reload-open endpoint, bundled-extensions v1.2.26/v0.1.11 Prod packaging, and 0-byte integrity gate."
+        "Wire dev-desktop-process.mjs and scripts/kill-port.cjs to shared win-native-proc-net.mjs while preserving :6003 prod port refusal and :6004 Dev Exe GUI protection."
       ],
       "kind": "improve",
-      "userTitle": "Reload Open Profiles UI action, bundled-extensions Prod sync & 0-byte…",
+      "userTitle": "Zero-Power Shell and zero-netstat dev orchestrator & kill-port in P00…",
       "userSummary": "",
       "userHighlights": [
-        "Added Reload Open Profiles button in Extensions bar, POST api extensions reload-open endpoint, bu…"
+        "Wire and to shared while preserving :6003 prod port refusal and :6004 Dev Exe GUI protection."
       ]
     },
     {
-      "version": "9.2.347",
-      "date": "2026-11-10",
-      "at": "2026-11-10T17:52:00+07:00",
-      "title": "Hot-patch E0001/E0002 atomic stage self-heal, Secure Preferences repair & auto-pin",
+      "version": "9.2.388",
+      "date": "2026-11-12",
+      "at": "2026-11-12T04:50:00+07:00",
+      "title": "Fast System32 tar.exe CloakBrowser mirror archive extraction in cloak-browser-engine.cjs",
       "bullets": [
-        "Fixed 0-byte file truncation in extensions-cache and CloakBrowser stage, repaired empty serviceworkerevents in Secure Preferences, aligned E0002 staged pin ID (kldoeipllnpkahkaceadgjpblglmdjck), and updated shortcuts + hot-reload eviction."
+        "Extract CloakBrowser frozen Chromium zip from Lenovo mirror via native C++ System32 tar.exe instead of single-threaded PowerShell .NET ZipFile::ExtractToDirectory, keeping SHA-256 verification and .NET fallback."
       ],
       "kind": "improve",
-      "userTitle": "Hot-patch E0001 E0002 atomic stage self-heal, Secure Preferences repa…",
+      "userTitle": "Fast System32 tar.exe Cloak Browser mirror archive extraction in",
       "userSummary": "",
       "userHighlights": [
-        "Fixed 0-byte file truncation in extensions-cache and Cloak Browser stage, repaired empty servicew…"
+        "Extract Cloak Browser frozen Chromium zip from Lenovo mirror via native C++ System32 tar.exe inst…"
       ]
     },
     {
-      "version": "9.2.346",
-      "date": "2026-11-10",
-      "at": "2026-11-10T17:00:00+07:00",
-      "title": "Zero-Throttle Orphan Sweeper & Taskbar Worker",
+      "version": "9.2.387",
+      "date": "2026-11-12",
+      "at": "2026-11-12T04:30:00+07:00",
+      "title": "Add PS5.1-safe scripts.typecheck SSOT parity",
       "bullets": [
-        "Removed IDLE_PRIORITY_CLASS / BELOW_NORMAL_PRIORITY_CLASS throttling from profile-browser-orphan.cjs and taskbar-apply-worker.cjs and synced hot-patch resources."
+        "Wire node_modules/typescript/bin/tsc --noEmit in package.json scripts.typecheck and lock under typecheck-script-parity gate."
       ],
       "kind": "improve",
-      "userTitle": "Zero-Throttle Orphan Sweeper & Taskbar Worker",
+      "userTitle": "Add PS5.1-safe scripts.typecheck shared UI parity",
       "userSummary": "",
       "userHighlights": [
-        "Removed IDLE PRIORITY CLASS BELOW NORMAL PRIORITY CLASS throttling from and and synced hot-patch…"
+        "Wire node modules typescript bin tsc -"
       ]
     },
     {
-      "version": "9.2.345",
-      "date": "2026-11-10",
-      "at": "2026-11-10T11:29:00+07:00",
-      "title": "Auto-stamp gmail_cookie_header during multiplatform cookie sync",
+      "version": "9.2.386",
+      "date": "2026-11-12",
+      "at": "2026-11-12T03:32:00+07:00",
+      "title": "In-memory zlib CRX/ZIP extractor & async System32 tar.exe profile backup/restore",
       "bullets": [
-        "Updated stealth-multiplatform-sync.cjs to build and persist domain-scoped .google.com + mail.google.com Cookie header (gmail_cookie_header) into stealth_snapshot whenever Google/Gmail cookies are synced to P0020."
+        "Replaced blocking PowerShell Expand-Archive in webstore-extension.cjs with in-memory Central Directory + zlib.inflateRawSync extractor (with Zip-Slip guard), and migrated profile-backup.cjs + IPC handlers to non-blocking async System32\\tar.exe + robocopy."
       ],
       "kind": "improve",
-      "userTitle": "Auto-stamp gmail cookie header during multiplatform cookie sync",
+      "userTitle": "In-memory zlib CRX ZIP extractor & async System32 tar.exe profile bac…",
       "userSummary": "",
       "userHighlights": [
-        "Updated to build and persist domain-scoped .google.com + mail.google.com Cookie header into steal…"
+        "Replaced blocking Power Shell Expand-Archive in with in-memory Central Directory + zlib.inflate R…"
       ]
     },
     {
-      "version": "9.2.344",
-      "date": "2026-11-10",
-      "at": "2026-11-10T10:14:00+07:00",
-      "title": "Gmail Dot-Insensitive Session Match",
+      "version": "9.2.385",
+      "date": "2026-11-12",
+      "at": "2026-11-12T03:28:00+07:00",
+      "title": "Stripe Payment Element Selectors, Card Priority & operator-cdp.json Sync",
       "bullets": [
-        "Compare Gmail and Googlemail addresses dot-insensitively in stealth-multiplatform-sync and verifyGoogleSignedInPageEmail so dotted DOM emails never trigger false account_mismatch."
+        "Enhanced billing-autofill-bridge.cjs with Stripe Payment/Address Element selectors (#payment-numberInput, #billingAddress-nameInput, <select> administrativeArea support), prioritized fresh Visa 484804 cards ahead of declined cards, added POST /api/billing-vault/resolve-card, and synced shared/operator-cdp.json with E0002 content-checkout.js."
       ],
       "kind": "improve",
-      "userTitle": "Gmail Dot-Insensitive Session Match",
+      "userTitle": "Stripe Payment Element Selectors, Card Priority & operator-cdp.json Sync",
       "userSummary": "",
       "userHighlights": [
-        "Compare Gmail and Googlemail addresses dot-insensitively in stealth-multiplatform-sync and verify…"
+        "Enhanced with Stripe Payment Address Element selectors , prioritized fresh Visa 484804 cards ahea…"
       ]
     },
     {
-      "version": "9.2.343",
-      "date": "2026-11-10",
-      "at": "2026-11-10T05:55:00+07:00",
-      "title": "Set quarantined_sms and mail_checking Skipped for checkpoint_qr in multiplatform sync",
+      "version": "9.2.384",
+      "date": "2026-11-12",
+      "at": "2026-11-12T01:41:00+07:00",
+      "title": "Native koffi GetDiskFreeSpaceExW & p0020-reconcile-worker module/unref fix",
       "bullets": [
-        "Updated stealth-multiplatform-sync.cjs so Google /challenge/iap and /qrcode live tab detection writes status = quarantined_sms (Skipped) and mail_checking = Skipped."
+        "Replaced PowerShell Get-PSDrive fallback in profiles-location.cjs with native Win32 GetDiskFreeSpaceExW via koffi, wired packaged module resolution + proper worker.unref lifecycle in p0020-reconcile-worker.cjs, and migrated mobile-stealth-bridge.cjs to openGuardSqlite."
       ],
       "kind": "improve",
-      "userTitle": "Set quarantined sms and mail checking Skipped for checkpoint qr in mu…",
+      "userTitle": "Native koffi Get Disk Free Space Ex W & p0020-reconcile-worker module…",
       "userSummary": "",
       "userHighlights": [
-        "Updated so Google challenge iap and qrcode live tab detection writes status = quarantined sms and…"
+        "Replaced Power Shell Get-PSDrive fallback in with native Win32 Get Disk Free Space Ex W via koffi…"
       ]
     },
     {
-      "version": "9.2.342",
-      "date": "2026-11-10",
-      "at": "2026-11-10T03:11:00+07:00",
-      "title": "Auto-drain deferred-user-headed-queue.json on Stealth profile window close",
+      "version": "9.2.383",
+      "date": "2026-11-12",
+      "at": "2026-11-12T01:40:00+07:00",
+      "title": "Profiles & System Extensions directory cells: HubDirectoryValuePopover hover parity",
       "bullets": [
-        "Added triggerDeferredExpiredOrderDrain in electron/api-routes.cjs so when a User Headed profile closes via reconcile or sessionManager.close, pending expired Action orders in Tool/P0020-Data-Box/scripts/deferred-user-headed-queue.json automatically drain in headless mode via nodew.exe"
+        "Wrapped System Extensions path cell in HubDirectoryValuePopover and removed redundant native title= inside Stealth Profiles proxy popover."
       ],
       "kind": "improve",
-      "userTitle": "Auto-drain deferred-user-headed-queue.json on Stealth profile window…",
+      "userTitle": "Profiles & System Extensions directory cells: Hub Directory Value Pop…",
       "userSummary": "",
       "userHighlights": [
-        "Added trigger Deferred Expired Order Drain in so when a User Headed profile closes via reconcile…"
+        "Wrapped System Extensions path cell in Hub Directory Value Popover and removed redundant native t…"
       ]
     },
     {
-      "version": "9.2.341",
-      "date": "2026-11-10",
-      "at": "2026-11-10T02:46:00+07:00",
-      "title": "Emit Pending and Skipped in Stealth session sync",
+      "version": "9.2.382",
+      "date": "2026-11-11",
+      "at": "2026-11-11T20:22:00+07:00",
+      "title": "Preserve ElevenLabs API-Verified & SPA IndexedDB Sessions on Window Close Sync",
       "bullets": [
-        "Updated formatStealthSessionLogMessage in stealth-multiplatform-sync.cjs to emit ⏳ Pending (<detail>) and ⏭️ Skipped (<detail>)"
+        "Fixed stealth-multiplatform-sync.cjs precomputedSpaSummary assignment when worker runs with needSpa:false and updated p0020-row-verifier.cjs to preserve logged_in status for ElevenLabs rows with verified xi_user_id + sk_ API key or Firebase refresh token."
       ],
       "kind": "improve",
-      "userTitle": "Emit Pending and Skipped in Stealth session sync",
+      "userTitle": "Preserve Eleven Labs API-Verified & SPA Indexed DB Sessions on Window…",
       "userSummary": "",
       "userHighlights": [
-        "Updated format Stealth Session Log Message in to emit ⏳ Pending and ⏭️ Skipped"
+        "Fixed precomputed Spa Summary assignment when worker runs with need Spa:false and updated to pres…"
       ]
     }
   ]

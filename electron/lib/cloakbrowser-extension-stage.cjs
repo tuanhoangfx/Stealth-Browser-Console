@@ -18,6 +18,7 @@ const NON_RUNTIME_STAGE_DIRS = new Set([
   "docs",
   "coverage",
   ".turbo",
+  "scripts",
 ]);
 
 function newestIconMtime(dir) {
@@ -90,6 +91,9 @@ function shouldCopyExtensionEntry(relativePath) {
   if (!rel || rel === ".") return true;
   const top = rel.split("/")[0];
   if (NON_RUNTIME_STAGE_DIRS.has(top)) return false;
+  if (/^dist\/[^/]+-store(?:\/|$)/i.test(rel) || /^dist\/.*\.(?:zip|crx|sha256)$/i.test(rel)) {
+    return false;
+  }
   return true;
 }
 
@@ -191,6 +195,59 @@ function copyExtensionTreeBestEffort(src, dest, rootSrc = src) {
 const STAGE_CACHE_TTL_MS = 30_000;
 const _stageResultCache = new Map();
 
+const STAGE_CORE_RUNTIME_CANDIDATES = [
+  "manifest.json",
+  "build-info.js",
+  "background.js",
+  "popup.html",
+  "popup.js",
+  "auth-session.js",
+  "content-bridge.js",
+  "totp-clock.js",
+];
+
+function newestStageCoreMtime(dir) {
+  let newest = 0;
+  for (const rel of STAGE_CORE_RUNTIME_CANDIDATES) {
+    try {
+      const st = fs.statSync(path.join(dir, rel));
+      if (st.mtimeMs > newest) newest = st.mtimeMs;
+    } catch {
+      /* ignore missing candidate */
+    }
+  }
+  return newest;
+}
+
+function coreStageFilesHealthy(srcDir, stageDir) {
+  try {
+    const manifestPath = path.join(srcDir, "manifest.json");
+    const stageManifestPath = path.join(stageDir, "manifest.json");
+    if (!fs.existsSync(manifestPath) || !fs.existsSync(stageManifestPath)) return false;
+    const checks = new Set(STAGE_CORE_RUNTIME_CANDIDATES);
+    try {
+      const parsed = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      if (parsed?.background?.service_worker) checks.add(String(parsed.background.service_worker));
+      if (parsed?.action?.default_popup) checks.add(String(parsed.action.default_popup));
+    } catch {
+      /* ignore parse error */
+    }
+    for (const rel of checks) {
+      const from = path.join(srcDir, rel);
+      if (!fs.existsSync(from)) continue;
+      const to = path.join(stageDir, rel);
+      if (!fs.existsSync(to)) return false;
+      const srcStat = fs.statSync(from);
+      const toStat = fs.statSync(to);
+      if (srcStat.size > 0 && toStat.size === 0) return false;
+      if (srcStat.size !== toStat.size) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * CloakBrowser Chromium resolves unpacked extensions under `<cacheDir>/<extId>/`.
  * Pre-stage files there so Chrome never shows "manifest missing" for the staging folder.
@@ -216,8 +273,8 @@ function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir, options =
         const curMtime = fs.statSync(manifest).mtimeMs;
         if (
           curMtime === cached.srcManifestMtime &&
-          fs.existsSync(stageManifest) &&
-          !hasCorruptedOrMismatchedRuntimeFiles(src, stageDir, src)
+          newestStageCoreMtime(src) === cached.srcCoreMtime &&
+          coreStageFilesHealthy(src, stageDir)
         ) {
           return cached.result;
         }
@@ -234,20 +291,31 @@ function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir, options =
   const srcVerified = fs.existsSync(path.join(src, "_metadata", "verified_contents.json"));
   const stageVerified = fs.existsSync(path.join(stageDir, "_metadata", "verified_contents.json"));
   const verifiedChanged = srcVerified !== stageVerified;
-  const corruptedOrMismatched = hasCorruptedOrMismatchedRuntimeFiles(src, stageDir, src);
+  const srcCoreMtime = newestStageCoreMtime(src);
+  // Allow 2ms tolerance for JS Date sub-millisecond truncation in fs.utimesSync on NTFS
+  const fastCoreMatch =
+    !options.force &&
+    !versionChanged &&
+    !verifiedChanged &&
+    fs.existsSync(stageManifest) &&
+    srcCoreMtime <= newestStageCoreMtime(stageDir) + 2 &&
+    coreStageFilesHealthy(src, stageDir);
+  const corruptedOrMismatched = fastCoreMatch
+    ? false
+    : hasCorruptedOrMismatchedRuntimeFiles(src, stageDir, src);
   const criticalUpgrade =
     Boolean(options.force) || versionChanged || verifiedChanged || corruptedOrMismatched;
 
   let needsCopy = !fs.existsSync(stageManifest) || criticalUpgrade;
   if (!needsCopy) {
     try {
-      needsCopy = fs.statSync(manifest).mtimeMs > fs.statSync(stageManifest).mtimeMs;
+      needsCopy = fs.statSync(manifest).mtimeMs > fs.statSync(stageManifest).mtimeMs + 2;
     } catch {
       needsCopy = true;
     }
   }
   if (srcVerified && !stageVerified) needsCopy = true;
-  if (newestIconMtime(src) > newestIconMtime(stageDir)) needsCopy = true;
+  if (newestIconMtime(src) > newestIconMtime(stageDir) + 2) needsCopy = true;
 
   // A live profile junctions this same stage folder. Skip icon/mtime-only overwrites so its
   // toolbar keeps the files it opened with, unless manifest version changed or force is set.
@@ -288,6 +356,7 @@ function ensureCloakbrowserExtensionStage(extensionDir, cloakCacheDir, options =
       _stageResultCache.set(cacheKey, {
         at: nowMs,
         srcManifestMtime: fs.statSync(manifest).mtimeMs,
+        srcCoreMtime: newestStageCoreMtime(src),
         result,
       });
     } catch {
@@ -305,6 +374,21 @@ function pruneNonRuntimeStageDirs(stageDir) {
     } catch {
       // best-effort — a locked dev dir just stays, no correctness impact
     }
+  }
+  const distDir = path.join(stageDir, "dist");
+  try {
+    if (fs.existsSync(distDir) && fs.statSync(distDir).isDirectory()) {
+      for (const entry of fs.readdirSync(distDir, { withFileTypes: true })) {
+        if (/-store$/i.test(entry.name) || /\.(?:zip|crx|sha256)$/i.test(entry.name)) {
+          fs.rmSync(path.join(distDir, entry.name), { recursive: true, force: true });
+        }
+      }
+      if (fs.readdirSync(distDir).length === 0) {
+        fs.rmdirSync(distDir);
+      }
+    }
+  } catch {
+    // best-effort
   }
 }
 
@@ -330,4 +414,10 @@ module.exports = {
   ensureCloakbrowserExtensionStages,
   warmExtensionStagesForRoot,
   shouldCopyExtensionEntry,
+  copyExtensionTreeBestEffort,
+  hasCorruptedOrMismatchedRuntimeFiles,
+  pruneNonRuntimeStageDirs,
+  coreStageFilesHealthy,
+  newestStageCoreMtime,
+  newestIconMtime,
 };

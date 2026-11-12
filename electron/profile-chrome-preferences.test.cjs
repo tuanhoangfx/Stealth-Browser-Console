@@ -51,4 +51,52 @@ describe("profile-chrome-preferences", () => {
     assert.equal((prefs.extensions.pinned_extensions || []).includes(extId), false);
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it("heals poisoned empty serviceworkerevents and clears stale HMAC in Secure Preferences", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-heal-sec-"));
+    const userDataDir = path.join(root, "profiles", "p0004");
+    const extDir = path.join(root, "stage", "kaaadageakdandpobcofplmfbjfjabdk");
+    fs.mkdirSync(extDir, { recursive: true });
+    fs.writeFileSync(path.join(extDir, "manifest.json"), JSON.stringify({ name: "E0001 Cookie Bridge" }), "utf8");
+    const extId = unpackedExtensionId(extDir);
+
+    const secFile = path.join(userDataDir, "Default", "Secure Preferences");
+    fs.mkdirSync(path.dirname(secFile), { recursive: true });
+    fs.writeFileSync(
+      secFile,
+      JSON.stringify({
+        extensions: {
+          settings: {
+            [extId]: {
+              location: 8,
+              path: extDir,
+              disable_reasons: [],
+              serviceworkerevents: [],
+              service_worker_registration_info: { version: "1.2.5" },
+            },
+          },
+        },
+        protection: {
+          macs: {
+            extensions: {
+              settings: {
+                [extId]: "DEADMAC123456",
+              },
+            },
+          },
+        },
+      }),
+      "utf8",
+    );
+
+    pinToolbarExtension(userDataDir, extDir);
+    const healedSec = JSON.parse(fs.readFileSync(secFile, "utf8"));
+    assert.equal(healedSec.extensions.settings[extId].state, 1);
+    assert.equal(healedSec.extensions.settings[extId].disable_reasons, undefined);
+    assert.equal(healedSec.extensions.settings[extId].serviceworkerevents, undefined);
+    assert.equal(healedSec.extensions.settings[extId].service_worker_registration_info, undefined);
+    assert.equal(healedSec.protection.macs.extensions.settings[extId], undefined);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });

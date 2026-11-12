@@ -12,8 +12,10 @@ const {
   extractFourDigitCode,
   badgeLast3,
   digitArgbForCode,
+  digitGapForIcoSize,
   digitGapsCsvForSizes,
 } = require("./profile-code.cjs");
+const { renderBadgePngFramesNative } = require("./taskbar-badge-render-native.cjs");
 
 /** Design V4 — digits only on native Chromium icon; thousands → digit color (0=white, 1–9 vivid).
  *  Keep in sync with StartKeeper in stealth-taskbar-apply-worker.ps1. */
@@ -115,13 +117,34 @@ async function waitForTaskbarHintPid(userDataDir, hinted = 0, { timeoutMs = 1200
   return readTaskbarHintPid(userDataDir, hinted);
 }
 
-/** Poll MainWindowHandle for a browser PID — single PS spawn (not per-tick). */
+/** Poll MainWindowHandle for a browser PID via native user32 (<0.5ms/tick, 0 PowerShell spawns). */
 async function waitForBrowserMainWindow(pid, { timeoutMs = 2400, intervalMs = 30 } = {}) {
   const id = Number(pid);
   if (!id || process.platform !== "win32") return false;
-  const { runPowerShellCommandAsync } = require("./powershell-exec.cjs");
   const budgetMs = Number(timeoutMs) > 0 ? Number(timeoutMs) : 2400;
   const stepMs = Number(intervalMs) > 0 ? Number(intervalMs) : 30;
+  try {
+    const {
+      getOrphanUser32Api,
+      hasMainWindowForPidNative,
+    } = require("./profile-browser-orphan.cjs");
+    if (typeof getOrphanUser32Api === "function" && getOrphanUser32Api()) {
+      const deadline = Date.now() + budgetMs;
+      while (true) {
+        if (hasMainWindowForPidNative(id)) return true;
+        try {
+          process.kill(id, 0);
+        } catch (err) {
+          if (!err || err.code !== "EPERM") return false;
+        }
+        if (Date.now() >= deadline) return hasMainWindowForPidNative(id);
+        await new Promise((resolve) => setTimeout(resolve, stepMs));
+      }
+    }
+  } catch {
+    /* fall through to PowerShell fallback */
+  }
+  const { runPowerShellCommandAsync } = require("./powershell-exec.cjs");
   const loops = Math.max(1, Math.ceil(budgetMs / stepMs));
   const script = [
     `$id = ${id}`,
@@ -313,6 +336,24 @@ async function ensureBadgeIco(code, opts = {}) {
     const outDir = badgeCacheDir();
     const prefix = `${BADGE_STYLE}-${full}${hot ? "-hot" : ""}`;
     const ico = hot ? hotIco : fullIco;
+
+    const nativeFrames = renderBadgePngFramesNative({
+      chromeExe,
+      digits,
+      dR,
+      dG,
+      dB,
+      sizes,
+      digitGapForSize: digitGapForIcoSize,
+    });
+    if (Array.isArray(nativeFrames) && nativeFrames.length === sizes.length) {
+      fs.writeFileSync(ico, pngBuffersToIco(nativeFrames));
+      if (!fs.existsSync(ico) || fs.statSync(ico).size < 200) {
+        throw new Error("badge ico write failed");
+      }
+      return ico;
+    }
+
     const ps1 = resolveElectronLibScript("render-taskbar-badge.ps1");
     await withIcoRenderSlot(async () => {
       const { stdout } = await runPowerShellFile(
@@ -508,11 +549,12 @@ async function applyNativeProfileTaskbarChrome(userDataDir, title, code, opts = 
     const workerMs = Date.now() - tWorker;
     const result = String(workerResp?.result || "").trim();
     const wmiSkipped = workerResp?.wmiSkipped === true;
+    const via = String(workerResp?.via || "worker");
     if (result === "OK_ICON" || result === "OK_TITLE") {
-      return { ok: true, detail: result, wmiSkipped, workerMs, via: "worker" };
+      return { ok: true, detail: result, wmiSkipped, workerMs, via };
     }
-    if (result === "MISSING") return { ok: false, reason: "not-running", wmiSkipped, workerMs, via: "worker" };
-    return { ok: false, reason: result || "no-window", wmiSkipped, workerMs, via: "worker" };
+    if (result === "MISSING") return { ok: false, reason: "not-running", wmiSkipped, workerMs, via };
+    return { ok: false, reason: result || "no-window", wmiSkipped, workerMs, via };
   } catch {
     /* fallback one-shot PS */
   }

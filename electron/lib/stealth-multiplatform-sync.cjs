@@ -22,7 +22,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { DatabaseSync } = require("node:sqlite");
+const { openGuardSqlite } = require("./profile-cookie-guard.cjs");
 const {
   resolveVaultConfig,
   resolveScopedVaultUserId,
@@ -138,6 +138,7 @@ const {
 } = require("./multiplatform-sync/p0020-fleet-healers.cjs");
 
 let _diskInspectWorker = null;
+let _diskInspectWorkerDisabled = false;
 let _diskInspectReqSeq = 0;
 const _diskInspectPending = new Map();
 if (globalThis._p0003DiskInspectWorker) {
@@ -155,14 +156,14 @@ if (globalThis._p0003DiskInspectWorker) {
  */
 function runDiskInspectInElectronWorker({ userDataDir, profileCode, needCookies = false, needSpa = true }) {
   const { Worker, isMainThread } = require("node:worker_threads");
-  if (!process.versions?.electron || !isMainThread || __dirname.includes(".asar")) {
+  if (!process.versions?.electron || !isMainThread || _diskInspectWorkerDisabled) {
     return null;
   }
   try {
     if (!_diskInspectWorker) {
+      let spawnedOk = false;
       const workerCode = `
         const { parentPort } = require("node:worker_threads");
-        const path = require("node:path");
         const guardMod = require(${JSON.stringify(path.join(__dirname, "profile-cookie-guard.cjs"))});
         const syncMod = require(${JSON.stringify(path.join(__dirname, "stealth-multiplatform-sync.cjs"))});
         parentPort.on("message", (msg) => {
@@ -187,6 +188,7 @@ function runDiskInspectInElectronWorker({ userDataDir, profileCode, needCookies 
       globalThis._p0003DiskInspectWorker = _diskInspectWorker;
       if (typeof _diskInspectWorker.unref === "function") _diskInspectWorker.unref();
       _diskInspectWorker.on("message", (res) => {
+        spawnedOk = true;
         const cb = _diskInspectPending.get(res?.id);
         if (cb) {
           _diskInspectPending.delete(res.id);
@@ -194,11 +196,13 @@ function runDiskInspectInElectronWorker({ userDataDir, profileCode, needCookies 
         }
       });
       _diskInspectWorker.on("error", () => {
+        if (!spawnedOk) _diskInspectWorkerDisabled = true;
         _diskInspectWorker = null;
         for (const [, cb] of _diskInspectPending.entries()) cb({ ok: false });
         _diskInspectPending.clear();
       });
-      _diskInspectWorker.on("exit", () => {
+      _diskInspectWorker.on("exit", (code) => {
+        if (!spawnedOk && code !== 0) _diskInspectWorkerDisabled = true;
         _diskInspectWorker = null;
         for (const [, cb] of _diskInspectPending.entries()) cb({ ok: false });
         _diskInspectPending.clear();
@@ -249,8 +253,8 @@ async function syncProfilePlatformsToP0020IfChanged({
   if (isCloseSource) {
     const t = setTimeout(() => {
       try {
-        const { trimClosedProfileDisposableCache } = require("./profile-chrome-cleanup.cjs");
-        trimClosedProfileDisposableCache(userDataDir);
+        const { trimClosedProfileDisposableCacheAsync } = require("./profile-chrome-cleanup.cjs");
+        void trimClosedProfileDisposableCacheAsync(userDataDir, { profileCode }).catch(() => undefined);
       } catch {
         /* ignore */
       }
@@ -330,7 +334,9 @@ async function syncProfilePlatformsToP0020IfChanged({
       needSpa: false,
     });
     if (workerRes) {
-      precomputedSpaSummary = workerRes.spaSummary;
+      if (workerRes.spaSummary) {
+        precomputedSpaSummary = workerRes.spaSummary;
+      }
       if (workerRes.decrypted?.ok && Array.isArray(workerRes.decrypted.cookies) && workerRes.decrypted.cookies.length > 0) {
         pairs = workerRes.decrypted.cookies;
         await syncLiveCdpCookiesToVaultIfChanged(workerRes.decrypted.cookies, {
@@ -545,7 +551,7 @@ async function syncProfilePlatformsToP0020IfChanged({
       const tmpHist = path.join(os.tmpdir(), `p0003-hist-sync-${code}-${Date.now()}.sqlite`);
       try {
         fs.copyFileSync(histPath, tmpHist);
-        const hdb = new DatabaseSync(tmpHist, { open: true, readOnly: true });
+        const hdb = openGuardSqlite(tmpHist, { readOnly: true, busyTimeoutMs: 2000 });
         const hRows = hdb
           .prepare(
             "SELECT u.url, u.title, CAST(v.visit_time / 1000000 AS INTEGER) AS visit_sec FROM visits v JOIN urls u ON v.url = u.id WHERE (u.url LIKE '%/signin/challenge/iap%' AND u.url NOT LIKE '%/signin/challenge/iap/verify%') OR u.url LIKE '%/signin/challenge/ipp%' OR u.url LIKE '%/devicephoneverification/%' OR u.url LIKE '%/signin/v2/disabled%' OR u.url LIKE '%/speedbump/disabled/%' OR u.url LIKE '%myaccount.google.com/restrictions/54%' OR u.url LIKE '%myaccount.google.com/restrictions/47%' OR (u.url LIKE 'https://mail.google.com/mail/u/%' AND u.url NOT LIKE '%/ServiceLogin%') OR (u.url LIKE 'https://myaccount.google.com/%' AND u.url NOT LIKE '%/restrictions/%' AND u.url NOT LIKE '%/verification/selfie%') OR u.url LIKE 'https://one.google.com/%' OR u.url LIKE 'https://studio.youtube.com/%' OR u.url LIKE 'https://drive.google.com/%' ORDER BY v.visit_time DESC LIMIT 5",

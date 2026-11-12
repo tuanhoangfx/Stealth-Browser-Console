@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "label": "stable-1.2.13",
+  "version": "1.2.13",
+  "gitCommit": "7b6b24f2f770d305c9b912084584c9543b155fac",
+  "gitDirty": true,
+  "gitTag": "v1.2.13-stable",
+  "productType": "Extension",
+  "notes": "E0001 Cookie Bridge — pin CWS live + gitTag. Restore: checkout gitTag (load unpacked) or wait Chrome Web Store auto-update to crxVersion. Do not pin local WIP ahead of Store.",
+  "deploy": {
+    "provider": "chrome-web-store",
+    "productionUrl": "https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk",
+    "extensionId": "kaaadageakdandpobcofplmfbjfjabdk",
+    "listingStatus": "in_review",
+    "crxVersion": "1.2.13",
+    "privacyPolicy": "https://databox.infi.io.vn/e0001-privacy.html",
+    "toolUrl": "https://databox.infi.io.vn/cookie",
+    "capturedAt": "2026-10-29T17:56:37.541Z",
+    "source": "cws-status+git"
+  },
+  "artifact": {
+    "file": "E0001-cookie-bridge-store-v1.2.13.zip",
+    "path": "dist/E0001-cookie-bridge-store-v1.2.13.zip",
+    "bytes": 11404116,
+    "sha512": "39c384c506193cdbd89ed27ac4670f1e814bbfa417e1665e08ae682727856b969820fbda686fad940f8d80b85cde6c2d590d59ca8c2e88463df2a8f7ab2befd9"
+  },
+  "restore": {
+    "rollback": "powershell -File E:\\Dev\\Tool\\scripts\\restore-known-good.ps1 -Code E0001 -GitCheckout",
+    "loadUnpacked": "git checkout v1.2.13-stable && chrome://extensions → Load unpacked",
+    "store": "https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk",
+    "smoke": "chrome://extensions → Cookie Bridge version matches pin"
+  },
+  "checklist": [
+    "https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk installs / updates",
+    "Popup Sign In + Link extension works",
+    "build-info.js version matches pin (no Nh ago clock)",
+    "crxVersion on CWS equals pin version"
+  ]
+}

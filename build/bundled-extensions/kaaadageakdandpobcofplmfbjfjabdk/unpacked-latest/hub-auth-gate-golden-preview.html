@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>E0001 Golden Auth Gate Preview</title>
+    <link rel="stylesheet" href="hub-workspace-user-modal.css" />
+    <link rel="stylesheet" href="popup-theme.css" />
+    <link rel="stylesheet" href="hub-auth-gate-golden-preview.css" />
+  </head>
+  <body class="golden-auth-preview" data-golden-auth-gate-preview="E0001">
+    <!-- GOLDEN_AUTH_GATE_PREVIEW — parity packages/hub-ui HubAuthGateGoldenPreview -->
+    <main class="golden-auth-preview__main">
+      <h1 class="golden-auth-preview__title">Golden Auth Gate — E0001 Cookie Bridge</h1>
+
+      <section aria-labelledby="preview-chip-title">
+        <h2 id="preview-chip-title" class="golden-auth-preview__section-title">HubAuthLogoutChip — admin crown · no Signed in badge</h2>
+        <div class="golden-auth-preview__chip-row">
+          <div id="chip-linked" class="hub-auth-logout-chip hub-auth-logout-chip--linked">
+            <button type="button" class="hub-auth-logout-chip__identity" title="user@infix1.io.vn — User details">
+              <span id="chip-linked-role-icon" class="hub-auth-logout-chip__user-icon hub-user-icon--indigo" aria-hidden="true"></span>
+              <span id="chip-linked-email" class="hub-auth-logout-chip__email">user@infix1.io.vn</span>
+            </button>
+            <button type="button" class="hub-auth-logout-chip__logout" title="Log out">
+              <span data-icon="logout" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div id="chip-guest" class="hub-auth-logout-chip">
+            <button type="button" class="hub-auth-logout-chip__identity" title="User details">
+              <span id="chip-guest-role-icon" class="hub-auth-logout-chip__user-icon hub-user-icon--violet" aria-hidden="true"></span>
+              <span id="chip-guest-email" class="hub-auth-logout-chip__email">guest</span>
+            </button>
+            <button type="button" class="hub-auth-logout-chip__logout" disabled title="No session to log out">
+              <span data-icon="logout" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <p class="golden-auth-preview__hint">Role icon parity HubSidebarUserFooter — extension header only (no session badge).</p>
+      </section>
+
+      <section aria-labelledby="preview-status-title">
+        <h2 id="preview-status-title" class="golden-auth-preview__section-title">Route status chips — icon + label</h2>
+        <div id="status-chip-row" class="golden-auth-preview__chip-row"></div>
+      </section>
+
+      <section aria-labelledby="preview-modal-title">
+        <h2 id="preview-modal-title" class="golden-auth-preview__section-title">HubAuthGateModal — E0001 · Sign In / Sign Up</h2>
+        <p class="golden-auth-preview__meta">Modal-only · 30rem · blur 8px · login required (no Anonymous)</p>
+        <div class="golden-auth-preview__modal-wrap">
+          <div id="extension-login-modal" class="auth-gate-root" role="dialog" aria-modal="true" aria-labelledby="extension-login-title">
+            <div class="auth-gate-backdrop" aria-hidden="true"></div>
+            <div class="auth-gate-panel auth-gate-panel--modal hub-modal-frame">
+              <button type="button" class="hub-modal-close" aria-label="Close sign in">×</button>
+              <div class="auth-gate-brand">
+                <img class="auth-gate-logo" src="icons/e0001.svg" width="48" height="48" alt="" aria-hidden="true" />
+              </div>
+              <h2 id="extension-login-title" class="auth-gate-title">Welcome to Cookie Bridge</h2>
+              <p class="auth-gate-tool-info">E0001 · Cookie Bridge — cookie routes &amp; vault sync</p>
+              <div class="auth-gate-tabs auth-gate-tabs--triple" role="tablist">
+                <button type="button" class="auth-gate-tab auth-gate-tab--active" role="tab" aria-selected="true">
+                  <span class="auth-gate-tab__icon" data-icon="lock" aria-hidden="true"></span>
+                  <span>Sign In</span>
+                </button>
+                <button type="button" class="auth-gate-tab" role="tab" aria-selected="false">
+                  <span class="auth-gate-tab__icon" data-icon="user" aria-hidden="true"></span>
+                  <span>Sign Up</span>
+                </button>
+              </div>
+              <form class="auth-gate-form">
+                <input class="auth-gate-field" type="text" placeholder="User ID or email" value="preview@infix1.io.vn" readonly />
+                <div class="auth-gate-password-wrap">
+                  <input class="auth-gate-field" type="password" placeholder="Password" value="preview-only" readonly />
+                  <button type="button" class="auth-gate-forgot">Forgot Password?</button>
+                </div>
+                <button type="button" class="auth-gate-submit">
+                  <span class="auth-gate-tab__icon" data-icon="lock" aria-hidden="true"></span>
+                  <span>Sign In</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module">
+      /** hub-vanilla SSOT — synced from packages/hub-ui/src/lib */
+      import { updateHubAuthLogoutChip } from "./hub-auth-logout-chip.js";
+      import { renderRouteStatusChipHtml, resolveExtensionRouteStatusDisplay } from "./hub-route-status-chip.js";
+      import { HUB_ROUTE_STATUS_ICON_SVGS } from "./hub-route-status-icons.js";
+
+      const ICONS = {
+        ...HUB_ROUTE_STATUS_ICON_SVGS,
+        crown: '<svg viewBox="0 0 24 24"><path d="m2 8 4 2 3-5 3 5 3-5 3 5 4-2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z"/></svg>',
+        userRound: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
+        logout: '<svg viewBox="0 0 24 24"><path d="M10 17l-1 0a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4h1"/><path d="M15 7l5 5-5 5"/><path d="M20 12H10"/></svg>',
+        lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+        user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+      };
+      function icon(name, className = "ui-icon") {
+        const svg = ICONS[name] || "";
+        return svg ? `<span class="${className}">${svg}</span>` : "";
+      }
+      document.querySelectorAll("[data-icon]").forEach((el) => {
+        const n = el.getAttribute("data-icon");
+        if (n) el.innerHTML = icon(n);
+      });
+      updateHubAuthLogoutChip({
+        chipEl: document.getElementById("chip-linked"),
+        emailEl: document.getElementById("chip-linked-email"),
+        roleIconEl: document.getElementById("chip-linked-role-icon"),
+        email: "user@infix1.io.vn",
+        roleKey: "admin",
+        linked: true,
+        renderIconHtml: icon,
+      });
+      updateHubAuthLogoutChip({
+        chipEl: document.getElementById("chip-guest"),
+        emailEl: document.getElementById("chip-guest-email"),
+        roleIconEl: document.getElementById("chip-guest-role-icon"),
+        email: "guest",
+        roleKey: "anonymous",
+        linked: false,
+        renderIconHtml: icon,
+      });
+      const statusRow = document.getElementById("status-chip-row");
+      for (const st of [{}, { ok: true }, { ok: true, empty: true }, { ok: false, error: "probe fail" }]) {
+        statusRow.insertAdjacentHTML(
+          "beforeend",
+          renderRouteStatusChipHtml(resolveExtensionRouteStatusDisplay(st), icon),
+        );
+      }
+    </script>
+  </body>
+</html>

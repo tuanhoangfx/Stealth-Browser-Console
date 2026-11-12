@@ -7,6 +7,11 @@ import { createRequire } from "node:module";
 
 import { stealthElectronEnv } from "./stealth-electron-env.mjs";
 import { winSpawnOpts } from "./win-spawn.mjs";
+import {
+  listProcessesNative,
+  readProcessCommandLineNative,
+  readProcessExePathNative,
+} from "../../../scripts/lib/win-native-proc-net.mjs";
 
 const require = createRequire(import.meta.url);
 const { DEFAULT_PROD_API_PORT, DEFAULT_DEV_API_PORT } = require("../../electron/lib/user-data-root.cjs");
@@ -59,6 +64,8 @@ export function isPidAlive(pid) {
 
 function readProcessCommandLine(pid) {
   if (process.platform !== "win32") return "";
+  const nat = readProcessCommandLineNative(pid);
+  if (nat !== null) return nat.trim();
   const result = spawnSync(
     "powershell",
     [
@@ -126,6 +133,23 @@ function killWatchBuild() {
 
 function killOrphanDevElectron() {
   if (process.platform !== "win32") return;
+  const natProcs = listProcessesNative({ imageNames: ["electron.exe"], includeCmdline: true });
+  if (natProcs) {
+    const ids = new Set();
+    for (const p of natProcs) {
+      if (/stealth-browser-console-dev|P0003-Stealth-Browser-Console/i.test(String(p.cmd || ""))) {
+        if (p.pid > 0) ids.add(p.pid);
+        if (p.ppid > 0) ids.add(p.ppid);
+      }
+    }
+    for (const id of ids) {
+      const exe = readProcessExePathNative(id) || "";
+      if (/(?:electron|nodew?)\.exe$/i.test(exe)) {
+        spawnSync("taskkill", ["/PID", String(id), "/T", "/F"], winSpawnOpts({ stdio: "ignore" }));
+      }
+    }
+    return;
+  }
   spawnSync(
     "powershell",
     [

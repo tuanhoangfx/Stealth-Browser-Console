@@ -4,12 +4,17 @@
  * (`reconcileAllProfilesDiskCookiesToP0020`, `healStaleChallengedAndErrorP0020Rows`,
  * `harvestDiskSqliteToEcosystemVaults`, `batchWriteBackAllVaultCookiesToProfilesDisk`).
  *
- * Isolates heavy synchronous SQLite (`node:sqlite`), LevelDB scans, and DPAPI decryption from
+ * Isolates heavy synchronous Dual-ABI SQLite (`better-sqlite3`), LevelDB scans, and native DPAPI decryption from
  * the Electron main thread and user-interactive browser sessions.
  */
 const { isMainThread, parentPort, Worker } = require("node:worker_threads");
 
 if (!isMainThread && parentPort) {
+  try {
+    require("./ensure-packaged-module-paths.cjs");
+  } catch {
+    /* dev workspace already resolves packaged deps */
+  }
   parentPort.on("message", async (msg) => {
     const { id, task, payload = {} } = msg || {};
     try {
@@ -63,11 +68,11 @@ const _pending = new Map();
 function getOrCreateWorker() {
   if (_sharedWorker) return _sharedWorker;
   const worker = new Worker(__filename);
-  if (typeof worker.unref === "function") worker.unref();
   worker.on("message", (msg) => {
     const entry = _pending.get(msg?.id);
     if (!entry) return;
     _pending.delete(msg.id);
+    if (_pending.size === 0 && typeof worker.unref === "function") worker.unref();
     clearTimeout(entry.timer);
     if (msg.ok) {
       entry.resolve(msg.result);
@@ -91,6 +96,7 @@ function getOrCreateWorker() {
     _pending.clear();
     _sharedWorker = null;
   });
+  if (typeof worker.unref === "function") worker.unref();
   _sharedWorker = worker;
   return worker;
 }
@@ -110,14 +116,28 @@ function runP0020ReconcileInWorker(task, payload = {}, { timeoutMs = 120_000 } =
     const id = ++_seq;
     const timer = setTimeout(() => {
       _pending.delete(id);
+      if (_pending.size === 0 && typeof worker.unref === "function") worker.unref();
       reject(new Error(`Worker task timeout (${task})`));
     }, timeoutMs);
     if (typeof timer.unref === "function") timer.unref();
     _pending.set(id, { resolve, reject, timer });
+    if (typeof worker.ref === "function") worker.ref();
     worker.postMessage({ id, task, payload });
   });
 }
 
+async function terminateP0020ReconcileWorker() {
+  const w = _sharedWorker;
+  _sharedWorker = null;
+  if (!w) return;
+  try {
+    await w.terminate();
+  } catch {
+    /* ignore */
+  }
+}
+
 module.exports = {
   runP0020ReconcileInWorker,
+  terminateP0020ReconcileWorker,
 };

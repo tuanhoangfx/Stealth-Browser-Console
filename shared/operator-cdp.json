@@ -42,6 +42,18 @@
         "js": ["content-fb-auth.js"],
         "run_at": "document_idle",
         "all_frames": true
+      },
+      {
+        "matches": [
+          "https://chatgpt.com/*",
+          "https://*.openai.com/*",
+          "https://*.stripe.com/*",
+          "https://pay.google.com/*",
+          "https://*.elevenlabs.io/*"
+        ],
+        "js": ["content-checkout.js"],
+        "run_at": "document_idle",
+        "all_frames": true
       }
     ]
   }

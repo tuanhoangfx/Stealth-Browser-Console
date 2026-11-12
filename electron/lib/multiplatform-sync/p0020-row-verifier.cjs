@@ -853,7 +853,7 @@ async function verifyRowPlatformAndAiSession({
     let verifiedElevenLabsOnboarding = null;
     let verifiedCapcutConnectsCount = null;
 
-    if (svcLower === "elevenlabs" && match.loggedIn) {
+    if (svcLower === "elevenlabs") {
       const hasSignInLiveTab =
         isLiveWindow &&
         liveCdpTargets.some((t) =>
@@ -867,6 +867,11 @@ async function verifyRowPlatformAndAiSession({
           row.stealth_snapshot && typeof row.stealth_snapshot === "object"
             ? row.stealth_snapshot
             : null;
+        const isBannedOrAppealRow =
+          /^(appeal|banned|disable)$/i.test(String(rowStatusLower || "").trim()) ||
+          /^(disabled_appeal_submitted|account_banned|account_disabled_banned)$/i.test(
+            String(rowResCodeLower || "").trim(),
+          );
         verifiedAiServerUid = String(
           curSnapCheck?.xi_user_id || curSnapCheck?.firebase_local_id || "",
         ).trim();
@@ -878,9 +883,26 @@ async function verifyRowPlatformAndAiSession({
               "",
           ).match(/\b(sk_[A-Za-z0-9_]{20,})\b/);
         const elApiKey = elKeyMatch ? elKeyMatch[1] : "";
+        const hasFirebaseRt = Boolean(
+          String(curSnapCheck?.firebase_refresh_token || "").trim(),
+        );
         if (
+          !match.loggedIn &&
+          !isBannedOrAppealRow &&
+          verifiedAiServerUid &&
+          (elApiKey || hasFirebaseRt) &&
+          curSnapCheck?.is_onboarding_completed !== false &&
+          String(curSnapCheck?.status || "") === "logged_in" &&
+          !isLiveWindow
+        ) {
+          match.loggedIn = true;
+          match.resultCode = "elevenlabs_v1_user_api";
+          verifiedElevenLabsOnboarding = true;
+        } else if (
           elApiKey &&
-          (isLiveWindow ||
+          !isBannedOrAppealRow &&
+          (match.loggedIn ||
+            isLiveWindow ||
             !verifiedAiServerUid ||
             String(curSnapCheck?.status || "") !== "logged_in" ||
             curSnapCheck?.is_onboarding_completed === false)
@@ -902,6 +924,8 @@ async function verifyRowPlatformAndAiSession({
                   Boolean(liveXiUid && elApiKey);
                 if (elUser.is_onboarding_completed === true || hasActiveQuota) {
                   verifiedElevenLabsOnboarding = true;
+                  match.loggedIn = true;
+                  match.resultCode = "elevenlabs_v1_user_api";
                 } else if (elUser.is_onboarding_completed === false) {
                   verifiedElevenLabsOnboarding = false;
                   match.loggedIn = false;

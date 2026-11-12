@@ -2,7 +2,14 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { unpackedExtensionId } = require("./profile-chrome-preferences.cjs");
-const { ensureCloakbrowserExtensionStages } = require("./cloakbrowser-extension-stage.cjs");
+const {
+  ensureCloakbrowserExtensionStages,
+  copyExtensionTreeBestEffort,
+  pruneNonRuntimeStageDirs,
+  coreStageFilesHealthy,
+  newestStageCoreMtime,
+  newestIconMtime,
+} = require("./cloakbrowser-extension-stage.cjs");
 
 function cloakbrowserRoot() {
   const override = String(process.env.STEALTH_CLOAKBROWSER_ROOT || "").trim();
@@ -43,8 +50,70 @@ function samePath(a, b) {
     path.resolve(String(b || "")).replace(/\\/g, "/").toLowerCase();
 }
 
-function ensureStageJunction(stageDir, linkPath) {
+/**
+ * Materialize `stageDir` (`extension-stage/<id>`) into `linkPath` (`chromium-<ver>/<id>`).
+ * On Windows, Chromium's headed Renderer Sandbox (`FILES_ALLOW_READONLY` scoped strictly to
+ * `<chromiumDir>/<id>/*` when `--no-sandbox` is stripped) blocks NTFS Reparse Points / Junctions
+ * when loading MV3 Service Workers (`background.js`), leaving `serviceworkerevents: []` in
+ * `Default/Secure Preferences`. Materializing real files avoids reparse-point denial while
+ * preserving the exact folder path and unpacked extension ID.
+ */
+function ensureStageJunction(stageDir, linkPath, options = {}) {
   const target = path.resolve(stageDir);
+  if (process.platform === "win32") {
+    let wasSymlink = false;
+    try {
+      const stat = fs.lstatSync(linkPath);
+      if (stat.isSymbolicLink()) {
+        wasSymlink = true;
+        try {
+          fs.unlinkSync(linkPath);
+        } catch {
+          fs.rmdirSync(linkPath);
+        }
+      }
+    } catch (error) {
+      if (error && error.code !== "ENOENT") {
+        if (fs.existsSync(path.join(linkPath, "manifest.json"))) return "locked-copy";
+        return "skip";
+      }
+    }
+    if (!options.force && !wasSymlink) {
+      try {
+        const targetManifest = path.join(target, "manifest.json");
+        const linkManifest = path.join(linkPath, "manifest.json");
+        if (fs.existsSync(targetManifest) && fs.existsSync(linkManifest)) {
+          const tVer = String(JSON.parse(fs.readFileSync(targetManifest, "utf8"))?.version || "").trim();
+          const lVer = String(JSON.parse(fs.readFileSync(linkManifest, "utf8"))?.version || "").trim();
+          if (
+            tVer === lVer &&
+            newestStageCoreMtime(target) <= newestStageCoreMtime(linkPath) + 2 &&
+            newestIconMtime(target) <= newestIconMtime(linkPath) + 2 &&
+            coreStageFilesHealthy(target, linkPath)
+          ) {
+            pruneNonRuntimeStageDirs(linkPath);
+            return "ok";
+          }
+        }
+      } catch {
+        /* fall through to copy */
+      }
+    }
+    try {
+      copyExtensionTreeBestEffort(target, linkPath, target);
+      if (!fs.existsSync(path.join(target, "_metadata", "verified_contents.json"))) {
+        try {
+          fs.rmSync(path.join(linkPath, "_metadata"), { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+      }
+      pruneNonRuntimeStageDirs(linkPath);
+      return fs.existsSync(path.join(linkPath, "manifest.json")) ? "linked" : "skip";
+    } catch {
+      return fs.existsSync(path.join(linkPath, "manifest.json")) ? "locked-copy" : "skip";
+    }
+  }
   try {
     const stat = fs.lstatSync(linkPath);
     if (stat.isSymbolicLink()) {
@@ -215,7 +284,7 @@ function syncOperatorChromiumStages(operatorDir, extraCacheDirs = [], options = 
   const linkedDirs = [];
   for (const dir of dirs) {
     if (samePath(dir, operatorStableRoot()) || samePath(dir, staged.stageDir)) continue;
-    const result = ensureStageJunction(staged.stageDir, path.join(dir, staged.extId));
+    const result = ensureStageJunction(staged.stageDir, path.join(dir, staged.extId), options);
     if (result === "ok" || result === "linked" || result === "locked-copy") {
       linked += 1;
       linkedDirs.push(dir);

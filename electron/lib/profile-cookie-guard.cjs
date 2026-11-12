@@ -141,14 +141,40 @@ function inspectProfileSqliteCookiesSummary(userDataDir) {
   return inspectSqliteCookiesFile(ckPath, byteSize);
 }
 
-function openSqliteTempSync(tmpFile) {
-  try {
-    const BetterSqlite3 = require("better-sqlite3");
-    return new BetterSqlite3(tmpFile);
-  } catch {
-    const { DatabaseSync } = require("node:sqlite");
-    return new DatabaseSync(tmpFile, { open: true });
+let _cachedGuardSqliteOpen = null;
+
+function openGuardSqlite(filePath, { readOnly = false, busyTimeoutMs = 5000 } = {}) {
+  if (!_cachedGuardSqliteOpen) {
+    let BetterSqlite3 = null;
+    try {
+      BetterSqlite3 = require("better-sqlite3");
+    } catch {
+      /* fallback to node:sqlite */
+    }
+    if (BetterSqlite3) {
+      _cachedGuardSqliteOpen = (fp, ro) =>
+        new BetterSqlite3(fp, ro ? { readonly: true, fileMustExist: true } : {});
+    } else {
+      const { DatabaseSync } = require("node:sqlite");
+      _cachedGuardSqliteOpen = (fp, ro) =>
+        new DatabaseSync(fp, ro ? { open: true, readOnly: true } : { open: true });
+    }
   }
+  const db = _cachedGuardSqliteOpen(filePath, readOnly);
+  if (busyTimeoutMs > 0) {
+    try {
+      db.exec(`PRAGMA busy_timeout = ${Math.floor(busyTimeoutMs)};`);
+    } catch {
+      /* ignore on immutable handles */
+    }
+  }
+  return db;
+}
+
+function openSqliteTempSync(tmpFile) {
+  const db = openGuardSqlite(tmpFile, { readOnly: false, busyTimeoutMs: 2000 });
+  db.exec("PRAGMA synchronous = OFF; PRAGMA temp_store = MEMORY;");
+  return db;
 }
 
 function inspectSqliteCookiesFile(ckPath, byteSize = 0) {
@@ -468,8 +494,8 @@ function normalizeUnpartitionedCrossSiteAncestorRows(sqlitePath) {
   if (!sqlitePath || !fs.existsSync(sqlitePath)) return 0;
   let db = null;
   try {
-    const { DatabaseSync } = require("node:sqlite");
-    db = new DatabaseSync(sqlitePath);
+    db = openGuardSqlite(sqlitePath, { readOnly: false, busyTimeoutMs: 5000 });
+    db.exec("PRAGMA synchronous = NORMAL; PRAGMA temp_store = MEMORY;");
     const bad = db
       .prepare("SELECT COUNT(*) AS c FROM cookies WHERE top_frame_site_key = '' AND (has_cross_site_ancestor != 1 OR source_type = 0)")
       .get()?.c;
@@ -1605,6 +1631,53 @@ function decryptCookieValueChromium(masterKey, encryptedBlob, metaVersion = 24) 
 
 let _fallbackGeneratedDpapiPair = null;
 
+function protectDpapiKey(rawKeyBuf) {
+  if (process.platform !== "win32" || !Buffer.isBuffer(rawKeyBuf) || rawKeyBuf.length !== 32) return "";
+  const nat = _getNativeDpapi();
+  if (nat) {
+    try {
+      const inBlob = { cbData: rawKeyBuf.length, pbData: rawKeyBuf };
+      const outBlob = { cbData: 0, pbData: null };
+      if (nat.CryptProtectData(inBlob, null, null, null, null, 0x1, outBlob) && outBlob.pbData && outBlob.cbData > 0) {
+        try {
+          const encBuf = Buffer.from(nat.koffi.decode(outBlob.pbData, "uint8_t", outBlob.cbData));
+          const fullBuf = Buffer.concat([Buffer.from("DPAPI", "utf8"), encBuf]);
+          const encryptedKeyB64 = fullBuf.toString("base64");
+          const keyCopy = Buffer.from(rawKeyBuf);
+          _dpapiKeyCache.set(encryptedKeyB64, keyCopy);
+          _persistDpapiDiskCacheEntries([[encryptedKeyB64, keyCopy]]);
+          return encryptedKeyB64;
+        } finally {
+          nat.LocalFree(outBlob.pbData);
+        }
+      }
+    } catch {
+      /* fall through to PowerShell fallback */
+    }
+  }
+  try {
+    const rawB64 = rawKeyBuf.toString("base64");
+    const psCmd = `Add-Type -AssemblyName System.Security; $raw = [Convert]::FromBase64String('${rawB64}'); $enc = [System.Security.Cryptography.ProtectedData]::Protect($raw, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser); $prefix = [System.Text.Encoding]::UTF8.GetBytes('DPAPI'); $full = New-Object byte[] ($prefix.Length + $enc.Length); [Array]::Copy($prefix, 0, $full, 0, $prefix.Length); [Array]::Copy($enc, 0, $full, $prefix.Length, $enc.Length); [Convert]::ToBase64String($full)`;
+    const res = spawnSync("powershell", ["-NoProfile", "-Command", psCmd], {
+      stdio: "pipe",
+      windowsHide: true,
+      encoding: "utf8",
+      timeout: 6000,
+    });
+    if (res.status !== 0 || !res.stdout) return "";
+    const encryptedKeyB64 = res.stdout.trim();
+    if (encryptedKeyB64.length > 16) {
+      const keyCopy = Buffer.from(rawKeyBuf);
+      _dpapiKeyCache.set(encryptedKeyB64, keyCopy);
+      _persistDpapiDiskCacheEntries([[encryptedKeyB64, keyCopy]]);
+      return encryptedKeyB64;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
 function getOrGenerateFallbackDpapiKeyPair() {
   if (_fallbackGeneratedDpapiPair) return _fallbackGeneratedDpapiPair;
   _loadDpapiDiskCacheIfUpdated();
@@ -1618,37 +1691,8 @@ function getOrGenerateFallbackDpapiKeyPair() {
   if (process.platform !== "win32") return null;
   try {
     const rawKey = crypto.randomBytes(32);
-    const nat = _getNativeDpapi();
-    if (nat) {
-      const inBlob = { cbData: rawKey.length, pbData: rawKey };
-      const outBlob = { cbData: 0, pbData: null };
-      if (nat.CryptProtectData(inBlob, null, null, null, null, 0x1, outBlob) && outBlob.pbData && outBlob.cbData > 0) {
-        try {
-          const encBuf = Buffer.from(nat.koffi.decode(outBlob.pbData, "uint8_t", outBlob.cbData));
-          const fullBuf = Buffer.concat([Buffer.from("DPAPI", "utf8"), encBuf]);
-          const encryptedKeyB64 = fullBuf.toString("base64");
-          _dpapiKeyCache.set(encryptedKeyB64, rawKey);
-          _persistDpapiDiskCacheEntries([[encryptedKeyB64, rawKey]]);
-          _fallbackGeneratedDpapiPair = { encryptedKeyB64, masterKey: rawKey };
-          return _fallbackGeneratedDpapiPair;
-        } finally {
-          nat.LocalFree(outBlob.pbData);
-        }
-      }
-    }
-    const rawB64 = rawKey.toString("base64");
-    const psCmd = `Add-Type -AssemblyName System.Security; $raw = [Convert]::FromBase64String('${rawB64}'); $enc = [System.Security.Cryptography.ProtectedData]::Protect($raw, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser); $prefix = [System.Text.Encoding]::UTF8.GetBytes('DPAPI'); $full = New-Object byte[] ($prefix.Length + $enc.Length); [Array]::Copy($prefix, 0, $full, 0, $prefix.Length); [Array]::Copy($enc, 0, $full, $prefix.Length, $enc.Length); [Convert]::ToBase64String($full)`;
-    const res = spawnSync("powershell", ["-NoProfile", "-Command", psCmd], {
-      stdio: "pipe",
-      windowsHide: true,
-      encoding: "utf8",
-      timeout: 6000,
-    });
-    if (res.status !== 0 || !res.stdout) return null;
-    const encryptedKeyB64 = res.stdout.trim();
+    const encryptedKeyB64 = protectDpapiKey(rawKey);
     if (encryptedKeyB64.length > 16) {
-      _dpapiKeyCache.set(encryptedKeyB64, rawKey);
-      _persistDpapiDiskCacheEntries([[encryptedKeyB64, rawKey]]);
       _fallbackGeneratedDpapiPair = { encryptedKeyB64, masterKey: rawKey };
       return _fallbackGeneratedDpapiPair;
     }
@@ -1732,18 +1776,13 @@ function injectVaultCookiesIntoClosedSqlite(userDataDir, cookies = [], { targetR
   const masterKey = ensureProfileLocalStateDpapiKey(userDataDir);
   if (!masterKey) return { injectedCount: 0 };
 
-  let DatabaseSync = null;
-  try {
-    ({ DatabaseSync } = require("node:sqlite"));
-  } catch {
-    return { injectedCount: 0 };
-  }
-
   let db = null;
   try {
     fs.mkdirSync(path.dirname(ckPath), { recursive: true });
-    db = new DatabaseSync(ckPath, { open: true });
+    db = openGuardSqlite(ckPath, { readOnly: false, busyTimeoutMs: 5000 });
     db.exec(`
+      PRAGMA synchronous = NORMAL;
+      PRAGMA temp_store = MEMORY;
       CREATE TABLE IF NOT EXISTS meta(key LONGVARCHAR NOT NULL UNIQUE PRIMARY KEY, value LONGVARCHAR);
       INSERT OR IGNORE INTO meta VALUES('version', '24');
       INSERT OR IGNORE INTO meta VALUES('last_compatible_version', '24');
@@ -2320,7 +2359,7 @@ function batchWriteBackAllVaultCookiesToProfilesDisk({
         if (!dbPath || !fs.existsSync(dbPath)) continue;
         let catDb = null;
         try {
-          catDb = new DatabaseSync(dbPath, { readOnly: true });
+          catDb = openGuardSqlite(dbPath, { readOnly: true, busyTimeoutMs: 2500 });
           const rows = catDb.prepare("SELECT id, name FROM profiles").all();
           for (const r of Array.isArray(rows) ? rows : []) {
             const m = String(r?.name || "").match(/(?:^|\D)(\d{4})(?:\D|$)/);
@@ -2714,13 +2753,6 @@ function harvestDiskSqliteToEcosystemVaults({
   const vaultDir = resolveP0002VaultDir();
   if (!vaultDir) return { ok: false, reason: "vault_dir_not_found" };
 
-  let DatabaseSync = null;
-  try {
-    ({ DatabaseSync } = require("node:sqlite"));
-  } catch {
-    return { ok: false, reason: "node_sqlite_unavailable" };
-  }
-
   const skipSet = new Set(skipProfileCodes.map((c) => String(c).trim().padStart(4, "0")));
   const pairs = [];
   if (profileMap && typeof profileMap.entries === "function") {
@@ -2765,7 +2797,7 @@ function harvestDiskSqliteToEcosystemVaults({
         if (!dbPath || !fs.existsSync(dbPath)) continue;
         let catDb = null;
         try {
-          catDb = new DatabaseSync(dbPath, { readOnly: true });
+          catDb = openGuardSqlite(dbPath, { readOnly: true, busyTimeoutMs: 2500 });
           const rows = catDb.prepare("SELECT id, name FROM profiles").all();
           for (const r of Array.isArray(rows) ? rows : []) {
             const m = String(r?.name || "").match(/(?:^|\D)(\d{4})(?:\D|$)/);
@@ -2869,7 +2901,7 @@ function harvestDiskSqliteToEcosystemVaults({
     let rows = [];
     let metaVer = 24;
     try {
-      db = new DatabaseSync(targetCk, { open: true, readOnly: true });
+      db = openGuardSqlite(targetCk, { readOnly: true, busyTimeoutMs: 2500 });
       try {
         const mRow = db.prepare("SELECT value FROM meta WHERE key = 'version'").get();
         if (mRow?.value) metaVer = Number(mRow.value) || 24;
@@ -3173,11 +3205,11 @@ function isGoogleRegionalHostKey(hostKey) {
   return /^\.google\.(com\.[a-z]{2,3}|co\.[a-z]{2,3}|[a-z]{2,3})$/.test(h) && h !== ".google.com";
 }
 
-function readCookiesFromSingleSqliteFile(targetPath, masterKey, DatabaseSync) {
+function readCookiesFromSingleSqliteFile(targetPath, masterKey) {
   let db = null;
   let tmpCopyPath = "";
   try {
-    // Always copy targetPath to os.tmpdir() before opening with DatabaseSync so Node never holds a file handle
+    // Always copy targetPath to os.tmpdir() before opening SQLite so Node never holds a file handle
     // on Default/Network/Cookies that could collide with Chromium 146's exclusive LockProfileCookieDatabase.
     tmpCopyPath = path.join(
       os.tmpdir(),
@@ -3198,7 +3230,8 @@ function readCookiesFromSingleSqliteFile(targetPath, masterKey, DatabaseSync) {
         }
       }
     }
-    db = new DatabaseSync(tmpCopyPath);
+    db = openGuardSqlite(tmpCopyPath, { readOnly: false, busyTimeoutMs: 2000 });
+    db.exec("PRAGMA synchronous = OFF; PRAGMA temp_store = MEMORY;");
     const metaVer = Number(db.prepare("SELECT value FROM meta WHERE key = 'version'").get()?.value || 24);
     const rows = db
       .prepare(
@@ -3518,16 +3551,10 @@ function sanitizeProfileSqliteCookiesInPlace(
     }
   }
 
-  let DatabaseSync = null;
-  try {
-    ({ DatabaseSync } = require("node:sqlite"));
-  } catch {
-    return { ok: false, mutated: false };
-  }
-
   let db = null;
   try {
-    db = new DatabaseSync(ckPath, { open: true });
+    db = openGuardSqlite(ckPath, { readOnly: false, busyTimeoutMs: 5000 });
+    db.exec("PRAGMA synchronous = NORMAL; PRAGMA temp_store = MEMORY;");
     const cols = new Set(
       db
         .prepare("PRAGMA table_info(cookies)")
@@ -3910,17 +3937,11 @@ function extractDecryptedCookiesFromProfileSqlite(userDataDir) {
   if (!userDataDir) return { ok: false, cookies: [] };
   const masterKey = ensureProfileLocalStateDpapiKey(userDataDir);
   if (!masterKey) return { ok: false, cookies: [] };
-  let DatabaseSync = null;
-  try {
-    ({ DatabaseSync } = require("node:sqlite"));
-  } catch {
-    return { ok: false, cookies: [] };
-  }
   const ckPath = path.join(userDataDir, COOKIES_REL_PATH);
   const bakPath = path.join(userDataDir, COOKIES_BAK_REL_PATH);
   const hasCk = fs.existsSync(ckPath) && fs.statSync(ckPath).size > 0;
   const hasBak = fs.existsSync(bakPath) && fs.statSync(bakPath).size > 0;
-  const primaryCookies = hasCk ? readCookiesFromSingleSqliteFile(ckPath, masterKey, DatabaseSync) : [];
+  const primaryCookies = hasCk ? readCookiesFromSingleSqliteFile(ckPath, masterKey) : [];
   if (primaryCookies.length > 0) {
     const rawHasDotGoogleSid = primaryCookies.some(
       (c) =>
@@ -3976,7 +3997,7 @@ function extractDecryptedCookiesFromProfileSqlite(userDataDir) {
         (c) => String(c?.domain || "").toLowerCase().includes("tiktok.com") && ["sessionid", "sessionid_ss", "sid_tt"].includes(c?.name) && c?.value,
       );
       if (!hasPrimaryGoogle || !hasPrimaryOutlook || !hasPrimaryFb || !hasPrimaryTt) {
-        const backupCookies = readCookiesFromSingleSqliteFile(bakPath, masterKey, DatabaseSync);
+        const backupCookies = readCookiesFromSingleSqliteFile(bakPath, masterKey);
         if (backupCookies.length > 0) {
           const normalizedBak = reconcileSplitGoogleAuthCookies(backupCookies, []);
           const supplement = normalizedBak.filter((c) => {
@@ -4011,7 +4032,7 @@ function extractDecryptedCookiesFromProfileSqlite(userDataDir) {
     }
     return { ok: mergedPrimary.length > 0, cookies: mergedPrimary };
   }
-  const backupCookies = hasBak ? readCookiesFromSingleSqliteFile(bakPath, masterKey, DatabaseSync) : [];
+  const backupCookies = hasBak ? readCookiesFromSingleSqliteFile(bakPath, masterKey) : [];
   if (backupCookies.length === 0) {
     return { ok: false, cookies: [] };
   }
@@ -4028,6 +4049,8 @@ module.exports = {
   LOCAL_STATE_BAK_REL_PATH,
   LOCAL_STORAGE_REL_PATH,
   LOCAL_STORAGE_BAK_REL_PATH,
+  openGuardSqlite,
+  protectDpapiKey,
   unprotectDpapiKey,
   batchUnprotectDpapiKeys,
   decryptCookieValueChromium,

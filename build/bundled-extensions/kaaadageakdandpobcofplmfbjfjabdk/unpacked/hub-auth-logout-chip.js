@@ -26,6 +26,7 @@ export function updateHubAuthLogoutChip(opts) {
     identityBtn,
     logoutBtn,
     roleIconEl,
+    roleIconClassName = "hub-auth-logout-chip__user-icon",
     email = "",
     roleKey = "user",
     linked = false,
@@ -42,7 +43,7 @@ export function updateHubAuthLogoutChip(opts) {
   if (chipEl) chipEl.classList.toggle("hub-auth-logout-chip--linked", linked);
 
   if (roleIconEl && typeof renderIconHtml === "function") {
-    roleIconEl.className = `hub-auth-logout-chip__user-icon ${roleMeta.className}`;
+    roleIconEl.className = `${roleIconClassName} ${roleMeta.className}`;
     roleIconEl.innerHTML = renderIconHtml(roleMeta.icon, `ui-icon ${roleMeta.className}`);
   }
 

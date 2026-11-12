@@ -1,0 +1,10 @@
+{
+  "updatedAt": "2026-11-01T18:58:29.714Z",
+  "totalRows": 55,
+  "authDomainsCount": 3,
+  "hasGoogleAuth": false,
+  "hasOutlookAuth": true,
+  "hasFacebookAuth": true,
+  "hasTikTokAuth": true,
+  "byteSize": 49152
+}

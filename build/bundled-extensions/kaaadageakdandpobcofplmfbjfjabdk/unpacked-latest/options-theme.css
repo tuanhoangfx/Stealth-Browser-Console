@@ -1,0 +1,282 @@
+/* Full-tab options page — Hub typography SSOT (no Google Fonts CDN). */
+:root,
+.theme-hub {
+  --hub-user-zoom-pct: 90;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --bg: #0b1020;
+  --panel: #121830;
+  --panel-2: #1a2140;
+  --text: #e6e8ef;
+  --muted: #8a93b2;
+  --accent: #6366f1;
+  --accent-2: #818cf8;
+  --border: #2a3158;
+  --font: var(--font-sans);
+}
+
+html {
+  font-size: calc(16px * var(--hub-user-zoom-pct, 90) / 100);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body.options-page {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  max-height: none;
+  overflow: auto;
+  display: block;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans, var(--font));
+  -webkit-font-smoothing: antialiased;
+}
+
+.options-page .shell {
+  width: 100%;
+  max-width: 560px;
+  min-width: 320px;
+  margin: 0 auto;
+  min-height: 100vh;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.options-page .header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(18, 24, 48, 0.9));
+}
+
+.options-page .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.options-page .header-text h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.options-page .header-text p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.options-page .body-scroll {
+  flex: 1;
+  overflow: visible;
+  padding: 16px 20px 24px;
+}
+
+.options-page .hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.options-page .row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--panel);
+}
+
+.options-page .row label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+.options-page .row label:first-child {
+  margin-top: 0;
+}
+
+.options-page .row input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.options-page .row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.options-page .btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.options-page .btn-secondary {
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.options-page .btn-secondary:hover {
+  background: var(--panel-2);
+}
+
+.options-page .btn-primary {
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.options-page .btn-remove {
+  margin-top: 10px;
+  color: #fca5a5;
+  font-size: 11px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.options-page #msg {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.options-page #msg.ok {
+  color: #6ee7b7;
+}
+
+.options-page #msg.err {
+  color: #fca5a5;
+}
+
+.options-page .setup-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--panel);
+}
+
+.options-page .setup-card--web {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.options-page .setup-card__title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.options-page .setup-steps {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.options-page .setup-steps strong {
+  color: var(--text);
+}
+
+.options-page .setup-steps code {
+  font-size: 11px;
+  color: #a5b4fc;
+}
+
+.options-page .auth-status {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+}
+
+.options-page .auth-status--ok {
+  color: #6ee7b7;
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.options-page .auth-status--warn {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.options-page .auth-status--off {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.options-page .btn-row--tools {
+  margin-top: 0;
+}
+
+.options-page .bindings-root {
+  min-height: 48px;
+}
+
+.options-page .preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.options-page .preset-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.options-page .btn-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.options-page .btn-chip:hover {
+  border-color: var(--accent);
+}

@@ -1,5 +1,517 @@
 # Changelog
 
+## 2026-11-12 - Verify packaged resources/app-update.yml in unpacked & desktop SSOT gates
+
+- Version: `9.2.393`
+- Timestamp: 2026-11-12 16:43 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Added resources/app-update.yml validation to verify-packaged-unpacked.mjs and verify-desktop-exe-ssot.mjs.
+
+### Verification
+
+- verify-desktop-exe-ssot PASS
+
+---
+## 2026-11-12 - Normalize batch -pXXXX caller slugs and scope supportChatProtected locks
+
+- Version: `9.2.392`
+- Timestamp: 2026-11-12 15:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Strip routine -pXXXX suffixes in resolveAgentCallerIdFromHeaders and restrict priority-agent-locks supportChatProtected immunity to support/chat/appeal reasons so MAX_PER_CALLER=3 holds
+
+### Verification
+
+- agent-verify-gate light + focused caller normalization unit test
+
+---
+## 2026-11-12 - NSIS Uninstall.exe upgrade unlock & end-user update/intro links
+
+- Version: `9.2.391`
+- Timestamp: 2026-11-12 15:17 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added customFiles_x64 NSIS uninstaller unlock macro, atomic .part updater download + single-flight guard, seeded resources/app-update.yml on warm --prepackaged builds, disabled autoInstallOnAppQuit collision, and added 1-click User update link (/intro/download/) + Intro & user guide (/intro/) in Update Release modal and Settings -> About.
+
+### Verification
+
+- vitest + node --test + makensis.exe + vite build + smoke-ui-render PASS
+
+---
+## 2026-11-12 - Add Mage.space Firebase IDB & Leonardo better-auth disk session matchers
+
+- Version: `9.2.390`
+- Timestamp: 2026-11-12 07:26 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Extend service-cookie-matchers.cjs to detect Mage.space firebaseLocalStorageDb and Leonardo AI __Secure-better-auth.session_token cookies
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/service-cookie-matchers.cjs
+
+---
+## 2026-11-12 - Zero-PowerShell and zero-netstat dev orchestrator & kill-port in P0003 scripts
+
+- Version: `9.2.389`
+- Timestamp: 2026-11-12 05:07 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wire dev-desktop-process.mjs and scripts/kill-port.cjs to shared win-native-proc-net.mjs while preserving :6003 prod port refusal and :6004 Dev Exe GUI protection.
+
+### Verification
+
+- node --test Tool/scripts/lib/win-native-proc-net.test.mjs
+
+---
+## 2026-11-12 - Fast System32 tar.exe CloakBrowser mirror archive extraction in cloak-browser-engine.cjs
+
+- Version: `9.2.388`
+- Timestamp: 2026-11-12 04:50 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Extract CloakBrowser frozen Chromium zip from Lenovo mirror via native C++ System32 tar.exe instead of single-threaded PowerShell .NET ZipFile::ExtractToDirectory, keeping SHA-256 verification and .NET fallback.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/engine/cloak-browser-engine.test.cjs
+
+---
+## 2026-11-12 - Add PS5.1-safe scripts.typecheck SSOT parity
+
+- Version: `9.2.387`
+- Timestamp: 2026-11-12 04:30 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wire node_modules/typescript/bin/tsc --noEmit in package.json scripts.typecheck and lock under typecheck-script-parity gate.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run typecheck && node Tool/scripts/test-verify-js-undeclared-identifiers.mjs
+
+---
+## 2026-11-12 - In-memory zlib CRX/ZIP extractor & async System32 tar.exe profile backup/restore
+
+- Version: `9.2.386`
+- Timestamp: 2026-11-12 03:32 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced blocking PowerShell Expand-Archive in webstore-extension.cjs with in-memory Central Directory + zlib.inflateRawSync extractor (with Zip-Slip guard), and migrated profile-backup.cjs + IPC handlers to non-blocking async System32\tar.exe + robocopy.
+
+### Verification
+
+- node --test webstore-extension.test.cjs (13/13 PASS) + profile-backup.test.cjs (8/8 PASS) + agent-verify-gate P0003 PASS
+
+---
+## 2026-11-12 - Stripe Payment Element Selectors, Card Priority & operator-cdp.json Sync
+
+- Version: `9.2.385`
+- Timestamp: 2026-11-12 03:28 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Enhanced billing-autofill-bridge.cjs with Stripe Payment/Address Element selectors (#payment-numberInput, #billingAddress-nameInput, <select> administrativeArea support), prioritized fresh Visa 484804 cards ahead of declined cards, added POST /api/billing-vault/resolve-card, and synced shared/operator-cdp.json with E0002 content-checkout.js.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
+## 2026-11-12 - Native koffi GetDiskFreeSpaceExW & p0020-reconcile-worker module/unref fix
+
+- Version: `9.2.384`
+- Timestamp: 2026-11-12 01:41 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced PowerShell Get-PSDrive fallback in profiles-location.cjs with native Win32 GetDiskFreeSpaceExW via koffi, wired packaged module resolution + proper worker.unref lifecycle in p0020-reconcile-worker.cjs, and migrated mobile-stealth-bridge.cjs to openGuardSqlite.
+
+### Verification
+
+- node --test electron/lib/profile-cookie-guard.test.cjs (14/14 PASS) + agent-verify-gate P0003 PASS
+
+---
+## 2026-11-12 - Profiles & System Extensions directory cells: HubDirectoryValuePopover hover parity
+
+- Version: `9.2.383`
+- Timestamp: 2026-11-12 01:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wrapped System Extensions path cell in HubDirectoryValuePopover and removed redundant native title= inside Stealth Profiles proxy popover.
+
+### Verification
+
+- node Tool/scripts/hub-directory-table-gate.mjs P0003 && node Tool/scripts/hub-ui-preflight.mjs --code P0003
+
+---
+## 2026-11-11 - Preserve ElevenLabs API-Verified & SPA IndexedDB Sessions on Window Close Sync
+
+- Version: `9.2.382`
+- Timestamp: 2026-11-11 20:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fixed stealth-multiplatform-sync.cjs precomputedSpaSummary assignment when worker runs with needSpa:false and updated p0020-row-verifier.cjs to preserve logged_in status for ElevenLabs rows with verified xi_user_id + sk_ API key or Firebase refresh token.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/p0020-row-verifier.cjs
+
+---
+## 2026-11-11 - Native koffi DPAPI protectDpapiKey and Dual-ABI SQLite across cookie guard & session backup
+
+- Version: `9.2.381`
+- Timestamp: 2026-11-11 20:21 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced PowerShell ProtectedData::Protect spawning in native-session-backup.cjs with in-process koffi CryptProtectData (protectDpapiKey) and migrated all remaining node:sqlite sites in profile-cookie-guard.cjs, native-session-backup.cjs, stealth-multiplatform-sync.cjs, cookie-vault-sync.cjs, and p0020-fleet-healers.cjs to Dual-ABI better-sqlite3 (openGuardSqlite).
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs (13/13 PASS, 0 ExperimentalWarning)
+
+---
+## 2026-11-11 - Modularize MobileFarmView and heal Electron cookie-guard/main imports
+
+- Version: `9.2.380`
+- Timestamp: 2026-11-11 19:55 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Sliced MobileFarmView.tsx (3,406L -> 1,528L) into modular sub-views/hooks and added missing DatabaseSync and extractProfileCode imports in electron/lib/profile-cookie-guard.cjs and electron/main.cjs.
+
+### Verification
+
+- tsc --noEmit, knip deadcode, hub-ssot-wave-gate P0003
+
+---
+## 2026-11-11 - Vault JSON (mtimeMs, size) signature cache in disk-sqlite-cookies
+
+- Version: `9.2.379`
+- Timestamp: 2026-11-11 19:53 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced the 60s timer invalidation in getVaultCookiePairsForProfileCode with an (mtimeMs, size) file signature cache on mail-cookie-vault.json and service-cookie-vault.json, eliminating redundant readFileSync/JSON.parse calls when idle while achieving 0ms staleness lag on vault writes and dynamic in-memory expiry filtering.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/disk-sqlite-cookies.test.cjs (2/2 PASS) + agent-verify-gate P0003 light PASS
+
+---
+## 2026-11-11 - Preserve allowStaticIpPin in PATCH profile-ops and support proxy:// country preset in performOpenUrl
+
+- Version: `9.2.378`
+- Timestamp: 2026-11-11 19:28 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added allowStaticIpPin to PATCH_ALLOWED_FIELDS in electron/services/profile-ops.cjs so agent-smoke PATCH calls with allowStaticIpPin=true retain static_ip=1 in updateProfile; included proxy: in performOpenUrl country preset regex alongside vpn:/country:/surfshark:/nordvpn:.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/api-routes.test.cjs
+
+---
+## 2026-11-11 - System Extensions filter pane deduplicate Reload Open Profiles
+
+- Version: `9.2.377`
+- Timestamp: 2026-11-11 19:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed duplicate outer Reload Open Profiles button from SystemExtensionsFilterPane (already present in HubDirectoryBulkMoreMenu) so the bulk action bar complies strictly with the 5-button SSOT.
+
+### Verification
+
+- tsc --noEmit, hub-ui-parity-check --code P0003
+
+---
+## 2026-11-11 - Zero-Temp-Copy read-only SQLite cookie scanner with mtime/size LRU cache
+
+- Version: `9.2.376`
+- Timestamp: 2026-11-11 19:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Read unlocked Chromium Cookies SQLite DBs directly in-place via Dual-ABI better-sqlite3 read-only mode with a 1,000-entry (mtimeMs, size) LRU cache and automatic temp-copy fallback when locked
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/disk-sqlite-cookies.test.cjs + agent-verify-gate P0003
+
+---
+## 2026-11-11 - Bundle E0001 v1.2.33 & hot-stage E0002 v0.1.12 Golden Hub-UI Extension Shell
+
+- Version: `9.2.375`
+- Timestamp: 2026-11-11 18:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Synced bundled E0001 Cookie Bridge v1.2.33 (Bulk Sync/Load + Direct Mode batch fallback) and staged E0002 Browser Operator v0.1.12 (Golden Hub-UI Extension Shell) across CloakBrowser caches.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console lint
+
+---
+## 2026-11-11 - Dual-ABI better-sqlite3 (Electron ABI 140 + Node ABI 127) & native read-only sibling merge
+
+- Version: `9.2.374`
+- Timestamp: 2026-11-11 18:26 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wire workspace Dual-ABI better-sqlite3 (ABI 140 + ABI 127) into electron/db/init.cjs and ensure-better-sqlite3.mjs, and replace broken file:C:/ URI ATTACH in last-opened-durability.cjs with native read-only better-sqlite3 connection
+
+### Verification
+
+- node electron/db/last-opened-durability.test.cjs + node scripts/ensure-better-sqlite3.mjs + agent-verify-gate P0003
+
+---
+## 2026-11-11 - Bundle E0001 Cookie Bridge v1.2.32 unpacked stage
+
+- Version: `9.2.373`
+- Timestamp: 2026-11-11 18:11 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Sync bundled E0001 Cookie Bridge unpacked extension to v1.2.32 (shared sync-engine-core SSOT + Direct Mode header recovery)
+
+### Verification
+
+- pnpm --dir Extension/E0001-cookie-bridge test
+
+---
+## 2026-11-11 - Hot-reload extension cache eviction and MV3 Service Worker heal
+
+- Version: `9.2.372`
+- Timestamp: 2026-11-11 17:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Evict extension staging and preference modules on session-runtime-bridge and system hot-reload, heal missing MV3 SW registration state in Secure Preferences, and invalidate extension status cache on reload-open
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/native-extension-load.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/profile-extension-pins.test.cjs
+
+---
+## 2026-11-11 - Fast profile launch extension cache, LevelDB WAL compaction & MV3 SW health
+
+- Version: `9.2.371`
+- Timestamp: 2026-11-11 16:55 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Eliminate ~9s synchronous E0001 workspace/stage scan & NTFS utimesSync mtime drift on profile launch, offload post-close cache trim/disk inspect off main thread, add automatic >5MB Extension LevelDB WAL compaction (93.1 MB reclaimed across 9 profiles), and surface MV3 Service Worker fleet health in System -> Extensions.
+
+### Verification
+
+- node --test electron/lib/extension-leveldb-compactor.test.cjs electron/lib/extension-sw-health.test.cjs electron/lib/cookie-bridge-store.test.cjs electron/lib/cloakbrowser-extension-stage.test.cjs electron/lib/native-extension-load.test.cjs; pnpm build; sync-hot-patch.cjs
+
+---
+## 2026-11-11 - SQLite DRAM-less SSD WAL PASSIVE checkpoint & fsync optimization
+
+- Version: `9.2.370`
+- Timestamp: 2026-11-11 16:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Switched debounced profile-open WAL checkpoints from TRUNCATE to PASSIVE, eliminated 3 redundant boot PRAGMA quick_check full-DB scans in init.cjs, tuned synchronous=NORMAL/OFF + temp_store=MEMORY across cookie-vault-sync and profile-cookie-guard, and routed disk-sqlite-cookies DPAPI through native koffi CryptUnprotectData.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/db/last-opened-durability.test.cjs + agent-verify-gate --code P0003 --intent light
+
+---
+## 2026-11-11 - Guard Microsoft OAuth2 step-up and MarkLost 30d tabs against false phone_sms_required
+
+- Version: `9.2.369`
+- Timestamp: 2026-11-11 16:33 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Expanded isMsStepUpFlow in electron/lib/multiplatform-sync/live-cdp-targets.cjs to cover login.live.com/oauth20_authorize.srf step-up redirects, mapped /proofs/MarkLost to mark_lost_pending_30d (check_mail), and added mark_lost_pending_30d to NON_OVERRIDABLE_RESTRICTED_RESULT_CODES in p0020-snapshot-builder.cjs.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs
+
+---
+## 2026-11-11 - Zero-PowerShell native GDI+ taskbar badge renderer & COM AppUserModel.ID
+
+- Version: `9.2.368`
+- Timestamp: 2026-11-11 15:28 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added taskbar-badge-render-native.cjs (koffi user32/gdi32/gdiplus + node:zlib PNG) and native COM IPropertyStore AppUserModel.ID in taskbar-apply-worker.cjs, eliminating render-taskbar-badge.ps1 and stealth-taskbar-apply-worker.ps1 PowerShell spawns across P0003 runtime.
+
+### Verification
+
+- node --test taskbar-badge-render-native.test.cjs focus-window-native.test.cjs taskbar-badge-guard.test.cjs (17/17 pass)
+
+---
+## 2026-11-11 - Modularize electron/api-routes.cjs monolith into 7 route modules and heal 3 latent runtime refs
+
+- Version: `9.2.367`
+- Timestamp: 2026-11-11 15:18 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Slice electron/api-routes.cjs (4,124L -> 131L dispatcher) into 7 ASAR-safe and hot-reload-aware modules under electron/routes/*.cjs with 84/84 ordered route parity, healing missing readPriorityLocks/writePriorityLocks, parseProxy, and win-shell-env.cjs relative depth.
+
+### Verification
+
+- node electron/api-routes.test.cjs && pnpm run deadcode && tsc --noEmit
+
+---
+## 2026-11-11 - Materialize Chromium extension stages on Windows & heal poisoned Secure Preferences
+
+- Version: `9.2.366`
+- Timestamp: 2026-11-11 15:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replace Windows NTFS junctions under .cloakbrowser/chromium-* with materialized runtime directories so sandboxed headed MV3 Service Workers load cleanly, clear stale PrefHashFilter HMACs when healing empty serviceworkerevents in Secure Preferences, and invalidate FAST_PREP cache on Secure Preferences mtime/size changes.
+
+### Verification
+
+- 30/30 electron unit tests + sync-hot-patch + Stealth #0004 & fleet Secure Preferences heal
+
+---
+## 2026-11-11 - Native koffi user32 window focus & zero-PowerShell live window scan
+
+- Version: `9.2.365`
+- Timestamp: 2026-11-11 14:58 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced PowerShell + Win32_Process WMI + Add-Type C# compilation in focusProfileBrowserWindow, listLiveCloakWindows, and waitForBrowserMainWindow with 100% native koffi user32.dll/kernel32.dll bindings (<2ms, 0 child process spawns).
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/focus-window-native.test.cjs (14/14 pass) + agent-verify-gate --code P0003 --intent light (ready: true)
+
+---
+## 2026-11-11 - Eliminate untracked chrome-headless.exe & conhost.exe process leaks on session eviction and reconcile
+
+- Version: `9.2.364`
+- Timestamp: 2026-11-11 14:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Forward forcePriority and debugPortHint through SessionManager close/drop paths into closeContext (with 4s hard timeout) and killOrphanProfileBrowser, terminate headless browser trees when reconcileActiveStatuses evicts dead/0-page contexts instead of orphaning OS processes, and add periodic native 60s untracked chrome-headless.exe sweeper.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/running-profile-cap.test.cjs && node Tool/scripts/agent-verify-gate.mjs --code P0003 --json --intent light (ready: true)
+
+---
+## 2026-11-11 - Unify desktop-updater & preload bridge onto @dev/hub-desktop-host-kit (5/5 SSOT)
+
+- Version: `9.2.363`
+- Timestamp: 2026-11-11 13:39 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced 342-line custom electron/desktop-updater.cjs and manual stealth:* preload updater handlers with shared createDesktopUpdaterIpcController + createPreloadUpdateBridge (portable guard, recheck intervals, silent quitAndInstall, and updater-gh-token auth).
+
+### Verification
+
+- node --check electron/main.cjs electron/preload.cjs electron/desktop-updater.cjs, sync-electron-shared-libs --verify, verify-desktop-exe-ssot
+
+---
+## 2026-11-11 - Wire knip static deadcode audit and prune 12 orphan UI files
+
+- Version: `9.2.362`
+- Timestamp: 2026-11-11 12:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added knip.json + deadcode script and removed 12 unused orphan files (802 lines) in src/
+
+### Verification
+
+- knip + tsc --noEmit + hub-ui-parity-check PASS
+
+---
 ## 2026-11-11 - Host Metrics SSOT, HubVisitedTabPanel, Virtualization & Multiplatform Sync Modularization
 
 - Version: `9.2.361`

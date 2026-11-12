@@ -1,0 +1,79 @@
+/* E0001 Golden Auth Gate preview — parity HubAuthGateGoldenPreview (hub-ui). */
+
+.golden-auth-preview {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg, #0b1020);
+  color: var(--text, #e6e8ef);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.golden-auth-preview__main {
+  margin: 0 auto;
+  display: flex;
+  max-width: 42rem;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+.golden-auth-preview__title {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted, #8a93b2);
+}
+
+.golden-auth-preview__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted, #8a93b2);
+}
+
+.golden-auth-preview__chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.25rem 1rem;
+}
+
+.golden-auth-preview__hint {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  font-size: 0.62rem;
+  color: var(--muted, #8a93b2);
+}
+
+.golden-auth-preview__modal-wrap {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem 0 1rem;
+}
+
+.golden-auth-preview .auth-gate-root {
+  position: relative;
+  inset: auto;
+  display: block;
+}
+
+.golden-auth-preview .auth-gate-root[hidden] {
+  display: block !important;
+}
+
+.golden-auth-preview__meta {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted, #8a93b2);
+}

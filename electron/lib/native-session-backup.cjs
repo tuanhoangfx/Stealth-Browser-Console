@@ -5,7 +5,6 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const zlib = require("node:zlib");
-const { spawnSync } = require("node:child_process");
 
 const COLD_SLOT_ZPACK_FILE = "cold-slot.zpack";
 
@@ -53,26 +52,11 @@ function unwrapMasterKeyPortable(wrappedB64) {
   }
 }
 
-function protectDpapiKeyWithPowerShell(masterKeyBuf) {
+function protectDpapiKeyNative(masterKeyBuf) {
   if (process.platform !== "win32" || !Buffer.isBuffer(masterKeyBuf) || masterKeyBuf.length !== 32) return "";
   try {
-    const rawB64 = masterKeyBuf.toString("base64");
-    const ps = `
-      Add-Type -AssemblyName System.Security
-      $raw = [Convert]::FromBase64String('${rawB64}')
-      $enc = [System.Security.Cryptography.ProtectedData]::Protect($raw, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
-      $dpapi = New-Object byte[] ($enc.Length + 5)
-      [System.Text.Encoding]::ASCII.GetBytes('DPAPI').CopyTo($dpapi, 0)
-      $enc.CopyTo($dpapi, 5)
-      [Convert]::ToBase64String($dpapi)
-    `;
-    const res = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", ps], {
-      encoding: "utf8",
-      windowsHide: true,
-      timeout: 5000,
-    });
-    const out = String(res.stdout || "").trim();
-    return out.length > 20 ? out : "";
+    const { protectDpapiKey } = require("./profile-cookie-guard.cjs");
+    return protectDpapiKey(masterKeyBuf);
   } catch {
     return "";
   }
@@ -308,13 +292,8 @@ const DEFAULT_USER_STATE_DIRS = [
 ];
 
 function openSqliteSync(dbPath, { readOnly = false } = {}) {
-  try {
-    const BetterSqlite3 = require("better-sqlite3");
-    return new BetterSqlite3(dbPath, readOnly ? { readonly: true, fileMustExist: true } : {});
-  } catch {
-    const { DatabaseSync } = require("node:sqlite");
-    return new DatabaseSync(dbPath, readOnly ? { open: true, readOnly: true } : { open: true });
-  }
+  const { openGuardSqlite } = require("./profile-cookie-guard.cjs");
+  return openGuardSqlite(dbPath, { readOnly, busyTimeoutMs: 3000 });
 }
 
 const fastHistorySummaryCache = new Map();
@@ -1055,7 +1034,7 @@ function restoreProfileNativeSession(
           if (!canDecryptDirectly && manifest.wrappedMasterKeyB64) {
             const masterKey32 = unwrapMasterKeyPortable(manifest.wrappedMasterKeyB64);
             if (masterKey32) {
-              const newDpapiB64 = protectDpapiKeyWithPowerShell(masterKey32);
+              const newDpapiB64 = protectDpapiKeyNative(masterKey32);
               if (newDpapiB64) {
                 lsObj.os_crypt = { ...(lsObj.os_crypt || {}), encrypted_key: newDpapiB64 };
                 fs.writeFileSync(dstLsPath, JSON.stringify(lsObj), "utf8");

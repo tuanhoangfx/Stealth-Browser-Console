@@ -214,6 +214,12 @@ function promoteStagingToProductOutput(stagingOutput, ver) {
           copyFileWithRetry(srcAsar, dstAsar);
           console.log("run-electron-package: refreshed warm app.asar");
         }
+        const srcUpdateYml = path.join(stagedUnpacked, "resources", "app-update.yml");
+        const dstUpdateYml = path.join(targetUnpacked, "resources", "app-update.yml");
+        if (fs.existsSync(srcUpdateYml)) {
+          copyFileWithRetry(srcUpdateYml, dstUpdateYml);
+          console.log("run-electron-package: refreshed warm resources/app-update.yml");
+        }
         const srcUnpacked = path.join(stagedUnpacked, "resources", "app.asar.unpacked");
         const dstUnpacked = path.join(targetUnpacked, "resources", "app.asar.unpacked");
         if (fs.existsSync(srcUnpacked)) {
@@ -825,6 +831,13 @@ const builderArgs = [];
 let asarWarmBackup = "";
 if (canPrepackaged) {
   console.log(`run-electron-package: Fast prepackaged NSIS from ${unpackedLocal}`);
+  const packGuardPath = path.join(root, "electron", "lib", "electron-builder-pack-guard.cjs");
+  if (fs.existsSync(packGuardPath)) {
+    const { ensurePackagedAppUpdateYml } = require(packGuardPath);
+    if (typeof ensurePackagedAppUpdateYml === "function") {
+      ensurePackagedAppUpdateYml(unpackedLocal, root);
+    }
+  }
   asarWarmBackup = refreshUnpackedAppAsar(unpackedLocal);
   syncUnpackedTaskbarPs1(unpackedLocal);
   syncUnpackedBundledExtensions(unpackedLocal);

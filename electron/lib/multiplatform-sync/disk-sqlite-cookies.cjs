@@ -5,11 +5,74 @@ const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { execFileSync } = require("node:child_process");
-const { DatabaseSync } = require("node:sqlite");
 const {
   COOKIES_REL_PATH,
   COOKIES_BAK_REL_PATH,
+  unprotectDpapiKey,
 } = require("../profile-cookie-guard.cjs");
+
+let _cachedReadOnlySqliteOpen = null;
+function openReadOnlySqlite(filePath) {
+  if (!_cachedReadOnlySqliteOpen) {
+    let BetterSqlite = null;
+    try {
+      BetterSqlite = require("better-sqlite3");
+    } catch {
+      /* fallback to node:sqlite */
+    }
+    if (BetterSqlite) {
+      _cachedReadOnlySqliteOpen = (fp) =>
+        new BetterSqlite(fp, { readonly: true, fileMustExist: true });
+    } else {
+      const { DatabaseSync } = require("node:sqlite");
+      _cachedReadOnlySqliteOpen = (fp) => new DatabaseSync(fp, { readOnly: true });
+    }
+  }
+  return _cachedReadOnlySqliteOpen(filePath);
+}
+
+const DISK_COOKIE_LRU_CAP = 1000;
+const _diskCookieParsedLru = new Map();
+
+function getDiskCookieLru(key) {
+  if (!_diskCookieParsedLru.has(key)) return null;
+  const val = _diskCookieParsedLru.get(key);
+  _diskCookieParsedLru.delete(key);
+  _diskCookieParsedLru.set(key, val);
+  return val;
+}
+
+function setDiskCookieLru(key, val) {
+  if (_diskCookieParsedLru.has(key)) {
+    _diskCookieParsedLru.delete(key);
+  } else if (_diskCookieParsedLru.size >= DISK_COOKIE_LRU_CAP) {
+    const oldest = _diskCookieParsedLru.keys().next().value;
+    if (oldest !== undefined) _diskCookieParsedLru.delete(oldest);
+  }
+  _diskCookieParsedLru.set(key, val);
+}
+
+function isCookiesFileWriteLocked(userDataDir, targetPath) {
+  const probes = [];
+  if (userDataDir) {
+    probes.push(path.join(userDataDir, "lockfile"), path.join(userDataDir, "SingletonLock"));
+  }
+  if (targetPath) {
+    probes.push(targetPath, `${targetPath}-wal`);
+  }
+  for (const p of probes) {
+    if (!p || !fs.existsSync(p)) continue;
+    try {
+      const fd = fs.openSync(p, "r+");
+      fs.closeSync(fd);
+    } catch (err) {
+      if (err && (err.code === "EBUSY" || err.code === "EPERM" || err.code === "EACCES")) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 const {
   resolveP0002VaultDir,
   isAnonymousOrTrackingCookieName,
@@ -73,6 +136,23 @@ function resolveProfileDpapiMasterKey(userDataDir) {
       return keyBuf;
     }
     if (process.platform === "win32") {
+      const nativeBuf = typeof unprotectDpapiKey === "function" ? unprotectDpapiKey(ek) : null;
+      if (Buffer.isBuffer(nativeBuf) && nativeBuf.length === 32) {
+        map.set(ek, nativeBuf);
+        _profileMasterKeyByDirCache.set(userDataDir, nativeBuf);
+        try {
+          const obj = {};
+          for (const [k, v] of map.entries()) obj[k] = v.toString("base64");
+          fs.writeFileSync(DPAPI_MASTER_KEYS_CACHE_FILE, JSON.stringify(obj), "utf8");
+        } catch {
+          /* ignore cache write failure */
+        }
+        return nativeBuf;
+      }
+      if (typeof unprotectDpapiKey === "function") {
+        _profileMasterKeyByDirCache.set(userDataDir, null);
+        return null;
+      }
       const psCmd = `Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String('${ek.replace(/'/g, "")}'); $d=[System.Security.Cryptography.ProtectedData]::Unprotect($b[5..($b.Length-1)],$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); [Convert]::ToBase64String($d)`;
       const outB64 = String(
         execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", psCmd], {
@@ -489,23 +569,40 @@ function matchServiceCookiePairs(serviceName, pairs = [], spaSummary = null, opt
   };
 }
 
-let _vaultCookiePairsCache = null;
-let _vaultCookiePairsLoadedAt = 0;
+let _vaultRawCookieMapCache = null;
+let _vaultRawCookieSig = "";
+const _vaultStats = {
+  sigHits: 0,
+  jsonParses: 0,
+};
+
+function statSigPart(filePath) {
+  try {
+    const st = fs.statSync(filePath);
+    return `${st.mtimeMs}:${st.size}`;
+  } catch {
+    return "0:0";
+  }
+}
 
 /**
- * Proposal 2 (`ok 2`):
- * Loads and caches `(domain, name)` pairs from the shared ecosystem cookie vaults
- * (`fb-cookie-vault.json`, `mail-cookie-vault.json`, `tiktok-cookie-vault.json`, `service-cookie-vault.json`)
- * indexed by 4-digit `profileCode` (`0001`–`9999`), preventing false demotions when SQLite `Cookies` on disk
- * has not yet been flushed while valid backed-up cookies exist in the vault.
+ * Proposal 2 (`ok 2`) + `(mtimeMs, size)` Vault Signature Cache:
+ * Loads and caches `(domain, name, value, expires)` tuples from the shared ecosystem cookie vaults
+ * (`mail-cookie-vault.json`, `service-cookie-vault.json`) indexed by 4-digit `profileCode` (`0001`–`9999`).
+ * Only re-reads & `JSON.parse`s when file `(mtimeMs, size)` changes on disk (`0` redundant parses when idle,
+ * `0 ms` staleness lag when updated), filtering `expires <= nowSec` dynamically in memory.
  */
 function getVaultCookiePairsForProfileCode(profileCode) {
   const code = String(profileCode || "").trim().padStart(4, "0");
   if (!/^\d{4}$/.test(code)) return [];
-  const nowMs = Date.now();
-  if (!_vaultCookiePairsCache || nowMs - _vaultCookiePairsLoadedAt > 60_000) {
+  const vaultDir = resolveP0002VaultDir();
+  const mailFile = vaultDir ? path.join(vaultDir, "mail-cookie-vault.json") : "";
+  const svcFile = vaultDir ? path.join(vaultDir, "service-cookie-vault.json") : "";
+  const nextSig = vaultDir ? `${vaultDir}|${statSigPart(mailFile)}|${statSigPart(svcFile)}` : "none";
+
+  if (!_vaultRawCookieMapCache || nextSig !== _vaultRawCookieSig) {
+    _vaultStats.jsonParses += 1;
     const map = new Map();
-    const nowSec = Math.floor(nowMs / 1000);
     const addCookies = (cCode, list) => {
       const k = String(cCode || "").trim().padStart(4, "0");
       if (!/^\d{4}$/.test(k) || !Array.isArray(list) || list.length === 0) return;
@@ -516,22 +613,20 @@ function getVaultCookiePairsForProfileCode(profileCode) {
       }
       for (const c of list) {
         if (c && c.domain && c.name) {
-          if (Number.isFinite(c.expires) && c.expires > 0 && c.expires <= nowSec) continue;
           arr.push({
             domain: String(c.domain),
             name: String(c.name),
+            expires: Number.isFinite(c.expires) ? Number(c.expires) : 0,
             ...(c.value !== undefined ? { value: String(c.value) } : {}),
           });
         }
       }
     };
-    const vaultDir = resolveP0002VaultDir();
     if (vaultDir && fs.existsSync(vaultDir)) {
       // Do NOT merge fb-cookie-vault.json or tiktok-cookie-vault.json into on-disk SQLite cookie pairs:
       // Facebook retains c_user+xs on Checkpoint 282/956 and expired sessions, and TikTok/FB disk state must reflect actual SQLite Cookies.
       try {
-        const mailFile = path.join(vaultDir, "mail-cookie-vault.json");
-        if (fs.existsSync(mailFile)) {
+        if (mailFile && fs.existsSync(mailFile)) {
           const raw = JSON.parse(fs.readFileSync(mailFile, "utf8"));
           const profiles = raw?.profiles || raw;
           for (const [k, v] of Object.entries(profiles || {})) {
@@ -545,8 +640,7 @@ function getVaultCookiePairsForProfileCode(profileCode) {
         /* ignore */
       }
       try {
-        const svcFile = path.join(vaultDir, "service-cookie-vault.json");
-        if (fs.existsSync(svcFile)) {
+        if (svcFile && fs.existsSync(svcFile)) {
           const raw = JSON.parse(fs.readFileSync(svcFile, "utf8"));
           const services = raw?.services || raw?.entries || raw;
           for (const [k, v] of Object.entries(services || {})) {
@@ -579,10 +673,25 @@ function getVaultCookiePairsForProfileCode(profileCode) {
         /* ignore */
       }
     }
-    _vaultCookiePairsCache = map;
-    _vaultCookiePairsLoadedAt = nowMs;
+    _vaultRawCookieMapCache = map;
+    _vaultRawCookieSig = nextSig;
+  } else {
+    _vaultStats.sigHits += 1;
   }
-  return _vaultCookiePairsCache.get(code) || [];
+
+  const rawList = _vaultRawCookieMapCache.get(code);
+  if (!rawList || rawList.length === 0) return [];
+  const nowSec = Math.floor(Date.now() / 1000);
+  const out = [];
+  for (const c of rawList) {
+    if (c.expires > 0 && c.expires <= nowSec) continue;
+    out.push({
+      domain: c.domain,
+      name: c.name,
+      ...(c.value !== undefined ? { value: c.value } : {}),
+    });
+  }
+  return out;
 }
 
 /**
@@ -593,64 +702,172 @@ function getVaultCookiePairsForProfileCode(profileCode) {
  * When `userDataDir` is present, strictly returns the profile's own SQLite cookies on disk (SSOT)
  * unless `includeVaultFallback === true`.
  */
+const _diskCookieStats = {
+  lruHits: 0,
+  lruMisses: 0,
+  zeroCopyReads: 0,
+  tempCopyReads: 0,
+};
+
+function readRawCookieRowsFromSqlite(db) {
+  return db
+    .prepare(
+      "SELECT host_key AS domain, name, path, value, CAST(expires_utc AS TEXT) AS expires_utc_str, encrypted_value FROM cookies WHERE (length(encrypted_value) > 0 OR length(value) > 0) ORDER BY last_update_utc ASC, creation_utc ASC, rowid ASC",
+    )
+    .all();
+}
+
+function readCookiesDbZeroCopyOrFallback(userDataDir, targetPath) {
+  const locked = isCookiesFileWriteLocked(userDataDir, targetPath);
+  if (!locked) {
+    let db = null;
+    try {
+      db = openReadOnlySqlite(targetPath);
+      const rows = readRawCookieRowsFromSqlite(db);
+      db.close();
+      db = null;
+      _diskCookieStats.zeroCopyReads += 1;
+      return rows;
+    } catch {
+      if (db) {
+        try {
+          db.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      /* fall through to temp-copy fallback */
+    }
+  }
+
+  let db = null;
+  const tmpCopyPath = path.join(
+    os.tmpdir(),
+    `p0003-sync-pairs-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.db`,
+  );
+  const walSrc = `${targetPath}-wal`;
+  const tmpWalPath = `${tmpCopyPath}-wal`;
+  try {
+    try {
+      fs.copyFileSync(targetPath, tmpCopyPath);
+    } catch {
+      fs.writeFileSync(tmpCopyPath, fs.readFileSync(targetPath));
+    }
+    if (fs.existsSync(walSrc)) {
+      try {
+        fs.copyFileSync(walSrc, tmpWalPath);
+      } catch {
+        /* ignore locked wal */
+      }
+    }
+    db = openReadOnlySqlite(tmpCopyPath);
+    const rows = readRawCookieRowsFromSqlite(db);
+    db.close();
+    db = null;
+    _diskCookieStats.tempCopyReads += 1;
+    return rows;
+  } finally {
+    if (db) {
+      try {
+        db.close();
+      } catch {
+        /* ignore */
+      }
+    }
+    for (const f of [tmpCopyPath, tmpWalPath, `${tmpCopyPath}-shm`]) {
+      try {
+        if (fs.existsSync(f)) fs.unlinkSync(f);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
+function filterActiveParsedCookies(parsedEntries, nowWebkitMicros) {
+  const byKey = new Map();
+  for (const entry of parsedEntries) {
+    if (entry.expiresUtc > 0n && entry.expiresUtc <= nowWebkitMicros) continue;
+    const k = `${entry.domainLower}\t${entry.path}\t${entry.name}`;
+    byKey.set(k, {
+      domain: entry.domain,
+      name: entry.name,
+      ...(entry.value ? { value: entry.value } : {}),
+    });
+  }
+  return [...byKey.values()];
+}
+
 function readProfileDiskCookiePairs(userDataDir, { profileCode = "", includeVaultFallback = false } = {}) {
   const vaultPairs = (!userDataDir || includeVaultFallback) && profileCode ? getVaultCookiePairsForProfileCode(profileCode) : [];
   if (!userDataDir) return { ok: vaultPairs.length > 0, pairs: [...vaultPairs] };
   const ckPath = path.join(userDataDir, COOKIES_REL_PATH);
   const bakPath = path.join(userDataDir, COOKIES_BAK_REL_PATH);
-  const candidates = [ckPath, bakPath].filter((p) => fs.existsSync(p) && fs.statSync(p).size > 0);
+  const candidates = [];
+  for (const p of [ckPath, bakPath]) {
+    try {
+      const st = fs.statSync(p);
+      if (st.size > 0) candidates.push({ filePath: p, mtimeMs: st.mtimeMs, size: st.size });
+    } catch {
+      /* missing */
+    }
+  }
   if (candidates.length === 0) return { ok: true, pairs: [...vaultPairs] };
 
   const masterKey = resolveProfileDpapiMasterKey(userDataDir);
   const nowWebkitMicros = (BigInt(Date.now()) + 11644473600000n) * 1000n;
 
-  for (const targetPath of candidates) {
-    let db = null;
-    const tmpCopyPath = path.join(
-      os.tmpdir(),
-      `p0003-sync-pairs-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.db`,
-    );
+  for (const cand of candidates) {
+    const targetPath = cand.filePath;
+    let walMtimeMs = 0;
+    let walSize = 0;
     try {
-      try {
-        fs.copyFileSync(targetPath, tmpCopyPath);
-      } catch {
-        fs.writeFileSync(tmpCopyPath, fs.readFileSync(targetPath));
-      }
-      db = new DatabaseSync(tmpCopyPath, { readOnly: true });
-      const rows = db
-        .prepare(
-          `SELECT host_key AS domain, name, path, value, encrypted_value FROM cookies WHERE (length(encrypted_value) > 0 OR length(value) > 0) AND (expires_utc = 0 OR expires_utc > ${nowWebkitMicros.toString()}) ORDER BY last_update_utc ASC, creation_utc ASC, rowid ASC`,
-        )
-        .all();
-      db.close();
-      db = null;
-      const byKey = new Map();
+      const wst = fs.statSync(`${targetPath}-wal`);
+      walMtimeMs = wst.mtimeMs;
+      walSize = wst.size;
+    } catch {
+      /* no wal */
+    }
+    const cacheKey = `${targetPath}|${cand.mtimeMs}|${cand.size}|${walMtimeMs}|${walSize}|${masterKey ? 1 : 0}`;
+    const cachedEntries = getDiskCookieLru(cacheKey);
+    if (cachedEntries) {
+      _diskCookieStats.lruHits += 1;
+      const baseRows = filterActiveParsedCookies(cachedEntries, nowWebkitMicros);
+      return { ok: true, pairs: vaultPairs.length > 0 ? [...baseRows, ...vaultPairs] : baseRows };
+    }
+
+    try {
+      _diskCookieStats.lruMisses += 1;
+      const rows = readCookiesDbZeroCopyOrFallback(userDataDir, targetPath);
+      const parsedEntries = [];
       for (const c of Array.isArray(rows) ? rows : []) {
         let val = c.value ? String(c.value) : "";
         if (!val && c.encrypted_value && masterKey && !isAnonymousOrTrackingCookieName(c.name)) {
           val = decryptChromiumCookieValue(c.encrypted_value, masterKey);
         }
-        const k = `${String(c.domain || "").toLowerCase()}\t${String(c.path || "/")}\t${String(c.name || "")}`;
-        byKey.set(k, {
-          domain: c.domain,
-          name: c.name,
-          ...(val ? { value: val } : {}),
+        let expiresUtc = 0n;
+        if (c.expires_utc_str) {
+          try {
+            expiresUtc = BigInt(c.expires_utc_str);
+          } catch {
+            expiresUtc = 0n;
+          }
+        }
+        const domainStr = String(c.domain || "");
+        parsedEntries.push({
+          domain: domainStr,
+          domainLower: domainStr.toLowerCase(),
+          path: String(c.path || "/"),
+          name: String(c.name || ""),
+          value: val,
+          expiresUtc,
         });
       }
-      const baseRows = [...byKey.values()];
+      setDiskCookieLru(cacheKey, parsedEntries);
+      const baseRows = filterActiveParsedCookies(parsedEntries, nowWebkitMicros);
       return { ok: true, pairs: vaultPairs.length > 0 ? [...baseRows, ...vaultPairs] : baseRows };
     } catch {
-      try {
-        if (db) db.close();
-      } catch {
-        /* ignore */
-      }
-    } finally {
-      try {
-        if (fs.existsSync(tmpCopyPath)) fs.unlinkSync(tmpCopyPath);
-      } catch {
-        /* ignore */
-      }
+      /* try next candidate */
     }
   }
   return { ok: vaultPairs.length > 0, locked: true, pairs: [...vaultPairs] };
@@ -688,4 +905,10 @@ module.exports = {
   readProfileDiskCookiePairs,
   sanitizePlaywrightCookieForVault,
   cookieFingerprint,
+  _getDiskCookieStats: () => ({
+    ..._diskCookieStats,
+    lruSize: _diskCookieParsedLru.size,
+    vaultSigHits: _vaultStats.sigHits,
+    vaultJsonParses: _vaultStats.jsonParses,
+  }),
 };

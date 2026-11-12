@@ -8,14 +8,14 @@ const STARTUP_MAINTENANCE_DELAY_MS = 3_000;
 
 let checkpointTimer = null;
 
-/** Coalesce burst profile opens — one TRUNCATE WAL flush instead of per-open cost. */
+/** Coalesce burst profile opens — one non-blocking PASSIVE WAL checkpoint instead of TRUNCATE cluster churn on DRAM-less SSDs. */
 function scheduleLastOpenedCheckpoint(checkpointDatabase) {
   if (!checkpointDatabase) return;
   if (checkpointTimer) return;
   checkpointTimer = setTimeout(() => {
     checkpointTimer = null;
     try {
-      checkpointDatabase({ truncate: true });
+      checkpointDatabase({ truncate: false });
     } catch (error) {
       console.warn(
         "[last-opened] checkpoint:",
@@ -133,45 +133,54 @@ async function readSiblingLastOpenedRows(devDbPath) {
   }
 }
 
-function toSqliteRoUri(filePath) {
-  const normalized = path.resolve(filePath).replace(/\\/g, "/");
-  return `file:${normalized}?mode=ro`;
-}
-
 function mergeNewerLastOpenedFromSiblingUserDataNative(getNativeDb, devDbPath) {
   const native = getNativeDb?.();
-  if (!native) return { merged: 0, skipped: "no-native-db" };
+  if (!native || typeof native.constructor !== "function") {
+    return { merged: 0, skipped: "no-native-db" };
+  }
 
-  const attachUri = toSqliteRoUri(devDbPath).replace(/'/g, "''");
+  let siblingDb = null;
   try {
-    native.exec(`ATTACH DATABASE '${attachUri}' AS dev_last_opened`);
-    const result = native
+    const BetterSqliteCtor = native.constructor;
+    siblingDb = new BetterSqliteCtor(path.resolve(devDbPath), {
+      readonly: true,
+      fileMustExist: true,
+    });
+    const rows = siblingDb
       .prepare(
-        `UPDATE main.profiles
-         SET last_opened_at = (
-           SELECT d.last_opened_at
-           FROM dev_last_opened.profiles AS d
-           WHERE d.id = main.profiles.id
-             AND d.last_opened_at IS NOT NULL
-             AND d.last_opened_at > 0
-             AND d.last_opened_at > COALESCE(main.profiles.last_opened_at, 0)
-           LIMIT 1
-         )
-         WHERE EXISTS (
-           SELECT 1
-           FROM dev_last_opened.profiles AS d
-           WHERE d.id = main.profiles.id
-             AND d.last_opened_at > COALESCE(main.profiles.last_opened_at, 0)
-         )`,
+        "SELECT id, last_opened_at FROM profiles WHERE last_opened_at IS NOT NULL AND last_opened_at > 0",
       )
-      .run();
-    native.exec("DETACH DATABASE dev_last_opened");
-    return { merged: Number(result?.changes) || 0 };
+      .raw()
+      .all();
+    siblingDb.close();
+    siblingDb = null;
+
+    if (!rows.length) return { merged: 0 };
+
+    const updateStmt = native.prepare(
+      `UPDATE profiles
+       SET last_opened_at = ?
+       WHERE id = ?
+         AND (last_opened_at IS NULL OR last_opened_at = 0 OR last_opened_at < ?)`,
+    );
+    const applyTx = native.transaction((items) => {
+      let count = 0;
+      for (const [id, ts] of items) {
+        const next = Number(ts);
+        if (!id || !Number.isFinite(next) || next <= 0) continue;
+        const r = updateStmt.run(next, String(id), next);
+        count += Number(r?.changes) || 0;
+      }
+      return count;
+    });
+    return { merged: applyTx(rows) };
   } catch (error) {
-    try {
-      native.exec("DETACH DATABASE dev_last_opened");
-    } catch {
-      // ignore
+    if (siblingDb) {
+      try {
+        siblingDb.close();
+      } catch {
+        // ignore
+      }
     }
     console.warn(
       "[last-opened] sibling merge:",

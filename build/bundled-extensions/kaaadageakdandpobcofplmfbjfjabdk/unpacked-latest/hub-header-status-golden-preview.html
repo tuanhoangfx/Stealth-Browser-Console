@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>E0001 Golden Header + Status v1.1.22</title>
+    <link rel="stylesheet" href="hub-workspace-user-modal.css" />
+    <link rel="stylesheet" href="popup-theme.css" />
+    <style>
+      body { margin: 16px; background: #0b1220; color: #e2e8f0; font-family: system-ui, sans-serif; }
+      .preview-section { margin-bottom: 24px; }
+      .preview-section h2 { font-size: 13px; margin: 0 0 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+      .header-actions { display: flex; align-items: center; gap: 8px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      th, td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left; }
+      th { color: #94a3b8; font-weight: 600; }
+      .status-legend td:first-child { width: 120px; }
+    </style>
+  </head>
+  <body data-golden="E0001-header-status-v1.1.22">
+    <section class="preview-section">
+      <h2>Header — no Signed in badge · admin crown</h2>
+      <div class="header-actions">
+        <div id="header-user-chip" class="hub-auth-logout-chip hub-auth-logout-chip--linked">
+          <button type="button" class="hub-auth-logout-chip__identity">
+            <span id="header-user-role-icon" class="hub-auth-logout-chip__user-icon hub-user-icon--indigo"></span>
+            <span id="header-user-email-text" class="hub-auth-logout-chip__email">czpgo@outlook.com</span>
+          </button>
+          <button type="button" class="hub-auth-logout-chip__logout"><span data-icon="logout"></span></button>
+        </div>
+      </div>
+    </section>
+    <section class="preview-section">
+      <h2>Status legend — 4 tones + icons (SSOT)</h2>
+      <table class="status-legend">
+        <thead>
+          <tr><th>State</th><th>Chip</th><th>Detail</th></tr>
+        </thead>
+        <tbody id="status-legend-rows"></tbody>
+      </table>
+    </section>
+    <section class="preview-section">
+      <h2>Status column — icon + label</h2>
+      <table>
+        <thead><tr><th>Status</th></tr></thead>
+        <tbody id="status-rows"></tbody>
+      </table>
+    </section>
+    <script type="module">
+      import { updateHubAuthLogoutChip } from "./hub-auth-logout-chip.js";
+      import { renderRouteStatusChipHtml, resolveExtensionRouteStatusDisplay } from "./hub-route-status-chip.js";
+      import { HUB_ROUTE_STATUS_ICON_SVGS } from "./hub-route-status-icons.js";
+
+      const ICONS = {
+        ...HUB_ROUTE_STATUS_ICON_SVGS,
+        crown: '<svg viewBox="0 0 24 24"><path d="m2 8 4 2 3-5 3 5 3-5 3 5 4-2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z"/></svg>',
+        logout: '<svg viewBox="0 0 24 24"><path d="M10 17l-1 0a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4h1"/><path d="M15 7l5 5-5 5"/><path d="M20 12H10"/></svg>',
+      };
+      function icon(name, className = "ui-icon") {
+        const svg = ICONS[name] || "";
+        return svg ? `<span class="${className}">${svg}</span>` : "";
+      }
+      document.querySelectorAll("[data-icon]").forEach((el) => {
+        const n = el.getAttribute("data-icon");
+        if (n) el.innerHTML = icon(n);
+      });
+      updateHubAuthLogoutChip({
+        chipEl: document.getElementById("header-user-chip"),
+        emailEl: document.getElementById("header-user-email-text"),
+        roleIconEl: document.getElementById("header-user-role-icon"),
+        email: "czpgo@outlook.com",
+        roleKey: "admin",
+        linked: true,
+        renderIconHtml: icon,
+      });
+
+      const legend = [
+        { st: {}, detail: "Awaiting local jar probe" },
+        { st: { ok: true }, detail: "Local jar has cookies" },
+        { st: { ok: true, empty: true }, detail: "No cookies in local jar" },
+        { st: { ok: false, error: "probe fail" }, detail: "Route probe failed" },
+      ];
+      const legendBody = document.getElementById("status-legend-rows");
+      for (const row of legend) {
+        const display = resolveExtensionRouteStatusDisplay(row.st);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${display.label} · ${display.tone}</td><td>${renderRouteStatusChipHtml(display, icon)}</td><td>${row.detail}</td>`;
+        legendBody.appendChild(tr);
+      }
+
+      const cases = legend.map((row) => row.st);
+      const tbody = document.getElementById("status-rows");
+      for (const st of cases) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${renderRouteStatusChipHtml(resolveExtensionRouteStatusDisplay(st), icon)}</td>`;
+        tbody.appendChild(tr);
+      }
+    </script>
+  </body>
+</html>

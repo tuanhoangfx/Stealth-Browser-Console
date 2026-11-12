@@ -1,9 +1,19 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { openDatabase, closeDatabase, getDb, getDbBackend, getNativeDb, isDatabaseReady } = require("./init.cjs");
+const {
+  openDatabase,
+  closeDatabase,
+  checkpointDatabase,
+  getDb,
+  getDbBackend,
+  getNativeDb,
+  isDatabaseReady,
+} = require("./init.cjs");
 const profileService = require("./profile-service.cjs");
 const {
+  scheduleLastOpenedCheckpoint,
+  flushScheduledLastOpenedCheckpoint,
   reconcileLastOpenedFromProfileEvents,
   mergeNewerLastOpenedFromSiblingUserData,
 } = require("./last-opened-durability.cjs");
@@ -42,6 +52,7 @@ async function main() {
 
     if (getDbBackend() === "better-sqlite3") {
       try {
+        checkpointDatabase({ truncate: true });
         fs.copyFileSync(path.join(tmpRoot, "data", "stealth-console.db"), siblingDb);
       const freshTs = Date.now() - 5 * 60 * 1000;
       const BetterSqlite = require("better-sqlite3");
@@ -99,6 +110,17 @@ async function main() {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(`[last-opened-durability] skip sibling merge assertion: ${message}`);
       }
+    }
+
+    const ckCalls = [];
+    scheduleLastOpenedCheckpoint((opts) => ckCalls.push(opts));
+    await new Promise((resolve) => setTimeout(resolve, 2650));
+    if (ckCalls.length !== 1 || ckCalls[0]?.truncate !== false) {
+      throw new Error(`expected debounced PASSIVE checkpoint ({ truncate: false }), got ${JSON.stringify(ckCalls)}`);
+    }
+    flushScheduledLastOpenedCheckpoint((opts) => ckCalls.push(opts));
+    if (ckCalls.length !== 2 || ckCalls[1]?.truncate !== true) {
+      throw new Error(`expected graceful quit TRUNCATE checkpoint ({ truncate: true }), got ${JSON.stringify(ckCalls)}`);
     }
 
     console.log("last-opened-durability.test: ok");

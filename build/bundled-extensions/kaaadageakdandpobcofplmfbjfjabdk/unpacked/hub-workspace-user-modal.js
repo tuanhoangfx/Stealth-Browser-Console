@@ -1,7 +1,6 @@
 /**
- * Vanilla HubWorkspaceUserModal — parity packages/hub-ui HubWorkspaceUserModal.tsx (Data Box).
- * Fields: Email · Role · Provider · Created · Last sign in | User ID · Note
- * Footer: Sign Out only (centered).
+ * Vanilla HubFullUserAccountModal — parity packages/hub-ui HubFullUserAccountModal.tsx
+ * Layout 3: header (initials · name · login) · TOC · Account ADM · Note/Log · Save/Sign Out/Close
  */
 
 import {
@@ -11,147 +10,186 @@ import {
 } from "./hub-vanilla/hub-workspace-role-vanilla.mjs";
 
 const HUB_USER_ACCOUNT_TOC = [
-  { id: "hub-user-account", label: "Account" },
-  { id: "hub-user-session", label: "Session" },
+  { id: "hub-user-credentials", label: "Credentials" },
+  { id: "hub-user-identity", label: "Identity" },
+  { id: "hub-user-note", label: "Note" },
+  { id: "hub-user-log", label: "Log" },
 ];
 
-const SCROLL_ROOT = ".hub-workspace-user-modal .hub-tool-detail-modal__scroll";
+const SCROLL_ROOT = ".hub-workspace-user-modal .hub-account-detail-modal__main-scroll";
 
-/** parity hub-ui HubWorkspaceUserModal FIELD_ICON_CLASS + hub-workspace-role-icon */
 const ROLE_LABEL = WORKSPACE_ROLE_LABEL;
 
-const FIELD_ICONS = {
-  email: { icon: "mail", className: "hub-user-icon--sky" },
-  provider: { icon: "key", className: "hub-user-icon--amber" },
-  created: { icon: "user", className: "hub-user-icon--slate" },
-  lastSignIn: { icon: "sync", className: "hub-user-icon--emerald" },
-  userId: { icon: "key", className: "hub-user-icon--violet" },
-  note: { icon: "stickyNote", className: "hub-user-icon--slate" },
+const DEFAULT_NOTE = "Workspace data syncs per signed-in user on the Home Server data API.";
+
+const EMPTY_PLACEHOLDERS = {
+  username: "—",
+  email: "you@company.com",
+  password: "New password (min 6 characters)",
+  "display-name": "Display name",
+  phone: "Phone number",
+  zalo: "Uses Phone when empty",
+  tele: "Telegram ID or @handle",
+  meta: "Messenger ID or handle",
 };
 
-const DEFAULT_NOTE = "Workspace data syncs per signed-in user on Data Box Supabase.";
+/**
+ * English relative time — parity packages/hub-ui/src/lib/format-hub-relative-time.ts
+ * @param {number|string|null|undefined} value
+ */
+export function formatHubRelativeTime(value, now = Date.now()) {
+  if (!value) return "—";
+  const ts = typeof value === "number" ? value : Date.parse(value);
+  if (!Number.isFinite(ts)) return "—";
+  const diff = now - ts;
+  if (diff < 45_000) return "Just now";
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const week = Math.floor(day / 7);
+  if (week < 5) return `${week}w ago`;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  }).format(new Date(ts));
+}
+
+/** parity hub-ui hubCopyBadgeDisplayLabel */
+export function hubCopyBadgeDisplayLabel(value, label) {
+  if (label) return label;
+  const v = String(value || "");
+  return v.length > 10 ? `${v.slice(0, 8)}…` : v || "—";
+}
+
+function looksLikeEmail(value) {
+  return String(value || "").includes("@");
+}
+
+function emailLocalPart(email) {
+  const e = String(email || "").trim();
+  if (!e.includes("@")) return e;
+  return e.split("@")[0] || e;
+}
+
+function workspaceUserInitials(displayName, loginId) {
+  const name = String(displayName || "").trim();
+  const words = name.split(/\s+/).filter((part) => /[A-Za-zÀ-ỹ]/.test(part));
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  if (name.length >= 2 && !looksLikeEmail(name)) return name.slice(0, 2).toUpperCase();
+  const login = String(loginId || emailLocalPart(name) || "U");
+  return login.slice(0, 2).toUpperCase() || "U";
+}
+
+function setClickText(id, value, emptyText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const shown = String(value || "").trim();
+  const empty = !shown;
+  el.textContent = empty ? emptyText || "—" : shown;
+  el.classList.toggle("hub-adm-click-edit__text--empty", empty);
+}
 
 /**
  * @param {object} data
- * @param {string} [data.userEmail]
- * @param {string} [data.userId]
- * @param {string} [data.userRole]
- * @param {string} [data.userProvider]
- * @param {string} [data.userCreatedAt]
- * @param {string} [data.userLastSignInAt]
- * @param {string} [data.workspaceNote]
- * @param {(name: string, className?: string) => string} [data.renderIconHtml]
  */
 export function populateHubWorkspaceUserModal(data) {
   const titleEl = document.getElementById("hub-workspace-user-modal-title");
+  const loginEl = document.getElementById("hub-workspace-user-username");
   const avatarEl = document.getElementById("hub-workspace-user-avatar");
   const email = String(data?.userEmail || "").trim();
-  const displayTitle = email || "User";
+  const loginId =
+    String(data?.userLoginId || "").trim() || (looksLikeEmail(email) ? emailLocalPart(email) : "");
+  const fullName = String(data?.userFullName || "").trim();
+  const displayLabel = String(data?.userDisplayLabel || "").trim();
+  const displayName =
+    fullName ||
+    (displayLabel && !looksLikeEmail(displayLabel) && displayLabel !== loginId ? displayLabel : "") ||
+    loginId ||
+    email ||
+    "User";
   const roleKey = normalizeWorkspaceRoleKey(data?.userRole);
   const roleMeta = ROLE_ICON_META[roleKey] || ROLE_ICON_META.user;
-  const locale = "vi-VN";
   const renderIcon = data?.renderIconHtml;
+  const userId = String(data?.userId || "").trim();
 
-  if (titleEl) titleEl.textContent = displayTitle;
+  if (titleEl) titleEl.textContent = displayName;
+  if (loginEl) loginEl.textContent = loginId || "—";
   if (avatarEl) {
-    avatarEl.className = `user-access-modal__avatar hub-workspace-user-avatar ${roleMeta.className}`;
+    avatarEl.className = "user-access-modal__avatar hub-workspace-user-avatar";
+    avatarEl.textContent = workspaceUserInitials(displayName, loginId);
+  }
+
+  setClickText("user-field-username", loginId, EMPTY_PLACEHOLDERS.username);
+  setClickText("user-field-email", email, EMPTY_PLACEHOLDERS.email);
+  setClickText("user-field-password", "", EMPTY_PLACEHOLDERS.password);
+  setClickText("user-field-display-name", fullName || (looksLikeEmail(displayLabel) ? "" : displayLabel), EMPTY_PLACEHOLDERS["display-name"]);
+  setClickText("user-field-phone", data?.userPhone, EMPTY_PLACEHOLDERS.phone);
+  setClickText("user-field-zalo", data?.userZalo, EMPTY_PLACEHOLDERS.zalo);
+  setClickText("user-field-tele", data?.userTelegram, EMPTY_PLACEHOLDERS.tele);
+  setClickText("user-field-meta", data?.userMeta, EMPTY_PLACEHOLDERS.meta);
+
+  const createdEl = document.getElementById("user-field-created");
+  const lastEl = document.getElementById("user-field-last-sign-in");
+  if (createdEl) createdEl.textContent = formatHubRelativeTime(data?.userCreatedAt);
+  if (lastEl) lastEl.textContent = formatHubRelativeTime(data?.userLastSignInAt);
+
+  const vaultBtn = document.getElementById("user-field-user-id");
+  const vaultLabel = document.getElementById("user-field-user-id-label");
+  if (vaultBtn) vaultBtn.dataset.hubCopyValue = userId;
+  if (vaultLabel) vaultLabel.textContent = userId ? hubCopyBadgeDisplayLabel(userId) : "—";
+
+  const roleEl = document.getElementById("user-field-role");
+  if (roleEl) roleEl.textContent = ROLE_LABEL[roleKey] || "User";
+  const roleIcon = document.getElementById("user-field-role-icon");
+  if (roleIcon) {
+    roleIcon.setAttribute("data-icon", roleMeta.icon);
     if (typeof renderIcon === "function") {
-      avatarEl.innerHTML = renderIcon(roleMeta.icon, `ui-icon ${roleMeta.className}`);
-    } else {
-      avatarEl.textContent = workspaceUserInitials(email, data?.userId);
+      roleIcon.innerHTML = renderIcon(roleMeta.icon, `ui-icon ${roleMeta.className}`);
     }
   }
 
-  setField("user-field-email", email || "—");
-  setField("user-field-role", ROLE_LABEL[roleKey] || "User");
-  setField("user-field-provider", String(data?.userProvider || "email").trim() || "email");
-  setField("user-field-created", formatLocaleDate(data?.userCreatedAt, locale));
-  setField("user-field-last-sign-in", formatLocaleDate(data?.userLastSignInAt, locale));
-  setField("user-field-user-id", data?.userId || "No active session", Boolean(data?.userId));
-
   const noteEl = document.getElementById("user-field-note");
-  if (noteEl) {
-    noteEl.textContent = String(data?.workspaceNote || DEFAULT_NOTE).trim() || DEFAULT_NOTE;
-  }
+  if (noteEl) noteEl.textContent = String(data?.workspaceNote || DEFAULT_NOTE).trim() || DEFAULT_NOTE;
 
-  paintFieldIcons(roleKey, renderIcon);
+  const noteRail = document.getElementById("user-field-note-rail");
+  if (noteRail && data?.userNotes != null) noteRail.value = String(data.userNotes);
+
   paintModalChromeIcons(renderIcon);
-}
-
-function paintRowIcon(tdId, iconName, colorClass, renderIcon) {
-  if (typeof renderIcon !== "function") return;
-  const td = document.getElementById(tdId);
-  const span = td?.closest("tr")?.querySelector("th span[data-icon]");
-  if (!span) return;
-  span.innerHTML = renderIcon(iconName, `ui-icon ${colorClass}`);
-}
-
-function paintFieldIcons(roleKey, renderIcon) {
-  const roleMeta = ROLE_ICON_META[roleKey] || ROLE_ICON_META.user;
-  paintRowIcon("user-field-email", FIELD_ICONS.email.icon, FIELD_ICONS.email.className, renderIcon);
-  paintRowIcon("user-field-role", roleMeta.icon, roleMeta.className, renderIcon);
-  paintRowIcon("user-field-provider", FIELD_ICONS.provider.icon, FIELD_ICONS.provider.className, renderIcon);
-  paintRowIcon("user-field-created", FIELD_ICONS.created.icon, FIELD_ICONS.created.className, renderIcon);
-  paintRowIcon(
-    "user-field-last-sign-in",
-    FIELD_ICONS.lastSignIn.icon,
-    FIELD_ICONS.lastSignIn.className,
-    renderIcon,
-  );
-  paintRowIcon("user-field-user-id", FIELD_ICONS.userId.icon, FIELD_ICONS.userId.className, renderIcon);
-  paintRowIcon("user-field-note", FIELD_ICONS.note.icon, FIELD_ICONS.note.className, renderIcon);
 }
 
 function paintModalChromeIcons(renderIcon) {
   if (typeof renderIcon !== "function") return;
   const modal = document.getElementById("user-modal");
   if (!modal) return;
-  for (const el of modal.querySelectorAll(".hub-tool-detail-section__title-icon[data-icon]")) {
+  const selectors = [
+    ".hub-users-th-icon[data-icon]",
+    ".hub-toc-nav__icon[data-icon]",
+    ".hub-tool-detail-panel__head-icon[data-icon]",
+    ".hub-tool-detail-rail__head-icon[data-icon]",
+    ".hub-search-field__glyph[data-icon]",
+    ".hub-copy-badge__icon[data-icon]",
+    ".hub-tool-detail-modal__footer [data-icon]",
+  ];
+  for (const el of modal.querySelectorAll(selectors.join(","))) {
     const name = el.getAttribute("data-icon");
-    if (name) el.innerHTML = renderIcon(name, "ui-icon hub-user-icon--slate");
+    if (name) el.innerHTML = renderIcon(name, "ui-icon");
   }
-  for (const el of modal.querySelectorAll(".hub-toc-nav__icon[data-icon]")) {
-    const name = el.getAttribute("data-icon");
-    if (name) el.innerHTML = renderIcon(name, "ui-icon hub-user-icon--slate");
-  }
-}
-
-function formatLocaleDate(value, locale) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(locale);
-}
-
-function setField(id, value, mono = false) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = value;
-  el.classList.toggle("user-field-mono", mono);
-}
-
-function workspaceUserInitials(email, userId) {
-  const e = String(email || "").trim();
-  if (e.includes("@")) {
-    const local = e.split("@")[0] || "";
-    const parts = local.split(/[._-]+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return local.slice(0, 2).toUpperCase() || "U";
-  }
-  const id = String(userId || "").trim();
-  return id ? id.slice(0, 2).toUpperCase() : "U";
 }
 
 function bindTocNav(modalEl) {
-  const scrollRoot = modalEl?.querySelector(".hub-tool-detail-modal__scroll");
+  const scrollRoot = modalEl?.querySelector(".hub-account-detail-modal__main-scroll");
   const items = modalEl?.querySelectorAll(".hub-toc-nav__item[data-section]") ?? [];
   for (const item of items) {
     item.addEventListener("click", () => {
       const id = item.getAttribute("data-section");
       const target = id ? modalEl.querySelector(`#${id}`) : null;
-      if (target && scrollRoot && getComputedStyle(scrollRoot).overflowY !== "visible") {
+      if (target && scrollRoot) {
         const top = target.offsetTop - scrollRoot.offsetTop;
-        scrollRoot.scrollTo({ top, behavior: "smooth" });
+        scrollRoot.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
       } else if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
@@ -160,10 +198,86 @@ function bindTocNav(modalEl) {
   }
 }
 
+function startClickEdit(btn) {
+  const field = btn.getAttribute("data-adm-field");
+  const text = btn.querySelector(".hub-adm-click-edit__text");
+  if (!field || !text || btn.querySelector("input")) return;
+  const empty = text.classList.contains("hub-adm-click-edit__text--empty");
+  const current = empty ? "" : text.textContent || "";
+  const input = document.createElement("input");
+  input.className = "field auth-gate-field hub-adm-click-edit__input";
+  input.value = current;
+  input.placeholder = EMPTY_PLACEHOLDERS[field] || "—";
+  if (field === "password") input.type = "password";
+  if (field === "email") input.inputMode = "email";
+  if (field === "phone") input.inputMode = "tel";
+  const valueWrap = btn.parentElement;
+  if (!valueWrap) return;
+  valueWrap.classList.add("hub-adm-inline-field__value--editing");
+  const aria = btn.getAttribute("aria-label") || `Edit ${field}`;
+  const textId = text.id;
+  btn.replaceWith(input);
+  input.focus();
+  const finish = () => {
+    const next = input.value;
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "hub-adm-click-edit";
+    nextBtn.setAttribute("aria-label", aria);
+    nextBtn.setAttribute("data-adm-field", field);
+    const span = document.createElement("span");
+    span.id = textId;
+    span.className = "hub-adm-click-edit__text hub-adm-detail-value-text";
+    const shown = next.trim();
+    span.textContent = shown || EMPTY_PLACEHOLDERS[field] || "—";
+    span.classList.toggle("hub-adm-click-edit__text--empty", !shown);
+    nextBtn.appendChild(span);
+    input.replaceWith(nextBtn);
+    valueWrap.classList.remove("hub-adm-inline-field__value--editing");
+    document.getElementById("user-modal-save")?.removeAttribute("disabled");
+    document.getElementById("user-modal-save")?.classList.remove("hub-tool-detail-modal__confirm--disabled");
+  };
+  input.addEventListener("blur", finish);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === "Escape") {
+      event.preventDefault();
+      input.blur();
+    }
+  });
+}
+
+function bindClickEdit(modalEl) {
+  if (!modalEl || modalEl.dataset.clickEditBound === "1") return;
+  modalEl.dataset.clickEditBound = "1";
+  modalEl.addEventListener("click", (event) => {
+    const btn = event.target.closest?.(".hub-adm-click-edit[data-adm-field]");
+    if (!btn || !modalEl.contains(btn)) return;
+    startClickEdit(btn);
+  });
+}
+
+function bindVaultCopy(modalEl) {
+  const btn = modalEl?.querySelector("#user-field-user-id");
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", async () => {
+    const value = btn.dataset.hubCopyValue || "";
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
 export function bindHubWorkspaceUserModal({ modalEl, onClose, onSignOut, onRefresh }) {
   if (!modalEl) return;
   bindTocNav(modalEl);
+  bindClickEdit(modalEl);
+  bindVaultCopy(modalEl);
   modalEl.querySelector(".hub-modal-close")?.addEventListener("click", () => onClose?.());
+  modalEl.querySelector("#user-modal-footer-close")?.addEventListener("click", () => onClose?.());
   modalEl.querySelector("#user-modal-refresh")?.addEventListener("click", () => onRefresh?.());
   modalEl.querySelector("#user-modal-logout")?.addEventListener("click", () => onSignOut?.());
   modalEl.addEventListener("click", (e) => {
@@ -189,8 +303,36 @@ export function closeHubWorkspaceUserModal(modalEl) {
 export function hubWorkspaceUserModalTocHtml() {
   return HUB_USER_ACCOUNT_TOC.map(
     ({ id, label }) =>
-      `<button type="button" class="hub-toc-nav__item${id === "hub-user-account" ? " is-active" : ""}" data-section="${id}"><span class="hub-toc-nav__label">${label}</span></button>`,
+      `<button type="button" class="hub-toc-nav__item${id === "hub-user-credentials" ? " is-active" : ""}" data-section="${id}"><span class="hub-toc-nav__label">${label}</span></button>`,
   ).join("");
+}
+
+export function renderHubUserModalLog(entries, { escapeHtml }) {
+  const emptyEl = document.getElementById("user-modal-log-empty");
+  const listEl = document.getElementById("user-modal-log-list");
+  if (!listEl) return;
+  const rows = Array.isArray(entries) ? entries : [];
+  const has = rows.length > 0;
+  if (emptyEl) emptyEl.hidden = has;
+  listEl.hidden = !has;
+  listEl.innerHTML = rows
+    .map((row, index) => {
+      const at = row?.at;
+      const iso = typeof at === "number" ? new Date(at).toISOString() : String(at || "");
+      const rel = formatHubRelativeTime(at);
+      const message = escapeHtml(String(row?.message || ""));
+      const dot = /fail|error|out/i.test(String(row?.message || "")) ? 2 : index === 0 ? 1 : 0;
+      return `<li class="twofa-adm-log-row twofa-adm-log-row--detail" title="${escapeHtml(rel)} · ${message}">
+        <div class="twofa-adm-log-row__head">
+          <span class="twofa-adm-log-row__meta">
+            <span class="twofa-adm-log-dot twofa-adm-log-dot--${dot}" aria-hidden="true"></span>
+            <time class="twofa-adm-log-row__time" datetime="${escapeHtml(iso)}">${escapeHtml(rel)}</time>
+          </span>
+          <span class="twofa-adm-log-row__action"><span class="twofa-adm-log-row__msg">${message}</span></span>
+        </div>
+      </li>`;
+    })
+    .join("");
 }
 
 export { HUB_USER_ACCOUNT_TOC, SCROLL_ROOT, DEFAULT_NOTE, ROLE_ICON_META };

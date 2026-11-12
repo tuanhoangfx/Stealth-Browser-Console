@@ -1,0 +1,15 @@
+{
+  "updatedAt": "2026-11-01T18:57:06.575Z",
+  "vaultHydratedAt": "2026-11-01T18:57:06.572Z",
+  "vaultSources": [
+    "outlook"
+  ],
+  "vaultCookiesCount": 19,
+  "totalRows": 19,
+  "authDomainsCount": 1,
+  "hasGoogleAuth": false,
+  "hasOutlookAuth": true,
+  "hasFacebookAuth": false,
+  "hasTikTokAuth": false,
+  "byteSize": 8595
+}

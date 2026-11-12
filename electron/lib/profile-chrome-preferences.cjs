@@ -88,10 +88,19 @@ function writeJson(file, data) {
   fs.writeFileSync(file, JSON.stringify(data), "utf8");
 }
 
+function clearSecureExtensionMac(securePrefs, extId) {
+  let cleared = false;
+  if (securePrefs?.protection?.macs?.extensions?.settings?.[extId] !== undefined) {
+    delete securePrefs.protection.macs.extensions.settings[extId];
+    cleared = true;
+  }
+  return cleared;
+}
+
 /**
  * Self-heal MV3 Service Worker & toolbar pin state inside `Default/Secure Preferences`
  * when a profile previously recorded `serviceworkerevents: []` or `disable_reasons`
- * during a corrupted/0-byte extension stage or interrupted launch.
+ * during a sandboxed junction block, corrupted stage, or interrupted launch.
  */
 function healSecurePreferencesExtensionState(userDataDir, extId, absPath) {
   if (!userDataDir || !extId) return false;
@@ -101,10 +110,14 @@ function healSecurePreferencesExtensionState(userDataDir, extId, absPath) {
   if (!securePrefs || typeof securePrefs !== "object" || !securePrefs.extensions) return false;
 
   let changed = false;
+  let entryChanged = false;
   for (const key of PIN_KEYS) {
     if (Array.isArray(securePrefs.extensions[key]) && !securePrefs.extensions[key].includes(extId)) {
       securePrefs.extensions[key] = mergePinnedList(securePrefs.extensions[key], extId);
       changed = true;
+      if (securePrefs?.protection?.macs?.extensions?.[key] !== undefined) {
+        delete securePrefs.protection.macs.extensions[key];
+      }
     }
   }
   if (
@@ -117,27 +130,41 @@ function healSecurePreferencesExtensionState(userDataDir, extId, absPath) {
       extId,
     );
     changed = true;
+    if (securePrefs?.protection?.macs?.extensions?.toolbar !== undefined) {
+      delete securePrefs.protection.macs.extensions.toolbar;
+    }
   }
 
   const sEntry = securePrefs.extensions.settings?.[extId];
   if (sEntry && typeof sEntry === "object") {
+    const emptySwEvents =
+      Array.isArray(sEntry.serviceworkerevents) && sEntry.serviceworkerevents.length === 0;
+    const missingMv3SwReg =
+      Number(sEntry.location) === 8 &&
+      !sEntry.service_worker_registration_info &&
+      (!Array.isArray(sEntry.serviceworkerevents) || sEntry.serviceworkerevents.length === 0);
     if (sEntry.disable_reasons !== undefined) {
       delete sEntry.disable_reasons;
-      changed = true;
+      entryChanged = true;
     }
     if (Number(sEntry.state) !== 1) {
       sEntry.state = 1;
-      changed = true;
+      entryChanged = true;
     }
     if (absPath && sEntry.path && normalizeExtensionPath(sEntry.path) !== normalizeExtensionPath(absPath)) {
       sEntry.path = absPath;
-      changed = true;
+      entryChanged = true;
     }
-    if (Array.isArray(sEntry.serviceworkerevents) && sEntry.serviceworkerevents.length === 0) {
+    if (emptySwEvents || missingMv3SwReg) {
       delete sEntry.serviceworkerevents;
       delete sEntry.service_worker_registration_info;
-      changed = true;
+      entryChanged = true;
     }
+  }
+
+  if (entryChanged) {
+    clearSecureExtensionMac(securePrefs, extId);
+    changed = true;
   }
 
   if (changed) {

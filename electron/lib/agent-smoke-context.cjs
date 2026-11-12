@@ -44,6 +44,9 @@ function normalizeAgentCallerId(rawInput) {
     .replace(/\.[cm]?[jt]sx?$/i, "")
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  if (!/support|chat|appeal/.test(slug)) {
+    slug = slug.replace(/-p\d{4}$/, "");
+  }
   if (!slug || slug === "default" || slug === "default-agent") {
     return "agent:inline";
   }

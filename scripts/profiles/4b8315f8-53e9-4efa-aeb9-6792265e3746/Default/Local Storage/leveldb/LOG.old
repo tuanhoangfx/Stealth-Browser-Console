@@ -1,0 +1,17 @@
+2026/11/02-01:49:29.901 a80c Reusing MANIFEST D:\StealthBrowser\profiles\4b8315f8-53e9-4efa-aeb9-6792265e3746\Default\Local Storage\leveldb/MANIFEST-000001
+2026/11/02-01:49:29.912 a80c Recovering log #27
+2026/11/02-01:49:29.921 a80c Level-0 table #30: started
+2026/11/02-01:49:29.944 a80c Level-0 table #30: 477368 bytes OK
+2026/11/02-01:49:29.947 a80c Recovering log #30
+2026/11/02-01:49:29.950 a80c Reusing old log D:\StealthBrowser\profiles\4b8315f8-53e9-4efa-aeb9-6792265e3746\Default\Local Storage\leveldb/000030.log 
+2026/11/02-01:49:29.952 a80c Delete type=0 #27
+2026/11/02-01:49:29.952 a80c Delete type=2 #31
+2026/11/02-01:49:29.954 100b4 Compacting 4@0 + 1@1 files
+2026/11/02-01:49:30.006 100b4 Generated table #31@0: 224 keys, 892817 bytes
+2026/11/02-01:49:30.006 100b4 Compacted 4@0 + 1@1 files => 892817 bytes
+2026/11/02-01:49:30.007 100b4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/11/02-01:49:30.009 100b4 Delete type=2 #19
+2026/11/02-01:49:30.009 100b4 Delete type=2 #21
+2026/11/02-01:49:30.009 100b4 Delete type=2 #25
+2026/11/02-01:49:30.009 100b4 Delete type=2 #28
+2026/11/02-01:49:30.009 100b4 Delete type=2 #30

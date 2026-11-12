@@ -495,6 +495,18 @@ export type ExtensionToggles = {
 /** Per-profile override; omit key = follow app Settings → Extensions. */
 export type ProfileExtensionOverrides = Partial<Record<keyof ExtensionToggles, boolean>>;
 
+export type ExtensionSwHealthSummary = {
+  status: "healthy" | "outdated" | "needs-heal" | "idle";
+  registeredCount: number;
+  currentVersionCount: number;
+  outdatedVersionCount: number;
+  missingSwCount: number;
+  sampledProfiles: number;
+  expectedVersion?: string | null;
+  activeSwVersion?: string | null;
+  sampleMissingCodes?: string[];
+};
+
 export type CookieBridgeStatus = {
   enabled: boolean;
   profilesExtensionsEnabled?: boolean;
@@ -512,6 +524,7 @@ export type CookieBridgeStatus = {
   manifestVersion?: string | null;
   workspaceVersion?: string | null;
   stageVersion?: string | null;
+  swHealth?: ExtensionSwHealthSummary | null;
   workspacePath: string | null;
   cachePath: string;
   env: { STEALTH_COOKIE_BRIDGE: string; STEALTH_COOKIE_BRIDGE_LOCAL: string };
@@ -537,6 +550,7 @@ export type OperatorExtensionStatus = {
   manifestOk: boolean;
   manifestVersion?: string | null;
   stageVersion?: string | null;
+  swHealth?: ExtensionSwHealthSummary | null;
   validation?: OperatorExtensionValidation | null;
 };
 
@@ -556,6 +570,7 @@ export type CachedStoreExtension = {
   activityLog?: string;
   staged?: boolean;
   autoPinned?: boolean;
+  swHealth?: ExtensionSwHealthSummary | null;
 };
 
 export type ExtensionsStatus = {

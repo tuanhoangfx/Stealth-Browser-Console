@@ -2,6 +2,7 @@ import {
   formatSyncError,
   isJwtExpired,
   parseApiErrorBody,
+  parseJwtPayload,
   refreshAuthIfNeeded,
   rpcHeaders,
   signInWorkspaceDual,
@@ -694,6 +695,26 @@ async function ensureAuth() {
   return refreshAuthIfNeeded(auth, STORAGE_AUTH);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Hub identity can land before Data Box JWT. Route RLS needs the data plane. */
+async function ensureAuthForRoutePull({ waitMs = 0 } = {}) {
+  let auth = await ensureAuth();
+  if (auth?.access_token && !isJwtExpired(auth)) return auth;
+  if (waitMs <= 0) return auth;
+  const identity = await getIdentity();
+  if (!identity?.access_token) return auth;
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    await sleep(250);
+    auth = await ensureAuth();
+    if (auth?.access_token && !isJwtExpired(auth)) return auth;
+  }
+  return ensureAuth();
+}
+
 /** Read cookies for a site — needs <all_urls> host permission in manifest. */
 async function collectCookiesForSingleScope(rawDomain) {
   const raw = effectiveCookieDomain(String(rawDomain ?? "").trim());
@@ -789,14 +810,15 @@ function jwtUserProfileFromAuth(auth) {
     userProvider: provider,
     userCreatedAt: createdAt,
     userLastSignInAt: lastSignInAt,
+    userLoginId: String(auth?.user_login_id ?? umeta.login_id ?? umeta.username ?? "").trim(),
+    userDisplayLabel: String(auth?.user_display_label ?? umeta.full_name ?? umeta.name ?? "").trim(),
+    userFullName: String(umeta.full_name ?? umeta.name ?? "").trim(),
+    userPhone: String(auth?.user_phone ?? umeta.phone ?? "").trim(),
   };
 }
 
 function jwtPayload(auth) {
-  const part = auth?.access_token?.split(".")?.[1];
-  if (!part) return {};
-  const pad = part + "=".repeat((4 - (part.length % 4)) % 4);
-  return JSON.parse(atob(pad.replace(/-/g, "+").replace(/_/g, "/")));
+  return parseJwtPayload(auth?.access_token) || {};
 }
 
 function authUserId(auth) {
@@ -1810,32 +1832,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "EXTENSION_SIGN_IN" || msg?.type === "EXTENSION_SIGN_UP") {
     const mode = msg.type === "EXTENSION_SIGN_UP" ? "signup" : "signin";
     signInWorkspaceDual(msg.login ?? msg.email, msg.password, mode)
-      .then(async ({ identity, data, dataError, timing }) => {
-        const profile = await resolveHubUserModalProfile(identity, data).catch(() => null);
-        const identityWithProfile = profile
-          ? {
-              ...identity,
-              user_role: profile.userRole,
-              user_provider: profile.userProvider,
-              user_created_at: profile.userCreatedAt,
-              user_last_sign_in_at: profile.userLastSignInAt,
-            }
-          : identity;
-        const writes = { [STORAGE_IDENTITY]: identityWithProfile };
-        if (data) {
-          writes[STORAGE_AUTH] = profile
-            ? {
-                ...data,
-                user_role: profile.userRole,
-                user_provider: profile.userProvider,
-                user_created_at: profile.userCreatedAt,
-                user_last_sign_in_at: profile.userLastSignInAt,
-              }
-            : data;
-        }
+      .then(async ({ identity, data, dataError, dataPending, timing }) => {
+        const writes = { [STORAGE_IDENTITY]: identity };
+        if (data) writes[STORAGE_AUTH] = data;
         await chrome.storage.local.set(writes);
 
-        // Respond ASAP to avoid popup hanging if service worker is suspended mid-follow-up.
+        // Respond before Hub roster / Data Box — those used to keep "Signing in…" up 10–30s.
         sendResponse({
           ok: true,
           userEmail: identity.user_email,
@@ -1848,6 +1850,56 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
         if (timing?.totalMs) {
           console.info("[E0001] sign-in timing", timing);
+        }
+
+        void resolveHubUserModalProfile(identity, data)
+          .then(async (profile) => {
+            if (!profile) return;
+            const nextIdentity = {
+              ...identity,
+              user_role: profile.userRole,
+              user_provider: profile.userProvider,
+              user_created_at: profile.userCreatedAt,
+              user_last_sign_in_at: profile.userLastSignInAt,
+            };
+            const nextWrites = { [STORAGE_IDENTITY]: nextIdentity };
+            if (data) {
+              nextWrites[STORAGE_AUTH] = {
+                ...data,
+                user_role: profile.userRole,
+                user_provider: profile.userProvider,
+                user_created_at: profile.userCreatedAt,
+                user_last_sign_in_at: profile.userLastSignInAt,
+              };
+            }
+            await chrome.storage.local.set(nextWrites);
+          })
+          .catch((err) => console.warn("[E0001] profile after sign-in", err));
+
+        if (dataPending) {
+          void dataPending
+            .then(async ({ session: pendingData, error: pendingError }) => {
+              if (!pendingData) {
+                if (pendingError) console.warn("[E0001] Data Box plane", pendingError);
+                return;
+              }
+              const pendingProfile = await resolveHubUserModalProfile(identity, pendingData).catch(() => null);
+              await chrome.storage.local.set({
+                [STORAGE_AUTH]: pendingProfile
+                  ? {
+                      ...pendingData,
+                      user_role: pendingProfile.userRole,
+                      user_provider: pendingProfile.userProvider,
+                      user_created_at: pendingProfile.userCreatedAt,
+                      user_last_sign_in_at: pendingProfile.userLastSignInAt,
+                    }
+                  : pendingData,
+              });
+              await pullCloudRoutes(pendingData, { force: true, refreshVaultTransport: true }).catch((err) => {
+                console.warn("[E0001] pull cloud routes after dataPending", err);
+              });
+            })
+            .catch((err) => console.warn("[E0001] dataPending", err));
         }
 
         // Post-response follow-ups (best effort).
@@ -2113,13 +2165,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "OPEN_TOOL_COOKIE") {
-    const url = msg.url === "prod" ? TOOL_COOKIE_URL_PROD : TOOL_COOKIE_URL_LOCAL;
+    const base = msg.url === "prod" ? TOOL_COOKIE_URL_PROD : TOOL_COOKIE_URL_LOCAL;
+    const query = String(msg.query ?? "").replace(/^\?/, "");
+    const url = query ? `${base}${base.includes("?") ? "&" : "?"}${query}` : base;
     chrome.tabs.create({ url }).then(() => sendResponse({ ok: true, url }));
     return true;
   }
   if (msg?.type === "PULL_CLOUD_ROUTES") {
-    ensureAuth()
-      .then((auth) => pullCloudRoutes(auth))
+    ensureAuthForRoutePull({ waitMs: 8_000 })
+      .then((auth) => pullCloudRoutes(auth, { force: msg.force === true }))
       .then((r) => sendResponse(r))
       .catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
     return true;
@@ -2136,14 +2190,70 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       getIdentity(),
       getPrefs(),
       getLocal(STORAGE_LAST_ROUTE_PULL, null),
-    ]).then(async ([rawAuth, rawIdentity, prefs, lastRoutePull]) => {
+      getBindings(),
+      getBindingStatus(),
+      getLocal(STORAGE_SELECTED_BINDING, null),
+    ]).then(async ([rawAuth, rawIdentity, prefs, lastRoutePull, storedBindings, storedStatus, selectedNoteId]) => {
+      if (msg?.light === true) {
+        const auth = rawAuth;
+        const identity = rawIdentity;
+        const bindings = Array.isArray(storedBindings) ? storedBindings : [];
+        const hasSupabase = Boolean(auth?.supabase_url && auth?.supabase_anon_key);
+        const hasJwt = Boolean(auth?.access_token);
+        const sessionExpired = Boolean(hasJwt && isJwtExpired(auth));
+        const hasIdentityJwt = Boolean(identity?.access_token && !isJwtExpired(identity));
+        const sessionReady = hasIdentityJwt || (hasSupabase && hasJwt && !sessionExpired);
+        const manifest = chrome.runtime.getManifest();
+        const modalProfile = jwtUserProfileFromAuth(identity || auth);
+        const browserId = await getBrowserId();
+        sendResponse({
+          light: true,
+          linked: sessionReady,
+          sessionReady,
+          hasBindings: bindings.length > 0,
+          hasSupabase,
+          hasJwt,
+          sessionExpired,
+          bindings: bindings.length,
+          bindingList: Array.isArray(storedBindings) ? storedBindings : [],
+          browserId,
+          userId: authUserId(auth) || authUserId(identity) || rawIdentity?.user_id || null,
+          dataUserId: authUserId(auth) || null,
+          hubIdentityUserId: authUserId(identity) || rawIdentity?.user_id || null,
+          userEmail: jwtEmailFromAuth(auth) || rawIdentity?.user_email || null,
+          userLoginId: modalProfile.userLoginId || rawIdentity?.user_login_id || null,
+          userDisplayLabel: modalProfile.userDisplayLabel || rawIdentity?.user_display_label || null,
+          userFullName: modalProfile.userFullName || null,
+          userPhone: modalProfile.userPhone || null,
+          userRole: modalProfile.userRole,
+          userProvider: modalProfile.userProvider,
+          userCreatedAt: modalProfile.userCreatedAt,
+          userLastSignInAt: modalProfile.userLastSignInAt,
+          hubIdentityEmail: rawIdentity?.user_email || null,
+          hubIdentityLinked: Boolean(rawIdentity?.user_email || rawIdentity?.user_id),
+          writableRoutes: bindings.filter((b) => sourceLockState(b, browserId, null, auth).canWrite).length,
+          bindingStatus: storedStatus && typeof storedStatus === "object" ? storedStatus : {},
+          noteSyncedAtByNoteId: {},
+          routeUserActivityByKey: {},
+          last: (await getLastSync()) ?? null,
+          prefs,
+          selectedNoteId,
+          vaultOnServer: {},
+          schemaOk: false,
+          routeCloudPull: null,
+          lastRoutePull,
+          displayWarning: null,
+          version: manifest.version,
+          dataPending: false,
+        });
+        return;
+      }
       const auth = rawAuth
         ? await refreshAuthIfNeeded(rawAuth, STORAGE_AUTH)
         : null;
       const identity = rawIdentity
         ? await refreshAuthIfNeeded(rawIdentity, STORAGE_IDENTITY)
         : null;
-      const selectedNoteId = await getLocal(STORAGE_SELECTED_BINDING, null);
       const hasSupabase = Boolean(auth?.supabase_url && auth?.supabase_anon_key);
       const hasJwt = Boolean(auth?.access_token);
       const sessionExpired = Boolean(hasJwt && isJwtExpired(auth));
@@ -2219,6 +2329,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         dataUserId: authUserId(auth) || null,
         hubIdentityUserId: modalProfile.hubIdentityUserId || rawIdentity?.user_id || null,
         userEmail: jwtEmailFromAuth(auth) || rawIdentity?.user_email || null,
+        userLoginId: modalProfile.userLoginId || rawIdentity?.user_login_id || null,
+        userDisplayLabel: modalProfile.userDisplayLabel || rawIdentity?.user_display_label || null,
+        userFullName: modalProfile.userFullName || null,
+        userPhone: modalProfile.userPhone || null,
         userRole: modalProfile.userRole,
         userProvider: modalProfile.userProvider,
         userCreatedAt: modalProfile.userCreatedAt,
@@ -2239,7 +2353,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         displayWarning: computeDisplayWarning(bindingStatus, schemaOk),
         version: manifest.version,
       });
-    });
+    }).catch((e) => sendResponse({ ok: false, error: String(e), bindingList: [] }));
     return true;
   }
   if (msg?.type === "GET_TAB_DOMAINS") {

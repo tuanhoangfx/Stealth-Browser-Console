@@ -13,13 +13,54 @@ import {
   closeHubWorkspaceUserModal,
   openHubWorkspaceUserModal,
   populateHubWorkspaceUserModal,
+  renderHubUserModalLog,
 } from "./hub-workspace-user-modal.js";
 import {
   COOKIE_BRIDGE_ROUTE_TABLE_COLUMN_HINTS,
+  COOKIE_BRIDGE_ROUTE_TABLE_HEADER_EMOJI,
   COOKIE_BRIDGE_ROUTE_TABLE_HEADER_ICONS,
   mountDirectoryColumnHints,
 } from "./hub-directory-column-hints.js";
 import { HUB_ROUTE_STATUS_ICON_SVGS } from "./hub-route-status-icons.js";
+import { isHubTechnicalAuthEmail, looksLikeEmail } from "./vendor/hub-identity/hub-login.js";
+import { formatAuthGateError, isAuthTransportError, isJwtExpired, requestHubPasswordReset } from "./auth-session.js";
+import { bindCookieSharePanel, cookieShareQueryForWeb } from "./cookie-share-panel.js";
+import {
+  applyHubUserZoomPct,
+  HUB_USER_ZOOM_STEPS,
+  hubUserZoomStepIndex,
+  initHubUserZoom,
+  readHubUserZoomPct,
+} from "./hub-user-zoom-lite.js";
+
+initHubUserZoom();
+bindHubUiZoomControl();
+
+function bindHubUiZoomControl() {
+  const slider = document.getElementById("sidebar-zoom-slider");
+  const pctEl = document.getElementById("sidebar-zoom-pct");
+
+  const syncUi = (pct) => {
+    const next = Number(pct) || 90;
+    const idx = hubUserZoomStepIndex(next);
+    const maxIdx = HUB_USER_ZOOM_STEPS.length - 1;
+    const fill = maxIdx > 0 ? (idx / maxIdx) * 100 : 0;
+    if (slider) {
+      slider.value = String(next);
+      slider.style.setProperty("--hub-zoom-fill", `${fill}%`);
+      slider.setAttribute("aria-label", `Display size ${next} percent`);
+    }
+    if (pctEl) pctEl.textContent = `${next}%`;
+  };
+
+  syncUi(readHubUserZoomPct());
+  slider?.addEventListener("input", () => {
+    syncUi(applyHubUserZoomPct(Number(slider.value)));
+  });
+  window.addEventListener("hub-user-zoom-change", (event) => {
+    syncUi(event.detail?.pct ?? readHubUserZoomPct());
+  });
+}
 
 const extensionLoginModal = document.getElementById("extension-login-modal");
 const extensionLoginBackdrop = document.getElementById("extension-login-backdrop");
@@ -32,6 +73,9 @@ const extensionLoginSubmit = document.getElementById("extension-login-submit");
 const extensionLoginTabSignin = document.getElementById("extension-login-tab-signin");
 const extensionLoginTabSignup = document.getElementById("extension-login-tab-signup");
 const extensionLoginForgot = document.getElementById("extension-login-forgot");
+const extensionLoginContact = document.getElementById("extension-login-contact");
+const extensionLoginProgress = document.getElementById("extension-login-progress");
+const extensionLoginProgressLabel = document.getElementById("extension-login-progress-label");
 const appShellEl = document.querySelector(".shell");
 
 let loginModalResolver = null;
@@ -42,11 +86,9 @@ let initialAuthPromptDone = false;
 const tbody = document.getElementById("bindings-body");
 const emptyEl = document.getElementById("empty");
 const openSettingsBtn = document.getElementById("open-settings");
-const headerUserChip = document.getElementById("header-user-chip");
-const headerUserDetailBtn = document.getElementById("header-user-detail");
-const logoutBtn = document.getElementById("logout");
-const headerUserEmailText = document.getElementById("header-user-email-text");
-const headerUserRoleIcon = document.getElementById("header-user-role-icon");
+const sidebarUserBtn = document.getElementById("sidebar-user-btn");
+const sidebarUserLabel = document.getElementById("sidebar-user-label");
+const sidebarUserRoleIcon = document.getElementById("sidebar-user-role-icon");
 const routeSearchInput = document.getElementById("route-search");
 const routeSearchClear = document.getElementById("route-search-clear");
 const routeCountEl = document.getElementById("route-count");
@@ -63,7 +105,7 @@ const applyStepWrite = document.getElementById("apply-step-write");
 const applyStepVerify = document.getElementById("apply-step-verify");
 const APPLY_LOCK_MIN_MS = 5000;
 /** Max route rows in popup — sorted by latest sync (no table scroll). */
-const MAX_VISIBLE_ROUTES = 5;
+const MAX_VISIBLE_ROUTES = 8;
 
 let routePageIndex = 0;
 
@@ -83,7 +125,14 @@ let currentUserId = "";
 let currentDataUserId = "";
 let currentHubUserId = "";
 let currentUserEmail = "";
+let currentUserDisplayLabel = "";
+let currentUserLoginId = "";
+let currentUserFullName = "";
+let currentUserPhone = "";
 let currentUserRole = "";
+let currentUserProvider = "";
+let currentUserCreatedAt = "";
+let currentUserLastSignInAt = "";
 let lastToolRelay = null;
 let applyLockStartedAt = 0;
 let applyStageTimers = [];
@@ -119,9 +168,26 @@ const ICONS = {
   status: '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
   sync: '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15.5-6.2L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15.5 6.2L21 16"/><path d="M21 21v-5h-5"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  userPlus:
+    '<svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M2 21a8 8 0 0 1 13-6"/><path d="M19 8v6"/><path d="M16 11h6"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
   userRound:
     '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
   vault: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M12 9v6"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  tag: '<svg viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/></svg>',
+  bell: '<svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
+  fileText:
+    '<svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+  settings:
+    '<svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+  save: '<svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  phone: '<svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.4 2.1L8.1 9.6a16 16 0 0 0 6.3 6.3l1.2-1.2a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>',
+  fingerprint: '<svg viewBox="0 0 24 24"><path d="M12 10a4 4 0 0 1 4 4"/><path d="M12 6a8 8 0 0 1 8 8"/><path d="M12 14v4"/><path d="M8 10.2A4 4 0 0 0 8 18"/><path d="M4.6 9A8 8 0 0 0 6 20"/></svg>',
+  gauge: '<svg viewBox="0 0 24 24"><path d="M12 14 16 8"/><path d="M4 14a8 8 0 1 1 16 0"/></svg>',
+  message: '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H5l-2 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>',
 };
 
 const THESVG_CDN = "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons";
@@ -171,20 +237,28 @@ function buildPlatformFilterOptionsFromBindings(bindings) {
     .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
 }
 
+/** P0020 cookie-stickers + packages/hub-ui hub-directory-stickers — do not fork. */
+const FILTER_TRIGGER_EMOJI = {
+  platform: "🔗",
+  role: "🛡️",
+  vault: "🗄️",
+  source: "🔒",
+};
+
 const FILTER_OPTION_CATALOG = {
   role: [
-    { value: "owner", label: "Owner", icon: "user" },
-    { value: "source", label: "Source", icon: "shield" },
-    { value: "readonly", label: "Read-only", icon: "lock" },
+    { value: "owner", label: "Owner", emoji: "🛡️" },
+    { value: "source", label: "Source", emoji: "👤" },
+    { value: "readonly", label: "Read-only", emoji: "🔒" },
   ],
   vault: [
-    { value: "has-vault", label: "Has vault", icon: "database" },
-    { value: "no-vault", label: "No vault", icon: "vault" },
+    { value: "has-vault", label: "Has vault", emoji: "🗄️" },
+    { value: "no-vault", label: "No vault", emoji: "⭕" },
   ],
   source: [
-    { value: "locked", label: "Locked", icon: "lock" },
-    { value: "owner", label: "Owner", icon: "user" },
-    { value: "unset", label: "Unset", icon: "access" },
+    { value: "locked", label: "Locked", emoji: "🔒" },
+    { value: "owner", label: "Owner", emoji: "🛡️" },
+    { value: "unset", label: "Unset", emoji: "⭕" },
   ],
 };
 
@@ -270,39 +344,39 @@ function platformKeyForDomain(domain) {
   return "other";
 }
 
-function filterOptionIcon(option, fallbackIcon) {
-  if (option.brandSrc) {
+function filterOptionGlyph(option, def) {
+  if (option?.brandSrc) {
     return `<img class="filter-brand-icon" src="${escapeHtml(option.brandSrc)}" alt="" />`;
   }
-  return icon(option.icon || fallbackIcon);
+  const emoji = option?.emoji || def.triggerEmoji;
+  if (emoji) {
+    return `<span class="hub-filter-option-emoji" aria-hidden="true">${emoji}</span>`;
+  }
+  return icon(option?.icon || def.icon);
 }
 
 const FILTER_DEFS = {
   platform: {
     label: "Platform",
-    icon: "route",
-    allLabel: "All Platform",
+    triggerEmoji: FILTER_TRIGGER_EMOJI.platform,
     searchPlaceholder: "Search platform...",
     options: [],
   },
   role: {
     label: "Role",
-    icon: "layers",
-    allLabel: "All Role",
+    triggerEmoji: FILTER_TRIGGER_EMOJI.role,
     searchPlaceholder: "Search role...",
     options: [],
   },
   vault: {
     label: "Vault",
-    icon: "vault",
-    allLabel: "All Vault",
+    triggerEmoji: FILTER_TRIGGER_EMOJI.vault,
     searchPlaceholder: "Search vault...",
     options: [],
   },
   source: {
     label: "Access",
-    icon: "access",
-    allLabel: "All Access",
+    triggerEmoji: FILTER_TRIGGER_EMOJI.source,
     searchPlaceholder: "Search access...",
     options: [],
   },
@@ -323,12 +397,53 @@ function siteIcon(domain) {
   return { label: hit.label, src };
 }
 
+function parseBuildUpdatedMs(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const ms = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00` : raw);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Hub chrome age — 5 buckets (HubChromeActivityAge). */
+function headerChromeAgeHubTone(ms, now = Date.now()) {
+  const age = Math.max(0, now - ms);
+  if (age <= ACTIVITY_HOUR_MS) return "age-recent";
+  if (age <= ACTIVITY_DAY_MS) return "age-aging";
+  if (age <= 3 * ACTIVITY_DAY_MS) return "age-days";
+  if (age <= 7 * ACTIVITY_DAY_MS) return "age-week";
+  return "age-stale";
+}
+
+function formatHeaderChromeAgeLabel(ms, now = Date.now()) {
+  const ageMs = Math.max(0, now - ms);
+  const ageSec = Math.floor(ageMs / 1000);
+  if (ageSec < 60) return "Just now";
+  const ageMin = Math.floor(ageSec / 60);
+  if (ageMin < 60) return `${ageMin}m ago`;
+  const ageHr = Math.floor(ageMin / 60);
+  if (ageHr < 24) return `${ageHr}h ago`;
+  return `${Math.floor(ageHr / 24)}d ago`;
+}
+
 function renderVersionMeta(version) {
-  const el = document.getElementById("ver-meta");
-  if (!el) return;
-  const updated = window.E0001_BUILD?.updated ?? "—";
+  const versionEl = document.getElementById("ver-meta-version");
+  const ageWrap = document.getElementById("ver-meta-age");
+  const ageDot = document.getElementById("ver-meta-age-dot");
+  const ageLabel = document.getElementById("ver-meta-age-label");
+  if (!versionEl) return;
   const v = version || chrome.runtime.getManifest().version;
-  el.textContent = `v${v} · updated ${updated}`;
+  versionEl.textContent = `v${v}`;
+  const ms = parseBuildUpdatedMs(window.E0001_BUILD?.updated);
+  if (ms == null || !ageWrap || !ageDot || !ageLabel) {
+    if (ageWrap) ageWrap.hidden = true;
+    return;
+  }
+  const tone = headerChromeAgeHubTone(ms);
+  ageLabel.textContent = formatHeaderChromeAgeLabel(ms);
+  ageDot.className = `hub-chrome-activity-age__dot hub-chrome-activity-age__dot--${tone}`;
+  ageWrap.hidden = false;
 }
 
 function hydrateStaticIcons() {
@@ -342,10 +457,20 @@ function hydrateStaticIcons() {
 function applyDirectoryTableHeaderIcons() {
   document.querySelectorAll(".routes-table thead th[data-col-hint]").forEach((th) => {
     const key = th.dataset.colHint;
-    const iconName = COOKIE_BRIDGE_ROUTE_TABLE_HEADER_ICONS[key];
     const label = th.querySelector(".th-label");
-    if (!label || !iconName) return;
-    label.setAttribute("data-icon", iconName);
+    if (!label) return;
+    const emoji = COOKIE_BRIDGE_ROUTE_TABLE_HEADER_EMOJI[key];
+    if (emoji) {
+      if (!label.querySelector(".hub-users-th-emoji")) {
+        label.insertAdjacentHTML(
+          "afterbegin",
+          `<span class="hub-users-th-emoji" aria-hidden="true">${emoji}</span>`,
+        );
+      }
+      return;
+    }
+    const iconName = COOKIE_BRIDGE_ROUTE_TABLE_HEADER_ICONS[key];
+    if (iconName) label.setAttribute("data-icon", iconName);
   });
 }
 
@@ -405,13 +530,13 @@ function renderFilterDropdown(container, search = "") {
   if (!def) return;
   const selected = routeFilters[key] || "all";
   const selectedOption = def.options.find((option) => option.value === selected);
-  const label = selectedOption ? `${def.label}: ${selectedOption.label}` : def.allLabel;
+  const label = selectedOption ? selectedOption.label : def.label;
   const filterText = search.trim().toLowerCase();
   const options = def.options.filter((option) => !filterText || option.label.toLowerCase().includes(filterText));
 
   container.innerHTML = `
     <button type="button" class="filter-dd-trigger" aria-expanded="false">
-      ${selectedOption ? filterOptionIcon(selectedOption, def.icon) : icon(def.icon)}
+      ${filterOptionGlyph(selectedOption, def)}
       <span class="filter-dd-label">${escapeHtml(label)}</span>
       ${icon("chevron", "ui-icon filter-chevron")}
     </button>
@@ -423,8 +548,8 @@ function renderFilterDropdown(container, search = "") {
       <div class="filter-dd-list">
         <button type="button" class="filter-dd-option ${selected === "all" ? "is-selected" : ""}" data-value="all">
           <span class="filter-circle">${selected === "all" ? "✓" : ""}</span>
-          ${icon(def.icon)}
-          <span class="filter-option-label">${escapeHtml(def.allLabel)}</span>
+          ${filterOptionGlyph(null, def)}
+          <span class="filter-option-label">${escapeHtml(def.label)}</span>
           <span class="filter-option-count">${def.options.length}</span>
         </button>
         <div class="filter-dd-divider"></div>
@@ -435,7 +560,7 @@ function renderFilterDropdown(container, search = "") {
                   (option) => `
                     <button type="button" class="filter-dd-option ${selected === option.value ? "is-selected" : ""}" data-value="${escapeHtml(option.value)}">
                       <span class="filter-circle">${selected === option.value ? "✓" : ""}</span>
-                      ${filterOptionIcon(option, def.icon)}
+                      ${filterOptionGlyph(option, def)}
                       <span class="filter-option-label">${escapeHtml(option.label)}</span>
                     </button>
                   `,
@@ -574,7 +699,6 @@ function getSelectedBinding() {
 
 function setSelectedNoteId(noteId) {
   selectedNoteId = noteId || null;
-  if (selectedNoteId && selectedNoteIds.size === 0) selectedNoteIds.add(selectedNoteId);
   chrome.runtime.sendMessage({ type: "SET_SELECTED_BINDING", noteId: selectedNoteId });
 }
 
@@ -589,13 +713,30 @@ function routeAccessContext() {
     userId: currentDataUserId || currentUserId,
     dataUserId: currentDataUserId || currentUserId,
     hubIdentityUserId: currentHubUserId,
-    userEmail: currentUserEmail,
+    userEmail: currentUserDisplayLabel || currentUserEmail,
   };
 }
 
 function bindingRoleInfo(binding) {
   return resolveBindingRoleInfo(binding, routeAccessContext());
 }
+
+function openCookieShareOnWeb(binding) {
+  const query = cookieShareQueryForWeb(binding);
+  chrome.runtime.sendMessage({ type: "OPEN_TOOL_COOKIE", url: "prod", query }, (res) => {
+    if (chrome.runtime.lastError || !res?.ok) {
+      const prod = window.E0001_BUILD?.toolProd;
+      if (prod) chrome.tabs.create({ url: `${prod}${prod.includes("?") ? "&" : "?"}${query}` });
+    }
+  });
+}
+
+const cookieSharePanel = bindCookieSharePanel({
+  showToast,
+  openOnWeb: openCookieShareOnWeb,
+  currentLoginId: () => currentUserLoginId,
+});
+
 
 function formatVaultUser(probe, st) {
   const raw = probe?.updatedBy ?? st?.vaultUpdatedBy ?? null;
@@ -617,11 +758,11 @@ function formatRouteOwner(binding) {
     ownerEmail
       ? ownerEmail
       : ownerId && currentUserId && ownerId === currentUserId
-        ? currentUserEmail || shortId(ownerId)
+        ? currentUserDisplayLabel || currentUserEmail || shortId(ownerId)
         : ownerId
           ? shortId(ownerId)
-          : binding?.accessRole === "owner" && currentUserEmail
-            ? currentUserEmail
+          : binding?.accessRole === "owner" && (currentUserDisplayLabel || currentUserEmail)
+            ? currentUserDisplayLabel || currentUserEmail
             : "—";
   return label;
 }
@@ -642,14 +783,8 @@ function routeOwnerTitle(binding, vaultProbe, status, userActivity) {
   return parts.join(" · ");
 }
 
-function formatRouteUserCell(binding, status, userActivity) {
-  const label = formatRouteOwner(binding);
-  const userSync =
-    status?.userSyncedAt?.trim() ||
-    userActivity?.lastSyncAt?.trim() ||
-    "";
-  if (!userSync) return escapeHtml(label);
-  return `${escapeHtml(label)}<div class="user-sync-sub">${formatActivityTimeHtml(userSync)}</div>`;
+function formatRouteUserCell(binding) {
+  return `<span class="hub-directory-body-value">${escapeHtml(formatRouteOwner(binding))}</span>`;
 }
 
 const ACTIVITY_HOUR_MS = 60 * 60 * 1000;
@@ -711,7 +846,7 @@ function formatActivityTimeLabel(iso) {
 function formatActivityTimeHtml(iso) {
   const { label, toneClass } = formatActivityTimeLabel(iso);
   if (label === "—") return "—";
-  return `<span class="activity-time"><span class="activity-time-dot activity-time-dot--${toneClass}" aria-hidden="true"></span>${escapeHtml(label)}</span>`;
+  return `<span class="hub-directory-timestamp activity-time"><span class="activity-time-dot activity-time-dot--${toneClass}" aria-hidden="true"></span>${escapeHtml(label)}</span>`;
 }
 
 function ensureActivityRelativeTick() {
@@ -752,16 +887,15 @@ function resetRoutePage() {
 }
 
 function updateRoutePager(matchedCount) {
-  const totalPages = matchedCount > 0 ? Math.ceil(matchedCount / MAX_VISIBLE_ROUTES) : 1;
+  const total = Number(matchedCount) || 0;
+  const totalPages = total > 0 ? Math.ceil(total / MAX_VISIBLE_ROUTES) : 1;
   routePageIndex = Math.min(routePageIndex, Math.max(0, totalPages - 1));
-  const showPager = matchedCount > MAX_VISIBLE_ROUTES;
-  if (routeTablePagerEl) routeTablePagerEl.hidden = !showPager;
-  if (!showPager) return;
-  const rangeStart = routePageIndex * MAX_VISIBLE_ROUTES + 1;
-  const rangeEnd = Math.min(matchedCount, (routePageIndex + 1) * MAX_VISIBLE_ROUTES);
+  if (routeTablePagerEl) routeTablePagerEl.hidden = false;
+  const rangeStart = total === 0 ? 0 : routePageIndex * MAX_VISIBLE_ROUTES + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(total, (routePageIndex + 1) * MAX_VISIBLE_ROUTES);
   const page = routePageIndex + 1;
   if (routePageLabelEl) {
-    routePageLabelEl.textContent = `Page ${page} of ${totalPages} · Showing ${rangeStart}-${rangeEnd} of ${matchedCount}`;
+    routePageLabelEl.textContent = `Page ${page} of ${totalPages} · Showing ${rangeStart}-${rangeEnd} of ${total}`;
   }
   if (routePagePrevBtn) routePagePrevBtn.disabled = routePageIndex <= 0;
   if (routePageNextBtn) routePageNextBtn.disabled = routePageIndex >= totalPages - 1;
@@ -772,6 +906,45 @@ function toastOnce(key, text, type, durationMs) {
   if (lastBannerKey === key) return;
   lastBannerKey = key;
   showToast(text, type, durationMs ?? 4200);
+}
+
+const TAB_ACTIVITY_MAX = 40;
+const tabActivityLog = [];
+
+function formatTabActivityClock(ms) {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+}
+
+function renderTabActivityLog() {
+  const rows = tabActivityLog
+    .map(
+      (row) =>
+        `<li class="hub-header-ops-panel__item"><time>${escapeHtml(formatTabActivityClock(row.at))}</time><span>${escapeHtml(row.message)}</span></li>`,
+    )
+    .join("");
+  const targets = [
+    ["header-log-empty", "header-log-list"],
+    ["sidebar-log-empty", "sidebar-log-list"],
+  ];
+  for (const [emptyId, listId] of targets) {
+    const emptyEl = document.getElementById(emptyId);
+    const listEl = document.getElementById(listId);
+    if (!listEl) continue;
+    const has = tabActivityLog.length > 0;
+    if (emptyEl) emptyEl.hidden = has;
+    listEl.hidden = !has;
+    listEl.innerHTML = rows;
+  }
+  renderHubUserModalLog(tabActivityLog, { escapeHtml });
+}
+
+function pushTabActivity(message) {
+  const text = String(message || "").trim();
+  if (!text) return;
+  tabActivityLog.unshift({ at: Date.now(), message: text });
+  if (tabActivityLog.length > TAB_ACTIVITY_MAX) tabActivityLog.length = TAB_ACTIVITY_MAX;
+  renderTabActivityLog();
 }
 
 function bindingKey(b) {
@@ -855,8 +1028,10 @@ function runApplyVaultForBinding(binding) {
             const type = res.partial || res.failedNames?.length || res.warning ? "warn" : "success";
             const extra = res.warning ? ` ${res.warning}` : "";
             showToast(`${formatApplyResult(res)}${extra}`, type, 12000);
+            pushTabActivity(`Load ${binding.noteTitle || binding.domain || "route"}`);
           } else {
             showToast(res?.error || res?.warning || "Load cookies thất bại", "error", 12000);
+            pushTabActivity(`Load failed: ${res?.error || res?.warning || "unknown"}`);
           }
           await setApplyLocked(false);
           refresh();
@@ -884,23 +1059,55 @@ function setLoginMode(mode) {
   if (extensionLoginPassword) {
     extensionLoginPassword.autocomplete = loginMode === "signup" ? "new-password" : "current-password";
   }
+  syncSignupContactField();
   if (extensionLoginForm) extensionLoginForm.hidden = false;
+}
+
+function syncSignupContactField() {
+  if (!extensionLoginContact) return;
+  const login = extensionLoginEmail?.value?.trim() ?? "";
+  const show = loginMode === "signup" && !looksLikeEmail(login);
+  extensionLoginContact.hidden = !show;
+  extensionLoginContact.required = show;
+  if (!show) extensionLoginContact.value = "";
+}
+
+function isLoginModalOpen() {
+  return Boolean(extensionLoginModal && !extensionLoginModal.hidden);
 }
 
 function updateAuthChrome(ready) {
   if (ready) {
+    sessionReadyCache = true;
     appShellEl?.classList.remove("shell--auth-locked");
+    if (isLoginModalOpen() && !loginModalResolver) hideLoginModal();
     return;
   }
+  sessionReadyCache = false;
   appShellEl?.classList.add("shell--auth-locked");
+}
+
+/** Unlock when Hub/Data Box session is live. Never leave blur without the Sign In modal. */
+function applySessionReadyFromStatus(data) {
+  const ready = Boolean(data?.sessionReady);
+  if (ready) {
+    updateAuthChrome(true);
+    initialAuthPromptDone = true;
+    return true;
+  }
+  if (sessionReadyCache) {
+    updateAuthChrome(true);
+    return true;
+  }
+  updateAuthChrome(false);
+  maybePromptLoginOnLoad(false);
+  return false;
 }
 
 function hideLoginModal() {
   if (extensionLoginModal) extensionLoginModal.hidden = true;
-  if (extensionLoginError) {
-    extensionLoginError.hidden = true;
-    extensionLoginError.textContent = "";
-  }
+  setLoginBusy(false);
+  clearLoginMessage();
 }
 
 function dismissLoginModal() {
@@ -938,47 +1145,227 @@ function showLoginModal() {
   });
 }
 
-function submitExtensionLogin(login, password, mode = "signin") {
-  return new Promise((resolve) => {
-    if (extensionLoginSubmit) extensionLoginSubmit.disabled = true;
-    const type = mode === "signup" ? "EXTENSION_SIGN_UP" : "EXTENSION_SIGN_IN";
-    let done = false;
-    const timer = window.setTimeout(() => {
-      if (done) return;
-      done = true;
-      if (extensionLoginSubmit) extensionLoginSubmit.disabled = false;
-      resolve({ ok: false, error: "Login timed out — background did not respond. Please reload the extension and try again." });
-    }, 15_000);
+let loginInFlight = false;
+let adoptLoginFromStorage = null;
 
-    chrome.runtime.sendMessage({ type, login, email: login, password }, (res) => {
-      if (done) return;
-      done = true;
-      window.clearTimeout(timer);
-      if (extensionLoginSubmit) extensionLoginSubmit.disabled = false;
-      if (chrome.runtime.lastError) {
-        resolve({ ok: false, error: chrome.runtime.lastError.message });
-        return;
-      }
-      resolve(res ?? { ok: false, error: "No response" });
+const STORAGE_IDENTITY = "e0001-hub-identity-v1";
+const STORAGE_AUTH = "e0001-bridge-auth-v1";
+const STORAGE_BINDINGS = "e0001-sync-bindings-v1";
+const STORAGE_BINDING_STATUS = "e0001-binding-status-v1";
+const STORAGE_SELECTED_BINDING = "e0001-selected-binding-v1";
+const HUB_SIGNIN_FAILED_MESSAGE = "Sign-in failed. Please try again.";
+
+function clearLoginMessage() {
+  if (!extensionLoginError) return;
+  extensionLoginError.hidden = true;
+  extensionLoginError.textContent = "";
+}
+
+function setLoginBusy(busy, label) {
+  if (extensionLoginSubmit) extensionLoginSubmit.disabled = busy;
+  if (extensionLoginProgress) extensionLoginProgress.hidden = !busy;
+  if (busy) {
+    clearLoginMessage();
+    if (extensionLoginProgressLabel && label) {
+      extensionLoginProgressLabel.textContent = label;
+    }
+  }
+}
+
+function showLoginMessage(text) {
+  if (loginInFlight) return;
+  setLoginBusy(false);
+  if (!extensionLoginError) return;
+  const raw = text == null ? "" : text;
+  const message = String(raw).trim() === "" ? "" : formatAuthGateError(raw, loginMode);
+  extensionLoginError.textContent = message;
+  extensionLoginError.hidden = !message;
+}
+
+function identityIsLive(identity) {
+  return Boolean(identity?.access_token) && !isJwtExpired(identity);
+}
+
+function applyIdentitySession(identity, auth = null) {
+  const src = identityIsLive(identity) ? identity : identityIsLive(auth) ? auth : null;
+  if (!src) return false;
+  sessionReadyCache = true;
+  initialAuthPromptDone = true;
+  applyHeaderUserFromStatus({
+    sessionReady: true,
+    hasJwt: true,
+    browserId: "",
+    userId: src.user_id || "",
+    dataUserId: auth?.user_id || "",
+    hubIdentityUserId: identity?.user_id || "",
+    userEmail: identity?.user_email_label || identity?.user_email || auth?.user_email || "",
+    userDisplayLabel:
+      identity?.user_display_label || identity?.user_login_id || src.user_email || "",
+    userLoginId: identity?.user_login_id || "",
+    userRole: src.user_role || "",
+    userProvider: src.user_provider || "",
+    userCreatedAt: src.user_created_at || "",
+    userLastSignInAt: src.user_last_sign_in_at || "",
+  });
+  updateAuthChrome(true);
+  return true;
+}
+
+function readStoredHubIdentity() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([STORAGE_IDENTITY, STORAGE_AUTH], (items) => {
+      resolve({
+        identity: items?.[STORAGE_IDENTITY] ?? null,
+        auth: items?.[STORAGE_AUTH] ?? null,
+      });
     });
   });
 }
 
+function successFromIdentity(identity, extra = {}) {
+  return {
+    ok: true,
+    adopted: true,
+    userEmail: identity?.user_email_label || identity?.user_email || "",
+    userDisplayLabel: identity?.user_display_label || identity?.user_login_id || "",
+    userLoginId: identity?.user_login_id || null,
+    userId: identity?.user_id || null,
+    ...extra,
+  };
+}
+
+function completeLoginSuccess(res, login) {
+  hideLoginModal();
+  setLoginBusy(false);
+  sessionReadyCache = true;
+  initialAuthPromptDone = true;
+  updateAuthChrome(true);
+  if (extensionLoginPassword) extensionLoginPassword.value = "";
+  const done = loginModalResolver;
+  loginModalResolver = null;
+  done?.(true);
+  const warnText = res.warning ? formatAuthGateError(res.warning, loginMode) : "";
+  if (warnText && warnText !== HUB_SIGNIN_FAILED_MESSAGE) {
+    showToast(`Signed in (Hub). ${warnText}`, "warn", 6000);
+  } else {
+    showToast(
+      `Signed in as ${res.userDisplayLabel || res.userLoginId || login}`,
+      "success",
+      3200,
+    );
+  }
+  pushTabActivity(`Signed in as ${res.userDisplayLabel || res.userLoginId || login}`);
+  pullCloudRoutesThenPaint();
+}
+
+function submitExtensionLogin(login, password, mode = "signin", contactEmail = "") {
+  return new Promise((resolve) => {
+    if (loginInFlight) {
+      resolve({ ok: false, ignored: true, error: "Sign-in already in progress." });
+      return;
+    }
+    loginInFlight = true;
+    setLoginBusy(true, mode === "signup" ? "Creating account…" : "Signing in…");
+    const type = mode === "signup" ? "EXTENSION_SIGN_UP" : "EXTENSION_SIGN_IN";
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      const settle = (next) => {
+        if (done) return;
+        done = true;
+        loginInFlight = false;
+        adoptLoginFromStorage = null;
+        window.clearTimeout(timer);
+        if (!next?.ok) setLoginBusy(false);
+        resolve(next);
+      };
+      if (value?.ok) {
+        settle(value);
+        return;
+      }
+      void readStoredHubIdentity().then(({ identity }) => {
+        if (identityIsLive(identity)) {
+          settle(successFromIdentity(identity));
+          return;
+        }
+        settle(value);
+      });
+    };
+    adoptLoginFromStorage = (identity) => {
+      if (!identityIsLive(identity)) return;
+      finish(successFromIdentity(identity));
+    };
+    const timer = window.setTimeout(() => {
+      finish({
+        ok: false,
+        error: "Login timed out — background did not respond. Please reload the extension and try again.",
+      });
+    }, 40_000);
+
+    const send = (attempt) => {
+      chrome.runtime.sendMessage({ type, login, email: login, password, contactEmail }, (res) => {
+        if (chrome.runtime.lastError) {
+          const err = chrome.runtime.lastError.message;
+          if (attempt < 1 && isAuthTransportError(err)) {
+            window.setTimeout(() => send(attempt + 1), 280);
+            return;
+          }
+          finish({ ok: false, error: err, transport: true });
+          return;
+        }
+        finish(res ?? { ok: false, error: "No response", transport: true });
+      });
+    };
+    send(0);
+  });
+}
+
+function hydrateSessionFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([STORAGE_IDENTITY, STORAGE_AUTH], (items) => {
+      resolve(applyIdentitySession(items?.[STORAGE_IDENTITY], items?.[STORAGE_AUTH]));
+    });
+  });
+}
+
+function hydrateRoutesFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(
+      [STORAGE_BINDINGS, STORAGE_BINDING_STATUS, STORAGE_SELECTED_BINDING],
+      (items) => {
+        const list = Array.isArray(items?.[STORAGE_BINDINGS]) ? items[STORAGE_BINDINGS] : [];
+        lastBindings = list;
+        lastBindingStatus =
+          items?.[STORAGE_BINDING_STATUS] && typeof items[STORAGE_BINDING_STATUS] === "object"
+            ? items[STORAGE_BINDING_STATUS]
+            : {};
+        renderBindingsTable(lastBindings, lastBindingStatus, lastVaultOnServer);
+        resolve(list.length > 0);
+      },
+    );
+  });
+}
+
 function maybePromptLoginOnLoad(ready) {
-  if (initialAuthPromptDone || ready) return;
+  if (ready) {
+    initialAuthPromptDone = true;
+    return;
+  }
+  if (isLoginModalOpen()) return;
   initialAuthPromptDone = true;
   void showLoginModal();
 }
 
 function ensureSessionReady() {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: "GET_STATUS" }, (data) => {
+    chrome.runtime.sendMessage({ type: "GET_STATUS", light: true }, (data) => {
       if (chrome.runtime.lastError) {
         resolve(false);
         return;
       }
-      sessionReadyCache = Boolean(data?.sessionReady);
-      resolve(sessionReadyCache);
+      if (data?.sessionReady) sessionReadyCache = true;
+      if (data) applyHeaderUserFromStatus(data);
+      resolve(Boolean(data?.sessionReady) || sessionReadyCache);
     });
   });
 }
@@ -1013,8 +1400,10 @@ function runSyncNowForBinding(binding) {
         if (res.warning) showToast(res.warning, "warn", 9000);
         else if (res.partial) showToast(res.warning || "Sync một phần — xem vault.", "warn", 7000);
         else showToast(`Sync xong: ${res.ok ?? 0}/${res.total ?? 0} route`, "success");
+        pushTabActivity(`Sync ${binding.noteTitle || binding.domain || "route"}`);
       } else {
         showToast(res?.error || res?.reason || "Sync failed", "error", 8000);
+        pushTabActivity(`Sync failed: ${res?.error || res?.reason || "unknown"}`);
       }
       refresh();
     });
@@ -1107,9 +1496,10 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
   tableWrapEl?.classList.toggle("table-wrap--max-five", visibleRows.length > 0);
 
   visibleRouteNoteIds = visibleRows.map((row) => row.noteId).filter(Boolean);
-  if (selectedNoteId && !selectedNoteIds.size) selectedNoteIds.add(selectedNoteId);
   selectedNoteIds = new Set([...selectedNoteIds].filter((id) => visibleRouteNoteIds.includes(id)));
-  if (selectedNoteId && !visibleRouteNoteIds.includes(selectedNoteId)) selectedNoteId = selectedNoteIds.values().next().value || null;
+  if (selectedNoteId && !selectedNoteIds.has(selectedNoteId)) {
+    selectedNoteId = selectedNoteIds.values().next().value || null;
+  }
   emptyEl.hidden = visibleRows.length > 0;
   if (!visibleRows.length) {
     emptyEl.innerHTML = enabled.length
@@ -1122,14 +1512,13 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
         ? `${pageStart + visibleRows.length}/${matchedCount}`
         : `${visibleRows.length}/${enabled.length}`;
   }
+  renderHeaderCenterStats(enabled, lastBindingStatus);
 
   visibleRows.forEach((b, rowIndex) => {
     const key = bindingKey(b);
     const st = readRouteStatus(bindingStatus, b);
     const tr = document.createElement("tr");
     const isSelected = Boolean(b.noteId && selectedNoteIds.has(b.noteId));
-    tr.tabIndex = 0;
-    tr.setAttribute("role", "button");
     tr.setAttribute("aria-selected", isSelected ? "true" : "false");
     if (isSelected) tr.className = "row-selected";
 
@@ -1154,34 +1543,40 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
     );
     const markerHtml = routeSiteMarkerHtml(b, st, vaultProbe);
     const cookieHtml = [
-      `<span title="Cookies in this browser">Jar ${lineN ?? "—"}</span>`,
-      `<span title="Cookies in cloud vault">Vault ${vaultN ?? "—"}</span>`,
+      `<span class="route-cookie"><span class="route-cookie-label">Jar</span><span class="route-cookie-count">${lineN ?? "—"}</span></span>`,
+      `<span class="cookies-sep" aria-hidden="true">·</span>`,
+      `<span class="route-cookie"><span class="route-cookie-label">Vault</span><span class="route-cookie-count">${vaultN ?? "—"}</span></span>`,
     ].join("");
 
     tr.innerHTML = `
+      <td class="hub-users-col--select">
+        <label class="hub-users-select-row">
+          <input type="checkbox" class="hub-checkbox hub-users-checkbox route-select" ${isSelected ? "checked" : ""} aria-label="Select ${escapeHtml(noteLabel)}" />
+        </label>
+      </td>
       <td class="col-route">
         <div class="route-cell">
           ${markerHtml}
-          <div class="route-text">
-            <div class="route-domain-row">
-              <span class="route-domain">${escapeHtml(b.domain)}</span>
-              <button type="button" class="row-open" title="Open ${escapeHtml(host)}">${icon("external")}</button>
-            </div>
-            <div class="route-note">${escapeHtml(noteLabel)}</div>
-          </div>
+          <span class="route-note">${escapeHtml(noteLabel)}</span>
+          <button type="button" class="row-open" title="Open ${escapeHtml(host)}">${icon("external")}</button>
         </div>
       </td>
-      <td class="col-cookies cookies-cell">${cookieHtml}</td>
-      <td class="col-user synced-at" title="${escapeHtml(userTitle)}">${userHtml}</td>
-      <td class="col-synced synced-cell">${synced.iso ? formatActivityTimeHtml(synced.iso) : "—"}</td>
-      <td class="col-loaded loaded-cell">${loadedAt}</td>
-      <td class="col-status">${statusChipHtml}</td>
       <td class="col-actions">
         <div class="route-actions">
           <button type="button" class="route-action route-sync" ${roleInfo.canSync ? "" : "disabled"} title="${escapeHtml(roleInfo.syncDisabledReason || "Sync now")}">${icon("sync")}<span>Sync</span></button>
           <button type="button" class="route-action route-load">${icon("download")}<span>Load</span></button>
+          ${
+            roleInfo.ownsRoute && b.noteId
+              ? `<button type="button" class="route-action route-share" title="Share Username">${icon("userPlus")}<span>Share</span></button>`
+              : ""
+          }
         </div>
       </td>
+      <td class="col-synced synced-cell">${synced.iso ? formatActivityTimeHtml(synced.iso) : "—"}</td>
+      <td class="col-loaded loaded-cell">${loadedAt}</td>
+      <td class="col-status">${statusChipHtml}</td>
+      <td class="col-user synced-at">${userHtml}</td>
+      <td class="col-cookies"><span class="cookies-cell">${cookieHtml}</span></td>
     `;
 
     attachRouteIconFallback(tr);
@@ -1197,43 +1592,25 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
       e.stopPropagation();
       runSyncNowForBinding(b);
     });
-    const selectRoute = (event = {}) => {
+    tr.querySelector(".route-share")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      void cookieSharePanel.open(b);
+    });
+    tr.querySelector(".route-select")?.addEventListener("click", (event) => event.stopPropagation());
+    tr.querySelector(".route-select")?.addEventListener("change", (event) => {
+      event.stopPropagation();
       if (!b.noteId) return;
+      const next = new Set(selectedNoteIds);
       if (event.shiftKey && lastSelectedRouteIndex >= 0) {
         const start = Math.min(lastSelectedRouteIndex, rowIndex);
         const end = Math.max(lastSelectedRouteIndex, rowIndex);
-        selectedNoteIds = new Set(visibleRouteNoteIds.slice(start, end + 1));
-      } else if (event.ctrlKey || event.metaKey) {
-        selectedNoteIds = new Set(selectedNoteIds);
-        if (selectedNoteIds.has(b.noteId)) selectedNoteIds.delete(b.noteId);
-        else selectedNoteIds.add(b.noteId);
-        if (!selectedNoteIds.size) selectedNoteIds.add(b.noteId);
-        lastSelectedRouteIndex = rowIndex;
-      } else {
-        selectedNoteIds = new Set([b.noteId]);
-        lastSelectedRouteIndex = rowIndex;
-      }
-      setPrimarySelectedNoteId(b.noteId);
+        for (const id of visibleRouteNoteIds.slice(start, end + 1)) next.add(id);
+      } else if (event.target.checked) next.add(b.noteId);
+      else next.delete(b.noteId);
+      selectedNoteIds = next;
+      lastSelectedRouteIndex = rowIndex;
+      setPrimarySelectedNoteId(event.target.checked ? b.noteId : [...next][0] || null);
       renderBindingsTable(lastBindings, lastBindingStatus, lastVaultOnServer);
-      showToast(`Selected: ${noteLabel}`, "info", 2800);
-    };
-    tr.addEventListener("mousedown", (event) => {
-      if (event.button !== 0) return;
-      if (event.target instanceof Element && event.target.closest(".row-open,.route-action")) return;
-      isRouteDragging = true;
-      selectRoute(event);
-    });
-    tr.addEventListener("mouseenter", (event) => {
-      if (!isRouteDragging || event.buttons !== 1 || !b.noteId) return;
-      selectedNoteIds.add(b.noteId);
-      setPrimarySelectedNoteId(b.noteId);
-      tr.classList.add("row-selected");
-      tr.setAttribute("aria-selected", "true");
-    });
-    tr.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      selectRoute(event);
     });
     if (st.ok && st.empty) {
       tr.title = "Open ↗, log in, then Sync now.";
@@ -1243,7 +1620,34 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
     }
     tbody.appendChild(tr);
   });
+  const padCount = visibleRows.length ? Math.max(0, MAX_VISIBLE_ROUTES - visibleRows.length) : 0;
+  for (let i = 0; i < padCount; i += 1) {
+    const pad = document.createElement("tr");
+    pad.className = "hub-users-row hub-users-row--pad";
+    pad.setAttribute("aria-hidden", "true");
+    pad.innerHTML = `<td colspan="8"></td>`;
+    tbody.appendChild(pad);
+  }
+  syncRouteSelectAllCheckbox();
   ensureActivityRelativeTick();
+}
+
+function syncRouteSelectAllCheckbox() {
+  const el = document.getElementById("route-select-all");
+  if (!el) return;
+  const ids = visibleRouteNoteIds;
+  const selectedVisible = ids.filter((id) => selectedNoteIds.has(id));
+  el.checked = ids.length > 0 && selectedVisible.length === ids.length;
+  el.indeterminate = selectedVisible.length > 0 && selectedVisible.length < ids.length;
+}
+
+function bindRouteSelectAll() {
+  document.getElementById("route-select-all")?.addEventListener("change", (event) => {
+    if (event.target.checked) selectedNoteIds = new Set(visibleRouteNoteIds);
+    else selectedNoteIds = new Set();
+    setPrimarySelectedNoteId([...selectedNoteIds][0] || null);
+    renderBindingsTable(lastBindings, lastBindingStatus, lastVaultOnServer);
+  });
 }
 
 function escapeHtml(s) {
@@ -1254,7 +1658,77 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function applyHeaderUserFromStatus(data) {
+  if (!data) return;
+  if (data.browserId) currentBrowserId = data.browserId;
+  if (data.userId !== undefined) currentUserId = data.userId || "";
+  if (data.dataUserId !== undefined) currentDataUserId = data.dataUserId || data.userId || "";
+  if (data.hubIdentityUserId !== undefined) currentHubUserId = data.hubIdentityUserId || "";
+  if (data.userEmail !== undefined) currentUserEmail = data.userEmail || "";
+  if (data.userLoginId !== undefined) currentUserLoginId = data.userLoginId || "";
+  if (data.userFullName !== undefined) currentUserFullName = data.userFullName || "";
+  if (data.userPhone !== undefined) currentUserPhone = data.userPhone || "";
+  if (data.userDisplayLabel !== undefined || data.userLoginId !== undefined || data.userEmail !== undefined) {
+    currentUserDisplayLabel =
+      data.userDisplayLabel || data.userLoginId || currentUserEmail || "";
+  }
+  if (data.userRole !== undefined) currentUserRole = data.userRole || "";
+  if (data.userProvider !== undefined) currentUserProvider = data.userProvider || "";
+  if (data.userCreatedAt !== undefined) currentUserCreatedAt = data.userCreatedAt || "";
+  if (data.userLastSignInAt !== undefined) currentUserLastSignInAt = data.userLastSignInAt || "";
+  const hasUser = Boolean(currentUserId || currentUserLoginId || currentUserDisplayLabel || currentUserEmail);
+  updateHubAuthLogoutChip({
+    emailEl: sidebarUserLabel,
+    identityBtn: sidebarUserBtn,
+    roleIconEl: sidebarUserRoleIcon,
+    roleIconClassName: "hub-sidebar-footer-btn__icon",
+    email: sidebarUsernameLabel(),
+    roleKey: currentUserRole,
+    linked: hasUser,
+    canLogout: Boolean(hasUser || data?.hasJwt || data?.sessionReady),
+    renderIconHtml: (name, className) => icon(name, className),
+  });
+}
+
+/** Sidebar User row — Username only (never display name / email). */
+function sidebarUsernameLabel() {
+  const login = String(currentUserLoginId || "").trim();
+  if (login && !looksLikeEmail(login)) return login;
+  const email = String(currentUserEmail || "").trim();
+  if (looksLikeEmail(email)) return email.split("@")[0] || "User";
+  return login || "User";
+}
+
+function cachedUserModalData() {
+  return {
+    userEmail: currentUserEmail,
+    userDisplayLabel: currentUserDisplayLabel,
+    userLoginId: currentUserLoginId,
+    userFullName: currentUserFullName,
+    userPhone: currentUserPhone,
+    userId: currentHubUserId || currentUserId,
+    userRole: currentUserRole,
+    userProvider: currentUserProvider,
+    userCreatedAt: currentUserCreatedAt,
+    userLastSignInAt: currentUserLastSignInAt,
+  };
+}
+
 function renderStatus(data) {
+  if (data?.light) {
+    applyHeaderUserFromStatus(data);
+    renderVersionMeta(data?.version);
+    applySessionReadyFromStatus(data);
+    if (Array.isArray(data.bindingList) && (data.bindingList.length || !lastBindings.length)) {
+      lastBindings = data.bindingList;
+      if (data.bindingStatus && typeof data.bindingStatus === "object") {
+        lastBindingStatus = data.bindingStatus;
+      }
+      if (data.selectedNoteId !== undefined) selectedNoteId = data.selectedNoteId || null;
+      renderBindingsTable(lastBindings, lastBindingStatus, lastVaultOnServer);
+    }
+    return;
+  }
   const list = data?.bindingList ?? [];
   lastBindings = list;
   lastNoteSyncedAtByNoteId =
@@ -1269,7 +1743,6 @@ function renderStatus(data) {
     selectedNoteId = data.selectedNoteId || null;
   }
   const ready = Boolean(data?.sessionReady);
-  sessionReadyCache = ready;
   const hasBindings = Boolean(data?.hasBindings ?? list.length > 0);
   const hasSupabase = Boolean(data?.hasSupabase);
   const firstErr = Object.values(data?.bindingStatus ?? {}).find((s) => s?.ok === false)?.error;
@@ -1289,25 +1762,7 @@ function renderStatus(data) {
     }
   }
 
-  currentBrowserId = data?.browserId || "";
-  currentUserId = data?.userId || "";
-  currentDataUserId = data?.dataUserId || data?.userId || "";
-  currentHubUserId = data?.hubIdentityUserId || "";
-  currentUserEmail = data?.userEmail || "";
-  currentUserRole = data?.userRole || "";
-  const hasUser = Boolean(currentUserId || currentUserEmail);
-  updateHubAuthLogoutChip({
-    chipEl: headerUserChip,
-    emailEl: headerUserEmailText,
-    identityBtn: headerUserDetailBtn,
-    logoutBtn,
-    roleIconEl: headerUserRoleIcon,
-    email: currentUserEmail || (currentUserId ? shortId(currentUserId) : "User"),
-    roleKey: currentUserRole,
-    linked: hasUser,
-    canLogout: Boolean(hasUser || data?.hasJwt),
-    renderIconHtml: (name, className) => icon(name, className),
-  });
+  applyHeaderUserFromStatus(data);
 
   renderVersionMeta(data?.version);
   renderBindingsTable(list, data?.bindingStatus ?? {}, data?.vaultOnServer ?? {});
@@ -1320,8 +1775,7 @@ function renderStatus(data) {
     toastOnce("sync-err", shortError(firstErr), "error");
   }
 
-  updateAuthChrome(ready);
-  maybePromptLoginOnLoad(ready);
+  applySessionReadyFromStatus(data);
 }
 
 function esc(s) {
@@ -1338,14 +1792,20 @@ function withModalIcons(data) {
   return {
     ...(data || {}),
     renderIconHtml: (name, className = "ui-icon") => icon(name, className),
-    workspaceNote: "Workspace data syncs per signed-in user on Data Box Supabase.",
+    workspaceNote: "Workspace data syncs per signed-in user on the Home Server data API.",
   };
 }
 
 function openUserModal() {
   if (!userModalEl) return;
   openHubWorkspaceUserModal(userModalEl);
-  refresh((data) => populateHubWorkspaceUserModal(withModalIcons(data)), { requestTool: false });
+  populateHubWorkspaceUserModal(withModalIcons(cachedUserModalData()));
+  renderTabActivityLog();
+  chrome.runtime.sendMessage({ type: "GET_STATUS", light: true }, (data) => {
+    if (chrome.runtime.lastError || !data) return;
+    applyHeaderUserFromStatus(data);
+    populateHubWorkspaceUserModal(withModalIcons(data));
+  });
 }
 
 function refreshSessionFromTool() {
@@ -1353,7 +1813,7 @@ function refreshSessionFromTool() {
     window.setTimeout(() => {
       refresh((data) => {
         populateHubWorkspaceUserModal(withModalIcons(data));
-        if (data?.userId || data?.userEmail) {
+        if (data?.userId || data?.userDisplayLabel || data?.userEmail) {
           showToast("Session and routes refreshed from Tool tab.", "success", 3200);
         } else if (relay?.ok) {
           showToast("Requested Tool session — if still empty, sign in on Cookie Bridge tab.", "warn", 5000);
@@ -1374,25 +1834,42 @@ function closeUserModal() {
 }
 
 function doLogout() {
+  closeUserModal();
+  currentUserId = "";
+  currentDataUserId = "";
+  currentHubUserId = "";
+  currentUserEmail = "";
+  currentUserDisplayLabel = "";
+  currentUserLoginId = "";
+  currentUserFullName = "";
+  currentUserPhone = "";
+  currentUserRole = "";
+  currentUserProvider = "";
+  currentUserCreatedAt = "";
+  currentUserLastSignInAt = "";
+  sessionReadyCache = false;
+  initialAuthPromptDone = false;
+  updateAuthChrome(false);
+  updateHubAuthLogoutChip({
+    emailEl: sidebarUserLabel,
+    identityBtn: sidebarUserBtn,
+    email: "User",
+    linked: false,
+    canLogout: false,
+    renderIconHtml: (name, className) => icon(name, className),
+  });
+  populateHubWorkspaceUserModal(withModalIcons({}));
+  void showLoginModal();
   chrome.runtime.sendMessage({ type: "LOG_OUT" }, (res) => {
     if (chrome.runtime.lastError) {
-      showToast(chrome.runtime.lastError.message, "error", 6000);
-      return;
+      showToast(chrome.runtime.lastError.message, "warn", 4000);
+    } else if (!res?.ok) {
+      showToast(res?.error || "Log out failed", "warn", 4000);
+    } else {
+      showToast("Logged out.", "success", 2500);
     }
-    if (!res?.ok) {
-      showToast(res?.error || "Log out failed", "error", 6000);
-      return;
-    }
-    currentUserId = "";
-    currentDataUserId = "";
-    currentHubUserId = "";
-    currentUserEmail = "";
-    sessionReadyCache = false;
-    initialAuthPromptDone = false;
-    showToast("Logged out.", "success", 2500);
-    refresh(null, { requestTool: false });
-    void showLoginModal();
-    populateHubWorkspaceUserModal(withModalIcons({}));
+    pushTabActivity("Signed out");
+    refresh(null, { requestTool: false, light: true });
   });
 }
 
@@ -1405,21 +1882,46 @@ function requestToolRelay() {
   });
 }
 
+function pullCloudRoutesThenPaint(done) {
+  const send = (attempt) => {
+    chrome.runtime.sendMessage({ type: "PULL_CLOUD_ROUTES" }, () => {
+      const err = chrome.runtime.lastError?.message;
+      if (err && attempt < 2 && isAuthTransportError(err)) {
+        window.setTimeout(() => send(attempt + 1), 280);
+        return;
+      }
+      refresh(done, { light: true });
+    });
+  };
+  send(0);
+}
+
 function refresh(done, opts = {}) {
-  const run = () => chrome.runtime.sendMessage({ type: "GET_STATUS", pullRoutes: opts.pullRoutes === true }, (data) => {
-    if (chrome.runtime.lastError) {
-      showToast(chrome.runtime.lastError.message, "error");
-      done?.(null);
-      return;
-    }
-    renderStatus(data);
-    done?.(data);
-  });
+  const payload =
+    opts.light === true
+      ? { type: "GET_STATUS", light: true }
+      : { type: "GET_STATUS", pullRoutes: opts.pullRoutes === true };
+  const send = (attempt) => {
+    chrome.runtime.sendMessage(payload, (data) => {
+      const err = chrome.runtime.lastError?.message;
+      if (err) {
+        if (attempt < 2 && isAuthTransportError(err)) {
+          window.setTimeout(() => send(attempt + 1), 280);
+          return;
+        }
+        showToast(err, "error");
+        done?.(null);
+        return;
+      }
+      renderStatus(data);
+      done?.(data);
+    });
+  };
   if (opts.requestTool === true) {
-    requestToolRelay().then(() => window.setTimeout(run, 250));
+    requestToolRelay().then(() => window.setTimeout(() => send(0), 250));
     return;
   }
-  run();
+  send(0);
 }
 
 routeSearchInput?.addEventListener("input", (event) => {
@@ -1483,30 +1985,51 @@ window.addEventListener("mouseup", () => {
 applyDirectoryTableHeaderIcons();
 hydrateStaticIcons();
 initDirectoryColumnHeaderHints();
+bindRouteSelectAll();
 initFilterDropdowns();
 setLoginMode("signin");
-refresh(null, { pullRoutes: true });
+hydrateSessionFromStorage()
+  .then((restored) => {
+    if (restored) pushTabActivity("Session restored");
+    return hydrateRoutesFromStorage();
+  })
+  .finally(() => {
+    if (sessionReadyCache || currentUserDisplayLabel) updateAuthChrome(true);
+    refresh(null, { light: true });
+    chrome.storage.local.get(STORAGE_AUTH, (items) => {
+      if (items?.[STORAGE_AUTH]?.access_token) pullCloudRoutesThenPaint();
+    });
+  });
 
 let storageRefreshTimer = null;
 function scheduleStorageRefresh() {
   if (storageRefreshTimer) window.clearTimeout(storageRefreshTimer);
   storageRefreshTimer = window.setTimeout(() => {
     storageRefreshTimer = null;
-    refresh(null, { requestTool: false, pullRoutes: false });
+    void hydrateRoutesFromStorage();
+    refresh(null, { requestTool: false, light: true });
   }, 400);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
+  if (loginInFlight) {
+    const nextIdentity = changes[STORAGE_IDENTITY]?.newValue;
+    if (identityIsLive(nextIdentity)) {
+      applyIdentitySession(nextIdentity, changes[STORAGE_AUTH]?.newValue ?? null);
+      adoptLoginFromStorage?.(nextIdentity);
+    }
+    return;
+  }
   scheduleStorageRefresh();
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") refresh(null, { requestTool: false, pullRoutes: false });
+  if (document.visibilityState === "visible") refresh(null, { requestTool: false, light: true });
 });
 
-openSettingsBtn?.addEventListener("click", (e) => {
-  e.preventDefault();
+function openCookieBridgeSettings(event) {
+  event?.preventDefault();
   const local = window.E0001_BUILD?.toolLocal;
   chrome.runtime.sendMessage({ type: "OPEN_TOOL_COOKIE", url: "prod" }, (res) => {
     if (chrome.runtime.lastError || !res?.ok) {
@@ -1515,24 +2038,94 @@ openSettingsBtn?.addEventListener("click", (e) => {
       else if (local) chrome.tabs.create({ url: local });
     }
   });
-});
+}
+
+openSettingsBtn?.addEventListener("click", openCookieBridgeSettings);
+document.getElementById("sidebar-settings-btn")?.addEventListener("click", openCookieBridgeSettings);
+
+function openUserFromChrome() {
+  const cachedReady = Boolean(
+    sessionReadyCache || currentUserId || currentUserDisplayLabel || currentUserEmail,
+  );
+  if (cachedReady) {
+    openUserModal();
+    return;
+  }
+  void ensureSessionReady().then((ready) => {
+    if (ready) {
+      openUserModal();
+      return;
+    }
+    void showLoginModal().then((ok) => {
+      if (ok) openUserModal();
+    });
+  });
+}
 
 bindHubAuthLogoutChip({
-  identityBtn: headerUserDetailBtn,
-  logoutBtn,
-  onOpenUser: () => {
-    void ensureSessionReady().then((ready) => {
-      if (!ready) {
-        void showLoginModal().then((ok) => {
-          if (ok) openUserModal();
-        });
-        return;
-      }
-      openUserModal();
-    });
-  },
+  identityBtn: sidebarUserBtn,
+  onOpenUser: () => openUserFromChrome(),
   onLogout: () => doLogout(),
 });
+const popupOpenedAt = Date.now();
+function tickSessionClock() {
+  const el = document.getElementById("header-session-clock");
+  if (!el) return;
+  const sec = Math.floor((Date.now() - popupOpenedAt) / 1000);
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+  const ss = String(sec % 60).padStart(2, "0");
+  el.textContent = `${mm}:${ss}`;
+}
+tickSessionClock();
+window.setInterval(tickSessionClock, 1000);
+
+function renderHeaderCenterStats(bindings, bindingStatus) {
+  const el = document.getElementById("header-center-stats");
+  if (!el) return;
+  const list = Array.isArray(bindings) ? bindings : [];
+  let ready = 0;
+  for (const binding of list) {
+    const st = readRouteStatus(bindingStatus, binding);
+    if (st?.ok) ready += 1;
+  }
+  const routeEmoji = COOKIE_BRIDGE_ROUTE_TABLE_HEADER_EMOJI.route;
+  const readyEmoji = COOKIE_BRIDGE_ROUTE_TABLE_HEADER_EMOJI.status;
+  el.innerHTML = [
+    `<span class="app-tab-header-stat-line" title="Routes"><span class="app-tab-header-stat-emoji" aria-hidden="true">${routeEmoji}</span><span class="app-tab-header-stat-value">${list.length}</span></span>`,
+    `<span class="app-tab-header-rule" aria-hidden="true"></span>`,
+    `<span class="app-tab-header-stat-line" title="Ready"><span class="app-tab-header-stat-emoji" aria-hidden="true">${readyEmoji}</span><span class="app-tab-header-stat-value">${ready}</span></span>`,
+  ].join("");
+}
+
+function bindHeaderOpsPanels() {
+  const pairs = [
+    ["header-notify-btn", "header-notify-panel"],
+    ["header-log-btn", "header-log-panel"],
+    ["sidebar-log-btn", "sidebar-log-panel"],
+  ];
+  const closeAll = () => {
+    for (const [btnId, panelId] of pairs) {
+      document.getElementById(panelId)?.setAttribute("hidden", "");
+      document.getElementById(btnId)?.setAttribute("aria-expanded", "false");
+    }
+  };
+  for (const [btnId, panelId] of pairs) {
+    document.getElementById(btnId)?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const panel = document.getElementById(panelId);
+      const open = panel && !panel.hasAttribute("hidden");
+      closeAll();
+      if (!open && panel) {
+        panel.removeAttribute("hidden");
+        document.getElementById(btnId)?.setAttribute("aria-expanded", "true");
+      }
+    });
+    document.getElementById(panelId)?.addEventListener("click", (event) => event.stopPropagation());
+  }
+  document.addEventListener("click", closeAll);
+}
+
+bindHeaderOpsPanels();
 bindHubWorkspaceUserModal({
   modalEl: userModalEl,
   onClose: () => closeUserModal(),
@@ -1544,45 +2137,46 @@ extensionLoginClose?.addEventListener("click", () => dismissLoginModal());
 extensionLoginBackdrop?.addEventListener("click", () => dismissLoginModal());
 extensionLoginTabSignin?.addEventListener("click", () => setLoginMode("signin"));
 extensionLoginTabSignup?.addEventListener("click", () => setLoginMode("signup"));
+extensionLoginEmail?.addEventListener("input", () => syncSignupContactField());
 extensionLoginForgot?.addEventListener("click", () => {
-  const prod = window.E0001_BUILD?.toolProd;
-  if (prod) chrome.tabs.create({ url: prod });
-  else showToast("Open Data Box web to reset your password.", "info", 4000);
+  const login = extensionLoginEmail?.value?.trim() ?? "";
+  if (!login) {
+    showLoginMessage("Enter your username, email, or phone first.");
+    return;
+  }
+  setLoginBusy(true, "Sending reset link…");
+  void requestHubPasswordReset(login)
+    .then((msg) => showLoginMessage(msg))
+    .catch((err) => showLoginMessage(formatAuthGateError(err)))
+    .finally(() => setLoginBusy(false));
 });
 extensionLoginForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   const login = extensionLoginEmail?.value?.trim() ?? "";
   const password = extensionLoginPassword?.value ?? "";
+  const contactEmail = extensionLoginContact?.value?.trim() ?? "";
   if (!login || !password) return;
-  if (extensionLoginError) {
-    extensionLoginError.hidden = true;
-    extensionLoginError.textContent = "";
-  }
-  void submitExtensionLogin(login, password, loginMode).then((res) => {
-    if (!res.ok) {
-      if (extensionLoginError) {
-        extensionLoginError.textContent = res.error || "Sign-in failed";
-        extensionLoginError.hidden = false;
-      }
+  if (loginMode === "signup" && !looksLikeEmail(login)) {
+    if (!contactEmail || !looksLikeEmail(contactEmail) || isHubTechnicalAuthEmail(contactEmail)) {
+      showLoginMessage("Enter a real contact email — @infix1.io.vn is retired.");
       return;
     }
-    hideLoginModal();
-    sessionReadyCache = true;
-    appShellEl?.classList.remove("shell--auth-locked");
-    if (extensionLoginPassword) extensionLoginPassword.value = "";
-    const done = loginModalResolver;
-    loginModalResolver = null;
-    done?.(true);
-    if (res.warning && extensionLoginError) {
-      extensionLoginError.textContent = res.warning;
-      extensionLoginError.hidden = false;
+  }
+  clearLoginMessage();
+  void submitExtensionLogin(login, password, loginMode, contactEmail).then((res) => {
+    if (res?.ignored) return;
+    if (res.ok) {
+      completeLoginSuccess(res, login);
+      return;
     }
-    showToast(
-      res.warning ? `Signed in (Hub). ${res.warning}` : `Signed in as ${res.userEmail || login}`,
-      res.warning ? "warn" : "success",
-      res.warning ? 6000 : 3200,
-    );
-    refresh();
+    void readStoredHubIdentity().then(({ identity, auth }) => {
+      if (identityIsLive(identity)) {
+        applyIdentitySession(identity, auth);
+        completeLoginSuccess(successFromIdentity(identity), login);
+        return;
+      }
+      showLoginMessage(res.error);
+    });
   });
 });
 

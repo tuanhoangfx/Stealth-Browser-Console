@@ -1,0 +1,56 @@
+{
+  "profileCode": "0061",
+  "updatedAt": "2026-11-01T19:02:23.821Z",
+  "sources": [
+    "outlook",
+    "services"
+  ],
+  "counts": {
+    "total": 4,
+    "facebook": 0,
+    "gmail": 0,
+    "outlook": 1,
+    "tiktok": 0,
+    "services": 3
+  },
+  "cookies": [
+    {
+      "name": "__Host-MSAAUTH",
+      "value": "11-M.C516_BL2.0.U.MsaArtifacts.CuC0AZYYKTCZaL6NKhpThs3yGCCrCEz!9a2sTp0wXPSAstdeo*UDLT21ea5PLyoZQ45CqNRgbMfizZHA3V4lFIISq06Uj7sidH7B!kXcIRVq*jZjBuAxkEQHkTrXtNwSYIIzrkDwBDMVCx6wOIwiUxpHZWZMOlDu*8uZmge1Px0jfhNve3d0FFojFl9qsfGE6jcs*YCibErpflt5daT3SAJbWTHkDKH9SibQfMvxWnDpF8liwt5LRxqKKNadncPwpZpYs0ZzibGTXOt!5urrMBw$",
+      "domain": "login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "sessionid",
+      "value": "82d0e0ae01b7f5e145e2e8818ce3f1c6",
+      "domain": ".capcut.com",
+      "path": "/",
+      "secure": false,
+      "httpOnly": true,
+      "expires": 1798720806.661
+    },
+    {
+      "name": "sessionid_ss",
+      "value": "82d0e0ae01b7f5e145e2e8818ce3f1c6",
+      "domain": ".capcut.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1798720806.661
+    },
+    {
+      "name": "sid_tt",
+      "value": "82d0e0ae01b7f5e145e2e8818ce3f1c6",
+      "domain": ".capcut.com",
+      "path": "/",
+      "secure": false,
+      "httpOnly": true,
+      "expires": 1798720806.661
+    }
+  ]
+}

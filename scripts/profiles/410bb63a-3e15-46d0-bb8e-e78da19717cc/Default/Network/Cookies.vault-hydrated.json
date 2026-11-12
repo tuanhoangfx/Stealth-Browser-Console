@@ -1,0 +1,58 @@
+{
+  "profileCode": "0031",
+  "updatedAt": "2026-11-01T19:10:56.032Z",
+  "sources": [
+    "outlook",
+    "services"
+  ],
+  "counts": {
+    "total": 4,
+    "facebook": 0,
+    "gmail": 0,
+    "outlook": 1,
+    "tiktok": 0,
+    "services": 3
+  },
+  "cookies": [
+    {
+      "name": "WLSSC",
+      "value": "EgAlAgMAAAAMgAAAzwAB4ZKsWNl1IKh4zQ3TjSpiOOs5FsuXAX4Qmaks3umo39OZgwYgE31Pubj/iTolEOW7J5GNqUNIsoukAh+olr7ST3MZFSrmWXxYXeyVSPkun3f3mp+sabrf3PV6ByjiamGSX7t1+6u8AGhYgyzbyW40d7DR7MkpWNwGDalbcKBk1J/1eVLGRc+Aj+b/VlnGmbdL6UQ+0WJCVdCoVtOSPF6m04owNOJBCCk2p9VKH+aWOUTTfyu8wBtIpN3cRMaWimlt4V7uAQDM/+gAQjmQB0bhXPLCG/qy8gmDipC4kBGGv2Fby4OZTXRM+m8Zj2v2Ur8JFQ7FDTs+/lzfIF/YSuK3mBQBgQAUAQAAAwDJuolGPB7jajwe42oQJwAAChCggBASAGExZzMxQG91dGxvb2suY29tAFgAAB5hMWczMSVvdXRsb29rLmNvbUBwYXNzcG9ydC5jb20AAAAcS1IAAAAAAAAECQIAAHIlVUAABkMABnNjaGlybwAGc2NhY2NvAAAAAAAAAAAAAAAAAAAAAAAAvohXMgN6xrwAADwe42o8xVlrAAAAAAAAAAAAAAAAEAAxNzEuMjM2LjE4My4xMjQABAUAAAAAAAAAAAAAAAABBAAAAAAAAAAAAAAAAAAAADdNJx9fuHERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAA",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax",
+      "expires": 1825092937
+    },
+    {
+      "name": "sessionKey",
+      "value": "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",
+      "domain": ".claude.ai",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax",
+      "expires": 1825092937
+    },
+    {
+      "name": "sessionKeyLC",
+      "value": "1793277774178",
+      "domain": ".claude.ai",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "Lax",
+      "expires": 1825092937
+    },
+    {
+      "name": "WorkosCursorSessionToken",
+      "value": "user_01KSB419WW923H9X7JGKXRNFNJ%3A%3AeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhdXRoMHx1c2VyXzAxS1NCNDE5V1c5MjNIOVg3SkdLWFJORk5KIiwidGltZSI6IjE3OTMxODQzMzQiLCJyYW5kb21uZXNzIjoiNWZkZmFmZTctY2VmZC00ZTNjIiwiZXhwIjoxNzk4MzY4MzM0LCJpc3MiOiJodHRwczovL2F1dGhlbnRpY2F0aW9uLmN1cnNvci5zaCIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgb2ZmbGluZV9hY2Nlc3MiLCJhdWQiOiJodHRwczovL2N1cnNvci5jb20iLCJ0eXBlIjoid2ViIiwid29ya29zU2Vzc2lvbklkIjoic2Vzc2lvbl8wMU02MTFWMEsxNkZKOThGN1JZM0NSVkU5RCJ9.6ie3YMQOX2rCiIWtWyYTKOUUVSZAcziecppl1--YB3w",
+      "domain": "cursor.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "Lax",
+      "expires": 1825092937
+    }
+  ]
+}

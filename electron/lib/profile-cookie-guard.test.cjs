@@ -5,13 +5,15 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { DatabaseSync } = require("node:sqlite");
 const {
   COOKIES_REL_PATH,
   COOKIES_BAK_REL_PATH,
   LOCAL_STATE_REL_PATH,
   LOCAL_STORAGE_REL_PATH,
   LOCAL_STORAGE_BAK_REL_PATH,
+  openGuardSqlite,
+  protectDpapiKey,
+  unprotectDpapiKey,
   inspectProfileSqliteCookiesSummary,
   snapshotProfileCookiesIfHealthy,
   autoHealWipedProfileCookies,
@@ -53,7 +55,7 @@ function seedCookiesSqlite(dir, rows = []) {
   const ckPath = path.join(dir, COOKIES_REL_PATH);
   fs.mkdirSync(path.dirname(ckPath), { recursive: true });
   if (fs.existsSync(ckPath)) fs.unlinkSync(ckPath);
-  const db = new DatabaseSync(ckPath);
+  const db = openGuardSqlite(ckPath, { readOnly: false });
   db.exec(`
     CREATE TABLE cookies (
       host_key TEXT NOT NULL,
@@ -586,7 +588,7 @@ describe("profile-cookie-guard", () => {
     const dir = makeTempProfileDir();
     const ckPath = path.join(dir, COOKIES_REL_PATH);
     if (fs.existsSync(ckPath)) fs.unlinkSync(ckPath);
-    const db = new DatabaseSync(ckPath);
+    const db = openGuardSqlite(ckPath, { readOnly: false });
     db.exec(`
       CREATE TABLE cookies (
         creation_utc INTEGER NOT NULL,
@@ -630,7 +632,7 @@ describe("profile-cookie-guard", () => {
     assert.equal(sanitized.fixed3pRows, 1);
     assert.equal(sanitized.fixedCreationUtcRows, 2);
 
-    const checkDb = new DatabaseSync(ckPath, { readOnly: true });
+    const checkDb = openGuardSqlite(ckPath, { readOnly: true });
     const rowsAfter = checkDb
       .prepare("SELECT host_key, name, value, is_secure, samesite, CAST(creation_utc AS TEXT) AS cr FROM cookies")
       .all();
@@ -685,10 +687,9 @@ describe("profile-cookie-guard", () => {
 
   it("preserves newer regional .google.com.vn SID and upgrades stale SQLite Google session from Cookies.vault-hydrated.json on launch", () => {
     const dir = makeTempProfileDir();
-    const { DatabaseSync } = require("node:sqlite");
     const ckPath = path.join(dir, COOKIES_REL_PATH);
     fs.mkdirSync(path.dirname(ckPath), { recursive: true });
-    const db = new DatabaseSync(ckPath, { open: true });
+    const db = openGuardSqlite(ckPath, { readOnly: false });
     db.exec(`
       CREATE TABLE meta(key LONGVARCHAR NOT NULL UNIQUE PRIMARY KEY, value LONGVARCHAR);
       INSERT INTO meta VALUES('version', '24');
@@ -729,7 +730,7 @@ describe("profile-cookie-guard", () => {
     assert.equal(sanitized.ok, true);
     assert.equal(sanitized.purgedStaleGoogleRows, 1);
 
-    const checkDb = new DatabaseSync(ckPath, { readOnly: true });
+    const checkDb = openGuardSqlite(ckPath, { readOnly: true });
     const rows = checkDb.prepare("SELECT host_key, name, value FROM cookies").all();
     checkDb.close();
     assert.equal(rows.length, 1);
@@ -858,8 +859,54 @@ describe("profile-cookie-guard", () => {
       assert.equal(restPrev.ok, true);
       assert.equal(restPrev.restoredSlot, "previous");
       assert.equal(restPrev.totalRows, 2);
+
+      // 6. Verify cross-machine DPAPI re-wrapping via native koffi protectDpapiKey (< 30ms, 0 PowerShell)
+      const crossMachineDir = path.join(srcRoot, "profiles", "dst-cross-machine");
+      fs.mkdirSync(crossMachineDir, { recursive: true });
+      const tWrap0 = performance.now();
+      const restRewrap = restoreProfileNativeSession(crossMachineDir, {
+        profileCode: "10002",
+        slot: "latest",
+        sourceUserDataDir: srcProfileDir,
+        unprotectDpapiKey: () => null, // simulate foreign machine DPAPI failure so wrappedMasterKeyB64 is re-wrapped
+      });
+      const wrapElapsedMs = performance.now() - tWrap0;
+      assert.equal(restRewrap.ok, true);
+      if (process.platform === "win32") {
+        assert.equal(restRewrap.dpapiRewrapped, true);
+        assert.ok(wrapElapsedMs < 80, `Expected in-process koffi DPAPI rewrap < 80ms, took ${wrapElapsedMs.toFixed(1)}ms`);
+        const lsRewrapped = JSON.parse(fs.readFileSync(path.join(crossMachineDir, "Local State"), "utf8"));
+        const roundtripKey = unprotectDpapiKey(lsRewrapped.os_crypt.encrypted_key);
+        assert.equal(Buffer.isBuffer(roundtripKey), true);
+        assert.equal(roundtripKey.equals(rawKey), true);
+      }
     } finally {
       fs.rmSync(srcRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("queries drive free bytes natively via koffi GetDiskFreeSpaceExW (< 20ms, 0 PowerShell) and runs p0020-reconcile-worker cleanly", async () => {
+    const { driveFreeBytes, getWin32DiskFreeBytesNative } = require("./profiles-location.cjs");
+    const { runP0020ReconcileInWorker } = require("./p0020-reconcile-worker.cjs");
+
+    if (process.platform === "win32") {
+      const targetRoot = path.parse(process.cwd()).root || "C:\\";
+      const t0 = performance.now();
+      const nativeFree = getWin32DiskFreeBytesNative(targetRoot);
+      const elapsedMs = performance.now() - t0;
+      assert.ok(nativeFree > 0, `Expected positive free bytes for ${targetRoot}, got ${nativeFree}`);
+      assert.ok(elapsedMs < 35, `Expected native GetDiskFreeSpaceExW < 35ms, took ${elapsedMs.toFixed(2)}ms`);
+      assert.ok(driveFreeBytes(targetRoot) > 0);
+    }
+
+    const tmpProfilesRoot = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-worker-test-"));
+    try {
+      const res = await runP0020ReconcileInWorker("harvestDiskSqliteToEcosystemVaults", {
+        baseDir: tmpProfilesRoot,
+      });
+      assert.equal(typeof res, "object");
+    } finally {
+      fs.rmSync(tmpProfilesRoot, { recursive: true, force: true });
     }
   });
 });

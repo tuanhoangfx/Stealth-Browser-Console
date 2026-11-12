@@ -201,3 +201,90 @@ test("readManifestName resolves __MSG_* from default_locale and locale scan", ()
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+function buildTestZipBuffer(entries) {
+  const zlib = require("node:zlib");
+  const localParts = [];
+  const cdParts = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBuf = Buffer.from(entry.name, "utf8");
+    const rawData = entry.data ? Buffer.from(entry.data) : Buffer.alloc(0);
+    const method = entry.method ?? 8;
+    const compData = method === 8 && rawData.length > 0 ? zlib.deflateRawSync(rawData) : rawData;
+
+    const lfh = Buffer.alloc(30);
+    lfh.writeUInt32LE(0x04034b50, 0);
+    lfh.writeUInt16LE(20, 4);
+    lfh.writeUInt16LE(0x0800, 6);
+    lfh.writeUInt16LE(method, 8);
+    lfh.writeUInt32LE(compData.length, 18);
+    lfh.writeUInt32LE(rawData.length, 22);
+    lfh.writeUInt16LE(nameBuf.length, 26);
+    lfh.writeUInt16LE(0, 28);
+
+    const cdh = Buffer.alloc(46);
+    cdh.writeUInt32LE(0x02014b50, 0);
+    cdh.writeUInt16LE(20, 4);
+    cdh.writeUInt16LE(20, 6);
+    cdh.writeUInt16LE(0x0800, 8);
+    cdh.writeUInt16LE(method, 10);
+    cdh.writeUInt32LE(compData.length, 20);
+    cdh.writeUInt32LE(rawData.length, 24);
+    cdh.writeUInt16LE(nameBuf.length, 28);
+    cdh.writeUInt32LE(offset, 42);
+
+    localParts.push(lfh, nameBuf, compData);
+    cdParts.push(cdh, nameBuf);
+    offset += lfh.length + nameBuf.length + compData.length;
+  }
+
+  const cdBuf = Buffer.concat(cdParts);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(cdBuf.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+
+  return Buffer.concat([...localParts, cdBuf, eocd]);
+}
+
+test("extractZipBuffer unpacks Stored + Deflated ZIP in memory (< 40ms, 0 temp zip) and blocks Zip-Slip traversal", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const mod = loadFresh(WEBSTORE_PATH);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-ext-zipmem-"));
+  const dest = path.join(root, "unpacked");
+  const cacheRoot = path.join(root, "cache");
+  fs.mkdirSync(cacheRoot, { recursive: true });
+
+  try {
+    const manifestJson = JSON.stringify({ manifest_version: 3, name: "Fast Mem Ext", version: "2.1.0" });
+    const bgScript = "console.log('service worker ready '.repeat(40));\n";
+    const zipBuf = buildTestZipBuffer([
+      { name: "manifest.json", data: manifestJson, method: 0 },
+      { name: "_locales/", data: "", method: 0 },
+      { name: "js/background.js", data: bgScript, method: 8 },
+    ]);
+
+    const t0 = performance.now();
+    await mod.extractZipBuffer(zipBuf, dest, cacheRoot);
+    const elapsedMs = performance.now() - t0;
+
+    assert.ok(elapsedMs < 60, `Expected in-memory ZIP extraction < 60ms, took ${elapsedMs.toFixed(2)}ms`);
+    assert.equal(fs.readFileSync(path.join(dest, "manifest.json"), "utf8"), manifestJson);
+    assert.equal(fs.readFileSync(path.join(dest, "js", "background.js"), "utf8"), bgScript);
+    assert.deepEqual(fs.readdirSync(cacheRoot), []);
+
+    // Verify Zip-Slip path traversal rejection
+    const evilZip = buildTestZipBuffer([{ name: "../escaped.js", data: "pwned", method: 0 }]);
+    const evilDest = path.join(root, "evil-dest");
+    assert.throws(() => mod.extractZipBuffer(evilZip, evilDest, cacheRoot), /unsafe zip entry path/);
+    assert.equal(fs.existsSync(path.join(root, "escaped.js")), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

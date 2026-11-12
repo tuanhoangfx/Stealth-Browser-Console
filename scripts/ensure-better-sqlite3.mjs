@@ -74,8 +74,8 @@ if (process.versions.electron) {
 }
 
 if (probeOk()) {
-  console.log("[predev] better-sqlite3 native bindings OK (Electron ABI)");
-  console.log("[predev] DB scripts: use electron-node runner (spawn-electron-node.mjs), not plain node");
+  ensureNodeDualAbi();
+  console.log("[predev] better-sqlite3 native bindings OK (Electron ABI + Node Dual-ABI)");
   process.exit(0);
 }
 
@@ -94,7 +94,17 @@ try {
 }
 
 if (probeOk()) {
-  console.log("[predev] better-sqlite3 rebuild OK (Electron ABI)");
+  ensureNodeDualAbi();
+  console.log("[predev] better-sqlite3 rebuild OK (Electron ABI + Node Dual-ABI)");
 } else {
   console.warn("[predev] better-sqlite3 still unavailable in Electron after rebuild");
+}
+
+function ensureNodeDualAbi() {
+  const dualAbiScript = path.resolve(root, "..", "..", "scripts", "ensure-better-sqlite3-dual-abi.mjs");
+  if (!fs.existsSync(dualAbiScript)) return;
+  spawnSync(process.execPath, [dualAbiScript], winSpawnOpts({
+    cwd: root,
+    stdio: "pipe",
+  }));
 }

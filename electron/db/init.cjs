@@ -133,10 +133,6 @@ function createNodeSqliteDatabaseSyncCtor() {
 }
 
 function loadBetterSqliteCtor() {
-  if (!process.versions.electron) {
-    const nodeSqliteCtor = createNodeSqliteDatabaseSyncCtor();
-    if (nodeSqliteCtor) return nodeSqliteCtor;
-  }
   try {
     return require("better-sqlite3");
   } catch (error) {
@@ -637,13 +633,15 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
     console.info("[db] backend=better-sqlite3 (agent worker shared WAL)");
     return createBetterSqliteAdapter(nativeDb);
   }
+  let repairedOnOpen = false;
   if (!verifyBetterSqliteIntegrity(nativeDb)) {
+    repairedOnOpen = true;
     tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
-  }
-  if (!verifyBetterSqliteIntegrity(nativeDb)) {
-    nativeDb.close();
-    nativeDb = null;
-    throw Object.assign(new Error("database disk image is malformed"), { code: "SQLITE_CORRUPT" });
+    if (!verifyBetterSqliteIntegrity(nativeDb)) {
+      nativeDb.close();
+      nativeDb = null;
+      throw Object.assign(new Error("database disk image is malformed"), { code: "SQLITE_CORRUPT" });
+    }
   }
   nativeDb.exec(fs.readFileSync(schemaPath(), "utf8"));
   migrateProfilesTable(nativeDb);
@@ -652,13 +650,13 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   backfillLastOpenedAt(nativeDb);
   resetProfilesDefaultIpV1(nativeDb);
   pruneProfileEventsRetention(nativeDb, 365);
-  if (!verifyBetterSqliteIntegrity(nativeDb)) {
+  if (repairedOnOpen && !verifyBetterSqliteIntegrity(nativeDb)) {
     tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
-  }
-  if (!verifyBetterSqliteIntegrity(nativeDb)) {
-    nativeDb.close();
-    nativeDb = null;
-    throw Object.assign(new Error("database disk image is malformed"), { code: "SQLITE_CORRUPT" });
+    if (!verifyBetterSqliteIntegrity(nativeDb)) {
+      nativeDb.close();
+      nativeDb = null;
+      throw Object.assign(new Error("database disk image is malformed"), { code: "SQLITE_CORRUPT" });
+    }
   }
 
   dbBackend = "better-sqlite3";

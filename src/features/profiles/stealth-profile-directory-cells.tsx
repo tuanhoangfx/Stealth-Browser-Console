@@ -280,7 +280,6 @@ export function renderStealthProfileDirectoryBodyCell(
       const staticIcon = isStaticIp ? (
         <span
           className="inline-flex shrink-0 items-center text-indigo-300 opacity-90"
-          title="Static IP: Proxy is pinned and will not reset to Local IP when profile closes"
           aria-label="Static IP"
         >
           <Pin size={compactIconSize(11)} aria-hidden />

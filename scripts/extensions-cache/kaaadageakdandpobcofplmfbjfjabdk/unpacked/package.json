@@ -1,0 +1,10 @@
+{
+  "name": "e0001-cookie-bridge",
+  "private": true,
+  "type": "module",
+  "version": "1.2.37",
+  "description": "E0001 Cookie Bridge — Chrome MV3 extension for cookie vault sync with P0020",
+  "scripts": {
+    "test": "node scripts/run-tests.mjs"
+  }
+}

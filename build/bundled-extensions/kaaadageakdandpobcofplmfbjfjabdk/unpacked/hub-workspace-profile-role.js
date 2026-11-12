@@ -21,11 +21,17 @@ function identityHeaders(identityAuth, extra = {}) {
 }
 
 /** GET /auth/v1/user — created_at, last_sign_in_at (Hub identity session). */
+function fetchWithBudget(url, init, timeoutMs = 4_000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 export async function fetchAuthUserRecord(identityAuth) {
   if (!identityAuth?.access_token || !identityAuth?.supabase_url) return null;
   try {
     const url = `${String(identityAuth.supabase_url).replace(/\/$/, "")}/auth/v1/user`;
-    const res = await fetch(url, { headers: identityHeaders(identityAuth) });
+    const res = await fetchWithBudget(url, { headers: identityHeaders(identityAuth) });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -39,7 +45,7 @@ export async function fetchWorkspaceProfileRole(identityAuth, { userId, email } 
   const base = String(identityAuth.supabase_url).replace(/\/$/, "");
 
   try {
-    const rosterRes = await fetch(`${base}/rest/v1/rpc/workspace_user_directory`, {
+    const rosterRes = await fetchWithBudget(`${base}/rest/v1/rpc/workspace_user_directory`, {
       method: "POST",
       headers: identityHeaders(identityAuth, { "Content-Type": "application/json" }),
       body: "{}",
@@ -61,7 +67,7 @@ export async function fetchWorkspaceProfileRole(identityAuth, { userId, email } 
 
   try {
     const url = `${base}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(userId)}&limit=1`;
-    const res = await fetch(url, { headers: identityHeaders(identityAuth) });
+    const res = await fetchWithBudget(url, { headers: identityHeaders(identityAuth) });
     if (!res.ok) return null;
     const rows = await res.json();
     const role = rows?.[0]?.role;
@@ -90,9 +96,16 @@ export async function resolveHubUserModalProfile(identityAuth, dataAuth) {
 
   const meta = authUser?.app_metadata ?? {};
   const umeta = authUser?.user_metadata ?? {};
+  // `/auth/v1/user` JSON is UTF-8 — prefer over JWT `atob` for display names.
+  const fullName = String(umeta.full_name ?? umeta.name ?? "").trim();
+  const loginId = String(umeta.login_id ?? umeta.username ?? "").trim();
 
   return {
     hubIdentityUserId: authUser?.id ?? userId ?? null,
+    userLoginId: loginId || null,
+    userDisplayLabel: fullName || loginId || null,
+    userFullName: fullName || null,
+    userPhone: String(umeta.phone ?? "").trim() || null,
     userRole:
       roleFromProfile ??
       identityAuth?.user_role ??

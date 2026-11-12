@@ -49,6 +49,7 @@ const NON_OVERRIDABLE_RESTRICTED_RESULT_CODES = new Set([
   "phone_sms_required",
   "phone_locked_abuse",
   "unowned_recovery_email",
+  "mark_lost_pending_30d",
   "microsoft_challenge",
   "phone_challenge",
   "mail_challenge",

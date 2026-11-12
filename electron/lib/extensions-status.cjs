@@ -22,11 +22,18 @@ const {
 const { workspaceExtensionDir, syncExtensionDirToCache } = require("./cookie-bridge-store.cjs");
 const { defaultUserDataRoot } = require("./webstore-extension.cjs");
 
+const {
+  inspectMv3ServiceWorkerFleetHealth,
+  invalidateExtensionSwHealthCache,
+  formatSwHealthShortBadge,
+} = require("./extension-sw-health.cjs");
+
 const STATUS_CACHE_TTL_MS = 30_000;
 let _statusCache = null;
 
 function invalidateExtensionsStatusCache() {
   _statusCache = null;
+  invalidateExtensionSwHealthCache();
 }
 
 function resolveRootDir(userDataRoot) {
@@ -99,6 +106,7 @@ function triggerOpenProfilesExtensionReload(userDataRoot) {
   } catch {
     /* best-effort */
   }
+  invalidateExtensionsStatusCache();
 
   return {
     ok: true,
@@ -119,25 +127,34 @@ function buildExtensionActivityLog(ext, { cookieBridge, operatorExtension, reloa
   if (isE0001) {
     const ver = ext.version || cookieBridge?.stageVersion || cookieBridge?.manifestVersion || "latest";
     const staged = Boolean(cookieBridge?.manifestOk ?? true);
+    const swHealth = cookieBridge?.swHealth || null;
+    const swBadge = formatSwHealthShortBadge(swHealth);
+    const dot = swHealth?.status === "needs-heal" ? "🟠" : "🟢";
     return {
       staged,
       autoPinned: true,
-      activityLog: `🟢 Staged v${ver} · Auto-Pinned${reloadSuffix}`,
+      swHealth,
+      activityLog: `${dot} Staged v${ver}${swBadge} · Auto-Pinned${reloadSuffix}`,
     };
   }
   if (isE0002) {
     const ver = ext.version || operatorExtension?.stageVersion || operatorExtension?.manifestVersion || "latest";
     const staged = Boolean(operatorExtension?.manifestOk ?? true);
+    const swHealth = operatorExtension?.swHealth || null;
+    const swBadge = formatSwHealthShortBadge(swHealth);
+    const dot = swHealth?.status === "needs-heal" ? "🟠" : "🟢";
     return {
       staged,
       autoPinned: true,
-      activityLog: `🟢 Staged v${ver} · Auto-Pinned${reloadSuffix}`,
+      swHealth,
+      activityLog: `${dot} Staged v${ver}${swBadge} · Auto-Pinned${reloadSuffix}`,
     };
   }
   const ver = ext.version || "latest";
   return {
     staged: true,
     autoPinned: false,
+    swHealth: null,
     activityLog: `📦 Cached v${ver} · Web Store Ready`,
   };
 }
@@ -168,6 +185,9 @@ function getExtensionsStatus(userDataRoot, options = {}) {
     };
   }
 
+  if (options.forceRefresh) {
+    invalidateExtensionSwHealthCache();
+  }
   let cookieBridge = null;
   try {
     const { getCookieBridgeStatus } = require("./cookie-bridge-status.cjs");
@@ -177,9 +197,21 @@ function getExtensionsStatus(userDataRoot, options = {}) {
   }
   let operatorExtension = null;
   try {
-    operatorExtension = getOperatorExtensionStatus();
+    operatorExtension = getOperatorExtensionStatus(root);
   } catch {
     /* ignore */
+  }
+  try {
+    const fleetSw = inspectMv3ServiceWorkerFleetHealth(root, {
+      expectedE0001Version:
+        cookieBridge?.stageVersion || cookieBridge?.manifestVersion || cookieBridge?.workspaceVersion || null,
+      expectedE0002Version:
+        operatorExtension?.stageVersion || operatorExtension?.manifestVersion || null,
+    });
+    if (cookieBridge && fleetSw?.e0001) cookieBridge.swHealth = fleetSw.e0001;
+    if (operatorExtension && fleetSw?.e0002) operatorExtension.swHealth = fleetSw.e0002;
+  } catch {
+    /* best-effort */
   }
   const rawCached = listAllLaunchExtensions(root).map((ext) => ({
     ...ext,

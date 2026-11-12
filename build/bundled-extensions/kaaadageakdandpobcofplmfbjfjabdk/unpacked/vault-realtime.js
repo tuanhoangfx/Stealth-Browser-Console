@@ -1,5 +1,6 @@
 /** Supabase Realtime on route/vault tables — refresh route config and apply vault when another browser syncs. */
 
+import { parseJwtPayload } from "./auth-session.js";
 import {
   getBrowserId,
   mergeNoteSyncedAtForNote,
@@ -15,14 +16,7 @@ let heartbeatTimer = null;
 const VAULT_NOTE_PAGE_SIZE = 50;
 
 function userIdFromJwt(token) {
-  try {
-    const part = token.split(".")[1];
-    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
-    const payload = JSON.parse(json);
-    return payload.sub ?? null;
-  } catch {
-    return null;
-  }
+  return parseJwtPayload(token)?.sub ?? null;
 }
 
 function wsUrl(auth) {

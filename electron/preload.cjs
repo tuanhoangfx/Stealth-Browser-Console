@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require("electron");
+const { createPreloadUpdateBridge } = require("./lib/desktop-host-kit.cjs");
 
 function invoke(channel, payload) {
   return ipcRenderer.invoke(channel, payload);
@@ -91,15 +92,7 @@ contextBridge.exposeInMainWorld("stealthApi", {
     ipcRenderer.on("profile:session", listener);
     return () => ipcRenderer.removeListener("profile:session", listener);
   },
-  getUpdateStatus: () => invoke("stealth:get-update-status"),
-  checkForUpdates: () => invoke("stealth:check-for-updates"),
-  downloadUpdate: () => invoke("stealth:download-update"),
-  installUpdate: () => invoke("stealth:install-update"),
-  onUpdateStatus: (handler) => {
-    const listener = (_event, status) => handler(status);
-    ipcRenderer.on("stealth:update-status", listener);
-    return () => ipcRenderer.removeListener("stealth:update-status", listener);
-  }
+  ...createPreloadUpdateBridge(ipcRenderer, "stealth")
 });
 
 contextBridge.exposeInMainWorld("routerApi", {

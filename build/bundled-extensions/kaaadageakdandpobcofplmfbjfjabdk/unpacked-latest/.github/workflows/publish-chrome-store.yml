@@ -1,0 +1,39 @@
+name: Publish Chrome Web Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Submit publish after upload"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package store ZIP
+        shell: pwsh
+        run: ./scripts/package-store.ps1
+
+      - name: Upload to Chrome Web Store
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: |
+          ARGS="--update-manifest"
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.publish }}" = "true" ]; then
+            ARGS="--publish --update-manifest"
+          fi
+          node scripts/publish-chrome-store-api.mjs $ARGS

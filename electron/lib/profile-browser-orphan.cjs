@@ -78,6 +78,145 @@ function getOrphanNativeApi() {
   return orphanNativeApi;
 }
 
+let orphanUser32Api = null;
+let orphanUser32InitTried = false;
+
+function getOrphanUser32Api() {
+  if (process.platform !== "win32") return null;
+  if (globalThis.__STEALTH_ORPHAN_USER32_API__) return globalThis.__STEALTH_ORPHAN_USER32_API__;
+  if (orphanUser32InitTried) return orphanUser32Api;
+  orphanUser32InitTried = true;
+  const baseApi = getOrphanNativeApi();
+  const koffi = baseApi?.koffi || null;
+  if (!koffi) return null;
+  try {
+    const user32 = koffi.load("user32.dll");
+    const kernel32 = koffi.load("kernel32.dll");
+    const suffix = `_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const rectName = `RECT_ORPHAN${suffix}`;
+    const enumProtoName = `EnumDesktopWindowsProc_ORPHAN${suffix}`;
+    koffi.struct(rectName, {
+      Left: "int32_t",
+      Top: "int32_t",
+      Right: "int32_t",
+      Bottom: "int32_t",
+    });
+    const EnumDesktopWindowsProc = koffi.proto(
+      `bool __stdcall ${enumProtoName}(uintptr_t, uintptr_t)`,
+    );
+    let activeVisitor = null;
+    const sharedEnumCallback = koffi.register((hwnd) => {
+      if (typeof activeVisitor === "function") {
+        return activeVisitor(hwnd) !== false;
+      }
+      return false;
+    }, koffi.pointer(EnumDesktopWindowsProc));
+    const EnumDesktopWindowsRaw = user32.func(
+      `bool __stdcall EnumDesktopWindows(uintptr_t, ${enumProtoName}*, uintptr_t)`,
+    );
+    const enumDesktopWindowsWithVisitor = (hDesktop, visitor) => {
+      if (activeVisitor === null) {
+        activeVisitor = visitor;
+        try {
+          return EnumDesktopWindowsRaw(hDesktop || 0, sharedEnumCallback, 0);
+        } finally {
+          activeVisitor = null;
+        }
+      }
+      const tempCb = koffi.register(
+        (hwnd) => visitor(hwnd) !== false,
+        koffi.pointer(EnumDesktopWindowsProc),
+      );
+      try {
+        return EnumDesktopWindowsRaw(hDesktop || 0, tempCb, 0);
+      } finally {
+        koffi.unregister(tempCb);
+      }
+    };
+    orphanUser32Api = {
+      enumDesktopWindowsWithVisitor,
+      OpenInputDesktop: user32.func("uintptr_t __stdcall OpenInputDesktop(uint32_t, bool, uint32_t)"),
+      CloseDesktop: user32.func("bool __stdcall CloseDesktop(uintptr_t)"),
+      IsWindowVisible: user32.func("bool __stdcall IsWindowVisible(uintptr_t)"),
+      IsIconic: user32.func("bool __stdcall IsIconic(uintptr_t)"),
+      IsZoomed: user32.func("bool __stdcall IsZoomed(uintptr_t)"),
+      GetWindow: user32.func("uintptr_t __stdcall GetWindow(uintptr_t, uint32_t)"),
+      GetWindowThreadProcessId: user32.func("uint32_t __stdcall GetWindowThreadProcessId(uintptr_t, _Out_ uint32_t*)"),
+      GetClassNameW: user32.func("int __stdcall GetClassNameW(uintptr_t, void*, int)"),
+      GetWindowRect: user32.func(`bool __stdcall GetWindowRect(uintptr_t, _Out_ ${rectName}*)`),
+      MoveWindow: user32.func("bool __stdcall MoveWindow(uintptr_t, int, int, int, int, bool)"),
+      ShowWindow: user32.func("bool __stdcall ShowWindow(uintptr_t, int)"),
+      BringWindowToTop: user32.func("bool __stdcall BringWindowToTop(uintptr_t)"),
+      SetForegroundWindow: user32.func("bool __stdcall SetForegroundWindow(uintptr_t)"),
+      GetForegroundWindow: user32.func("uintptr_t __stdcall GetForegroundWindow()"),
+      AttachThreadInput: user32.func("bool __stdcall AttachThreadInput(uint32_t, uint32_t, bool)"),
+      GetCurrentThreadId: kernel32.func("uint32_t __stdcall GetCurrentThreadId()"),
+    };
+    globalThis.__STEALTH_ORPHAN_USER32_API__ = orphanUser32Api;
+  } catch {
+    orphanUser32Api = null;
+  }
+  return orphanUser32Api;
+}
+
+/**
+ * Find the visible, unowned top-level main HWND belonging to any PID in `pids` in <1ms via user32.dll
+ * (0 PowerShell spawns, 0 WMI/C# compilation). Prefers `Chrome_WidgetWin_1` when present.
+ */
+function findMainWindowForPidsNative(pids) {
+  const u32 = getOrphanUser32Api();
+  if (!u32 || !pids) return 0;
+  const pidSet = new Set();
+  for (const p of pids) {
+    const n = Number(p);
+    if (Number.isInteger(n) && n > 0) pidSet.add(n);
+  }
+  if (pidSet.size === 0) return 0;
+
+  const pidOut = [0];
+  const clsBuf = Buffer.alloc(512);
+  let preferredHwnd = 0;
+  let fallbackHwnd = 0;
+  let visitedAny = false;
+
+  const visitor = (hwnd) => {
+    visitedAny = true;
+    if (!hwnd) return true;
+    u32.GetWindowThreadProcessId(hwnd, pidOut);
+    if (!pidSet.has(pidOut[0])) return true;
+    if (!u32.IsWindowVisible(hwnd)) return true;
+    if (u32.GetWindow(hwnd, 4)) return true; // GW_OWNER === 4 (must be unowned top-level window)
+    const nChars = u32.GetClassNameW(hwnd, clsBuf, 256);
+    const cls = nChars > 0 ? clsBuf.subarray(0, nChars * 2).toString("utf16le") : "";
+    if (cls === "Chrome_WidgetWin_1") {
+      preferredHwnd = hwnd;
+      return false;
+    }
+    if (!fallbackHwnd) fallbackHwnd = hwnd;
+    return true;
+  };
+
+  u32.enumDesktopWindowsWithVisitor(0, visitor);
+  if (preferredHwnd) return preferredHwnd;
+  if (!visitedAny || !fallbackHwnd) {
+    const hInput = u32.OpenInputDesktop(0, false, 0x0041); // DESKTOP_READOBJECTS | DESKTOP_ENUMERATE
+    if (hInput) {
+      try {
+        u32.enumDesktopWindowsWithVisitor(hInput, visitor);
+      } finally {
+        u32.CloseDesktop(hInput);
+      }
+    }
+  }
+  return preferredHwnd || fallbackHwnd || 0;
+}
+
+function hasMainWindowForPidNative(pid) {
+  const id = Number(pid);
+  if (!Number.isInteger(id) || id <= 0) return false;
+  return Boolean(findMainWindowForPidsNative([id]));
+}
+
 function isPidAliveFast(pid) {
   const n = Number(pid);
   if (!Number.isInteger(n) || n <= 0) return false;
@@ -157,6 +296,7 @@ function scanChromeProcessesNative({ forceFresh = false } = {}) {
         if (CHROME_NAMES.has(name)) {
           const pid = Number(pe.th32ProcessID);
           const ppid = Number(pe.th32ParentProcessID);
+          let cmd = "";
           let cmdLower = "";
           const h = api.OpenProcess(0x1000, false, pid);
           if (h) {
@@ -164,7 +304,8 @@ function scanChromeProcessesNative({ forceFresh = false } = {}) {
               if (api.NtQueryInformationProcess(h, 60, buf, buf.length, retLen) === 0) {
                 const len = buf.readUInt16LE(0);
                 if (len > 0 && 16 + len <= buf.length) {
-                  cmdLower = buf.subarray(16, 16 + len).toString("utf16le").toLowerCase();
+                  cmd = buf.subarray(16, 16 + len).toString("utf16le");
+                  cmdLower = cmd.toLowerCase();
                 }
               }
             } catch {
@@ -173,7 +314,7 @@ function scanChromeProcessesNative({ forceFresh = false } = {}) {
               api.CloseHandle(h);
             }
           }
-          if (cmdLower) rows.push({ pid, ppid, cmdLower });
+          if (cmdLower) rows.push({ pid, ppid, cmd, cmdLower });
         }
       } while (api.Process32NextW(snap, pe));
     }
@@ -918,7 +1059,7 @@ function isUserDataDirPriorityLocked(userDataDir) {
 async function killOrphanProfileBrowser(userDataDir, options = {}) {
   invalidateProfileBrowserPidCache(userDataDir);
   if (!userDataDir || process.platform !== "win32") return { killed: 0 };
-  if (isUserDataDirPriorityLocked(userDataDir)) {
+  if (!options?.forcePriority && isUserDataDirPriorityLocked(userDataDir)) {
     return { killed: 0, skipped: "priority_agent_locked" };
   }
   if (!options?.allowKillHeadedUser) {
@@ -928,9 +1069,9 @@ async function killOrphanProfileBrowser(userDataDir, options = {}) {
     }
   }
 
-  // Fast path: resolve known PID from sidecar + listening debugPort
+  // Fast path: resolve known PID from sidecar + listening debugPort (including explicit debugPortHint)
   const sidecar = readFastSidecarMeta(userDataDir);
-  const debugPort = Number(sidecar?.debugPort || readDevToolsActivePort(userDataDir) || 0);
+  const debugPort = Number(options?.debugPortHint || sidecar?.debugPort || readDevToolsActivePort(userDataDir) || 0);
   const fastPids = new Set();
   if (Number(sidecar?.pid) > 0 && isPidAliveFast(Number(sidecar.pid))) fastPids.add(Number(sidecar.pid));
   if (fastPids.size === 0 && debugPort > 0) {
@@ -1019,6 +1160,95 @@ async function focusProfileBrowserWindow(userDataDir, options = {}) {
       targetWorkArea = null;
     }
   }
+
+  const u32 = getOrphanUser32Api();
+  const procApi = getOrphanNativeApi();
+  if (u32 && procApi) {
+    try {
+      const { profileDirNeedles } = require("./chrome-process-query.cjs");
+      const needlesLower = (profileDirNeedles(userDataDir).needles || [])
+        .map((n) => String(n || "").replace(/''/g, "'").toLowerCase())
+        .filter(Boolean);
+      const mainPids = [];
+      const childPids = [];
+      const sidecar = readFastSidecarMeta(userDataDir);
+      const sidecarPid = Number(sidecar?.pid) || 0;
+      if (sidecarPid > 0 && sidecar?.headless !== true && isPidAliveFast(sidecarPid)) {
+        mainPids.push(sidecarPid);
+      }
+      const rows = scanChromeProcessesNative({ forceFresh: true }) || [];
+      for (const r of rows) {
+        const cmd = String(r.cmdLower || "");
+        if (!cmd || !needlesLower.some((n) => cmd.includes(n))) continue;
+        if (cmd.includes("--type=")) {
+          childPids.push(r.pid);
+        } else {
+          mainPids.push(r.pid);
+        }
+      }
+      const candidatePids = [...new Set([...mainPids, ...childPids])];
+      if (candidatePids.length === 0) {
+        return { ok: false, reason: "not-running" };
+      }
+      const hwnd = findMainWindowForPidsNative(candidatePids);
+      if (!hwnd) {
+        return { ok: false, reason: "no-window" };
+      }
+
+      if (u32.IsIconic(hwnd)) {
+        u32.ShowWindow(hwnd, 9); // SW_RESTORE
+      }
+
+      if (
+        targetWorkArea &&
+        Number.isFinite(targetWorkArea.x) &&
+        Number.isFinite(targetWorkArea.y) &&
+        targetWorkArea.width >= 320 &&
+        targetWorkArea.height >= 240
+      ) {
+        const waX = Math.round(targetWorkArea.x);
+        const waY = Math.round(targetWorkArea.y);
+        const waW = Math.round(targetWorkArea.width);
+        const waH = Math.round(targetWorkArea.height);
+        const rc = { Left: 0, Top: 0, Right: 0, Bottom: 0 };
+        if (u32.GetWindowRect(hwnd, rc)) {
+          const cx = Math.trunc((rc.Left + rc.Right) / 2);
+          const cy = Math.trunc((rc.Top + rc.Bottom) / 2);
+          const onTarget = cx >= waX && cx < waX + waW && cy >= waY && cy < waY + waH;
+          if (!onTarget) {
+            const wasMax = Boolean(u32.IsZoomed(hwnd));
+            u32.ShowWindow(hwnd, 9);
+            const nw = Math.min(1440, Math.max(800, waW - 80));
+            const nh = Math.min(900, Math.max(600, waH - 60));
+            u32.MoveWindow(hwnd, waX + 40, waY + 30, nw, nh, true);
+            if (wasMax) u32.ShowWindow(hwnd, 3); // SW_MAXIMIZE
+          }
+        }
+      }
+
+      u32.BringWindowToTop(hwnd);
+      if (!u32.SetForegroundWindow(hwnd)) {
+        const fg = u32.GetForegroundWindow();
+        const pidOut = [0];
+        const fgTid = fg ? u32.GetWindowThreadProcessId(fg, pidOut) : 0;
+        const curTid = u32.GetCurrentThreadId();
+        if (fgTid && curTid && fgTid !== curTid) {
+          if (u32.AttachThreadInput(curTid, fgTid, true)) {
+            try {
+              u32.BringWindowToTop(hwnd);
+              u32.SetForegroundWindow(hwnd);
+            } finally {
+              u32.AttachThreadInput(curTid, fgTid, false);
+            }
+          }
+        }
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
   const script = buildFocusProfileWindowPs(userDataDir, targetWorkArea);
 
   try {
@@ -1030,6 +1260,103 @@ async function focusProfileBrowserWindow(userDataDir, options = {}) {
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Zero-WMI native sweep (<5ms via Toolhelp32Snapshot + NtQueryInformationProcess) that reaps:
+ * 1. Orphaned `chrome-headless.exe` / `chrome-headless-shell.exe` `--type=*` children whose parent PID is dead.
+ * 2. Untracked root `chrome-headless.exe` trees (> minAgeMs, `--headless`) not tracked by P0003 SessionManager
+ *    (strictly excluding customer `8xxx` and user protected `0001-0021`, `0059`, `0069` profiles).
+ */
+function reapUntrackedHeadlessBrowsersNative({
+  trackedDirs = [],
+  trackedIds = [],
+  trackedPorts = [],
+  minAgeMs = 180_000,
+} = {}) {
+  const api = getOrphanNativeApi();
+  if (!api || process.platform !== "win32") return { scanned: 0, killed: 0, rootTrees: 0 };
+  const snap = api.CreateToolhelp32Snapshot(0x00000002, 0);
+  if (!snap) return { scanned: 0, killed: 0, rootTrees: 0 };
+
+  const dirSet = new Set(trackedDirs.map((d) => String(d || "").trim().toLowerCase()).filter(Boolean));
+  const idList = trackedIds.map((id) => String(id || "").trim().toLowerCase()).filter(Boolean);
+  const portSet = new Set(trackedPorts.map((p) => Number(p)).filter((p) => Number.isFinite(p) && p > 0));
+
+  const allPids = new Set();
+  const headlessProcs = [];
+  const pe = { dwSize: api.peSize };
+  try {
+    if (api.Process32FirstW(snap, pe)) {
+      do {
+        const pid = Number(pe.th32ProcessID);
+        const ppid = Number(pe.th32ParentProcessID);
+        allPids.add(pid);
+        let end = 0;
+        while (end < 260 && pe.szExeFile[end] !== 0) end++;
+        const name = String.fromCharCode(...pe.szExeFile.subarray(0, end)).toLowerCase();
+        if (name === "chrome-headless.exe" || name === "chrome-headless-shell.exe") {
+          headlessProcs.push({ pid, ppid, name });
+        }
+      } while (api.Process32NextW(snap, pe));
+    }
+  } finally {
+    api.CloseHandle(snap);
+  }
+
+  if (headlessProcs.length === 0) return { scanned: 0, killed: 0, rootTrees: 0 };
+  const headlessPidSet = new Set(headlessProcs.map((p) => p.pid));
+  const now = Date.now();
+  const buf = Buffer.alloc(32768);
+  const ftBuf = Buffer.alloc(32);
+  const retLen = [0];
+  const toKillRoots = [];
+
+  for (const p of headlessProcs) {
+    if (headlessPidSet.has(p.ppid)) continue;
+    let cmd = "";
+    let createdMs = 0;
+    const h = api.OpenProcess(0x1000, false, p.pid);
+    if (h) {
+      try {
+        if (api.NtQueryInformationProcess(h, 60, buf, buf.length, retLen) === 0) {
+          const len = buf.readUInt16LE(0);
+          const ptr = Number(buf.readBigUInt64LE(8));
+          if (len > 0 && ptr > 0 && 16 + len <= buf.length) {
+            cmd = buf.subarray(16, 16 + len).toString("utf16le");
+          }
+        }
+        createdMs = getProcessCreatedEpochMs(api, h, ftBuf);
+      } catch {
+        /* ignore */
+      } finally {
+        api.CloseHandle(h);
+      }
+    }
+    if (!allPids.has(p.ppid) && /--type=/i.test(cmd)) {
+      toKillRoots.push(p.pid);
+      continue;
+    }
+    if (!cmd || /--type=/i.test(cmd) || !/--headless\b/i.test(cmd)) continue;
+    if (createdMs <= 0 || now - createdMs < minAgeMs) continue;
+    if (/--stealth-profile-code=(?:8\d{3}|00(?:0[1-9]|1\d|2[01]|59|69))\b/i.test(cmd)) continue;
+
+    const mDir = cmd.match(/--user-data-dir=(?:"([^"]+)"|([^\s]+))/i);
+    const dirLower = String(mDir?.[1] || mDir?.[2] || "").trim().toLowerCase();
+    const mPort = cmd.match(/--remote-debugging-port=(\d+)/i);
+    const portNum = Number(mPort?.[1] || 0);
+    const isTracked =
+      (dirLower && dirSet.has(dirLower)) ||
+      (portNum > 0 && portSet.has(portNum)) ||
+      (dirLower && idList.some((tid) => tid && dirLower.includes(tid)));
+    if (!isTracked) {
+      toKillRoots.push(p.pid);
+    }
+  }
+
+  if (toKillRoots.length === 0) return { scanned: headlessProcs.length, killed: 0, rootTrees: 0 };
+  const killed = terminateProcessTreeNative(toKillRoots) || 0;
+  return { scanned: headlessProcs.length, killed, rootTrees: toKillRoots.length };
 }
 
 module.exports = {
@@ -1048,5 +1375,9 @@ module.exports = {
   scanChromeProcessesNative,
   reapOrphanAdbScrcpyProcessesNative,
   reapDuplicateTaskbarPwaProcessesNative,
+  reapUntrackedHeadlessBrowsersNative,
   findLiveHeadedBrowserPidNative,
+  getOrphanUser32Api,
+  findMainWindowForPidsNative,
+  hasMainWindowForPidNative,
 };

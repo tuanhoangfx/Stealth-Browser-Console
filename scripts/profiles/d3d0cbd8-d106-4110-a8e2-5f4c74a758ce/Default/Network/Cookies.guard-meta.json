@@ -1,0 +1,15 @@
+{
+  "updatedAt": "2026-11-01T19:01:39.881Z",
+  "vaultHydratedAt": "2026-11-01T19:01:39.880Z",
+  "vaultSources": [
+    "services"
+  ],
+  "vaultCookiesCount": 24,
+  "totalRows": 24,
+  "authDomainsCount": 1,
+  "hasGoogleAuth": false,
+  "hasOutlookAuth": false,
+  "hasFacebookAuth": false,
+  "hasTikTokAuth": false,
+  "byteSize": 11467
+}

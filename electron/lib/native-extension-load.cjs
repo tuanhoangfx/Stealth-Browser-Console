@@ -275,7 +275,7 @@ function stageOperatorExtension(cloakCacheDir, options = {}) {
   return { ...staged, pinDir: pinReady ? pinDir : staged.stageDir || operator };
 }
 
-function getOperatorExtensionStatus() {
+function getOperatorExtensionStatus(userDataRoot) {
   const { getProfileExtensionsEnabled } = require("./app-settings.cjs");
   const {
     operatorStableRoot,
@@ -294,6 +294,23 @@ function getOperatorExtensionStatus() {
   const targetForValidation =
     stagePath && fs.existsSync(path.join(stagePath, "manifest.json")) ? stagePath : workspacePath;
   const validation = targetForValidation ? validateOperatorExtensionPackage(targetForValidation) : null;
+  const manifestVersion = typeof workspaceManifest?.version === "string" ? workspaceManifest.version.trim() : null;
+  const stageVersion = typeof stageManifest?.version === "string" ? stageManifest.version.trim() : null;
+  let swHealth = null;
+  try {
+    const { defaultUserDataRoot } = require("./webstore-extension.cjs");
+    const { inspectMv3ServiceWorkerFleetHealth } = require("./extension-sw-health.cjs");
+    const rootDir =
+      typeof userDataRoot === "function"
+        ? userDataRoot()
+        : userDataRoot || defaultUserDataRoot();
+    swHealth =
+      inspectMv3ServiceWorkerFleetHealth(rootDir, {
+        expectedE0002Version: stageVersion || manifestVersion || null,
+      })?.e0002 ?? null;
+  } catch {
+    /* best-effort */
+  }
 
   return {
     enabled: Boolean(profilesExtensionsEnabled && toggles.e0002 !== false && workspacePath),
@@ -305,8 +322,9 @@ function getOperatorExtensionStatus() {
     workspacePath,
     stagePath: stagePath && fs.existsSync(path.join(stagePath, "manifest.json")) ? stagePath : null,
     manifestOk: Boolean(workspaceManifest?.manifest_version || stageManifest?.manifest_version),
-    manifestVersion: typeof workspaceManifest?.version === "string" ? workspaceManifest.version.trim() : null,
-    stageVersion: typeof stageManifest?.version === "string" ? stageManifest.version.trim() : null,
+    manifestVersion,
+    stageVersion,
+    swHealth,
     validation,
   };
 }
@@ -411,6 +429,7 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
   if (!profileExtensionsEnabled()) return emptyPlan;
 
   const prefsFile = userDataDir ? path.join(userDataDir, "Default", "Preferences") : "";
+  const securePrefsFile = userDataDir ? path.join(userDataDir, "Default", "Secure Preferences") : "";
   const cacheKey = `${path.resolve(String(userDataDir || ""))}::${path.resolve(String(resolvedCloakDir || ""))}::${JSON.stringify(toggles)}`;
   const nowMs = Date.now();
   if (FAST_PREP && prefsFile && !options.force) {
@@ -418,7 +437,16 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
     if (cached && nowMs - cached.at < PREPARED_PROFILE_EXT_TTL_MS) {
       try {
         const st = fs.statSync(prefsFile);
-        if (st.size > 4096 && st.mtimeMs === cached.prefsMtime && st.size === cached.prefsSize) {
+        const secSt = securePrefsFile && fs.existsSync(securePrefsFile) ? fs.statSync(securePrefsFile) : null;
+        const secMtime = secSt ? secSt.mtimeMs : 0;
+        const secSize = secSt ? secSt.size : 0;
+        if (
+          st.size > 4096 &&
+          st.mtimeMs === cached.prefsMtime &&
+          st.size === cached.prefsSize &&
+          secMtime === cached.secMtime &&
+          secSize === cached.secSize
+        ) {
           return cached.plan;
         }
       } catch {
@@ -518,11 +546,14 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
   if (prefsFile) {
     try {
       const st = fs.statSync(prefsFile);
+      const secSt = securePrefsFile && fs.existsSync(securePrefsFile) ? fs.statSync(securePrefsFile) : null;
       if (st.size > 4096) {
         _preparedProfileExtCache.set(cacheKey, {
           at: Date.now(),
           prefsMtime: st.mtimeMs,
           prefsSize: st.size,
+          secMtime: secSt ? secSt.mtimeMs : 0,
+          secSize: secSt ? secSt.size : 0,
           plan,
         });
       }

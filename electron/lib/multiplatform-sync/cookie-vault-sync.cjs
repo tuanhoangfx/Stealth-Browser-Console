@@ -79,12 +79,16 @@ let _cookieVaultSqliteUpsertStmt = null;
 function upsertCookieVaultSqliteEntry(vaultDir, vaultName, entryKey, profileCode, provider, entryObj) {
   try {
     if (!_cookieVaultSqliteDb) {
-      const { DatabaseSync } = require("node:sqlite");
+      const { openGuardSqlite } = require("../profile-cookie-guard.cjs");
       const dbPath = path.join(vaultDir, "cookie-vault.db");
-      _cookieVaultSqliteDb = new DatabaseSync(dbPath, { timeout: 5000 });
+      _cookieVaultSqliteDb = openGuardSqlite(dbPath, { readOnly: false, busyTimeoutMs: 5000 });
       _cookieVaultSqliteDb.exec(`
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
+        PRAGMA temp_store = MEMORY;
+        PRAGMA mmap_size = 67108864;
+        PRAGMA wal_autocheckpoint = 2000;
+        PRAGMA journal_size_limit = 67108864;
         CREATE TABLE IF NOT EXISTS cookie_vault_entries (
           vault_name TEXT NOT NULL,
           entry_key TEXT NOT NULL,

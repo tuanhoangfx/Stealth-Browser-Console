@@ -1372,15 +1372,17 @@ async function extractMobileCookiesToBrowserProfile(
         await execFileFn(adbBin, adbArgs(["pull", remoteTmp, localDbPath]), { timeout: 4000 }).catch(() => undefined);
 
         if (fs.existsSync(localDbPath) && fs.statSync(localDbPath).size > 1024) {
+          let db = null;
           try {
-            const { DatabaseSync } = require("node:sqlite");
-            const db = new DatabaseSync(localDbPath, { open: true, readOnly: true });
+            const { openGuardSqlite } = require("./profile-cookie-guard.cjs");
+            db = openGuardSqlite(localDbPath, { readOnly: true });
             const rows = db
               .prepare(
                 "SELECT host_key, name, value, encrypted_value, path, CAST(expires_utc AS TEXT) AS expires_utc, is_secure, is_httponly, samesite FROM cookies",
               )
               .all();
             db.close();
+            db = null;
             for (const r of rows) {
               const domain = String(r.host_key || "").trim();
               const name = String(r.name || "").trim();
@@ -1404,6 +1406,14 @@ async function extractMobileCookiesToBrowserProfile(
             }
           } catch {
             /* sqlite read error */
+          } finally {
+            if (db) {
+              try {
+                db.close();
+              } catch {
+                /* ignore */
+              }
+            }
           }
         }
       }

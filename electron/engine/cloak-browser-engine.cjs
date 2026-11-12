@@ -200,6 +200,37 @@ function enforceFrozenCloakbrowserEnv() {
   }
 }
 
+function extractMirrorZipArchive(mirrorZip, binaryDir) {
+  fs.mkdirSync(binaryDir, { recursive: true });
+  const sysTar = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
+  if (process.platform === "win32" && fs.existsSync(sysTar)) {
+    try {
+      execFileSync(sysTar, ["-x", "-f", mirrorZip, "-C", binaryDir], {
+        timeout: 120_000,
+        windowsHide: true,
+        stdio: "ignore",
+      });
+      return true;
+    } catch {
+      /* fall through to .NET ZipFile fallback */
+    }
+  }
+  execFileSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($env:CB_MIRROR_ZIP, $env:CB_MIRROR_DEST)",
+    ],
+    {
+      timeout: 120_000,
+      windowsHide: true,
+      env: { ...process.env, CB_MIRROR_ZIP: mirrorZip, CB_MIRROR_DEST: binaryDir },
+    },
+  );
+  return true;
+}
+
 function maybeRestoreFrozenBinaryFromLocalMirror() {
   if (process.platform !== "win32") return false;
   const cacheDir = resolveCloakCacheDir();
@@ -232,20 +263,7 @@ function maybeRestoreFrozenBinaryFromLocalMirror() {
   }
   if (!fs.existsSync(mirrorZip)) return false;
   try {
-    fs.mkdirSync(binaryDir, { recursive: true });
-    execFileSync(
-      "powershell",
-      [
-        "-NoProfile",
-        "-Command",
-        "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($env:CB_MIRROR_ZIP, $env:CB_MIRROR_DEST)",
-      ],
-      {
-        timeout: 120_000,
-        windowsHide: true,
-        env: { ...process.env, CB_MIRROR_ZIP: mirrorZip, CB_MIRROR_DEST: binaryDir },
-      },
-    );
+    extractMirrorZipArchive(mirrorZip, binaryDir);
     return fs.existsSync(chromeExe);
   } catch {
     return false;
@@ -930,9 +948,9 @@ function isContextPriorityLocked(context) {
   return false;
 }
 
-async function closeContext(context) {
+async function closeContext(context, { forcePriority = false } = {}) {
   if (!context) return;
-  if (isContextPriorityLocked(context)) {
+  if (!forcePriority && isContextPriorityLocked(context)) {
     return;
   }
   try {
@@ -952,13 +970,17 @@ async function closeContext(context) {
   } catch {
     /* best-effort in-memory SQLite cookie flush before close */
   }
-  await context.close().catch(() => undefined);
+  await Promise.race([
+    context.close().catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, 4000)),
+  ]);
 }
 
 module.exports = {
   FROZEN_CLOAKBROWSER_WRAPPER_VERSION,
   FROZEN_CLOAKBROWSER_CHROMIUM_VERSION,
   enforceFrozenCloakbrowserEnv,
+  extractMirrorZipArchive,
   maybeRestoreFrozenBinaryFromLocalMirror,
   profileDataDir,
   buildLaunchOptions,

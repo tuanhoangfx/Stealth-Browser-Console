@@ -3,7 +3,7 @@
 
   "manifest_version": 3,
   "name": "E0001 Cookie Bridge",
-  "version": "1.1.25",
+  "version": "1.2.8",
   "description": "Manual Sync/Load per route only; snapshot + AES-GCM vault on explicit Sync (V4).",
   "icons": {
     "16": "icons/icon16.png",
@@ -11,7 +11,12 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["cookies", "storage", "tabs", "scripting"],
+  "permissions": [
+    "cookies",
+    "storage",
+    "tabs",
+    "scripting"
+  ],
   "host_permissions": [
     "<all_urls>",
     "https://*.supabase.co/*",
@@ -40,7 +45,9 @@
         "https://tool-hub.vercel.app/*",
         "https://*.vercel.app/*"
       ],
-      "js": ["content-bridge.js"],
+      "js": [
+        "content-bridge.js"
+      ],
       "run_at": "document_idle"
     }
   ],

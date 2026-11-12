@@ -108,6 +108,9 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
               key: "reload-open-profiles",
               label: "Reload Open Profiles",
               icon: RefreshCw,
+              tone: "sky" as const,
+              disabled: busy,
+              iconSpinning: busy,
               title: "Sync E0001 & E0002 stages and broadcast instant reload signal to all open profiles",
               onClick: () => onReloadOpenProfiles(),
             },
@@ -121,7 +124,7 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
         onClick: () => openStealthGuide("guide/"),
       },
     ],
-    [onReloadOpenProfiles],
+    [busy, onReloadOpenProfiles],
   );
 
   return (
@@ -172,27 +175,13 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
             primaryTitle="Install from Chrome Web Store"
             hideEdit
             beforeDelete={
-              <>
-                {onReloadOpenProfiles ? (
-                  <button
-                    type="button"
-                    className="hub-btn hub-btn--ghost inline-flex items-center gap-1.5 px-2.5 py-1 text-xs"
-                    disabled={busy}
-                    title="Sync E0001 & E0002 stages and broadcast instant reload signal to all open profiles"
-                    onClick={onReloadOpenProfiles}
-                  >
-                    <RefreshCw size={13} className={busy ? "animate-spin" : ""} aria-hidden />
-                    <span>Reload Open Profiles</span>
-                  </button>
-                ) : null}
-                <HubDirectoryAdaptiveEditAction
-                  selectedCount={selectedCount}
-                  onEditSingle={onOpenDetailSingle}
-                  onEditBulk={onOpenBulkDetail ?? onOpenDetailSingle}
-                  singleLabel="Detail"
-                  bulkLabel="Detail"
-                />
-              </>
+              <HubDirectoryAdaptiveEditAction
+                selectedCount={selectedCount}
+                onEditSingle={onOpenDetailSingle}
+                onEditBulk={onOpenBulkDetail ?? onOpenDetailSingle}
+                singleLabel="Detail"
+                bulkLabel="Detail"
+              />
             }
           />
           <HubDirectoryBulkMoreMenu actions={moreMenuItems} selectedCount={selectedCount} />

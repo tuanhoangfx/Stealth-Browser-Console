@@ -10,7 +10,9 @@ const {
   filterCatalogBundle,
   resolveRestoreTargetId,
   backupProfilesState,
+  backupProfilesStateAsync,
   restoreProfilesState,
+  restoreProfilesStateAsync,
 } = require("./profile-backup.cjs");
 
 test("sanitizeProfileFolderName strips invalid characters", () => {
@@ -132,5 +134,59 @@ test("backup and restore round-trip on Windows", { skip: process.platform !== "w
     fs.unlinkSync(backup.zipPath);
   } catch {
     /* ignore */
+  }
+});
+
+test("backupProfilesStateAsync and restoreProfilesStateAsync round-trip non-blocking via System32 tar.exe", { skip: process.platform !== "win32" }, async () => {
+  const userDataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-backup-async-"));
+  const profilesDir = path.join(userDataRoot, "profiles");
+  const profileId = "async-uuid-1";
+  const profileDir = path.join(profilesDir, profileId);
+  fs.mkdirSync(path.join(profileDir, "Default"), { recursive: true });
+  fs.writeFileSync(path.join(profileDir, "Default", "Preferences"), '{"ok":true}');
+
+  const exportBundle = () => ({
+    version: 2,
+    matchBy: "name",
+    groups: [],
+    profiles: [{ id: "foreign-a1", name: "0444", groupId: "default", proxy: "", note: "" }],
+  });
+  const listProfiles = () => [{ id: profileId, name: "0444", status: "closed" }];
+  const findProfilesByName = (name) => (name === "0444" ? [{ id: profileId }] : []);
+  const getProfileById = (id) => (id === profileId ? { id: profileId } : null);
+  const importBundle = () => ({ ok: true, imported: 1, updated: 1, created: 0, skipped: 0 });
+
+  let maxLagMs = 0;
+  let lastTick = performance.now();
+  const timer = setInterval(() => {
+    const now = performance.now();
+    const lag = now - lastTick - 10;
+    if (lag > maxLagMs) maxLagMs = lag;
+    lastTick = now;
+  }, 10);
+
+  let zipPath = "";
+  try {
+    const backup = await backupProfilesStateAsync(userDataRoot, { exportBundle, listProfiles });
+    zipPath = backup.zipPath;
+    assert.ok(fs.existsSync(zipPath));
+
+    fs.rmSync(profileDir, { recursive: true, force: true });
+    assert.equal(fs.existsSync(profileDir), false);
+
+    const restored = await restoreProfilesStateAsync(userDataRoot, zipPath, {
+      importBundle,
+      findProfilesByName,
+      getProfileById,
+    });
+    clearInterval(timer);
+
+    assert.equal(restored.restored, 1);
+    assert.equal(fs.readFileSync(path.join(profileDir, "Default", "Preferences"), "utf8"), '{"ok":true}');
+    assert.ok(maxLagMs < 90, `Expected non-blocking async backup/restore event-loop lag < 90ms, got ${maxLagMs.toFixed(1)}ms`);
+  } finally {
+    clearInterval(timer);
+    fs.rmSync(userDataRoot, { recursive: true, force: true });
+    if (zipPath && fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
   }
 });

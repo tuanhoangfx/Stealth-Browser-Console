@@ -22,6 +22,8 @@ const listProfileBrowserPids = (...args) => getOrphanModule().listProfileBrowser
 const readDevToolsActivePort = (...args) => getOrphanModule().readDevToolsActivePort(...args);
 const resolveBrowserPidByDebugPort = (...args) => getOrphanModule().resolveBrowserPidByDebugPort(...args);
 const findLiveHeadedBrowserPidNative = (...args) => getOrphanModule().findLiveHeadedBrowserPidNative?.(...args) || 0;
+const reapUntrackedHeadlessBrowsersNative = (...args) =>
+  getOrphanModule().reapUntrackedHeadlessBrowsersNative?.(...args) || { scanned: 0, killed: 0, rootTrees: 0 };
 const {
   purgeLegacyProfileIdentityChrome,
   trimClosedProfileDisposableCache,
@@ -197,7 +199,8 @@ function isSupportChatProtectedSession(session) {
       if (parsedPriority) {
         const entry = parsedPriority?.locks?.[code];
         const exp = typeof entry === "object" && entry ? Number(entry.expiresAt || 0) : Number(entry || 0);
-        if (exp > Date.now()) return true;
+        const entryReason = typeof entry === "object" && entry ? String(entry.reason || "") : "";
+        if (exp > Date.now() && /support|chat|appeal/i.test(entryReason)) return true;
       }
     }
   } catch {
@@ -1110,21 +1113,69 @@ class SessionManager {
     }
     this._lastReconcileAt = nowMs;
     let changed = false;
-    // (0) Evict dead sessions whose browser context is no longer alive.
+    // (0) Evict dead sessions whose browser context is no longer alive — MUST terminate lingering headless processes
+    // instead of merely deleting the Map entry (which previously orphaned chrome-headless.exe + conhost.exe).
     for (const [id, session] of this.#sessions.entries()) {
       if (!session.alive) continue;
       if (!session.focusOnly && session.context && !this.#inLaunchGrace(session) && !isContextAlive(session.context)) {
-        session.alive = false;
-        this.#sessions.delete(id);
+        if (session.headless !== true && session.userDataDir && findLiveHeadedBrowserPidNative(session.userDataDir) > 0) {
+          if (session.watchdog) clearInterval(session.watchdog);
+          session.context = null;
+          session.focusOnly = true;
+          this.#bindFocusOnlyLifecycle(id, session.userDataDir);
+          continue;
+        }
+        if (session.headless === true) {
+          void this.#closeSingleSession(id, session, this.#sessions, { isShadowLane: false, forcePriority: true }).catch(
+            () => undefined,
+          );
+        } else {
+          if (session.watchdog) clearInterval(session.watchdog);
+          session.alive = false;
+          this.#sessions.delete(id);
+          removeSidecarPid(session.userDataDir);
+        }
         changed = true;
       }
     }
     for (const [id, session] of this.#agentSessions.entries()) {
       if (!session.alive) continue;
       if (!session.focusOnly && session.context && !this.#inLaunchGrace(session) && !isContextAlive(session.context)) {
-        session.alive = false;
-        this.#agentSessions.delete(id);
+        void this.#closeSingleSession(id, session, this.#agentSessions, {
+          isShadowLane: true,
+          forcePriority: true,
+        }).catch(() => undefined);
         changed = true;
+      }
+    }
+
+    // Periodic 60s native sweep for untracked zombie chrome-headless.exe trees (>3m old)
+    if (
+      process.env.STEALTH_DEV_ISOLATED !== "1" &&
+      this.#launchingIds.size === 0 &&
+      this.#agentLaunchingIds.size === 0 &&
+      (!this._lastUntrackedHeadlessSweepAt || nowMs - this._lastUntrackedHeadlessSweepAt >= 60_000)
+    ) {
+      this._lastUntrackedHeadlessSweepAt = nowMs;
+      try {
+        const trackedDirs = [];
+        const trackedIds = [...this.#launchingIds, ...this.#agentLaunchingIds];
+        const trackedPorts = [];
+        for (const [id, s] of this.#sessions.entries()) {
+          if (!s.alive) continue;
+          trackedIds.push(id);
+          if (s.userDataDir) trackedDirs.push(s.userDataDir);
+          if (Number(s.debugPort) > 0) trackedPorts.push(Number(s.debugPort));
+        }
+        for (const [id, s] of this.#agentSessions.entries()) {
+          if (!s.alive) continue;
+          trackedIds.push(id);
+          if (s.userDataDir) trackedDirs.push(s.userDataDir);
+          if (Number(s.debugPort) > 0) trackedPorts.push(Number(s.debugPort));
+        }
+        reapUntrackedHeadlessBrowsersNative({ trackedDirs, trackedIds, trackedPorts, minAgeMs: 180_000 });
+      } catch {
+        /* best-effort native zombie sweep */
       }
     }
     const activeRows = profileService.listActiveProfileIds();
@@ -1508,9 +1559,18 @@ class SessionManager {
     this.#sessions.delete(id);
     markProfileChromeCleanExit(session.userDataDir);
     if (session.focusOnly) {
-      await killOrphanProfileBrowser(session.userDataDir);
+      await killOrphanProfileBrowser(session.userDataDir, {
+        forcePriority: true,
+        debugPortHint: session.debugPort,
+      });
     } else {
-      await closeContext(session.context);
+      await closeContext(session.context, { forcePriority: true });
+      if (session.headless === true || Number(session.debugPort) > 0 || profileDirHasLock(session.userDataDir)) {
+        await killOrphanProfileBrowser(session.userDataDir, {
+          forcePriority: true,
+          debugPortHint: session.debugPort,
+        });
+      }
     }
     removeStaleProfileLocks(session.userDataDir);
     removeSidecarPid(session.userDataDir);
@@ -1523,7 +1583,11 @@ class SessionManager {
     session.alive = false;
     this.#agentSessions.delete(id);
     markProfileChromeCleanExit(session.userDataDir);
-    await closeContext(session.context);
+    await closeContext(session.context, { forcePriority: true });
+    await killOrphanProfileBrowser(session.userDataDir, {
+      forcePriority: true,
+      debugPortHint: session.debugPort,
+    });
     removeStaleProfileLocks(session.userDataDir);
     removeSidecarPid(session.userDataDir);
     const primaryDir = session.primaryUserDataDir || profileDataDir(this.#userDataRoot, id);
@@ -2048,7 +2112,7 @@ class SessionManager {
     if (typeof session.agentLoginWatch.unref === "function") session.agentLoginWatch.unref();
   }
 
-  async #closeSingleSession(id, session, sessionMap, { isShadowLane = false } = {}) {
+  async #closeSingleSession(id, session, sessionMap, { isShadowLane = false, forcePriority = false } = {}) {
     if (!session) return;
     if (session.watchdog) clearInterval(session.watchdog);
     session.alive = false;
@@ -2057,7 +2121,10 @@ class SessionManager {
     const primaryDir = session.primaryUserDataDir || profileDataDir(this.#userDataRoot, id) || session.userDataDir;
 
     if (session.focusOnly) {
-      await killOrphanProfileBrowser(session.userDataDir);
+      await killOrphanProfileBrowser(session.userDataDir, {
+        forcePriority,
+        debugPortHint: session.debugPort,
+      });
       removeStaleProfileLocks(session.userDataDir);
     } else {
       if (session.context) {
@@ -2076,7 +2143,7 @@ class SessionManager {
         }
       }
       markProfileChromeCleanExit(session.userDataDir);
-      await closeContext(session.context);
+      await closeContext(session.context, { forcePriority });
       const sidecarPid = readSidecarPid(session.userDataDir)?.pid || 0;
       let sidecarAlive = false;
       if (sidecarPid > 0) {
@@ -2087,8 +2154,17 @@ class SessionManager {
           sidecarAlive = false;
         }
       }
-      if (sidecarAlive || profileDirHasLock(session.userDataDir)) {
-        await killOrphanProfileBrowser(session.userDataDir);
+      if (
+        sidecarAlive ||
+        session.headless === true ||
+        isShadowLane ||
+        Number(session.debugPort) > 0 ||
+        profileDirHasLock(session.userDataDir)
+      ) {
+        await killOrphanProfileBrowser(session.userDataDir, {
+          forcePriority,
+          debugPortHint: session.debugPort,
+        });
       }
       removeStaleProfileLocks(session.userDataDir);
     }
@@ -2163,7 +2239,10 @@ class SessionManager {
         }
       }
       if (agentSession) {
-        await this.#closeSingleSession(id, agentSession, this.#agentSessions, { isShadowLane: true });
+        await this.#closeSingleSession(id, agentSession, this.#agentSessions, {
+          isShadowLane: true,
+          forcePriority,
+        });
       }
       if ((userSession?.alive && userSession.headless !== true) || this.isUserInteractiveSession(id)) {
         const runningProfile = profileService.setProfileStatus(id, "running");
@@ -2176,7 +2255,10 @@ class SessionManager {
         };
       }
       if (userSession?.alive && userSession.headless === true) {
-        await this.#closeSingleSession(id, userSession, this.#sessions, { isShadowLane: false });
+        await this.#closeSingleSession(id, userSession, this.#sessions, {
+          isShadowLane: false,
+          forcePriority,
+        });
       }
       const next = profileService.setProfileStatus(id, "closed", { reason: "profile_close" });
       this.#emitSessionChange(id, next, "profile_close");
@@ -2185,14 +2267,20 @@ class SessionManager {
 
     // 2. Called by User UI: close User Headed session first; if no User Headed session is open, close Agent Shadow session.
     if (userSession) {
-      await this.#closeSingleSession(id, userSession, this.#sessions, { isShadowLane: false });
+      await this.#closeSingleSession(id, userSession, this.#sessions, {
+        isShadowLane: false,
+        forcePriority: true,
+      });
       if (this.#agentSessions.get(id)?.alive) {
         const runningProfile = profileService.setProfileStatus(id, "running");
         this.#emitSessionChange(id, runningProfile, "running");
         return { ok: true, status: "running", profile: runningProfile };
       }
     } else if (agentSession) {
-      await this.#closeSingleSession(id, agentSession, this.#agentSessions, { isShadowLane: true });
+      await this.#closeSingleSession(id, agentSession, this.#agentSessions, {
+        isShadowLane: true,
+        forcePriority: true,
+      });
     }
 
     const next = profileService.setProfileStatus(id, "closed", { reason: "profile_close" });

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>E0001 HubWorkspaceUserModal golden preview</title>
+    <link rel="stylesheet" href="hub-workspace-user-modal.css" />
+    <link rel="stylesheet" href="popup-theme.css" />
+    <style>
+      body { width: 800px; height: 500px; }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="header">
+        <div class="header-text">
+          <h1>Cookie Bridge</h1>
+          <p class="ver-meta">user modal golden</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" id="open-user" class="hub-auth-logout-chip__identity">Open user</button>
+        </div>
+      </header>
+      <div class="body-scroll">
+        <p style="padding:1rem;color:#94a3b8">Route table placeholder — modal must overlay this without scrollbar.</p>
+      </div>
+    </div>
+    <div id="user-modal" class="modal-backdrop modal-backdrop--tool-detail hub-workspace-user-modal" role="presentation" hidden>
+      <div class="hub-modal-frame">
+        <button type="button" id="user-modal-close" class="hub-modal-close" aria-label="Close">×</button>
+        <div class="modal-shell modal-shell--tool-detail hub-tool-detail-modal hub-account-detail-modal twofa-account-detail-modal hub-header-panel-modal hub-tool-detail-modal--fit" role="dialog" aria-modal="true">
+          <header class="user-access-modal__header">
+            <div class="user-access-modal__header-main">
+              <span class="user-access-modal__avatar hub-workspace-user-avatar" aria-hidden="true">
+                <svg class="ui-icon" viewBox="0 0 24 24"><path d="m2 8 4 2 3-5 3 5 3-5 3 5 4-2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              </span>
+              <h2 class="user-access-modal__header-name">czpgo@outlook.com</h2>
+            </div>
+          </header>
+          <div class="hub-tool-detail-modal__body-frame">
+            <div class="hub-tool-detail-modal__body">
+              <div class="hub-tool-detail-modal__layout">
+                <aside class="hub-tool-detail-modal__toc">
+                  <nav class="hub-toc-nav">
+                    <button type="button" class="hub-toc-nav__item is-active"><span class="hub-toc-nav__label">Account</span></button>
+                    <button type="button" class="hub-toc-nav__item"><span class="hub-toc-nav__label">Session</span></button>
+                  </nav>
+                </aside>
+                <div class="hub-tool-detail-modal__content">
+                  <div class="hub-account-detail-modal__content-root">
+                    <section class="hub-tool-detail-panel hub-tool-detail-panel--grow" aria-label="Account">
+                      <div class="hub-tool-detail-panel__head">Account</div>
+                      <div class="hub-tool-detail-panel__body hub-account-detail-modal__main-scroll">
+                        <div class="hub-tool-detail-sections">
+                          <section class="hub-tool-detail-section">
+                            <header class="hub-tool-detail-section__header">
+                              <h3 class="hub-tool-detail-section__title">Account</h3>
+                            </header>
+                            <div class="hub-tool-detail-section__body">
+                              <table class="hub-user-field-table">
+                                <tbody>
+                                  <tr><th>Email</th><td>czpgo@outlook.com</td></tr>
+                                  <tr><th>Role</th><td>Admin</td></tr>
+                                  <tr><th>Provider</th><td>email</td></tr>
+                                  <tr><th>Created</th><td>18:28:14 31/5/2026</td></tr>
+                                  <tr><th>Last sign in</th><td>17:57:58 13/7/2026</td></tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </section>
+                          <section class="hub-tool-detail-section">
+                            <header class="hub-tool-detail-section__header">
+                              <h3 class="hub-tool-detail-section__title">Session</h3>
+                            </header>
+                            <div class="hub-tool-detail-section__body">
+                              <table class="hub-user-field-table">
+                                <tbody>
+                                  <tr><th>User ID</th><td class="user-field-mono">a11815e4-e5e7-49c6-872b-b083c6a987a8</td></tr>
+                                  <tr><th>Note</th><td class="hub-user-field-note">Workspace data syncs per signed-in user on Data Box Supabase.</td></tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </section>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <footer class="hub-tool-detail-modal__footer">
+            <div class="hub-tool-detail-modal__footer-inner">
+              <div class="hub-tool-detail-modal__footer-bar">
+                <div class="hub-tool-detail-modal__footer-main">
+                  <button type="button" class="hub-tool-detail-modal__confirm hub-tool-detail-modal__confirm--danger">Sign Out</button>
+                  <button type="button" class="hub-tool-detail-modal__secondary">Close</button>
+                </div>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+    <script>
+      const modal = document.getElementById("user-modal");
+      const open = () => {
+        modal.hidden = false;
+        document.body.classList.add("hub-modal-open");
+        const scroll = modal.querySelector(".hub-account-detail-modal__main-scroll");
+        const cs = getComputedStyle(modal);
+        const sc = scroll ? getComputedStyle(scroll) : null;
+        const overflowScroll = scroll && (scroll.scrollHeight > scroll.clientHeight + 1);
+        document.title =
+          "pos=" + cs.position +
+          "; overflowY=" + (sc?.overflowY || "n/a") +
+          "; needsScroll=" + Boolean(overflowScroll) +
+          "; scrollH=" + (scroll?.scrollHeight || 0) +
+          "; clientH=" + (scroll?.clientHeight || 0);
+      };
+      document.getElementById("open-user").addEventListener("click", open);
+      document.getElementById("user-modal-close").addEventListener("click", () => {
+        modal.hidden = true;
+        document.body.classList.remove("hub-modal-open");
+      });
+      open();
+    </script>
+  </body>
+</html>

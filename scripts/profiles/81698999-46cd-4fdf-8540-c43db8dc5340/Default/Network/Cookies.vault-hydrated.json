@@ -1,0 +1,62 @@
+{
+  "profileCode": "1914",
+  "updatedAt": "2026-11-01T19:13:05.795Z",
+  "sources": [
+    "outlook"
+  ],
+  "counts": {
+    "total": 5,
+    "facebook": 0,
+    "gmail": 0,
+    "outlook": 5,
+    "tiktok": 0,
+    "services": 0
+  },
+  "cookies": [
+    {
+      "name": "MSPOK",
+      "value": "$uuid-ac992ed3-a383-44be-a1b7-5dae525f385a$uuid-cadeb967-d59b-40c1-8b95-b31edc7002df",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "MSPRequ",
+      "value": "id=N&lt=1793470500&co=0",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "OParams",
+      "value": "11O.DngCyPVjwe3MDMJjZQZA47jPip9MSVmPRYgJhetoraxCILJpXCu877kVLb1XjAXeXMYbukq58UG8*RBGsYjbmpqiG*GGiVVVWPLaVyQvRnJUmFUkIJrIkgNTnZmlLbrr3rXHTsAXbLn3M5ZSIXKUylnMUmR0XwSzbIEkEvHXLRdEmiX1B7XcokyQ6irq1DugTopKjdLiuj8wxd1URizEsR3qNTGbaTnr*WHGPNIlm4EAO35CohoaGn0sv8l06qppvZW1r9LxSTHXJViiqulzOTTZEUAvQkcVDWt!QAXbTfcxjrrBzp9n0XWML!*Gnx39Bfy0hwm5kREyYj0jW6L7N!Pn4Q16DWcP6aoyUWzD70UZPzZyvzPQMAf7MdtdhDJimmcFhnnb6kgGqQ8GW8n1TWWukLqPIKeF01V!6VQ3Fi5*hBi23lW*yw69W*LupZ083DUDIrRPr4PR7ap7cinuS2hZJH3sepIPokouSFgD3H7zZgKHWhMU9t4p7JdJW6IWgfDYvbAmfViCB0Ggx2j72nDfWYeWgd07vRT2kpPbAC*zRKLhO3*gKwtyFCIZq*d0FEpxvm3Z741XAG8xcvtnCweozT4dRMBfBj*VPi0sIgw**9YhZ2QJB91ebbztsht2TcgZ1WgKJq0eCK3cCDDbUKOZgwQAL65D6x26FWfKyGAvnlqqhImYcbmspNdoJAczIk7JWesxGwF0L7kh8CvBxkxf!fdhUrGiiwgY0pIwL9glC5QQ6i5*AWXo3wcaFHz1zKJl6kE3qBjleAQ6d52fonRqfg8x6YWx8hfhClD2lYW2QhVPwFOEngu0tLqZCfse6XBZbSVauGt19nxCWkxF5ocMAuRnnUiauGRF6uZR6xvbJ7iPxbaL3FGg6prWxJo6MHQxdlCI4c3hxqMbgTFXkHcp6F!igEuiFBc!1Z1rl53jiZJRBN!BfJxXzsNe!u2WJWRXvecQgvNAFULLJyDiotSWEXWoLmKa4Rl5Ve4TnmZPBDv2QNjgPrgaFXmHpNH2t1YbBja0u5hDob51V6h1h8PPDI6QQ*KnKzoz8CQ0g0JB0DWTBGizwnaeelygaw2MXxlWCxLUjLwcWskgVIIXlaTJcU8gxUveAn*nnbTplp8!WnjxglWa2D9dRGCEkYZwkqWyKX8nv6gpj7a8dBaMtI*PUR2ULLBx1ZggkgMQkWgDBAB23ORbhzSoZCSQmx6h7A$$",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "PPLState",
+      "value": "1",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "None"
+    },
+    {
+      "name": "__Host-MSAAUTH",
+      "value": "11-M.C530_SN1.0.U.MsaArtifacts.Cmyig2y7zec4gNUrBz!vtNmAqW7OghTLYoyiRlJKqqZ*GHc6LsNcLYKHAU74e38pG0FIL0MNRCX1FBAgOEcBssdZKozMNdGzqg*be8IxsCarYGicRKJlDa3tcT*9w2xwc0IL64PZf2LoWamdzduCSQGjH1xA7tcLgnPFHZXZIAWhBmefqJwGXPFt8Uh0UWKCSgFLIHva33a9FCB2lW6nHTTZiUZ37wDJZpS6Y0lr14SKwUVTiiJaoE49*Vj7lWT7nC!Ax*g3299qH8xFWi2Spaw$",
+      "domain": "login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None"
+    }
+  ]
+}

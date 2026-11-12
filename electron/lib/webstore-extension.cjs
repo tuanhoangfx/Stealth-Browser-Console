@@ -6,8 +6,9 @@ const fs = require("node:fs");
 const https = require("node:https");
 const os = require("node:os");
 const path = require("node:path");
+const zlib = require("node:zlib");
 const { resolveProfilesRoot } = require("./profiles-location.cjs");
-const { spawnSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const { pinStoreExtension } = require("./profile-chrome-preferences.cjs");
 
 const CHROME_PROD_VERSION = "131.0.6778.85";
@@ -593,43 +594,173 @@ function crxZipBuffer(crx) {
   return crx.subarray(zipStart);
 }
 
+function extractZipBufferInMemory(zipBuffer, destDir) {
+  const buf = Buffer.isBuffer(zipBuffer) ? zipBuffer : Buffer.from(zipBuffer);
+  if (buf.length < 22) throw new Error("invalid ZIP buffer (too short)");
+
+  // Scan backwards for End of Central Directory (0x06054b50)
+  const minEocdOffset = Math.max(0, buf.length - 65557);
+  let eocdOffset = -1;
+  for (let i = buf.length - 22; i >= minEocdOffset; i -= 1) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      eocdOffset = i;
+      break;
+    }
+  }
+  if (eocdOffset < 0) throw new Error("invalid ZIP buffer (EOCD missing)");
+
+  let totalEntries = buf.readUInt16LE(eocdOffset + 10);
+  let cdSize = buf.readUInt32LE(eocdOffset + 12);
+  let cdOffset = buf.readUInt32LE(eocdOffset + 16);
+
+  // ZIP64 EOCD Locator (0x07064b50) immediately preceding EOCD
+  if (
+    (totalEntries === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) &&
+    eocdOffset >= 20 &&
+    buf.readUInt32LE(eocdOffset - 20) === 0x07064b50
+  ) {
+    const zip64EocdOffset = Number(buf.readBigUInt64LE(eocdOffset - 12));
+    if (zip64EocdOffset >= 0 && zip64EocdOffset + 56 <= buf.length && buf.readUInt32LE(zip64EocdOffset) === 0x06064b50) {
+      totalEntries = Number(buf.readBigUInt64LE(zip64EocdOffset + 32));
+      cdSize = Number(buf.readBigUInt64LE(zip64EocdOffset + 40));
+      cdOffset = Number(buf.readBigUInt64LE(zip64EocdOffset + 48));
+    }
+  }
+
+  if (cdOffset < 0 || cdOffset + cdSize > buf.length) {
+    throw new Error("invalid ZIP central directory bounds");
+  }
+
+  const destResolved = path.resolve(destDir);
+  fs.mkdirSync(destResolved, { recursive: true });
+
+  let pos = cdOffset;
+  const cdEnd = cdOffset + cdSize;
+  for (let idx = 0; idx < totalEntries && pos + 46 <= cdEnd; idx += 1) {
+    if (buf.readUInt32LE(pos) !== 0x02014b50) {
+      throw new Error("invalid ZIP central directory entry signature");
+    }
+    const method = buf.readUInt16LE(pos + 10);
+    let compSize = buf.readUInt32LE(pos + 20);
+    let uncompSize = buf.readUInt32LE(pos + 24);
+    const nameLen = buf.readUInt16LE(pos + 28);
+    const extraLen = buf.readUInt16LE(pos + 30);
+    const commentLen = buf.readUInt16LE(pos + 32);
+    let localHeaderOffset = buf.readUInt32LE(pos + 42);
+
+    const nameStart = pos + 46;
+    const extraStart = nameStart + nameLen;
+    const nextPos = extraStart + extraLen + commentLen;
+    if (nextPos > buf.length) throw new Error("truncated ZIP central directory entry");
+
+    // Parse ZIP64 extended info extra field (0x0001) if needed
+    if (uncompSize === 0xffffffff || compSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
+      let ep = extraStart;
+      const extraEnd = extraStart + extraLen;
+      while (ep + 4 <= extraEnd) {
+        const headerId = buf.readUInt16LE(ep);
+        const dataSize = buf.readUInt16LE(ep + 2);
+        let dp = ep + 4;
+        const fieldEnd = dp + dataSize;
+        if (headerId === 0x0001 && fieldEnd <= extraEnd) {
+          if (uncompSize === 0xffffffff && dp + 8 <= fieldEnd) {
+            uncompSize = Number(buf.readBigUInt64LE(dp));
+            dp += 8;
+          }
+          if (compSize === 0xffffffff && dp + 8 <= fieldEnd) {
+            compSize = Number(buf.readBigUInt64LE(dp));
+            dp += 8;
+          }
+          if (localHeaderOffset === 0xffffffff && dp + 8 <= fieldEnd) {
+            localHeaderOffset = Number(buf.readBigUInt64LE(dp));
+          }
+          break;
+        }
+        ep = fieldEnd;
+      }
+    }
+
+    const rawName = buf.subarray(nameStart, extraStart).toString("utf8").replace(/\\/g, "/");
+    if (!rawName || rawName.includes("\0") || rawName.startsWith("/") || /^[a-zA-Z]:/.test(rawName)) {
+      throw new Error(`unsafe zip entry path: ${rawName}`);
+    }
+    const isDir = rawName.endsWith("/");
+    const cleanRel = rawName.replace(/\/+$/, "");
+    if (!cleanRel) {
+      pos = nextPos;
+      continue;
+    }
+    const targetPath = path.resolve(destResolved, cleanRel);
+    if (targetPath !== destResolved && !targetPath.startsWith(destResolved + path.sep)) {
+      throw new Error(`unsafe zip entry path traversal: ${rawName}`);
+    }
+
+    if (isDir) {
+      fs.mkdirSync(targetPath, { recursive: true });
+      pos = nextPos;
+      continue;
+    }
+
+    if (localHeaderOffset < 0 || localHeaderOffset + 30 > buf.length || buf.readUInt32LE(localHeaderOffset) !== 0x04034b50) {
+      throw new Error(`invalid ZIP local file header for ${rawName}`);
+    }
+    const lfhNameLen = buf.readUInt16LE(localHeaderOffset + 26);
+    const lfhExtraLen = buf.readUInt16LE(localHeaderOffset + 28);
+    const dataStart = localHeaderOffset + 30 + lfhNameLen + lfhExtraLen;
+    const dataEnd = dataStart + compSize;
+    if (dataEnd > buf.length) {
+      throw new Error(`truncated ZIP entry payload for ${rawName}`);
+    }
+    const payload = buf.subarray(dataStart, dataEnd);
+    let outBytes;
+    if (method === 0) {
+      outBytes = payload;
+    } else if (method === 8) {
+      outBytes = zlib.inflateRawSync(payload);
+    } else {
+      const err = new Error(`unsupported_zip_method_${method}`);
+      err.code = "UNSUPPORTED_ZIP_METHOD";
+      throw err;
+    }
+
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, outBytes);
+    pos = nextPos;
+  }
+}
+
 function extractZipBuffer(zipBuffer, destDir, cacheRoot) {
   fs.mkdirSync(destDir, { recursive: true });
-  const tmpZip = path.join(cacheRoot, "package.zip");
+  try {
+    extractZipBufferInMemory(zipBuffer, destDir);
+    return;
+  } catch (err) {
+    if (err?.code !== "UNSUPPORTED_ZIP_METHOD") {
+      throw err;
+    }
+  }
+
+  // Rare fallback if an archive uses non-Store/non-Deflate compression (e.g. Zstd/Deflate64)
+  const fallbackDir = cacheRoot || os.tmpdir();
+  fs.mkdirSync(fallbackDir, { recursive: true });
+  const tmpZip = path.join(fallbackDir, `package-${process.pid}-${Date.now()}.zip`);
   fs.writeFileSync(tmpZip, zipBuffer);
-  if (process.platform === "win32") {
-    const wd = destDir.replace(/'/g, "''");
-    const zp = tmpZip.replace(/'/g, "''");
-    const result = spawnSync(
-      "powershell",
-      [
-        "-NoProfile",
-        "-Command",
-        `Expand-Archive -LiteralPath '${zp}' -DestinationPath '${wd}' -Force`,
-      ],
-      { stdio: "pipe", windowsHide: true },
-    );
+  try {
+    if (process.platform === "win32") {
+      const tarExe = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
+      if (fs.existsSync(tarExe)) {
+        execFileSync(tarExe, ["-x", "-f", tmpZip, "-C", destDir], { stdio: "pipe", windowsHide: true });
+        return;
+      }
+    }
+    const extractZip = require("extract-zip");
+    return extractZip(tmpZip, { dir: destDir });
+  } finally {
     try {
-      fs.unlinkSync(tmpZip);
+      if (fs.existsSync(tmpZip)) fs.unlinkSync(tmpZip);
     } catch {
       /* ignore */
     }
-    if (result.status !== 0) {
-      throw new Error(result.stderr?.toString() || "Expand-Archive failed");
-    }
-    return;
-  }
-  try {
-    const extractZip = require("extract-zip");
-    return extractZip(tmpZip, { dir: destDir }).finally(() => {
-      try {
-        fs.unlinkSync(tmpZip);
-      } catch {
-        /* ignore */
-      }
-    });
-  } catch {
-    throw new Error("extract-zip unavailable — set platform win32 or install extract-zip");
   }
 }
 
@@ -944,4 +1075,6 @@ module.exports = {
   removeCachedExtension,
   removeCachedExtensions,
   resolveExtensionIconDataUri,
+  extractZipBuffer,
+  crxZipBuffer,
 };

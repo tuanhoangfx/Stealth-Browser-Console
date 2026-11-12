@@ -1,0 +1,78 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "src/App.tsx"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}"
+  ],
+  "ignore": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "electron/**",
+    "scripts/**",
+    "shared/**",
+    "vendor/**",
+    "public/**"
+  ],
+  "ignoreBinaries": [
+    "powershell",
+    "cross-env",
+    "electron"
+  ],
+  "ignoreDependencies": [
+    "autoprefixer",
+    "postcss",
+    "tailwindcss",
+    "@tool-workspace/hub-identity",
+    "@tool-workspace/hub-ui",
+    "@supabase/auth-js",
+    "@supabase/functions-js",
+    "@supabase/phoenix",
+    "@supabase/postgrest-js",
+    "@supabase/realtime-js",
+    "@supabase/storage-js",
+    "@supabase/supabase-js",
+    "@types/dagre",
+    "dagre",
+    "@xyflow/system",
+    "better-sqlite3",
+    "builder-util-runtime",
+    "cloakbrowser",
+    "concurrently",
+    "cross-env",
+    "electron-updater",
+    "fs-extra",
+    "js-yaml",
+    "lazy-val",
+    "lodash.escaperegexp",
+    "lodash.isequal",
+    "mmdb-lib",
+    "ms",
+    "playwright-core",
+    "semver",
+    "sql.js",
+    "tar",
+    "tiny-typed-emitter",
+    "tslib",
+    "wait-on",
+    "@electron/asar",
+    "@electron/rebuild",
+    "electron",
+    "electron-builder",
+    "jsdom",
+    "png-to-ico",
+    "sharp"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "exclude": [
+    "enumMembers",
+    "duplicates",
+    "exports",
+    "types"
+  ],
+  "ignoreUnresolved": [
+    "^/src/"
+  ]
+}

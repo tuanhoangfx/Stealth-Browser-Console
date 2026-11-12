@@ -12,6 +12,45 @@ const P0020_CARDS_CACHE_FILE = "D:\\StealthBrowser\\vault\\p0020-cards-cache.jso
 const BIOMETRIC_VAULT_FILE = "E:\\Dev\\Tool\\P0002-Social-Hub\\data\\profile-biometric-vault.json";
 const DATABOX_ORIGIN_CACHE_FILE = "E:\\Dev\\Tool\\P0002-Social-Hub\\data\\.databox-origin-auth.json";
 
+const LOCKED_BANK_STK_SET = new Set(["0825846888"]);
+
+const KNOWN_OPENAI_TRIAL_CLAIMED_MAP = new Map([
+  ["msb-0516", { claimedAt: "2026-11-12T06:46:44.000Z", claimedBy: "khahaox28@outlook.com" }],
+]);
+
+const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
+  ["mb-bank-0819", "generic_decline"],
+  ["mb-bank-7173", "generic_decline"],
+  ["mb-bank-7603", "generic_decline"],
+  ["mb-bank-7967", "generic_decline"],
+  ["mb-bank-5339", "generic_decline"],
+  ["mb-bank-8824", "generic_decline"],
+  ["mb-bank-2114", "generic_decline"],
+  ["mb-bank-1800", "generic_decline"],
+  ["mb-bank-6697", "generic_decline"],
+  ["mb-bank-3249", "generic_decline"],
+  ["mb-bank-0865", "generic_decline"],
+  ["mb-bank-8153", "generic_decline"],
+  ["mb-bank-3784", "generic_decline"],
+  ["mb-bank-0212", "generic_decline"],
+  ["mb-bank-3864", "generic_decline"],
+  ["mb-bank-5921", "generic_decline"],
+  ["mb-bank-9728", "generic_decline"],
+  ["mb-bank-4422", "generic_decline"],
+  ["mb-bank-3140", "generic_decline"],
+  ["mb-bank-8190", "generic_decline"],
+  ["vietcombank-4853", "generic_decline"],
+  ["vietcombank-5055", "generic_decline"],
+  ["cake-0516", "generic_decline"],
+  ["scb-2114", "generic_decline"],
+  ["bidv-1916", "generic_decline"],
+  ["acb-1234", "generic_decline"],
+  ["vp-bank-0063", "generic_decline"],
+  ["tp-bank-0613", "generic_decline"],
+  ["liobank-9315", "generic_decline"],
+  ["liobank-2372", "generic_decline"],
+]);
+
 const PROVINCE_POSTAL_MAP = {
   "001": { name: "Hà Nội", ascii: "Ha Noi", postalCode: "100000" },
   "079": { name: "TP. Hồ Chí Minh", ascii: "Ho Chi Minh City", postalCode: "700000" },
@@ -251,6 +290,15 @@ async function syncP0020CardsToLocalCache() {
     if (!res.ok) return { ok: false, reason: `http_${res.status}` };
     const rows = await res.json();
     if (!Array.isArray(rows)) return { ok: false, reason: "invalid_payload" };
+    let existingCards = {};
+    if (fs.existsSync(P0020_CARDS_CACHE_FILE)) {
+      try {
+        const prev = JSON.parse(fs.readFileSync(P0020_CARDS_CACHE_FILE, "utf8"));
+        if (prev?.cards && typeof prev.cards === "object") existingCards = prev.cards;
+      } catch {
+        /* ignore */
+      }
+    }
     const cards = {};
     const purgedExpiredIds = [];
     for (const row of rows) {
@@ -273,7 +321,28 @@ async function syncP0020CardsToLocalCache() {
       const last4 = pan.slice(-4);
       const bankName = String(row.bank_name || "Card").trim();
       const holderName = String(row.bank_holder || "").trim();
+      const bankStk = String(row.bank_stk || "").trim();
       const aliasKey = `${bankName.toLowerCase().replace(/\s+/g, "-")}-${last4}`;
+      const prevEntry = existingCards[aliasKey] || existingCards[last4] || {};
+      const knownTrial = KNOWN_OPENAI_TRIAL_CLAIMED_MAP.get(aliasKey) || null;
+      const knownDecline = KNOWN_STRIPE_DECLINE_CODE_MAP.get(aliasKey) || null;
+      const noteStr = String(row.note || "");
+      const noteDeclinedMatch = noteStr.match(/declined[^(\r\n]*(?:\(([^)]+)\))?/i);
+      const openaiTrialClaimedAt =
+        prevEntry.openai_trial_claimed_at ||
+        knownTrial?.claimedAt ||
+        (/openai_trial_claimed|ChatGPT Plus 1m/i.test(noteStr) ? new Date().toISOString() : null);
+      const openaiTrialClaimedBy =
+        prevEntry.openai_trial_claimed_by || knownTrial?.claimedBy || null;
+      const lastStripeDeclineCode =
+        prevEntry.last_stripe_decline_code ||
+        knownDecline ||
+        (noteDeclinedMatch ? "generic_decline" : null);
+      const lastStripeDeclinedAt =
+        prevEntry.last_stripe_declined_at ||
+        (lastStripeDeclineCode ? prevEntry.updatedAt || new Date().toISOString() : null);
+      const lockedBankStk = LOCKED_BANK_STK_SET.has(bankStk);
+
       const entry = {
         id: row.id,
         alias: aliasKey,
@@ -284,21 +353,47 @@ async function syncP0020CardsToLocalCache() {
         pin: String(row.phone || "").trim(),
         name: holderName,
         bankName,
-        bankStk: String(row.bank_stk || "").trim(),
+        bankStk,
+        locked_bank_stk: lockedBankStk,
+        openai_trial_claimed_at: openaiTrialClaimedAt,
+        openai_trial_claimed_by: openaiTrialClaimedBy,
+        last_stripe_decline_code: lastStripeDeclineCode,
+        last_stripe_declined_at: lastStripeDeclinedAt,
         status: String(row.status || "active"),
         ownership: String(row.ownership || "usable"),
-        note: String(row.note || ""),
+        note: noteStr,
         source: "p0020_card_tab",
       };
       cards[aliasKey] = entry;
-      if (!cards[last4]) cards[last4] = entry;
-      if (!cards.default && entry.status === "active" && holderName.toUpperCase().includes("HOANG ANH TUAN")) {
+      if (!cards[last4] || cards[last4].last_stripe_decline_code || cards[last4].openai_trial_claimed_at) {
+        cards[last4] = entry;
+      }
+      if (
+        !cards.default &&
+        entry.status === "active" &&
+        !entry.locked_bank_stk &&
+        !entry.openai_trial_claimed_at &&
+        !entry.last_stripe_decline_code &&
+        holderName.toUpperCase().includes("HOANG ANH TUAN")
+      ) {
         cards.default = entry;
       }
     }
     if (!cards.default) {
-      const firstKey = Object.keys(cards)[0];
-      if (firstKey) cards.default = cards[firstKey];
+      const firstEligible = Object.values(cards).find(
+        (c) =>
+          c &&
+          typeof c === "object" &&
+          !c.locked_bank_stk &&
+          !c.openai_trial_claimed_at &&
+          !c.last_stripe_decline_code,
+      );
+      if (firstEligible) {
+        cards.default = firstEligible;
+      } else {
+        const firstKey = Object.keys(cards)[0];
+        if (firstKey) cards.default = cards[firstKey];
+      }
     }
     fs.mkdirSync(path.dirname(P0020_CARDS_CACHE_FILE), { recursive: true });
     fs.writeFileSync(
@@ -454,6 +549,19 @@ function resolveBillingCardFromVault(opts = {}) {
     };
   }
 
+  const entryAlias = String(rawEntry.alias || alias).toLowerCase();
+  const knownTrial = KNOWN_OPENAI_TRIAL_CLAIMED_MAP.get(entryAlias) || null;
+  const knownDecline = KNOWN_STRIPE_DECLINE_CODE_MAP.get(entryAlias) || null;
+  const lockedBankStk =
+    Boolean(rawEntry.locked_bank_stk) || LOCKED_BANK_STK_SET.has(String(rawEntry.bankStk || "").trim());
+  const openaiTrialClaimedAt = rawEntry.openai_trial_claimed_at || knownTrial?.claimedAt || null;
+  const openaiTrialClaimedBy = rawEntry.openai_trial_claimed_by || knownTrial?.claimedBy || null;
+  const lastStripeDeclineCode =
+    rawEntry.last_stripe_decline_code ||
+    knownDecline ||
+    (/declined/i.test(String(rawEntry.note || "")) ? "generic_decline" : null);
+  const lastStripeDeclinedAt = rawEntry.last_stripe_declined_at || null;
+
   return {
     ok: true,
     id: rawEntry.id || "",
@@ -462,6 +570,12 @@ function resolveBillingCardFromVault(opts = {}) {
     vaultPath,
     maskedCard: maskCardNumber(number),
     bankName: rawEntry.bankName || "",
+    bankStk: String(rawEntry.bankStk || ""),
+    locked_bank_stk: lockedBankStk,
+    openai_trial_claimed_at: openaiTrialClaimedAt,
+    openai_trial_claimed_by: openaiTrialClaimedBy,
+    last_stripe_decline_code: lastStripeDeclineCode,
+    last_stripe_declined_at: lastStripeDeclinedAt,
     biometric,
     card: {
       number,
@@ -485,28 +599,44 @@ function resolveCandidateBillingCardsFromVault(opts = {}) {
   const excludeAliases = new Set(
     (Array.isArray(opts.excludeCards) ? opts.excludeCards : []).map((x) => String(x || "").toLowerCase()),
   );
+  const includeTrialClaimed = Boolean(opts.includeTrialClaimed);
+  const includeDeclined = Boolean(opts.includeDeclined);
+  const isCardDisqualified = (resolved) => {
+    if (!resolved || !resolved.ok || !resolved.card?.number) return true;
+    if (resolved.locked_bank_stk) return true;
+    if (!includeTrialClaimed && resolved.openai_trial_claimed_at) return true;
+    if (!includeDeclined && resolved.last_stripe_decline_code) return true;
+    const al = String(resolved.alias || "").toLowerCase();
+    const l4 = String(resolved.last4 || "").toLowerCase();
+    if (excludeAliases.has(al) || excludeAliases.has(l4)) return true;
+    return false;
+  };
+
   const primary = resolveBillingCardFromVault(opts);
   const candidates = [];
   const seenNumbers = new Set();
 
-  if (primary.ok && primary.card?.number) {
-    const key = primary.card.number;
-    const isExcluded =
-      excludeAliases.has(String(primary.alias || "").toLowerCase()) ||
-      excludeAliases.has(String(primary.last4 || "").toLowerCase());
-    if (!isExcluded) {
-      seenNumbers.add(key);
-      candidates.push(primary);
-    }
+  if (!isCardDisqualified(primary)) {
+    seenNumbers.add(primary.card.number);
+    candidates.push(primary);
   }
 
   const profileCode = String(opts.profileCode || "").replace(/\D/g, "").padStart(4, "0");
   const biometric = primary.biometric || resolveProfileBiometricBillingIdentity(profileCode);
   const { cards, path: vaultPath } = readBillingVaultStore();
 
+  const PREFERRED_ALIASES = [
+    "mb-bank-0400",
+    "mb-bank-6169",
+    "mb-bank-3863",
+    "mb-bank-3478",
+    "mb-bank-7302",
+    "mb-bank-7528",
+  ];
+
   const bankRank = (bankName = "") => {
     const b = String(bankName || "").toLowerCase();
-    if (b.includes("mastercard") || b.includes("visa")) return 1;
+    if (b.includes("mastercard") || b.includes("visa") || b.includes("msb")) return 1;
     if (b.includes("techcombank") || b.includes("vp") || b.includes("mb")) return 2;
     if (b.includes("vietcombank") || b.includes("acb") || b.includes("tp")) return 3;
     return 4;
@@ -515,6 +645,17 @@ function resolveCandidateBillingCardsFromVault(opts = {}) {
   const allRaw = Object.values(cards)
     .filter((v) => v && typeof v === "object" && v.status !== "inactive")
     .sort((a, b) => {
+      const aDeclined = a.last_stripe_decline_code || /declined/i.test(String(a.note || "")) ? 1 : 0;
+      const bDeclined = b.last_stripe_decline_code || /declined/i.test(String(b.note || "")) ? 1 : 0;
+      if (aDeclined !== bDeclined) return aDeclined - bDeclined;
+      const aClaimed = a.openai_trial_claimed_at ? 1 : 0;
+      const bClaimed = b.openai_trial_claimed_at ? 1 : 0;
+      if (aClaimed !== bClaimed) return aClaimed - bClaimed;
+      const aPref = PREFERRED_ALIASES.indexOf(String(a.alias || "").toLowerCase());
+      const bPref = PREFERRED_ALIASES.indexOf(String(b.alias || "").toLowerCase());
+      if (aPref !== -1 || bPref !== -1) {
+        return (aPref !== -1 ? aPref : 999) - (bPref !== -1 ? bPref : 999);
+      }
       const aMatchBio =
         stripVietnameseDiacritics(a.name || "").toUpperCase() === biometric.fullNameUpperAscii ? 0 : 1;
       const bMatchBio =
@@ -528,15 +669,78 @@ function resolveCandidateBillingCardsFromVault(opts = {}) {
     if (num.length < 13 || seenNumbers.has(num)) continue;
     const last4 = num.slice(-4);
     const entryAlias = String(raw.alias || last4);
-    if (excludeAliases.has(entryAlias.toLowerCase()) || excludeAliases.has(last4)) continue;
     const res = resolveBillingCardFromVault({ ...opts, cardAlias: entryAlias });
-    if (res.ok && res.card?.number && !seenNumbers.has(res.card.number)) {
+    if (!isCardDisqualified(res) && !seenNumbers.has(res.card.number)) {
       seenNumbers.add(res.card.number);
       candidates.push(res);
     }
   }
 
   return { ok: candidates.length > 0, vaultPath, biometric, candidates };
+}
+
+/**
+ * Stamps `openai_trial_claimed_at` or `last_stripe_decline_code` directly in `p0020-cards-cache.json` (`ok 1`).
+ */
+function recordCardStripeOutcome({
+  alias = "",
+  last4 = "",
+  outcome = "",
+  declineCode = "",
+  claimedBy = "",
+} = {}) {
+  const cleanAlias = String(alias || "").trim().toLowerCase();
+  const cleanLast4 = String(last4 || cleanAlias.slice(-4) || "").replace(/\D/g, "").slice(-4);
+  if (!cleanAlias && !cleanLast4) {
+    return { ok: false, error: "missing_card_alias_or_last4" };
+  }
+  const nowIso = new Date().toISOString();
+  let parsed = { updatedAt: nowIso, count: 0, purgedExpiredIds: [], cards: {} };
+  if (fs.existsSync(P0020_CARDS_CACHE_FILE)) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(P0020_CARDS_CACHE_FILE, "utf8"));
+      if (raw && typeof raw === "object") {
+        parsed = {
+          ...raw,
+          cards: raw.cards && typeof raw.cards === "object" ? raw.cards : {},
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  let matchedCount = 0;
+  for (const [k, entry] of Object.entries(parsed.cards || {})) {
+    if (!entry || typeof entry !== "object") continue;
+    const entryAlias = String(entry.alias || k || "").toLowerCase();
+    const entryLast4 = String(entry.last4 || "").trim();
+    if (
+      (cleanAlias && (entryAlias === cleanAlias || k.toLowerCase() === cleanAlias)) ||
+      (!cleanAlias && cleanLast4 && entryLast4 === cleanLast4)
+    ) {
+      if (outcome === "trial_claimed" || outcome === "openai_trial_claimed") {
+        entry.openai_trial_claimed_at = entry.openai_trial_claimed_at || nowIso;
+        if (claimedBy) entry.openai_trial_claimed_by = String(claimedBy).trim();
+      } else if (outcome === "card_declined" || declineCode) {
+        entry.last_stripe_decline_code = String(declineCode || "generic_decline").trim();
+        entry.last_stripe_declined_at = nowIso;
+      }
+      entry.updatedAt = nowIso;
+      matchedCount += 1;
+    }
+  }
+  parsed.updatedAt = nowIso;
+  fs.mkdirSync(path.dirname(P0020_CARDS_CACHE_FILE), { recursive: true });
+  fs.writeFileSync(P0020_CARDS_CACHE_FILE, JSON.stringify(parsed, null, 2), "utf8");
+  return {
+    ok: true,
+    matchedCount,
+    alias: cleanAlias,
+    last4: cleanLast4,
+    outcome,
+    declineCode: declineCode || null,
+    updatedAt: nowIso,
+  };
 }
 
 /**
@@ -769,6 +973,8 @@ async function resolveProfileAccountCredentialsFromP0020(profileCode = "", pageU
 
 const FIELD_SELECTORS = {
   cardNumber: [
+    "#payment-numberInput",
+    'input[name="number"]',
     'input[autocomplete="cc-number"]',
     'input[data-elements-stable-field-name="cardNumber"]',
     'input[name="cardnumber"]',
@@ -781,6 +987,7 @@ const FIELD_SELECTORS = {
     'input[placeholder*="1234 1234" i]',
   ],
   cardExpiry: [
+    "#payment-expiryInput",
     'input[autocomplete="cc-exp"]',
     'input[data-elements-stable-field-name="cardExpiry"]',
     'input[name="exp-date"]',
@@ -791,6 +998,7 @@ const FIELD_SELECTORS = {
     'input[placeholder*="MM/YY" i]',
   ],
   cardCvc: [
+    "#payment-cvcInput",
     'input[autocomplete="cc-csc"]',
     'input[data-elements-stable-field-name="cardCvc"]',
     'input[name="cvc"]',
@@ -803,16 +1011,22 @@ const FIELD_SELECTORS = {
     'input[aria-label*="Security code" i]',
   ],
   cardName: [
+    "#billingAddress-nameInput",
+    'input[name="name"]',
     'input[autocomplete="cc-name"]',
+    'input[autocomplete="billing name"]',
+    'input[data-elements-stable-field-name="name"]',
     'input[name="billingName"]',
     'input[name="cardholderName"]',
     'input[name="nameOnCard"]',
     'input[id*="billingName" i]',
+    'input[aria-label*="Full name" i]',
     'input[aria-label*="Name on card" i]',
     'input[aria-label*="Cardholder name" i]',
     'input[aria-label*="Tên trên thẻ" i]',
   ],
   addressLine1: [
+    "#billingAddress-addressLine1Input",
     'input[autocomplete="billing address-line1"]',
     'input[autocomplete="address-line1"]',
     'input[autocomplete="street-address"]',
@@ -826,6 +1040,7 @@ const FIELD_SELECTORS = {
     'input[aria-label*="Địa chỉ" i]',
   ],
   city: [
+    "#billingAddress-localityInput",
     'input[autocomplete="billing address-level2"]',
     'input[autocomplete="address-level2"]',
     'input[data-elements-stable-field-name="locality"]',
@@ -836,6 +1051,10 @@ const FIELD_SELECTORS = {
     'input[aria-label*="Thành phố" i]',
   ],
   state: [
+    "#billingAddress-administrativeAreaInput",
+    'select[name="administrativeArea"]',
+    'input[name="administrativeArea"]',
+    'select[name="state"]',
     'input[autocomplete="billing address-level1"]',
     'input[autocomplete="address-level1"]',
     'input[data-elements-stable-field-name="administrativeArea"]',
@@ -844,6 +1063,7 @@ const FIELD_SELECTORS = {
     'input[name="region"]',
   ],
   postalCode: [
+    "#billingAddress-postalCodeInput",
     'input[autocomplete="billing postal-code"]',
     'input[autocomplete="postal-code"]',
     'input[data-elements-stable-field-name="postalCode"]',
@@ -885,6 +1105,18 @@ async function tryFillInAllFrames(page, selectors, value, { sequential = true } 
         if (count < 1) continue;
         const visible = await loc.isVisible().catch(() => false);
         if (!visible) continue;
+        const tag = await loc.evaluate((el) => el.tagName).catch(() => "");
+        if (tag === "SELECT") {
+          const picked = await loc
+            .selectOption({ label: String(value) }, { timeout: 1200 })
+            .catch(() => loc.selectOption({ value: String(value) }, { timeout: 1200 }))
+            .catch(() => loc.selectOption({ index: 1 }, { timeout: 1200 }))
+            .catch(() => null);
+          if (picked) {
+            return { filled: true, selector: sel, frameUrl: frame.url() };
+          }
+          continue;
+        }
         await loc.click({ timeout: 1500 }).catch(() => {});
         await loc.fill("").catch(() => {});
         if (sequential) {
@@ -1116,6 +1348,7 @@ module.exports = {
   syncP0020CardsToLocalCache,
   resolveBillingCardFromVault,
   resolveCandidateBillingCardsFromVault,
+  recordCardStripeOutcome,
   recordLinkedCardAssociation,
   listMaskedBillingCards,
   upsertBillingCardInVault,

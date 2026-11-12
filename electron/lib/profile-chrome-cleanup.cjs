@@ -836,7 +836,7 @@ function wipeEphemeralAgentPoolProfileStorage(userDataDir) {
  * Purges disposable HTTP/ServiceWorker/GPU/Shader/Dawn/Code/Crashpad/BrowserMetrics caches for a single closed profile.
  * Skips immediately if the profile directory is still live/locked.
  */
-function trimClosedProfileDisposableCache(userDataDir) {
+function trimClosedProfileDisposableCache(userDataDir, options = {}) {
   if (!userDataDir || typeof userDataDir !== "string") {
     return { ok: false, skipped: true, reason: "invalid-dir", removedCount: 0 };
   }
@@ -859,23 +859,50 @@ function trimClosedProfileDisposableCache(userDataDir) {
       // ignore if file handle is still releasing
     }
   }
-  return { ok: true, skipped: false, removedCount };
+  let levelDbCompactedDirs = 0;
+  let levelDbSavedBytes = 0;
+  try {
+    const { compactClosedProfileExtensionLevelDb } = require("./extension-leveldb-compactor.cjs");
+    const compactRes = compactClosedProfileExtensionLevelDb(userDataDir, options);
+    levelDbCompactedDirs = compactRes?.compactedDirs || 0;
+    levelDbSavedBytes = compactRes?.savedBytes || 0;
+  } catch {
+    // best-effort post-close WAL compaction
+  }
+  return { ok: true, skipped: false, removedCount, levelDbCompactedDirs, levelDbSavedBytes };
 }
+
+const ASYNC_TRIM_COOLDOWN_MS = 4_000;
+const _recentAsyncTrimByDir = new Map();
 
 /**
  * Non-blocking Libuv Thread-Pool On-Close Cache Trim:
  * Uses `fs.promises.rm` instead of `fs.rmSync` so deleting thousands of HTTP/GPU/Shader cache files
  * never blocks Electron's Main GUI Thread or Win32 message queue when headless browsers close.
  */
-async function trimClosedProfileDisposableCacheAsync(userDataDir) {
+async function trimClosedProfileDisposableCacheAsync(userDataDir, options = {}) {
   if (!userDataDir || typeof userDataDir !== "string") {
     return { ok: false, skipped: true, reason: "invalid-dir", removedCount: 0 };
   }
+  const dirKey = path.resolve(userDataDir).toLowerCase();
+  const nowMs = Date.now();
+  const lastAt = _recentAsyncTrimByDir.get(dirKey) || 0;
+  if (!options.force && nowMs - lastAt < ASYNC_TRIM_COOLDOWN_MS) {
+    return { ok: true, skipped: true, reason: "coalesced-cooldown", removedCount: 0 };
+  }
+  _recentAsyncTrimByDir.set(dirKey, nowMs);
+  if (_recentAsyncTrimByDir.size > 512) {
+    for (const [k, at] of _recentAsyncTrimByDir.entries()) {
+      if (nowMs - at > 30_000) _recentAsyncTrimByDir.delete(k);
+    }
+  }
   try {
     if (!fs.existsSync(userDataDir) || chromeProfileIsLive(userDataDir)) {
+      _recentAsyncTrimByDir.delete(dirKey);
       return { ok: false, skipped: true, reason: "profile-live", removedCount: 0 };
     }
   } catch {
+    _recentAsyncTrimByDir.delete(dirKey);
     return { ok: false, skipped: true, reason: "stat-error", removedCount: 0 };
   }
   let removedCount = 0;
@@ -890,7 +917,17 @@ async function trimClosedProfileDisposableCacheAsync(userDataDir) {
       }
     }),
   );
-  return { ok: true, skipped: false, removedCount };
+  let levelDbCompactedDirs = 0;
+  let levelDbSavedBytes = 0;
+  try {
+    const { compactClosedProfileExtensionLevelDbAsync } = require("./extension-leveldb-compactor.cjs");
+    const compactRes = await compactClosedProfileExtensionLevelDbAsync(userDataDir, options);
+    levelDbCompactedDirs = compactRes?.compactedDirs || 0;
+    levelDbSavedBytes = compactRes?.savedBytes || 0;
+  } catch {
+    // best-effort post-close WAL compaction
+  }
+  return { ok: true, skipped: false, removedCount, levelDbCompactedDirs, levelDbSavedBytes };
 }
 
 /**

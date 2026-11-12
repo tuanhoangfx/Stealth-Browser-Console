@@ -6,6 +6,7 @@ import {
 } from "../../../api";
 import { useAppToast } from "../../../components/toast";
 import type { OperatorExtensionStatus } from "../../../types";
+import { formatSwHealthDetailLabel } from "./extension-sw-health-label";
 
 /** Extension detail — E0002 Browser Operator status + hot re-stage/reload actions. */
 export const ExtensionDetailOperatorPanel = memo(function ExtensionDetailOperatorPanel({
@@ -131,6 +132,15 @@ export const ExtensionDetailOperatorPanel = memo(function ExtensionDetailOperato
                   : `Drift (${(status.validation?.contractErrors?.length ?? 0) + (status.validation?.missing?.length ?? 0)} issue(s))`}
               </dd>
             </div>
+            {(() => {
+              const sw = formatSwHealthDetailLabel(status.swHealth);
+              return (
+                <div className="flex justify-between gap-2" title={sw.tooltip}>
+                  <dt className="text-[var(--muted)]">MV3 Service Worker</dt>
+                  <dd className={`truncate font-medium ${sw.toneClass}`}>{sw.text}</dd>
+                </div>
+              );
+            })()}
             {status.unpackedId ? (
               <div>
                 <dt className="text-[var(--muted)]">Unpacked ID</dt>

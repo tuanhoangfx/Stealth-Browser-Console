@@ -11,6 +11,7 @@ const PATCH_ALLOWED_FIELDS = [
   "groupId",
   "proxy",
   "staticIp",
+  "allowStaticIpPin",
   "note",
   "startupUrl",
   "status",
@@ -438,7 +439,7 @@ async function performOpenUrl(deps, safe, { profileName, emit } = {}) {
   if (!profile) throw new Error("Profile not found.");
 
   emit?.({ event: "progress", msg: `Open URL: ${safe.targetUrl}` });
-  const isCountryPreset = /^(?:vpn|country|surfshark|nordvpn):/i.test(String(profile.proxy || "").trim());
+  const isCountryPreset = /^(?:vpn|proxy|country|surfshark|nordvpn):/i.test(String(profile.proxy || "").trim());
   const countryProxy =
     !shouldKeepPinnedStaticProxy(profile) || isCountryPreset
       ? await resolveProfileCountryProxy(profile, {

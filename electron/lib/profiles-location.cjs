@@ -118,6 +118,50 @@ function listAlternateFixedDriveRoots(userDataRoot) {
   return out;
 }
 
+let _nativeDiskFreeFn = undefined;
+
+function getWin32DiskFreeBytesNative(rootPath) {
+  if (process.platform !== "win32") return 0;
+  if (_nativeDiskFreeFn === undefined) {
+    _nativeDiskFreeFn = null;
+    const candidates = [
+      "koffi",
+      process.resourcesPath ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "koffi") : "",
+      path.resolve(__dirname, "..", "..", "node_modules", "koffi"),
+      path.resolve(__dirname, "..", "..", "..", "P0001-Desk-Console", "node_modules", "koffi"),
+      "E:/Dev/Tool/P0001-Desk-Console/node_modules/koffi",
+      "E:/Dev/node_modules/.pnpm/koffi@3.1.6/node_modules/koffi",
+    ].filter(Boolean);
+    for (const cand of candidates) {
+      try {
+        const koffi = require(cand);
+        const kernel32 = koffi.load("kernel32.dll");
+        _nativeDiskFreeFn = kernel32.func(
+          "bool __stdcall GetDiskFreeSpaceExW(str16 lpDirectoryName, _Out_ uint64_t* lpFreeBytesAvailableToCaller, _Out_ uint64_t* lpTotalNumberOfBytes, _Out_ uint64_t* lpTotalNumberOfFreeBytes)",
+        );
+        break;
+      } catch {
+        /* try next candidate */
+      }
+    }
+  }
+  if (!_nativeDiskFreeFn) return 0;
+  try {
+    const raw = String(rootPath || "").trim();
+    if (!raw) return 0;
+    const dir = raw.length === 2 && raw[1] === ":" ? `${raw}\\` : raw;
+    const freeAvail = [0n];
+    const totalBytes = [0n];
+    const totalFree = [0n];
+    const ok = _nativeDiskFreeFn(dir, freeAvail, totalBytes, totalFree);
+    if (!ok) return 0;
+    const n = Number(freeAvail[0]);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
 function driveFreeBytes(rootPath) {
   try {
     const st = fs.statfsSync?.(rootPath);
@@ -128,21 +172,7 @@ function driveFreeBytes(rootPath) {
   } catch {
     /* fallback below on win32 */
   }
-  if (process.platform !== "win32") {
-    return 0;
-  }
-  const drive = String(rootPath).slice(0, 2);
-  const ps = [
-    `$d = Get-PSDrive -Name '${drive[0]}' -ErrorAction SilentlyContinue`,
-    "if ($d) { [int64]$d.Free } else { 0 }",
-  ].join("; ");
-  const r = spawnSync(
-    "powershell.exe",
-    ["-NoProfile", "-NonInteractive", "-Command", ps],
-    { encoding: "utf8", windowsHide: true, timeout: 8000 },
-  );
-  const n = Number(String(r.stdout || "").trim());
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  return getWin32DiskFreeBytesNative(rootPath);
 }
 
 /**
@@ -423,4 +453,6 @@ module.exports = {
   isSamePath,
   tryRealpath,
   listAlternateFixedDriveRoots,
+  driveFreeBytes,
+  getWin32DiskFreeBytesNative,
 };

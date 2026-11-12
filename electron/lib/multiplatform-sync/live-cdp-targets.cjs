@@ -1009,12 +1009,24 @@ function classifyMicrosoftLiveCdpTargets(targets = [], { hasMicrosoftAuthCookies
     })();
     const isMsStepUpFlow =
       /[?&](?:uiflavor=host|mpcxt=CATB)\b/i.test(u) ||
-      /[?&]ru=https?:\/\/account\.(?:live|microsoft)\.com\//i.test(decodedContinue);
+      /[?&]ru=https?:\/\/(?:account\.(?:live|microsoft)\.com|login\.live\.com\/(?:oauth20_authorize|login)\.srf)/i.test(
+        decodedContinue,
+      );
     if (
       (hasMicrosoftAuthCookies || isMsStepUpFlow) &&
-      /account\.live\.com\/(?:proofs\/Verify|proofs\/remind|identity\/confirm)\b/i.test(basePath)
+      /account\.live\.com\/(?:proofs\/Verify|proofs\/remind|proofs\/MarkLost|identity\/confirm)\b/i.test(basePath)
     ) {
       continue;
+    }
+    if (/account\.live\.com\/proofs\/MarkLost\b/i.test(u)) {
+      return {
+        restricted: true,
+        status: "challenged",
+        rowStatus: "check_mail",
+        resultCode: "mark_lost_pending_30d",
+        evidence: `Outlook:mark_lost_pending_30d url=${u.slice(0, 120)}`,
+        note: "Microsoft 30-day security info replacement pending in live window",
+      };
     }
     if (/account\.live\.com\/(?:proofs|identity|acsr|recover)/i.test(u)) {
       return {

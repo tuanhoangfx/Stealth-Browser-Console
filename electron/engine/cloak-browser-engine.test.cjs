@@ -1,10 +1,14 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const {
   FROZEN_CLOAKBROWSER_WRAPPER_VERSION,
   FROZEN_CLOAKBROWSER_CHROMIUM_VERSION,
   enforceFrozenCloakbrowserEnv,
+  extractMirrorZipArchive,
   buildLaunchOptions,
   buildProfileMarkerArgs,
   buildStealthChromeArgs,
@@ -79,5 +83,28 @@ describe("profile launch markers", () => {
     assert.equal(FROZEN_CLOAKBROWSER_CHROMIUM_VERSION, "146.0.7680.177.5");
     assert.equal(process.env.CLOAKBROWSER_AUTO_UPDATE, "false");
     assert.equal(process.env.CLOAKBROWSER_VERSION, "146.0.7680.177.5");
+  });
+
+  it("extractMirrorZipArchive unpacks nested archive cleanly via System32 tar.exe", () => {
+    if (process.platform !== "win32") return;
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cloak-mirror-tar-"));
+    try {
+      const src = path.join(tmp, "src");
+      const dst = path.join(tmp, "dst");
+      const zipPath = path.join(tmp, "mirror.zip");
+      fs.mkdirSync(path.join(src, "locales"), { recursive: true });
+      fs.writeFileSync(path.join(src, "chrome.exe"), "MZ-mock-chrome", "utf8");
+      fs.writeFileSync(path.join(src, "locales", "en-US.pak"), "pak-data", "utf8");
+
+      const sysTar = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
+      execFileSync(sysTar, ["-a", "-c", "-f", zipPath, "-C", src, "chrome.exe", "locales"], { windowsHide: true });
+
+      const ok = extractMirrorZipArchive(zipPath, dst);
+      assert.equal(ok, true);
+      assert.equal(fs.readFileSync(path.join(dst, "chrome.exe"), "utf8"), "MZ-mock-chrome");
+      assert.equal(fs.readFileSync(path.join(dst, "locales", "en-US.pak"), "utf8"), "pak-data");
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

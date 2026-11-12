@@ -470,7 +470,11 @@ function bindIpc() {
     }
   });
 
-  const { backupProfilesState, restoreProfilesState, buildProfileExportFilename } = require("./lib/profile-backup.cjs");
+  const {
+    backupProfilesStateAsync,
+    restoreProfilesStateAsync,
+    buildProfileExportFilename,
+  } = require("./lib/profile-backup.cjs");
   const { listProfileStorageStats, listProfileStorageStatsAsync } = require("./lib/profile-storage.cjs");
   const { listBackupMeta, updateBackupMeta } = require("./lib/profile-backup-meta.cjs");
 
@@ -513,15 +517,15 @@ function bindIpc() {
     });
     if (pick.canceled || !pick.filePath) return { ok: false, canceled: true };
     try {
-      const result = backupProfilesState(userDataRoot(), {
+      const result = await backupProfilesStateAsync(userDataRoot(), {
         exportBundle: () => profileService.exportProfilesBundle(),
         listProfiles: () => profileService.listProfiles(),
         profileIds,
         onProgress: (progress) => sendBackupProgress(progress),
       });
-      fs.copyFileSync(result.zipPath, pick.filePath);
+      await fs.promises.copyFile(result.zipPath, pick.filePath);
       try {
-        fs.unlinkSync(result.zipPath);
+        await fs.promises.unlink(result.zipPath);
       } catch {
         /* ignore temp zip */
       }
@@ -552,7 +556,7 @@ function bindIpc() {
     if (pick.canceled || !pick.filePaths?.[0]) return { ok: false, canceled: true };
     try {
       await sessionManager.closeAll();
-      const result = restoreProfilesState(userDataRoot(), pick.filePaths[0], {
+      const result = await restoreProfilesStateAsync(userDataRoot(), pick.filePaths[0], {
         importBundle: (bundle, opts) => profileService.importProfilesBundle(bundle, opts),
         findProfilesByName: (name) => profileService.findProfilesByName(name),
         getProfileById: (id) => profileService.getProfile(id),
@@ -696,6 +700,7 @@ function bindIpc() {
         reconcileAllProfilesDiskCookiesToP0020,
       } = require("./lib/stealth-multiplatform-sync.cjs");
       const { resolveProfilesRoot } = require("./lib/profiles-location.cjs");
+      const { extractProfileCode } = require("./lib/profile-code.cjs");
       const baseDir = resolveProfilesRoot(userDataRoot());
       const rawIds = Array.isArray(payload.ids) ? payload.ids.map((id) => String(id || "").trim()).filter(Boolean) : [];
       const sinceHours = Number(payload.sinceHours) || 0;
@@ -1083,7 +1088,7 @@ function bindIpc() {
     const { getOperatorExtensionStatus } = require("./lib/native-extension-load.cjs");
     return {
       ok: true,
-      status: getOperatorExtensionStatus(),
+      status: getOperatorExtensionStatus(userDataRoot()),
     };
   });
 
@@ -1091,10 +1096,12 @@ function bindIpc() {
     try {
       const { maintainOperatorExtension, getOperatorExtensionStatus } = require("./lib/native-extension-load.cjs");
       const binary = await getBinaryInfoCached();
+      const { invalidateExtensionSwHealthCache } = require("./lib/extension-sw-health.cjs");
+      invalidateExtensionSwHealthCache();
       const maintained = maintainOperatorExtension(userDataRoot(), binary.cacheDir, { force: true });
       return {
         ok: true,
-        status: getOperatorExtensionStatus(),
+        status: getOperatorExtensionStatus(userDataRoot()),
         maintained,
       };
     } catch (error) {
@@ -1560,7 +1567,7 @@ async function createWindow() {
       preload: preloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: false
     }
   });
 
@@ -1588,6 +1595,13 @@ async function createWindow() {
         win.hide();
       }
     })();
+  });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (typeof url === "string" && /^https?:\/\//i.test(url)) {
+      void shell.openExternal(url).catch(() => undefined);
+    }
+    return { action: "deny" };
   });
 
   win.webContents.on("did-fail-load", (_event, code, description, url) => {
@@ -1662,7 +1676,7 @@ if (gotSingleInstanceLock) {
 app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
   configureAutoUpdater();
-  bindDesktopUpdaterIpc();
+  bindDesktopUpdaterIpc({ stopTray: () => sessionTray.stop() });
 
   writeBootLog(userDataRoot(), {
     version: app.getVersion(),
@@ -2014,6 +2028,7 @@ app.whenReady().then(async () => {
       const pruneScript = path.join(__dirname, "..", "scripts", "prune-closed-profile-caches.cjs");
       if (fs.existsSync(pruneScript)) {
         const runBgDiskHygiene = () => {
+          if (isAppQuitting() || appShutdownDone) return;
           try {
             const { spawn } = require("node:child_process");
             const nodeBin = fs.existsSync("E:\\Dev\\.tools\\nodew.exe")

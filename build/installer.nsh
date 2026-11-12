@@ -1,8 +1,16 @@
-﻿; electron-builder NSIS hook - ensure app.asar.unpacked is rebuilt on every install/update.
-; First-run data location: app Settings → Data folder (portable suggest on alternate fixed drive).
-; Do not hard-code D: — profiles-location.cjs chooses per machine.
+﻿; electron-builder NSIS hook - ensure app.asar.unpacked is rebuilt and stale uninstaller locks are cleared on every install/update.
+; First-run data location: app Settings -> Data folder (portable suggest on alternate fixed drive).
+; Do not hard-code D: - profiles-location.cjs chooses per machine.
+
+!include "nsis-uninstaller-unlock.nsh"
 
 !macro customInit
+  !insertmacro hubPrepareUpgradeInit
+  ${If} ${isUpdated}
+    nsExec::Exec `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -WindowStyle Hidden -Command "Get-Process -ErrorAction SilentlyContinue | Where-Object { $$_.Path -and $$_.Path.StartsWith('$INSTDIR', [System.StringComparison]::OrdinalIgnoreCase) } | Stop-Process -Force -ErrorAction SilentlyContinue"`
+    Pop $0
+    Sleep 500
+  ${EndIf}
   ClearErrors
   IfFileExists "$INSTDIR\resources\app.asar" 0 +2
     RMDir /r "$INSTDIR\resources\app.asar.unpacked"

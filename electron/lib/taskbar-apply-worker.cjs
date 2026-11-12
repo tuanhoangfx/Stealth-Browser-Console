@@ -63,6 +63,102 @@ function getNativeWin32() {
     const rectName = `RECT_TASKBAR${suffix}`;
 
     const EnumWindowsProc = koffi.proto(`bool __stdcall ${procName}(void* hWnd, intptr_t lParam)`);
+    let activeEnumVisitor = null;
+    const sharedEnumCallback = koffi.register((hWnd, _lParam) => {
+      if (typeof activeEnumVisitor === "function") {
+        return activeEnumVisitor(hWnd) !== false;
+      }
+      return false;
+    }, koffi.pointer(EnumWindowsProc));
+    const EnumDesktopWindowsRaw = user32.func(
+      `bool __stdcall EnumDesktopWindows(uintptr_t hDesktop, ${procName}* lpEnumFunc, intptr_t lParam)`,
+    );
+    const enumDesktopWindowsWithVisitor = (hDesktop, visitor) => {
+      if (activeEnumVisitor === null) {
+        activeEnumVisitor = visitor;
+        try {
+          return EnumDesktopWindowsRaw(hDesktop || 0, sharedEnumCallback, 0);
+        } finally {
+          activeEnumVisitor = null;
+        }
+      }
+      const tempCb = koffi.register(
+        (hWnd) => visitor(hWnd) !== false,
+        koffi.pointer(EnumWindowsProc),
+      );
+      try {
+        return EnumDesktopWindowsRaw(hDesktop || 0, tempCb, 0);
+      } finally {
+        koffi.unregister(tempCb);
+      }
+    };
+
+    let shellPropApi = null;
+    try {
+      const shell32 = koffi.load("shell32.dll");
+      const ole32 = koffi.load("ole32.dll");
+      const guidName = `GUID_TASKBAR${suffix}`;
+      const pkeyName = `PROPERTYKEY_TASKBAR${suffix}`;
+      const pvName = `PROPVARIANT_TASKBAR${suffix}`;
+      const vtblName = `IPropertyStoreVtbl_TASKBAR${suffix}`;
+      const objName = `IPropertyStoreObj_TASKBAR${suffix}`;
+      const relProtoName = `IUnknown_Release_TASKBAR${suffix}`;
+      const setValProtoName = `IPropertyStore_SetValue_TASKBAR${suffix}`;
+      const commitProtoName = `IPropertyStore_Commit_TASKBAR${suffix}`;
+
+      const GUID = koffi.struct(guidName, {
+        Data1: "uint32_t",
+        Data2: "uint16_t",
+        Data3: "uint16_t",
+        Data4: koffi.array("uint8_t", 8),
+      });
+      koffi.struct(pkeyName, {
+        fmtid: GUID,
+        pid: "uint32_t",
+      });
+      koffi.struct(pvName, {
+        vt: "uint16_t",
+        wReserved1: "uint16_t",
+        wReserved2: "uint16_t",
+        wReserved3: "uint16_t",
+        p: "void*",
+        p2: "uintptr_t",
+      });
+      const VtblStruct = koffi.struct(vtblName, {
+        QueryInterface: "void*",
+        AddRef: "void*",
+        Release: "void*",
+        GetCount: "void*",
+        GetAt: "void*",
+        GetValue: "void*",
+        SetValue: "void*",
+        Commit: "void*",
+      });
+      const ObjStruct = koffi.struct(objName, { lpVtbl: koffi.pointer(VtblStruct) });
+      const ReleaseProto = koffi.proto(`uint32_t __stdcall ${relProtoName}(void*)`);
+      const SetValueProto = koffi.proto(
+        `int __stdcall ${setValProtoName}(void*, const ${pkeyName}*, const ${pvName}*)`,
+      );
+      const CommitProto = koffi.proto(`int __stdcall ${commitProtoName}(void*)`);
+
+      const CoInitializeEx = ole32.func("int __stdcall CoInitializeEx(uintptr_t, uint32_t)");
+      CoInitializeEx(0, 2); // COINIT_APARTMENTTHREADED
+
+      shellPropApi = {
+        VtblStruct,
+        ObjStruct,
+        ReleaseProto,
+        SetValueProto,
+        CommitProto,
+        SHGetPropertyStoreForWindow: shell32.func(
+          `int __stdcall SHGetPropertyStoreForWindow(void* hwnd, const ${guidName}* riid, _Out_ void** ppv)`,
+        ),
+        CoTaskMemAlloc: ole32.func("void* __stdcall CoTaskMemAlloc(uintptr_t cb)"),
+        PropVariantClear: ole32.func(`int __stdcall PropVariantClear(_Inout_ ${pvName}* pvar)`),
+      };
+    } catch {
+      shellPropApi = null;
+    }
     const RECT = koffi.struct(rectName, {
       left: "int32_t",
       top: "int32_t",
@@ -101,6 +197,12 @@ function getNativeWin32() {
     nativeWin32 = {
       koffi,
       EnumWindowsProc,
+      enumDesktopWindowsWithVisitor,
+      shellPropApi,
+      OpenInputDesktop: user32.func(
+        "uintptr_t __stdcall OpenInputDesktop(uint32_t dwFlags, bool fInherit, uint32_t dwDesiredAccess)",
+      ),
+      CloseDesktop: user32.func("bool __stdcall CloseDesktop(uintptr_t hDesktop)"),
       PROCESSENTRY32WSize: koffi.sizeof(PROCESSENTRY32W),
       THREADENTRY32Size: koffi.sizeof(THREADENTRY32),
       GROUP_AFFINITYSize: koffi.sizeof(GROUP_AFFINITY),
@@ -236,17 +338,24 @@ function leadingProfileCode(title) {
 
 function enumerateChromeWindowsNative(api) {
   const list = [];
-  const cb = api.koffi.register((hWnd, _lParam) => {
+  const seen = new Set();
+  const clsBuf = new Uint16Array(64);
+  const titleBuf = new Uint16Array(256);
+  const pidOut = [0];
+  let visitedAny = false;
+
+  const visitor = (hWnd) => {
+    visitedAny = true;
     try {
+      const addr = api.koffi.address(hWnd);
+      if (!addr || seen.has(addr)) return true;
+      seen.add(addr);
       if (!api.IsWindowVisible(hWnd) && !api.IsIconic(hWnd)) return true;
-      const clsBuf = new Uint16Array(64);
       const clsLen = api.GetClassNameW(hWnd, clsBuf, 64);
       if (clsLen <= 0) return true;
       const cls = decodeUtf16(clsBuf, clsLen);
       if (!cls.includes("Chrome_WidgetWin")) return true;
-      const pidOut = [0];
       api.GetWindowThreadProcessId(hWnd, pidOut);
-      const titleBuf = new Uint16Array(256);
       const titleLen = api.GetWindowTextW(hWnd, titleBuf, 256);
       const title = decodeUtf16(titleBuf, titleLen);
       list.push({ hWnd, pid: pidOut[0] >>> 0, title });
@@ -254,13 +363,121 @@ function enumerateChromeWindowsNative(api) {
       /* ignore */
     }
     return true;
-  }, api.koffi.pointer(api.EnumWindowsProc));
+  };
+
+  if (typeof api.enumDesktopWindowsWithVisitor === "function") {
+    api.enumDesktopWindowsWithVisitor(0, visitor);
+    if (!visitedAny && typeof api.OpenInputDesktop === "function") {
+      const hInput = api.OpenInputDesktop(0, false, 0x0041);
+      if (hInput) {
+        try {
+          api.enumDesktopWindowsWithVisitor(hInput, visitor);
+        } finally {
+          api.CloseDesktop(hInput);
+        }
+      }
+    }
+    return list;
+  }
+
+  const cb = api.koffi.register((hWnd, _lParam) => visitor(hWnd), api.koffi.pointer(api.EnumWindowsProc));
   try {
     api.EnumWindows(cb, 0);
   } finally {
     api.koffi.unregister(cb);
   }
   return list;
+}
+
+const IID_IPropertyStore = Object.freeze({
+  Data1: 0x886d8eeb,
+  Data2: 0x8cf2,
+  Data3: 0x4446,
+  Data4: [0x8d, 0x02, 0xcd, 0xba, 0x1d, 0xbd, 0xcf, 0x58],
+});
+const FMTID_AppUserModel = Object.freeze({
+  Data1: 0x9f4c2855,
+  Data2: 0x9f79,
+  Data3: 0x4b39,
+  Data4: [0xa8, 0xd0, 0xe1, 0xd4, 0x2d, 0xe1, 0xd5, 0xf3],
+});
+const PKEY_AppUserModel_RelaunchIconResource = Object.freeze({
+  fmtid: FMTID_AppUserModel,
+  pid: 3,
+});
+const PKEY_AppUserModel_RelaunchDisplayNameResource = Object.freeze({
+  fmtid: FMTID_AppUserModel,
+  pid: 4,
+});
+const PKEY_AppUserModel_ID = Object.freeze({
+  fmtid: FMTID_AppUserModel,
+  pid: 5,
+});
+
+/**
+ * Native replacement for StealthTaskbarWin.ApplyAppUserModel (`SHGetPropertyStoreForWindow` COM vtable).
+ * Ungroups profile windows on Win11 taskbar via AppUserModel.ID and clears stale RelaunchIconResource
+ * so Win11 honors WM_SETICON.
+ */
+function applyAppUserModelNative(api, hWnd, appId, displayName) {
+  const sp = api?.shellPropApi;
+  if (!sp || !hWnd || !appId) return false;
+  const pStoreOut = [null];
+  let hr = -1;
+  try {
+    hr = sp.SHGetPropertyStoreForWindow(hWnd, IID_IPropertyStore, pStoreOut);
+  } catch {
+    return false;
+  }
+  const pStore = pStoreOut[0];
+  if (hr !== 0 || !pStore) return false;
+
+  let fnRelease = null;
+  try {
+    const obj = api.koffi.decode(pStore, sp.ObjStruct);
+    const vtbl = api.koffi.decode(obj.lpVtbl, sp.VtblStruct);
+    fnRelease = api.koffi.decode(vtbl.Release, sp.ReleaseProto);
+    const fnSetValue = api.koffi.decode(vtbl.SetValue, sp.SetValueProto);
+    const fnCommit = api.koffi.decode(vtbl.Commit, sp.CommitProto);
+
+    const setLpWstr = (pkey, text) => {
+      const strBuf = Buffer.from(`${text}\0`, "utf16le");
+      const pStr = sp.CoTaskMemAlloc(strBuf.length);
+      if (!pStr) return;
+      api.koffi.encode(pStr, api.koffi.array("uint8_t", strBuf.length), [...strBuf]);
+      const pv = { vt: 31, wReserved1: 0, wReserved2: 0, wReserved3: 0, p: pStr, p2: 0 };
+      try {
+        fnSetValue(pStore, pkey, pv);
+      } finally {
+        sp.PropVariantClear(pv);
+      }
+    };
+
+    setLpWstr(PKEY_AppUserModel_ID, String(appId));
+    fnSetValue(pStore, PKEY_AppUserModel_RelaunchIconResource, {
+      vt: 0,
+      wReserved1: 0,
+      wReserved2: 0,
+      wReserved3: 0,
+      p: null,
+      p2: 0,
+    });
+    if (displayName) {
+      setLpWstr(PKEY_AppUserModel_RelaunchDisplayNameResource, String(displayName));
+    }
+    fnCommit(pStore);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    if (fnRelease) {
+      try {
+        fnRelease(pStore);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 }
 
 function stampWindowIconsNative(api, hWnd, hiSmall, hiBig) {
@@ -391,6 +608,7 @@ async function applyTaskbarNative(api, payload) {
   const dir = String(payload?.UserDataDir || "").trim();
   const title = String(payload?.Title || "").trim();
   const ico = String(payload?.Ico || "").trim();
+  const appId = String(payload?.AppId || "").trim();
   let hintPid = Number(payload?.HintPid) || 0;
 
   if (!hintPid && dir) {
@@ -470,6 +688,7 @@ async function applyTaskbarNative(api, payload) {
   let iconOk = false;
   const nowMs = Date.now();
   for (const w of matched) {
+    if (appId) applyAppUserModelNative(api, w.hWnd, appId, title);
     if (title) api.SetWindowTextW(w.hWnd, title);
     if (hiSmall || hiBig) {
       stampWindowIconsNative(api, w.hWnd, hiSmall, hiBig);

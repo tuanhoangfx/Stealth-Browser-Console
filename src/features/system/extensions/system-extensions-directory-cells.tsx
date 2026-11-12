@@ -10,6 +10,7 @@ import type { CachedStoreExtension } from "../../../types";
 import { resolveExtensionDisplayName } from "../../../lib/extension-display-name";
 import type { StealthExtensionsColumnKey } from "../../../lib/directory-column-meta";
 import { ExtensionKindBadge } from "./extension-kind-badge";
+import { formatSwHealthDetailLabel } from "./extension-sw-health-label";
 
 function renderUpdatedCell(iso?: string) {
   if (!iso) return <span className="hub-directory-table-body-text">—</span>;
@@ -95,24 +96,36 @@ export function renderSystemExtensionsDirectoryBodyCell(
     case "path":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text hub-users-cell-muted max-w-[18rem] truncate" title={ext.unpackedPath}>
-            {ext.unpackedPath}
-          </span>
+          <HubDirectoryValuePopover value={ext.unpackedPath} title="📁 Extension Path">
+            <span className="hub-directory-table-body-text hub-users-cell-muted max-w-[18rem] truncate">
+              {ext.unpackedPath}
+            </span>
+          </HubDirectoryValuePopover>
         </DirectoryTableBodyCell>
       );
     case "activityLog": {
       const logText = defaultExtensionLog(ext);
-      const popoverValue = [
+      const swDetail = ext.swHealth ? formatSwHealthDetailLabel(ext.swHealth) : null;
+      const toneClass =
+        ext.swHealth?.status === "needs-heal" ? "text-amber-300/90" : "text-emerald-300/90";
+      const popoverLines = [
         `Extension: ${displayName}`,
         `Kind: ${ext.kind === "store" ? "Chrome Web Store" : "Local Operator"}`,
         `Version: ${ext.version || "—"}`,
         `Status: ${logText}`,
-        `Path: ${ext.unpackedPath}`,
-      ].join("\n");
+      ];
+      if (swDetail) {
+        popoverLines.push(`MV3 Service Worker: ${swDetail.text}`);
+        if (ext.swHealth?.sampleMissingCodes?.length) {
+          popoverLines.push(`Unregistered SW profiles: ${ext.swHealth.sampleMissingCodes.join(", ")}`);
+        }
+      }
+      popoverLines.push(`Path: ${ext.unpackedPath}`);
+      const popoverValue = popoverLines.join("\n");
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <HubDirectoryValuePopover value={popoverValue} title="📋 Extension Activity Log">
-            <span className="hub-directory-table-body-text max-w-[14rem] truncate text-emerald-300/90">
+            <span className={`hub-directory-table-body-text max-w-[14rem] truncate ${toneClass}`}>
               {logText}
             </span>
           </HubDirectoryValuePopover>

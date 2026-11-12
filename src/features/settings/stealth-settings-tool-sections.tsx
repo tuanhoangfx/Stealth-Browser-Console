@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  BookOpen,
   Download,
+  ExternalLink,
   FolderOpen,
   Info,
   MonitorSmartphone,
@@ -983,6 +985,12 @@ function AboutSectionBody() {
     void fetchAppInfo().then((info) => setVersion(info.version));
   }, []);
 
+  const openExternalLink = (url: string) => {
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <HubDetailFieldsGroup>
       <HubDetailFieldRow slots={2}>
@@ -1001,6 +1009,69 @@ function AboutSectionBody() {
           onChange={() => {}}
           disabled
           showCopyAction={false}
+        />
+      </HubDetailFieldRow>
+
+      <HubDetailFieldRow slots="full">
+        <HubAdmClickEditField
+          header={{ label: "User update link", headerEmoji: "📥" }}
+          fieldLabel="User installer / update download page"
+          value="https://stealth.infi28.com/intro/download/"
+          onChange={() => {}}
+          disabled
+          showCopyAction
+          trailingAction={
+            <button
+              type="button"
+              className={SSOT_COMPACT_BTN_CLASS}
+              onClick={() => openExternalLink("https://stealth.infi28.com/intro/download/")}
+            >
+              <Download size={11} />
+              <span>Open</span>
+            </button>
+          }
+        />
+      </HubDetailFieldRow>
+
+      <HubDetailFieldRow slots="full">
+        <HubAdmClickEditField
+          header={{ label: "Intro & user guide", headerEmoji: "📖" }}
+          fieldLabel="Public landing & step-by-step guide"
+          value="https://stealth.infi28.com/intro/"
+          onChange={() => {}}
+          disabled
+          showCopyAction
+          trailingAction={
+            <button
+              type="button"
+              className={SSOT_COMPACT_BTN_CLASS}
+              onClick={() => openExternalLink("https://stealth.infi28.com/intro/")}
+            >
+              <BookOpen size={11} />
+              <span>Open</span>
+            </button>
+          }
+        />
+      </HubDetailFieldRow>
+
+      <HubDetailFieldRow slots="full">
+        <HubAdmClickEditField
+          header={{ label: "GitHub latest release", headerEmoji: "📦" }}
+          fieldLabel="Direct GitHub Releases latest tag"
+          value="https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/latest"
+          onChange={() => {}}
+          disabled
+          showCopyAction
+          trailingAction={
+            <button
+              type="button"
+              className={SSOT_COMPACT_BTN_CLASS}
+              onClick={() => openExternalLink("https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/latest")}
+            >
+              <ExternalLink size={11} />
+              <span>Open</span>
+            </button>
+          }
         />
       </HubDetailFieldRow>
     </HubDetailFieldsGroup>

@@ -1,0 +1,226 @@
+{
+  "profileCode": "0061",
+  "updatedAt": "2026-11-01T19:16:59.418Z",
+  "sources": [
+    "outlook",
+    "services"
+  ],
+  "counts": {
+    "total": 21,
+    "facebook": 0,
+    "gmail": 0,
+    "outlook": 18,
+    "tiktok": 0,
+    "services": 3
+  },
+  "cookies": [
+    {
+      "name": "MSPBack",
+      "value": "1793433342",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "MSCC",
+      "value": "42.116.207.242-VN",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1827129342
+    },
+    {
+      "name": "ChainedAuthProbe",
+      "value": "1:R",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "mkt1",
+      "value": "en-US",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "mkt",
+      "value": "en-US",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax",
+      "expires": 1824969351
+    },
+    {
+      "name": "fptctx2",
+      "value": "AQHj3BnkHFMdeYHp6cgtWB2G5l0bwivPQqbptpeuWcCklDw2yrU13Z7mcvpXVOQUZR6JxFcH65rlvnlNwOYImz8N0qu7gmJfP4j31G3kCEgUVjGuMAXBvLDxjAvnq%252fY%252fWISKygL2gt%252buTq%252fhUtv0BxQ%252bFWEWaIqsc6x4eEN85NIljGa6zEfVPcunc30qXlauBDg0H6y2cp%252bwmCEyv5xZgCVjB9eBf2SNploSH3eZzIKPCRgh7JpvmSj1cr0S%252fw21hVMPCYy%252baYcKmvTMQejkgKgkx9%252bVXknOcuEjtSJa%252fg9lHH6KeNADThUNvFEQRkpA3gCteSXGSeeoIK%252bGrU%252fdprP3S6wcYlGI3KGqeprZONwN4w%253d%253d",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax",
+      "expires": 1824969351
+    },
+    {
+      "name": "amsc",
+      "value": "kSWz1kKSZjubPNFJZmI69RYTh9N4qXTBAb2wqytSjFz7wXXd+g4zhhqEI6+UNReczOdA5I4AL9wZjiEneAtjOQgMHBrZz4N7nPB20bEqFhC+qBdNgeK3KnfGzCS7fTbN8GVEZPfmnOw6Qmz0Po8XKbHmjVIz8DQApX6RroGpv6NISLhW2Fj8ZWktB6P/RNUo24pjnDDEG7kraqhA380z6+jEPUlF2+ANoOACHu8/3HqfhVxIWEi6pHHeyza4bcGwsGePjqVE5bi53XeLYRuOR0jdpEzyL/3IWvBfRT1AhcyxnDyX5fdUNYnBgk/ny8BS:2:3c",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "PPLState",
+      "value": "1",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "MUID",
+      "value": "2f0d601b0f7741cabb5457f82d6f7298",
+      "domain": ".live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax",
+      "expires": 1824969351
+    },
+    {
+      "name": "IPT",
+      "value": "E=pJrhtnrKmGXG%2BO5Zwd3X0NmULLk3L5ZE3YKtbtizSp7IYapA3c%2BolQpdGv5yZj9GmKiPsf3v5Pnqyr1dsO7ELbDr7MpfsIkzIt4HMwfLzWzLcMbZ9pS65IVtRCU%2BPerDQNoyQObK6cxF3CNzyXycUQL1%2FH7KJCTMJI24cIz5Z4PRQhN%2FSJHEDZ3aEWbcrtIclfrt%2BBCSxWHyr10pUCW8XQs2T56FEahfiyN8ydQU1GTVAGLq%2BAqj7PaNd2RbyoINiFvvj0JXxmKZP%2Fr9OA23NpMvGhDhxnBeaAiQLE%2F7H0AjJcd24EYq13bbIXdPqb75%2BoR%2B%2FPfwJQLXcm8WpbfmWE1dcKYphmSgwgCUjDHcnSuLlKAk7aDooat9HTNjfYqujWHU9iikmMc%2FMjk%2BnUlXDuoWADbEHMkAaSSyra79opXejK61sXcA6d1jjps7gKOHgZNeY3y0%2BmaGac66pjLHfXa7zleGaVZdRaykT2PMOdjjh4swFR55BT2nrv7CQxmqQIJrUmkkVE%2F46JNjNLLn2SS22tucDV3tbwF5Lh8OSCjQrMiOjXeK8Ws2U%2BhIOMu%2BOFJ6Wl9LgHvSGFYKBf07UOjGyfAhAryIWmuSF3r3i1XVNWFzU%2FOgWBNyN8YVduTUGcTv6rvZkfSEwIx6JgJRdOblj2sqQ2q%2FtwLq%2FBYBWCIgbG7xxvxMFCW8q06rHizvGvSKWAI%2F00vxvPn5pk8qmv1CGCL%2FMqErXiZaar9ReYQ9WOtVJpMTAjxpy4tuHw4ul4owP6C102%2Bf%2B3LUdYly%2FGAm%2BxqTXsmF5dtYkztMfzwFgOCJYqgEngh%2FDMaEp%2FBshVvJRTx03T1u9PaUBCo2Y8qfem2TB0P5Oo7SlRG0Fd9svvxINcqUZNqWYmbzYSy4jcJjgSWqKF0NWLtzLRuDVtbkYqPx5w%2BiIHPgMe%2BkSMYMHJiAQqkFu9HEOVykw%2B1z9fPMC6zDaM9Wt104Rum3qfBnoEcLEfc0wIV5qCKAjCJ8puQTP2TyNsdMn9ydYz8VPuF%2Be0%2BIVWd67vPgcYVrKOYcMqYWRb%2FOkT%2F%2BlDN53l5akj6TIaFnVWSpnsTOU%2F9noGZCUCPa0quFZN5jSOPx%2F4yMU2oVeBKuczrHSjgf16SCgzFgK43CzYoRyn2ZE418lhK%2FaTxaz7P8nU6nH9QJri39iOxjkkQylGHzXV1uhA3CsGunw8aonmPZFLfoUU2Ola49rzOtryU4eS%2BTyi%2BiU7oOQuATRQ165%2FoSe9pFghUDJz7A0WQR5JVnCyApu%2B%2FUDvmfEtCmn4RbuRSwQWhiAgK40gqzU6ZWgwPA0%2F8YjZfXtzso7rcQ7sdueDGF5SGhxG2vREhxqez6PTFb8xHiarGHCMFTbAOPSTe7qS1rust3iMfCAnMGLXt0BnqiTLytwaHktYMcXXFchhRCJWlCTTW86MVCxQ3MOt95144%2BBsd%2BjYgTnFbZIfbCEjHUyQ61FUndYpemHP742jPH9ZP10v1z%2F9ACxtN86E15xQQToeGuey%2Br69qTAaPhaT5WTzP2KygJ39st4pgsSNFSjiJTSL1d%2B5qmIPX2LhNjOuS07jPsDklKyLkxj2TWJWdOTzgMLnHkqbF3N9X6CstDA878Oh6vOc%2BkrUwMbrZ9%2FDNzyXOXkCPF6hmi44kv0rNcsAx13l4BvljGTq9r5sOkZEt%2F69aXBemqIhowwUtg5RhV3no%2BIlDQf85VwMnxtrCzPKM%2F7%2FDSikXA5CI7KEb3pA0sAvwUdVbu65JNJ3SA2iDMuyDe5HfOwn0eOwgQXAbR6M9cQqFuLU2HrLjoXPT95EdgRDsY3k3bwEI0FS3I3ahuGl8QSVQzZfibuwe2cNnLknPzglet88fDBSYkZCngl8ho7ZTz2%2FKcIbSyEWDTSjyOJlUeOh5%2BFq4gEhPlXYeFUlMh1gvfNa6AXC08EbMacPO9nAy1mROuJsoPV1EgB4256%2BOatlDLKDH0Rnlq1ZgKNyo%2Fz6Tmo2z7GJOkDb3oGJBYr7pcJkYFdx0mNAJ03%2BQVFiAyM77zFUSYSxs2QKzaG%2BNZiTYkQvoCQgj78uo3NNZ1mVIv6aW%2F9b3vvwWPK2jMlR0VX8wCWcvx4bwMHZEUFQkgmlvxEL26pzoNCHgK01ZbfF5THe6BUy1TgenzIQw9OY%2FjYbdtKshKGzp3%2Bp4OGVc9C5gK05sF8TIvYdbf%2BcmpBs1q%2BKDemQ5xyTi7YzbI3qSTlyPeT4yiqAOHYEoJumS%2Fa86QePioUvRjCnlPEWvdNkcWDeHbjSI6aeNaoGxhZG9Z%2B5O%2BVJM5RYDt77OXLfET%2FHqh24LJuk6XNpFwEesp%2FwgER0xnbaQ4FkRoyuK9P7A%3D%3A2%3A3c",
+      "domain": ".account.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "MSPVis",
+      "value": "$38936",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "OParams",
+      "value": "11O.DuEvolkvY0XqZKD87gBZEpk8mlQD6kabhJXM3VqA0sskJ1QySfBnSUQC!WzTuNDUIzmnaArYaIDDEwvRO4YCTku7bEN0u2P5q7coLyDrlTLuXFWznNZgxE*0*ob1dXX0*GgBH8B3SJXeknqkaD6KUS8AH2N0FkL*j6DVj9G2x0waioxvqE1Z3Xc8wzirpTPGm7AxDLEIbB44eeY34UmBB6u4dB7c0GtcjzIupOdGBn87PKjzc6tvPLJPowNnfb4*mBT*go6AIJIUnYVKh!HnqkP5qHGELNiovIyp2RAU9wuWYEwDEwDqHct2zgL*xWPrsWOb18RlfUFdVTU6FL9qLM0Vlm67ZnvfA2clh!MSV4yIdK6IMNWPlGtt1GTgIJgcD5ip1uy8aRL*WjfNN2PMI*X*jLhWH!UYSBLXDyTVQFXrK1hrQgslGFniHXvo85CnuqY5MV6MYAMhY1Q1GaX1EhYs7dLD5vDmKB0RQwHIBU4326qno1ywa1Jt9ynQ7sPhPvrJfziK3qccufaSLXFEWVfrbaJhtwwSKtEEBM0crXHO68kaHRPBpV9ecRKXjCsMBU!JG2mh0xYLYPvFQGyvBKERtN!olJbi3tstRXV72LBLdztoRK2AhUcmfC4L8OmIU!LqzKgZhjDD!qQEg!twm4ygZIC7Hww00XfMsp59vm2M0CFgJgVJuqXxR1!ksJWHGbUX*MxWMsth2!Bbya6Y6gIoNm1AjCQhf05FOMsS6Y8CQtj9JBJ2qHsFPsvxK2nuonqC3e!2goNjAjv8pwKwEXXTc5W3ydCsTZE7MHgYMknktGFi9QbqBC!G9qeq9OBFOaTSqM2FWco6KXa1cBoGPwfP2o!d6jhPJojS6gckjeaB!djzZ2V*1CtO!zfWpxR7*vFonIk4efMNmPZvK6!4WGRuMCLiZFzEby5yPgMGiRyRnsbD1q83BMWDqAbmLFQityEw0qZJgJhIfs4uIoGEv3YEvT7Ov2lImWwwQHqhdTSoF2xHqFugofJCdIUKj4iBJN5cVT7Riog687QMZXo74NOlcgTNZbAENco5vS5U8qGJdBRSziIAHsl9VnT8XyqD4sGFwvGxeA1UG*hweQotz077CbgTp7PEb5iOa728JkxAqlWtyOApnbjcIKwl*UyrliT0AMRemrrJMVa2hGBSVfu9MpNyEfIPpSkfUV7HeM2UKDeJy4lo*!OhwEWPkvBqE*7qMWeluet4XQmR2Iz0xOPJeQst9OHdtP1zXAGDgv8FK8T5K35qQokEQrU7Cp7cjyzCiHSIM5O7YVuVjUs2ui8V4spqh8pmO9CYGapVXJJ5MZDcOhnR*UisuAWIR2xxcfZdmcJlkVEWvUJ5ZqrChyuWmHHqgXcab4lxTO3U38FolAAXQrNXzWxmlhKfHssWbFz9QYZBGrgdnm1NsW3DxVO90bmHJ9UB4hqGJYn0NUcLIajE*S77oVNxJOx7xPHjn9kjxru97Fs9dQwJoM3752rVY1Xi3S4rPCP*L9pX0HLppl8!nLTLnAULUd5Ei7S6oCWtujjQOc*1qBrwN*o1E*DM8AHpURRFw4YvNCwafRMTdgCWXctkdYIlPoHAdUw4K8yE1TVpnC4*2KcPXnxGVw1dF5kyJG6mJ1S7kmjgXgsFUU5V3wGk2r4SHNYnCvEfePW22WMgt1fM0XzIebdvyZqh60mC5gxJcP012l6st3L0U0Lvgfrxdxbdba!WH*3xRpQK056vLQ8Bjglnq1BdJj1nID62abMhoH9muV!EhpHpPmvJsaFEXXa4r*GrHhSOweoO8ftgzKC29KCSglOMwxJPRpSP0wpoEjpZwrEBUTnyWwD0VF*C5dY8PzqF7sN14HDUsr790U1wfF7MhJ0V3kDDqrWVUZ5wYPZzRQIqJU0VEUsnExoJWRWdXFP1yVfznWqJ6Z9sZkqm4o00V4LxfRLjJvAThY!DsGX*PbFDGnqcmn*XDWNt5lCv4z*yf1xhTcLRp4v2OG0YsZQuyJLdiE5WJF*hm!uPFmac4f7JQMujSuRIh6qjNbJ2JQwjbvQLow!oW9vBgsaVbvtfPdunTYnMBgebXTviBfEiNTxcbO!kZtFfY0UHNRM*r2BDnNytzNCuooj4x5S7HR*ltVLOJUxnWAAvMwz9XEzdrMtiua7Z2pIN!Fjk8i8!IbPo2ZjDAXGiYbtR0Q9AsM!a5EUZlDuUfqefj49jzzNvKeduo8wcA7iQPfQrELPYi6UjLogpjI2qCI9c25GPA3yTSLwPs7MrAmJFQmryHv8UpiuATqFXyJDC5NUR1o4IAaV0HHzi76WZUCkVlh!VF24b5D1mIryKrBlelRLSBM3CJ5CJKpkeBYZeay!X3ooZPZPmALahU!ogUglh7Me4gxT2AGjze0rxhvM98ngolKowl9h1QKVpD51uMTneEqGktHmqHsx*srhg3PzMnlS1FwO1kQHDQPq9ShiIa6gJp6WFAh9w00Dhn0G3T!mbGl8L2!WcwOPpcDyPboop4VugbS1NOq86MPuna2MHL0v525Js7CF!JlhklVGRS*PwzvW9n*BJj9Cervon*pwyKbtAfecf0CrGIaFTtbvtDJJdO1gVP4WXxMbWNV5GofAJHQejkhPEQqefdyLOn3wdX1v12IKOAd1BGRQfc27LoHSbWpXSj0vVAoGumCGziRrrZNofR!pJKH!EWn7Eir8E9v0ngXS4txpXI0LQqsru8v01Rm4MS21!C3sT1kuTShuN5irddHCyFs3nU2U9fLgUnX2WoLQm5sRXDLg4BGQr9Hc75BcXxLjgso5RLoRb1gxo*bknIc5i43AwWQ$$",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "uaid",
+      "value": "f512a3aed20c46ce815cbdec7a17aeb1",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "__Host-MSAAUTH",
+      "value": "11-M.C516_BL2.0.U.MsaArtifacts.CuC0AZYYKTCZaL6NKhpThs3yGCCrCEz!9a2sTp0wXPSAstdeo*UDLT21ea5PLyoZQ45CqNRgbMfizZHA3V4lFIISq06Uj7sidH7B!kXcIRVq*jZjBuAxkEQHkTrXtNwSYIIzrkDwBDMVCx6wOIwiUxpHZWZMOlDu*8uZmge1Px0jfhNve3d0FFojFl9qsfGE6jcs*YCibErpflt5daT3SAJbWTHkDKH9SibQfMvxWnDpF8liwt5LRxqKKNadncPwpZpYs0ZzibGTXOt!5urrMBw$",
+      "domain": "login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "MSPRequ",
+      "value": "id=N&lt=1793433342&co=2",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "ClientId",
+      "value": "6E49961E3D804203ACF99E3375E35869",
+      "domain": "outlook.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "None",
+      "expires": 1824969339
+    },
+    {
+      "name": "msal.cache.encryption",
+      "value": "%7B%22id%22%3A%2201a190f5-09d2-76b3-b74b-c2ca348e03ca%22%2C%22key%22%3A%22J0O9sryWaumsxYohAIdBQTiZvKV40BN2tHm2ffKx0P0%22%7D",
+      "domain": "outlook.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": false,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "MSPOK",
+      "value": "$uuid-6b415633-e0c4-456e-8a46-2f74a896f1b6$uuid-ead05ab9-dfb1-431c-8204-6af24b1afaf5",
+      "domain": ".login.live.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1824969351
+    },
+    {
+      "name": "sessionid",
+      "value": "82d0e0ae01b7f5e145e2e8818ce3f1c6",
+      "domain": ".capcut.com",
+      "path": "/",
+      "secure": false,
+      "httpOnly": true,
+      "expires": 1798720806.661
+    },
+    {
+      "name": "sessionid_ss",
+      "value": "82d0e0ae01b7f5e145e2e8818ce3f1c6",
+      "domain": ".capcut.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "None",
+      "expires": 1798720806.661
+    },
+    {
+      "name": "sid_tt",
+      "value": "82d0e0ae01b7f5e145e2e8818ce3f1c6",
+      "domain": ".capcut.com",
+      "path": "/",
+      "secure": false,
+      "httpOnly": true,
+      "expires": 1798720806.661
+    }
+  ]
+}

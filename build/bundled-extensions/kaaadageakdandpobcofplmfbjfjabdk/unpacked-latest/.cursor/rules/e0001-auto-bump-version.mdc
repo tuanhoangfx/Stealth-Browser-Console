@@ -1,0 +1,26 @@
+---
+description: Auto bump extension patch version on edits (E0001)
+globs: "{manifest.json,build-info.js,background.js,popup.js,popup.html,popup-theme.css,auth-session.js,options.js,options.html,options-theme.css,vault-*.js,content-bridge.js}"
+alwaysApply: false
+---
+
+# E0001: Auto bump version on every extension change
+
+When working in `Extension/E0001-cookie-bridge`, treat **every functional change** as a new patch release.
+
+## Required behavior
+
+- If any extension code/UI changes are made, **bump patch version immediately** before finishing the task:
+  - Update `manifest.json` `"version"` (patch +1).
+  - Update `build-info.js` `window.E0001_BUILD.version` to match.
+  - Append a short entry to `CHANGELOG.md` under the new version.
+- Package the ZIP using `scripts/package-extension.ps1` for that version.
+- If the user asked to publish, create/update the GitHub Release and upload:
+  - `dist/E0001-cookie-bridge-vX.Y.Z.zip`
+  - `dist/E0001-cookie-bridge-vX.Y.Z.zip.sha256`
+
+## Notes
+
+- **Patch** (mỗi đổi extension): theo rule này. **Minor** (commit) / **Major** (Release): `.cursor/rules/dev-workspace-compact.mdc` (Version).
+- Do not bump version for pure whitespace/formatting-only changes.
+

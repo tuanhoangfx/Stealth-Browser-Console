@@ -67,10 +67,25 @@ const missingRuntime = PACKAGED_RUNTIME_DEPS.filter((name) => !hasAsarModule(asa
 const missingAsar = ASAR_REQUIRED.filter(
   (rel) => !asarList.some((entry) => entry.replace(/\\/g, "/").includes(rel.replace(/\\/g, "/"))),
 );
+const appUpdateYmlPath = path.join(resources, "app-update.yml");
+const appUpdateYmlText = fs.existsSync(appUpdateYmlPath) ? fs.readFileSync(appUpdateYmlPath, "utf8") : "";
+const validAppUpdateYml =
+  appUpdateYmlText.includes("provider: github") &&
+  appUpdateYmlText.includes("owner: tuanhoangfx") &&
+  appUpdateYmlText.includes("repo: Stealth-Browser-Console");
 
-if (missingUnpacked.length === 0 && missingRuntime.length === 0 && missingAsar.length === 0) {
-  console.log("verify-packaged-unpacked: OK (native unpack + packaged runtime deps in asar)");
+if (
+  missingUnpacked.length === 0 &&
+  missingRuntime.length === 0 &&
+  missingAsar.length === 0 &&
+  validAppUpdateYml
+) {
+  console.log("verify-packaged-unpacked: OK (native unpack + packaged runtime deps in asar + resources/app-update.yml)");
   process.exit(0);
+}
+
+if (!validAppUpdateYml) {
+  console.error(`verify-packaged-unpacked: FAIL — missing or invalid ${appUpdateYmlPath}`);
 }
 
 if (missingUnpacked.length) {

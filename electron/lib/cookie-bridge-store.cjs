@@ -85,6 +85,7 @@ const NON_RUNTIME_EXTENSION_DIRS = new Set([
   "docs",
   "coverage",
   ".turbo",
+  "scripts",
 ]);
 
 /** Copy extension sources into a stable AppData cache (CloakBrowser stages by unpacked id under `.cloakbrowser`). */
@@ -93,17 +94,51 @@ function shouldCopyExtensionEntry(relativePath) {
   if (!rel || rel === ".") return true;
   const top = rel.split("/")[0];
   if (NON_RUNTIME_EXTENSION_DIRS.has(top)) return false;
+  if (/^dist\/[^/]+-store(?:\/|$)/i.test(rel) || /^dist\/.*\.(?:zip|crx|sha256)$/i.test(rel)) {
+    return false;
+  }
   return true;
+}
+
+function pruneNonRuntimeCacheEntries(destDir) {
+  for (const name of NON_RUNTIME_EXTENSION_DIRS) {
+    const target = path.join(destDir, name);
+    try {
+      if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
+    } catch {
+      /* best-effort */
+    }
+  }
+  const distDir = path.join(destDir, "dist");
+  try {
+    if (fs.existsSync(distDir) && fs.statSync(distDir).isDirectory()) {
+      for (const entry of fs.readdirSync(distDir, { withFileTypes: true })) {
+        if (/-store$/i.test(entry.name) || /\.(?:zip|crx|sha256)$/i.test(entry.name)) {
+          fs.rmSync(path.join(distDir, entry.name), { recursive: true, force: true });
+        }
+      }
+      if (fs.readdirSync(distDir).length === 0) {
+        fs.rmdirSync(distDir);
+      }
+    }
+  } catch {
+    /* best-effort */
+  }
 }
 
 const CORE_RUNTIME_FILES = [
   "manifest.json",
   "build-info.js",
   "background.js",
+  "popup.html",
+  "popup.js",
   "auth-session.js",
   "content-bridge.js",
   "totp-clock.js",
 ];
+
+const WORKSPACE_SYNC_TTL_MS = 30_000;
+const _workspaceSyncCache = new Map();
 
 function newestCoreRuntimeMtime(dir) {
   let newest = 0;
@@ -116,6 +151,25 @@ function newestCoreRuntimeMtime(dir) {
     }
   }
   return newest;
+}
+
+function coreRuntimeFilesHealthy(srcDir, destDir) {
+  try {
+    if (!fs.existsSync(destDir)) return false;
+    for (const name of CORE_RUNTIME_FILES) {
+      const from = path.join(srcDir, name);
+      if (!fs.existsSync(from)) continue;
+      const to = path.join(destDir, name);
+      if (!fs.existsSync(to)) return false;
+      const srcStat = fs.statSync(from);
+      const destStat = fs.statSync(to);
+      if (srcStat.size > 0 && destStat.size === 0) return false;
+      if (srcStat.size !== destStat.size) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function hasCorruptedOrMismatchedRuntimeFiles(srcDir, destDir, rootSrc = srcDir) {
@@ -197,15 +251,48 @@ function syncExtensionDirToCache(
   const srcManifest = path.join(src, "manifest.json");
   if (!fs.existsSync(srcManifest)) return null;
   const destManifest = path.join(dest, "manifest.json");
+  const cacheKey = `${src}::${dest}`;
+  const nowMs = Date.now();
+
+  if (!force) {
+    const cached = _workspaceSyncCache.get(cacheKey);
+    if (cached && nowMs - cached.at < WORKSPACE_SYNC_TTL_MS) {
+      try {
+        const curManifestMtime = fs.statSync(srcManifest).mtimeMs;
+        if (
+          curManifestMtime === cached.srcManifestMtime &&
+          newestCoreRuntimeMtime(src) === cached.srcCoreMtime &&
+          fs.existsSync(destManifest)
+        ) {
+          return dest;
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+  }
+
   if (!force && fs.existsSync(destManifest) && !isVerifiedStoreExtension(dest)) {
     try {
       const srcVer = JSON.parse(fs.readFileSync(srcManifest, "utf8"))?.version;
       const destVer = JSON.parse(fs.readFileSync(destManifest, "utf8"))?.version;
+      const srcCoreMtime = newestCoreRuntimeMtime(src);
+      // Allow 2ms tolerance for JS Date sub-millisecond truncation in fs.utimesSync on NTFS
       if (
         srcVer === destVer &&
-        newestCoreRuntimeMtime(src) <= newestCoreRuntimeMtime(dest) &&
-        !hasCorruptedOrMismatchedRuntimeFiles(src, dest, src)
+        srcCoreMtime <= newestCoreRuntimeMtime(dest) + 2 &&
+        coreRuntimeFilesHealthy(src, dest)
       ) {
+        const prev = _workspaceSyncCache.get(cacheKey);
+        if (!prev?.pruned) {
+          pruneNonRuntimeCacheEntries(dest);
+        }
+        _workspaceSyncCache.set(cacheKey, {
+          at: nowMs,
+          srcManifestMtime: fs.statSync(srcManifest).mtimeMs,
+          srcCoreMtime,
+          pruned: true,
+        });
         return dest;
       }
     } catch {
@@ -222,6 +309,17 @@ function syncExtensionDirToCache(
     }
   }
   syncExtensionFilesAtomically(src, dest, src);
+  pruneNonRuntimeCacheEntries(dest);
+  try {
+    _workspaceSyncCache.set(cacheKey, {
+      at: Date.now(),
+      srcManifestMtime: fs.statSync(srcManifest).mtimeMs,
+      srcCoreMtime: newestCoreRuntimeMtime(src),
+      pruned: true,
+    });
+  } catch {
+    /* ignore */
+  }
   if (!_skipMirror) {
     try {
       const defRoot = path.resolve(defaultUserDataRoot());
@@ -408,8 +506,17 @@ function startCookieBridgeWorkspaceAutoSync(userDataRoot = defaultUserDataRoot()
   let watcher = null;
   try {
     watcher = fs.watch(workspace, { persistent: false }, (_eventType, filename) => {
-      const name = String(filename || "").toLowerCase();
-      if (name && (name.startsWith(".") || name.includes("node_modules"))) return;
+      const name = String(filename || "").replace(/\\/g, "/").toLowerCase();
+      if (
+        name &&
+        (name.startsWith(".") ||
+          name.includes("node_modules") ||
+          name.startsWith("scripts/") ||
+          name === "scripts" ||
+          /^dist\/[^/]+-store(?:\/|$)/i.test(name))
+      ) {
+        return;
+      }
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(triggerSync, 400);
       if (typeof debounceTimer.unref === "function") debounceTimer.unref();
@@ -418,7 +525,7 @@ function startCookieBridgeWorkspaceAutoSync(userDataRoot = defaultUserDataRoot()
   } catch {
     /* fs.watch unavailable */
   }
-  const interval = setInterval(triggerSync, 30_000);
+  const interval = setInterval(triggerSync, 60_000);
   if (typeof interval.unref === "function") interval.unref();
   const state = {
     workspace,

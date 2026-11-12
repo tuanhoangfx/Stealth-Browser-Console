@@ -661,7 +661,27 @@ const SERVICE_COOKIE_MATCHERS = {
       d.includes("leonardo.ai") &&
       !n.startsWith("ab.storage.") &&
       !String(v).startsWith("spa_") &&
-      (n.includes("__Secure-next-auth.session-token") ||
+      (n.includes("__Secure-better-auth.session_token") ||
+        n.includes("__Host-better-auth.session_token") ||
+        n.includes("better-auth.session_token") ||
+        n.includes("__Secure-next-auth.session-token") ||
+        n.includes("__Host-next-auth.session-token") ||
+        n.includes("next-auth.session-token") ||
+        n === "leonardo-auth-session" ||
+        n === "accessToken" ||
+        n === "refreshToken"),
+  },
+  "leonardo.ai": {
+    family: "leonardo",
+    resultCode: "service_cookies",
+    match: (d, n, v = "") =>
+      d.includes("leonardo.ai") &&
+      !n.startsWith("ab.storage.") &&
+      !String(v).startsWith("spa_") &&
+      (n.includes("__Secure-better-auth.session_token") ||
+        n.includes("__Host-better-auth.session_token") ||
+        n.includes("better-auth.session_token") ||
+        n.includes("__Secure-next-auth.session-token") ||
         n.includes("__Host-next-auth.session-token") ||
         n.includes("next-auth.session-token") ||
         n === "leonardo-auth-session" ||
@@ -839,7 +859,7 @@ function readProfileSpaStorageSummary(userDataDir, { includeElevenLabsIdb = true
         .filter((f) => f.endsWith(".indexeddb.leveldb") && !f.includes("chrome-extension"));
       for (const folder of indexedDbFolders) {
         if (!includeElevenLabsIdb && folder.includes("elevenlabs.io")) continue;
-        if (!/elevenlabs\.io|leonardo\.ai|runwayml\.com|topview\.ai|vidiq\.com/i.test(folder)) {
+        if (!/elevenlabs\.io|mage\.space|leonardo\.ai|runwayml\.com|topview\.ai|vidiq\.com/i.test(folder)) {
           continue;
         }
         const fullFolder = path.join(idbDir, folder);
@@ -853,11 +873,12 @@ function readProfileSpaStorageSummary(userDataDir, { includeElevenLabsIdb = true
               const st = fs.statSync(p);
               if (st.size > 0) {
                 totalBytes += st.size;
-                const maxBytes = folder.includes("elevenlabs.io") ? 8 * 1024 * 1024 : 2 * 1024 * 1024;
+                const maxBytes =
+                  folder.includes("elevenlabs.io") || folder.includes("mage.space") ? 8 * 1024 * 1024 : 2 * 1024 * 1024;
                 if (st.size <= maxBytes) {
                   const rawBuf = fs.readFileSync(p);
                   chunks.push(rawBuf.toString("latin1").replace(/\x00/g, ""));
-                  if (folder.includes("elevenlabs.io")) {
+                  if (folder.includes("elevenlabs.io") || folder.includes("mage.space")) {
                     chunks.push(rawBuf.toString("utf16le").replace(/\x00/g, ""));
                   }
                 }
@@ -907,6 +928,27 @@ function matchServiceSpaStorage(serviceName, spaSummary) {
     }
     if (/_https:\/\/(?:[a-z0-9-]+\.)?elevenlabs\.io[\x01][^\x01\n]*firebase:authUser/i.test(ls)) {
       return { matched: true, evidence: "LocalStorage:elevenlabs.io", firebaseRefreshToken };
+    }
+  } else if (s === "mage.space" || s === "mage") {
+    const idbKey = idbFolders.find((f) => f.includes("mage.space"));
+    const mageIdbText = idbKey ? idbText[idbKey] || "" : "";
+    const combinedMageText = `${mageIdbText}\n${ls}`;
+    const rtMatch = combinedMageText.match(/(?:AEu4IL|AMf-)[A-Za-z0-9_-]{60,}/);
+    const firebaseRefreshToken = rtMatch ? rtMatch[0] : "";
+    if (
+      idbKey &&
+      /stsTokenManager[\s\S]{0,400}?refreshToken|(?:AEu4IL|AMf-)[A-Za-z0-9_-]{40,}|AIzaSyAzUV2NNUOlLTL04jwmUw9oLhjteuv6Qr4[\s\S]{0,600}?refreshToken/i.test(
+        mageIdbText,
+      )
+    ) {
+      const emailMatch =
+        mageIdbText.match(/"email"\s*:\s*"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"/i) ||
+        mageIdbText.match(/\b([a-zA-Z0-9._%+-]+@(?:gmail|googlemail|outlook|hotmail|live|icloud|yahoo|infi28|cloudaimail)\.[a-zA-Z]{2,})\b/i);
+      const accountEmail = emailMatch ? normalizeComparableEmail(emailMatch[1]) : "";
+      return { matched: true, evidence: "IndexedDB:firebaseLocalStorage(mage.space)", accountEmail, firebaseRefreshToken };
+    }
+    if (/_https:\/\/(?:[a-z0-9-]+\.)?mage\.space[\x01][^\x01\n]*firebase:authUser/i.test(ls)) {
+      return { matched: true, evidence: "LocalStorage:mage.space", firebaseRefreshToken };
     }
   } else if (s === "higgsfield") {
     if (/higgsfield/i.test(ls) && /refreshToken|accessToken|idToken/i.test(ls) && /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/.test(ls)) {

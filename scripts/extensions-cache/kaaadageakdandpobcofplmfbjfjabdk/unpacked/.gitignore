@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+
+.vercel
+*.zip
+scripts/cws-oauth-client.json
+
+# SSOT binary & build artifact guards
+dist-desktop/
+release/
+*.tsbuildinfo

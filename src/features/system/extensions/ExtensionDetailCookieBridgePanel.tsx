@@ -8,6 +8,7 @@ import {
 import { COOKIE_BRIDGE_STORE_ID } from "../../../lib/stealth-extension-store-ids";
 import { useAppToast } from "../../../components/toast";
 import type { CookieBridgeStatus } from "../../../types";
+import { formatSwHealthDetailLabel } from "./extension-sw-health-label";
 
 function sourceLabel(source: CookieBridgeStatus["source"]) {
   if (source === "workspace") return "Workspace (E0001)";
@@ -179,6 +180,15 @@ export const ExtensionDetailCookieBridgePanel = memo(function ExtensionDetailCoo
                 </dd>
               </div>
             ) : null}
+            {(() => {
+              const sw = formatSwHealthDetailLabel(status.swHealth);
+              return (
+                <div className="flex justify-between gap-2" title={sw.tooltip}>
+                  <dt className="text-[var(--muted)]">MV3 Service Worker</dt>
+                  <dd className={`truncate font-medium ${sw.toneClass}`}>{sw.text}</dd>
+                </div>
+              );
+            })()}
             <div>
               <dt className="text-[var(--muted)]">Store ID</dt>
               <dd className="mt-0.5 break-all font-mono text-[10px] text-cyan-100/90">{status.storeId}</dd>

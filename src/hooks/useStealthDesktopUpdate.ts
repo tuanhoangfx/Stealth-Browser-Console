@@ -5,6 +5,7 @@ import {
   type HubVersionDesktopUpdate,
 } from "@tool-workspace/hub-ui";
 import { useAppToast } from "../components/toast";
+import { STEALTH_INTRO_URL, STEALTH_USER_DOWNLOAD_URL } from "../lib/app-meta";
 
 /** Electron-updater — hub-ui SSOT (`useStealthDesktopUpdater`) + Stealth toasts. */
 export function useStealthDesktopUpdate(): HubVersionDesktopUpdate | null {
@@ -14,7 +15,10 @@ export function useStealthDesktopUpdate(): HubVersionDesktopUpdate | null {
     if (!api?.getUpdateStatus || !api?.checkForUpdates) return null;
     return api;
   }, []);
-  const desktopUpdate = useStealthDesktopUpdater(bridge);
+  const desktopUpdate = useStealthDesktopUpdater(bridge, {
+    userDownloadUrl: STEALTH_USER_DOWNLOAD_URL,
+    introUrl: STEALTH_INTRO_URL,
+  });
   const { pushToast } = useAppToast();
 
   const onAction = useCallback(async () => {

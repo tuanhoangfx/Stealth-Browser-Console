@@ -1,0 +1,267 @@
+/* E0001 overlay only. Chrome = Hub User Detail SSOT — do not restyle TOC/fields/footer. */
+@import "./hub-vanilla/styles/hub-modal.css";
+@import "./hub-vanilla/styles/hub-account-detail-modal.css";
+@import "./hub-vanilla/styles/hub-adm-copy-value-badge.css";
+@import "./hub-vanilla/styles/hub-fields.css";
+@import "./hub-vanilla/styles/hub-scrollbar.css";
+
+.hub-workspace-user-modal[hidden] {
+  display: none !important;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-workspace-user-modal.modal-backdrop--tool-detail {
+  --app-sidebar-width: 0px;
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: rgba(6, 8, 14, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body.hub-modal-open {
+  overflow: hidden;
+}
+
+.hub-workspace-user-modal .hub-modal-frame {
+  align-self: center;
+  height: auto;
+}
+
+/* Vanilla port of HubTocSectionNav.tsx item/label utilities (no Tailwind in MV3). */
+.hub-toc-nav__item {
+  display: block;
+  width: 100%;
+  min-height: var(--overview-toc-row-h, 2rem);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hub-toc-nav__label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.hub-toc-nav__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Extract: packages/hub-ui/src/styles/hub-users-table.css — ADM label glyphs. */
+.hub-users-th-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hub-inline-gap-comfort, 6px);
+  white-space: nowrap;
+}
+
+.hub-users-th-label--start {
+  justify-content: flex-start;
+}
+
+.hub-users-th-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.hub-users-th-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.hub-users-th-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-inline-gap-name {
+  gap: var(--hub-inline-gap-name, 8px);
+}
+
+/* Vanilla port of HubCopyBadge.tsx chip chrome. */
+.hub-copy-badge {
+  display: inline-flex;
+  max-width: 100%;
+  height: var(--hub-metric-badge-h, 1.35rem);
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.hub-copy-badge:hover {
+  border-color: rgba(129, 140, 248, 0.3);
+  background: rgba(99, 102, 241, 0.1);
+  color: rgb(199, 210, 254);
+}
+
+.hub-workspace-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(165, 180, 252, 0.3);
+  background: rgba(99, 102, 241, 0.25);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgb(238, 242, 255);
+}
+
+.user-access-modal__header-login {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.hub-search-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-search-field__glyph {
+  pointer-events: none;
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: var(--muted);
+  display: inline-flex;
+}
+
+.hub-search-field input.field {
+  width: 100%;
+  min-width: 0;
+  height: var(--hub-control-h, 26px);
+  padding-left: 31px;
+  padding-right: 12px;
+  font-size: var(--hub-table-body-size, 12px);
+}
+
+.hub-adm-click-edit__input {
+  width: 100%;
+  min-width: 0;
+}
+
+.hub-chrome-brand-icon-bare {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.hub-user-status-copy {
+  margin: 0.5rem 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.hub-user-role-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.hub-users-th-icon .ui-icon,
+.hub-toc-nav__icon .ui-icon,
+.hub-copy-badge__icon .ui-icon,
+.hub-tool-detail-panel__head-icon .ui-icon,
+.hub-tool-detail-rail__head-icon .ui-icon,
+.hub-search-field__glyph .ui-icon,
+.hub-user-role-value .ui-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.text-violet-300 { color: #c4b5fd; }
+.text-sky-300 { color: #7dd3fc; }
+.text-amber-300 { color: #fcd34d; }
+.text-emerald-300 { color: #6ee7b7; }
+.text-cyan-300 { color: #67e8f9; }
+.text-blue-300 { color: #93c5fd; }
+
+/* Popup viewport is 800×600 — keep Hub desktop Account Detail (not tablet stack). */
+@media (max-width: 1099.98px) {
+  .hub-workspace-user-modal
+    .modal-shell.hub-tool-detail-modal.hub-account-detail-modal
+    .user-access-modal__header:has(.user-access-modal__header-center) {
+    grid-template-columns: minmax(0, 1fr) minmax(10rem, 18rem) minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .hub-workspace-user-modal
+    .modal-shell.hub-tool-detail-modal.hub-account-detail-modal
+    .user-access-modal__header:has(.user-access-modal__header-center)
+    .user-access-modal__header-main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .hub-workspace-user-modal
+    .modal-shell.hub-tool-detail-modal.hub-account-detail-modal
+    .user-access-modal__header:has(.user-access-modal__header-center)
+    .user-access-modal__header-center {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    max-width: 18rem;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 1023px) {
+  .hub-workspace-user-modal
+    :is(.hub-account-detail-modal, .hub-add-modal)
+    .hub-adm-form-row--aligned:not(.hub-adm-form-row--aligned-2):not(.twofa-adm-form-row--aligned-2):not(
+      .hub-adm-form-row--single
+    ) {
+    grid-template-columns:
+      var(--hub-adm-label-w) minmax(0, 1fr)
+      var(--hub-adm-label-w) minmax(0, 1fr)
+      var(--hub-adm-label-w) minmax(0, 1fr);
+  }
+}

@@ -3,8 +3,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { DatabaseSync } = require("node:sqlite");
-const { COOKIES_REL_PATH } = require("../profile-cookie-guard.cjs");
+const { COOKIES_REL_PATH, openGuardSqlite } = require("../profile-cookie-guard.cjs");
 const {
   resolveVaultConfig,
   resolveScopedVaultUserId,
@@ -468,7 +467,7 @@ async function healStaleChallengedAndErrorP0020Rows({
       } catch {
         fs.writeFileSync(tmpHealCk, fs.readFileSync(cookiePath));
       }
-      const db = new DatabaseSync(tmpHealCk, { open: true, readOnly: true });
+      const db = openGuardSqlite(tmpHealCk, { readOnly: true, busyTimeoutMs: 2000 });
       const rows = db.prepare("SELECT host_key, name FROM cookies").all();
       db.close();
       if (hasChallengedGoogle) {

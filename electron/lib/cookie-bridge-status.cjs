@@ -61,6 +61,23 @@ function getCookieBridgeStatus(userDataRoot) {
 
   const enabled = e0001On;
   const sourceMode = useLocalDevExtension() ? "workspace" : "store";
+  const stageVersion = readDirManifestVersion(stageDir);
+  const workspaceVersion = readDirManifestVersion(workspacePath);
+  let swHealth = null;
+  try {
+    const { defaultUserDataRoot } = require("./webstore-extension.cjs");
+    const { inspectMv3ServiceWorkerFleetHealth } = require("./extension-sw-health.cjs");
+    const rootDir =
+      typeof userDataRoot === "function"
+        ? userDataRoot()
+        : userDataRoot || defaultUserDataRoot();
+    swHealth =
+      inspectMv3ServiceWorkerFleetHealth(rootDir, {
+        expectedE0001Version: stageVersion || manifestVersion || workspaceVersion || null,
+      })?.e0001 ?? null;
+  } catch {
+    /* best-effort */
+  }
 
   return {
     enabled,
@@ -77,8 +94,9 @@ function getCookieBridgeStatus(userDataRoot) {
     manifestOk,
     manifestName: manifestName || "E0001 Cookie Bridge",
     manifestVersion: manifestVersion || null,
-    workspaceVersion: readDirManifestVersion(workspacePath),
-    stageVersion: readDirManifestVersion(stageDir),
+    workspaceVersion,
+    stageVersion,
+    swHealth,
     workspacePath: workspacePath || null,
     cachePath,
     env: {

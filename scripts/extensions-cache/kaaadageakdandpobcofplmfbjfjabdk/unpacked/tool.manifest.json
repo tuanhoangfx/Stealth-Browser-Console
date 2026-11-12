@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "code": "E0001",
+  "id": "cookie-bridge",
+  "aliases": [
+    "E0001",
+    "E0001-cookie-bridge"
+  ],
+  "name": "E0001 Cookie Bridge",
+  "type": "Extension",
+  "category": "Extension",
+  "owner": "Extension",
+  "status": "Active",
+  "icon": "icons/e0001.svg",
+  "summary": "Chrome MV3 extension for masked cookie snapshots, AES-GCM vault sync, and cross-browser cookie apply.",
+  "stack": [
+    "Chrome Extension",
+    "Manifest V3",
+    "JavaScript",
+    "Supabase",
+    "AES-GCM"
+  ],
+  "commands": {
+    "install": "Chrome Web Store -> Add to Chrome -> Cookie Bridge -> Link extension"
+  },
+  "deployTarget": "local",
+  "docs": {
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "chromeManifest": "manifest.json"
+  },
+  "github": {
+    "repo": "tuanhoangfx/E0001-cookie-bridge",
+    "branch": "main",
+    "manifestPath": "tool.manifest.json"
+  },
+  "release": {
+    "version": "1.2.37",
+    "readiness": [
+      "manifest-v3",
+      "cookie-permission",
+      "vault-sync",
+      "tool-link"
+    ],
+    "latestPublished": {
+      "url": "https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/tag/v1.2.24",
+      "publishedAt": "2026-11-05T11:12:48.191Z",
+      "tag": "v1.2.24",
+      "asset": {
+        "name": "E0001-cookie-bridge-v1.2.37.zip",
+        "downloadUrl": "https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/download/v1.2.37/E0001-cookie-bridge-v1.2.37.zip",
+        "size": 247539,
+        "sha256": "e45fb0a63cc1dc5a6677127c8ffb52740ec6ca51add07b749045fc976a7eeb74"
+      }
+    }
+  },
+  "urls": {
+    "local": "chrome://extensions",
+    "chromeWebStore": "https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk",
+    "chromeWebStoreId": "kaaadageakdandpobcofplmfbjfjabdk",
+    "chromeWebStorePublisherId": "2a7913fe-ce44-44df-817f-c62be3f9cef2",
+    "privacyPolicy": "https://databox.infi28.com/e0001-privacy.html",
+    "app": "https://databox.infi28.com/cookie",
+    "appLocal": "http://127.0.0.1:5177/cookie"
+  },
+  "chromeWebStore": {
+    "listingStatus": "in_review",
+    "visibility": "public",
+    "submittedAt": "2026-06-09",
+    "lastStatusAt": "2026-11-12T09:07:02.075Z",
+    "shareHint": "While in review: team installs via GitHub ZIP. After approval: switch Distribution â†’ Unlisted for link-only sharing.",
+    "submittedVersion": "1.2.34",
+    "submittedState": "PENDING_REVIEW",
+    "publishedVersion": "1.2.8",
+    "queuedVersion": "1.2.36"
+  },
+  "health": {
+    "status": "Active",
+    "note": "CWS in_review v1.2.34 (live v1.2.8) — kaaadageakdandpobcofplmfbjfjabdk"
+  },
+  "nextActions": [
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
+    "Keep manifest.json and build-info.js version aligned on each release.",
+    "Use Link extension once per Chrome profile.",
+    "Optional: switch Distribution to Unlisted for link-only team sharing.",
+    "Load unpacked / GitHub ZIP: v1.1.11 (hub-api + sb-api). CWS published v1.1.11 â€” Store installs auto-update."
+  ],
+  "manifestUpdatedAt": "2026-11-12T09:32:20.713Z",
+  "ship": {
+    "schemaVersion": 1,
+    "fastPath": "Push",
+    "releasePath": "Release",
+    "deployTarget": "local",
+    "playbook": "Tool/docs/playbooks/release-fast-path.md",
+    "script": "powershell -File E:\\Dev\\Tool\\scripts\\ship-product.ps1",
+    "preShip": [
+      "check-version-sync"
+    ],
+    "preShipCommands": {
+      "check-version-sync": "node E:\\Dev\\Tool\\scripts\\check-version-sync.mjs --product-root . --no-warn-published"
+    },
+    "syncedAt": "2026-07-13T21:24:16.356Z"
+  },
+  "knownGood": {
+    "config": "config/known-good.json",
+    "tagSuffix": "-stable",
+    "snapshot": "node scripts/snapshot-known-good.mjs --version 1.2.5",
+    "restore": "powershell -File E:\\\\Dev\\\\Tool\\\\scripts\\\\restore-known-good.ps1 -Code E0001"
+  },
+  "versions": {
+    "current": "1.2.37",
+    "latestPublished": "1.2.24"
+  }
+}

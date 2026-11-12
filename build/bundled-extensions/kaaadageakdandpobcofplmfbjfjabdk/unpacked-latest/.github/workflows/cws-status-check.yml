@@ -1,0 +1,59 @@
+name: CWS status check
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check CWS status and notify
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: node scripts/cws-notify-status.mjs --update-manifest
+
+      - name: Sync P0020 CWS badge (optional)
+        env:
+          P0020_SYNC_TOKEN: ${{ secrets.P0020_SYNC_TOKEN }}
+        run: |
+          if [ -z "$P0020_SYNC_TOKEN" ]; then
+            echo "P0020_SYNC_TOKEN not set — skip P0020 badge sync (Vercel prebuild uses GitHub fallback)"
+            exit 0
+          fi
+          git clone --depth 1 "https://x-access-token:${P0020_SYNC_TOKEN}@github.com/tuanhoangfx/Tool-Manager.git" p0020
+          node scripts/sync-p0020-cws-badge.mjs --p0020 p0020
+          cd p0020
+          if git diff --quiet src/features/cookie/extensionCwsBuildInfo.ts; then
+            echo "No P0020 badge changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/features/cookie/extensionCwsBuildInfo.ts
+          git commit -m "chore(cws): sync E0001 listing status badge"
+          git push
+
+      - name: Commit E0001 manifest if changed
+        run: |
+          if git diff --quiet tool.manifest.json; then
+            echo "No E0001 manifest changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tool.manifest.json
+          git commit -m "chore(cws): sync listing status from status check"
+          git push

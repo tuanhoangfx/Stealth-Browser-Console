@@ -4,7 +4,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { execFile, execFileSync, spawnSync } = require("node:child_process");
 
 const BACKUP_KIND = "stealth-profile-state";
 const BACKUP_VERSION = 1;
@@ -80,10 +80,46 @@ function profilesRoot(userDataRoot) {
   return resolveProfilesRoot(userDataRoot);
 }
 
-function zipWithPowerShell(sourceDir, zipPath) {
+function resolveSystemTarExe() {
+  if (process.platform !== "win32") return "";
+  const candidate = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
+  return fs.existsSync(candidate) ? candidate : "";
+}
+
+function execFilePromise(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      cmd,
+      args,
+      { windowsHide: true, maxBuffer: 8 * 1024 * 1024, ...opts },
+      (err, stdout, stderr) => {
+        if (err) {
+          err.stdout = stdout;
+          err.stderr = stderr;
+          reject(err);
+          return;
+        }
+        resolve({ stdout, stderr });
+      },
+    );
+  });
+}
+
+function zipDirectoryFastSync(sourceDir, zipPath) {
+  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+  const tarExe = resolveSystemTarExe();
+  if (tarExe) {
+    const entries = fs.readdirSync(sourceDir);
+    if (entries.length > 0) {
+      execFileSync(tarExe, ["-a", "-c", "-f", zipPath, "-C", sourceDir, ...entries], {
+        stdio: "pipe",
+        windowsHide: true,
+      });
+      return;
+    }
+  }
   const src = sourceDir.replace(/'/g, "''");
   const dest = zipPath.replace(/'/g, "''");
-  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
   const result = spawnSync(
     "powershell",
     [
@@ -104,8 +140,41 @@ function zipWithPowerShell(sourceDir, zipPath) {
   }
 }
 
-function unzipWithPowerShell(zipPath, destDir) {
+async function zipDirectoryFastAsync(sourceDir, zipPath) {
+  if (fs.existsSync(zipPath)) await fs.promises.unlink(zipPath);
+  const tarExe = resolveSystemTarExe();
+  if (tarExe) {
+    const entries = await fs.promises.readdir(sourceDir);
+    if (entries.length > 0) {
+      await execFilePromise(tarExe, ["-a", "-c", "-f", zipPath, "-C", sourceDir, ...entries]);
+      return;
+    }
+  }
+  const src = sourceDir.replace(/'/g, "''");
+  const dest = zipPath.replace(/'/g, "''");
+  await execFilePromise("powershell", [
+    "-NoProfile",
+    "-NonInteractive",
+    "-WindowStyle",
+    "Hidden",
+    "-Command",
+    [
+      "Add-Type -AssemblyName System.IO.Compression.FileSystem",
+      `[IO.Compression.ZipFile]::CreateFromDirectory('${src}', '${dest}')`,
+    ].join("; "),
+  ]);
+}
+
+function unzipArchiveFastSync(zipPath, destDir) {
   fs.mkdirSync(destDir, { recursive: true });
+  const tarExe = resolveSystemTarExe();
+  if (tarExe) {
+    execFileSync(tarExe, ["-x", "-f", zipPath, "-C", destDir], {
+      stdio: "pipe",
+      windowsHide: true,
+    });
+    return;
+  }
   const src = zipPath.replace(/'/g, "''");
   const dest = destDir.replace(/'/g, "''");
   const result = spawnSync(
@@ -123,6 +192,25 @@ function unzipWithPowerShell(zipPath, destDir) {
   if (result.status !== 0) {
     throw new Error(result.stderr?.toString() || "Expand-Archive failed");
   }
+}
+
+async function unzipArchiveFastAsync(zipPath, destDir) {
+  await fs.promises.mkdir(destDir, { recursive: true });
+  const tarExe = resolveSystemTarExe();
+  if (tarExe) {
+    await execFilePromise(tarExe, ["-x", "-f", zipPath, "-C", destDir]);
+    return;
+  }
+  const src = zipPath.replace(/'/g, "''");
+  const dest = destDir.replace(/'/g, "''");
+  await execFilePromise("powershell", [
+    "-NoProfile",
+    "-NonInteractive",
+    "-WindowStyle",
+    "Hidden",
+    "-Command",
+    `Expand-Archive -LiteralPath '${src}' -DestinationPath '${dest}' -Force`,
+  ]);
 }
 
 function copyDirRecursive(src, dest) {
@@ -171,6 +259,49 @@ function copyProfileDirFast(src, dest) {
   if (code >= 8) {
     throw new Error(result.stderr?.toString() || `robocopy failed (exit ${code})`);
   }
+}
+
+async function copyProfileDirFastAsync(src, dest) {
+  if (process.platform !== "win32") {
+    copyDirRecursive(src, dest);
+    return;
+  }
+  if (!fs.existsSync(src)) return;
+  await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+  if (fs.existsSync(dest)) await fs.promises.rm(dest, { recursive: true, force: true });
+  await new Promise((resolve, reject) => {
+    execFile(
+      "robocopy",
+      [
+        src,
+        dest,
+        "/E",
+        "/COPY:DAT",
+        "/R:1",
+        "/W:1",
+        "/NFL",
+        "/NDL",
+        "/NJH",
+        "/NJS",
+        "/nc",
+        "/ns",
+        "/np",
+        "/XD",
+        ...TRANSIENT_CACHE_DIRS,
+        "/XF",
+        ...TRANSIENT_LOCK_FILES,
+      ],
+      { windowsHide: true, maxBuffer: 8 * 1024 * 1024 },
+      (err, _stdout, stderr) => {
+        const code = err && typeof err.code === "number" ? err.code : err ? 8 : 0;
+        if (code >= 8) {
+          reject(new Error(String(stderr || err?.message || `robocopy failed (exit ${code})`)));
+          return;
+        }
+        resolve();
+      },
+    );
+  });
 }
 
 function rmDirSafe(dir) {
@@ -280,7 +411,7 @@ function backupProfilesState(userDataRoot, deps) {
   }
   deps.onProgress?.({ phase: "zip", current: 0, total: 1 });
   const zipPath = path.join(os.tmpdir(), `stealth-profiles-${Date.now()}.zip`);
-  zipWithPowerShell(staging, zipPath);
+  zipDirectoryFastSync(staging, zipPath);
   rmDirSafe(staging);
   const bytes = fs.statSync(zipPath).size;
   deps.onProgress?.({ phase: "done", current: 1, total: 1 });
@@ -292,6 +423,99 @@ function backupProfilesState(userDataRoot, deps) {
     profileIds: folderMap.map((e) => String(e.id)),
     exportedAt: manifest.exportedAt,
   };
+}
+
+async function backupProfilesStateAsync(userDataRoot, deps) {
+  if (process.platform !== "win32") {
+    throw new Error("Profile state backup currently supports Windows only.");
+  }
+  const allProfiles = deps.listProfiles();
+  const idSet = deps.profileIds?.length ? new Set(deps.profileIds.map(String)) : null;
+  const selected = idSet ? allProfiles.filter((row) => idSet.has(String(row.id))) : allProfiles;
+  if (!selected.length) throw new Error("No profiles selected for backup.");
+
+  const running = selected.filter((row) => row.status === "running" || row.status === "opening");
+  if (running.length) {
+    throw new Error(`Close running profiles before backup (${running.map((r) => r.name).slice(0, 5).join(", ")})`);
+  }
+
+  const folderMap = buildFolderMap(selected);
+  const staging = await fs.promises.mkdtemp(path.join(os.tmpdir(), "stealth-backup-"));
+  const stagingProfiles = path.join(staging, "profiles");
+  await fs.promises.mkdir(stagingProfiles, { recursive: true });
+
+  try {
+    const manifest = {
+      version: BACKUP_VERSION,
+      kind: BACKUP_KIND,
+      matchBy: "name",
+      exportedAt: new Date().toISOString(),
+      catalog: idSet
+        ? filterCatalogBundle(deps.exportBundle(), folderMap.map((entry) => entry.id))
+        : deps.exportBundle(),
+      profileFolders: folderMap,
+    };
+    await fs.promises.writeFile(path.join(staging, "manifest.json"), JSON.stringify(manifest, null, 2));
+
+    const root = profilesRoot(userDataRoot);
+    let copied = 0;
+    const total = folderMap.length;
+    for (const entry of folderMap) {
+      deps.onProgress?.({
+        phase: "profile",
+        profileId: String(entry.id),
+        profileName: entry.name,
+        status: "copying",
+        current: copied,
+        total,
+      });
+      const src = path.join(root, String(entry.id));
+      const dest = path.join(stagingProfiles, entry.folder);
+      if (fs.existsSync(src)) {
+        try {
+          snapshotProfileCookiesIfHealthy(src);
+        } catch {
+          /* best-effort cookie guard before backup */
+        }
+        await copyProfileDirFastAsync(src, dest);
+        copied += 1;
+        deps.onProgress?.({
+          phase: "profile",
+          profileId: String(entry.id),
+          profileName: entry.name,
+          status: "done",
+          current: copied,
+          total,
+        });
+      } else {
+        copied += 1;
+        deps.onProgress?.({
+          phase: "profile",
+          profileId: String(entry.id),
+          profileName: entry.name,
+          status: "skipped",
+          message: "No profile folder",
+          current: copied,
+          total,
+        });
+      }
+    }
+    deps.onProgress?.({ phase: "zip", current: 0, total: 1 });
+    const zipPath = path.join(os.tmpdir(), `stealth-profiles-${Date.now()}.zip`);
+    await zipDirectoryFastAsync(staging, zipPath);
+    const st = await fs.promises.stat(zipPath);
+    deps.onProgress?.({ phase: "done", current: 1, total: 1 });
+    return {
+      ok: true,
+      zipPath,
+      profiles: folderMap.length,
+      bytes: st.size,
+      profileIds: folderMap.map((e) => String(e.id)),
+      exportedAt: manifest.exportedAt,
+    };
+  } finally {
+    await fs.promises.rm(staging, { recursive: true, force: true }).catch(() => undefined);
+  }
 }
 
 /**
@@ -316,7 +540,7 @@ function restoreProfilesState(userDataRoot, zipPath, deps) {
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-restore-"));
   try {
     deps.onProgress?.({ phase: "extract", current: 0, total: 1 });
-    unzipWithPowerShell(zipPath, staging);
+    unzipArchiveFastSync(zipPath, staging);
     const manifestPath = path.join(staging, "manifest.json");
     if (!fs.existsSync(manifestPath)) throw new Error("Invalid backup — manifest.json missing.");
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -416,6 +640,122 @@ function restoreProfilesState(userDataRoot, zipPath, deps) {
   }
 }
 
+async function restoreProfilesStateAsync(userDataRoot, zipPath, deps) {
+  if (process.platform !== "win32") {
+    throw new Error("Profile state restore currently supports Windows only.");
+  }
+  if (!fs.existsSync(zipPath)) throw new Error("Backup file not found.");
+
+  const restoreIntoProfileId = String(deps.restoreIntoProfileId || "").trim();
+  if (restoreIntoProfileId) {
+    const targetProfile = deps.getProfileById?.(restoreIntoProfileId);
+    if (!targetProfile?.id) {
+      throw new Error(`Target profile not found for restore (${restoreIntoProfileId}).`);
+    }
+  }
+
+  const staging = await fs.promises.mkdtemp(path.join(os.tmpdir(), "stealth-restore-"));
+  try {
+    deps.onProgress?.({ phase: "extract", current: 0, total: 1 });
+    await unzipArchiveFastAsync(zipPath, staging);
+    const manifestPath = path.join(staging, "manifest.json");
+    if (!fs.existsSync(manifestPath)) throw new Error("Invalid backup — manifest.json missing.");
+    const manifest = JSON.parse(await fs.promises.readFile(manifestPath, "utf8"));
+    if (manifest.kind !== BACKUP_KIND) throw new Error("Invalid backup kind.");
+    const catalog = manifest.catalog || manifest;
+    let folderEntries = Array.isArray(manifest.profileFolders) ? manifest.profileFolders : [];
+    if (restoreIntoProfileId && folderEntries.length > 1) {
+      folderEntries = folderEntries.slice(0, 1);
+    }
+
+    let imported = { ok: true, updated: 0, created: 0, skipped: 0 };
+    if (!restoreIntoProfileId) {
+      deps.onProgress?.({ phase: "catalog", current: 0, total: 1 });
+      imported = deps.importBundle(catalog, { merge: true, matchBy: manifest.matchBy || "name" });
+    }
+
+    const root = profilesRoot(userDataRoot);
+    await fs.promises.mkdir(root, { recursive: true });
+    let restored = 0;
+    let skipped = 0;
+    const skipReasons = [];
+    const total = folderEntries.length;
+    for (let i = 0; i < folderEntries.length; i += 1) {
+      const entry = folderEntries[i];
+      deps.onProgress?.({ phase: "profiles", current: i, total });
+      const target = restoreIntoProfileId
+        ? { id: restoreIntoProfileId }
+        : resolveRestoreTargetId(entry, deps);
+      if (!target.id) {
+        skipped += 1;
+        skipReasons.push({
+          name: String(entry.name || entry.folder || "").trim() || `#${i + 1}`,
+          reason: target.reason || "unresolved",
+        });
+        continue;
+      }
+      const localId = target.id;
+      const src = path.join(staging, "profiles", String(entry.folder || entry.name));
+      if (!fs.existsSync(src)) {
+        skipped += 1;
+        skipReasons.push({
+          name: String(entry.name || entry.folder || localId),
+          reason: "missing-folder",
+        });
+        continue;
+      }
+      const dest = path.join(root, String(localId));
+      let preCookiesBakBuf = null;
+      let preLocalStateBakBuf = null;
+      try {
+        const existingBak = path.join(dest, COOKIES_BAK_REL_PATH);
+        const existingCk = path.join(dest, COOKIES_REL_PATH);
+        if (fs.existsSync(existingBak)) preCookiesBakBuf = await fs.promises.readFile(existingBak);
+        else if (fs.existsSync(existingCk)) preCookiesBakBuf = await fs.promises.readFile(existingCk);
+        const existingLsBak = path.join(dest, LOCAL_STATE_BAK_REL_PATH);
+        const existingLs = path.join(dest, LOCAL_STATE_REL_PATH);
+        if (fs.existsSync(existingLsBak)) preLocalStateBakBuf = await fs.promises.readFile(existingLsBak);
+        else if (fs.existsSync(existingLs)) preLocalStateBakBuf = await fs.promises.readFile(existingLs);
+      } catch {
+        /* ignore */
+      }
+      await fs.promises.rm(dest, { recursive: true, force: true }).catch(() => undefined);
+      await copyProfileDirFastAsync(src, dest);
+      try {
+        removeStaleProfileArtifacts(dest);
+        removeSidecarPid(dest);
+        const destBak = path.join(dest, COOKIES_BAK_REL_PATH);
+        if (preCookiesBakBuf && !fs.existsSync(destBak)) {
+          await fs.promises.mkdir(path.dirname(destBak), { recursive: true });
+          await fs.promises.writeFile(destBak, preCookiesBakBuf);
+        }
+        const destLsBak = path.join(dest, LOCAL_STATE_BAK_REL_PATH);
+        if (preLocalStateBakBuf && !fs.existsSync(destLsBak)) {
+          await fs.promises.writeFile(destLsBak, preLocalStateBakBuf);
+        }
+      } catch {
+        /* best-effort post-restore cookie guard */
+      }
+      restored += 1;
+    }
+    deps.onProgress?.({ phase: "done", current: total, total });
+    return {
+      ok: true,
+      imported,
+      restored,
+      skipped,
+      skipReasons,
+      profiles: folderEntries.length,
+      restoreIntoProfileId: restoreIntoProfileId || undefined,
+      restoreIntoProfileName: restoreIntoProfileId
+        ? String(deps.getProfileById?.(restoreIntoProfileId)?.name || "").trim() || undefined
+        : undefined,
+    };
+  } finally {
+    await fs.promises.rm(staging, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 module.exports = {
   BACKUP_KIND,
   BACKUP_VERSION,
@@ -425,5 +765,7 @@ module.exports = {
   resolveRestoreTargetId,
   buildFolderMap,
   backupProfilesState,
+  backupProfilesStateAsync,
   restoreProfilesState,
+  restoreProfilesStateAsync,
 };
