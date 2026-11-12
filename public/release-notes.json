@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-12T10:11:47.220Z",
+  "generatedAt": "2026-11-12T10:36:38.932Z",
   "entries": [
+    {
+      "version": "9.2.397",
+      "date": "2026-11-12",
+      "at": "2026-11-12T17:36:00+07:00",
+      "title": "Coherent 1920x1080 outer window geometry in headless CloakBrowser & full release",
+      "bullets": [
+        "Added --window-size=1920,1080 in buildStealthChromeArgs for headless launches so window.outerWidth/outerHeight (1920x1080) matches inner (1920x947) and screen (1920x1080) in fingerprint-check-smoke."
+      ],
+      "kind": "improve",
+      "userTitle": "Coherent 1920x1080 outer window geometry in headless Cloak Browser &…",
+      "userSummary": "",
+      "userHighlights": [
+        "Added --window-size=1920,1080 in build Stealth Chrome Args for headless launches so window.outer…"
+      ]
+    },
     {
       "version": "9.2.396",
       "date": "2026-11-12",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Replaced blocking Power Shell Expand-Archive in with in-memory Central Directory + zlib.inflate R…"
-      ]
-    },
-    {
-      "version": "9.2.385",
-      "date": "2026-11-12",
-      "at": "2026-11-12T03:28:00+07:00",
-      "title": "Stripe Payment Element Selectors, Card Priority & operator-cdp.json Sync",
-      "bullets": [
-        "Enhanced billing-autofill-bridge.cjs with Stripe Payment/Address Element selectors (#payment-numberInput, #billingAddress-nameInput, <select> administrativeArea support), prioritized fresh Visa 484804 cards ahead of declined cards, added POST /api/billing-vault/resolve-card, and synced shared/operator-cdp.json with E0002 content-checkout.js."
-      ],
-      "kind": "improve",
-      "userTitle": "Stripe Payment Element Selectors, Card Priority & operator-cdp.json Sync",
-      "userSummary": "",
-      "userHighlights": [
-        "Enhanced with Stripe Payment Address Element selectors , prioritized fresh Visa 484804 cards ahea…"
       ]
     }
   ]

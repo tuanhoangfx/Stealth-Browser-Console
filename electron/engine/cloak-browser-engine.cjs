@@ -392,7 +392,9 @@ function buildStealthChromeArgs(profile, userDataRoot = "") {
     // Anti-Freeze Headless Chrome Tuning: cap V8 renderer & compositor raster threads per headless instance
     // and cap disk/media cache to 1 MB (--disk-cache-size=1048576) so background browser launches never
     // spike CPU / DWM or hammer the QLC NVMe SSD with hundreds of Cache_Data random write IOPS.
+    // Also set --window-size=1920,1080 so window.outerWidth/outerHeight (1920x1080) matches inner (1920x947) + screen (1920x1080).
     args.push(
+      "--window-size=1920,1080",
       "--renderer-process-limit=2",
       "--num-raster-threads=1",
       "--disk-cache-size=1048576",

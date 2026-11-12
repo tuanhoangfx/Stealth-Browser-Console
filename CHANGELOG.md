@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-12 - Coherent 1920x1080 outer window geometry in headless CloakBrowser & full release
+
+- Version: `9.2.397`
+- Timestamp: 2026-11-12 17:36 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Added --window-size=1920,1080 in buildStealthChromeArgs for headless launches so window.outerWidth/outerHeight (1920x1080) matches inner (1920x947) and screen (1920x1080) in fingerprint-check-smoke.
+
+### Verification
+
+- fingerprint-check-smoke.cjs + cloak-browser-engine.test.cjs PASS
+
+---
 ## 2026-11-12 - Explicit preload.cjs updateBridge method keys for sync-stealth-api-surface
 
 - Version: `9.2.396`
