@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-12T09:43:49.960Z",
+  "generatedAt": "2026-11-12T09:59:26.176Z",
   "entries": [
+    {
+      "version": "9.2.394",
+      "date": "2026-11-12",
+      "at": "2026-11-12T16:59:00+07:00",
+      "title": "Preserve STEALTH_USER_DOWNLOAD_URL & STEALTH_LATEST_RELEASE_URL in sync-app-version.mjs",
+      "bullets": [
+        "Updated scripts/sync-app-version.mjs template so preShip/build preserves STEALTH_USER_DOWNLOAD_URL and STEALTH_LATEST_RELEASE_URL in src/lib/app-meta.ts."
+      ],
+      "kind": "improve",
+      "userTitle": "Preserve STEALTH USER DOWNLOAD URL & STEALTH LATEST RELEASE URL in",
+      "userSummary": "",
+      "userHighlights": [
+        "Updated template so pre Ship build preserves STEALTH USER DOWNLOAD URL and STEALTH LATEST RELEASE…"
+      ]
+    },
     {
       "version": "9.2.393",
       "date": "2026-11-12",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Wrapped System Extensions path cell in Hub Directory Value Popover and removed redundant native t…"
-      ]
-    },
-    {
-      "version": "9.2.382",
-      "date": "2026-11-11",
-      "at": "2026-11-11T20:22:00+07:00",
-      "title": "Preserve ElevenLabs API-Verified & SPA IndexedDB Sessions on Window Close Sync",
-      "bullets": [
-        "Fixed stealth-multiplatform-sync.cjs precomputedSpaSummary assignment when worker runs with needSpa:false and updated p0020-row-verifier.cjs to preserve logged_in status for ElevenLabs rows with verified xi_user_id + sk_ API key or Firebase refresh token."
-      ],
-      "kind": "improve",
-      "userTitle": "Preserve Eleven Labs API-Verified & SPA Indexed DB Sessions on Window…",
-      "userSummary": "",
-      "userHighlights": [
-        "Fixed precomputed Spa Summary assignment when worker runs with need Spa:false and updated to pres…"
       ]
     }
   ]

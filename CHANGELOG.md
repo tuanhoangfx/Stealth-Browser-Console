@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-12 - Preserve STEALTH_USER_DOWNLOAD_URL & STEALTH_LATEST_RELEASE_URL in sync-app-version.mjs
+
+- Version: `9.2.394`
+- Timestamp: 2026-11-12 16:59 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Updated scripts/sync-app-version.mjs template so preShip/build preserves STEALTH_USER_DOWNLOAD_URL and STEALTH_LATEST_RELEASE_URL in src/lib/app-meta.ts.
+
+### Verification
+
+- sync-app-version.mjs + vitest PASS
+
+---
 ## 2026-11-12 - Verify packaged resources/app-update.yml in unpacked & desktop SSOT gates
 
 - Version: `9.2.393`

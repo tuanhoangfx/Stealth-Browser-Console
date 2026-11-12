@@ -33,6 +33,9 @@ export const STEALTH_PRODUCT = {
 
 export const STEALTH_PUBLIC_ORIGIN = "https://stealth.infi28.com";
 export const STEALTH_INTRO_URL = \`\${STEALTH_PUBLIC_ORIGIN}/intro/\`;
+export const STEALTH_USER_DOWNLOAD_URL = \`\${STEALTH_INTRO_URL}download/\`;
+export const STEALTH_LATEST_RELEASE_URL =
+  "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/latest";
 
 /** Open P0003 public guide/intro page in a new tab or system browser. */
 export function openStealthGuide(subpath = ""): void {
