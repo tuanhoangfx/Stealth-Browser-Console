@@ -93,17 +93,11 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
         const m = /(\d{4})/.exec(rawCode);
         if (!m) return;
         const code = m[1];
-        const fs = require("node:fs");
         const path = require("node:path");
-        const { pathToFileURL } = require("node:url");
-        const bridgeCandidates = [
-          path.resolve(__dirname, "../../P0002-Social-Hub/server/android-stealth-bridge.mjs"),
-          "E:/Dev/Tool/P0002-Social-Hub/server/android-stealth-bridge.mjs",
-        ];
-        const bridgeFile = bridgeCandidates.find((p) => fs.existsSync(p));
-        if (!bridgeFile) return;
-        const bridgeVer = fs.statSync(bridgeFile).mtimeMs;
-        const bridge = await import(`${pathToFileURL(bridgeFile).href}?v=${bridgeVer}`);
+        const fs = require("node:fs");
+        const { loadAndroidStealthBridge } = require("./lib/android-bridge-loader.cjs");
+        const bridge = await loadAndroidStealthBridge(__dirname);
+        if (!bridge) return;
         const identityFile = path.join(bridge.MOBILE_VAULT_ROOT, `${code}.identity.json`);
         if (!fs.existsSync(identityFile)) return;
         const prefFile = path.join(bridge.MOBILE_VAULT_ROOT, "auto-sync-prefs.json");
@@ -184,17 +178,9 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
     // Mobile Stealth Bridge direct fallback on :6003 / :6004 (`📱 Android` tab in P0003)
     if (urlPath.startsWith("/api/mobile-stealth/")) {
       try {
-        const fs = require("node:fs");
-        const path = require("node:path");
-        const { pathToFileURL } = require("node:url");
-        const bridgeCandidates = [
-          path.resolve(__dirname, "../../P0002-Social-Hub/server/android-stealth-bridge.mjs"),
-          "E:/Dev/Tool/P0002-Social-Hub/server/android-stealth-bridge.mjs",
-        ];
-        const bridgeFile = bridgeCandidates.find((p) => fs.existsSync(p));
-        if (bridgeFile) {
-          const bridgeVer = fs.statSync(bridgeFile).mtimeMs;
-          const bridge = await import(`${pathToFileURL(bridgeFile).href}?v=${bridgeVer}`);
+        const { loadAndroidStealthBridge } = require("./lib/android-bridge-loader.cjs");
+        const bridge = await loadAndroidStealthBridge(__dirname);
+        if (bridge) {
           if (req.method === "GET" && urlPath === "/api/mobile-stealth/profiles") {
             const out = await bridge.listMobileVaultProfiles();
             return sendJson(res, 200, out);

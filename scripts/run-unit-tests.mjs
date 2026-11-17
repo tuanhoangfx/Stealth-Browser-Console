@@ -83,6 +83,7 @@ runStep("safe-goto", "node", ["--test", "electron/automation/safe-goto.test.cjs"
 runStep("google-session-guard", "node", ["--test", "electron/automation/google-session-guard.test.cjs"]);
 runStep("google-session-detect", "node", ["--test", "electron/lib/google-session-detect.test.cjs"]);
 runStep("stealth-snapshot-types", "node", ["--test", "electron/lib/stealth-snapshot-types.test.cjs"]);
+runStep("p0020-snapshot-builder", "node", ["--test", "electron/lib/multiplatform-sync/p0020-snapshot-builder.test.cjs"]);
 runStep("stealth-resolve-targets", "node", ["--test", "electron/lib/stealth-resolve-targets.test.cjs"]);
 runStep("agent-login-stealth", "node", ["--test", "electron/lib/agent-login-stealth.test.cjs"]);
 runStep("profile-identity", "node", ["--test", "electron/profile-identity.test.cjs"]);
@@ -98,6 +99,7 @@ runStep("cloakbrowser-extension-stage", "node", ["--test", "electron/lib/cloakbr
 runStep("profile-browser-orphan", "node", ["--test", "electron/lib/profile-browser-orphan.test.cjs"]);
 runStep("profile-extension-pins", "node", ["--test", "electron/lib/profile-extension-pins.test.cjs"]);
 runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browser-engine.test.cjs"]);
+runStep("session-fast-spawn-cdp", "node", ["--test", "electron/engine/session-fast-spawn-cdp.test.cjs"]);
 runStep("launch-purity-gate", "node", ["--experimental-sqlite", "--test", "electron/engine/launch-purity-gate.test.cjs"]);
 runStep("profile-cookie-guard", "node", ["--experimental-sqlite", "--test", "electron/lib/profile-cookie-guard.test.cjs"]);
 runStep("prepare-profile-launch", "node", ["--test", "electron/engine/prepare-profile-launch.test.cjs"]);

@@ -869,6 +869,24 @@ let tcpListeningSnapshot = null;
 /** @type {Promise<Map<number, number>> | null} */
 let tcpListeningInFlight = null;
 
+function getOrphanTcpTableNative() {
+  if (process.platform !== "win32") return null;
+  if (globalThis.__STEALTH_ORPHAN_TCP_TABLE_FN__) return globalThis.__STEALTH_ORPHAN_TCP_TABLE_FN__;
+  try {
+    const baseApi = getOrphanNativeApi();
+    const koffi = baseApi?.koffi || null;
+    if (!koffi) return null;
+    const iphlpapi = koffi.load("iphlpapi.dll");
+    const fn = iphlpapi.func(
+      "uint32_t __stdcall GetExtendedTcpTable(void* pTcpTable, _Inout_ uint32_t* pdwSize, bool bOrder, uint32_t ulAf, uint32_t TableClass, uint32_t Reserved)",
+    );
+    globalThis.__STEALTH_ORPHAN_TCP_TABLE_FN__ = fn;
+    return fn;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchListeningTcpPortPidMap() {
   if (process.platform !== "win32") return new Map();
   if (tcpListeningSnapshot && Date.now() - tcpListeningSnapshot.at < TCP_LISTENING_TTL_MS) {
@@ -877,22 +895,53 @@ async function fetchListeningTcpPortPidMap() {
   if (tcpListeningInFlight) return tcpListeningInFlight;
   tcpListeningInFlight = (async () => {
     const map = new Map();
+    let usedNative = false;
     try {
-      const { stdout } = await execFileAsync("netstat.exe", ["-ano", "-p", "tcp"], {
-        timeout: 3500,
-        windowsHide: true,
-      });
-      for (const line of String(stdout || "").split(/\r?\n/)) {
-        if (!line.includes("LISTENING")) continue;
-        const parts = line.trim().split(/\s+/);
-        if (parts.length < 5) continue;
-        const localAddr = parts[1] || "";
-        const colon = localAddr.lastIndexOf(":");
-        if (colon < 0) continue;
-        const port = Number.parseInt(localAddr.slice(colon + 1), 10);
-        const pid = Number.parseInt(parts[parts.length - 1], 10);
-        if (Number.isFinite(port) && port > 0 && Number.isFinite(pid) && pid > 0) {
-          map.set(port, pid);
+      const GetExtendedTcpTable = getOrphanTcpTableNative();
+      if (GetExtendedTcpTable) {
+        for (const { af, stride, portOff, pidOff } of [
+          { af: 2, stride: 24, portOff: 8, pidOff: 20 },   // IPv4: AF_INET = 2
+          { af: 23, stride: 56, portOff: 20, pidOff: 52 }, // IPv6: AF_INET6 = 23
+        ]) {
+          let size = [16384];
+          let buf = Buffer.allocUnsafe(size[0]);
+          let rc = GetExtendedTcpTable(buf, size, false, af, 3, 0);
+          if (rc === 122) {
+            buf = Buffer.allocUnsafe(size[0]);
+            rc = GetExtendedTcpTable(buf, size, false, af, 3, 0);
+          }
+          if (rc === 0 && size[0] >= 4) {
+            usedNative = true;
+            const count = buf.readUInt32LE(0);
+            for (let i = 0; i < count; i++) {
+              const off = 4 + i * stride;
+              if (off + stride > buf.length) break;
+              const port = buf.readUInt16BE(off + portOff);
+              const pid = buf.readUInt32LE(off + pidOff);
+              if (Number.isFinite(port) && port > 0 && Number.isFinite(pid) && pid > 0) {
+                map.set(port, pid);
+              }
+            }
+          }
+        }
+      }
+      if (!usedNative) {
+        const { stdout } = await execFileAsync("netstat.exe", ["-ano", "-p", "tcp"], {
+          timeout: 3500,
+          windowsHide: true,
+        });
+        for (const line of String(stdout || "").split(/\r?\n/)) {
+          if (!line.includes("LISTENING")) continue;
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 5) continue;
+          const localAddr = parts[1] || "";
+          const colon = localAddr.lastIndexOf(":");
+          if (colon < 0) continue;
+          const port = Number.parseInt(localAddr.slice(colon + 1), 10);
+          const pid = Number.parseInt(parts[parts.length - 1], 10);
+          if (Number.isFinite(port) && port > 0 && Number.isFinite(pid) && pid > 0) {
+            map.set(port, pid);
+          }
         }
       }
     } catch {

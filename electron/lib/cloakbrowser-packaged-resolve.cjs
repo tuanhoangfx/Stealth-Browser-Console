@@ -34,7 +34,7 @@ function resolveCloakbrowserPackageDir({ isPackaged, resourcesPath } = {}) {
     const unpacked = resolveUnpackedCloakbrowserDir(resourcesPath);
     if (unpacked) return unpacked;
   }
-  return path.dirname(require.resolve("cloakbrowser/package.json"));
+  return path.resolve(path.dirname(require.resolve("cloakbrowser")), "..");
 }
 
 /** True when module exists beside unpacked cloakbrowser (ESM import from cloakbrowser/*.js). */

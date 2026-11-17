@@ -311,14 +311,12 @@ const SERVICE_COOKIE_MATCHERS = {
   adobe: {
     family: "adobe",
     resultCode: "service_cookies",
-    match: (d, n, v) =>
+    match: (d, n) =>
       (d.includes("adobe.com") || d.includes("adobelogin.com")) &&
       (n === "aux_sid" ||
         n === "ims_sid" ||
         n === "SIS" ||
-        n.includes("fg_cts") ||
-        n.includes("ims_token") ||
-        (v === undefined && (n === "ftr_set" || n === "s_ac" || n === "ID" || n === "RMR" || n === "guid"))),
+        n.includes("ims_token")),
   },
   "vpn surfshark": {
     family: "surfshark",
@@ -498,7 +496,13 @@ const SERVICE_COOKIE_MATCHERS = {
     resultCode: "service_cookies",
     match: (d, n, v = "") =>
       d.includes("topview.ai") &&
-      (n === "topview_token" || n === "access_token" || n === "auth_token") &&
+      (n === "__Secure-next-auth.session-token" ||
+        n.startsWith("__Secure-next-auth.session-token.") ||
+        n === "next-auth.session-token" ||
+        n.startsWith("next-auth.session-token.") ||
+        n === "topview_token" ||
+        n === "access_token" ||
+        n === "auth_token") &&
       !String(v).startsWith("spa_") &&
       !String(v).startsWith("sso_"),
   },

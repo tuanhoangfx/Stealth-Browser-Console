@@ -432,7 +432,6 @@ async function syncProfileActivityLogToP0020Rows({
             body: JSON.stringify({
               log_tip_at: at,
               log_tip_message: logMessage,
-              updated_at: at,
             }),
             signal: AbortSignal.timeout(6000),
           },
@@ -499,6 +498,7 @@ async function syncProfileWindowLiveCdpStateToP0020({
   userDataDir = null,
   liveCdp = false,
   debugPort = 0,
+  isHeadless = false,
   source = "p0003_window_lifecycle",
 } = {}) {
   const rawCode = String(profileCode || "").trim();
@@ -511,6 +511,32 @@ async function syncProfileWindowLiveCdpStateToP0020({
   const cleanDebugPort = Number.isFinite(Number(debugPort)) && Number(debugPort) > 0 ? Number(debugPort) : 0;
   const isLiveWindow = Boolean(liveCdp && cleanDebugPort > 0);
   markStealthProfileLaunchWindowState(code, isLiveWindow);
+
+  // Proposal 1 (`ok 1` DB Write Storm Reduction):
+  // Headless automation profiles open/close dozens of times per minute across shared sibling accounts.
+  // Broadcast transient live CDP state via SSE (`emitStealthLiveSyncEvent`) in <5ms instead of blasting
+  // 10+ full-snapshot `PATCH /rest/v1/twofa_accounts` writes to Origin-PG on every headless launch/close.
+  if (isHeadless) {
+    emitStealthLiveSyncEvent({
+      profileCode: code,
+      profileId: profileId || null,
+      source: source || "p0003_headless_lifecycle",
+      timestamp: new Date().toISOString(),
+      liveCdp: isLiveWindow,
+      debugPort: isLiveWindow ? cleanDebugPort : 0,
+      patchedCount: 0,
+      rows: [],
+    });
+    return {
+      ok: true,
+      skipped: "headless_session_sse_only",
+      profileCode: code,
+      liveCdp: isLiveWindow,
+      debugPort: isLiveWindow ? cleanDebugPort : 0,
+      patchedCount: 0,
+      rows: [],
+    };
+  }
 
   if (!isLiveWindow && !/startup-reconciled|opening-stale/i.test(String(source || ""))) {
     const rawCloseDir =
@@ -632,7 +658,6 @@ async function syncProfileWindowLiveCdpStateToP0020({
             headers,
             body: JSON.stringify({
               stealth_snapshot: nextSnap,
-              updated_at: nowIso,
             }),
             signal: AbortSignal.timeout(6000),
           },

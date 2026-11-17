@@ -1,184 +1,184 @@
 {
-  "generatedAt": "2026-11-12T10:49:37.002Z",
+  "generatedAt": "2026-11-17T21:17:52.876Z",
   "entries": [
     {
-      "version": "9.2.397",
-      "date": "2026-11-12",
-      "at": "2026-11-12T17:36:00+07:00",
-      "title": "Coherent 1920x1080 outer window geometry in headless CloakBrowser & full release",
+      "version": "9.2.484",
+      "date": "2026-11-18",
+      "at": "2026-11-18T04:13:00+07:00",
+      "title": "Patch bump for completed agent task",
       "bullets": [
-        "Added --window-size=1920,1080 in buildStealthChromeArgs for headless launches so window.outerWidth/outerHeight (1920x1080) matches inner (1920x947) and screen (1920x1080) in fingerprint-check-smoke."
+        "Automatic patch bump after completed P0003 task."
       ],
       "kind": "improve",
-      "userTitle": "Coherent 1920x1080 outer window geometry in headless Cloak Browser &…",
+      "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
-        "Added --window-size=1920,1080 in build Stealth Chrome Args for headless launches so window.outer…"
+        "Automatic patch bump after completed P0003 task."
       ]
     },
     {
-      "version": "9.2.396",
-      "date": "2026-11-12",
-      "at": "2026-11-12T17:11:00+07:00",
-      "title": "Explicit preload.cjs updateBridge method keys for sync-stealth-api-surface",
+      "version": "9.2.483",
+      "date": "2026-11-18",
+      "at": "2026-11-18T03:45:00+07:00",
+      "title": "Generate fixed col CSS for Workflows/Store/Extensions and unify 7.25rem",
       "bullets": [
-        "Bound explicit getUpdateStatus, checkForUpdates, downloadUpdate, installUpdate, and onUpdateStatus keys in electron/preload.cjs so sync-stealth-api-surface passes during desktop release."
+        "Unified Workflows, WorkflowStore, and SystemExtensions Created/Update to 7.25rem and added generate-p0003-directory-fixed-col-css.mjs."
       ],
       "kind": "improve",
-      "userTitle": "Explicit update Bridge method keys for sync-stealth-api-surface",
+      "userTitle": "Generate fixed col CSS for Workflows Store Extensions and unify 7.25rem",
       "userSummary": "",
       "userHighlights": [
-        "Bound explicit get Update Status, check For Updates, download Update, install Update, and on Upda…"
+        "Unified Workflows, Workflow Store, and System Extensions Created Update to 7.25rem and added ."
       ]
     },
     {
-      "version": "9.2.395",
-      "date": "2026-11-12",
-      "at": "2026-11-12T17:10:00+07:00",
-      "title": "Stamp openai_trial_claimed_at and last_stripe_decline_code in p0020-cards-cache.json",
+      "version": "9.2.482",
+      "date": "2026-11-18",
+      "at": "2026-11-18T03:39:00+07:00",
+      "title": "Patch bump for completed agent task",
       "bullets": [
-        "Added recordCardStripeOutcome, POST /api/billing-vault/report-card-outcome, and automatic exclusion of trial-claimed, Stripe-declined, and locked-STK cards in resolveCandidateBillingCardsFromVault."
+        "Automatic patch bump after completed P0003 task."
       ],
       "kind": "improve",
-      "userTitle": "Stamp openai trial claimed at and last stripe decline code in p0020-c…",
+      "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
-        "Added record Card Stripe Outcome, POST api billing-vault report-card-outcome, and automatic exclu…"
+        "Automatic patch bump after completed P0003 task."
       ]
     },
     {
-      "version": "9.2.394",
-      "date": "2026-11-12",
-      "at": "2026-11-12T16:59:00+07:00",
-      "title": "Preserve STEALTH_USER_DOWNLOAD_URL & STEALTH_LATEST_RELEASE_URL in sync-app-version.mjs",
+      "version": "9.2.479",
+      "date": "2026-11-18",
+      "at": "2026-11-18T03:21:00+07:00",
+      "title": "Pause background UI polling when hidden and preserve profilesLiteCache on status changes",
       "bullets": [
-        "Updated scripts/sync-app-version.mjs template so preShip/build preserves STEALTH_USER_DOWNLOAD_URL and STEALTH_LATEST_RELEASE_URL in src/lib/app-meta.ts."
+        "Added visibilityState guard, skipped hidden IPC broadcasts, patched _profilesLiteCache in-place on statusOnly invalidation, and dirty-checked tray menu."
       ],
       "kind": "improve",
-      "userTitle": "Preserve STEALTH USER DOWNLOAD URL & STEALTH LATEST RELEASE URL in",
+      "userTitle": "Pause background UI polling when hidden and preserve profiles Lite Ca…",
       "userSummary": "",
       "userHighlights": [
-        "Updated template so pre Ship build preserves STEALTH USER DOWNLOAD URL and STEALTH LATEST RELEASE…"
+        "Added visibility State guard, skipped hidden IPC broadcasts, patched profiles Lite Cache in-place…"
       ]
     },
     {
-      "version": "9.2.393",
-      "date": "2026-11-12",
-      "at": "2026-11-12T16:43:00+07:00",
-      "title": "Verify packaged resources/app-update.yml in unpacked & desktop SSOT gates",
+      "version": "9.2.478",
+      "date": "2026-11-18",
+      "at": "2026-11-18T03:20:00+07:00",
+      "title": "Align Log 15rem, Profile 7.25rem, and HubDirectoryProfileCell",
       "bullets": [
-        "Added resources/app-update.yml validation to verify-packaged-unpacked.mjs and verify-desktop-exe-ssot.mjs."
+        "Updated P0003 Log columns to HUB_DIRECTORY_LOG_COL_WIDTH (15rem), removed 6rem/6.5rem Profile and Android date CSS overrides in favor of 7.25rem SSOT, and upgraded Profile cells to HubDirectoryProfileCell."
       ],
       "kind": "improve",
-      "userTitle": "Verify packaged resources app-update.yml in unpacked & desktop shared…",
+      "userTitle": "Align Log 15rem, Profile 7.25rem, and Hub Directory Profile Cell",
       "userSummary": "",
       "userHighlights": [
-        "Added resources app-update.yml validation to and ."
+        "Updated P0003 Log columns to HUB DIRECTORY LOG COL WIDTH , removed 6rem 6.5rem Profile and Androi…"
       ]
     },
     {
-      "version": "9.2.392",
-      "date": "2026-11-12",
-      "at": "2026-11-12T15:34:00+07:00",
-      "title": "Normalize batch -pXXXX caller slugs and scope supportChatProtected locks",
+      "version": "9.2.477",
+      "date": "2026-11-18",
+      "at": "2026-11-18T03:19:00+07:00",
+      "title": "Patch bump for completed agent task",
       "bullets": [
-        "Strip routine -pXXXX suffixes in resolveAgentCallerIdFromHeaders and restrict priority-agent-locks supportChatProtected immunity to support/chat/appeal reasons so MAX_PER_CALLER=3 holds"
+        "Automatic patch bump after completed P0003 task."
       ],
       "kind": "improve",
-      "userTitle": "Normalize batch -p XXXX caller slugs and scope support Chat Protected…",
+      "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
-        "Strip routine -p XXXX suffixes in resolve Agent Caller Id From Headers and restrict priority-agen…"
+        "Automatic patch bump after completed P0003 task."
       ]
     },
     {
-      "version": "9.2.391",
-      "date": "2026-11-12",
-      "at": "2026-11-12T15:17:00+07:00",
-      "title": "NSIS Uninstall.exe upgrade unlock & end-user update/intro links",
+      "version": "9.2.475",
+      "date": "2026-11-18",
+      "at": "2026-11-18T02:18:00+07:00",
+      "title": "Isolated Android ESM Bridge Worker & Multi-Browser Socket",
       "bullets": [
-        "Added customFiles_x64 NSIS uninstaller unlock macro, atomic .part updater download + single-flight guard, seeded resources/app-update.yml on warm --prepackaged builds, disabled autoInstallOnAppQuit collision, and added 1-click User update link (/intro/download/) + Intro & user guide (/intro/) in Update Release modal and Settings -> About."
+        "Replaced in-process ESM cache-sensitive Android bridge imports with an isolated hot-reloadable Node ESM child-bridge worker SSOT across api-server and multiplatform-sync-routes"
       ],
       "kind": "improve",
-      "userTitle": "NSIS Uninstall.exe upgrade unlock & end-user update intro links",
+      "userTitle": "Isolated Android ESM Bridge Worker & Multi-Browser Socket",
       "userSummary": "",
       "userHighlights": [
-        "Added custom Files x64 NSIS uninstaller unlock macro, atomic .part updater download + single-flig…"
+        "Replaced in-process ESM cache-sensitive Android bridge imports with an isolated hot-reloadable No…"
       ]
     },
     {
-      "version": "9.2.390",
-      "date": "2026-11-12",
-      "at": "2026-11-12T07:26:00+07:00",
-      "title": "Add Mage.space Firebase IDB & Leonardo better-auth disk session matchers",
+      "version": "9.2.474",
+      "date": "2026-11-18",
+      "at": "2026-11-18T01:47:00+07:00",
+      "title": "Patch bump for completed agent task",
       "bullets": [
-        "Extend service-cookie-matchers.cjs to detect Mage.space firebaseLocalStorageDb and Leonardo AI __Secure-better-auth.session_token cookies"
+        "Automatic patch bump after completed P0003 task."
       ],
       "kind": "improve",
-      "userTitle": "Add Mage.space Firebase IDB & Leonardo better-auth disk session matchers",
+      "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
-        "Extend to detect Mage.space firebase Local Storage Db and Leonardo AI Secure-better-auth.session…"
+        "Automatic patch bump after completed P0003 task."
       ]
     },
     {
-      "version": "9.2.389",
-      "date": "2026-11-12",
-      "at": "2026-11-12T05:07:00+07:00",
-      "title": "Zero-PowerShell and zero-netstat dev orchestrator & kill-port in P0003 scripts",
+      "version": "9.2.473",
+      "date": "2026-11-18",
+      "at": "2026-11-18T01:47:00+07:00",
+      "title": "Auth-Proxy Fast-Spawn & multi-proxy isolation E2E guard + CWS E0001 auto-upgrade sync",
       "bullets": [
-        "Wire dev-desktop-process.mjs and scripts/kill-port.cjs to shared win-native-proc-net.mjs while preserving :6003 prod port refusal and :6004 Dev Exe GUI protection."
+        "Added automated <250ms warm auth-proxy Fast-Spawn SLA + cross-proxy isolation checks to proxy-smoke.cjs (auto-fetching diverse P0020 proxies), added --upgrade-cws to sync-bundled-e0001.mjs & release-desktop.ps1."
       ],
       "kind": "improve",
-      "userTitle": "Zero-Power Shell and zero-netstat dev orchestrator & kill-port in P00…",
+      "userTitle": "Auth-Proxy Fast-Spawn & multi-proxy isolation E2 E guard + CWS E0001…",
       "userSummary": "",
       "userHighlights": [
-        "Wire and to shared while preserving :6003 prod port refusal and :6004 Dev Exe GUI protection."
+        "Added automated <250ms warm auth-proxy Fast-Spawn SLA + cross-proxy isolation checks to , added -…"
       ]
     },
     {
-      "version": "9.2.388",
-      "date": "2026-11-12",
-      "at": "2026-11-12T04:50:00+07:00",
-      "title": "Fast System32 tar.exe CloakBrowser mirror archive extraction in cloak-browser-engine.cjs",
+      "version": "9.2.472",
+      "date": "2026-11-18",
+      "at": "2026-11-18T01:44:00+07:00",
+      "title": "Patch bump for completed agent task",
       "bullets": [
-        "Extract CloakBrowser frozen Chromium zip from Lenovo mirror via native C++ System32 tar.exe instead of single-threaded PowerShell .NET ZipFile::ExtractToDirectory, keeping SHA-256 verification and .NET fallback."
+        "Automatic patch bump after completed P0003 task."
       ],
       "kind": "improve",
-      "userTitle": "Fast System32 tar.exe Cloak Browser mirror archive extraction in",
+      "userTitle": "Patch bump for completed agent task",
       "userSummary": "",
       "userHighlights": [
-        "Extract Cloak Browser frozen Chromium zip from Lenovo mirror via native C++ System32 tar.exe inst…"
+        "Automatic patch bump after completed P0003 task."
       ]
     },
     {
-      "version": "9.2.387",
-      "date": "2026-11-12",
-      "at": "2026-11-12T04:30:00+07:00",
-      "title": "Add PS5.1-safe scripts.typecheck SSOT parity",
+      "version": "9.2.471",
+      "date": "2026-11-18",
+      "at": "2026-11-18T01:43:00+07:00",
+      "title": "Mobile Farm Dual-Device Wall & Prod Hot-Patch",
       "bullets": [
-        "Wire node_modules/typescript/bin/tsc --noEmit in package.json scripts.typecheck and lock under typecheck-script-parity gate."
+        "Added Dual Wall side-by-side multi-device rendering and per-card ADB serial touch/app dispatch across Pixel 6a and Galaxy S9+, plus multi-device allDevices live-screen forwarding"
       ],
       "kind": "improve",
-      "userTitle": "Add PS5.1-safe scripts.typecheck shared UI parity",
+      "userTitle": "Mobile Farm Dual-Device Wall & Prod Hot-Patch",
       "userSummary": "",
       "userHighlights": [
-        "Wire node modules typescript bin tsc -"
+        "Added Dual Wall side-by-side multi-device rendering and per-card ADB serial touch app dispatch ac…"
       ]
     },
     {
-      "version": "9.2.386",
-      "date": "2026-11-12",
-      "at": "2026-11-12T03:32:00+07:00",
-      "title": "In-memory zlib CRX/ZIP extractor & async System32 tar.exe profile backup/restore",
+      "version": "9.2.470",
+      "date": "2026-11-18",
+      "at": "2026-11-18T01:43:00+07:00",
+      "title": "Write structured platform_states from billing autofill card association",
       "bullets": [
-        "Replaced blocking PowerShell Expand-Archive in webstore-extension.cjs with in-memory Central Directory + zlib.inflateRawSync extractor (with Zip-Slip guard), and migrated profile-backup.cjs + IPC handlers to non-blocking async System32\\tar.exe + robocopy."
+        "Update recordLinkedCardAssociation in billing-autofill-bridge.cjs to merge stealth_snapshot.platform_states entries for ChatGPT, Stripe, ElevenLabs, Muse, PipoPay, and Google Pay alongside Card notes."
       ],
       "kind": "improve",
-      "userTitle": "In-memory zlib CRX ZIP extractor & async System32 tar.exe profile bac…",
+      "userTitle": "Write structured platform states from billing autofill card association",
       "userSummary": "",
       "userHighlights": [
-        "Replaced blocking Power Shell Expand-Archive in with in-memory Central Directory + zlib.inflate R…"
+        "Update record Linked Card Association in to merge stealth snapshot.platform states entries for Ch…"
       ]
     }
   ]

@@ -27,6 +27,7 @@ import { isSchemaRelatedVaultError, probeCookieSchemaOk } from "./schema-probe.j
 import {
   effectiveCookieDomain,
   elevenLabsSessionUrl,
+  evaluateOpenTabsSyncBlockForDomain,
   extraCookieQueryUrls,
   extractHostnameFromUrlOrDomain,
   googleMailInboxUrl,
@@ -39,6 +40,7 @@ import {
   isGoogleDomain,
   isGoogleMarketingUrl,
   isGoogleOsidAppDomain,
+  isGoogleSignInPromptUrl,
   isSpaStorageAuthDomain,
   openSiteHintHost,
   relatedCookieDomains,
@@ -241,6 +243,32 @@ export async function clearCookiesForDomain(domain = "") {
   return { ok: true, removed, domain };
 }
 
+/**
+ * Remove only host-scoped cookies on an OSID app's own sub-origin (e.g. `flow.google.com`)
+ * without touching shared `.google.com` or `accounts.google.com` cookies.
+ */
+export async function clearOsidAppHostCookies(domain = "") {
+  const osidApp = resolveGoogleOsidApp(domain);
+  if (!osidApp?.osidHosts?.length) return { ok: true, removed: 0, domain };
+  const hostSet = new Set(osidApp.osidHosts.map((h) => String(h).replace(/^\./, "").toLowerCase()));
+  const byKey = new Map();
+  for (const host of hostSet) {
+    for (const c of await collectCookiesForSingleScope(host)) {
+      const cd = (c.domain ?? "").replace(/^\./, "").toLowerCase();
+      if (hostSet.has(cd)) {
+        byKey.set(`${c.name}\0${c.domain}\0${c.path}`, c);
+      }
+    }
+  }
+  let removed = 0;
+  for (const cookie of byKey.values()) {
+    if (await removeSingleCookieEverywhere(cookie, domain)) {
+      removed += 1;
+    }
+  }
+  return { ok: true, removed, domain };
+}
+
 export async function waitForTabComplete(tabId, timeoutMs = 12000) {
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -278,18 +306,29 @@ export async function ensureSiteTabForDomain(domain, opts = {}) {
   const waitMs = Math.max(0, Number(opts.waitMs) || 350);
   const createdDelayMs = Math.max(0, Number(opts.createdDelayMs) || waitMs);
   const tabWaitMs = Math.max(0, Number(opts.tabWaitMs) || 12000);
-  const tabs = await chrome.tabs.query({});
-  const matching = tabs.filter(
-    (t) => t.url && (tabMatchesRoute(t.url, domain) || urlMatchesCookieDomain(t.url, domain)),
-  );
-  const open = matching[0] ?? null;
-  const openOsidApp = open?.url ? resolveGoogleOsidApp(open.url) : null;
+  let open = null;
+  if (opts.preferredTabId) {
+    try {
+      open = await chrome.tabs.get(opts.preferredTabId);
+    } catch {
+      open = null;
+    }
+  }
+  if (!open) {
+    const tabs = await chrome.tabs.query({});
+    const matching = tabs.filter(
+      (t) => t.url && (tabMatchesRoute(t.url, domain) || urlMatchesCookieDomain(t.url, domain)),
+    );
+    open = matching.find((t) => t.active) ?? matching[0] ?? null;
+  }
+  const openOsidApp =
+    !resolveGoogleOsidApp(domain) && open?.url ? resolveGoogleOsidApp(open.url) : null;
   const effectiveTargetDomain = openOsidApp ? openOsidApp.canonicalDomain : domain;
   const targetUrl =
     opts.targetUrl || (openOsidApp ? openOsidApp.sessionUrl : siteUrlForDomain(domain));
   const mustNavigate = open?.url
     ? domainNeedsForceNavigate(open.url, effectiveTargetDomain, forceNavigate)
-    : forceNavigate;
+    : true;
   if (open?.id) {
     if (mustNavigate) {
       await chrome.tabs.update(open.id, { url: targetUrl, active: activate });
@@ -304,6 +343,46 @@ export async function ensureSiteTabForDomain(domain, opts = {}) {
   await waitForTabComplete(tab.id, tabWaitMs);
   if (createdDelayMs > 0) await new Promise((r) => setTimeout(r, createdDelayMs));
   return { tabId: tab.id, created: true, navigated: true };
+}
+
+/**
+ * Park open Google / Google OSID tabs on `about:blank` right before clearing & writing vault cookies
+ * so background Google XHRs (`RotateCookies` / `CheckCookie`) cannot race or overwrite the incoming session.
+ */
+export async function parkGoogleTabsBeforeCookieSwap(domain) {
+  const tabs = await chrome.tabs.query({}).catch(() => []);
+  const explicitOsidApp = resolveGoogleOsidApp(domain);
+  const targets = tabs.filter((t) => {
+    if (!t?.id || !t?.url || !/^https?:\/\//i.test(t.url)) return false;
+    if (explicitOsidApp) {
+      const tabOsid = resolveGoogleOsidApp(t.url);
+      if (tabOsid?.id === explicitOsidApp.id) return true;
+      try {
+        return new URL(t.url).hostname.toLowerCase() === "accounts.google.com";
+      } catch {
+        return false;
+      }
+    }
+    return urlMatchesCookieDomain(t.url, domain);
+  });
+  if (!targets.length) return { parkedTabIds: [], preferredTabId: null };
+  const preferred = targets.find((t) => t.active) ?? targets[0];
+  const parkedTabIds = [];
+  for (const tab of targets) {
+    try {
+      await chrome.tabs.update(tab.id, { url: "about:blank" });
+      parkedTabIds.push(tab.id);
+    } catch {
+      /* ignore closed tab */
+    }
+  }
+  if (parkedTabIds.length) {
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return {
+    parkedTabIds,
+    preferredTabId: preferred?.id ?? parkedTabIds[0] ?? null,
+  };
 }
 
 /** Reload open tabs for domain (no new tab). Google: navigate to inbox or Google AI workspace; ElevenLabs: navigate sign-in/landing to `/app`. */
@@ -347,6 +426,30 @@ export async function refreshTabsForDomain(domain, opts = {}) {
   return refreshed;
 }
 
+async function waitForGoogleTabSettle(tabId, maxSettleMs = 2400) {
+  const stepMs = 400;
+  const deadline = Date.now() + maxSettleMs;
+  let lastUrl = "";
+  while (Date.now() < deadline) {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      lastUrl = tab.url ?? "";
+      if (isGoogleMarketingUrl(lastUrl) || isGoogleSignInPromptUrl(lastUrl)) {
+        return lastUrl;
+      }
+    } catch {
+      return "";
+    }
+    await new Promise((r) => setTimeout(r, stepMs));
+  }
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    return tab.url ?? lastUrl;
+  } catch {
+    return lastUrl;
+  }
+}
+
 export async function confirmGoogleInboxTab(domain, opts = {}) {
   const tabs = await chrome.tabs.query({}).catch(() => []);
   const explicitOsidApp = resolveGoogleOsidApp(domain);
@@ -354,35 +457,53 @@ export async function confirmGoogleInboxTab(domain, opts = {}) {
     explicitOsidApp ||
     tabs.map((t) => (t?.url ? resolveGoogleOsidApp(t.url) : null)).find(Boolean) ||
     null;
+  let hasOsid = false;
   let targetUrl = undefined;
   if (openTabOsidApp) {
     const jarCookies = await getCookiesForDomain(openTabOsidApp.canonicalDomain).catch(() => []);
-    const hasOsid =
+    hasOsid = Boolean(
       opts.hasOsid ??
-      opts.hasFlowOsid ??
-      hasGoogleOsidCookieForDomain(jarCookies, openTabOsidApp.canonicalDomain);
+        opts.hasFlowOsid ??
+        hasGoogleOsidCookieForDomain(jarCookies, openTabOsidApp.canonicalDomain),
+    );
     targetUrl = hasOsid
       ? googleOsidSessionUrl(openTabOsidApp.canonicalDomain)
       : googleOsidPassiveLoginUrl(openTabOsidApp.canonicalDomain);
   }
-  const ensured = await ensureSiteTabForDomain(
-    openTabOsidApp ? openTabOsidApp.canonicalDomain : domain,
-    {
-      activate: opts.activate !== false,
-      forceNavigate: true,
-      targetUrl,
-      waitMs: openTabOsidApp ? 1800 : 900,
-      createdDelayMs: 0,
-      tabWaitMs: GOOGLE_TAB_WAIT_MS,
-    },
-  );
+  const effectiveDomain = openTabOsidApp ? openTabOsidApp.canonicalDomain : domain;
+  const ensured = await ensureSiteTabForDomain(effectiveDomain, {
+    activate: opts.activate !== false,
+    forceNavigate: true,
+    preferredTabId: opts.preferredTabId ?? null,
+    targetUrl,
+    waitMs: 0,
+    createdDelayMs: 0,
+    tabWaitMs: GOOGLE_TAB_WAIT_MS,
+  });
   if (!ensured.tabId) return { ok: false, tabId: null, reason: "no_tab" };
-  let tabUrl = "";
-  try {
-    const tab = await chrome.tabs.get(ensured.tabId);
-    tabUrl = tab.url ?? "";
-  } catch {
+
+  let tabUrl = await waitForGoogleTabSettle(ensured.tabId, openTabOsidApp ? 2400 : 1000);
+  if (!tabUrl) {
     return { ok: false, tabId: ensured.tabId, reason: "tab_gone" };
+  }
+
+  // If vault had a stale/rotated OSID cookie on an OSID app (`flow.google.com`), retry once via passive ServiceLogin to mint a fresh OSID from `.google.com` + `LSID`.
+  if (openTabOsidApp && hasOsid && isGoogleMarketingUrl(tabUrl)) {
+    const passiveUrl = googleOsidPassiveLoginUrl(openTabOsidApp.canonicalDomain);
+    try {
+      await chrome.tabs.update(ensured.tabId, {
+        url: passiveUrl,
+        active: opts.activate !== false,
+      });
+      await waitForTabComplete(ensured.tabId, GOOGLE_TAB_WAIT_MS);
+      tabUrl = await waitForGoogleTabSettle(ensured.tabId, 2400);
+    } catch {
+      return { ok: false, tabId: ensured.tabId, reason: "tab_gone" };
+    }
+  }
+
+  if (isGoogleSignInPromptUrl(tabUrl)) {
+    return { ok: false, tabId: ensured.tabId, reason: "google_session_revoked", url: tabUrl };
   }
   if (isGoogleMarketingUrl(tabUrl)) {
     return { ok: false, tabId: ensured.tabId, reason: "marketing_redirect", url: tabUrl };
@@ -563,6 +684,125 @@ export async function recordRouteActivityOnCloud(auth, binding, kind, opts = {})
   }
 }
 
+const OSID_HTML_EMAIL_RE = /[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,24}/g;
+const OSID_IGNORED_EMAIL_DOMAINS = new Set([
+  "google.com",
+  "gstatic.com",
+  "googleapis.com",
+  "googleusercontent.com",
+  "gtempaccount.com",
+  "example.com",
+  "example.org",
+  "sentry.io",
+]);
+
+export function extractSignedInEmailsFromWizHtml(html = "") {
+  const found = [];
+  const seen = new Set();
+  const normalizedHtml = String(html || "").replace(
+    /\\x22|\\u0022|&quot;|&#34;|\\x27|\\u0027|&#39;/gi,
+    '"',
+  );
+  const matches = normalizedHtml.match(OSID_HTML_EMAIL_RE) || [];
+  for (const raw of matches) {
+    const rawEmail = raw.trim().toLowerCase();
+    if (/\.(png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?|ttf|map)$/i.test(rawEmail)) continue;
+    const atIdx = rawEmail.indexOf("@");
+    if (atIdx <= 0) continue;
+    const local = rawEmail.slice(0, atIdx).replace(/^datalab_prefs_/i, "");
+    const dom = rawEmail.slice(atIdx + 1);
+    if (!local || !dom) continue;
+    if (OSID_IGNORED_EMAIL_DOMAINS.has(dom)) continue;
+    if (/^(no[_-]?reply|support|help|info|abuse|postmaster|security)/i.test(local)) continue;
+    const email = `${local}@${dom}`;
+    if (seen.has(email)) continue;
+    seen.add(email);
+    found.push(email);
+  }
+  return found;
+}
+
+/**
+ * Inspect open browser tabs for a Google / Google OSID route so clicking `Sync` while standing
+ * on a logged-out landing page (`flow.google.com/about?pli=1`, `notebook.google`, `firebase.studio`)
+ * or `ServiceLogin` prompt NEVER overwrites a live Cloud Vault with stale jar cookies.
+ */
+export async function inspectOpenGoogleTabsForSyncGuard(
+  domain = "",
+  tabsApi = globalThis.chrome?.tabs,
+) {
+  if (!tabsApi?.query) return { blocked: false, loggedOutUrl: null, reason: "" };
+  try {
+    const tabs = await tabsApi.query({});
+    const res = evaluateOpenTabsSyncBlockForDomain(domain, tabs);
+    return {
+      blocked: res.blocked,
+      loggedOutUrl: res.loggedOutUrl,
+      reason: res.reason,
+    };
+  } catch {
+    return { blocked: false, loggedOutUrl: null, reason: "" };
+  }
+}
+
+/**
+ * Server-side session liveness probe across the Google AI / Subdomain OSID suite
+ * (`Google Flow`, `Google AI Studio`, `NotebookLM`, `Firebase Studio`, `Google Gemini`, `Google Colab`).
+ * Distinguishes live sessions (which embed the signed-in email in `WIZ_global_data` / `gbar_` / `AiSandboxAngularFrontend` HTML)
+ * from revoked/logged-out jar cookies (which redirect to `ServiceLogin` / marketing hosts or render guest Wiz HTML with 0 user emails).
+ * Gracefully returns `{ checked: false, live: true }` in offline unit tests where `fetch` is mocked only for Supabase.
+ */
+export async function probeGoogleOsidSessionLive(
+  osidApp,
+  { fetchFn = globalThis.fetch, timeoutMs = 3500 } = {},
+) {
+  const isRealExtensionRuntime = globalThis.location?.protocol === "chrome-extension:";
+  if (
+    !osidApp?.sessionUrl ||
+    typeof fetchFn !== "function" ||
+    (fetchFn === globalThis.fetch && !isRealExtensionRuntime)
+  ) {
+    return { checked: false, live: true, email: "" };
+  }
+  const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  try {
+    const res = await fetchFn(osidApp.sessionUrl, {
+      method: "GET",
+      credentials: "include",
+      redirect: "follow",
+      ...(ctrl ? { signal: ctrl.signal } : {}),
+    });
+    if (!res) return { checked: false, live: true, email: "" };
+    const finalUrl = String(res.url || "");
+    if (finalUrl && (isGoogleMarketingUrl(finalUrl) || isGoogleSignInPromptUrl(finalUrl))) {
+      return { checked: true, live: false, email: "" };
+    }
+    if (!res.ok || typeof res.text !== "function") {
+      return { checked: false, live: true, email: "" };
+    }
+    const html = await res.text();
+    const isGoogleAppHtml =
+      html.includes("AiSandboxAngularFrontend") ||
+      html.includes("WIZ_global_data") ||
+      html.includes("window['ppConfig']") ||
+      html.includes("_DumpException") ||
+      html.includes("gbar_");
+    if (!isGoogleAppHtml) {
+      return { checked: false, live: true, email: "" };
+    }
+    const emails = extractSignedInEmailsFromWizHtml(html);
+    if (emails.length > 0) {
+      return { checked: true, live: true, email: emails[0] };
+    }
+    return { checked: true, live: false, email: "" };
+  } catch {
+    return { checked: false, live: true, email: "" };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Canonical single-route Cookie + SPA Storage + Encrypted Vault Sync engine.
  * Shared identically by `background.js` (`syncBindingWithVault`) and `popup-direct-ops.js`.
@@ -631,26 +871,67 @@ export async function syncSingleRouteWithVault(auth, b, browserId, opts = {}) {
   const osidApp = resolveGoogleOsidApp(domain);
   if (
     (isGoogleDomain(domain) || Boolean(osidApp)) &&
-    currentGoogleNames?.hasGoogleLogin !== true &&
     opts.allowIncompleteGoogleVault !== true &&
     canUseVault(b)
   ) {
-    const existing = await fetchExistingVaultSummary(auth, b, summaryPassOpt).catch(() => ({
-      exists: false,
-    }));
     const targetName = osidApp ? osidApp.label : "Google";
-    return {
-      ok: true,
-      lines: count,
-      cookies: count,
-      vaultNames: currentVaultNames,
-      vault: "skipped",
-      skippedSync: true,
-      existingVault: existing?.exists ? existing.vaultNames ?? null : null,
-      vaultError: existing?.exists
-        ? `Guard: ${targetName} jar missing login cookies (SID/HSID); skipped vault overwrite.`
-        : `Guard: ${targetName} jar missing login cookies (SID/HSID) — sign in on ${osidApp ? osidApp.primaryHost : "Google"} first; skipped vault upload.`,
-    };
+    const targetHost = osidApp ? osidApp.primaryHost : "Google";
+    if (currentGoogleNames?.hasGoogleLogin !== true) {
+      const existing = await fetchExistingVaultSummary(auth, b, summaryPassOpt).catch(() => ({
+        exists: false,
+      }));
+      return {
+        ok: true,
+        lines: count,
+        cookies: count,
+        vaultNames: currentVaultNames,
+        vault: "skipped",
+        skippedSync: true,
+        existingVault: existing?.exists ? existing.vaultNames ?? null : null,
+        vaultError: existing?.exists
+          ? `Guard: ${targetName} jar missing login cookies (SID/HSID); skipped vault overwrite.`
+          : `Guard: ${targetName} jar missing login cookies (SID/HSID) — sign in on ${targetHost} first; skipped vault upload.`,
+      };
+    }
+
+    const tabGuard = await inspectOpenGoogleTabsForSyncGuard(domain);
+    if (tabGuard.blocked) {
+      const existing = await fetchExistingVaultSummary(auth, b, summaryPassOpt).catch(() => ({
+        exists: false,
+      }));
+      const isSignInScreen = isGoogleSignInPromptUrl(tabGuard.loggedOutUrl || "");
+      return {
+        ok: true,
+        lines: count,
+        cookies: count,
+        vaultNames: currentVaultNames,
+        vault: "skipped",
+        skippedSync: true,
+        existingVault: existing?.exists ? existing.vaultNames ?? null : null,
+        vaultError: isSignInScreen
+          ? `${targetName} tab is on the Google sign-in page — click Load (not Sync) to apply cloud cookies onto this browser, or sign in on ${targetHost} before clicking Sync.`
+          : `${targetName} tab is on the signed-out landing page — click Load (not Sync) to apply cloud cookies onto this browser, or sign in on ${targetHost} before clicking Sync.`,
+      };
+    }
+
+    if (osidApp && opts.manual === true) {
+      const liveProbe = await probeGoogleOsidSessionLive(osidApp);
+      if (liveProbe.checked && !liveProbe.live) {
+        const existing = await fetchExistingVaultSummary(auth, b, summaryPassOpt).catch(() => ({
+          exists: false,
+        }));
+        return {
+          ok: true,
+          lines: count,
+          cookies: count,
+          vaultNames: currentVaultNames,
+          vault: "skipped",
+          skippedSync: true,
+          existingVault: existing?.exists ? existing.vaultNames ?? null : null,
+          vaultError: `Local ${targetName} session on this browser is signed out/expired — click Load to apply cloud cookies, or sign in on ${targetHost} before clicking Sync.`,
+        };
+      }
+    }
   }
 
   if (!hasNonEmptyAuthStorage(storage) && canUseVault(b)) {

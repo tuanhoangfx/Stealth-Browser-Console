@@ -226,6 +226,16 @@ function buildCdpProxyAndJobRoutes(deps) {
       },
     },
     {
+      id: "billingVault.syncChatGptPlan",
+      method: "POST",
+      pattern: /^\/api\/billing-vault\/sync-chatgpt-plan$/,
+      async handler(ctx) {
+        const { syncChatGptPlusPlanByVerifiedEmail } = require("../lib/billing-autofill-bridge.cjs");
+        const res = await syncChatGptPlusPlanByVerifiedEmail(ctx.body || {});
+        return send.json(ctx.res, res.ok ? 200 : 400, res);
+      },
+    },
+    {
       id: "automation.open-url",
       method: "POST",
       pattern: /^\/api\/automation\/(open-url|run)$/,
@@ -372,6 +382,94 @@ function buildCdpProxyAndJobRoutes(deps) {
           allowCatalogRouteFallback,
         });
         return send.json(ctx.res, acquired.ok ? 200 : 404, acquired);
+      },
+    },
+    {
+      id: "proxy.mobileRotate",
+      method: "POST",
+      pattern: /^\/api\/proxy\/mobile-rotate$/,
+      async handler(ctx) {
+        const mod = await loadVpnProxyPoolModule();
+        if (!mod || typeof mod.rotateMobile5gProxyIp !== "function") {
+          return send.json(ctx.res, 503, { ok: false, error: "Mobile 4G/5G ADB proxy module unavailable" });
+        }
+        const deviceSpec = String(ctx.body?.deviceSpec || ctx.body?.device || "auto").trim();
+        const result = await mod.rotateMobile5gProxyIp({ deviceSpec });
+        return send.json(ctx.res, result?.ok ? 200 : 503, result);
+      },
+    },
+    {
+      id: "proxy.mobileStatus",
+      method: "GET",
+      pattern: /^\/api\/proxy\/mobile-status$/,
+      async handler(ctx) {
+        const mod = await loadVpnProxyPoolModule();
+        if (!mod || typeof mod.listPixelEsimProfiles !== "function") {
+          return send.json(ctx.res, 503, { ok: false, error: "Mobile 4G/5G ADB proxy module unavailable" });
+        }
+        const [esim, watchdog] = await Promise.all([
+          mod.listPixelEsimProfiles({ deviceSpec: "pixel6a-slot0" }).catch((err) => ({
+            ok: false,
+            error: err?.message || "esim_list_failed",
+            profiles: [],
+          })),
+          Promise.resolve(
+            typeof mod.getP0020ProxyWatchdogStatus === "function" ? mod.getP0020ProxyWatchdogStatus() : null,
+          ),
+        ]);
+        const pool = Array.isArray(mod.MOBILE_CELLULAR_DEVICE_POOL)
+          ? mod.MOBILE_CELLULAR_DEVICE_POOL.map((d) => ({
+              deviceId: d.deviceId,
+              label: d.label,
+              carrier: d.carrier,
+              browser: d.browser,
+              serial: d.serial,
+              host: d.host,
+              port: d.port,
+            }))
+          : [];
+        return send.json(ctx.res, 200, { ok: true, devices: pool, esim, watchdog });
+      },
+    },
+    {
+      id: "proxy.mobileEsim",
+      method: "POST",
+      pattern: /^\/api\/proxy\/mobile-esim$/,
+      async handler(ctx) {
+        const mod = await loadVpnProxyPoolModule();
+        if (!mod || typeof mod.switchPixelEsimProfile !== "function") {
+          return send.json(ctx.res, 503, { ok: false, error: "Pixel eSIM switch helper unavailable" });
+        }
+        const deviceSpec = String(ctx.body?.deviceSpec || "pixel6a-slot0").trim();
+        const targetProfile = String(ctx.body?.targetProfile || ctx.body?.profile || "").trim();
+        if (!targetProfile) {
+          return send.json(ctx.res, 400, { ok: false, error: "targetProfile is required (FPT | Viettel)" });
+        }
+        const result = await mod.switchPixelEsimProfile({ deviceSpec, targetProfile });
+        return send.json(ctx.res, result?.ok ? 200 : 503, result);
+      },
+    },
+    {
+      id: "proxy.mobileWatchdogTick",
+      method: "POST",
+      pattern: /^\/api\/proxy\/mobile-watchdog-tick$/,
+      async handler(ctx) {
+        const mod = await loadVpnProxyPoolModule();
+        if (!mod || typeof mod.runP0020ProxyWatchdog !== "function") {
+          return send.json(ctx.res, 503, { ok: false, error: "P0020 Proxy Watchdog unavailable" });
+        }
+        const autoRotateCellular = Boolean(ctx.body?.autoRotateCellular);
+        const forceRotateCellular = Boolean(ctx.body?.forceRotateCellular);
+        const notifyTelegram = ctx.body?.notifyTelegram !== false;
+        const rotateIntervalMin = Math.max(5, Number(ctx.body?.rotateIntervalMin || 30) || 30);
+        const result = await mod.runP0020ProxyWatchdog({
+          healCellular: true,
+          autoRotateCellular,
+          forceRotateCellular,
+          rotateIntervalMin,
+          notifyTelegram,
+        });
+        return send.json(ctx.res, result?.ok ? 200 : 503, result);
       },
     },
     // ── Job model (`jobs.stats` MUST precede `jobs.get` so `/api/jobs/stats` is not swallowed) ──

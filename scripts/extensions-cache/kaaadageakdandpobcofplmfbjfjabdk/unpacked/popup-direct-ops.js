@@ -29,9 +29,11 @@ import {
 import {
   authUserId,
   clearCookiesForDomain,
+  clearOsidAppHostCookies,
   confirmGoogleInboxTab,
   ensureSiteTabForDomain,
   getCookiesForDomain,
+  parkGoogleTabsBeforeCookieSwap,
   recordRouteActivityOnCloud,
   refreshTabsForDomain,
   syncSingleRouteWithVault,
@@ -286,7 +288,7 @@ export async function applyVaultDirectFromPopup(binding, opts = {}) {
     const openSite = opts.openSite !== false;
     const activateSite = opts.activateSite !== false;
 
-    if (clearBeforeLoad) {
+    if (clearBeforeLoad && !isGoogle) {
       await clearCookiesForDomain(domain);
     }
     if (openSite && !isGoogle) {
@@ -304,11 +306,25 @@ export async function applyVaultDirectFromPopup(binding, opts = {}) {
 
     const jarScope = effectiveCookieDomain(domain);
     const jarBefore = (await getCookiesForDomain(jarScope)).length;
+    let preferredGoogleTabId = null;
     const r = await loadVaultIntoBrowser(auth, binding, {
       clearWatermark: true,
       rounds: 4,
       retryDelayMs: 600,
       requireFacebookLogin: isFacebookDomain(domain),
+      beforeWrite: isGoogle
+        ? async () => {
+            if (opts.skipGoogleTabConfirm !== true) {
+              const parked = await parkGoogleTabsBeforeCookieSwap(domain);
+              preferredGoogleTabId = parked.preferredTabId;
+            }
+            if (clearBeforeLoad) {
+              await clearCookiesForDomain(domain);
+            } else if (osidApp) {
+              await clearOsidAppHostCookies(domain);
+            }
+          }
+        : undefined,
       ...(Object.prototype.hasOwnProperty.call(opts, "vaultPassOverride")
         ? { passphrase: opts.vaultPassOverride }
         : {}),
@@ -326,7 +342,7 @@ export async function applyVaultDirectFromPopup(binding, opts = {}) {
     }
 
     let storageApplied = 0;
-    if (hasNonEmptyAuthStorage(r.storage)) {
+    if (!isGoogle && hasNonEmptyAuthStorage(r.storage)) {
       try {
         await ensureSiteTabForDomain(domain, {
           activate: activateSite,
@@ -382,8 +398,19 @@ export async function applyVaultDirectFromPopup(binding, opts = {}) {
     let tabsRefreshed = 0;
     let googleSession = null;
     if (isGoogle && opts.skipGoogleTabConfirm !== true) {
-      googleSession = await confirmGoogleInboxTab(domain, { activate: activateSite });
+      googleSession = await confirmGoogleInboxTab(domain, {
+        activate: activateSite,
+        preferredTabId: preferredGoogleTabId,
+      });
       if (googleSession.tabId) tabsRefreshed += 1;
+      if (googleSession.ok && hasNonEmptyAuthStorage(r.storage)) {
+        try {
+          const storageRes = await applySiteAuthStorageForDomain(domain, r.storage);
+          storageApplied = storageRes?.applied ?? 0;
+        } catch {
+          /* ignore storage apply error */
+        }
+      }
     } else {
       if (opts.skipRefreshDelay !== true) {
         await new Promise((res) => setTimeout(res, 350));
@@ -402,9 +429,12 @@ export async function applyVaultDirectFromPopup(binding, opts = {}) {
       warning = `Wrote ${applied}/${decrypted} cookies · jar ${jarAfter}${names ? ` — failed: ${names}` : ""}${miss > 0 ? ` (missing ${miss})` : ""}`;
     }
     if (isGoogle && googleSession && googleSession.ok !== true) {
-      const sessionHint = osidApp
-        ? `Could not confirm ${osidApp.label} session on ${osidApp.primaryHost} after Load — sign in on the source browser and Sync again.`
-        : "Could not confirm Gmail inbox after Load — try syncing `.google.com` again.";
+      const sessionHint =
+        googleSession.reason === "google_session_revoked"
+          ? `Google session in vault was signed out on Google servers — sign in on ${osidApp ? osidApp.primaryHost : "Gmail"} and Sync again (use Clear Active instead of Google Sign out when testing).`
+          : osidApp
+            ? `Could not confirm ${osidApp.label} session on ${osidApp.primaryHost} after Load — sign in on the source browser and Sync again.`
+            : "Could not confirm Gmail inbox after Load — try syncing `.google.com` again.";
       warning = warning ? `${warning} ${sessionHint}` : sessionHint;
     }
 

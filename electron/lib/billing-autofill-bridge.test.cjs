@@ -13,6 +13,7 @@ const {
   resolveCandidateBillingCardsFromVault,
   listMaskedBillingCards,
   upsertBillingCardInVault,
+  syncChatGptPlusPlanByVerifiedEmail,
 } = require("./billing-autofill-bridge.cjs");
 
 test("billing-autofill-bridge unifies Card Vault, Fallback Rotation (ok 1), Biometric Billing Address (ok 2), and RFC 6238 TOTP (ok 3)", () => {
@@ -78,5 +79,48 @@ test("billing-autofill-bridge unifies Card Vault, Fallback Rotation (ok 1), Biom
     } catch {
       /* ignore */
     }
+  }
+});
+
+test("syncChatGptPlusPlanByVerifiedEmail protects 8xxx/buyer/existing-plan rows and never emits #0000", async () => {
+  const origFetch = globalThis.fetch;
+  let patchCount = 0;
+  process.env.SUPABASE_URL = "https://mock.databox.local";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "mock-key";
+  globalThis.fetch = async (_url, init = {}) => {
+    if (String(init.method || "GET").toUpperCase() === "PATCH") {
+      patchCount += 1;
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => [
+        {
+          id: "174101cf-bdfa-4720-b188-0994edf1f7ee",
+          account: "thisisnotatshirt.vtg@gmail.com",
+          browser: "8370",
+          status: "active",
+          ownership: "buyer",
+          plan_package: "ChatGPT Plus 4m bhf 08/26 - Trần Quang Duy 101",
+          note: "05/10/26 : 💎 Plan - ChatGPT Plus 4m bhf 08/26 - Trần Quang Duy 101",
+        },
+      ],
+    };
+  };
+  try {
+    const res = await syncChatGptPlusPlanByVerifiedEmail({
+      email: "thisisnotatshirt.vtg@gmail.com",
+      hasActiveSubscription: true,
+      planType: "plus",
+    });
+    assert.equal(res.ok, true);
+    assert.equal(res.skippedProtectedPlan, true);
+    assert.equal(res.planPackage, "ChatGPT Plus 4m bhf 08/26 - Trần Quang Duy 101");
+    assert.equal(patchCount, 0);
+  } finally {
+    globalThis.fetch = origFetch;
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   }
 });

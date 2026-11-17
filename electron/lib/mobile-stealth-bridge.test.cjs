@@ -153,4 +153,26 @@ describe("mobile-stealth-bridge", () => {
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
+
+  it("loads P0002 Android Stealth Bridge via isolated ESM worker and reloads cleanly on invalidation", async () => {
+    const path = require("node:path");
+    const {
+      loadAndroidStealthBridge,
+      invalidateAndroidStealthBridgeWorker,
+      computeAndroidBridgeVersion,
+    } = require("./android-bridge-loader.cjs");
+    const electronDir = path.resolve(__dirname, "..");
+    const bridge = await loadAndroidStealthBridge(electronDir);
+    if (!bridge) return;
+    assert.equal(typeof bridge.getAndroidLiveScreenAndFarmState, "function");
+    assert.equal(typeof bridge.dispatchAndroidLiveControlAction, "function");
+    assert.ok(String(bridge.MOBILE_VAULT_ROOT || "").includes("mobile-vault"));
+    const ver = computeAndroidBridgeVersion("E:/Dev/Tool/P0002-Social-Hub/server/android-stealth-bridge.mjs");
+    assert.ok(ver.includes(":"));
+    invalidateAndroidStealthBridgeWorker();
+    const reloaded = await loadAndroidStealthBridge(electronDir);
+    assert.ok(reloaded);
+    assert.equal(typeof reloaded.getAndroidLiveScreenAndFarmState, "function");
+    invalidateAndroidStealthBridgeWorker();
+  });
 });

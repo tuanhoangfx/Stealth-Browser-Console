@@ -21,9 +21,9 @@ if (!/^\d+\.\d+\.\d+$/.test(next)) {
   process.exit(1);
 }
 
-if (next !== "0.4.8" && !forceUnfreeze) {
+if (next !== "0.6.5" && !forceUnfreeze) {
   console.error(
-    `bump-cloakbrowser: REFUSED (${next}). CloakBrowser is frozen at 0.4.8 (chromium-146.0.7680.177.5) because versions >=0.4.11 / 0.7.0 introduce server-side seat limits (exitCode=76: session limit reached for your plan). Pass --force-unfreeze only if you have an enterprise unlimited-seat license.`,
+    `bump-cloakbrowser: REFUSED (${next}). CloakBrowser is frozen at 0.6.5 (chromium-146.0.7680.177.5) because versions >=0.7.0 remove keyless mode and enforce server-side seat limits (1 session free tier). Pass --force-unfreeze only if you have an enterprise unlimited-seat license.`,
   );
   process.exit(1);
 }

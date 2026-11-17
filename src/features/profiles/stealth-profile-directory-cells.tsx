@@ -5,6 +5,7 @@ import {
   formatHubTimestampCompact,
   getDirectorySearchHighlight,
   HubDirectoryEllipsisCell,
+  HubDirectoryProfileCell,
   HubDirectoryRunToggle,
   HubDirectorySearchHighlightText,
   HubDirectoryValuePopover,
@@ -73,13 +74,14 @@ export function renderStealthProfileDirectoryBodyCell(
         .join("\n");
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubDirectoryValuePopover value={popoverValue} title="🆔 Profile ID" className="justify-center">
-            <HubDirectorySearchHighlightText
-              text={display}
-              terms={profileNameTerms}
-              className={`hub-users-name-title text-center tabular-nums ${DIRECTORY_CELL_TRUNCATE}`}
-            />
-          </HubDirectoryValuePopover>
+          <HubDirectoryProfileCell
+            value={display}
+            heatTier={1}
+            copyToastLabel="Profile copied"
+            popoverTitle="🆔 Profile ID"
+            popoverText={popoverValue}
+            searchHighlightTerms={profileNameTerms}
+          />
         </DirectoryTableBodyCell>
       );
     }
@@ -135,8 +137,8 @@ export function renderStealthProfileDirectoryBodyCell(
             userRunning
               ? `Stop ${profile.name}${showHeadlessBadge ? " (headless)" : " (protected user active)"}`
               : waitingReason
-                ? `Run ${profile.name} (Waiting: ${waitingReason})`
-                : `Run ${profile.name} with startup URL${showHeadlessBadge ? " (agent headless active)" : ""}`
+                ? `Launch ${profile.name} (Waiting: ${waitingReason})`
+                : `Launch ${profile.name} with startup URL${showHeadlessBadge ? " (agent headless active)" : ""}`
           }
           disabled={!userRunning && opening}
           trailing={

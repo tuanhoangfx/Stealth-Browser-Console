@@ -1,5 +1,1397 @@
 # Changelog
 
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.484`
+- Timestamp: 2026-11-18 04:13 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Generate fixed col CSS for Workflows/Store/Extensions and unify 7.25rem
+
+- Version: `9.2.483`
+- Timestamp: 2026-11-18 03:45 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Unified Workflows, WorkflowStore, and SystemExtensions Created/Update to 7.25rem and added generate-p0003-directory-fixed-col-css.mjs.
+
+### Verification
+
+- tsc --noEmit + vite build + hub-ui-preflight P0003 + 19/19 Vitest profile tests + headless Stealth DOM smoke
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.482`
+- Timestamp: 2026-11-18 03:39 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.481`
+- Timestamp: 2026-11-18 03:24 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.480`
+- Timestamp: 2026-11-18 03:21 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Pause background UI polling when hidden and preserve profilesLiteCache on status changes
+
+- Version: `9.2.479`
+- Timestamp: 2026-11-18 03:21 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added visibilityState guard, skipped hidden IPC broadcasts, patched _profilesLiteCache in-place on statusOnly invalidation, and dirty-checked tray menu.
+
+### Verification
+
+- node --test electron/*.test.cjs electron/engine/*.test.cjs (44/44 pass) + pnpm build
+
+---
+## 2026-11-18 - Align Log 15rem, Profile 7.25rem, and HubDirectoryProfileCell
+
+- Version: `9.2.478`
+- Timestamp: 2026-11-18 03:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated P0003 Log columns to HUB_DIRECTORY_LOG_COL_WIDTH (15rem), removed 6rem/6.5rem Profile and Android date CSS overrides in favor of 7.25rem SSOT, and upgraded Profile cells to HubDirectoryProfileCell.
+
+### Verification
+
+- tsc --noEmit + vite build + hub-ui-preflight P0003 + directory-table-col-parity P0003 + audit-hub-chrome-contract P0003
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.477`
+- Timestamp: 2026-11-18 03:19 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.476`
+- Timestamp: 2026-11-18 02:21 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Isolated Android ESM Bridge Worker & Multi-Browser Socket
+
+- Version: `9.2.475`
+- Timestamp: 2026-11-18 02:18 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replaced in-process ESM cache-sensitive Android bridge imports with an isolated hot-reloadable Node ESM child-bridge worker SSOT across api-server and multiplatform-sync-routes
+
+### Verification
+
+- unit tests 12/12 + api-routes.test.cjs + typecheck pass; building & hot-patching Prod :6003
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.474`
+- Timestamp: 2026-11-18 01:47 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Auth-Proxy Fast-Spawn & multi-proxy isolation E2E guard + CWS E0001 auto-upgrade sync
+
+- Version: `9.2.473`
+- Timestamp: 2026-11-18 01:47 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added automated <250ms warm auth-proxy Fast-Spawn SLA + cross-proxy isolation checks to proxy-smoke.cjs (auto-fetching diverse P0020 proxies), added --upgrade-cws to sync-bundled-e0001.mjs & release-desktop.ps1.
+
+### Verification
+
+- run-unit-tests.mjs full (0 failures, 0 skips, proxy-smoke auto-P0020 warm=34ms/multi-proxy isolation)
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.472`
+- Timestamp: 2026-11-18 01:44 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Mobile Farm Dual-Device Wall & Prod Hot-Patch
+
+- Version: `9.2.471`
+- Timestamp: 2026-11-18 01:43 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Dual Wall side-by-side multi-device rendering and per-card ADB serial touch/app dispatch across Pixel 6a and Galaxy S9+, plus multi-device allDevices live-screen forwarding
+
+### Verification
+
+- typecheck + unit tests pass; building dist and syncing Prod :6003
+
+---
+## 2026-11-18 - Write structured platform_states from billing autofill card association
+
+- Version: `9.2.470`
+- Timestamp: 2026-11-18 01:43 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Update recordLinkedCardAssociation in billing-autofill-bridge.cjs to merge stealth_snapshot.platform_states entries for ChatGPT, Stripe, ElevenLabs, Muse, PipoPay, and Google Pay alongside Card notes.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs (2/2 pass)
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.469`
+- Timestamp: 2026-11-18 01:42 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.468`
+- Timestamp: 2026-11-18 01:41 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Upgrade cloakbrowser 0.6.5, auth-proxy Fast-Spawn + GeoIP cache, and E2E/desktop verification
+
+- Version: `9.2.467`
+- Timestamp: 2026-11-18 01:29 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Upgraded CloakBrowser engine wrapper to 0.6.5 (Chromium 146), routed Windows authenticated proxies via <100ms Fast-Spawn + 60s GeoIP TTL cache, fixed headless E0001 relaunch smoke + native prefs read safety, and verified full E2E + packaged desktop dist.
+
+### Verification
+
+- run-unit-tests.mjs full (55 Vitest files / 221 tests + 9 live E2E smokes including live P0020 proxy-smoke)
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.466`
+- Timestamp: 2026-11-18 01:24 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.465`
+- Timestamp: 2026-11-18 01:20 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Mobile Farm Multi-Device S9+ & Pixel 6a Parity
+
+- Version: `9.2.464`
+- Timestamp: 2026-11-18 01:19 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Harden S9+ 01-s9-stealth-boot.sh (80-85% batt_slate_mode, fw.max_users=32); add dynamic Display 0 resolution & device integrity/brand telemetry for S9+ and Pixel 6a in P0003 Mobile Farm and slice-aware bridgeVer cache busting.
+
+### Verification
+
+- typecheck + build + mobile-farm-s9-and-mail-matrix.test.mjs + mobile-stealth-bridge.test.cjs (10/10 pass) + live S9+/Pixel 6a ADB switch
+
+---
+## 2026-11-18 - Protect Dual App U95 in Mobile Farm bulk stop and add ESM reload fallback for android-stealth-bridge
+
+- Version: `9.2.463`
+- Timestamp: 2026-11-18 01:00 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Skip Dual App U95/U999 in MobileFarmView handleBatchStopUsers and cache last coherent android-stealth-bridge module in electron/api-server.cjs and multiplatform-sync-routes.cjs.
+
+### Verification
+
+- tsc --noEmit + api-routes.test.cjs + mobile-stealth-bridge.test.cjs + agent-verify-gate P0003 light
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.462`
+- Timestamp: 2026-11-18 00:38 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - P0003 Mobile Active Android Device Switcher UI
+
+- Version: `9.2.461`
+- Timestamp: 2026-11-18 00:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Multi-Device Switcher pills (Pixel 6a vs Galaxy S9+) in MobileFarmControlRail/MobileFarmView with H.264 stream reset
+
+### Verification
+
+- tsc --noEmit + eslint + mobile-stealth-bridge.test.cjs
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.460`
+- Timestamp: 2026-11-18 00:22 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Upgrade cloakbrowser wrapper to 0.6.5 (keyless 146) + Fast-Spawn CDP unit suite
+
+- Version: `9.2.459`
+- Timestamp: 2026-11-18 00:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Upgrade cloakbrowser wrapper pin from 0.4.8 to 0.6.5 while keeping chromium-146.0.7680.177.5 keyless unlimited sessions; add buildCloakLaunchOptionsSafe GeoIP fallback and fix resolveCloakbrowserPackageDir exports resolution; fix #closeSingleSession to share #closeFocusOnlySession graceful CDP close; add session-fast-spawn-cdp.test.cjs and run telemetry on 0.6.5.
+
+### Verification
+
+- run-unit-tests.mjs --fast pass (55/55 vitest 221 tests + 33 electron suites including session-fast-spawn-cdp & cloakbrowser-packaged-resolve) + 0.6.5 live Fast-Spawn probe (directSpawnMs:37, proxyPrepSpawnMs:74, humOk:true, webdriver:false)
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.458`
+- Timestamp: 2026-11-18 00:17 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Prioritize Live Workspace VPN Proxy Pool & Android Bridge
+
+- Version: `9.2.457`
+- Timestamp: 2026-11-18 00:15 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prioritized workspace Tool/scripts/lib/vpn-proxy-pool.mjs in electron/lib/proxy-pool.cjs alongside live P0002 bridge lookup so installed P0003 never loads stale bundled copies
+
+### Verification
+
+- live :6003 /api/proxy/mobile-status & /api/android-vault/status 200 OK
+
+---
+## 2026-11-18 - Prioritize Live P0002 Android Bridge Over Stale Bundled Copy
+
+- Version: `9.2.456`
+- Timestamp: 2026-11-18 00:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Reordered loadAndroidStealthBridge, loadStealthCdpClient, and api-server live-sync bridge lookup to prefer E:/Dev/Tool/P0002-Social-Hub over stale bundled resources/P0002-Social-Hub
+
+### Verification
+
+- electron/api-routes.test.cjs + gate.mjs post check pending after restart
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.455`
+- Timestamp: 2026-11-17 22:32 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.454`
+- Timestamp: 2026-11-17 22:25 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.453`
+- Timestamp: 2026-11-17 22:25 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Enable Fast-Spawn (<100ms) with CDP attached and lazy connectOverCDP for Standard mode
+
+- Version: `9.2.452`
+- Timestamp: 2026-11-17 22:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Upgrade openPureHeadedProfile to accept debugPort and route default non-auth-proxy Standard headed launches in SessionManager through native spawn (~55ms) with --remote-debugging-port, lazy ensureConnectedContext/upgradeToPlaywrightContext + humanize attach, and graceful CDP Browser.close before force kill.
+
+### Verification
+
+- Fast-Spawn+CDP E2E (spawnMs:55, debugPort:63284, webdriver:false, widevine:OK, live Netflix #7022 login pass) + unit suites pass (api-routes, launch-purity-gate, prepare-profile-launch)
+
+---
+## 2026-11-17 - Mobile ADB eSIM Switch, Status & Watchdog Routes
+
+- Version: `9.2.451`
+- Timestamp: 2026-11-17 22:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added GET /api/proxy/mobile-status, POST /api/proxy/mobile-esim, and POST /api/proxy/mobile-watchdog-tick routes in session-and-cdp-routes.cjs
+
+### Verification
+
+- node electron/api-routes.test.cjs passed
+
+---
+## 2026-11-17 - Guarded unconfirmed /caa/reg FB ghosts in p0003_window_close_sync
+
+- Version: `9.2.450`
+- Timestamp: 2026-11-17 22:07 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prevented offline_proxy_safe and p0003_window_close_sync from promoting unconfirmed_caa_reg/reg_unconfirmed Facebook rows back to active, added regression test, and purged disk SQLite ghost FB cookies on 2601-2621.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/p0020-snapshot-builder.test.cjs -> 40/40 pass
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.449`
+- Timestamp: 2026-11-17 22:06 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Fix Chromium Secure Preferences HMAC tamper reset (Extension(s))
+
+- Version: `9.2.448`
+- Timestamp: 2026-11-17 22:03 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Guard prepareProfileExtensions, ensureProfileChromeOmniboxSearchPrefs, and reconcileClosedProfileExtensionPrefs with hasSignedSecurePreferences + clearTrackedPreferenceResetNotice so signed profiles load E0001/E0002 via CLI without mutating HMAC-protected Preferences/Secure Preferences or triggering Chrome reset these settings.
+
+### Verification
+
+- node --test profile-chrome-preferences/cleanup/omnibox/native-extension-load/launch-purity-gate/profile-extension-pins (34/34 pass) + Chrome 146 3-pass E2E (trackedReset:null, resetModal:false, 2 SW active)
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.447`
+- Timestamp: 2026-11-17 21:25 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Tighten Profile/Group/URL/Proxy widths & persist /learn no-clipping directory SSOT
+
+- Version: `9.2.446`
+- Timestamp: 2026-11-17 21:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Tightened Profile (6rem), Group (6rem), URL (7rem, renamed from Startup URL), and Proxy (8.5rem) columns with zero label clipping, and persisted /learn Header No-Clipping SSOT to p00xx-directory-table skill + hub-directory-table-gate.mjs.
+
+### Verification
+
+- Chrome 1600x900 DOM 13/13 0 clipped (tableW 1544.3px), P0003 tsc + vitest 55/55 (221 tests), verify-agent-docs-skills-ssot OK, verify-directory-header-width-ssot OK
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.445`
+- Timestamp: 2026-11-17 21:14 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Fix directory header clipping workspace-wide, bundle WidevineCdm Lenovo mirror & warm pure launch <100ms
+
+- Version: `9.2.444`
+- Timestamp: 2026-11-17 21:12 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Synced Hub-UI + workspace directory header widths, removed P0003 table width:100% squeeze and Proxy/Note collapse, added boot binary warm & 5m extension cache TTL for <=100ms Pure Window launches, and bundled WidevineCdm to Lenovo backup mirror.
+
+### Verification
+
+- packages/hub-ui vitest 235/235, P0003 tsc + run-unit-tests --fast 221/221 + Chrome DOM 0 clipped, Netflix Widevine OK, Lenovo mirror SHA256 OK, check-launch-speed 545ms PASS
+
+---
+## 2026-11-17 - Preserve newer forwarding and anti-spam snapshot across P0003 close sync
+
+- Version: `9.2.443`
+- Timestamp: 2026-11-17 20:49 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Re-read live stealth_snapshot and mail_forward before P0003 PATCH and merge newer forwarding_* and anti_spam_filter_* keys via mergePreserveNewerForwardingSnapshot.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/p0020-snapshot-builder.test.cjs
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.442`
+- Timestamp: 2026-11-17 20:40 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.441`
+- Timestamp: 2026-11-17 20:37 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Auto-sideload WidevineCdm and add Pure Window (No CDP) headed launch
+
+- Version: `9.2.440`
+- Timestamp: 2026-11-17 20:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-sideload WidevineCdm once per CloakBrowser binary dir on Windows (0ms per-profile overhead), add openPureHeadedProfile direct native Chrome spawn without Playwright/CDP for raw-window/pureHeaded mode, deduplicate --ignore-gpu-blocklist, and sync UI labels.
+
+### Verification
+
+- cloak-browser-engine.test.cjs + launch-purity-gate.test.cjs (13/13) + tsc --noEmit (0 errors) + run-unit-tests.mjs --fast (exit 0, vitest 221/221) + live Widevine com.widevine.alpha ok (warmMs=703) + pure-headed native spawn verified
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.439`
+- Timestamp: 2026-11-17 20:19 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Add POST /api/proxy/mobile-rotate endpoint for 4G ADB rotation
+
+- Version: `9.2.438`
+- Timestamp: 2026-11-17 19:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Expose POST /api/proxy/mobile-rotate in session-and-cdp-routes.cjs backed by rotateMobile5gProxyIp
+
+### Verification
+
+- node --check pass, P0003 fast unit suite pass
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.437`
+- Timestamp: 2026-11-17 18:50 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.436`
+- Timestamp: 2026-11-17 18:49 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Guard Facebook unconfirmed reg redirects from logged_in
+
+- Version: `9.2.435`
+- Timestamp: 2026-11-17 18:47 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Reject /caa/reg, /reg, confirmemail.php, and /ig/login_via in verifyFacebookCookiesLiveViaHttp, isAuthenticatedFacebookAppUrl, and classifyFacebookLiveCdpTargets
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs (21/21 pass)
+
+---
+## 2026-11-17 - Unify Action label & drop 404 claude-sonnet-5-5 fallback from recaptcha solver
+
+- Version: `9.2.434`
+- Timestamp: 2026-11-17 18:46 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Rename Run column header and idle toggle button label to Action to match P0010 directory SSOT, and remove defunct 404 ag/claude-sonnet-5-5* models from recaptcha-vision-solver.
+
+### Verification
+
+- vitest stealth-profile-directory-cells.test.tsx & hub-ui-preflight --code P0003
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.433`
+- Timestamp: 2026-11-17 18:42 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.432`
+- Timestamp: 2026-11-17 18:30 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.431`
+- Timestamp: 2026-11-17 18:08 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Strip Playwright automation flags and restore ThirdPartyStoragePartitioning
+
+- Version: `9.2.430`
+- Timestamp: 2026-11-17 18:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Keep ThirdPartyStoragePartitioning/HttpsUpgrades/PaintHolding/RenderDocument/OptimizationHints enabled, strip Playwright default automation switches and raw --disable-features in buildIgnoreDefaultArgs, and raise headless disk/media cache to 32MB/16MB.
+
+### Verification
+
+- cloak-browser-engine.test.cjs + launch-purity-gate.test.cjs (12/12) + run-unit-tests.mjs --fast (exit 0) + live cmdline verified
+
+---
+## 2026-11-17 - Fix checkProxy keep-alive settlement and add mobile5g adapter
+
+- Version: `9.2.429`
+- Timestamp: 2026-11-17 15:21 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Settle checkProxy immediately on Content-Length/JSON completion instead of EOF timeout and route mobile5g:// specs via vpn-proxy-pool
+
+### Verification
+
+- checkProxy GOST 541ms, P0003 fast unit tests & vitest 55/55 (221/221) pass, acquireMobile5gProxy live
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.428`
+- Timestamp: 2026-11-17 15:15 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Bypass revoked CapSolver key in vision solver
+
+- Version: `9.2.427`
+- Timestamp: 2026-11-17 01:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed hardcoded dead CapSolver fallback key CAP-1C2D... and disabled CapSolver cleanly on 401/403/ERROR_KEY_DENIED_ACCESS so 9Router vision resolves immediately
+
+### Verification
+
+- node --test electron/automation/recaptcha-vision-solver.test.cjs (10/10); node scripts/run-unit-tests.mjs --fast (exit 0); verify-js-undeclared-identifiers --code P0003 --dirty-only (OK 29 files)
+
+---
+## 2026-11-17 - Patch bump for completed agent task
+
+- Version: `9.2.426`
+- Timestamp: 2026-11-17 01:09 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-17 - Eliminate headless live_cdp twofa_accounts write storm and no-op cookie PATCHes
+
+- Version: `9.2.425`
+- Timestamp: 2026-11-17 01:08 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Skip twofa_accounts DB writes on headless window lifecycle (preserve instant SSE broadcast), throttle non-auth p0003_live_nav sync to 30s, ignore unchanged decrypted cookies on window close, and add unit test.
+
+### Verification
+
+- google-session-detect.test.cjs + p0020-snapshot-builder.test.cjs (24/24)
+
+---
+## 2026-11-16 - Prioritize Gemini Flash over Claude Sonnet in Vision reCAPTCHA solver
+
+- Version: `9.2.424`
+- Timestamp: 2026-11-16 20:09 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Move ag/gemini-3-flash, ag/gemini-2.5-flash, ag/gemini-3.8-flash and cx/* above ag/claude-sonnet-* in electron/automation/recaptcha-vision-solver.cjs fallback order.
+
+### Verification
+
+- recaptcha-vision-solver.test.cjs 10/10 pass; vitest 55 files / 221 tests pass; node --check exit 0; extension-e0001-relaunch-smoke failed on pre-existing bundled-extension edits
+
+---
+## 2026-11-16 - Omit client batch updated_at on P0020 twofa_accounts PATCH syncs
+
+- Version: `9.2.423`
+- Timestamp: 2026-11-16 19:31 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Remove redundant client-side updated_at fields from P0003 twofa_accounts PATCH payloads so origin-pg stamps server now() atomically without LWW clock skew or log-tip OCC bumps
+
+### Verification
+
+- node scripts/run-unit-tests.mjs --fast
+
+---
+## 2026-11-16 - Patch bump for completed agent task
+
+- Version: `9.2.422`
+- Timestamp: 2026-11-16 19:10 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-16 - Align Tailwind v3 opacity classes to bracketed syntax
+
+- Version: `9.2.421`
+- Timestamp: 2026-11-16 18:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Convert unbracketed Tailwind v3 opacity utilities (/6, /8, /12, /14, /16, /18, /22, /26, /28) to bracketed /[0.xx] syntax
+
+### Verification
+
+- tsc --noEmit 0 errors + hub-bulk-action-tone-gate OK
+
+---
+## 2026-11-16 - Patch bump for completed agent task
+
+- Version: `9.2.420`
+- Timestamp: 2026-11-16 13:46 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-16 - Eliminate PowerShell DPAPI fallbacks in cookie guard and disk SQLite sync
+
+- Version: `9.2.419`
+- Timestamp: 2026-11-16 13:42 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed spawnSync/execFileSync powershell DPAPI fallbacks in profile-cookie-guard.cjs and disk-sqlite-cookies.cjs, relying purely on native koffi Crypt32.dll/Kernel32.dll DPAPI and synced to hot-patch.
+
+### Verification
+
+- node --check + koffi CryptProtectData/CryptUnprotectData/batchUnprotectDpapiKeys round-trip + cloak-browser-engine.test.cjs (7/7 pass) + hot-reload (80 modules) + 0 powershell spawns in 2.5s trace
+
+---
+## 2026-11-16 - Patch bump for completed agent task
+
+- Version: `9.2.418`
+- Timestamp: 2026-11-16 11:25 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-16 - Clean stale binaries and block legacy Win32_Process PowerShell scans
+
+- Version: `9.2.417`
+- Timestamp: 2026-11-16 11:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-unlink stale renamed exe files in cloak-browser-engine.cjs, block Win32_Process PowerShell scans in powershell-exec.cjs, and skip WMI PowerShell fallback in win-shell-env.cjs when Job lacks KILL_ON_JOB_CLOSE.
+
+### Verification
+
+- cloak-browser-engine.test.cjs (7/7 pass) + :6003/api/system/hot-reload 200 + 6.5s trace 0 P0003 PowerShell spawns
+
+---
+## 2026-11-16 - Promote closed headed entries and preserve multi-task deferred queue
+
+- Version: `9.2.416`
+- Timestamp: 2026-11-16 11:11 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Promote non-interactive entries from pendingWhileUserHeaded and deferredMap into readyForRetry while merging tasks and triggering AG drain before clearing.
+
+### Verification
+
+- agent-verify-gate light + electron/api-routes.test.cjs + test-deferred-headed-queue-ssot
+
+---
+## 2026-11-16 - Patch bump for completed agent task
+
+- Version: `9.2.415`
+- Timestamp: 2026-11-16 10:52 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-16 - Enforce PE Subsystem CUI(3) on chrome-headless.exe and native GetExtendedTcpTable port lookup
+
+- Version: `9.2.414`
+- Timestamp: 2026-11-16 10:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Update cloak-browser-engine.cjs and ensure-packaged-module-paths.cjs to patch chrome-headless.exe and chrome-headless-shell.exe to PE Subsystem 3 (WINDOWS_CUI) including locked atomic-rename fallback, update unit test, replace netstat.exe spawn in profile-browser-orphan.cjs with iphlpapi.dll GetExtendedTcpTable, and hot-reload :6003.
+
+### Verification
+
+- node --test cloak-browser-engine.test.cjs (7/7 pass) + :6003/api/system/hot-reload 200 + 6.5s Toolhelp32 trace 0 GUI(2) non-conhost spawns
+
+---
+## 2026-11-16 - Patch bump for completed agent task
+
+- Version: `9.2.413`
+- Timestamp: 2026-11-16 10:40 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-16 - Patch bump for completed agent task
+
+- Version: `9.2.412`
+- Timestamp: 2026-11-16 10:24 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-16 - Preserve bound AI UID on account_mismatch in P0020 snapshot builder
+
+- Version: `9.2.411`
+- Timestamp: 2026-11-16 10:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Hardened p0020-snapshot-builder.cjs so account_mismatch preserves the row's own bound AI UID (oai_user_id) and clears distinct legacy openai_user_id.
+
+### Verification
+
+- node --test google-session-detect.test.cjs
+
+---
+## 2026-11-15 - Guard 8xxx and auto-drain deferred Antigravity queue on close
+
+- Version: `9.2.410`
+- Timestamp: 2026-11-15 23:52 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Refuse 8xxx profiles in deferred headed queue, preserve multi-task entries, and trigger post-close Antigravity ToS appeal auto-drain.
+
+### Verification
+
+- agent-verify-gate light + api-routes/p0020-snapshot-builder/profile-cookie-guard unit suites
+
+---
+## 2026-11-15 - Patch bump for completed agent task
+
+- Version: `9.2.409`
+- Timestamp: 2026-11-15 22:28 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-15 - Recognize Topview NextAuth session-token cookies in multiplatform sync and cookie guard
+
+- Version: `9.2.408`
+- Timestamp: 2026-11-15 22:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added __Secure-next-auth.session-token* and next-auth.session-token* matchers for topview.ai in service-cookie-matchers and SPA_AUTH_EXTRACTION_RULES while rejecting synthetic spa_/sso_ placeholders.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/multiplatform-sync/service-cookie-matchers.cjs and profile-cookie-guard.cjs PASS
+
+---
+## 2026-11-15 - Patch bump for completed agent task
+
+- Version: `9.2.407`
+- Timestamp: 2026-11-15 22:04 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-15 - Expose non-secret isDirectProxy on profile status & Proposal 3 password reverify sync
+
+- Version: `9.2.406`
+- Timestamp: 2026-11-15 21:27 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Expose boolean isDirectProxy on GET /api/profiles/:id/status without credential leak, add api-routes unit test, and verify password_reverify_needed snapshot flagging/clear.
+
+### Verification
+
+- node scripts/run-unit-tests.mjs --fast (exit 0)
+
+---
+## 2026-11-15 - Patch bump for completed agent task
+
+- Version: `9.2.405`
+- Timestamp: 2026-11-15 21:21 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-15 - Patch bump for completed agent task
+
+- Version: `9.2.404`
+- Timestamp: 2026-11-15 21:20 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-15 - Patch bump for completed agent task
+
+- Version: `9.2.403`
+- Timestamp: 2026-11-15 20:46 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-15 - Patch bump for completed agent task
+
+- Version: `9.2.402`
+- Timestamp: 2026-11-15 20:42 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-12 - Enforce strict Adobe IMS cookie & email identity verification and window-close demotion
+
+- Version: `9.2.401`
+- Timestamp: 2026-11-12 20:36 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed anonymous pre-login cookies (fg_cts, ftr_set, s_ac, ID, RMR, guid) from Adobe matcher, added verifyAdobeCookiesLiveViaHttp with strict email identity guard in p0020-row-verifier, and allowed window-close demotion when Adobe auth cookies are absent
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs Tool/P0003-Stealth-Browser-Console/electron/engine/launch-purity-gate.test.cjs; node Tool/scripts/agent-verify-gate.mjs --code P0003 --json --intent light
+
+---
+## 2026-11-12 - Guard existing partner/buyer ChatGPT plans and fix empty #0000 browserHint in syncChatGptPlusPlanByVerifiedEmail
+
+- Version: `9.2.400`
+- Timestamp: 2026-11-12 19:44 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Protected 8xxx, buyer/sell/partner, and existing non-empty plan_package rows from date/package/note overwrites in syncChatGptPlusPlanByVerifiedEmail, and prevented empty browser hints from formatting as #0000.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
+## 2026-11-12 - Eliminate conhost.exe 0x4 spawns from chrome-headless.exe and wireproxy.exe
+
+- Version: `9.2.399`
+- Timestamp: 2026-11-12 18:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Ensure chrome-headless.exe uses PE Subsystem 2 (IMAGE_SUBSYSTEM_WINDOWS_GUI) with atomic rename+copy repair when locked, upgrade ChildProcess.prototype.spawn guard to V3, and spawn wireproxy.exe with detached:true + windowsHide:true on win32 so Windows ConDrv allocates 0 conhost.exe 0x4 processes
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/engine/cloak-browser-engine.test.cjs; node Tool/P0003-Stealth-Browser-Console/scripts/verify-no-implicit-packaged-kill.mjs; node Tool/P0003-Stealth-Browser-Console/scripts/sync-hot-patch.cjs --release-prod
+
+---
+## 2026-11-12 - Enforce strict email identity match on ChatGPT session sync and add verified-email Plus plan sync route
+
+- Version: `9.2.398`
+- Timestamp: 2026-11-12 18:11 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Removed Microsoft alias bypass for ChatGPT in p0020-row-verifier.cjs so cross-profile Outlook sessions never overwrite Gmail/appeal ChatGPT rows, and added POST /api/billing-vault/sync-chatgpt-plan with dual-key (browser + LOWER(account)) verification.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
 ## 2026-11-12 - Coherent 1920x1080 outer window geometry in headless CloakBrowser & full release
 
 - Version: `9.2.397`

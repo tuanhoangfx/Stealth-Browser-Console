@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { readJson, writeJson } = require("./profile-chrome-json.cjs");
+const { hasSignedSecurePreferences } = require("./profile-chrome-preferences.cjs");
 
 /** Chromium Local State — prefer search over single-label intranet URL guesses. */
 const INTRANET_REDIRECT_BEHAVIOR = 1; // DisableInterceptionChecksDisableInfobar
@@ -50,30 +51,32 @@ function ensureProfileChromeOmniboxSearchPrefs(userDataDir) {
   }
   if (changed) writeJson(localStateFile, localState);
 
-  const prefs = readJson(prefsFile) || {};
-  let prefsChanged = false;
-  if (prefs.default_search_provider_enabled !== true) {
-    prefs.default_search_provider_enabled = true;
-    prefsChanged = true;
-  }
-  const template = prefs.default_search_provider_data?.template_url_data;
-  if (!template?.url?.includes("{searchTerms}")) {
-    prefs.default_search_provider_data = {
-      template_url_data: {
-        short_name: "Google",
-        keyword: "google.com",
-        url: "https://www.google.com/search?q={searchTerms}",
-        favicon_url: "https://www.google.com/favicon.ico",
-        safe_for_autoreplace: true,
-        input_encodings: ["UTF-8"],
-      },
-    };
-    prefsChanged = true;
-  }
-  if (prefsChanged) {
-    fs.mkdirSync(path.dirname(prefsFile), { recursive: true });
-    writeJson(prefsFile, prefs);
-    changed += 1;
+  if (!hasSignedSecurePreferences(base)) {
+    const prefs = readJson(prefsFile) || {};
+    let prefsChanged = false;
+    if (prefs.default_search_provider_enabled !== true) {
+      prefs.default_search_provider_enabled = true;
+      prefsChanged = true;
+    }
+    const template = prefs.default_search_provider_data?.template_url_data;
+    if (!template?.url?.includes("{searchTerms}")) {
+      prefs.default_search_provider_data = {
+        template_url_data: {
+          short_name: "Google",
+          keyword: "google.com",
+          url: "https://www.google.com/search?q={searchTerms}",
+          favicon_url: "https://www.google.com/favicon.ico",
+          safe_for_autoreplace: true,
+          input_encodings: ["UTF-8"],
+        },
+      };
+      prefsChanged = true;
+    }
+    if (prefsChanged) {
+      fs.mkdirSync(path.dirname(prefsFile), { recursive: true });
+      writeJson(prefsFile, prefs);
+      changed += 1;
+    }
   }
 
   if (!fs.existsSync(policyFile) || fs.readFileSync(policyFile, "utf8") !== OMNIBOX_POLICY_JSON) {

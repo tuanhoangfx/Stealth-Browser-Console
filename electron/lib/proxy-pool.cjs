@@ -259,19 +259,29 @@ function checkProxy(proxyInput, { timeoutMs = 8000 } = {}) {
     });
 
     let buf = "";
-    socket.on("data", (chunk) => { buf += chunk.toString("utf8"); });
-    socket.on("close", () => {
-      if (settled) return;
+    const settleFromHttpBuffer = () => {
+      if (settled) return true;
       const sep = buf.indexOf("\r\n\r\n");
-      const statusLine = buf.split("\r\n")[0] || "";
-      const body = sep >= 0 ? buf.slice(sep + 4) : "";
+      if (sep < 0) return false;
+      const headerText = buf.slice(0, sep);
+      const statusLine = headerText.split("\r\n")[0] || "";
+      const body = buf.slice(sep + 4);
       if (!/\b2\d\d\b/.test(statusLine)) {
-        return done({ alive: false, reason: statusLine || "no response" });
+        done({ alive: false, reason: statusLine || "no response" });
+        return true;
+      }
+      const clMatch = headerText.match(/(?:^|\r\n)content-length:\s*(\d+)/i);
+      if (clMatch) {
+        const expectedLen = Number(clMatch[1]);
+        if (Number.isFinite(expectedLen) && Buffer.byteLength(body, "utf8") < expectedLen) {
+          return false;
+        }
       }
       try {
-        // body có thể là chunked → lấy đoạn JSON đầu tiên.
+        // body có thể là chunked hoặc keep-alive → settle ngay khi nhận đủ JSON.
         const jsonStart = body.indexOf("{");
         const jsonEnd = body.lastIndexOf("}");
+        if (jsonStart < 0 || jsonEnd <= jsonStart) return false;
         const geo = JSON.parse(body.slice(jsonStart, jsonEnd + 1));
         done({
           alive: true,
@@ -280,18 +290,44 @@ function checkProxy(proxyInput, { timeoutMs = 8000 } = {}) {
           timezone: geo.timezone || "",
           latencyMs: Date.now() - started
         });
+        return true;
       } catch {
-        done({ alive: false, reason: "không parse được geo response" });
+        return false;
+      }
+    };
+    socket.on("data", (chunk) => {
+      buf += chunk.toString("utf8");
+      if (settleFromHttpBuffer()) {
+        try { socket.destroy(); } catch {}
+      }
+    });
+    socket.on("close", () => {
+      if (settled) return;
+      if (!settleFromHttpBuffer()) {
+        const sep = buf.indexOf("\r\n\r\n");
+        const statusLine = buf.split("\r\n")[0] || "";
+        if (!/\b2\d\d\b/.test(statusLine)) {
+          return done({ alive: false, reason: statusLine || "no response" });
+        }
+        return done({ alive: false, reason: sep < 0 ? "no response" : "không parse được geo response" });
       }
     });
   });
 }
 
 /**
- * Parse a country proxy shorthand (`vpn://US`, `proxy://VN`, `country:SG`, `surfshark://GB`, `nordvpn://JP`, or `[vpn:US]` in note).
+ * Parse a country proxy shorthand (`vpn://US`, `proxy://VN`, `country:SG`, `surfshark://GB`, `nordvpn://JP`, `mobile5g://pixel6a-slot0`, or `[vpn:US]` in note).
  */
 function parseCountryProxySpec(input, note = "", startupUrl = "") {
   const raw = String(input || "").trim();
+  const mob = raw.match(/^(?:mobile5g|mobile4g|mobile):(?:\/\/)?([^\s]+)$/i);
+  if (mob) {
+    return {
+      countryCode: "VN",
+      providerHint: "mobile5g",
+      mobileDeviceSpec: mob[1].trim(),
+    };
+  }
   const m = raw.match(/^(?:vpn|proxy|country|surfshark|nordvpn):(?:\/\/)?([A-Za-z]{2})\b/i);
   if (m) {
     const providerHint = /^surfshark:/i.test(raw)
@@ -317,11 +353,11 @@ let vpnPoolModulePromise = null;
 let vpnPoolModuleMtimeMs = 0;
 function resolveVpnProxyPoolPath() {
   const candidates = [
-    path.resolve(__dirname, "..", "..", "..", "scripts", "lib", "vpn-proxy-pool.mjs"),
     process.env.STEALTH_WORKSPACE_ROOT
       ? path.resolve(process.env.STEALTH_WORKSPACE_ROOT, "Tool", "scripts", "lib", "vpn-proxy-pool.mjs")
       : "",
     path.resolve("E:/Dev/Tool/scripts/lib/vpn-proxy-pool.mjs"),
+    path.resolve(__dirname, "..", "..", "..", "scripts", "lib", "vpn-proxy-pool.mjs"),
   ].filter(Boolean);
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate;
@@ -372,7 +408,28 @@ async function resolveProfileCountryProxy(profile = {}, opts = {}) {
   if (!spec) return null;
 
   const mod = await loadVpnProxyPoolModule();
-  if (!mod || typeof mod.acquireCountryProxy !== "function") return null;
+  if (!mod) return null;
+
+  if (spec.providerHint === "mobile5g" && typeof mod.acquireMobile5gProxy === "function") {
+    const mobileAcq = await mod.acquireMobile5gProxy({
+      deviceSpec: spec.mobileDeviceSpec || "pixel6a-slot0",
+      rotate: Boolean(opts.rotate),
+    });
+    if (!mobileAcq?.ok || !mobileAcq.localProxyUrl) return null;
+    const cc = String(mobileAcq.countryCode || "VN").toUpperCase();
+    const geoDef = COUNTRY_GEO_DEFAULTS[cc] || COUNTRY_GEO_DEFAULTS.VN;
+    return {
+      resolvedProxy: mobileAcq.localProxyUrl,
+      countryCode: cc,
+      exitIp: mobileAcq.exitIp,
+      timezone: mobileAcq.timezone || geoDef.timezone || "",
+      locale: geoDef.locale || "",
+      latencyMs: mobileAcq.latencyMs,
+      source: mobileAcq.source || "mobile5g-adb",
+    };
+  }
+
+  if (typeof mod.acquireCountryProxy !== "function") return null;
 
   const preferVaultProxy =
     opts.preferVaultProxy !== undefined
@@ -419,17 +476,23 @@ async function checkOrAcquireProfileProxy(proxyInput, options = {}) {
   const spec = parseCountryProxySpec(trimmed, options.note);
   if (spec) {
     const preferVaultProxy =
-      options.rotateVpn !== undefined
-        ? !options.rotateVpn
-        : options.preferVaultProxy !== undefined
-          ? Boolean(options.preferVaultProxy)
-          : spec.providerHint !== "surfshark" && spec.providerHint !== "nordvpn";
+      spec.providerHint === "mobile5g"
+        ? false
+        : options.rotateVpn !== undefined
+          ? !options.rotateVpn
+          : options.preferVaultProxy !== undefined
+            ? Boolean(options.preferVaultProxy)
+            : spec.providerHint !== "surfshark" && spec.providerHint !== "nordvpn";
     const resolved = await resolveProfileCountryProxy(
       { proxy: trimmed, note: options.note },
-      { preferVaultProxy },
+      { preferVaultProxy, rotate: Boolean(options.rotate || options.rotateVpn) },
     );
     if (!resolved) {
-      return { alive: false, countryCode: spec.countryCode, reason: "VPN tunnel unavailable" };
+      return {
+        alive: false,
+        countryCode: spec.countryCode,
+        reason: spec.providerHint === "mobile5g" ? "Mobile 5G/LTE ADB proxy unavailable" : "VPN tunnel unavailable",
+      };
     }
     return {
       alive: true,

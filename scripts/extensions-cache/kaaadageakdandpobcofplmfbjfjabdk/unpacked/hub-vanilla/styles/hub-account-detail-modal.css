@@ -618,6 +618,20 @@
   display: contents;
 }
 
+/* 2/3-row field span inside 3-col aligned grid: label occupies 1 label track, value spans 3 tracks
+ * (slot 1 value + slot 2 label + slot 2 value), leaving slot 3 aligned in cols 5–6. */
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .hub-adm-form-row--aligned:not(.hub-adm-form-row--single)
+  .hub-adm-inline-field--span-2
+  > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing),
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .twofa-adm-form-row--aligned:not(.hub-adm-form-row--single)
+  .hub-adm-inline-field--span-2
+  > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing) {
+  grid-column: span 3;
+  min-width: 0;
+}
+
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-adm-inline-field__label,
 :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .hub-adm-inline-field__label,
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .twofa-adm-inline-field__label,
@@ -1502,6 +1516,17 @@
     grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
   }
 
+  :is(.hub-account-detail-modal, .hub-add-modal)
+    .hub-adm-form-row--aligned:not(.hub-adm-form-row--single)
+    .hub-adm-inline-field--span-2
+    > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing),
+  :is(.hub-account-detail-modal, .hub-add-modal)
+    .twofa-adm-form-row--aligned:not(.hub-adm-form-row--single)
+    .hub-adm-inline-field--span-2
+    > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing) {
+    grid-column: auto;
+  }
+
   :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.hub-adm-form-row--aligned,
   :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.twofa-adm-form-row--aligned,
   :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row.hub-adm-form-row--aligned,
@@ -1696,13 +1721,97 @@
   cursor: pointer;
   transition:
     color 0.12s ease,
-    text-decoration-color 0.12s ease;
+    text-decoration-color 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .hub-adm-note-readonly-body .hub-adm-note-link:hover {
   color: rgb(186, 230, 253);
   text-decoration: underline;
   text-decoration-color: rgba(186, 230, 253, 0.85);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.42rem;
+  margin: 0.05rem 0.08rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.35;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  background: rgba(14, 165, 233, 0.14);
+  color: rgb(186, 230, 253);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--action:hover {
+  text-decoration: none;
+  border-color: rgba(56, 189, 248, 0.68);
+  background: rgba(14, 165, 233, 0.25);
+  color: rgb(224, 242, 254);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--guide {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(245, 158, 11, 0.14);
+  color: rgb(253, 230, 138);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--guide:hover {
+  border-color: rgba(251, 191, 36, 0.72);
+  background: rgba(245, 158, 11, 0.26);
+  color: rgb(254, 243, 199);
+}
+
+.hub-adm-note-action-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding-top: 0.38rem;
+  flex-shrink: 0;
+}
+
+.hub-adm-note-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.45rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  background: rgba(14, 165, 233, 0.13);
+  color: rgb(186, 230, 253);
+  text-decoration: none;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.hub-adm-note-action-btn:hover {
+  border-color: rgba(56, 189, 248, 0.68);
+  background: rgba(14, 165, 233, 0.24);
+  color: rgb(240, 249, 255);
+}
+
+.hub-adm-note-action-btn--guide {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(245, 158, 11, 0.14);
+  color: rgb(253, 230, 138);
+}
+
+.hub-adm-note-action-btn--guide:hover {
+  border-color: rgba(251, 191, 36, 0.72);
+  background: rgba(245, 158, 11, 0.26);
+  color: rgb(254, 249, 195);
 }
 
 .hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--note .hub-adm-note-editor-field,

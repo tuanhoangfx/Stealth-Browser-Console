@@ -35,7 +35,7 @@
     "manifestPath": "tool.manifest.json"
   },
   "release": {
-    "version": "1.2.37",
+    "version": "1.2.64",
     "readiness": [
       "manifest-v3",
       "cookie-permission",
@@ -43,20 +43,21 @@
       "tool-link"
     ],
     "latestPublished": {
-      "url": "https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/tag/v1.2.24",
-      "publishedAt": "2026-11-05T11:12:48.191Z",
-      "tag": "v1.2.24",
+      "url": "https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/tag/v1.2.42",
+      "publishedAt": "2026-11-12T14:02:39.269Z",
+      "tag": "v1.2.42",
       "asset": {
-        "name": "E0001-cookie-bridge-v1.2.37.zip",
-        "downloadUrl": "https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/download/v1.2.37/E0001-cookie-bridge-v1.2.37.zip",
-        "size": 247539,
-        "sha256": "e45fb0a63cc1dc5a6677127c8ffb52740ec6ca51add07b749045fc976a7eeb74"
+        "name": "E0001-cookie-bridge-v1.2.64.zip",
+        "downloadUrl": "https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/download/v1.2.64/E0001-cookie-bridge-v1.2.64.zip",
+        "size": 257057,
+        "sha256": "b514c701b62b75f11db2c98a006ecaba7bdabbf4baab7813aeb8467e91816ba2"
       }
     }
   },
   "urls": {
     "local": "chrome://extensions",
-    "chromeWebStore": "https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk",
+    "shortInstall": "https://infi28.com/toolkit/cookiebridge",
+    "chromeWebStore": "https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk?hl=vi",
     "chromeWebStoreId": "kaaadageakdandpobcofplmfbjfjabdk",
     "chromeWebStorePublisherId": "2a7913fe-ce44-44df-817f-c62be3f9cef2",
     "privacyPolicy": "https://databox.infi28.com/e0001-privacy.html",
@@ -64,19 +65,18 @@
     "appLocal": "http://127.0.0.1:5177/cookie"
   },
   "chromeWebStore": {
-    "listingStatus": "in_review",
+    "listingStatus": "rejected",
     "visibility": "public",
-    "submittedAt": "2026-06-09",
-    "lastStatusAt": "2026-11-12T09:07:02.075Z",
+    "submittedAt": "2026-11-13",
+    "lastStatusAt": "2026-11-17T18:37:01.001Z",
     "shareHint": "While in review: team installs via GitHub ZIP. After approval: switch Distribution â†’ Unlisted for link-only sharing.",
-    "submittedVersion": "1.2.34",
-    "submittedState": "PENDING_REVIEW",
-    "publishedVersion": "1.2.8",
-    "queuedVersion": "1.2.36"
+    "submittedVersion": "1.2.64",
+    "submittedState": "REJECTED",
+    "publishedVersion": "1.2.8"
   },
   "health": {
     "status": "Active",
-    "note": "CWS in_review v1.2.34 (live v1.2.8) — kaaadageakdandpobcofplmfbjfjabdk"
+    "note": "CWS rejected v1.2.8 — kaaadageakdandpobcofplmfbjfjabdk"
   },
   "nextActions": [
     "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
@@ -91,7 +91,7 @@
     "Optional: switch Distribution to Unlisted for link-only team sharing.",
     "Load unpacked / GitHub ZIP: v1.1.11 (hub-api + sb-api). CWS published v1.1.11 â€” Store installs auto-update."
   ],
-  "manifestUpdatedAt": "2026-11-12T09:32:20.713Z",
+  "manifestUpdatedAt": "2026-11-17T18:37:01.001Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Push",
@@ -114,7 +114,7 @@
     "restore": "powershell -File E:\\\\Dev\\\\Tool\\\\scripts\\\\restore-known-good.ps1 -Code E0001"
   },
   "versions": {
-    "current": "1.2.37",
-    "latestPublished": "1.2.24"
+    "current": "1.2.64",
+    "latestPublished": "1.2.42"
   }
 }

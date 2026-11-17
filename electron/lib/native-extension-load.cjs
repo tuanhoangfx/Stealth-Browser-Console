@@ -12,6 +12,8 @@ const {
   pinToolbarExtension,
   unpackedExtensionId,
   unpinExtensionFromProfile,
+  hasSignedSecurePreferences,
+  clearTrackedPreferenceResetNotice,
 } = require("./profile-chrome-preferences.cjs");
 const {
   purgeDuplicateUnpackedStoreExtensions,
@@ -52,9 +54,11 @@ function readJson(file) {
  * redundant and can be dropped for a faster open.
  */
 function isCookieBridgeProvisionedInPrefs(userDataDir) {
-  const entry = readJson(path.join(userDataDir, "Default", "Preferences"))?.extensions?.settings?.[
-    COOKIE_BRIDGE_STORE_ID
-  ];
+  const entry =
+    readJson(path.join(userDataDir, "Default", "Preferences"))?.extensions?.settings?.[COOKIE_BRIDGE_STORE_ID] ||
+    readJson(path.join(userDataDir, "Default", "Secure Preferences"))?.extensions?.settings?.[
+      COOKIE_BRIDGE_STORE_ID
+    ];
   if (!entry || Number(entry.state) !== 1) return false;
   const manifest = entry.manifest;
   const chromiumLoaded = Boolean(manifest && typeof manifest === "object" && manifest.name);
@@ -128,7 +132,11 @@ function resolveOperatorExtensionDir() {
 function readProfileExtensionSources(userDataDir, userDataRoot, effectiveToggles) {
   const toggles = effectiveToggles || getExtensionToggles();
   const prefsFile = path.join(userDataDir, "Default", "Preferences");
-  const settings = readJson(prefsFile)?.extensions?.settings || {};
+  const securePrefsFile = path.join(userDataDir, "Default", "Secure Preferences");
+  const settings = {
+    ...(readJson(securePrefsFile)?.extensions?.settings || {}),
+    ...(readJson(prefsFile)?.extensions?.settings || {}),
+  };
   const entries = [];
   const seenStore = new Set();
 
@@ -405,7 +413,7 @@ function unpinOperatorFromProfile(userDataDir, cloakCacheDir) {
 }
 
 const _preparedProfileExtCache = new Map();
-const PREPARED_PROFILE_EXT_TTL_MS = 30_000;
+const PREPARED_PROFILE_EXT_TTL_MS = 300_000;
 
 function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, options = {}) {
   const emptyPlan = {
@@ -421,11 +429,15 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
   // Shortcuts relaunch Chrome without this prep. The junction must exist even
   // when this profile's toggle is off, or a leftover pin shows "manifest missing".
   const resolvedCloakDir = cloakCacheDir || defaultCloakCacheDir();
+  const signedSecurePrefs = hasSignedSecurePreferences(userDataDir);
+  if (signedSecurePrefs) {
+    clearTrackedPreferenceResetNotice(userDataDir);
+  }
   const stagedOperator = stageOperatorExtension(resolvedCloakDir);
   if (cookieBridgeEnabled() && toggles.e0001 !== false && userDataRoot) {
     stageCookieBridgeExtension(userDataRoot, resolvedCloakDir);
   }
-  if (toggles.e0002 === false) unpinOperatorFromProfile(userDataDir, resolvedCloakDir);
+  if (toggles.e0002 === false && !signedSecurePrefs) unpinOperatorFromProfile(userDataDir, resolvedCloakDir);
   if (!profileExtensionsEnabled()) return emptyPlan;
 
   const prefsFile = userDataDir ? path.join(userDataDir, "Default", "Preferences") : "";
@@ -455,17 +467,19 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
     }
   }
 
-  if (!FAST_PREP) {
+  if (!FAST_PREP && !signedSecurePrefs) {
     purgeDuplicateUnpackedStoreExtensions(userDataDir);
   }
 
   // Snapshot BEFORE re-pinning: was E0001 already Chromium-installed in this
-  // profile? If so we can load it natively from prefs and skip the redundant
-  // per-launch --load-extension re-validation (faster opens, 1.0.11-like).
+  // profile? Reading prefs does not mutate HMAC-signed files, so verified CWS
+  // installs can still reload natively without --load-extension on launch 2+.
   const cookieBridgePrefsLoad =
     NATIVE_PREFS_LOAD && isCookieBridgeProvisionedInPrefs(userDataDir);
 
-  migrateUnpackedCookieBridgePins(userDataDir, userDataRoot);
+  if (!signedSecurePrefs) {
+    migrateUnpackedCookieBridgePins(userDataDir, userDataRoot);
+  }
 
   const sources = readProfileExtensionSources(userDataDir, userDataRoot, toggles);
   if (!sources.length) return { ...emptyPlan };
@@ -497,10 +511,12 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
       const operatorPinDir =
         stagedOperator?.pinDir ||
         (resolvedCloakDir ? path.join(path.resolve(resolvedCloakDir), storeId) : pinPath);
-      if (operatorPinDir && path.resolve(operatorPinDir) !== src) {
-        unpinExtensionFromProfile(userDataDir, { unpackedPath: src });
+      if (!signedSecurePrefs) {
+        if (operatorPinDir && path.resolve(operatorPinDir) !== src) {
+          unpinExtensionFromProfile(userDataDir, { unpackedPath: src });
+        }
+        pinToolbarExtension(userDataDir, operatorPinDir);
       }
-      pinToolbarExtension(userDataDir, operatorPinDir);
       cliStoreLoads.push({ storeId, dir: operatorPinDir });
       prefStoreIds.push(storeId);
       continue;
@@ -511,7 +527,9 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
         const restaged = ensureCloakbrowserExtensionStages([src], resolvedCloakDir);
         if (restaged[0]?.stageDir) pinPath = restaged[0].stageDir;
       }
-      pinStoreOrUnpackedExtension(userDataDir, entry.storeId, pinPath, entry.sourceDir);
+      if (!signedSecurePrefs) {
+        pinStoreOrUnpackedExtension(userDataDir, entry.storeId, pinPath, entry.sourceDir);
+      }
       const verifiedStore =
         entry.storeId !== COOKIE_BRIDGE_STORE_ID ||
         isVerifiedStoreExtension(pinPath) ||
@@ -522,8 +540,8 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
       // pin uses `unpackedExtensionId(pinPath)` inside `pinStoreOrUnpackedExtension`.
       prefStoreIds.push(entry.storeId);
       if (entry.storeId === COOKIE_BRIDGE_STORE_ID && cookieBridgeEnabled()) {
-        // First open (or unverified workspace build) forces --load-extension so
-        // Chromium registers E0001 cleanly. Verified store installs can skip CLI load later.
+        // First open (or unverified workspace build) loads via --load-extension;
+        // once Chromium caches verified CWS E0001 in prefs, omit the CLI flag.
         if (!verifiedStore || !cookieBridgePrefsLoad) {
           cliStoreLoads.push({ storeId: entry.storeId, dir: pinPath });
         }
@@ -531,7 +549,9 @@ function prepareProfileExtensions(userDataDir, userDataRoot, cloakCacheDir, opti
       continue;
     }
 
-    pinToolbarExtension(userDataDir, pinPath);
+    if (!signedSecurePrefs) {
+      pinToolbarExtension(userDataDir, pinPath);
+    }
     if (!isStoreCacheExtensionPath(src)) loadDirs.push(src);
   }
 

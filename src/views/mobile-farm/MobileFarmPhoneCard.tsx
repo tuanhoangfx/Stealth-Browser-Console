@@ -303,6 +303,7 @@ export const MobileFarmPhoneCard = memo(function MobileFarmPhoneCard({
               void dispatchControl(
                 {
                   action: "launch-app",
+                  serial: card.deviceSerial,
                   userId: card.userId,
                   displayId: card.displayId,
                   packageName: "com.facebook.katana",
@@ -323,6 +324,7 @@ export const MobileFarmPhoneCard = memo(function MobileFarmPhoneCard({
               void dispatchControl(
                 {
                   action: "launch-app",
+                  serial: card.deviceSerial,
                   userId: card.userId,
                   displayId: card.displayId,
                   packageName: "com.android.chrome",
@@ -343,6 +345,7 @@ export const MobileFarmPhoneCard = memo(function MobileFarmPhoneCard({
               void dispatchControl(
                 {
                   action: "launch-app",
+                  serial: card.deviceSerial,
                   userId: card.userId,
                   displayId: card.displayId,
                   packageName: "com.netflix.mediaclient",
@@ -379,7 +382,7 @@ export const MobileFarmPhoneCard = memo(function MobileFarmPhoneCard({
             type="button"
             onClick={() =>
               void dispatchControl(
-                { action: "open-scrcpy", displayId: card.displayId },
+                { action: "open-scrcpy", serial: card.deviceSerial, displayId: card.displayId },
                 `Opened 60fps Scrcpy for #${card.titleCode}`,
               )
             }

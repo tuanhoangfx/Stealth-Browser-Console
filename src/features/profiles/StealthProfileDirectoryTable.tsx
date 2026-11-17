@@ -177,6 +177,8 @@ export const StealthProfileDirectoryTable = memo(function StealthProfileDirector
         "status",
         "activityLog",
         "startupUrl",
+        "proxy",
+        "note",
         "e0001",
         "e0002",
         "surfshark",

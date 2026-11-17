@@ -32,16 +32,18 @@ export function formatDurationMs(ms: number | null | undefined): string | undefi
   return rem ? `${min}m ${rem}s` : `${min}m`;
 }
 
+const RUN_DATE_TIME_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("en-US", {
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    return RUN_DATE_TIME_FMT.format(new Date(iso));
   } catch {
     return iso;
   }

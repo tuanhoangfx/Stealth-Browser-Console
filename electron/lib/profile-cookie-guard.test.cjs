@@ -909,4 +909,65 @@ describe("profile-cookie-guard", () => {
       fs.rmSync(tmpProfilesRoot, { recursive: true, force: true });
     }
   });
+
+  it("enforces strict Adobe IMS cookie & email identity verification and allows window-close demotion when signed out", async () => {
+    const { verifyAdobeCookiesLiveViaHttp } = require("./stealth-multiplatform-sync.cjs");
+
+    // 1. Anonymous / device fingerprint Adobe cookies must never count as loggedIn
+    const anonAdobePairs = [
+      { domain: "idg.adobe.com", name: "idg_token", value: "anon_idg" },
+      { domain: "adobeid-na1.services.adobe.com", name: "fg", value: "anon_fg" },
+      { domain: ".adobe.com", name: "fg_cts", value: "anon_fg_cts" },
+      { domain: ".adobe.com", name: "ftr_set", value: "1" },
+      { domain: ".adobe.com", name: "s_ac", value: "1" },
+      { domain: ".adobe.com", name: "ID", value: "1" },
+      { domain: ".adobe.com", name: "RMR", value: "1" },
+      { domain: ".adobe.com", name: "guid", value: "1" },
+    ];
+    assert.equal(matchServiceCookiePairs("Adobe", anonAdobePairs).loggedIn, false);
+    assert.equal(matchServiceCookiePairs("Adobe", [{ domain: ".adobe.com", name: "aux_sid", value: "real_aux_sid_token" }]).loggedIn, true);
+
+    // 2. Stale p0020_live_auth_verify must NOT block demotion on Adobe when disk/window has zero auth cookies
+    assert.equal(
+      shouldPreserveChallengedState(
+        {
+          service: "Adobe",
+          status: "active",
+          stealth_snapshot: { status: "logged_in", source: "p0020_live_auth_verify" },
+        },
+        false,
+      ),
+      false,
+    );
+
+    // 3. verifyAdobeCookiesLiveViaHttp returns adobeUserId + adobeVerifiedEmail on valid session and login_page on expired session
+    const validRes = await verifyAdobeCookiesLiveViaHttp(
+      [{ domain: ".adobe.com", name: "aux_sid", value: "live_aux_sid_1234567890" }],
+      2000,
+      async () => ({
+        status: 200,
+        json: async () => ({
+          access_token: "eyJ_valid_token",
+          userId: "D837839E6A1A2BEB0A495FFB@AdobeID",
+          email: "Gutierrez.Ryan.78783@maelstrom.academy",
+        }),
+      }),
+    );
+    assert.equal(validRes.ok, true);
+    assert.equal(validRes.loggedIn, true);
+    assert.equal(validRes.adobeUserId, "D837839E6A1A2BEB0A495FFB@AdobeID");
+    assert.equal(validRes.adobeVerifiedEmail, "gutierrez.ryan.78783@maelstrom.academy");
+
+    const expiredRes = await verifyAdobeCookiesLiveViaHttp(
+      [{ domain: ".adobe.com", name: "aux_sid", value: "expired_aux_sid_1234567890" }],
+      2000,
+      async () => ({
+        status: 400,
+        json: async () => ({ error: "login_required" }),
+      }),
+    );
+    assert.equal(expiredRes.ok, true);
+    assert.equal(expiredRes.loggedIn, false);
+    assert.equal(expiredRes.resultCode, "login_page");
+  });
 });

@@ -162,7 +162,9 @@ function buildCookieGuardRoutes(deps) {
           const userDataDir = path.join(profilesRoot, String(profile.id));
           const profileCode = extractProfileCode(profile.name, profile.id);
           const isRunning = sessionManager.isRunning(profile.id);
-          const context = isRunning ? sessionManager.getContext(profile.id) : null;
+          const context = isRunning
+            ? (await sessionManager.ensureConnectedContext?.(profile.id)) || sessionManager.getContext(profile.id)
+            : null;
           const slot = ctx.body?.slot === "previous" ? "previous" : "latest";
           let sourceUserDataDir = "";
           const rawSource = String(ctx.body?.sourceProfileId || ctx.body?.sourceProfileName || "").trim();
@@ -203,7 +205,9 @@ function buildCookieGuardRoutes(deps) {
           const userDataDir = path.join(resolveProfilesRoot(screenshotsRoot()), String(profile.id));
           const profileCode = extractProfileCode(profile.name, profile.id);
           const isRunning = sessionManager.isRunning(profile.id);
-          const context = isRunning ? sessionManager.getContext(profile.id) : null;
+          const context = isRunning
+            ? (await sessionManager.ensureConnectedContext?.(profile.id)) || sessionManager.getContext(profile.id)
+            : null;
           let cookiePairs = null;
           if (context && typeof context.cookies === "function") {
             await syncLiveContextCookiesToVaultIfChanged(context, { profileCode }).catch(() => undefined);

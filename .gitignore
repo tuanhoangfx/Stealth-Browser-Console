@@ -39,6 +39,7 @@ release/
 .logs/
 .data/
 .tmp/
+profiles/
 .hidden-detach-*.env.json
 .*.env.json
 desk-host.env.json

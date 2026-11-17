@@ -32,6 +32,7 @@ const ACTIVE_AGENT_LOCKS_PATH = path.join(SOCIAL_HUB_DATA_DIR, "active-agent-loc
 const DEFERRED_USER_HEADED_QUEUE_PATH = path.join(SOCIAL_HUB_DATA_DIR, "deferred-user-headed-queue.json");
 const P0020_DEFERRED_QUEUE_PATH = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\deferred-user-headed-queue.json";
 const P0020_REVOKE_EXPIRED_SCRIPT_PATH = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\revoke-expired-action-orders.mjs";
+const P0020_ANTIGRAVITY_APPEAL_SCRIPT_PATH = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\appeal-antigravity-tos-fleet.mjs";
 
 function stepsNeedMailCredentials(steps) {
   return (
@@ -254,28 +255,98 @@ function createLockGuardState({ enabled = true } = {}) {
  * Deferred agent task persistence when a profile is actively open in User Headed mode.
  */
 function createDeferredAgentQueueHelpers({ sessionManager, profileService, deferredMap }) {
+  const isCustomer8xxx = (v) => /^8\d{3}$/.test(String(v || "").replace(/^#/, "").trim().padStart(4, "0"));
+  const mergeDeferredTasks = (prevTasks, nextTasks, fallbackReason = "") => {
+    const merged = [];
+    const seen = new Set();
+    const pushTask = (t) => {
+      const r = String(t?.taskReason || t?.reason || t || "").trim();
+      if (!r || seen.has(r)) return;
+      seen.add(r);
+      merged.push(typeof t === "object" && t ? { ...t, taskReason: r } : { taskReason: r, queuedAt: new Date().toISOString() });
+    };
+    if (Array.isArray(prevTasks)) prevTasks.forEach(pushTask);
+    if (Array.isArray(nextTasks)) nextTasks.forEach(pushTask);
+    if (fallbackReason) pushTask(fallbackReason);
+    return merged;
+  };
+  const canCheckInteractive = typeof sessionManager?.isUserInteractiveSession === "function";
+
   function persistDeferredFile(extraReadyItem = null) {
     try {
       if (!fs.existsSync(SOCIAL_HUB_DATA_DIR)) return;
+      let prevPending = [];
       let prevReady = [];
       try {
         if (fs.existsSync(DEFERRED_USER_HEADED_QUEUE_PATH)) {
           const parsed = JSON.parse(fs.readFileSync(DEFERRED_USER_HEADED_QUEUE_PATH, "utf8")) || {};
+          if (Array.isArray(parsed.pendingWhileUserHeaded)) {
+            prevPending = parsed.pendingWhileUserHeaded.filter((x) => x?.code && !isCustomer8xxx(x.code));
+          }
           if (Array.isArray(parsed.readyForRetry)) {
-            const cutoff = Date.now() - 2 * 60 * 60 * 1000;
-            prevReady = parsed.readyForRetry.filter((x) => Number(x?.windowClosedAt || 0) > cutoff);
+            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+            prevReady = parsed.readyForRetry.filter(
+              (x) => !isCustomer8xxx(x?.code) && Number(x?.windowClosedAt || 0) > cutoff,
+            );
           }
         }
       } catch {
         /* ignore */
       }
-      if (extraReadyItem?.code) {
+      const upsertReady = (entry) => {
+        const c = String(entry?.code || "").trim();
+        if (!c || isCustomer8xxx(c)) return;
+        const existingReady = prevReady.find((x) => x?.code === c || (entry.profileId && x?.profileId === entry.profileId));
+        const merged = {
+          ...(existingReady || {}),
+          ...entry,
+          tasks: mergeDeferredTasks(existingReady?.tasks, entry?.tasks, entry?.taskReason || entry?.reason),
+          windowClosedAt: Number(entry?.windowClosedAt || existingReady?.windowClosedAt || Date.now()),
+          readyForAgentRetry: true,
+        };
         prevReady = [
-          extraReadyItem,
-          ...prevReady.filter((x) => x?.code !== extraReadyItem.code && x?.profileId !== extraReadyItem.profileId),
+          merged,
+          ...prevReady.filter((x) => x?.code !== c && (!entry.profileId || x?.profileId !== entry.profileId)),
         ].slice(0, 100);
+      };
+      const byCodePending = new Map();
+      for (const item of prevPending) {
+        const c = String(item?.code || "").trim();
+        if (!c || isCustomer8xxx(c)) continue;
+        if (item?.profileId && canCheckInteractive && !sessionManager.isUserInteractiveSession(item.profileId)) {
+          upsertReady({ ...item, windowClosedAt: item.windowClosedAt || Date.now(), readyForAgentRetry: true });
+          continue;
+        }
+        byCodePending.set(c, item);
       }
-      const pending = [...deferredMap.values()];
+      for (const [pidKey, item] of [...deferredMap.entries()]) {
+        const c = String(item?.code || "").trim();
+        if (!c || isCustomer8xxx(c)) continue;
+        const prev = byCodePending.get(c);
+        const mergedItem = {
+          ...(prev || {}),
+          ...item,
+          tasks: mergeDeferredTasks(prev?.tasks, item?.tasks, item?.reason),
+        };
+        if (canCheckInteractive && !sessionManager.isUserInteractiveSession(pidKey)) {
+          deferredMap.delete(pidKey);
+          byCodePending.delete(c);
+          upsertReady({ ...mergedItem, windowClosedAt: Date.now(), readyForAgentRetry: true });
+          continue;
+        }
+        byCodePending.set(c, mergedItem);
+      }
+      if (extraReadyItem?.code && !isCustomer8xxx(extraReadyItem.code)) {
+        const prevPend = byCodePending.get(extraReadyItem.code);
+        byCodePending.delete(extraReadyItem.code);
+        upsertReady({
+          ...extraReadyItem,
+          tasks: mergeDeferredTasks(prevPend?.tasks, extraReadyItem.tasks, extraReadyItem.taskReason || extraReadyItem.reason),
+          windowClosedAt: extraReadyItem.windowClosedAt || Date.now(),
+          readyForAgentRetry: true,
+        });
+      }
+      const pending = [...byCodePending.values()];
       const pendingCodes = new Set(pending.map((x) => x.code));
       prevReady = prevReady.filter((x) => !pendingCodes.has(x?.code));
       fs.writeFileSync(
@@ -358,10 +429,49 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
     }
   }
 
+  function triggerDeferredAntigravityDrain(codeOrId) {
+    try {
+      const rawCode = String(codeOrId || "").replace(/^#/, "").trim();
+      const code4 = /^\d{1,4}$/.test(rawCode) ? rawCode.padStart(4, "0") : "";
+      if (code4 && isCustomer8xxx(code4)) return;
+      if (!fs.existsSync(DEFERRED_USER_HEADED_QUEUE_PATH)) return;
+      const raw = fs.readFileSync(DEFERRED_USER_HEADED_QUEUE_PATH, "utf8").trim();
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed?.readyForRetry) ? parsed.readyForRetry : [];
+      const agTasks = new Set(["appeal-antigravity-tos", "reconcile-cloud-ag", "unlock-ag-validation"]);
+      const hasMatch = list.some((x) => {
+        if (!x || isCustomer8xxx(x.code)) return false;
+        if (code4 && String(x.code || "").padStart(4, "0") !== code4) return false;
+        const tasks = Array.isArray(x.tasks) ? x.tasks : [];
+        return (
+          agTasks.has(String(x.taskReason || "")) ||
+          tasks.some((t) => agTasks.has(String(t?.taskReason || t?.reason || "")))
+        );
+      });
+      if (!hasMatch || !fs.existsSync(P0020_ANTIGRAVITY_APPEAL_SCRIPT_PATH)) return;
+      const winShellCandidates = [
+        path.resolve(ELECTRON_DIR, "../../scripts/lib/win-shell-env.cjs"),
+        "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs",
+      ];
+      const winShellPath = winShellCandidates.find((p) => fs.existsSync(p));
+      if (!winShellPath) return;
+      const { startHiddenDetachedProcess } = require(winShellPath);
+      startHiddenDetachedProcess("E:\\Dev\\.tools\\nodew.exe", [P0020_ANTIGRAVITY_APPEAL_SCRIPT_PATH, "--drain-deferred"], {
+        cwd: "E:\\Dev",
+        pidFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-drain.pid",
+        logFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-fleet.log",
+        env: { ...process.env, STEALTH_AGENT_CALLER: "agent:deferred-ag-drain" },
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   function scheduleDeferredAgentAutoDrain(defEntry) {
     const pid = String(defEntry?.profileId || "").trim();
     const code = String(defEntry?.code || "").trim();
-    if (!pid) return;
+    if (!pid || isCustomer8xxx(code)) return;
     const timer = setTimeout(async () => {
       try {
         if (sessionManager.isUserInteractiveSession(pid)) return;
@@ -374,8 +484,9 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
             await sessionManager.close(pid, { agentOnly: true, ignoreIfUserInteractive: true }).catch(() => null);
           }
         });
-        removeReadyDeferredEntry(code || pid);
         triggerDeferredExpiredOrderDrain(code || pid);
+        triggerDeferredAntigravityDrain(code || pid);
+        removeReadyDeferredEntry(code || pid);
       } catch {
         /* ignore */
       }
@@ -387,6 +498,7 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
     persistDeferredFile,
     removeReadyDeferredEntry,
     triggerDeferredExpiredOrderDrain,
+    triggerDeferredAntigravityDrain,
     scheduleDeferredAgentAutoDrain,
   };
 }
@@ -647,7 +759,9 @@ function createRouteRuntimeHelpers({ sessionManager, profileService, userDataRoo
       await sessionManager.focusProfile(profileId);
     }
     await sessionManager.awaitLaunchNavigation(profileId);
-    const context = sessionManager.getContext(profileId);
+    const context =
+      (await sessionManager.ensureConnectedContext?.(profileId)) ||
+      sessionManager.getContext(profileId);
     if (!context) throw new Error("Không lấy được browser context — launch profile trước");
     return { profile, context };
   }

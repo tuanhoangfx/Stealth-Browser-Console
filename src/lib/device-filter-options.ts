@@ -126,8 +126,8 @@ export function browserRuntimeModeFilterOptions(): FilterOption[] {
     },
     {
       value: "raw-window",
-      label: "Raw Window (Window · No Humanize)",
-      emoji: "🖱️",
+      label: "Pure Window (No CDP · Max Speed)",
+      emoji: "🛡️",
     },
   ];
 }

@@ -631,7 +631,9 @@ function bindIpc() {
       const userDataDir = path.join(profilesRoot, String(profile.id));
       const profileCode = extractProfileCode(profile.name, profile.id);
       const isRunning = sessionManager.isRunning(profile.id);
-      const context = isRunning ? sessionManager.getContext(profile.id) : null;
+      const context = isRunning
+        ? (await sessionManager.ensureConnectedContext?.(profile.id)) || sessionManager.getContext(profile.id)
+        : null;
       const slot = payload.slot === "previous" ? "previous" : "latest";
       let sourceUserDataDir = "";
       const rawSource = String(payload.sourceProfileId || payload.sourceProfileName || "").trim();
@@ -670,7 +672,9 @@ function bindIpc() {
       const userDataDir = path.join(resolveProfilesRoot(userDataRoot()), String(profile.id));
       const profileCode = extractProfileCode(profile.name, profile.id);
       const isRunning = sessionManager.isRunning(profile.id);
-      const context = isRunning ? sessionManager.getContext(profile.id) : null;
+      const context = isRunning
+        ? (await sessionManager.ensureConnectedContext?.(profile.id)) || sessionManager.getContext(profile.id)
+        : null;
       let cookiePairs = null;
       if (context && typeof context.cookies === "function") {
         await syncLiveContextCookiesToVaultIfChanged(context, { profileCode }).catch(() => undefined);
@@ -1528,7 +1532,7 @@ function bindContentSecurityPolicy() {
 
 function broadcastProfileSession(profile, event) {
   for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
+    if (!win.isDestroyed() && win.isVisible() && !win.isMinimized()) {
       win.webContents.send("profile:session", { profile, event });
     }
   }
@@ -1821,6 +1825,7 @@ app.whenReady().then(async () => {
   });
   setImmediate(() => {
     void sessionManager.reconcileOrphansOnStartup().catch(() => undefined);
+    void ensureEngineBinary().catch(() => undefined);
     if (process.platform === "win32") {
       try {
         const { warmRecentBadgeIcosOnStartup, warmTaskbarApplyRuntime } = require("./lib/profile-taskbar-native.cjs");

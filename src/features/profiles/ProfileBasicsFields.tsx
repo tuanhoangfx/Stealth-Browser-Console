@@ -784,7 +784,7 @@ export function ProfileSessionFields({
                     ariaLabel={
                       running
                         ? `Stop ${profileRow.name}${showHeadlessBadge ? " (headless)" : ""}`
-                        : `Run ${profileRow.name} with startup URL`
+                        : `Launch ${profileRow.name} with startup URL`
                     }
                     disabled={!running && opening}
                     trailing={

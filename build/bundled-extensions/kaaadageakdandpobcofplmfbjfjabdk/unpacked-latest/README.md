@@ -43,7 +43,7 @@ Khuyến nghị E0001: **vault + Sync** cho cross-browser login nội bộ; lâu
 
 ## Install
 
-**Chrome Web Store (recommended):** [Install E0001 Cookie Bridge](https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk) → open Data Box Cookie Bridge → **Link extension**.
+**Chrome Web Store (recommended):** [https://infi28.com/toolkit/cookiebridge](https://infi28.com/toolkit/cookiebridge) ([Chrome Web Store direct](https://chromewebstore.google.com/detail/e0001-cookie-bridge/kaaadageakdandpobcofplmfbjfjabdk?hl=vi)) → open Data Box Cookie Bridge → **Link extension**.
 
 **Without Chrome Web Store:** download ZIP from [GitHub Releases](https://github.com/tuanhoangfx/E0001-cookie-bridge/releases/latest) → extract → `chrome://extensions` → Developer mode → **Load unpacked**.
 

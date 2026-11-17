@@ -27,6 +27,7 @@ import {
   HubDirectoryDeleteBulkAction,
   HubDirectoryEllipsisCell,
   HubDirectoryNewBulkAction,
+  HubDirectoryProfileCell,
   HubDirectoryRunToggle,
   HubDirectorySearchHighlightText,
   HubDirectoryTableShell,
@@ -950,13 +951,14 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           ].join("\n");
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
-              <HubDirectoryValuePopover value={popoverValue} title="📱 Mobile Profile ID" className="justify-center">
-                <HubDirectorySearchHighlightText
-                  text={display}
-                  terms={terms}
-                  className={`hub-users-name-title text-center tabular-nums ${DIRECTORY_CELL_TRUNCATE}`}
-                />
-              </HubDirectoryValuePopover>
+              <HubDirectoryProfileCell
+                value={display}
+                heatTier={1}
+                copyToastLabel="Profile copied"
+                popoverTitle="📱 Mobile Profile ID"
+                popoverText={popoverValue}
+                searchHighlightTerms={terms}
+              />
             </DirectoryTableBodyCell>
           );
         }

@@ -6,6 +6,9 @@ function getCloakEngineModule() {
 const closeContext = (...args) => getCloakEngineModule().closeContext(...args);
 const profileDataDir = (...args) => getCloakEngineModule().profileDataDir(...args);
 const openProfile = (...args) => getCloakEngineModule().openProfile(...args);
+const openPureHeadedProfile = (...args) => getCloakEngineModule().openPureHeadedProfile(...args);
+const applyHumanizeToContext = (...args) => getCloakEngineModule().applyHumanizeToContext(...args);
+const { toPlaywrightProxy } = require("../lib/proxy-pool.cjs");
 const profileService = require("../db/profile-service.cjs");
 const { navigateStartupUrl, awaitBrowserReady, stabilizePrimaryPage } = require("../automation/navigate-startup.cjs");
 const { getFreePort, fetchCdpVersion, waitForCdp } = require("../lib/net-port.cjs");
@@ -364,28 +367,56 @@ class SessionManager {
   #persistDeferredQueueFile(extraReadyItem = null) {
     try {
       const candidateDirs = ["E:\\Dev\\Tool\\P0002-Social-Hub\\data"];
+      const isCustomer8xxx = (v) => /^8\d{3}$/.test(String(v || "").replace(/^#/, "").trim().padStart(4, "0"));
       for (const dir of candidateDirs) {
         if (!fs.existsSync(dir)) continue;
         const fp = path.join(dir, "deferred-user-headed-queue.json");
+        let prevPending = [];
         let prevReady = [];
         try {
           if (fs.existsSync(fp)) {
             const parsed = JSON.parse(fs.readFileSync(fp, "utf8")) || {};
+            if (Array.isArray(parsed.pendingWhileUserHeaded)) {
+              prevPending = parsed.pendingWhileUserHeaded.filter((x) => x?.code && !isCustomer8xxx(x.code));
+            }
             if (Array.isArray(parsed.readyForRetry)) {
-              const cutoff = Date.now() - 2 * 60 * 60 * 1000;
-              prevReady = parsed.readyForRetry.filter((x) => Number(x?.windowClosedAt || 0) > cutoff);
+              const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+              prevReady = parsed.readyForRetry.filter(
+                (x) => !isCustomer8xxx(x?.code) && Number(x?.windowClosedAt || 0) > cutoff,
+              );
             }
           }
         } catch {
           /* ignore */
         }
-        if (extraReadyItem?.code) {
+        const byCodePending = new Map();
+        for (const item of prevPending) {
+          const c = String(item.code || "").trim();
+          if (c && !isCustomer8xxx(c)) byCodePending.set(c, item);
+        }
+        for (const item of this.listDeferredAgentTasks()) {
+          const c = String(item?.code || "").trim();
+          if (!c || isCustomer8xxx(c)) continue;
+          const prev = byCodePending.get(c);
+          byCodePending.set(c, { ...(prev || {}), ...item, ...(prev?.tasks ? { tasks: prev.tasks } : {}) });
+        }
+        if (extraReadyItem?.code && !isCustomer8xxx(extraReadyItem.code)) {
+          const prevPend = byCodePending.get(extraReadyItem.code);
+          byCodePending.delete(extraReadyItem.code);
+          const mergedExtra = {
+            ...extraReadyItem,
+            ...(Array.isArray(extraReadyItem.tasks) && extraReadyItem.tasks.length > 0
+              ? { tasks: extraReadyItem.tasks }
+              : prevPend?.tasks
+                ? { tasks: prevPend.tasks }
+                : {}),
+          };
           prevReady = [
-            extraReadyItem,
+            mergedExtra,
             ...prevReady.filter((x) => x?.code !== extraReadyItem.code && x?.profileId !== extraReadyItem.profileId),
           ].slice(0, 100);
         }
-        const pending = this.listDeferredAgentTasks();
+        const pending = [...byCodePending.values()];
         const pendingCodes = new Set(pending.map((x) => x.code));
         prevReady = prevReady.filter((x) => !pendingCodes.has(x?.code));
         fs.writeFileSync(
@@ -413,6 +444,9 @@ class SessionManager {
     if (!id) return null;
     const prof = profileService.getProfile(id);
     const code = extractProfileCode(prof?.name || "", id);
+    if (/^8\d{3}$/.test(String(code || "").replace(/^#/, "").trim().padStart(4, "0"))) {
+      return null;
+    }
     const prev = this.#deferredAgentTasks.get(id);
     const entry = {
       profileId: id,
@@ -555,6 +589,7 @@ class SessionManager {
               userDataDir,
               liveCdp: isLiveEvent && debugPort > 0,
               debugPort: isLiveEvent ? debugPort : 0,
+              isHeadless: Boolean(session?.headless || profile?.headless),
               source: `p0003_window_${ev || "change"}`,
             }),
           ).catch(() => undefined);
@@ -578,6 +613,35 @@ class SessionManager {
                     source: "p0003_deferred_post_close",
                   }),
                 ).catch(() => undefined);
+                if (code && !/^8\d{3}$/.test(String(code).replace(/^#/, "").trim().padStart(4, "0"))) {
+                  try {
+                    const qPath = "E:\\Dev\\Tool\\P0002-Social-Hub\\data\\deferred-user-headed-queue.json";
+                    const raw = fs.existsSync(qPath) ? JSON.parse(fs.readFileSync(qPath, "utf8")) : null;
+                    const ready = Array.isArray(raw?.readyForRetry) ? raw.readyForRetry : [];
+                    const agTasks = new Set(["appeal-antigravity-tos", "reconcile-cloud-ag", "unlock-ag-validation"]);
+                    const code4 = String(code).replace(/^#/, "").trim().padStart(4, "0");
+                    const hasAgTask = ready.some((x) => {
+                      if (String(x?.code || "").padStart(4, "0") !== code4) return false;
+                      const tasks = Array.isArray(x.tasks) ? x.tasks : [];
+                      return agTasks.has(String(x.taskReason || "")) || tasks.some((t) => agTasks.has(String(t?.taskReason || "")));
+                    });
+                    if (hasAgTask) {
+                      const winShellPath = "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs";
+                      const scriptPath = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\appeal-antigravity-tos-fleet.mjs";
+                      if (fs.existsSync(winShellPath) && fs.existsSync(scriptPath)) {
+                        const { startHiddenDetachedProcess } = require(winShellPath);
+                        startHiddenDetachedProcess("E:\\Dev\\.tools\\nodew.exe", [scriptPath, "--drain-deferred"], {
+                          cwd: "E:\\Dev",
+                          pidFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-drain.pid",
+                          logFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-fleet.log",
+                          env: { ...process.env, STEALTH_AGENT_CALLER: "agent:deferred-ag-drain" },
+                        });
+                      }
+                    }
+                  } catch {
+                    /* ignore */
+                  }
+                }
               } catch {
                 /* ignore */
               }
@@ -1351,8 +1415,9 @@ class SessionManager {
           const isFastAuthTrigger =
             (Array.isArray(fastCookiePairs) && fastCookiePairs.length > 0) || Boolean(isExplicitLogout);
           if (!isFastAuthTrigger) {
+            if (cur.headless) return;
             const elapsedMs = nowMs - Number(cur.lastLiveNavSyncAt || 0);
-            const minIntervalMs = 8000;
+            const minIntervalMs = 30000;
             if (elapsedMs < minIntervalMs) {
               if (!cur.trailingLiveNavTimer) {
                 cur.trailingLiveNavTimer = setTimeout(() => {
@@ -1559,10 +1624,7 @@ class SessionManager {
     this.#sessions.delete(id);
     markProfileChromeCleanExit(session.userDataDir);
     if (session.focusOnly) {
-      await killOrphanProfileBrowser(session.userDataDir, {
-        forcePriority: true,
-        debugPortHint: session.debugPort,
-      });
+      await this.#closeFocusOnlySession(session, { forcePriority: true });
     } else {
       await closeContext(session.context, { forcePriority: true });
       if (session.headless === true || Number(session.debugPort) > 0 || profileDirHasLock(session.userDataDir)) {
@@ -1621,6 +1683,54 @@ class SessionManager {
     }
   }
 
+  async #closeFocusOnlySession(session, { forcePriority = true } = {}) {
+    if (Number(session?.debugPort) > 0) {
+      await this.#tryGracefulCdpClose(Number(session.debugPort));
+    }
+    if (await hasProfileBrowserProcess(session.userDataDir).catch(() => true)) {
+      await killOrphanProfileBrowser(session.userDataDir, {
+        forcePriority,
+        debugPortHint: session.debugPort,
+      });
+    }
+  }
+
+  async #tryGracefulCdpClose(debugPort) {
+    if (!(Number(debugPort) > 0)) return false;
+    try {
+      await waitForCdp(debugPort, { attempts: 2, intervalMs: 60 });
+      const { chromium } = require("playwright-core");
+      const browser = await Promise.race([
+        chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("cdp-close-timeout")), 1200)),
+      ]);
+      const ctx = browser?.contexts?.()?.[0];
+      if (ctx) {
+        await closeContext(ctx, { forcePriority: true });
+      } else if (browser) {
+        await Promise.race([
+          browser.close().catch(() => undefined),
+          new Promise((resolve) => setTimeout(resolve, 1200)),
+        ]);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Ensure a running session (including Fast-Spawn + CDP) exposes a live Playwright context. */
+  async ensureConnectedContext(profileId, { preferAgent = false } = {}) {
+    const id = String(profileId);
+    const existing = this.getContext(id, { preferAgent });
+    if (existing) return existing;
+    const session = this.#sessions.get(id);
+    if (!session?.alive || !session.focusOnly) return null;
+    const userDataDir = session.userDataDir || profileDataDir(this.#userDataRoot, id);
+    await this.#upgradeToPlaywrightContext(id, session.profile, userDataDir);
+    return this.getContext(id, { preferAgent });
+  }
+
   /** Upgrade focus-only attach to a Playwright context when CDP port is available. */
   async #upgradeToPlaywrightContext(id, profile, userDataDir) {
     const session = this.#sessions.get(id);
@@ -1628,17 +1738,24 @@ class SessionManager {
       return true;
     }
 
-    const port = readDevToolsActivePort(userDataDir);
+    const port =
+      Number(session?.debugPort) ||
+      readSidecarPid(userDataDir)?.debugPort ||
+      readDevToolsActivePort(userDataDir);
     if (port <= 0) return false;
 
     try {
-      await waitForCdp(port, { attempts: 8, intervalMs: 120 });
+      await waitForCdp(port, { attempts: 15, intervalMs: 100 });
       const { chromium } = require("playwright-core");
       const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
       const context = browser.contexts()[0];
       if (!context || !isContextAlive(context)) return false;
 
       if (session?.watchdog) clearInterval(session.watchdog);
+      bindOmniboxSearchGuard(context);
+      if (profile?.humanize !== false) {
+        void applyHumanizeToContext(context, { humanize: true });
+      }
       this.#registerPlaywrightSession(id, profile, {
         context,
         userDataDir,
@@ -1694,6 +1811,7 @@ class SessionManager {
     if (!userSess?.alive) {
       await this.launch(isAgentCall ? { ...launchProfile, headless: true } : launchProfile, {
         skipStartupUrl: true,
+        requireCdp: true,
       });
     } else {
       if (!userSess.context || userSess.focusOnly) {
@@ -1717,7 +1835,7 @@ class SessionManager {
     return context;
   }
 
-  async launch(profile, { skipStartupUrl = false } = {}) {
+  async launch(profile, { skipStartupUrl = false, requireCdp = false } = {}) {
     const id = String(profile.id);
     const effectiveProfile =
       isAgentSmokeLaunch() && profile.headless !== true ? { ...profile, headless: true } : profile;
@@ -1727,7 +1845,7 @@ class SessionManager {
     if (inflight) return inflight;
     const promise = isShadowLane
       ? this.#launchAgentShadow({ ...effectiveProfile, headless: true, shadowLane: true }, { skipStartupUrl })
-      : this.#launchOnce(effectiveProfile, { skipStartupUrl });
+      : this.#launchOnce(effectiveProfile, { skipStartupUrl, requireCdp });
     promiseMap.set(id, promise);
     try {
       return await promise;
@@ -1814,7 +1932,82 @@ class SessionManager {
     }
   }
 
-  async #launchOnce(profile, { skipStartupUrl = false } = {}) {
+  #registerPureHeadedSession(id, profile, opened) {
+    const profileCode = extractProfileCode(profile.name, profile.id);
+    const browserPid = Number(opened.pid) || 0;
+    const debugPort = Number(opened.debugPort) || 0;
+    const isPureHeaded = debugPort === 0 && opened.pureHeaded !== false;
+    if (browserPid > 0) {
+      writeSidecarPid(opened.userDataDir, { pid: browserPid, debugPort, headless: false });
+      if (process.platform === "win32") {
+        const groupSeq = (this.#processorGroupSeq = (this.#processorGroupSeq + 1) >>> 0);
+        const timer = setTimeout(() => {
+          try {
+            const { balanceBrowserProcessorGroup } = require("../lib/taskbar-apply-worker.cjs");
+            void balanceBrowserProcessorGroup(browserPid, groupSeq, { headless: false });
+          } catch {
+            /* ignore */
+          }
+        }, 350);
+        if (typeof timer.unref === "function") timer.unref();
+      }
+    }
+
+    const vpnCountry = String(profile.activeVpnCountry || "").trim().toUpperCase();
+    this.#sessions.set(id, {
+      context: null,
+      userDataDir: opened.userDataDir,
+      primaryUserDataDir: opened.userDataDir,
+      alive: true,
+      debugPort,
+      profile,
+      profileCode,
+      focusOnly: true,
+      pureHeaded: isPureHeaded,
+      fastSpawnCdp: debugPort > 0,
+      headless: false,
+      shadowLane: false,
+      callerId: "user:headed",
+      vpnCountry,
+      launchedAt: Date.now(),
+      lastActivityAt: Date.now(),
+    });
+    this.#bindFocusOnlyLifecycle(id, opened.userDataDir);
+
+    const profileLabel = formatProfileWindowLabel(profile);
+    const { ensureBadgeIcoFast } = require("../lib/profile-taskbar-native.cjs");
+    void ensureBadgeIcoFast(profileCode).catch(() => undefined);
+    scheduleProfileTaskbarBadgeApply(opened.userDataDir, profileLabel, profileCode, {
+      browserPid,
+      headless: false,
+    });
+    this.#scheduleMissingBadgeSweep();
+
+    profileService.touchLastOpened(id);
+    const running = profileService.setProfileStatus(
+      id,
+      "running",
+      isPureHeaded ? { reason: "Pure Window (No CDP)" } : undefined,
+    );
+    const runningWithVpn = vpnCountry ? { ...running, activeVpnCountry: vpnCountry } : running;
+    this.#emitSessionChange(id, runningWithVpn, "running");
+    return {
+      ok: true,
+      status: "running",
+      profile: runningWithVpn,
+      userDataDir: opened.userDataDir,
+      primaryUserDataDir: opened.userDataDir,
+      debugPort,
+      pureHeaded: isPureHeaded,
+      fastSpawnCdp: debugPort > 0,
+      focused: true,
+      headless: false,
+      visibilityMode: "headed",
+      ...launchMeta(profile),
+    };
+  }
+
+  async #launchOnce(profile, { skipStartupUrl = false, requireCdp = false } = {}) {
     const id = String(profile.id);
     this.#launchingIds.add(id);
     try {
@@ -2004,6 +2197,37 @@ class SessionManager {
           await new Promise((resolve) => setTimeout(resolve, 280 * attempt));
         }
 
+        const pwProxy = toPlaywrightProxy(profile.proxy);
+        const needsPlaywrightProxyAuth = Boolean(pwProxy?.username) && process.platform !== "win32";
+        const wantPureHeaded =
+          callerWantsHeaded &&
+          !requireCdp &&
+          profile.pureHeaded === true;
+        const wantFastSpawnCdp =
+          callerWantsHeaded &&
+          !requireCdp &&
+          !wantPureHeaded &&
+          !needsPlaywrightProxyAuth &&
+          process.env.STEALTH_FAST_SPAWN_CDP !== "0";
+        if (wantPureHeaded || wantFastSpawnCdp) {
+          const launchUrl = skipStartupUrl
+            ? ""
+            : profileService.resolveProfileLaunchUrl(profile.startupUrl);
+          let debugPort = 0;
+          if (wantFastSpawnCdp && cdpEnabled()) {
+            try {
+              debugPort = await getFreePort();
+            } catch {
+              debugPort = 0;
+            }
+          }
+          const openedFast = await openPureHeadedProfile(profile, this.#userDataRoot, {
+            launchUrl,
+            debugPort,
+          });
+          return this.#registerPureHeadedSession(id, profile, openedFast);
+        }
+
         let debugPort = 0;
         if (cdpEnabled()) {
           try {
@@ -2060,7 +2284,7 @@ class SessionManager {
     }
     const session = this.#sessions.get(id);
     if (!session?.alive) {
-      await this.launch({ ...profile, headless: false }, { skipStartupUrl: true });
+      await this.launch({ ...profile, headless: false }, { skipStartupUrl: true, requireCdp: true });
       const context = this.getContext(id);
       const page = context?.pages?.().find((item) => !item.isClosed());
       if (page && url) {
@@ -2121,10 +2345,7 @@ class SessionManager {
     const primaryDir = session.primaryUserDataDir || profileDataDir(this.#userDataRoot, id) || session.userDataDir;
 
     if (session.focusOnly) {
-      await killOrphanProfileBrowser(session.userDataDir, {
-        forcePriority,
-        debugPortHint: session.debugPort,
-      });
+      await this.#closeFocusOnlySession(session, { forcePriority });
       removeStaleProfileLocks(session.userDataDir);
     } else {
       if (session.context) {

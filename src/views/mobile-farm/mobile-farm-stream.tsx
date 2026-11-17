@@ -5,6 +5,15 @@ import type {
   AndroidMultiUserSlot,
 } from "../../features/android/AndroidLiveFarmRail";
 
+export type AvailableAdbDevice = {
+  serial: string;
+  model: string;
+  product?: string;
+  device?: string;
+  isWireless: boolean;
+  active: boolean;
+};
+
 export type MobileDeviceTelemetry = {
   adbOnline: boolean;
   serial: string | null;
@@ -17,6 +26,7 @@ export type MobileDeviceTelemetry = {
   batteryLevel?: number | null;
   batteryTempC?: number | null;
   batteryHotAlert?: boolean;
+  availableDevices?: AvailableAdbDevice[];
 };
 
 export type FarmTouchVector = {
@@ -95,6 +105,8 @@ type GmailMarlHarvesterState = {
 };
 
 export type ExtendedLiveScreenState = Omit<AndroidLiveScreenState, "displays"> & {
+  availableDevices?: AvailableAdbDevice[];
+  deviceStates?: Record<string, ExtendedLiveScreenState>;
   currentUserId?: number;
   patrolRunning?: boolean;
   patrolStepCount?: number;
@@ -139,6 +151,7 @@ export type FarmPhoneCardItem = {
   c_user: string | null;
   fbAccountLabel: string | null;
   manufacturer: string;
+  deviceSerial?: string;
   screenDataUrl: string | null;
 };
 
@@ -429,6 +442,21 @@ function subscribeMuxDisplayCanvas(dispId: number, sub: MuxCanvasSubscriber): ()
   };
 }
 
+export function resetMuxDisplayStreams(): void {
+  if (_muxAbortCtrl) {
+    _muxAbortCtrl.abort();
+    _muxAbortCtrl = null;
+  }
+  _muxLoopRunning = false;
+  for (const entry of _muxDecodersByDisplay.values()) {
+    entry.gotKey = false;
+    entry.hasMirrorFrame = false;
+  }
+  if (totalMuxSubscribers() > 0) {
+    startSharedMuxStreamLoop();
+  }
+}
+
 export function isNonBlackScreenUrl(url: string | null | undefined): boolean {
   return Boolean(url && url.length >= 7800);
 }
@@ -507,6 +535,7 @@ export type FarmUiPrefs = {
   railCollapsed: boolean;
   autoStream: boolean;
   syncMaster: boolean;
+  dualWall: boolean;
 };
 
 const DEFAULT_FARM_UI_PREFS: FarmUiPrefs = {
@@ -518,6 +547,7 @@ const DEFAULT_FARM_UI_PREFS: FarmUiPrefs = {
   railCollapsed: false,
   autoStream: true,
   syncMaster: false,
+  dualWall: true,
 };
 
 export function readFarmUiPrefs(): FarmUiPrefs {
@@ -563,6 +593,7 @@ export function readFarmUiPrefs(): FarmUiPrefs {
       railCollapsed: Boolean(parsed.railCollapsed),
       autoStream: typeof parsed.autoStream === "boolean" ? parsed.autoStream : DEFAULT_FARM_UI_PREFS.autoStream,
       syncMaster: Boolean(parsed.syncMaster),
+      dualWall: typeof parsed.dualWall === "boolean" ? parsed.dualWall : DEFAULT_FARM_UI_PREFS.dualWall,
     };
   } catch {
     return DEFAULT_FARM_UI_PREFS;

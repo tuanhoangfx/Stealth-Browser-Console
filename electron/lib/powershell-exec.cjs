@@ -75,7 +75,8 @@ function isDeprecatedProcessScanCommand(command) {
   return (
     s.includes("StealthRestartManager") ||
     s.includes("rstrtmgr.dll") ||
-    (s.includes("Get-CimInstance") && s.includes("Win32_Process"))
+    s.includes("Win32_Process") ||
+    /Get-(?:CimInstance|WmiObject)\b[\s\S]*Win32_Process/i.test(s)
   );
 }
 

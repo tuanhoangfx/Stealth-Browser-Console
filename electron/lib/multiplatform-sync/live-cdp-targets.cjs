@@ -330,7 +330,7 @@ function isAuthenticatedFacebookAppUrl(url = "") {
   const u = String(url || "");
   if (!u || !/facebook\.com/i.test(u)) return false;
   if (
-    /\/(login|recover|checkpoint)|1501092823525282|828281030927956|two_step_verification|auth_platform|dialog\/oauth/i.test(
+    /\/(login|recover|checkpoint)|\/caa\/reg(?:\/|$|\?)|\/reg(?:\/|$|\?)|confirmemail\.php|\/ig\/login_via|1501092823525282|828281030927956|two_step_verification|auth_platform|dialog\/oauth/i.test(
       u,
     )
   ) {
@@ -516,6 +516,16 @@ function classifyFacebookLiveCdpTargets(targets = []) {
         resultCode: "2fa_pending",
         evidence: `Facebook:2fa_pending url=${u.slice(0, 120)}`,
         note: "Facebook 2FA verification pending in live window",
+      };
+    }
+    if (/\/caa\/reg(?:\/|$|\?)|\/reg(?:\/|$|\?)|confirmemail\.php|\/ig\/login_via/i.test(u)) {
+      return {
+        restricted: true,
+        status: "not_logged_in",
+        rowStatus: null,
+        resultCode: "reg_unconfirmed",
+        evidence: `Facebook:reg_unconfirmed url=${u.slice(0, 120)}`,
+        note: "Facebook unconfirmed registration screen open in live window",
       };
     }
     if (/facebook\.com\/(login|recover)/i.test(u)) {

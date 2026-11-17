@@ -1,5 +1,421 @@
 # Changelog
 
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.64`
+- Timestamp: 2026-11-13 02:21 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.63`
+- Timestamp: 2026-11-13 02:19 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.62`
+- Timestamp: 2026-11-13 02:16 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.61`
+- Timestamp: 2026-11-13 02:09 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.60`
+- Timestamp: 2026-11-13 02:06 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.59`
+- Timestamp: 2026-11-13 02:03 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.58`
+- Timestamp: 2026-11-13 02:01 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.57`
+- Timestamp: 2026-11-13 02:00 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.56`
+- Timestamp: 2026-11-13 01:58 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.55`
+- Timestamp: 2026-11-13 01:53 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.54`
+- Timestamp: 2026-11-13 01:50 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.53`
+- Timestamp: 2026-11-13 01:48 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.52`
+- Timestamp: 2026-11-13 01:47 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.51`
+- Timestamp: 2026-11-13 01:46 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.50`
+- Timestamp: 2026-11-13 01:44 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.49`
+- Timestamp: 2026-11-13 01:40 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.48`
+- Timestamp: 2026-11-13 01:39 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Patch bump for completed agent task
+
+- Version: `1.2.47`
+- Timestamp: 2026-11-13 01:35 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed E0001 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Fix store/GitHub ZIP paths, release guard, CWS cancel-pending
+
+- Version: `1.2.46`
+- Timestamp: 2026-11-13 01:35 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (E0001).
+
+### Verification
+
+- pending
+
+---
+## 2026-11-13 - Fix store/GitHub ZIP paths, release guard, CWS cancel-pending
+
+- Version: `1.2.44`
+- Timestamp: 2026-11-13 00:44 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Package ZIPs with forward-slash entries (PS 5.1 Compress-Archive wrote backslash paths); package-extension -CreateRelease refuses dirty/unpushed source and tags HEAD; publish-chrome-store-api --cancel-pending replaces an older pending CWS review; untrack .chrome-store-profile.
+
+### Verification
+
+- package-store.ps1 zip 0 backslash entries; CWS v2 upload+publish
+
+---
+## 2026-11-13 - Auto-dim Sync on signed-out tabs & full 6-app Google AI OSID session liveness gu
+
+- Version: `1.2.43`
+- Timestamp: 2026-11-13 00:39 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Patch bump for uncommitted code changes (E0001).
+
+### Verification
+
+- pending
+
+---
+## 2026-11-12 - Auto-dim Sync on signed-out tabs & full 6-app Google AI OSID session liveness guard
+
+- Version: `1.2.42`
+- Timestamp: 2026-11-12 20:58 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-disable and dim Route/Bulk Sync buttons when open tabs are on signed-out landing or login pages while keeping Load active; expand GOOGLE_OSID_APP_DOMAINS and probeGoogleOsidSessionLive across Google Flow, AI Studio, NotebookLM, Firebase Studio, Gemini, and Colab.
+
+### Verification
+
+- pnpm --dir Extension/E0001-cookie-bridge test + live unpacked Chromium E2E test across all 6 Google AI apps
+
+---
+## 2026-11-12 - Block Accidental Sync Overwrite from Signed-Out Google Flow Landing (/about)
+
+- Version: `1.2.41`
+- Timestamp: 2026-11-12 19:37 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Block Sync and + New from overwriting Cloud Vault when on flow.google.com/about or when local Google Flow Wiz session is signed out/expired; surface clear guidance to click Load instead of Sync.
+
+### Verification
+
+- pnpm --dir Extension/E0001-cookie-bridge test + live Chromium E2E guard & Load verification on flow.google.com/about?pli=1
+
+---
+## 2026-11-12 - Live presence handshake (PING/PONG + DOM dataset) for infi28.com/toolkit
+
+- Version: `1.2.40`
+- Timestamp: 2026-11-12 19:15 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Announce installed E0001 Cookie Bridge version via documentElement.dataset and postMessage PING/PONG on infi28.com and localhost:3022.
+
+### Verification
+
+- verifyExtensionPopupDom + verifyExtensionsZeroByteAndStageIntegrity + P0022 vitest
+
+---
+## 2026-11-12 - Register infi28.com/toolkit/cookiebridge branded short link
+
+- Version: `1.2.39`
+- Timestamp: 2026-11-12 17:36 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added urls.shortInstall (https://infi28.com/toolkit/cookiebridge) in E0001 manifest and updated install docs to point to the branded Infi28 short link.
+
+### Verification
+
+- live HTTP 302 probe on infi28.com/toolkit/cookiebridge
+
+---
+## 2026-11-12 - Google Flow Load Race Fix & New Route Confirmation Modal
+
+- Version: `1.2.38`
+- Timestamp: 2026-11-12 17:31 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fix pre-apply tab navigation race and OSID host cookie handling on Google Flow (.flow.google.com), add New Cloud Route confirmation modal with explicit Save button, move toast host to bottom-right opaque surface, and complete 100% English UI cleanup.
+
+### Verification
+
+- pnpm --dir Extension/E0001-cookie-bridge test + live Chromium unpacked E2E Sync & Load on Google Flow
+
+---
 ## 2026-11-12 - Preserve CWS published and submitted version exports in sync-p0020-cws-badge
 
 - Version: `1.2.37`

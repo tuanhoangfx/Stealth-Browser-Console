@@ -29,6 +29,7 @@ const { COOKIE_BRIDGE_STORE_ID } = require("../electron/lib/stealth-extension-st
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const force = process.argv.includes("--force");
+const upgradeCws = process.argv.includes("--upgrade-cws") || process.argv.includes("--check-cws");
 
 const storeId = COOKIE_BRIDGE_STORE_ID;
 const targetDir = path.join(repoRoot, "build", "bundled-extensions", storeId, "unpacked");
@@ -82,7 +83,7 @@ syncLatestWorkspaceSnapshot();
 
 const hasCommitted = fs.existsSync(targetManifest) && fs.existsSync(targetVerified);
 
-if (hasCommitted && !force) {
+if (hasCommitted && !force && !upgradeCws) {
   const localCache = unpackedDirForStoreId(defaultUserDataRoot(), storeId);
   const localVerified = path.join(localCache, "_metadata", "verified_contents.json");
   const committedVer = readVersion(targetDir);
@@ -96,7 +97,7 @@ if (hasCommitted && !force) {
     console.log(`sync-bundled-e0001: upgraded bundled snapshot v${committedVer} → v${cacheVer} from local verified cache.`);
     process.exit(0);
   }
-  console.log(`sync-bundled-e0001: snapshot present (v${committedVer}), skipping download. Use --force to refresh.`);
+  console.log(`sync-bundled-e0001: snapshot present (v${committedVer}), skipping download. Use --force or --upgrade-cws to refresh.`);
   process.exit(0);
 }
 
@@ -107,6 +108,15 @@ try {
   const verified = path.join(unpackedPath, "_metadata", "verified_contents.json");
   if (!fs.existsSync(verified)) {
     throw new Error("downloaded store extension is not verified (missing _metadata/verified_contents.json)");
+  }
+  const storeVer = readVersion(unpackedPath);
+  const committedVer = hasCommitted ? readVersion(targetDir) : "";
+  if (hasCommitted && !force && committedVer && compareExtensionVersions(storeVer, committedVer) <= 0) {
+    const wsVer = readVersion(workspaceDir);
+    console.log(
+      `sync-bundled-e0001: CWS verified store v${storeVer} == bundled v${committedVer} (workspace v${wsVer || "none"} — awaiting CWS approval to promote).`,
+    );
+    process.exit(0);
   }
   fs.mkdirSync(path.dirname(targetDir), { recursive: true });
   const staging = `${targetDir}.staging`;

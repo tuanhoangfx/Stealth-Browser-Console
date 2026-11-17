@@ -100,7 +100,7 @@ for (const art of ARTIFACTS) {
   const stat = fs.statSync(localPath);
   const metaPayload = {
     version: VERSION,
-    wrapperVersion: "0.4.8",
+    wrapperVersion: "0.6.5",
     platform: art.platform,
     archive: art.fileName,
     sizeBytes: stat.size,
@@ -205,6 +205,67 @@ $p = Join-Path '${REMOTE_DIR_WIN}' '${extra.fileName}'
     }
   } catch {
     /* best-effort extra signature metadata */
+  }
+}
+
+// Bundle & sync Windows WidevineCdm so fresh Windows machines without preinstalled Chrome/Edge keep Netflix DRM working.
+if (process.platform === "win32") {
+  const localWidevineDir = path.join(os.homedir(), ".cloakbrowser", `chromium-${VERSION}`, "WidevineCdm");
+  const wvZipName = `cloakbrowser-widevine-win64-${VERSION}.zip`;
+  const wvMetaName = `cloakbrowser-widevine-win64-${VERSION}.sha256.json`;
+  const localWvZip = path.join(backupsDir, wvZipName);
+  const localWvMeta = path.join(backupsDir, wvMetaName);
+  if (fs.existsSync(path.join(localWidevineDir, "manifest.json"))) {
+    const tmpZip = path.join(backupsDir, `.tmp-${wvZipName}`);
+    fs.rmSync(tmpZip, { force: true });
+    execFileSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        `Compress-Archive -Path '${localWidevineDir.replace(/'/g, "''")}' -DestinationPath '${tmpZip.replace(/'/g, "''")}' -Force`,
+      ],
+      { stdio: "inherit", windowsHide: true, timeout: 120_000 },
+    );
+    if (fs.existsSync(tmpZip)) {
+      fs.renameSync(tmpZip, localWvZip);
+      const wvSha = sha256File(localWvZip);
+      const wvStat = fs.statSync(localWvZip);
+      fs.writeFileSync(
+        localWvMeta,
+        JSON.stringify(
+          {
+            version: VERSION,
+            component: "WidevineCdm",
+            platform: "windows-x64",
+            archive: wvZipName,
+            sizeBytes: wvStat.size,
+            sha256: wvSha,
+            syncedAt: new Date().toISOString(),
+          },
+          null,
+          2,
+        ) + "\n",
+        "utf8",
+      );
+      execFileSync("scp", ["-q", localWvZip, `${LENOVO_HOST}:${REMOTE_DIR_SCP}/${wvZipName}`], {
+        stdio: "inherit",
+        windowsHide: true,
+        timeout: 180_000,
+      });
+      execFileSync("scp", ["-q", localWvMeta, `${LENOVO_HOST}:${REMOTE_DIR_SCP}/${wvMetaName}`], {
+        stdio: "inherit",
+        windowsHide: true,
+        timeout: 60_000,
+      });
+      const remoteWvSha = runLenovoPs(
+        `(Get-FileHash -Algorithm SHA256 (Join-Path '${REMOTE_DIR_WIN}' '${wvZipName}')).Hash.ToLower()`,
+      );
+      if (remoteWvSha !== wvSha) {
+        throw new Error(`Lenovo WidevineCdm SHA-256 mismatch: ${remoteWvSha} !== ${wvSha}`);
+      }
+      results.push({ component: "WidevineCdm", archive: wvZipName, sizeBytes: wvStat.size, sha256: wvSha });
+    }
   }
 }
 

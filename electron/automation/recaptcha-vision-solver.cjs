@@ -150,10 +150,13 @@ async function askVisionForRecaptchaTiles(
   const apiKey = cfg.apiKey || "sk-uer05xqnhp3s2ii0-7p7jal-a3b87e60";
   const maxTile = gridSize === 4 ? 16 : 9;
 
-  // Tier 1: CapSolver ReCaptchaV2Classification (1-based tile indices)
-  const capsolverKey = process.env.CAPSOLVER_API_KEY || "CAP-1C2D156ADF1974E279B0DEF1F3DAB7A9B48E2E5339535AB8FEACA0F97F9B0011";
+  // Tier 1: CapSolver ReCaptchaV2Classification (only when a funded non-revoked CAPSOLVER_API_KEY is explicitly configured)
+  const capsolverKey = String(process.env.CAPSOLVER_API_KEY || "").trim();
+  const isKnownRevokedCapKey =
+    capsolverKey === "CAP-1C2D156ADF1974E279B0DEF1F3DAB7A9B48E2E5339535AB8FEACA0F97F9B0011" &&
+    process.env.CAPSOLVER_ALLOW_REVOKED_TEST_KEY !== "1";
   const capCode = mapRecaptchaPromptToCapsolverCode(targetPrompt);
-  if (capsolverKey && capCode && !askVisionForRecaptchaTiles._capsolverDisabled) {
+  if (capsolverKey && !isKnownRevokedCapKey && capCode && !askVisionForRecaptchaTiles._capsolverDisabled) {
     try {
       const capRes = await fetchFn("https://api.capsolver.com/createTask", {
         method: "POST",
@@ -169,7 +172,13 @@ async function askVisionForRecaptchaTiles(
         signal: AbortSignal.timeout(8000),
       });
       const capBody = await capRes.json().catch(() => null);
-      if (capBody?.errorCode === "ERROR_KEY_DENIED_ACCESS" || capBody?.errorId === 1) {
+      if (
+        capRes?.status === 401 ||
+        capRes?.status === 403 ||
+        capBody?.errorCode === "ERROR_KEY_DENIED_ACCESS" ||
+        capBody?.errorCode === "ERROR_ZERO_BALANCE" ||
+        capBody?.errorId === 1
+      ) {
         askVisionForRecaptchaTiles._capsolverDisabled = true;
       } else if (capBody && capBody.errorId === 0 && capBody.solution && Array.isArray(capBody.solution.objects)) {
         const tiles = capBody.solution.objects
@@ -195,22 +204,20 @@ async function askVisionForRecaptchaTiles(
   ].join(" ");
 
   const baseModels = [
-    "ag/claude-sonnet-4-6",
     "ag/gemini-3-flash",
     "ag/gemini-2.5-flash",
-    "ag/claude-sonnet-5-5",
-    "ag/claude-sonnet-5-5-low",
     "ag/gemini-3.8-flash",
     "cx/gpt-5.6-luna-review",
     "cx/gpt-5.6-sol-review",
     "cx/gpt-5.6-terra-review",
-    "cx/gpt-6.1-sol",
-    "cx/gpt-6-astra",
     "cx/gpt-6-luna",
     "cx/gpt-5.6-luna",
+    "cx/gpt-6.1-sol",
+    "cx/gpt-6-astra",
     "cx/gpt-5.6-terra",
     "cx/gpt-6-sol",
     "cx/gpt-5.6-sol",
+    "ag/claude-sonnet-4-6",
   ];
   const nowMs = Date.now();
   const codexInCooldown =
@@ -1689,12 +1696,68 @@ async function handleGoogleQrChallengeViaCdp(
       ok: false,
       reason: !(nodeInfo?.adbDevices?.length > 0) ? "no_adb_device_online" : "qr_url_not_decoded",
     };
+    let smsBridge = null;
     if (nodeInfo?.adbDevices?.length > 0 && qrInfo?.qrUrl) {
-      adbDispatch = await bridgeMod.dispatchQrToConnectedAdbDevice(identity, {
-        qrUrl: qrInfo.qrUrl,
-        code,
-        onLog,
-      });
+      const devices = Array.isArray(nodeInfo.adbDevices) ? nodeInfo.adbDevices : [];
+      const envSerial = String(process.env.ANDROID_ADB_SERIAL || "").trim();
+      const matchedEnvDevice = envSerial
+        ? devices.find((d) => String(d?.serial || "").trim() === envSerial)
+        : null;
+      const resolvedSerial =
+        String(matchedEnvDevice?.serial || devices[0]?.serial || "").trim();
+      const isGcoVerifyQr = /(?:g\.co\/verify|devicephoneverification\/(?:begin|start|consent)|accounts\.google\.com\/shorturl)/i.test(
+        String(qrInfo.qrUrl || ""),
+      );
+      const shouldTryIsmsFirst =
+        isGcoVerifyQr &&
+        process.env.P0002_ENABLE_ADB_QR_VIEW === "1" &&
+        resolvedSerial &&
+        typeof bridgeMod.dispatchGoogleQrSmsViaIsmsBridge === "function";
+
+      // Dispatch headless iSMS OTP before opening the QR URL on Android Chrome so the phone
+      // does not consume a one-time shorturl token before DirectBrowser extracts the SMS target.
+      if (shouldTryIsmsFirst) {
+        smsBridge = await bridgeMod
+          .dispatchGoogleQrSmsViaIsmsBridge({
+            qrUrl: qrInfo.qrUrl,
+            serial: resolvedSerial,
+            code,
+            androidIdentity: identity,
+            onLog,
+          })
+          .catch((err) => ({ ok: false, smsSentViaAdb: false, reason: err?.message || String(err) }));
+      }
+
+      if (smsBridge?.smsSentViaAdb) {
+        adbDispatch = {
+          ok: true,
+          serial: resolvedSerial,
+          skippedBecauseIsmsSent: true,
+        };
+      } else {
+        adbDispatch = await bridgeMod.dispatchQrToConnectedAdbDevice(identity, {
+          qrUrl: qrInfo.qrUrl,
+          code,
+          onLog,
+        });
+        const targetSerial = adbDispatch?.serial || resolvedSerial;
+        if (
+          !shouldTryIsmsFirst &&
+          process.env.P0002_ENABLE_ADB_QR_VIEW === "1" &&
+          targetSerial &&
+          typeof bridgeMod.dispatchGoogleQrSmsViaIsmsBridge === "function"
+        ) {
+          smsBridge = await bridgeMod
+            .dispatchGoogleQrSmsViaIsmsBridge({
+              qrUrl: qrInfo.qrUrl,
+              serial: targetSerial,
+              code,
+              androidIdentity: identity,
+              onLog,
+            })
+            .catch((err) => ({ ok: false, smsSentViaAdb: false, reason: err?.message || String(err) }));
+        }
+      }
     }
     bridgeStatus = {
       ok: true,
@@ -1704,6 +1767,7 @@ async function handleGoogleQrChallengeViaCdp(
       androidModel: identity.model,
       androidImei: identity.imei,
       adbDispatch,
+      smsBridge,
     };
   } catch (err) {
     bridgeStatus = {

@@ -163,25 +163,25 @@
 .stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--activity,
 .stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--activity,
 .stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--activity {
-  width: 6.5rem;
-  min-width: 6.5rem;
-  max-width: 6.5rem;
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
 }
 
 .stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--created,
 .stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--created,
 .stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--created {
-  width: 6.5rem;
-  min-width: 6.5rem;
-  max-width: 6.5rem;
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
 }
 
 .stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--name,
 .stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--name,
 .stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--name {
-  width: 6.75rem;
-  min-width: 6.75rem;
-  max-width: 6.75rem;
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
 }
 
 .stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--role,

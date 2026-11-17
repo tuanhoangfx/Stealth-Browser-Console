@@ -119,11 +119,11 @@
   },
   "engine": {
     "package": "cloakbrowser",
-    "version": "0.4.8",
+    "version": "0.6.5",
     "pinned": true,
     "bumpPolicy": "docs/ENGINE-CLOAKBROWSER.md#bump-policy",
     "forkDecision": "docs/cloakbrowser-fork-evaluation.md#decision-record",
-    "updatedAt": "2026-07-06"
+    "updatedAt": "2026-11-18"
   },
   "uiScreens": [
     {
@@ -164,7 +164,7 @@
     "platform": "P0008",
     "siteId": "stealth",
     "root": "Tool/P0008-Landing-Platform/sites/stealth",
-    "domain": "stealth.infi.io.vn",
+    "domain": "stealth.infi28.com",
     "basePath": "/intro/",
     "deploy": "node Tool/scripts/deploy-lenovo-static.mjs --code P0003-SITE"
   },
@@ -177,9 +177,9 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-11-12T10:49:39.153Z",
+  "manifestUpdatedAt": "2026-11-17T21:13:49.890Z",
   "release": {
-    "version": "9.2.397",
+    "version": "9.2.484",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -220,7 +220,7 @@
     "syncedAt": "2026-08-19T22:47:57.996Z"
   },
   "versions": {
-    "current": "9.2.397",
+    "current": "9.2.484",
     "latestPublished": "9.2.397"
   }
 }

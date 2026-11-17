@@ -633,8 +633,7 @@ async function patchStealthSnapshotByAccountId(accountId, snapshot, { status = n
     const patch = {
       stealth_snapshot: snapshot,
       stealth_checked_at: checkedAt,
-      // Bump updated_at so P0020 watermark delta pulls stealth telemetry.
-      updated_at: checkedAt,
+      // Omit client updated_at so origin-pg stamps server now() atomically for delta sync.
     };
     if (nextStatus) patch.status = nextStatus;
     if (Array.isArray(cookies) && cookies.length > 0) patch.stealth_cookies = cookies;
@@ -696,7 +695,6 @@ async function patchMailAccountOutcome({
     let lastReason = "";
     for (const row of rows) {
       const patch = {
-        updated_at: checkedAt,
         stealth_checked_at: checkedAt,
       };
       if (nextStatus) patch.status = nextStatus;

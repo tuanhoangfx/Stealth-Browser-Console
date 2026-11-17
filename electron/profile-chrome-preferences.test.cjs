@@ -99,4 +99,47 @@ describe("profile-chrome-preferences", () => {
 
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it("detects signed Secure Preferences and clears stale tracked_preferences_reset without mutating HMACs", () => {
+    const {
+      hasSignedSecurePreferences,
+      clearTrackedPreferenceResetNotice,
+    } = require("./lib/profile-chrome-preferences.cjs");
+    const { ensureProfileChromeOmniboxSearchPrefs } = require("./lib/profile-chrome-omnibox.cjs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-signed-guard-"));
+    const userDataDir = path.join(root, "profiles", "p-signed");
+    const defDir = path.join(userDataDir, "Default");
+    fs.mkdirSync(defDir, { recursive: true });
+    assert.equal(hasSignedSecurePreferences(userDataDir), false);
+
+    const prefsFile = path.join(defDir, "Preferences");
+    const secFile = path.join(defDir, "Secure Preferences");
+    const secPayload = {
+      extensions: { settings: { mhjfbmdgcfjbbpaeojofohoefgiehjai: { state: 1 } } },
+      protection: {
+        super_mac: "VALID_SUPER_MAC_TOKEN",
+        macs: { extensions: { settings: { mhjfbmdgcfjbbpaeojofohoefgiehjai: "MAC1" } } },
+      },
+    };
+    fs.writeFileSync(secFile, JSON.stringify(secPayload), "utf8");
+    fs.writeFileSync(
+      prefsFile,
+      JSON.stringify({
+        prefs: { tracked_preferences_reset: ["extensions.settings"] },
+      }),
+      "utf8",
+    );
+
+    assert.equal(hasSignedSecurePreferences(userDataDir), true);
+    ensureProfileChromeOmniboxSearchPrefs(userDataDir);
+    assert.equal(clearTrackedPreferenceResetNotice(userDataDir), true);
+
+    const afterPrefs = JSON.parse(fs.readFileSync(prefsFile, "utf8"));
+    const afterSec = JSON.parse(fs.readFileSync(secFile, "utf8"));
+    assert.equal(afterPrefs.prefs, undefined);
+    assert.equal(afterPrefs.default_search_provider_data, undefined);
+    assert.deepEqual(afterSec, secPayload);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });

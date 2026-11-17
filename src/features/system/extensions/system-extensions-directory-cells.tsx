@@ -125,7 +125,7 @@ export function renderSystemExtensionsDirectoryBodyCell(
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <HubDirectoryValuePopover value={popoverValue} title="📋 Extension Activity Log">
-            <span className={`hub-directory-table-body-text max-w-[14rem] truncate ${toneClass}`}>
+            <span className={`hub-directory-table-body-text max-w-[15rem] truncate ${toneClass}`}>
               {logText}
             </span>
           </HubDirectoryValuePopover>

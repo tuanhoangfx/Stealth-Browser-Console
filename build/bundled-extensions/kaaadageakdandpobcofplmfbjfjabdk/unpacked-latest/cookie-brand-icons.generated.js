@@ -263,7 +263,7 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
   },
   {
     "label": "Google AI Studio",
-    "match": "(^|\\.)aistudio\\.google\\.com$",
+    "match": "(^|\\.)aistudio\\.google\\.com$|(^|\\.)ai\\.google\\.dev$",
     "source": {
       "type": "local",
       "webSrc": "/assets/brand-icons/google-one.png",
@@ -286,6 +286,24 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
       "type": "local",
       "webSrc": "/assets/brand-icons/firebase.png",
       "extensionSrc": "assets/brand-icons/firebase.png"
+    }
+  },
+  {
+    "label": "Google Gemini",
+    "match": "(^|\\.)gemini\\.google\\.com$|(^|\\.)bard\\.google\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/google-one.png",
+      "extensionSrc": "assets/brand-icons/google-one.png"
+    }
+  },
+  {
+    "label": "Google Colab",
+    "match": "(^|\\.)colab\\.research\\.google\\.com$|(^|\\.)colab\\.google$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/google-cloud.png",
+      "extensionSrc": "assets/brand-icons/google-cloud.png"
     }
   },
   {

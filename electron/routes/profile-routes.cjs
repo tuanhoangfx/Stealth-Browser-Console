@@ -427,11 +427,13 @@ function buildProfileRoutes(deps) {
       handler(ctx) {
         const profileId = ctx.params[1];
         const profile = profileService.getProfile(profileId);
+        const rawProxy = String(profile?.proxy || "").trim();
         return send.json(ctx.res, 200, {
           ok: true,
           profileId,
           running: sessionManager.isRunning(profileId),
           status: profile?.status ?? "unknown",
+          isDirectProxy: !rawProxy || /^direct$/i.test(rawProxy),
         });
       },
     },

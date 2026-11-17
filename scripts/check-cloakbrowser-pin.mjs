@@ -21,7 +21,7 @@ if (!declared) {
 
 if (/^[\^~>=<]/.test(declared)) {
   console.error(
-    `check-cloakbrowser-pin: cloakbrowser must be exact pin (got "${declared}"). Use 0.4.8 not ^0.4.8`,
+    `check-cloakbrowser-pin: cloakbrowser must be exact pin (got "${declared}"). Use 0.6.5 not ^0.6.5`,
   );
   process.exit(1);
 }
@@ -78,9 +78,9 @@ if (installed !== declared) {
   process.exit(1);
 }
 
-if (declared !== "0.4.8" && process.env.STEALTH_ALLOW_UNFROZEN_CLOAKBROWSER !== "1") {
+if (declared !== "0.6.5" && process.env.STEALTH_ALLOW_UNFROZEN_CLOAKBROWSER !== "1") {
   console.error(
-    `check-cloakbrowser-pin: cloakbrowser is frozen at 0.4.8 (chromium-146.0.7680.177.5, free unlimited-session tier). Got "${declared}". Versions >=0.4.11 / 0.7.0 enforce server-side seat limits (exitCode=76).`,
+    `check-cloakbrowser-pin: cloakbrowser is frozen at 0.6.5 (chromium-146.0.7680.177.5, last keyless unlimited-session wrapper). Got "${declared}". Versions >=0.7.0 require license key & enforce 1-session free cap.`,
   );
   process.exit(1);
 }

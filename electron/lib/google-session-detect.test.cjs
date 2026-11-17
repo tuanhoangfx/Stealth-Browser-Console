@@ -281,6 +281,18 @@ test("autoHealCompletedMicrosoftChallengeTabs and syncProfileWindowLiveCdpStateT
   });
   assert.equal(invalidRes.ok, false);
   assert.equal(invalidRes.reason, "invalid_profile_code");
+
+  const headlessRes = await syncProfileWindowLiveCdpStateToP0020({
+    profileCode: "0403",
+    profileId: "prof-0403",
+    liveCdp: true,
+    debugPort: 9222,
+    isHeadless: true,
+    source: "p0003_window_running",
+  });
+  assert.equal(headlessRes.ok, true);
+  assert.equal(headlessRes.skipped, "headless_session_sse_only");
+  assert.equal(headlessRes.patchedCount, 0);
 });
 
 test("isAuthenticatedFacebookAppUrl, isAuthenticatedTikTokAppUrl, classifyFacebookLiveCdpTargets, and autoHealCompletedSocialChallengeTabs handle leftover 2FA/login tabs cleanly", async () => {
@@ -302,6 +314,17 @@ test("isAuthenticatedFacebookAppUrl, isAuthenticatedTikTokAppUrl, classifyFacebo
     false,
   );
   assert.equal(isAuthenticatedFacebookAppUrl("https://www.facebook.com/login/"), false);
+  assert.equal(
+    isAuthenticatedFacebookAppUrl(
+      "https://m.facebook.com/caa/reg/confirmation/?reg_info=%7B%22is_cp_auto_confirmed%22%3Afalse%7D&current_step=9#",
+    ),
+    false,
+  );
+  assert.equal(
+    isAuthenticatedFacebookAppUrl("https://m.facebook.com/ig/login_via/app/?lva_source=register#"),
+    false,
+  );
+  assert.equal(isAuthenticatedFacebookAppUrl("https://m.facebook.com/confirmemail.php"), false);
 
   assert.equal(isAuthenticatedTikTokAppUrl("https://www.tiktok.com/foryou"), true);
   assert.equal(isAuthenticatedTikTokAppUrl("https://www.tiktok.com/@username"), true);
@@ -1226,6 +1249,53 @@ test("isAuthenticatedMicrosoftAppUrl, classifyMicrosoftLiveCdpTargets, and verif
   assert.equal(remindVerify.ok, true);
   assert.equal(remindVerify.loggedIn, true);
   assert.equal(remindVerify.resultCode, "outlook_cookies");
+
+  const { verifyFacebookCookiesLiveViaHttp } = require("./stealth-multiplatform-sync.cjs");
+  for (const regUrl of [
+    "https://m.facebook.com/caa/reg/confirmation/?is_cp_auto_confirmed=false&current_step=9",
+    "https://m.facebook.com/ig/login_via/app/?lva_source=register#",
+    "https://m.facebook.com/confirmemail.php",
+  ]) {
+    const regVerify = await verifyFacebookCookiesLiveViaHttp(
+      [
+        { name: "c_user", value: "61596647460273", domain: ".facebook.com" },
+        { name: "xs", value: "35%3Aabc%3A2%3A17948", domain: ".facebook.com" },
+      ],
+      2000,
+      {
+        fetchFn: async () => ({
+          status: 302,
+          headers: { get: (k) => (String(k).toLowerCase() === "location" ? regUrl : null) },
+        }),
+      },
+    );
+    assert.equal(regVerify.ok, true);
+    assert.equal(regVerify.loggedIn, false);
+    assert.equal(regVerify.unconfirmedReg, true);
+    assert.equal(regVerify.resultCode, "reg_unconfirmed");
+  }
+
+  const { shouldPreserveChallengedState, isFacebookRowInCheckpointOrDisabled } = require("./stealth-multiplatform-sync.cjs");
+  for (const ghostRow of [
+    {
+      service: "Facebook",
+      status: "appeal",
+      note: "[Audited 2026-11-17: unconfirmed /caa/reg ghost row, no OTP confirmed] email=pending · phoneDetached=false",
+      stealth_snapshot: { status: "challenged", result_code: "unconfirmed_caa_reg", logged_in: false },
+    },
+    {
+      service: "Facebook",
+      status: "active",
+      note: "Mobile Farm Phone+Detach · outcome=pending · phoneDetached=false",
+      stealth_snapshot: { status: "challenged", result_code: "reg_unconfirmed", logged_in: false },
+    },
+  ]) {
+    assert.equal(isFacebookRowInCheckpointOrDisabled(ghostRow), true);
+    assert.equal(
+      shouldPreserveChallengedState(ghostRow, true, { hasVerifiedFacebookAuth: true }),
+      true,
+    );
+  }
 });
 
 

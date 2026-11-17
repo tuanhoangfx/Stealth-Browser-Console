@@ -192,7 +192,7 @@ function copyExtensionTreeBestEffort(src, dest, rootSrc = src) {
   }
 }
 
-const STAGE_CACHE_TTL_MS = 30_000;
+const STAGE_CACHE_TTL_MS = 300_000;
 const _stageResultCache = new Map();
 
 const STAGE_CORE_RUNTIME_CANDIDATES = [

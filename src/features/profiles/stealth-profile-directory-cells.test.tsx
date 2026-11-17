@@ -30,13 +30,13 @@ const profileCol = {
 
 const statusCol = {
   key: "status",
-  label: "Run",
+  label: "Action",
   role: "tools",
   colClass: "hub-users-col--tools",
-  width: "4.5rem",
+  width: "5.5rem",
 } as HubDirectoryColumnDef<StealthProfileSortKey>;
 
-describe("renderStealthProfileDirectoryBodyCell run", () => {
+describe("renderStealthProfileDirectoryBodyCell action", () => {
   it("keeps the headless 👻 emoji beside Stop on one line and wraps in Active AI Agent Headless popover", () => {
     const running = { id: "0011", name: "0011", status: "running", headless: true } as ProfileRow;
     const html = renderToStaticMarkup(

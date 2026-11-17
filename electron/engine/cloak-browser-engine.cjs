@@ -54,7 +54,7 @@ const { execFileSync } = require("node:child_process");
 if (process.platform === "win32") {
   try {
     const cp = require("node:child_process");
-    if (cp.ChildProcess?.prototype?.spawn && !cp.ChildProcess.prototype.__stealthHeadlessHideGuardV2) {
+    if (cp.ChildProcess?.prototype?.spawn && !cp.ChildProcess.prototype.__stealthHeadlessHideGuardV4) {
       const origSpawn = cp.ChildProcess.prototype.__stealthOrigSpawn || cp.ChildProcess.prototype.spawn;
       cp.ChildProcess.prototype.__stealthOrigSpawn = origSpawn;
       cp.ChildProcess.prototype.spawn = function stealthSafeSpawn(options) {
@@ -63,18 +63,22 @@ if (process.platform === "win32") {
           const argsArr = Array.isArray(options.args) ? options.args : [];
           const isHeadless = argsArr.some((a) => String(a).startsWith("--headless"));
           if (isHeadless && (fileStr.endsWith("\\chrome.exe") || fileStr.endsWith("/chrome.exe"))) {
-            const cuiExe = resolveHeadlessCuiExecutablePath(options.file);
-            if (cuiExe && cuiExe !== options.file) {
-              options.file = cuiExe;
+            const headlessExe = resolveHeadlessCuiExecutablePath(options.file);
+            if (headlessExe && headlessExe !== options.file) {
+              options.file = headlessExe;
               if (argsArr.length > 0) {
-                argsArr[0] = cuiExe;
+                argsArr[0] = headlessExe;
               }
             }
+          } else if (fileStr.endsWith("\\chrome-headless.exe") || fileStr.endsWith("/chrome-headless.exe")) {
+            const siblingGui = String(options.file).replace(/chrome-headless\.exe$/i, "chrome.exe");
+            resolveHeadlessCuiExecutablePath(fs.existsSync(siblingGui) ? siblingGui : options.file);
           }
           if (
             isHeadless ||
             String(options.file || "").toLowerCase().endsWith("chrome-headless.exe") ||
-            fileStr.endsWith("nodew.exe")
+            fileStr.endsWith("nodew.exe") ||
+            fileStr.endsWith("wireproxy.exe")
           ) {
             options.windowsHide = true;
           }
@@ -82,6 +86,8 @@ if (process.platform === "win32") {
         return origSpawn.call(this, options);
       };
       cp.ChildProcess.prototype.__stealthHeadlessHideGuardV2 = true;
+      cp.ChildProcess.prototype.__stealthHeadlessHideGuardV3 = true;
+      cp.ChildProcess.prototype.__stealthHeadlessHideGuardV4 = true;
     }
   } catch {
     /* ignore */
@@ -90,30 +96,56 @@ if (process.platform === "win32") {
 
 /**
  * Ensures a dedicated `chrome-headless.exe` copy with PE Subsystem = 3 (`IMAGE_SUBSYSTEM_WINDOWS_CUI`)
- * exists next to `chrome.exe`. When launched with `windowsHide: true` (`CREATE_NO_WINDOW`), Windows
- * kernel (`win32kfull.sys`) neither allocates a console window NOR triggers the 5-second `IDC_APPSTARTING`
- * blue spinning cursor on the mouse pointer.
+ * exists next to `chrome.exe`.
+ *
+ * Why Subsystem = 3 (`WINDOWS_CUI`) instead of 2 (`WINDOWS_GUI`):
+ * When `libuv` (`uv_spawn`) spawns a `WINDOWS_GUI` (2) binary without `STARTF_FORCEOFFFEEDBACK`,
+ * Windows `win32kfull.sys` triggers `IDC_APPSTARTING` (5-7s blue spinning cursor at the mouse pointer)
+ * on every headless launch because the headless process never creates a visible message-pumping window.
+ * Using `IMAGE_SUBSYSTEM_WINDOWS_CUI` (3) with `windowsHide: true` (`CREATE_NO_WINDOW`) guarantees
+ * zero console windows AND zero `IDC_APPSTARTING` cursor spins while preserving the dedicated
+ * `chrome-headless.exe` process image name for orphan reaping & NUMA balancing.
  */
 function resolveHeadlessCuiExecutablePath(guiExePath) {
   if (process.platform !== "win32" || !guiExePath) return guiExePath;
   let cuiExePath = "";
   try {
-    const resolvedGui = path.resolve(String(guiExePath));
-    if (!fs.existsSync(resolvedGui)) return guiExePath;
-    const dir = path.dirname(resolvedGui);
-    cuiExePath = path.join(dir, "chrome-headless.exe");
-    const srcStat = fs.statSync(resolvedGui);
-    let needsCopy = !fs.existsSync(cuiExePath);
-    if (!needsCopy) {
-      try {
-        const dstStat = fs.statSync(cuiExePath);
-        if (dstStat.size !== srcStat.size) needsCopy = true;
-      } catch {
-        needsCopy = true;
+    const resolvedInput = path.resolve(String(guiExePath));
+    if (!fs.existsSync(resolvedInput)) return guiExePath;
+    const dir = path.dirname(resolvedInput);
+    try {
+      for (const entryName of fs.readdirSync(dir)) {
+        if (!/\.(?:cui|gui)-stale(?:-\d+)?\.exe$/i.test(entryName)) continue;
+        try {
+          fs.unlinkSync(path.join(dir, entryName));
+        } catch {
+          /* ignore while held by running process */
+        }
       }
+    } catch {
+      /* ignore */
     }
-    if (needsCopy) {
-      fs.copyFileSync(resolvedGui, cuiExePath);
+    const isAlreadyHeadlessName = path.basename(resolvedInput).toLowerCase() === "chrome-headless.exe";
+    const resolvedGui = isAlreadyHeadlessName ? path.join(dir, "chrome.exe") : resolvedInput;
+    cuiExePath = path.join(dir, "chrome-headless.exe");
+    if (fs.existsSync(resolvedGui) && resolvedGui !== cuiExePath) {
+      const srcStat = fs.statSync(resolvedGui);
+      let needsCopy = !fs.existsSync(cuiExePath);
+      if (!needsCopy) {
+        try {
+          const dstStat = fs.statSync(cuiExePath);
+          if (dstStat.size !== srcStat.size) needsCopy = true;
+        } catch {
+          needsCopy = true;
+        }
+      }
+      if (needsCopy) {
+        try {
+          fs.copyFileSync(resolvedGui, cuiExePath);
+        } catch {
+          // If locked by running process, atomic rename aside + copy below will handle it if needed.
+        }
+      }
     }
     // Read-only probe first so concurrent headless Chrome launches never fail with EBUSY
     // (STATUS_SHARING_VIOLATION on write handle "r+") when chrome-headless.exe is already running.
@@ -135,13 +167,40 @@ function resolveHeadlessCuiExecutablePath(guiExePath) {
       fs.closeSync(rfd);
     }
     if (needsPatch && subOffset > 0) {
-      const wfd = fs.openSync(cuiExePath, "r+");
+      const writeSubsystemCui = (targetPath) => {
+        const wfd = fs.openSync(targetPath, "r+");
+        try {
+          const b = Buffer.alloc(2);
+          b.writeUInt16LE(3, 0); // 3 = IMAGE_SUBSYSTEM_WINDOWS_CUI (0 IDC_APPSTARTING cursor spin)
+          fs.writeSync(wfd, b, 0, 2, subOffset);
+        } finally {
+          fs.closeSync(wfd);
+        }
+      };
       try {
-        const b = Buffer.alloc(2);
-        b.writeUInt16LE(3, 0); // 3 = IMAGE_SUBSYSTEM_WINDOWS_CUI
-        fs.writeSync(wfd, b, 0, 2, subOffset);
-      } finally {
-        fs.closeSync(wfd);
+        writeSubsystemCui(cuiExePath);
+      } catch {
+        // Running chrome-headless.exe holds an image section lock against r+ writes,
+        // but Windows NTFS permits renaming a running .exe and copying clean chrome.exe into place.
+        if (fs.existsSync(resolvedGui) && resolvedGui !== cuiExePath) {
+          const stalePath = path.join(dir, "chrome-headless.cui-stale.exe");
+          try {
+            fs.unlinkSync(stalePath);
+          } catch {
+            /* ignore if stalePath is also still held */
+          }
+          const fallbackStale = fs.existsSync(stalePath)
+            ? path.join(dir, `chrome-headless.cui-stale-${process.pid}.exe`)
+            : stalePath;
+          fs.renameSync(cuiExePath, fallbackStale);
+          fs.copyFileSync(resolvedGui, cuiExePath);
+          writeSubsystemCui(cuiExePath);
+          try {
+            fs.unlinkSync(fallbackStale);
+          } catch {
+            /* cleaned on next launch after old process exits */
+          }
+        }
       }
     }
     return cuiExePath;
@@ -156,12 +215,13 @@ const cookieBridgeLaunchPrepped = new Set();
 const FAST_LAUNCH = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
 
 /**
- * Frozen CloakBrowser Engine Lock (`ok 2` & `ok 3`):
- * Locks P0003 to `cloakbrowser@0.4.8` + `chromium-146.0.7680.177.5` (free unlimited-session tier).
- * Disables background npm/GitHub auto-update checks (`CLOAKBROWSER_AUTO_UPDATE=false`) and prevents
- * silent upgrades to license-gated `-pro` builds (`exitCode=76` seat limits in `>=0.4.11` / `0.7.0`).
+ * Frozen CloakBrowser Engine Lock:
+ * Locks P0003 to `cloakbrowser@0.6.5` (last keyless wrapper with multi-proxy GeoIP isolation,
+ * 70MB DB atomic replace fix, and first-page humanize fix) + `chromium-146.0.7680.177.5`
+ * (free unlimited-session tier). Disables background auto-update checks (`CLOAKBROWSER_AUTO_UPDATE=false`)
+ * and prevents upgrades to license-gated `>=0.7.0` / `-pro` builds.
  */
-const FROZEN_CLOAKBROWSER_WRAPPER_VERSION = "0.4.8";
+const FROZEN_CLOAKBROWSER_WRAPPER_VERSION = "0.6.5";
 const FROZEN_CLOAKBROWSER_CHROMIUM_VERSION = "146.0.7680.177.5";
 const FROZEN_CLOAKBROWSER_WIN64_SHA256 = "b213795cb32c3169f766c74ce1d0275fc89d3df256de39c04da7fb4c23b7fdbe";
 const LENOVO_CLOAKBROWSER_MIRROR_HOST = process.env.LENOVO_SSH || "PC@100.88.80.113";
@@ -283,6 +343,12 @@ const CLOAK_IGNORE_DEFAULT_ARGS = [
   "--disable-background-timer-throttling",
   "--disable-backgrounding-occluded-windows",
   "--disable-renderer-backgrounding",
+  "--disable-component-update",
+  "--disable-background-networking",
+  "--disable-client-side-phishing-detection",
+  "--disable-popup-blocking",
+  "--disable-back-forward-cache",
+  "--disable-field-trial-config",
 ];
 const SANDBOX_FLAGS = ["--no-sandbox", "--no-sandbox-and-elevated"];
 const EXTENSION_BLOCK_FLAGS = ["--disable-extensions"];
@@ -390,26 +456,25 @@ function buildStealthChromeArgs(profile, userDataRoot = "") {
   args.push("--disable-infobars");
   if (isHeadless) {
     // Anti-Freeze Headless Chrome Tuning: cap V8 renderer & compositor raster threads per headless instance
-    // and cap disk/media cache to 1 MB (--disk-cache-size=1048576) so background browser launches never
-    // spike CPU / DWM or hammer the QLC NVMe SSD with hundreds of Cache_Data random write IOPS.
+    // and cap disk/media cache to 32 MB / 16 MB so Cloudflare/site JS+WASM stay cached across navigations
+    // without hammering the QLC NVMe SSD with unbounded Cache_Data growth.
     // Also set --window-size=1920,1080 so window.outerWidth/outerHeight (1920x1080) matches inner (1920x947) + screen (1920x1080).
     args.push(
       "--window-size=1920,1080",
       "--renderer-process-limit=2",
       "--num-raster-threads=1",
-      "--disk-cache-size=1048576",
-      "--media-cache-size=1048576",
+      "--disk-cache-size=33554432",
+      "--media-cache-size=16777216",
       "--mute-audio",
       "--disable-logging",
       "--disable-backgrounding-occluded-windows",
     );
   } else {
     // Headed User Browser Tuning: offload DOM/table tile rasterization from 2.30GHz Xeon cores
-    // onto the 11GB VRAM NVIDIA GTX 1080 Ti via GPU rasterization + zero-copy + 4 raster threads.
+    // onto the GPU via GPU rasterization + zero-copy + 4 raster threads.
     args.push(
       "--enable-gpu-rasterization",
       "--enable-zero-copy",
-      "--ignore-gpu-blocklist",
       "--num-raster-threads=4",
     );
   }
@@ -430,15 +495,10 @@ const DEFAULT_DISABLED_CHROME_FEATURES = [
   "DestroyProfileOnBrowserClose",
   "DialMediaRouteProvider",
   "GlobalMediaControls",
-  "HttpsUpgrades",
   "LensOverlay",
   "MediaRouter",
-  "PaintHolding",
-  "ThirdPartyStoragePartitioning",
   "Translate",
   "AutoDeElevate",
-  "RenderDocument",
-  "OptimizationHints",
   "ExtensionDisableUnsupportedDeveloper",
 ];
 
@@ -462,10 +522,32 @@ function ensureDisabledChromeFeatures(args) {
   return filtered;
 }
 
+/**
+ * Playwright matches `ignoreDefaultArgs` by exact string equality (`indexOf`), so we resolve
+ * Playwright's raw `--disable-features=...` switch dynamically to strip `ThirdPartyStoragePartitioning`,
+ * `HttpsUpgrades`, `PaintHolding`, `RenderDocument`, and `OptimizationHints` before our clean flag applies.
+ */
+function resolvePlaywrightDisableFeaturesArgs() {
+  try {
+    const { chromiumSwitches } = require("playwright-core/lib/server/chromium/chromiumSwitches");
+    if (typeof chromiumSwitches === "function") {
+      return chromiumSwitches(false).filter((arg) => String(arg).startsWith("--disable-features="));
+    }
+  } catch {
+    /* fallback to known Playwright 1.59 default string */
+  }
+  return [
+    "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints",
+  ];
+}
+
 function buildIgnoreDefaultArgs({ stripAboutBlank = false } = {}) {
   const base = shouldStripSandboxFlags()
     ? [...CLOAK_IGNORE_DEFAULT_ARGS, ...SANDBOX_FLAGS, ...EXTENSION_BLOCK_FLAGS]
     : [...CLOAK_IGNORE_DEFAULT_ARGS];
+  for (const pwFeatureArg of resolvePlaywrightDisableFeaturesArgs()) {
+    if (!base.includes(pwFeatureArg)) base.push(pwFeatureArg);
+  }
   if (stripAboutBlank && !base.includes("about:blank")) {
     base.push("about:blank");
   }
@@ -610,7 +692,12 @@ async function ensureEngineBinary() {
   maybeRestoreFrozenBinaryFromLocalMirror();
   const { ensureBinary, binaryInfo } = await loadCloakbrowser();
   await ensureBinary(undefined, FROZEN_CLOAKBROWSER_CHROMIUM_VERSION);
-  return binaryInfo(FROZEN_CLOAKBROWSER_CHROMIUM_VERSION);
+  const info = binaryInfo(FROZEN_CLOAKBROWSER_CHROMIUM_VERSION);
+  const binDir = info?.binaryDir || (info?.binaryPath ? path.dirname(info.binaryPath) : "") || (info?.executablePath ? path.dirname(info.executablePath) : "");
+  if (binDir) {
+    ensureWindowsWidevineCdm(binDir);
+  }
+  return info;
 }
 
 async function getBinaryInfo() {
@@ -685,6 +772,288 @@ async function prepareNativeExtensionsForLaunch(userDataDir, userDataRoot, profi
 }
 
 let _binaryVerifiedOnce = false;
+let _widevineVerifiedOnce = false;
+
+function parseNumericVersionParts(ver) {
+  return String(ver || "")
+    .split(".")
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => Number.isFinite(n));
+}
+
+function compareNumericVersionDesc(a, b) {
+  const va = parseNumericVersionParts(a);
+  const vb = parseNumericVersionParts(b);
+  for (let i = 0; i < Math.max(va.length, vb.length); i += 1) {
+    const diff = (vb[i] ?? 0) - (va[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return String(b).localeCompare(String(a));
+}
+
+function isValidWindowsWidevineDir(dir) {
+  if (!dir) return false;
+  return (
+    fs.existsSync(path.join(dir, "manifest.json")) &&
+    fs.existsSync(path.join(dir, "_platform_specific", "win_x64", "widevinecdm.dll"))
+  );
+}
+
+/**
+ * Locate the newest installed Google Chrome / Edge WidevineCdm directory on Windows.
+ */
+function findInstalledWindowsWidevineCdmDir(extraSearchRoots = []) {
+  if (process.platform !== "win32") return null;
+  const appRoots = [
+    ...extraSearchRoots,
+    process.env.ProgramFiles ? path.join(process.env.ProgramFiles, "Google", "Chrome", "Application") : "",
+    process.env["ProgramFiles(x86)"]
+      ? path.join(process.env["ProgramFiles(x86)"], "Google", "Chrome", "Application")
+      : "",
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application") : "",
+    process.env["ProgramFiles(x86)"]
+      ? path.join(process.env["ProgramFiles(x86)"], "Microsoft", "Edge", "Application")
+      : "",
+    process.env.ProgramFiles ? path.join(process.env.ProgramFiles, "Microsoft", "Edge", "Application") : "",
+  ].filter(Boolean);
+
+  for (const appRoot of appRoots) {
+    try {
+      if (!fs.existsSync(appRoot)) continue;
+      const versionDirs = fs
+        .readdirSync(appRoot, { withFileTypes: true })
+        .filter((ent) => ent.isDirectory() && /^\d+(?:\.\d+)+$/.test(ent.name))
+        .map((ent) => ent.name)
+        .sort(compareNumericVersionDesc);
+      for (const ver of versionDirs) {
+        const candidate = path.join(appRoot, ver, "WidevineCdm");
+        if (isValidWindowsWidevineDir(candidate)) return candidate;
+      }
+      const direct = path.join(appRoot, "WidevineCdm");
+      if (isValidWindowsWidevineDir(direct)) return direct;
+    } catch {
+      /* ignore unreadable install dir */
+    }
+  }
+  return null;
+}
+
+/**
+ * Sideload WidevineCdm once into the CloakBrowser binary directory on Windows so
+ * `com.widevine.alpha` (Netflix/DRM) works across all profiles with 0ms per-profile overhead.
+ */
+function ensureWindowsWidevineCdm(binaryDir, { force = false, sourceDir = "" } = {}) {
+  if (process.platform !== "win32" || !binaryDir) return false;
+  if (_widevineVerifiedOnce && !force) return true;
+  const targetDir = path.join(binaryDir, "WidevineCdm");
+  if (isValidWindowsWidevineDir(targetDir)) {
+    _widevineVerifiedOnce = true;
+    return true;
+  }
+  const srcDir = sourceDir && isValidWindowsWidevineDir(sourceDir)
+    ? sourceDir
+    : findInstalledWindowsWidevineCdmDir();
+  if (!srcDir) {
+    const backupsDir = path.join(resolveCloakCacheDir(), "backups");
+    const wvZipName = `cloakbrowser-widevine-win64-${FROZEN_CLOAKBROWSER_CHROMIUM_VERSION}.zip`;
+    const localWvZip = path.join(backupsDir, wvZipName);
+    if (!fs.existsSync(localWvZip)) {
+      try {
+        fs.mkdirSync(backupsDir, { recursive: true });
+        const tmpZip = `${localWvZip}.tmp`;
+        execFileSync(
+          "scp",
+          ["-q", `${LENOVO_CLOAKBROWSER_MIRROR_HOST}:${LENOVO_CLOAKBROWSER_MIRROR_DIR}/${wvZipName}`, tmpZip],
+          { timeout: 120_000, windowsHide: true },
+        );
+        if (fs.existsSync(tmpZip) && fs.statSync(tmpZip).size > 100_000) {
+          fs.renameSync(tmpZip, localWvZip);
+        } else {
+          fs.rmSync(tmpZip, { force: true });
+        }
+      } catch {
+        /* mirror offline */
+      }
+    }
+    if (fs.existsSync(localWvZip)) {
+      try {
+        extractMirrorZipArchive(localWvZip, binaryDir);
+        if (isValidWindowsWidevineDir(targetDir)) {
+          _widevineVerifiedOnce = true;
+          return true;
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+    return false;
+  }
+  const tmpDir = path.join(binaryDir, `.WidevineCdm.tmp.${process.pid}`);
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.cpSync(srcDir, tmpDir, { recursive: true, force: true });
+    if (isValidWindowsWidevineDir(tmpDir)) {
+      if (!isValidWindowsWidevineDir(targetDir)) {
+        try {
+          fs.renameSync(tmpDir, targetDir);
+        } catch {
+          fs.cpSync(tmpDir, targetDir, { recursive: true, force: true });
+        }
+      }
+      if (isValidWindowsWidevineDir(targetDir)) {
+        _widevineVerifiedOnce = true;
+        return true;
+      }
+    }
+  } catch {
+    /* non-fatal — concurrent launch or locked file */
+  } finally {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  }
+  return isValidWindowsWidevineDir(targetDir);
+}
+
+async function resolveExtensionLaunchArgs(options) {
+  const userDataRoot = options.userDataRoot || path.resolve(options.userDataDir, "..", "..");
+  const { getExtensionToggles } = require("../lib/app-settings.cjs");
+  const { resolveEffectiveExtensionToggles, anyExtensionToggleEnabled } = require("../lib/extension-toggles.cjs");
+  const effectiveToggles = resolveEffectiveExtensionToggles(
+    getExtensionToggles(),
+    options.profile?.extensionOverrides,
+  );
+  if (!anyExtensionToggleEnabled(effectiveToggles)) {
+    return ["--disable-extensions"];
+  }
+  if (nativeExtensionsEnabled()) {
+    const plan = options.nativeExtensionPlan || {
+      stageDirs: [],
+      loadDirs: [],
+      cliStoreLoads: [],
+      prefStoreIds: [],
+      allowedStoreIds: [],
+      useAllowlist: false,
+    };
+    const extArgs = [];
+    if (plan.cliStoreLoads?.length) {
+      const allowIds = plan.useAllowlist ? plan.allowedStoreIds : plan.prefStoreIds;
+      extArgs.push(...buildNativeExtensionCliArgs(plan.cliStoreLoads, allowIds));
+    } else if (plan.useAllowlist && plan.allowedStoreIds?.length) {
+      extArgs.push(...buildExtensionAllowlistArg(plan.allowedStoreIds));
+    }
+    if (plan.loadDirs.length) {
+      extArgs.push(...chromeLocalExtensionArgs(plan.loadDirs));
+    }
+    return extArgs;
+  }
+  const extraExtensionDirs = [...resolveExtraExtensionDirs(userDataRoot)];
+  const seenExt = new Set();
+  const uniqueExtDirs = [];
+  for (const dir of extraExtensionDirs) {
+    const abs = path.resolve(String(dir));
+    if (seenExt.has(abs)) continue;
+    if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
+    seenExt.add(abs);
+    uniqueExtDirs.push(abs);
+  }
+  if (!uniqueExtDirs.length) {
+    return ["--disable-extensions"];
+  }
+  const binary = await getBinaryInfoCached();
+  const staged = ensureCloakbrowserExtensionStages(uniqueExtDirs, binary.cacheDir);
+  if (staged.length !== uniqueExtDirs.length) {
+    console.warn(
+      `[extension-stage] incomplete staging (${staged.length}/${uniqueExtDirs.length}) cacheDir=${binary.cacheDir}`,
+    );
+  }
+  return chromeExtensionArgs(uniqueExtDirs);
+}
+
+function positionHeadedWindowsAsync(options) {
+  if (options.headless === true) return;
+  void (async () => {
+    try {
+      let wa = options.targetWorkArea || null;
+      if (!wa) {
+        try {
+          const { resolveTargetDisplayWorkArea } = require("../lib/app-settings.cjs");
+          wa = resolveTargetDisplayWorkArea(options.profile?.targetMonitor)?.workArea || null;
+        } catch {
+          wa = null;
+        }
+      }
+      if (wa) {
+        try {
+          const { moveChromeWindowsToTargetWorkAreaNative } = require("../lib/taskbar-apply-worker.cjs");
+          const { extractProfileCode } = require("../lib/profile-code.cjs");
+          moveChromeWindowsToTargetWorkAreaNative(wa, {
+            code: extractProfileCode(options.profile?.name || "", options.profile?.id || ""),
+            maximize: options.viewport === null,
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch {
+      // best-effort — non-fatal if the platform rejects window bounds
+    }
+  })();
+}
+
+const _proxyGeoipCache = new Map();
+const PROXY_GEOIP_CACHE_TTL_MS = 60_000;
+
+function extractArgValue(args, key) {
+  const prefix = `${key}=`;
+  for (const a of args || []) {
+    const s = String(a || "");
+    if (s.startsWith(prefix)) return s.slice(prefix.length);
+  }
+  return "";
+}
+
+async function buildCloakLaunchOptionsSafe(cbBuildLaunchOptions, params) {
+  const proxyKey = typeof params?.proxy === "string" ? params.proxy.trim() : "";
+  if (params?.geoip && proxyKey && !params?.forceGeoipRefresh) {
+    const cached = _proxyGeoipCache.get(proxyKey);
+    if (cached && Date.now() - cached.at < PROXY_GEOIP_CACHE_TTL_MS) {
+      const extraArgs = [...(params.args || [])];
+      if (cached.webrtcIp && !extraArgs.some((a) => String(a).startsWith("--fingerprint-webrtc-ip="))) {
+        extraArgs.push(`--fingerprint-webrtc-ip=${cached.webrtcIp}`);
+      }
+      return await cbBuildLaunchOptions({
+        ...params,
+        geoip: false,
+        ...(!params.timezone && cached.timezone ? { timezone: cached.timezone } : {}),
+        ...(!params.locale && cached.locale ? { locale: cached.locale } : {}),
+        args: extraArgs,
+      });
+    }
+  }
+  try {
+    const res = await cbBuildLaunchOptions(params);
+    if (params?.geoip && proxyKey && Array.isArray(res?.args)) {
+      const timezone = params.timezone || extractArgValue(res.args, "--fingerprint-timezone");
+      const locale = params.locale || extractArgValue(res.args, "--fingerprint-locale");
+      const webrtcIp = extractArgValue(res.args, "--fingerprint-webrtc-ip");
+      if (timezone || locale || webrtcIp) {
+        if (_proxyGeoipCache.size > 512) _proxyGeoipCache.clear();
+        _proxyGeoipCache.set(proxyKey, { timezone, locale, webrtcIp, at: Date.now() });
+      }
+    }
+    return res;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (params?.geoip && /geoip|egress ip/i.test(msg)) {
+      console.warn(`[cloakbrowser] GeoIP skipped on launch (${msg}); launching without GeoIP override`);
+      return await cbBuildLaunchOptions({ ...params, geoip: false });
+    }
+    throw err;
+  }
+}
 
 /**
  * Desktop launch — ignoreDefaultArgs:true blocks Playwright injecting --no-sandbox.
@@ -705,68 +1074,22 @@ async function launchStealthPersistentContext(profileOptions) {
   const cloakOptions = options;
 
   if (!_binaryVerifiedOnce) {
-    await ensureBinary(undefined, FROZEN_CLOAKBROWSER_CHROMIUM_VERSION);
+    const exe = await ensureBinary(undefined, FROZEN_CLOAKBROWSER_CHROMIUM_VERSION);
+    if (exe) ensureWindowsWidevineCdm(path.dirname(exe));
     _binaryVerifiedOnce = true;
   }
-  const launchOpts = await cbBuildLaunchOptions({
+  const launchOpts = await buildCloakLaunchOptionsSafe(cbBuildLaunchOptions, {
     ...cloakOptions,
     browserVersion: FROZEN_CLOAKBROWSER_CHROMIUM_VERSION,
     stealthArgs: false,
-    headless: options.headless ?? false
+    headless: options.headless ?? false,
   });
+  ensureWindowsWidevineCdm(path.dirname(launchOpts.executablePath));
 
-  let args = sanitizeChromeArgs(launchOpts.args || []);
-  const userDataRoot = options.userDataRoot || path.resolve(options.userDataDir, "..", "..");
-  const { getExtensionToggles } = require("../lib/app-settings.cjs");
-  const { resolveEffectiveExtensionToggles, anyExtensionToggleEnabled } = require("../lib/extension-toggles.cjs");
-  const effectiveToggles = resolveEffectiveExtensionToggles(
-    getExtensionToggles(),
-    options.profile?.extensionOverrides,
-  );
-  if (!anyExtensionToggleEnabled(effectiveToggles)) {
-    args = [...args, "--disable-extensions"];
-  } else if (nativeExtensionsEnabled()) {
-    const plan = options.nativeExtensionPlan || {
-      stageDirs: [],
-      loadDirs: [],
-      cliStoreLoads: [],
-      prefStoreIds: [],
-      allowedStoreIds: [],
-      useAllowlist: false,
-    };
-    if (plan.cliStoreLoads?.length) {
-      const allowIds = plan.useAllowlist ? plan.allowedStoreIds : plan.prefStoreIds;
-      args = [...args, ...buildNativeExtensionCliArgs(plan.cliStoreLoads, allowIds)];
-    } else if (plan.useAllowlist && plan.allowedStoreIds?.length) {
-      args = [...args, ...buildExtensionAllowlistArg(plan.allowedStoreIds)];
-    }
-    if (plan.loadDirs.length) {
-      args = [...args, ...chromeLocalExtensionArgs(plan.loadDirs)];
-    }
-  } else {
-    const extraExtensionDirs = [...resolveExtraExtensionDirs(userDataRoot)];
-    const seenExt = new Set();
-    const uniqueExtDirs = [];
-    for (const dir of extraExtensionDirs) {
-      const abs = path.resolve(String(dir));
-      if (seenExt.has(abs)) continue;
-      if (!fs.existsSync(path.join(abs, "manifest.json"))) continue;
-      seenExt.add(abs);
-      uniqueExtDirs.push(abs);
-    }
-    if (uniqueExtDirs.length) {
-      const binary = await getBinaryInfoCached();
-      const staged = ensureCloakbrowserExtensionStages(uniqueExtDirs, binary.cacheDir);
-      if (staged.length !== uniqueExtDirs.length) {
-        console.warn(
-          `[extension-stage] incomplete staging (${staged.length}/${uniqueExtDirs.length}) cacheDir=${binary.cacheDir}`,
-        );
-      }
-      args = [...args, ...chromeExtensionArgs(uniqueExtDirs)];
-    } else {
-      args = [...args, "--disable-extensions"];
-    }
-  }
+  let args = [
+    ...sanitizeChromeArgs(launchOpts.args || []),
+    ...(await resolveExtensionLaunchArgs(options)),
+  ];
 
   // CDP passthrough — the only attach path (shared/operator-cdp.json).
   // Other tools use connect_over_cdp on this port. E0002 is the in-profile operator.
@@ -799,55 +1122,28 @@ async function launchStealthPersistentContext(profileOptions) {
   // Position headed profile windows on the configured Target Monitor (Monitor 2 by default on dual monitors)
   // and force-maximize via CDP when host-maximized (`viewport: null`).
   // Never call `context.newPage()` here — spawning a fallback page created a duplicate "New Tab".
-  if (options.headless !== true) {
-    void (async () => {
-      try {
-        let wa = options.targetWorkArea || null;
-        if (!wa) {
-          try {
-            const { resolveTargetDisplayWorkArea } = require("../lib/app-settings.cjs");
-            wa = resolveTargetDisplayWorkArea(options.profile?.targetMonitor)?.workArea || null;
-          } catch {
-            wa = null;
-          }
-        }
-        if (wa) {
-          try {
-            const { moveChromeWindowsToTargetWorkAreaNative } = require("../lib/taskbar-apply-worker.cjs");
-            const { extractProfileCode } = require("../lib/profile-code.cjs");
-            moveChromeWindowsToTargetWorkAreaNative(wa, {
-              code: extractProfileCode(options.profile?.name || "", options.profile?.id || ""),
-              maximize: options.viewport === null,
-            });
-          } catch {
-            /* ignore */
-          }
-        }
-      } catch {
-        // best-effort — non-fatal if the platform rejects window bounds
-      }
-    })();
-  }
+  positionHeadedWindowsAsync(options);
 
   if (options.humanize) {
-    void (async () => {
-      try {
-        const { patchContext } = await cloakDistImport("human/index.js");
-        const { resolveConfig } = await cloakDistImport("human/config.js");
-        const cfg = resolveConfig(options.humanPreset ?? "default", options.humanConfig);
-        patchContext(context, cfg);
-      } catch {
-        // humanize optional — launch still succeeds
-      }
-    })();
+    void applyHumanizeToContext(context, options);
   }
 
   return context;
 }
 
-async function openProfile(profile, userDataRoot, { debugPort = 0, userDataDirOverride = "" } = {}) {
-  const timer = createLaunchTimer(profile.id, profile.name);
-  timer.mark("prep-start");
+async function applyHumanizeToContext(context, options = {}) {
+  if (!context || options.humanize === false) return false;
+  try {
+    const { patchContext, resolveConfig } = await cloakDistImport("human/index.js");
+    const cfg = resolveConfig(options.humanPreset ?? "default", options.humanConfig);
+    patchContext(context, cfg);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function prepareProfileLaunchPlan(profile, userDataRoot, { userDataDirOverride = "" } = {}) {
   const isHeadlessFastPath = Boolean(profile?.headless === true && !profile?.loadExtensionsInHeadless);
   const isHeadless = Boolean(profile?.headless === true || isAgentSmokeLaunch());
   const userDataDir = userDataDirOverride
@@ -900,6 +1196,100 @@ async function openProfile(profile, userDataRoot, { debugPort = 0, userDataDirOv
   launchOptions.userDataRoot = userDataRoot;
   launchOptions.nativeExtensionPlan = nativeExtensionPlan;
   launchOptions.targetWorkArea = targetWorkArea;
+  return { launchOptions, userDataDir };
+}
+
+/**
+ * Native Fast-Spawn Headed Launch (zero blocking Playwright pipe handshake at startup).
+ * When `debugPort > 0`, exposes `--remote-debugging-port` on localhost so Standard mode
+ * launches in <100ms while preserving full lazy CDP (`connectOverCDP`) attachment.
+ * When `debugPort === 0`, launches in Pure Window (No CDP) mode.
+ */
+async function openPureHeadedProfile(
+  profile,
+  userDataRoot,
+  { launchUrl = "", debugPort = 0, userDataDirOverride = "" } = {},
+) {
+  const timer = createLaunchTimer(profile.id, profile.name);
+  timer.mark("prep-start");
+  const { launchOptions, userDataDir } = await prepareProfileLaunchPlan(
+    { ...profile, headless: false },
+    userDataRoot,
+    { userDataDirOverride },
+  );
+
+  enforceFrozenCloakbrowserEnv();
+  if (!_binaryVerifiedOnce) {
+    maybeRestoreFrozenBinaryFromLocalMirror();
+  }
+  const cloak = await loadCloakbrowser();
+  const { buildLaunchOptions: cbBuildLaunchOptions, ensureBinary } = cloak;
+  if (!_binaryVerifiedOnce) {
+    const exe = await ensureBinary(undefined, FROZEN_CLOAKBROWSER_CHROMIUM_VERSION);
+    if (exe) ensureWindowsWidevineCdm(path.dirname(exe));
+    _binaryVerifiedOnce = true;
+  }
+
+  const launchOpts = await buildCloakLaunchOptionsSafe(cbBuildLaunchOptions, {
+    ...launchOptions,
+    browserVersion: FROZEN_CLOAKBROWSER_CHROMIUM_VERSION,
+    stealthArgs: false,
+    headless: false,
+  });
+  ensureWindowsWidevineCdm(path.dirname(launchOpts.executablePath));
+
+  const args = [
+    ...sanitizeChromeArgs(launchOpts.args || []),
+    ...(await resolveExtensionLaunchArgs(launchOptions)),
+  ];
+  const hasProxyFlag = args.some((a) => String(a).startsWith("--proxy-server="));
+  const proxyServer = launchOptions.proxy || launchOpts.proxy?.server || "";
+  if (!hasProxyFlag && proxyServer) {
+    args.push(`--proxy-server=${proxyServer}`);
+    if (launchOpts.proxy?.bypass) {
+      args.push(`--proxy-bypass-list=${launchOpts.proxy.bypass}`);
+    }
+  }
+  const resolvedDebugPort = Number(debugPort) > 0 ? Number(debugPort) : 0;
+  if (resolvedDebugPort > 0) {
+    args.push(`--remote-debugging-port=${resolvedDebugPort}`, "--remote-debugging-address=127.0.0.1");
+  }
+  args.push(
+    `--user-data-dir=${userDataDir}`,
+    "--profile-directory=Default",
+    "--no-default-browser-check",
+    "--no-first-run",
+  );
+  if (launchUrl && /^https?:\/\//i.test(String(launchUrl))) {
+    args.push(String(launchUrl));
+  }
+
+  timer.mark("spawn-start");
+  const { spawn } = require("node:child_process");
+  const child = spawn(launchOpts.executablePath, args, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: false,
+  });
+  child.unref?.();
+  positionHeadedWindowsAsync(launchOptions);
+  timer.mark("spawn-done");
+  timer.flush(resolvedDebugPort > 0 ? "openFastSpawnWithCdp" : "openPureHeadedProfile");
+
+  return {
+    pid: Number(child.pid) || 0,
+    userDataDir,
+    debugPort: resolvedDebugPort,
+    pureHeaded: resolvedDebugPort === 0,
+  };
+}
+
+async function openProfile(profile, userDataRoot, { debugPort = 0, userDataDirOverride = "" } = {}) {
+  const timer = createLaunchTimer(profile.id, profile.name);
+  timer.mark("prep-start");
+  const { launchOptions, userDataDir } = await prepareProfileLaunchPlan(profile, userDataRoot, {
+    userDataDirOverride,
+  });
   if (Number(debugPort) > 0) launchOptions.debugPort = Number(debugPort);
   timer.mark("spawn-start");
   const context = await launchStealthPersistentContext(launchOptions);
@@ -984,6 +1374,9 @@ module.exports = {
   enforceFrozenCloakbrowserEnv,
   extractMirrorZipArchive,
   maybeRestoreFrozenBinaryFromLocalMirror,
+  findInstalledWindowsWidevineCdmDir,
+  ensureWindowsWidevineCdm,
+  resolveHeadlessCuiExecutablePath,
   profileDataDir,
   buildLaunchOptions,
   buildStealthChromeArgs,
@@ -1001,5 +1394,7 @@ module.exports = {
   prepareCookieBridgeForLaunch,
   prepareNativeExtensionsForLaunch,
   openProfile,
+  openPureHeadedProfile,
+  applyHumanizeToContext,
   closeContext
 };

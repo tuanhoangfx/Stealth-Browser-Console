@@ -53,6 +53,7 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
   const {
     persistDeferredFile,
     triggerDeferredExpiredOrderDrain,
+    triggerDeferredAntigravityDrain,
     scheduleDeferredAgentAutoDrain,
   } = createDeferredAgentQueueHelpers({ sessionManager, profileService, deferredMap });
 
@@ -213,6 +214,9 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
     if (!id) return null;
     const prof = profileService?.getProfile?.(id);
     const code = extractProfileCode(prof?.name || "", id);
+    if (/^8\d{3}$/.test(String(code || "").replace(/^#/, "").trim().padStart(4, "0"))) {
+      return null;
+    }
     const prev = deferredMap.get(id);
     const entry = {
       profileId: id,
@@ -762,7 +766,10 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
           }
           profileService.setProfileStatus(activeRow.id, "closed", { reason: "reconcile" });
           const rowCode = extractProfileCode(activeRow?.name || "", String(activeRow.id)) || "";
-          if (rowCode) triggerDeferredExpiredOrderDrain(rowCode);
+          if (rowCode) {
+            triggerDeferredExpiredOrderDrain(rowCode);
+            triggerDeferredAntigravityDrain(rowCode);
+          }
         }
       } catch {
         /* ignore reconcile errors */
@@ -848,7 +855,10 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
         persistDeferredFile(readyItem);
         scheduleDeferredAgentAutoDrain(readyItem);
       }
-      if (code) triggerDeferredExpiredOrderDrain(code);
+      if (code) {
+        triggerDeferredExpiredOrderDrain(code);
+        triggerDeferredAntigravityDrain(code);
+      }
     }
     return res;
   };

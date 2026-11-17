@@ -65,8 +65,9 @@ async function verifyFacebookCookiesLiveViaHttp(cookies = [], timeoutMs = 4000, 
     };
   }
   const cookieHeader = fbCookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  const fetchImpl = typeof opts?.fetchFn === "function" ? opts.fetchFn : fetch;
   try {
-    const res = await fetch("https://www.facebook.com/me", {
+    const res = await fetchImpl("https://www.facebook.com/me", {
       method: "GET",
       redirect: "manual",
       headers: {
@@ -134,6 +135,21 @@ async function verifyFacebookCookiesLiveViaHttp(cookies = [], timeoutMs = 4000, 
         resultCode: "fb_checkpoint",
         evidence: `checkpoint=checkpoint url=${loc.slice(0, 120)}`,
         note: "[Checkpoint] Facebook Security Checkpoint",
+      };
+    }
+    if (
+      /\/caa\/reg(?:\/|$|\?)|\/reg(?:\/|$|\?)|confirmemail\.php|\/ig\/login_via/i.test(loc)
+    ) {
+      return {
+        ok: true,
+        loggedIn: false,
+        checkpointed: false,
+        unconfirmedReg: true,
+        status: "not_logged_in",
+        rowStatus: null,
+        resultCode: "reg_unconfirmed",
+        evidence: `Facebook:reg_unconfirmed url=${loc.slice(0, 120)}`,
+        note: "Facebook registration unconfirmed (/caa/reg or confirmemail)",
       };
     }
     if (
@@ -1147,6 +1163,75 @@ async function verifyClaudeCookiesLiveViaHttp(cookies = [], timeoutMs = 4500, fe
   }
 }
 
+async function verifyAdobeCookiesLiveViaHttp(cookies, timeoutMs = 4500, fetchFn = fetch) {
+  const list = Array.isArray(cookies) ? cookies : [];
+  const adobeAuthPairs = list.filter((c) => {
+    if (!c || !c.name || !c.value || c.value === "disk_verified_sqlite") return false;
+    const dom = String(c.domain || c.host_key || "").toLowerCase();
+    if (dom && !dom.includes("adobe.com") && !dom.includes("adobelogin.com")) return false;
+    return /^(ims_sid|aux_sid|SIS|s_ac|ftr_set|RMR|ID)$/i.test(String(c.name));
+  });
+  const hasPrimarySid = adobeAuthPairs.some((c) => /^(ims_sid|aux_sid|SIS)$/i.test(String(c.name)));
+  if (!hasPrimarySid) {
+    return { ok: false, loggedIn: false, resultCode: "missing_adobe_sid" };
+  }
+  const byName = new Map();
+  for (const c of adobeAuthPairs) {
+    if (!byName.has(c.name)) byName.set(c.name, String(c.value));
+  }
+  const cookieHeader = Array.from(byName.entries())
+    .map(([n, v]) => `${n}=${v}`)
+    .join("; ");
+  try {
+    const res = await fetchFn(
+      "https://ims-na1.adobelogin.com/ims/check/v6/token?client_id=SunbreakWebUI1&scope=AdobeID%2Copenid",
+      {
+        method: "POST",
+        headers: {
+          cookie: cookieHeader,
+          origin: "https://account.adobe.com",
+          referer: "https://account.adobe.com/",
+          accept: "application/json",
+          "content-type": "application/x-www-form-urlencoded",
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        },
+        body: "",
+        signal: AbortSignal.timeout(timeoutMs),
+      },
+    );
+    const data = await res.json().catch(() => null);
+    if (res.status === 200 && data?.access_token && data?.userId) {
+      const adobeVerifiedEmail = data.email ? normalizeComparableEmail(data.email) : "";
+      return {
+        ok: true,
+        loggedIn: true,
+        expired: false,
+        banned: false,
+        resultCode: "adobe_ims_check_token_api",
+        adobeUserId: String(data.userId).trim(),
+        ...(adobeVerifiedEmail ? { adobeVerifiedEmail } : {}),
+      };
+    }
+    if (res.status < 500) {
+      return {
+        ok: true,
+        loggedIn: false,
+        expired: true,
+        banned: false,
+        status: "not_logged_in",
+        rowStatus: null,
+        resultCode: "login_page",
+        evidence: "Adobe:not_logged_in (ims/check/v6/token session invalid)",
+        note: "Not logged into Adobe (IMS session expired or unauthenticated)",
+      };
+    }
+    return { ok: false, loggedIn: false, resultCode: "http_ambiguous" };
+  } catch {
+    return { ok: false, loggedIn: false, resultCode: "network_timeout" };
+  }
+}
+
 module.exports = {
   _googleSidIdentityCache,
   getGoogleSidSignature,
@@ -1159,4 +1244,5 @@ module.exports = {
   verifyTwitterCookiesLiveViaHttp,
   verifyInstagramCookiesLiveViaHttp,
   verifyClaudeCookiesLiveViaHttp,
+  verifyAdobeCookiesLiveViaHttp,
 };

@@ -743,6 +743,48 @@ function recordCardStripeOutcome({
   };
 }
 
+function inferPlatformKeysFromHost(host = "") {
+  const h = String(host || "").toLowerCase();
+  const keys = [];
+  if (h.includes("chatgpt") || h.includes("openai")) keys.push("chatgpt");
+  if (h.includes("elevenlabs")) keys.push("elevenlabs");
+  if (h.includes("muse")) keys.push("muse");
+  if (h.includes("pipopay")) keys.push("pipopay");
+  if (h.includes("google")) keys.push("gpay");
+  if (h.includes("stripe") || h.includes("chatgpt") || h.includes("openai") || h.includes("elevenlabs")) {
+    keys.push("stripe");
+  }
+  return [...new Set(keys)];
+}
+
+function mergePlatformStateInSnapshot(currentSnap = {}, { platform, status, outcome = "neutral", lastCode = "", lastError = "", lastBrowser = "" }) {
+  const snap = currentSnap && typeof currentSnap === "object" ? currentSnap : {};
+  const prevMap = snap.platform_states && typeof snap.platform_states === "object" ? snap.platform_states : {};
+  const curNode = prevMap[platform] && typeof prevMap[platform] === "object" ? prevMap[platform] : {};
+  const okCount = (Number(curNode.ok_count || 0) || 0) + (outcome === "ok" ? 1 : 0);
+  const failCount = (Number(curNode.fail_count || 0) || 0) + (outcome === "fail" ? 1 : 0);
+  const entry = {
+    status: String(status || "rejected").trim().toLowerCase(),
+    ok_count: okCount,
+    fail_count: failCount,
+    ...(String(lastCode || "").trim() ? { last_code: String(lastCode).trim().slice(0, 80) } : {}),
+    ...((String(lastBrowser || "").trim() || curNode.last_browser)
+      ? { last_browser: String(lastBrowser || curNode.last_browser).trim().slice(0, 24) }
+      : {}),
+    ...(outcome !== "ok" && String(lastError || "").trim()
+      ? { last_error: String(lastError).trim().slice(0, 180) }
+      : {}),
+    checked_at: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
+  };
+  return {
+    ...snap,
+    platform_states: {
+      ...prevMap,
+      [platform]: entry,
+    },
+  };
+}
+
 /**
  * Record Linked Card (`4 Digits`) or Declined status into Biometric Vault & P0020 `twofa_accounts` (`ok 2`).
  */
@@ -799,13 +841,29 @@ async function recordLinkedCardAssociation({
             ? `⚠️ Declined on ${host} (${dateShort}${declineReason ? `: ${declineReason}` : ""})`
             : `🔗 #${code} (${host} · ${dateShort})`;
         const rGet = await fetch(
-          `${origin}/rest/v1/twofa_accounts?select=id,note&id=eq.${encodeURIComponent(cardResolved.id)}&limit=1`,
+          `${origin}/rest/v1/twofa_accounts?select=id,note,stealth_snapshot&id=eq.${encodeURIComponent(cardResolved.id)}&limit=1`,
           { headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(4000) },
         );
         const rows = rGet.ok ? await rGet.json().catch(() => []) : [];
         const existingNote = String(rows?.[0]?.note || "").trim();
-        if (!existingNote.includes(tag)) {
-          const nextNote = existingNote ? `${existingNote}\n${tag}` : tag;
+        let nextSnap = rows?.[0]?.stealth_snapshot || {};
+        const platformKeys = inferPlatformKeysFromHost(host);
+        for (const pk of platformKeys) {
+          nextSnap = mergePlatformStateInSnapshot(nextSnap, {
+            platform: pk,
+            status: status === "declined" ? "rejected" : "live",
+            outcome: status === "declined" ? "fail" : "ok",
+            lastCode: status === "declined" ? "DECLINED" : "LINKED",
+            lastError: status === "declined" ? declineReason : "",
+            lastBrowser: code,
+          });
+        }
+        const nextNote = !existingNote.includes(tag)
+          ? existingNote
+            ? `${existingNote}\n${tag}`
+            : tag
+          : existingNote;
+        if (!existingNote.includes(tag) || platformKeys.length > 0) {
           await fetch(`${origin}/rest/v1/twofa_accounts?id=eq.${encodeURIComponent(cardResolved.id)}`, {
             method: "PATCH",
             headers: {
@@ -814,7 +872,10 @@ async function recordLinkedCardAssociation({
               "Content-Type": "application/json",
               Prefer: "return=minimal",
             },
-            body: JSON.stringify({ note: nextNote, updated_at: nowIso }),
+            body: JSON.stringify({
+              note: nextNote,
+              ...(platformKeys.length > 0 ? { stealth_snapshot: nextSnap } : {}),
+            }),
             signal: AbortSignal.timeout(4000),
           });
           p0020Patched = true;
@@ -841,7 +902,7 @@ async function recordLinkedCardAssociation({
                 "Content-Type": "application/json",
                 Prefer: "return=minimal",
               },
-              body: JSON.stringify({ note: nextNote, updated_at: nowIso }),
+              body: JSON.stringify({ note: nextNote }),
               signal: AbortSignal.timeout(4000),
             });
           }
@@ -1341,6 +1402,140 @@ async function autofillProfileBillingViaCdp(opts = {}) {
   }
 }
 
+/**
+ * Syncs a verified ChatGPT Plus subscription to P0020 `twofa_accounts` using strict dual-key matching:
+ * `LOWER(account) === LOWER(email)` (never overwriting a different email row on the same `browser`).
+ */
+async function syncChatGptPlusPlanByVerifiedEmail(payload = {}) {
+  const email = String(payload.email || payload.verifiedEmail || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    return { ok: false, error: "missing_or_invalid_verified_email" };
+  }
+  const rawBrowserDigits = String(payload.browser || payload.profileCode || "").replace(/\D/g, "");
+  const browserHint = rawBrowserDigits ? rawBrowserDigits.padStart(4, "0") : "";
+  const { origin, key } = resolveDataboxRestCredentials();
+  if (!origin || !key) {
+    return { ok: false, error: "missing_databox_credentials" };
+  }
+  try {
+    const findUrl = `${origin}/rest/v1/twofa_accounts?select=id,account,browser,status,ownership,plan_package,note&deleted_at=is.null&service=eq.ChatGPT&account=ilike.${encodeURIComponent(email)}&limit=10`;
+    const findRes = await fetch(findUrl, {
+      headers: { apikey: key, authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!findRes.ok) {
+      return { ok: false, error: `databox_find_http_${findRes.status}` };
+    }
+    const rows = await findRes.json();
+    const exactRows = (Array.isArray(rows) ? rows : []).filter(
+      (r) => String(r?.account || "").trim().toLowerCase() === email,
+    );
+    if (exactRows.length === 0) {
+      return { ok: false, error: `chatgpt_account_not_found_for_email (${email})` };
+    }
+    const targetRow =
+      (/^\d{4}$/.test(browserHint) &&
+        browserHint !== "0000" &&
+        exactRows.find((r) => String(r.browser || "").padStart(4, "0") === browserHint)) ||
+      exactRows[0];
+
+    const rowBrowserNum = Number(String(targetRow.browser || "").replace(/\D/g, "")) || 0;
+    const rowOwnership = String(targetRow.ownership || "").trim().toLowerCase();
+    const existingPlan = String(targetRow.plan_package || "").trim();
+    const hasExistingPaidPlan = existingPlan !== "" && !/^(free|normal|none|—|-)$/i.test(existingPlan);
+    if (
+      !payload.allowExistingPlanOverwrite &&
+      ((rowBrowserNum >= 8000 && rowBrowserNum < 9000) ||
+        ["buyer", "sell", "partner"].includes(rowOwnership) ||
+        hasExistingPaidPlan)
+    ) {
+      return {
+        ok: true,
+        skippedProtectedPlan: true,
+        id: targetRow.id,
+        browser: targetRow.browser,
+        email,
+        planPackage: existingPlan || "Protected",
+      };
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear()).slice(-2);
+    const planDate = `${dd}/${mm}/${yy}`;
+    const hasPlus =
+      Boolean(payload.hasActiveSubscription) || String(payload.planType || "").toLowerCase().includes("plus");
+    const expiresIso = payload.expiresAt || new Date(now.getTime() + 30 * 86400_000).toISOString();
+    const planTag = `${planDate} : 💎 Plan - ChatGPT Plus 1m - CzP`;
+    const cardSuffix = payload.cardAlias ? `💳 Card ${payload.cardAlias}` : "";
+    const ownerCode = String(targetRow.browser || "").replace(/\D/g, "").padStart(4, "0");
+    const crossProfileWarn =
+      /^\d{4}$/.test(browserHint) && browserHint !== "0000" && ownerCode && ownerCode !== browserHint
+        ? `⚠️ Logged-in inside #${browserHint} (owner row #${ownerCode})`
+        : "";
+    const cleanedExistingNote = String(targetRow.note || "")
+      .split(/\r?\n/)
+      .filter((line) => !/Offer Trial 0\$|plus-1-month-free/i.test(line))
+      .join("\n")
+      .trim();
+
+    const patchBody = hasPlus
+      ? {
+          status: "active",
+          ownership: targetRow.ownership === "buyer" ? "buyer" : "usable",
+          plan_package: targetRow.plan_package || "ChatGPT Plus 1m - CzP",
+          plan_tier: "Normal",
+          plan_status: "Active",
+          plan_days: "30",
+          plan_date: planDate,
+          plan_expires_at: expiresIso,
+          note: [planTag, crossProfileWarn, cleanedExistingNote, cardSuffix].filter(Boolean).join("\n"),
+        }
+      : {
+          status: "active",
+        };
+
+    const patchRes = await fetch(
+      `${origin}/rest/v1/twofa_accounts?id=eq.${encodeURIComponent(targetRow.id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          authorization: `Bearer ${key}`,
+          "content-type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(patchBody),
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (!patchRes.ok) {
+      return { ok: false, error: `databox_patch_http_${patchRes.status}` };
+    }
+    if (hasPlus && payload.cardAlias) {
+      recordCardStripeOutcome({
+        alias: payload.cardAlias,
+        outcome: "trial_claimed",
+        claimedBy: email,
+      });
+    }
+    return {
+      ok: true,
+      id: targetRow.id,
+      browser: targetRow.browser,
+      email,
+      crossProfileMismatch: Boolean(crossProfileWarn),
+      planPackage: patchBody.plan_package || targetRow.plan_package || "Free",
+      planDate,
+      expiresAt: expiresIso,
+    };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
 module.exports = {
   getPrimaryVaultFilePath,
   resolveProfileBiometricBillingIdentity,
@@ -1349,6 +1544,7 @@ module.exports = {
   resolveBillingCardFromVault,
   resolveCandidateBillingCardsFromVault,
   recordCardStripeOutcome,
+  syncChatGptPlusPlanByVerifiedEmail,
   recordLinkedCardAssociation,
   listMaskedBillingCards,
   upsertBillingCardInVault,

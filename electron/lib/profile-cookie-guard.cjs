@@ -4,7 +4,6 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
 
 const COOKIES_REL_PATH = path.join("Default", "Network", "Cookies");
 const COOKIES_BAK_REL_PATH = path.join("Default", "Network", "Cookies.last-good.bak");
@@ -1352,10 +1351,14 @@ function _getNativeDpapi() {
   if (process.platform !== "win32") return (_nativeDpapi = null);
   const candidates = [
     "koffi",
+    process.resourcesPath ? path.join(process.resourcesPath, "packaged-node_modules", "koffi") : "",
     process.resourcesPath ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "koffi") : "",
     path.resolve(__dirname, "..", "..", "node_modules", "koffi"),
+    path.resolve(__dirname, "..", "..", "packaged-node_modules", "koffi"),
     path.resolve(__dirname, "..", "..", "..", "P0001-Desk-Console", "node_modules", "koffi"),
+    "E:/Dev/Tool/P0003-Stealth-Browser-Console/node_modules/koffi",
     "E:/Dev/Tool/P0001-Desk-Console/node_modules/koffi",
+    "E:/Dev/node_modules/koffi",
     "E:/Dev/node_modules/.pnpm/koffi@3.1.6/node_modules/koffi",
   ].filter(Boolean);
   for (const cand of candidates) {
@@ -1484,34 +1487,10 @@ function unprotectDpapiKey(encryptedKeyB64) {
   if (_dpapiKeyCache.has(safeB64)) return _dpapiKeyCache.get(safeB64);
 
   const natResult = _unprotectSingleRawDpapiNative(safeB64);
-  if (natResult !== undefined) {
-    _dpapiKeyCache.set(safeB64, natResult);
-    _persistDpapiDiskCacheEntries([[safeB64, natResult]]);
-    return natResult;
-  }
-
-  try {
-    const psCmd = `Add-Type -AssemblyName System.Security; $b = [Convert]::FromBase64String('${safeB64}'); $raw = New-Object byte[] ($b.Length - 5); [Array]::Copy($b, 5, $raw, 0, $raw.Length); $dec = [System.Security.Cryptography.ProtectedData]::Unprotect($raw, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser); [Convert]::ToBase64String($dec)`;
-    const res = spawnSync("powershell", ["-NoProfile", "-Command", psCmd], {
-      stdio: "pipe",
-      windowsHide: true,
-      encoding: "utf8",
-      timeout: 6000,
-    });
-    if (res.status !== 0 || !res.stdout) {
-      _dpapiKeyCache.set(safeB64, null);
-      _persistDpapiDiskCacheEntries([[safeB64, null]]);
-      return null;
-    }
-    const buf = Buffer.from(res.stdout.trim(), "base64");
-    const out = buf.length === 32 ? buf : null;
-    _dpapiKeyCache.set(safeB64, out);
-    _persistDpapiDiskCacheEntries([[safeB64, out]]);
-    return out;
-  } catch {
-    _dpapiKeyCache.set(safeB64, null);
-    return null;
-  }
+  if (natResult === undefined) return null;
+  _dpapiKeyCache.set(safeB64, natResult);
+  _persistDpapiDiskCacheEntries([[safeB64, natResult]]);
+  return natResult;
 }
 
 function batchUnprotectDpapiKeys(encryptedKeyList = []) {
@@ -1524,76 +1503,19 @@ function batchUnprotectDpapiKeys(encryptedKeyList = []) {
         .filter((k) => k.length > 16 && !_dpapiKeyCache.has(k)),
     ),
   ];
-  if (uniqueUncached.length === 0) return 0;
+  if (uniqueUncached.length === 0 || !_getNativeDpapi()) return 0;
 
-  if (_getNativeDpapi()) {
-    let count = 0;
-    const toPersist = [];
-    for (const k of uniqueUncached) {
-      const dec = _unprotectSingleRawDpapiNative(k);
-      const valid = Buffer.isBuffer(dec) && dec.length === 32 ? dec : null;
-      _dpapiKeyCache.set(k, valid);
-      toPersist.push([k, valid]);
-      if (valid) count += 1;
-    }
-    _persistDpapiDiskCacheEntries(toPersist);
-    return count;
+  let count = 0;
+  const toPersist = [];
+  for (const k of uniqueUncached) {
+    const dec = _unprotectSingleRawDpapiNative(k);
+    const valid = Buffer.isBuffer(dec) && dec.length === 32 ? dec : null;
+    _dpapiKeyCache.set(k, valid);
+    toPersist.push([k, valid]);
+    if (valid) count += 1;
   }
-
-  try {
-    const psScript = [
-      "Add-Type -AssemblyName System.Security",
-      "$inTxt = [Console]::In.ReadToEnd()",
-      "foreach ($k in ($inTxt -split '\\r?\\n')) {",
-      "  $k = $k.Trim()",
-      "  if ($k.Length -lt 16) { continue }",
-      "  try {",
-      "    $b = [Convert]::FromBase64String($k)",
-      "    $raw = New-Object byte[] ($b.Length - 5)",
-      "    [Array]::Copy($b, 5, $raw, 0, $raw.Length)",
-      "    $dec = [System.Security.Cryptography.ProtectedData]::Unprotect($raw, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)",
-      "    [Console]::Out.WriteLine($k + '|' + [Convert]::ToBase64String($dec))",
-      "  } catch {",
-      "    [Console]::Out.WriteLine($k + '|ERR')",
-      "  }",
-      "}",
-    ].join("; ");
-    const res = spawnSync("powershell", ["-NoProfile", "-Command", psScript], {
-      input: uniqueUncached.join("\n"),
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 60000,
-    });
-    if (res.status !== 0 || !res.stdout) return 0;
-    let count = 0;
-    const toPersist = [];
-    for (const line of res.stdout.split(/\r?\n/)) {
-      const idx = line.indexOf("|");
-      if (idx <= 0) continue;
-      const k = line.slice(0, idx).trim();
-      const v = line.slice(idx + 1).trim();
-      if (v === "ERR") {
-        _dpapiKeyCache.set(k, null);
-        toPersist.push([k, null]);
-        continue;
-      }
-      const buf = Buffer.from(v, "base64");
-      if (buf.length === 32) {
-        _dpapiKeyCache.set(k, buf);
-        toPersist.push([k, buf]);
-        count += 1;
-      } else {
-        _dpapiKeyCache.set(k, null);
-        toPersist.push([k, null]);
-      }
-    }
-    _persistDpapiDiskCacheEntries(toPersist);
-    return count;
-  } catch {
-    return 0;
-  }
+  _persistDpapiDiskCacheEntries(toPersist);
+  return count;
 }
 
 function encryptCookieValueChromium(masterKey, hostKey, plainValue, metaVersion = 24) {
@@ -1634,46 +1556,25 @@ let _fallbackGeneratedDpapiPair = null;
 function protectDpapiKey(rawKeyBuf) {
   if (process.platform !== "win32" || !Buffer.isBuffer(rawKeyBuf) || rawKeyBuf.length !== 32) return "";
   const nat = _getNativeDpapi();
-  if (nat) {
-    try {
-      const inBlob = { cbData: rawKeyBuf.length, pbData: rawKeyBuf };
-      const outBlob = { cbData: 0, pbData: null };
-      if (nat.CryptProtectData(inBlob, null, null, null, null, 0x1, outBlob) && outBlob.pbData && outBlob.cbData > 0) {
-        try {
-          const encBuf = Buffer.from(nat.koffi.decode(outBlob.pbData, "uint8_t", outBlob.cbData));
-          const fullBuf = Buffer.concat([Buffer.from("DPAPI", "utf8"), encBuf]);
-          const encryptedKeyB64 = fullBuf.toString("base64");
-          const keyCopy = Buffer.from(rawKeyBuf);
-          _dpapiKeyCache.set(encryptedKeyB64, keyCopy);
-          _persistDpapiDiskCacheEntries([[encryptedKeyB64, keyCopy]]);
-          return encryptedKeyB64;
-        } finally {
-          nat.LocalFree(outBlob.pbData);
-        }
-      }
-    } catch {
-      /* fall through to PowerShell fallback */
-    }
-  }
+  if (!nat) return "";
   try {
-    const rawB64 = rawKeyBuf.toString("base64");
-    const psCmd = `Add-Type -AssemblyName System.Security; $raw = [Convert]::FromBase64String('${rawB64}'); $enc = [System.Security.Cryptography.ProtectedData]::Protect($raw, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser); $prefix = [System.Text.Encoding]::UTF8.GetBytes('DPAPI'); $full = New-Object byte[] ($prefix.Length + $enc.Length); [Array]::Copy($prefix, 0, $full, 0, $prefix.Length); [Array]::Copy($enc, 0, $full, $prefix.Length, $enc.Length); [Convert]::ToBase64String($full)`;
-    const res = spawnSync("powershell", ["-NoProfile", "-Command", psCmd], {
-      stdio: "pipe",
-      windowsHide: true,
-      encoding: "utf8",
-      timeout: 6000,
-    });
-    if (res.status !== 0 || !res.stdout) return "";
-    const encryptedKeyB64 = res.stdout.trim();
-    if (encryptedKeyB64.length > 16) {
-      const keyCopy = Buffer.from(rawKeyBuf);
-      _dpapiKeyCache.set(encryptedKeyB64, keyCopy);
-      _persistDpapiDiskCacheEntries([[encryptedKeyB64, keyCopy]]);
-      return encryptedKeyB64;
+    const inBlob = { cbData: rawKeyBuf.length, pbData: rawKeyBuf };
+    const outBlob = { cbData: 0, pbData: null };
+    if (nat.CryptProtectData(inBlob, null, null, null, null, 0x1, outBlob) && outBlob.pbData && outBlob.cbData > 0) {
+      try {
+        const encBuf = Buffer.from(nat.koffi.decode(outBlob.pbData, "uint8_t", outBlob.cbData));
+        const fullBuf = Buffer.concat([Buffer.from("DPAPI", "utf8"), encBuf]);
+        const encryptedKeyB64 = fullBuf.toString("base64");
+        const keyCopy = Buffer.from(rawKeyBuf);
+        _dpapiKeyCache.set(encryptedKeyB64, keyCopy);
+        _persistDpapiDiskCacheEntries([[encryptedKeyB64, keyCopy]]);
+        return encryptedKeyB64;
+      } finally {
+        nat.LocalFree(outBlob.pbData);
+      }
     }
   } catch {
-    /* ignore */
+    /* ignore native DPAPI protect error */
   }
   return "";
 }
@@ -2452,7 +2353,7 @@ const SERVICE_COOKIE_DOMAIN_RULES = [
   { key: "kling", label: "Kling", matchDomain: (d) => d.includes("klingai.com"), authNames: ["kuaishou.ai.portal_st", "kling-auth-session", "userId"] },
   { key: "leonardo ai", label: "Leonardo AI", matchDomain: (d) => d.includes("leonardo.ai"), authNames: ["__Secure-next-auth.session-token", "accessToken", "refreshToken"] },
   { key: "perplexity", label: "Perplexity", matchDomain: (d) => d.includes("perplexity.ai"), authNames: ["__Secure-next-auth.session-token", "pplx-auth-token"] },
-  { key: "topview", label: "TopView", matchDomain: (d) => d.includes("topview.ai"), authNames: ["topview_token", "token", "access_token"] },
+  { key: "topview", label: "TopView", matchDomain: (d) => d.includes("topview.ai"), authNames: ["__Secure-next-auth.session-token", "__Secure-next-auth.session-token.0", "next-auth.session-token", "next-auth.session-token.0", "topview_token", "token", "access_token"] },
   { key: "vidiq", label: "VidIQ", matchDomain: (d) => d.includes("vidiq.com"), authNames: ["auth_token", "vidiq_session"] },
   { key: "cursor", label: "Cursor", matchDomain: (d) => d.includes("cursor.com") || d.includes("cursor.sh"), authNames: ["WorkosCursorSessionToken", "WorkOSCursorSessionToken", "cursor_session"] },
   { key: "windsurf", label: "Windsurf", matchDomain: (d) => d.includes("windsurf.com") || d.includes("codeium.com"), authNames: ["__session", "windsurf_session", "auth_token"] },

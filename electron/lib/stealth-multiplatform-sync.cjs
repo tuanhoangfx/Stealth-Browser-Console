@@ -91,6 +91,7 @@ const {
   verifyTwitterCookiesLiveViaHttp,
   verifyInstagramCookiesLiveViaHttp,
   verifyClaudeCookiesLiveViaHttp,
+  verifyAdobeCookiesLiveViaHttp,
 } = require("./multiplatform-sync/http-cookie-verifiers.cjs");
 
 const {
@@ -117,6 +118,7 @@ const {
   isFacebookRowInCheckpointOrDisabled,
   shouldPreserveChallengedState,
   buildP0020RowSnapshotAndPatch,
+  mergePreserveNewerForwardingSnapshot,
 } = require("./multiplatform-sync/p0020-snapshot-builder.cjs");
 
 const {
@@ -1287,14 +1289,27 @@ async function syncProfilePlatformsToP0020IfChanged({
       (String(source || "").endsWith("_close") || String(source || "").endsWith("_close_sync"));
     const liveCdpChanged = isLiveWindow
       ? !curSnap?.live_cdp || Number(curSnap?.debug_port || 0) !== cleanDebugPort
-      : Boolean(curSnap?.live_cdp);
+      : false;
 
     if (isMailSvc && targetStatus === "logged_in" && (curStatus !== "logged_in" || hasPoisonedLoggedInMeta)) {
       newlyLoggedInMail = true;
     }
 
     const hasFreshDecryptedPairs =
-      (isLiveWindow || isExplicitClose) && Array.isArray(pairs) && pairs.some((c) => c && c.value);
+      (isLiveWindow || isExplicitClose) &&
+      Array.isArray(pairs) &&
+      pairs.some((c) => c && c.value) &&
+      (() => {
+        const existingVaultCookies = Array.isArray(row.stealth_cookies) ? row.stealth_cookies : [];
+        if (existingVaultCookies.length === 0) return true;
+        const normPairs = (list) =>
+          list
+            .filter((c) => c && c.name && c.value)
+            .map((c) => `${String(c.name)}=${String(c.value)}`)
+            .sort()
+            .join(";");
+        return normPairs(pairs) !== normPairs(existingVaultCookies);
+      })();
 
     const rowStatus = String(row.status || "").trim().toLowerCase();
     const curRowBrowser = String(row.browser || "").trim();
@@ -1371,6 +1386,12 @@ async function syncProfilePlatformsToP0020IfChanged({
           String(curSnap?.gcp_restriction_status || "") !== targetGcpStatus),
     );
 
+    const pwVerTsForClear = Date.parse(String(curSnap?.password_verified_at || "")) || 0;
+    const pwFlaggedTsForClear = Date.parse(String(curSnap?.password_reverify_flagged_at || "")) || 0;
+    const needsPasswordReverifyClear = Boolean(
+      match.loggedIn && curSnap?.password_reverify_needed && pwVerTsForClear > 0 && pwVerTsForClear >= pwFlaggedTsForClear,
+    );
+
     // Change-only check: skip PATCH if P0020 already has the exact clean status & liveCdp state (unless closing with fresh decrypted cookies)!
     if (
       curStatus === targetStatus &&
@@ -1380,6 +1401,7 @@ async function syncProfilePlatformsToP0020IfChanged({
       !needsBrowserAssignmentUpdate &&
       !needsRowStatusPromotion &&
       !hasStaleChallengeNoteWhenLoggedIn &&
+      !needsPasswordReverifyClear &&
       !needsForcedRowStatusDemotion &&
       !needsLoggedInSessionKeyQuotaBackfill &&
       !needsAccountMismatchSnapshotUpdate &&
@@ -1473,6 +1495,29 @@ async function syncProfilePlatformsToP0020IfChanged({
     }
 
     try {
+      if (patchBody && typeof patchBody.stealth_snapshot === "object" && patchBody.stealth_snapshot) {
+        const latestRes = await fetch(
+          `${cfg.url}/rest/v1/twofa_accounts?id=eq.${encodeURIComponent(row.id)}&select=stealth_snapshot,mail_forward&limit=1`,
+          { headers, signal: AbortSignal.timeout(3500) },
+        ).catch(() => null);
+        if (latestRes?.ok) {
+          const latestRows = await latestRes.json().catch(() => null);
+          const latestRow = Array.isArray(latestRows) && latestRows[0] ? latestRows[0] : null;
+          if (latestRow?.stealth_snapshot) {
+            patchBody.stealth_snapshot = mergePreserveNewerForwardingSnapshot(
+              patchBody.stealth_snapshot,
+              latestRow.stealth_snapshot,
+            );
+            if (
+              latestRow.mail_forward &&
+              !patchBody.mail_forward &&
+              patchBody.stealth_snapshot?.forwarding_mode === "permanent_gmail_server_side"
+            ) {
+              patchBody.mail_forward = latestRow.mail_forward;
+            }
+          }
+        }
+      }
       const patchRes = await fetch(
         `${cfg.url}/rest/v1/twofa_accounts?id=eq.${encodeURIComponent(row.id)}&user_id=eq.${encodeURIComponent(userId)}`,
         {
@@ -1617,6 +1662,7 @@ module.exports = {
   verifyInstagramCookiesLiveViaHttp,
   classifyClaudeLiveCdpTargets,
   verifyClaudeCookiesLiveViaHttp,
+  verifyAdobeCookiesLiveViaHttp,
   setLiveCdpCookiesByPort,
   syncLiveCdpCookiesToVaultIfChanged,
   syncLiveContextCookiesToVaultIfChanged,

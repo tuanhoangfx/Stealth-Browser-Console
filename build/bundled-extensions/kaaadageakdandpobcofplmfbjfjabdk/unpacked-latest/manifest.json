@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "E0001 Cookie Bridge",
-  "version": "1.2.37",
+  "version": "1.2.64",
   "description": "Manual Sync/Load per route only; snapshot + AES-GCM vault on explicit Sync (V4).",
   "icons": {
     "16": "icons/icon16.png",
@@ -26,6 +26,8 @@
     "https://hub-api.infi.io.vn/*",
     "https://sb-api.infi.io.vn/*",
     "https://*.infi.io.vn/*",
+    "http://127.0.0.1:3022/*",
+    "http://localhost:3022/*",
     "http://127.0.0.1:5176/*",
     "http://127.0.0.1:5177/*",
     "https://infi.io.vn/*",
@@ -40,6 +42,8 @@
   "content_scripts": [
     {
       "matches": [
+        "http://127.0.0.1:3022/*",
+        "http://localhost:3022/*",
         "http://127.0.0.1:5176/*",
         "http://127.0.0.1:5177/*",
         "https://infi28.com/*",

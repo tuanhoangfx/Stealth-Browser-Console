@@ -313,10 +313,41 @@ function pinStoreExtension(userDataDir, extId, extensionDir) {
   return extId;
 }
 
+/** True once Chromium has written HMAC-signed protection into `Default/Secure Preferences`. */
+function hasSignedSecurePreferences(userDataDir) {
+  if (!userDataDir) return false;
+  const secureFile = path.join(String(userDataDir), "Default", "Secure Preferences");
+  if (!fs.existsSync(secureFile)) return false;
+  const sec = readJson(secureFile);
+  if (!sec || typeof sec !== "object") return false;
+  if (typeof sec.protection?.super_mac === "string" && sec.protection.super_mac.length > 0) {
+    return true;
+  }
+  const macExt = sec.protection?.macs?.extensions;
+  return Boolean(macExt && typeof macExt === "object" && Object.keys(macExt).length > 0);
+}
+
+/** Clear unsigned `prefs.tracked_preferences_reset` banner trigger once external edits stop. */
+function clearTrackedPreferenceResetNotice(userDataDir) {
+  if (!userDataDir) return false;
+  const prefsFile = path.join(String(userDataDir), "Default", "Preferences");
+  if (!fs.existsSync(prefsFile)) return false;
+  const prefs = readJson(prefsFile);
+  if (!Array.isArray(prefs?.prefs?.tracked_preferences_reset)) return false;
+  delete prefs.prefs.tracked_preferences_reset;
+  if (prefs.prefs && Object.keys(prefs.prefs).length === 0) {
+    delete prefs.prefs;
+  }
+  writeJson(prefsFile, prefs);
+  return true;
+}
+
 module.exports = {
   pinToolbarExtension,
   pinStoreExtension,
   healSecurePreferencesExtensionState,
   unpinExtensionFromProfile,
   unpackedExtensionId,
+  hasSignedSecurePreferences,
+  clearTrackedPreferenceResetNotice,
 };

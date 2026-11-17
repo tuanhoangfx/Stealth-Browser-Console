@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$Version = "",
   [ValidateSet("", "patch", "minor", "major")]
   [string]$Bump = "",
@@ -144,7 +144,7 @@ try {
     }
 
     Invoke-Step "Refresh bundled E0001 snapshot" {
-      node scripts/sync-bundled-e0001.mjs
+      node scripts/sync-bundled-e0001.mjs --upgrade-cws
     }
   } else {
     Write-Host "==> Skip VS/native/E0001 rebuild (Fast or -SkipBuild; bundled snapshot kept)" -ForegroundColor DarkYellow

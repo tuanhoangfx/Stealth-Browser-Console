@@ -9,10 +9,14 @@ const {
   FROZEN_CLOAKBROWSER_CHROMIUM_VERSION,
   enforceFrozenCloakbrowserEnv,
   extractMirrorZipArchive,
+  ensureWindowsWidevineCdm,
+  resolveHeadlessCuiExecutablePath,
   buildLaunchOptions,
+  buildIgnoreDefaultArgs,
   buildProfileMarkerArgs,
   buildStealthChromeArgs,
   chromeExtensionArgs,
+  openPureHeadedProfile,
 } = require("./cloak-browser-engine.cjs");
 const { unpackedExtensionId } = require("../lib/profile-chrome-preferences.cjs");
 
@@ -67,8 +71,40 @@ describe("profile launch markers", () => {
 
       const headlessOpts = buildLaunchOptions(headlessProfile, "D:\\StealthBrowser\\profiles\\hl-1", "D:\\StealthBrowser");
       assert.equal(headlessOpts.viewport, undefined, "headless host-maximized must omit viewport so CloakBrowser DEFAULT_VIEWPORT (1920x947) applies");
+      assert.equal(headlessArgs.includes("--disk-cache-size=33554432"), true);
+      assert.equal(headlessArgs.includes("--media-cache-size=16777216"), true);
 
       const headedProfile = { id: "hd-1", fingerprintSeed: 123456, headless: false, windowMode: "host-maximized" };
+      const headedArgs = buildStealthChromeArgs(headedProfile, "D:\\StealthBrowser");
+      const disabledFlag = headedArgs.find((a) => String(a).startsWith("--disable-features=")) || "";
+      for (const keepEnabled of [
+        "ThirdPartyStoragePartitioning",
+        "HttpsUpgrades",
+        "PaintHolding",
+        "RenderDocument",
+        "OptimizationHints",
+      ]) {
+        assert.equal(disabledFlag.includes(keepEnabled), false, `must not disable ${keepEnabled}`);
+      }
+      assert.equal(disabledFlag.includes("ExtensionDisableUnsupportedDeveloper"), true);
+
+      const ignoreArgs = buildIgnoreDefaultArgs();
+      for (const stripped of [
+        "--disable-component-update",
+        "--disable-background-networking",
+        "--disable-client-side-phishing-detection",
+        "--disable-popup-blocking",
+        "--disable-back-forward-cache",
+        "--disable-field-trial-config",
+      ]) {
+        assert.equal(ignoreArgs.includes(stripped), true, `buildIgnoreDefaultArgs must strip ${stripped}`);
+      }
+      assert.equal(
+        ignoreArgs.some((a) => String(a).startsWith("--disable-features=") && a.includes("ThirdPartyStoragePartitioning")),
+        true,
+        "buildIgnoreDefaultArgs must strip Playwright's raw --disable-features arg containing ThirdPartyStoragePartitioning",
+      );
+
       const headedOpts = buildLaunchOptions(headedProfile, "D:\\StealthBrowser\\profiles\\hd-1", "D:\\StealthBrowser");
       assert.equal(headedOpts.viewport, null, "headed host-maximized must use viewport:null for native OS window sizing");
     } finally {
@@ -77,9 +113,9 @@ describe("profile launch markers", () => {
     }
   });
 
-  it("freezes CloakBrowser at 0.4.8 (chromium-146.0.7680.177.5) and disables background auto-update checks", () => {
+  it("freezes CloakBrowser at 0.6.5 (chromium-146.0.7680.177.5) and disables background auto-update checks", () => {
     enforceFrozenCloakbrowserEnv();
-    assert.equal(FROZEN_CLOAKBROWSER_WRAPPER_VERSION, "0.4.8");
+    assert.equal(FROZEN_CLOAKBROWSER_WRAPPER_VERSION, "0.6.5");
     assert.equal(FROZEN_CLOAKBROWSER_CHROMIUM_VERSION, "146.0.7680.177.5");
     assert.equal(process.env.CLOAKBROWSER_AUTO_UPDATE, "false");
     assert.equal(process.env.CLOAKBROWSER_VERSION, "146.0.7680.177.5");
@@ -103,6 +139,58 @@ describe("profile launch markers", () => {
       assert.equal(ok, true);
       assert.equal(fs.readFileSync(path.join(dst, "chrome.exe"), "utf8"), "MZ-mock-chrome");
       assert.equal(fs.readFileSync(path.join(dst, "locales", "en-US.pak"), "utf8"), "pak-data");
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("resolveHeadlessCuiExecutablePath ensures chrome-headless.exe uses IMAGE_SUBSYSTEM_WINDOWS_CUI (3) to prevent IDC_APPSTARTING cursor spin", () => {
+    if (process.platform !== "win32") return;
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cloak-pe-cui-"));
+    try {
+      const guiExe = path.join(tmp, "chrome.exe");
+      const headlessExe = path.join(tmp, "chrome-headless.exe");
+      const buf = Buffer.alloc(512, 0);
+      buf.writeUInt16LE(0x5a4d, 0); // "MZ"
+      const peOffset = 0x80;
+      buf.writeUInt32LE(peOffset, 0x3c);
+      buf.writeUInt32LE(0x00004550, peOffset); // "PE\0\0"
+      const subOffset = peOffset + 4 + 20 + 68;
+      buf.writeUInt16LE(2, subOffset); // 2 = IMAGE_SUBSYSTEM_WINDOWS_GUI
+      fs.writeFileSync(guiExe, buf);
+
+      // Seed a GUI (2) chrome-headless.exe and verify it gets repaired to CUI (3)
+      const staleBuf = Buffer.from(buf);
+      staleBuf.writeUInt16LE(2, subOffset);
+      fs.writeFileSync(headlessExe, staleBuf);
+
+      const resolved = resolveHeadlessCuiExecutablePath(guiExe);
+      assert.equal(resolved, headlessExe);
+      const patched = fs.readFileSync(headlessExe);
+      assert.equal(patched.readUInt16LE(subOffset), 3, "must repair GUI (2) to CUI (3) to prevent IDC_APPSTARTING cursor spin");
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("ensureWindowsWidevineCdm copies WidevineCdm cleanly into target binary directory", () => {
+    if (process.platform !== "win32") return;
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cloak-widevine-"));
+    try {
+      const src = path.join(tmp, "src-wv");
+      const bin = path.join(tmp, "bin");
+      fs.mkdirSync(path.join(src, "_platform_specific", "win_x64"), { recursive: true });
+      fs.mkdirSync(bin, { recursive: true });
+      fs.writeFileSync(path.join(src, "manifest.json"), '{"version":"4.10.2891.0"}', "utf8");
+      fs.writeFileSync(path.join(src, "_platform_specific", "win_x64", "widevinecdm.dll"), "mock-cdm", "utf8");
+
+      const ok = ensureWindowsWidevineCdm(bin, { force: true, sourceDir: src });
+      assert.equal(ok, true);
+      assert.equal(
+        fs.readFileSync(path.join(bin, "WidevineCdm", "_platform_specific", "win_x64", "widevinecdm.dll"), "utf8"),
+        "mock-cdm",
+      );
+      assert.equal(typeof openPureHeadedProfile, "function");
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

@@ -159,7 +159,6 @@ async function healStaleRunningP0020Rows({
           body: JSON.stringify({
             stealth_snapshot: nextSnap,
             stealth_checked_at: nowIso,
-            updated_at: nowIso,
           }),
           signal: AbortSignal.timeout(8000),
         },

@@ -814,6 +814,33 @@
         </div>
       </div>
     </div>
+    <div id="route-new-modal" class="cookie-share-panel cookie-import-panel route-new-modal" hidden>
+      <div class="cookie-share-panel__card cookie-import-panel__card route-new-modal__card" role="dialog" aria-modal="true" aria-labelledby="route-new-title">
+        <div class="cookie-share-panel__head">
+          <div>
+            <h2 id="route-new-title">New Cloud Route</h2>
+            <p id="route-new-subtitle" class="cookie-share-panel__route">Review detected session details and click Save to create &amp; sync.</p>
+          </div>
+          <button type="button" id="route-new-close" class="cookie-share-panel__close" aria-label="Close new route dialog">×</button>
+        </div>
+        <div id="route-new-detected-meta" class="route-new-detected-meta"></div>
+        <form id="route-new-form" class="route-new-form">
+          <label class="cookie-import-field">
+            <span class="cookie-import-field__label">Route title</span>
+            <input id="route-new-title-input" type="text" placeholder="e.g. Google Flow - user@gmail.com" autocomplete="off" required />
+          </label>
+          <label class="cookie-import-field">
+            <span class="cookie-import-field__label">Target domain</span>
+            <input id="route-new-domain-input" type="text" class="mono-input" placeholder="e.g. .flow.google.com" autocomplete="off" spellcheck="false" required />
+          </label>
+          <p id="route-new-status" class="cookie-share-panel__status" hidden></p>
+          <div class="cookie-import-actions">
+            <button type="button" id="route-new-cancel" class="cookie-import-btn cookie-import-btn--ghost">Cancel</button>
+            <button type="submit" id="route-new-submit" class="cookie-import-btn cookie-import-btn--primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
     <script src="build-info.js"></script>
     <script type="module" src="popup.js"></script>
   </body>

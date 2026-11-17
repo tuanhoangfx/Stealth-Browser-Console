@@ -56,11 +56,13 @@ import {
   GOOGLE_TAB_WAIT_MS,
   authUserId,
   clearCookiesForDomain,
+  clearOsidAppHostCookies,
   confirmGoogleInboxTab,
   ensureSiteTabForDomain,
   getCookiesForDomain,
   jwtEmailFromAuth,
   jwtPayload,
+  parkGoogleTabsBeforeCookieSwap,
   patchNote,
   recordRouteActivityOnCloud,
   refreshTabsForDomain,
@@ -209,20 +211,20 @@ const VAULT_OK_STATES = new Set(["uploaded", "disabled", "skipped", "retry", "so
 function vaultWarningText(firstVault, schemaOk) {
   if (!firstVault) return null;
   if (firstVault.vault === "pass_mismatch") {
-    return "Note có sync pass — xóa pass ở Note hoặc thêm pass vào binding.";
+    return "Note has a sync passphrase — clear passphrase on Note or set passphrase on binding.";
   }
   if (firstVault.vault === "rpc_missing") {
     return schemaOk
-      ? "Vault chưa upload — mở site (↗), đăng nhập, chọn route, bấm Sync now."
-      : "Vault/schema lỗi — chạy Tool/P0020-Data-Box/supabase/APPLY_ALL_P0020_COOKIE_BRIDGE.sql trong Supabase SQL Editor, reload extension.";
+      ? "Vault not uploaded yet — open site (↗), sign in, select route, and click Sync."
+      : "Vault schema missing — apply P0020 Cookie Bridge SQL migrations on Supabase and reload extension.";
   }
   if (/sync_pass_hash|record\s+"v_note"/i.test(firstVault.vaultError ?? "")) {
-    return "DB function cũ — chạy Tool/P0020-Data-Box/supabase/APPLY_FIX_V_NOTE_DROP.sql trên Supabase, reload extension.";
+    return "Outdated DB function — run APPLY_FIX_V_NOTE_DROP.sql on Supabase and reload extension.";
   }
   if (firstVault.vaultError) {
-    return `Vault: ${firstVault.vaultError.slice(0, 120)}`;
+    return `Vault: ${firstVault.vaultError.slice(0, 160)}`;
   }
-  return "Vault upload failed — thử Sync now lại.";
+  return "Vault upload failed — please click Sync again.";
 }
 
 function computeDisplayWarning(bindingStatus, schemaOk) {
@@ -887,10 +889,14 @@ async function syncBindings(auth, bindings, opts = {}) {
   const vaultIssues = syncedStatuses.filter(
     (s) => s.ok && s.vault && !VAULT_OK_STATES.has(s.vault),
   );
+  const skippedGuard = syncedStatuses.find((s) => s?.skippedSync && s?.vaultError);
   let warning =
     zeroCookieRoutes > 0
       ? `${zeroCookieRoutes} route(s): 0 cookies — open site (↗), log in, then Sync again.`
       : null;
+  if (skippedGuard?.vaultError) {
+    warning = warning ? `${warning} ${skippedGuard.vaultError}` : skippedGuard.vaultError;
+  }
   const vaultHint = vaultWarningText(vaultIssues[0], schemaOk);
   if (vaultHint) {
     warning = warning ? `${warning} ${vaultHint}` : vaultHint;
@@ -904,6 +910,7 @@ async function syncBindings(auth, bindings, opts = {}) {
     error: firstErr,
     zeroCookieRoutes,
     vaultIssues: vaultIssues.length,
+    skippedSync: Boolean(skippedGuard),
     warning,
     partial,
   };
@@ -1128,16 +1135,9 @@ async function lockLoadCookieTabsForDomain(domain, binding = {}) {
   if (!cleanDomain) return { ok: false, error: "No domain" };
 
   if (isGoogleDomain(cleanDomain) || isGoogleOsidAppDomain(cleanDomain)) {
-    const ensured = await ensureSiteTabForDomain(cleanDomain, {
-      activate: true,
-      forceNavigate: true,
-      waitMs: 0,
-      createdDelayMs: 0,
-      tabWaitMs: GOOGLE_TAB_WAIT_MS,
-    });
-    return ensured.tabId
-      ? { ok: true, tabs: 1, created: ensured.created, navigated: ensured.navigated, skipOverlay: true }
-      : { ok: false, error: "No tab" };
+    // Do NOT pre-navigate Google / Google OSID tabs before vault cookies are written;
+    // unauthenticated pre-navigation triggers redirects to /about or accounts.google.com and races cookie writes.
+    return { ok: true, tabs: 0, deferredUntilAfterApply: true, skipOverlay: true };
   }
 
   const tabs = await chrome.tabs.query({});
@@ -1201,9 +1201,11 @@ async function applyVaultAll(filter = {}) {
   const googleBindings = bindings.filter((b) => isGoogleOrOsidDomain(b.domain));
   const nonGoogleBindings = bindings.filter((b) => !isGoogleOrOsidDomain(b.domain));
 
+  const googlePreferredTabByKey = new Map();
+
   try {
     if (filter.clearBeforeLoad === true) {
-      for (const b of bindings) {
+      for (const b of nonGoogleBindings) {
         if (!b.domain?.trim()) continue;
         await clearCookiesForDomain(b.domain.trim());
       }
@@ -1236,18 +1238,34 @@ async function applyVaultAll(filter = {}) {
       }
       const jarScope = effectiveCookieDomain(b.domain);
       const jarBefore = (await getCookiesForDomain(jarScope)).length;
+      const isGoogleRoute = isGoogleOrOsidDomain(b.domain);
       try {
         const r = await loadVaultIntoBrowser(auth, b, {
           clearWatermark: true,
           rounds: 4,
           retryDelayMs: 600,
           requireFacebookLogin: isFacebookDomain(b.domain),
+          beforeWrite: isGoogleRoute
+            ? async () => {
+                if (confirmSession) {
+                  const parked = await parkGoogleTabsBeforeCookieSwap(b.domain.trim());
+                  if (parked.preferredTabId) {
+                    googlePreferredTabByKey.set(bindingStatusKey(b) || b.domain.trim(), parked.preferredTabId);
+                  }
+                }
+                if (filter.clearBeforeLoad === true) {
+                  await clearCookiesForDomain(b.domain.trim());
+                } else if (resolveGoogleOsidApp(b.domain)) {
+                  await clearOsidAppHostCookies(b.domain.trim());
+                }
+              }
+            : undefined,
           ...(Object.prototype.hasOwnProperty.call(filter, "vaultPassOverride")
             ? { passphrase: filter.vaultPassOverride }
             : {}),
         });
         let storageApplied = 0;
-        if (hasNonEmptyAuthStorage(r.storage) && b.domain?.trim()) {
+        if (!isGoogleRoute && hasNonEmptyAuthStorage(r.storage) && b.domain?.trim()) {
           try {
             const ensured = await ensureSiteTabForDomain(b.domain.trim(), {
               activate: activateSite,
@@ -1315,8 +1333,27 @@ async function applyVaultAll(filter = {}) {
       let googleSession = null;
       if (googleBindings.length) {
         for (const b of googleBindings) {
-          googleSession = await confirmGoogleInboxTab(b.domain.trim(), { activate: activateSite });
+          const prefTabId =
+            googlePreferredTabByKey.get(bindingStatusKey(b) || b.domain.trim()) ?? null;
+          googleSession = await confirmGoogleInboxTab(b.domain.trim(), {
+            activate: activateSite,
+            preferredTabId: prefTabId,
+          });
           if (googleSession.tabId) tabsRefreshed += 1;
+          const matchingApplied = applied.find(
+            (r) => (r.noteId && r.noteId === b.noteId) || r.domain === b.domain,
+          );
+          if (googleSession.ok && matchingApplied && hasNonEmptyAuthStorage(matchingApplied.storage)) {
+            try {
+              const storageRes = await applySiteAuthStorageForDomain(
+                b.domain.trim(),
+                matchingApplied.storage,
+              );
+              matchingApplied.storageApplied = storageRes?.applied ?? 0;
+            } catch (storageErr) {
+              console.warn("[E0001] apply google site auth storage", b.domain, storageErr);
+            }
+          }
         }
       }
       const shouldRefreshNonGoogle =
@@ -1324,7 +1361,7 @@ async function applyVaultAll(filter = {}) {
         nonGoogleBindings.length &&
         applied.some(
           (r) =>
-            !isGoogleOrFlowDomain(r.domain) &&
+            !isGoogleOrOsidDomain(r.domain) &&
             (r.jarGained ||
               r.hasStorage ||
               (r.storageApplied ?? 0) > 0 ||
@@ -1332,7 +1369,7 @@ async function applyVaultAll(filter = {}) {
         );
       if (shouldRefreshNonGoogle) {
         await new Promise((r) => setTimeout(r, 400));
-        const domains = [...new Set(applied.filter((r) => !isGoogleOrFlowDomain(r.domain)).map((r) => r.domain).filter(Boolean))];
+        const domains = [...new Set(applied.filter((r) => !isGoogleOrOsidDomain(r.domain)).map((r) => r.domain).filter(Boolean))];
         for (const d of domains) {
           tabsRefreshed += await refreshTabsForDomain(d);
           const routeBinding = bindings.find((b) => b.domain === d) ?? bindings[0];
@@ -1360,13 +1397,16 @@ async function applyVaultAll(filter = {}) {
         warning = warning ? `${warning} ${googleHint}` : googleHint;
       }
       if (googleBindings.length && googleSession && googleSession.ok !== true) {
-        const sessionHint = osidAppRoute
-          ? googleSession.reason === "marketing_redirect"
-            ? `Cookies applied, but ${osidAppRoute.primaryHost} redirected to landing page — sign in on the source browser and Sync again.`
-            : `Could not confirm ${osidAppRoute.label} session on ${osidAppRoute.primaryHost} after Load — try syncing \`${osidAppRoute.canonicalDomain}\` again.`
-          : googleSession.reason === "marketing_redirect"
-            ? "Cookies applied, but Gmail redirected to workspace landing — Sync again from Gmail inbox."
-            : "Could not confirm Gmail inbox after Load — try syncing `.google.com` again.";
+        const sessionHint =
+          googleSession.reason === "google_session_revoked"
+            ? `Google session in vault was signed out on Google servers — sign in on ${osidAppRoute ? osidAppRoute.primaryHost : "Gmail"} and Sync again (use Clear Active instead of Google Sign out when testing).`
+            : osidAppRoute
+              ? googleSession.reason === "marketing_redirect"
+                ? `Cookies applied, but ${osidAppRoute.primaryHost} redirected to landing page — sign in on the source browser and Sync again.`
+                : `Could not confirm ${osidAppRoute.label} session on ${osidAppRoute.primaryHost} after Load — try syncing \`${osidAppRoute.canonicalDomain}\` again.`
+              : googleSession.reason === "marketing_redirect"
+                ? "Cookies applied, but Gmail redirected to workspace landing — Sync again from Gmail inbox."
+                : "Could not confirm Gmail inbox after Load — try syncing `.google.com` again.";
         warning = warning ? `${warning} ${sessionHint}` : sessionHint;
       }
       const partial = effective < decryptedMax || (googleBindings.length > 0 && googleSession?.ok !== true);
@@ -1395,7 +1435,7 @@ async function applyVaultAll(filter = {}) {
       const hintHost = openSiteHintHost(emptyVault.domain || bindings[0]?.domain);
       return {
         ok: false,
-        error: `Vault rỗng (0 cookie) cho ${emptyVault.domain || "route"} — mở ${hintHost}, đăng nhập, Sync lại rồi Load.`,
+        error: `Empty vault (0 cookies) for ${emptyVault.domain || "route"} — open ${hintHost}, sign in, click Sync, then Load.`,
         results,
       };
     }
@@ -1410,7 +1450,7 @@ async function applyVaultAll(filter = {}) {
       const names = (zero.failedNames ?? []).slice(0, 6).join(", ");
       return {
         ok: false,
-        error: `Không ghi được cookie (${failed}/${total} lỗi${names ? `: ${names}` : ""}). Dùng Test thủ công → Apply paste.`,
+        error: `Could not write cookies (${failed}/${total} failed${names ? `: ${names}` : ""}).`,
         failedNames: zero.failedNames,
         failedDetails: zero.failedDetails,
         results,
@@ -1423,10 +1463,10 @@ async function applyVaultAll(filter = {}) {
       ok: false,
       error:
         notFound.length === results.length
-          ? "Chưa có vault — browser khác bấm Sync now (Vault sync bật)."
+          ? "No cloud vault yet — click Sync on the source browser first."
           : already.length === results.length
-            ? `Vault đã apply — bấm Load lại (sẽ mở ${hintHost}).`
-            : `Load thất bại — mở ${hintHost}, bấm Load lại. Nếu vault > jar: xem toast tên cookie lỗi.`,
+            ? `Vault already applied — click Load again to open ${hintHost}.`
+            : `Load failed — open ${hintHost} and click Load again.`,
       results,
     };
   } finally {

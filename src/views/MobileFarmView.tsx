@@ -48,6 +48,8 @@ import {
   hasLiveMirrorFrame,
   isNonBlackScreenUrl,
   readFarmUiPrefs,
+  resetMuxDisplayStreams,
+  type AvailableAdbDevice,
   type ExtendedDisplayInfo,
   type ExtendedLiveScreenState,
   type FarmEngineMode,
@@ -80,6 +82,9 @@ export const MobileFarmView = memo(function MobileFarmView({
   const [actionBusy, setActionBusy] = useState<string>("");
   const [autoStream, setAutoStream] = useState<boolean>(initialFarmPrefs.autoStream);
   const [syncMaster, setSyncMaster] = useState<boolean>(initialFarmPrefs.syncMaster);
+  const [dualWall, setDualWall] = useState<boolean>(initialFarmPrefs.dualWall);
+  const dualWallRef = useRef<boolean>(dualWall);
+  dualWallRef.current = dualWall;
 
   const pcProfileByCode = useMemo(() => {
     const map = new Map<string, (typeof pcProfiles)[number]>();
@@ -120,12 +125,13 @@ export const MobileFarmView = memo(function MobileFarmView({
         railCollapsed,
         autoStream,
         syncMaster,
+        dualWall,
       };
       window.localStorage.setItem(FARM_PREFS_STORAGE_KEY, JSON.stringify(nextPrefs));
     } catch {
       /* ignore quota error */
     }
-  }, [autoStream, cardWidth, connectionFilter, engineMode, groupFilter, railCollapsed, refreshIntervalMs, syncMaster]);
+  }, [autoStream, cardWidth, connectionFilter, dualWall, engineMode, groupFilter, railCollapsed, refreshIntervalMs, syncMaster]);
 
   const loadProfilesAndTelemetry = useCallback(async () => {
     try {
@@ -147,8 +153,9 @@ export const MobileFarmView = memo(function MobileFarmView({
     pullInFlightRef.current = true;
     setLoading(true);
     try {
+      const wantDual = dualWallRef.current;
       const data = (await fetchFarmApi(
-        `/api/mobile-stealth/live-screen?displayId=all&screenshot=${includeShot ? "1" : "0"}`,
+        `/api/mobile-stealth/live-screen?displayId=all&screenshot=${includeShot ? "1" : "0"}&allDevices=${wantDual ? "1" : "0"}`,
       )) as ExtendedLiveScreenState;
       if (data) {
         setLiveState(data);
@@ -177,6 +184,19 @@ export const MobileFarmView = memo(function MobileFarmView({
               if (slot.profileCode) assignIfChanged(`prof:${slot.profileCode}`, slot.lastScreenDataUrl);
             }
           }
+          if (data.deviceStates) {
+            for (const [peerSerial, peerSnap] of Object.entries(data.deviceStates)) {
+              if (!peerSnap || peerSerial === data.serial) continue;
+              if (peerSnap.displayScreenshots) {
+                for (const [dispId, url] of Object.entries(peerSnap.displayScreenshots)) {
+                  assignIfChanged(`peer:${peerSerial}:disp:${dispId}`, url);
+                }
+              }
+              if (peerSnap.screenDataUrl) {
+                assignIfChanged(`peer:${peerSerial}:disp:0`, peerSnap.screenDataUrl);
+              }
+            }
+          }
           return changed ? next : prev;
         });
       }
@@ -191,7 +211,7 @@ export const MobileFarmView = memo(function MobileFarmView({
   useEffect(() => {
     void loadProfilesAndTelemetry();
     void pullFarmLiveState(engineMode !== "pc_emulation");
-  }, [engineMode, loadProfilesAndTelemetry, pullFarmLiveState]);
+  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullFarmLiveState]);
 
   useEffect(() => {
     if (!autoStream || engineMode === "pc_emulation") return;
@@ -258,6 +278,37 @@ export const MobileFarmView = memo(function MobileFarmView({
     }
   }, [loadProfilesAndTelemetry, pullFarmLiveState, pushToast]);
 
+  const handleSelectDevice = useCallback(
+    async (targetSerial: string) => {
+      if (!targetSerial) return;
+      setActionBusy(`select:${targetSerial}`);
+      try {
+        const res = await fetchFarmApi("/api/mobile-stealth/live-control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "select-device", serial: targetSerial }),
+        });
+        if (res?.ok) {
+          setCachedSlotScreens({});
+          resetMuxDisplayStreams();
+          pushToast(
+            `Switched active device to ${res.device?.model || "Android"} (${res.serial || targetSerial})`,
+            "success",
+          );
+          await loadProfilesAndTelemetry();
+          await pullFarmLiveState(true);
+        } else {
+          pushToast(`Device switch failed: ${res?.reason || "device_offline"}`, "error");
+        }
+      } catch (err) {
+        pushToast(`Device switch error: ${err instanceof Error ? err.message : "error"}`, "error");
+      } finally {
+        setActionBusy("");
+      }
+    },
+    [loadProfilesAndTelemetry, pullFarmLiveState, pushToast],
+  );
+
   const handleEnsureVirtualDisplay = useCallback(async () => {
     await dispatchControl(
       { action: "ensure-virtual-display" },
@@ -307,6 +358,18 @@ export const MobileFarmView = memo(function MobileFarmView({
 
     const seenProfileCodes = new Set<string>();
 
+    const activeAvailable = (liveState?.availableDevices || deviceTelemetry?.availableDevices || []).find(
+      (d) => d.active || d.serial === liveState?.serial,
+    );
+    const primarySerial = activeAvailable?.serial || liveState?.serial || serialEndpoint;
+    const activeDevModel = activeAvailable?.model || deviceTelemetry?.liveDeviceModel || "Pixel 6a";
+    const activeDevBrand = /samsung|sm-|galaxy/i.test(activeDevModel) ? "Samsung" : "Google";
+    const activeShortTag = /sm-g965|s9\+/i.test(activeDevModel)
+      ? "S9+"
+      : /pixel/i.test(activeDevModel)
+        ? "PIXEL"
+        : "DEV";
+
     if (engineMode !== "pc_emulation") {
       // 1. Active Physical & Virtual Displays (Display 0 + Display 1..4)
       if (displays.length > 0) {
@@ -326,6 +389,9 @@ export const MobileFarmView = memo(function MobileFarmView({
             boundSlot?.fbAccountName ||
             boundProf?.fbAccountName ||
             (resolvedCUser ? `UID ${resolvedCUser}` : null);
+          const resParts = String(disp.resolution || "").split("x").map((n) => Number(n));
+          const parsedW = resParts.length === 2 && Number.isFinite(resParts[0]) && resParts[0] > 0 ? resParts[0] : 0;
+          const parsedH = resParts.length === 2 && Number.isFinite(resParts[1]) && resParts[1] > 0 ? resParts[1] : 0;
           const is540p = disp.resolution === "540x1200";
           const is720p = disp.resolution === "720x1600";
           const rawDispScreen =
@@ -339,7 +405,7 @@ export const MobileFarmView = memo(function MobileFarmView({
             id: `display-${disp.logicalId}`,
             kind: "display",
             code: boundCode,
-            badgeTopLeft: isVirtual ? `VIRTUAL D${disp.logicalId}` : "WIFI · D0",
+            badgeTopLeft: isVirtual ? `${activeShortTag} · D${disp.logicalId}` : `${activeShortTag} · D0`,
             badgeTone: isVirtual ? "sky" : "emerald",
             titleCode: isVirtual
               ? boundCode && boundCode !== "AGENT"
@@ -348,7 +414,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               : boundCode,
             modelLabel: isVirtual
               ? `VIRTUAL ${disp.resolution || "540X1200"} · U${boundUserId}`
-              : (deviceTelemetry?.liveDeviceModel || "PIXEL 6A").toUpperCase(),
+              : activeDevModel.toUpperCase(),
             endpointLabel: `${serialEndpoint} · Display ${disp.logicalId}`,
             subMetaLabel: resolvedFbLabel
               ? `${resolvedFbLabel} · U${boundUserId}`
@@ -357,19 +423,20 @@ export const MobileFarmView = memo(function MobileFarmView({
                 : `Foreground U${fgUserId} · 24fps H.264 Stream`,
             displayId: disp.logicalId,
             userId: boundUserId,
-            coordWidth: is540p ? 540 : is720p ? 720 : 1080,
-            coordHeight: is540p ? 1200 : is720p ? 1600 : 2400,
+            coordWidth: parsedW || (is540p ? 540 : is720p ? 720 : 1080),
+            coordHeight: parsedH || (is540p ? 1200 : is720p ? 1600 : /sm-g965|s9\+/i.test(activeDevModel) ? 2220 : 2400),
             isLiveForeground: true,
             isRunning: true,
             cookieCount: boundSlot?.cookieCount || boundProf?.cookieCount || 435,
             c_user: resolvedCUser,
             fbAccountLabel: resolvedFbLabel,
-            manufacturer: "Google",
+            manufacturer: activeDevBrand,
+            deviceSerial: primarySerial,
             screenDataUrl: screenUrl,
           });
         }
       } else {
-        // Offline Display 0 placeholder so physical Pixel 6a screen slot stays visible at #1
+        // Offline Display 0 placeholder so physical device screen slot stays visible at #1
         const activeProf = profiles.find((p) => p.activeOnPhone);
         const resolvedCUser = activeProf?.c_user || null;
         const resolvedFbLabel =
@@ -381,21 +448,80 @@ export const MobileFarmView = memo(function MobileFarmView({
           badgeTopLeft: "OFFLINE · D0",
           badgeTone: "amber",
           titleCode: activeProf?.code || "0005",
-          modelLabel: `${deviceTelemetry?.liveDeviceModel || "PIXEL 6A"} · ADB SLEEP`.toUpperCase(),
+          modelLabel: `${activeDevModel} · ADB SLEEP`.toUpperCase(),
           endpointLabel: `${serialEndpoint} · Disconnected`,
           subMetaLabel: resolvedFbLabel || "Plug USB-C / Wake Wireless Debugging",
           displayId: 0,
           userId: 0,
           coordWidth: 1080,
-          coordHeight: 2400,
+          coordHeight: /sm-g965|s9\+/i.test(activeDevModel) ? 2220 : 2400,
           isLiveForeground: false,
           isRunning: false,
           cookieCount: activeProf?.cookieCount || 435,
           c_user: resolvedCUser,
           fbAccountLabel: resolvedFbLabel,
-          manufacturer: "Google",
+          manufacturer: activeDevBrand,
+          deviceSerial: primarySerial,
           screenDataUrl: isNonBlackScreenUrl(cachedSlotScreens["disp:0"]) ? cachedSlotScreens["disp:0"] : null,
         });
+      }
+
+      // 1b. Dual-Device Wall: Peer connected Android devices (e.g. Galaxy S9+ beside Pixel 6a)
+      if (dualWall && liveState?.deviceStates) {
+        const peerEntries = Object.entries(liveState.deviceStates).filter(
+          ([peerSerial, snap]) => Boolean(snap?.ok) && peerSerial && peerSerial !== primarySerial,
+        );
+        for (const [peerSerial, peerSnap] of peerEntries) {
+          const peerAvail = (liveState.availableDevices || []).find((d) => d.serial === peerSerial);
+          const peerModel = peerAvail?.model || (peerSerial.includes("120") ? "SM-G965N" : "Android");
+          const peerBrand = /samsung|sm-|galaxy/i.test(peerModel) ? "Samsung" : "Google";
+          const peerShortTag = /sm-g965|s9\+/i.test(peerModel)
+            ? "S9+"
+            : /pixel/i.test(peerModel)
+              ? "PIXEL"
+              : "PEER";
+          const peerDefaultH = /sm-g965|s9\+/i.test(peerModel) ? 2220 : 2400;
+          const peerDisplays = peerSnap.displays || [];
+          const peerFgUser = peerSnap.currentUserId ?? 0;
+          for (const disp of peerDisplays) {
+            const isVirtual = disp.kind === "virtual";
+            const boundUserId = disp.assignedUserId ?? peerFgUser;
+            const resParts = String(disp.resolution || "").split("x").map((n) => Number(n));
+            const parsedW = resParts.length === 2 && Number.isFinite(resParts[0]) && resParts[0] > 0 ? resParts[0] : 0;
+            const parsedH = resParts.length === 2 && Number.isFinite(resParts[1]) && resParts[1] > 0 ? resParts[1] : 0;
+            const rawPeerScreen =
+              peerSnap.displayScreenshots?.[String(disp.logicalId)] ||
+              cachedSlotScreens[`peer:${peerSerial}:disp:${disp.logicalId}`] ||
+              (disp.logicalId === 0 ? peerSnap.screenDataUrl || null : null);
+            const screenUrl = isNonBlackScreenUrl(rawPeerScreen) ? rawPeerScreen : null;
+            if (isVirtual && !screenUrl) continue;
+            list.push({
+              id: `peer-${peerSerial}-display-${disp.logicalId}`,
+              kind: "display",
+              code: disp.assignedProfileCode || `${peerShortTag}-D${disp.logicalId}`,
+              badgeTopLeft: isVirtual ? `${peerShortTag} · D${disp.logicalId}` : `${peerShortTag} · D0`,
+              badgeTone: isVirtual ? "sky" : "violet",
+              titleCode: isVirtual ? `${peerShortTag} · D${disp.logicalId}` : `${peerShortTag} · ${peerModel}`,
+              modelLabel: isVirtual
+                ? `VIRTUAL ${disp.resolution || "540X1200"} · U${boundUserId}`
+                : peerModel.toUpperCase(),
+              endpointLabel: `${peerSerial} · Display ${disp.logicalId}`,
+              subMetaLabel: `${peerBrand} · U${boundUserId} · Dual Wall Live`,
+              displayId: disp.logicalId,
+              userId: boundUserId,
+              coordWidth: parsedW || 1080,
+              coordHeight: parsedH || peerDefaultH,
+              isLiveForeground: true,
+              isRunning: true,
+              cookieCount: 0,
+              c_user: disp.c_user || null,
+              fbAccountLabel: disp.fbAccountName || `${peerShortTag} (${peerSerial.split(":")[0]})`,
+              manufacturer: peerBrand,
+              deviceSerial: peerSerial,
+              screenDataUrl: screenUrl,
+            });
+          }
+        }
       }
 
       // 2. Rooted Multi-User Isolated Slots (U0, U10..U22)
@@ -451,6 +577,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           c_user: resolvedCUser,
           fbAccountLabel: resolvedFbLabel,
           manufacturer: brandStr,
+          deviceSerial: primarySerial,
           screenDataUrl: screenUrl,
         });
       }
@@ -510,7 +637,7 @@ export const MobileFarmView = memo(function MobileFarmView({
     }
 
     return list;
-  }, [cachedSlotScreens, deviceTelemetry, engineMode, liveState, pcProfileByCode, profiles, runningHeadlessIds]);
+  }, [cachedSlotScreens, deviceTelemetry, dualWall, engineMode, liveState, pcProfileByCode, profiles, runningHeadlessIds]);
 
   const filteredCards = useMemo(() => {
     const q = searchQuery.trim();
@@ -588,6 +715,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           for (const d of liveState?.displays || []) {
             void dispatchControl({
               action: "swipe",
+              serial: card.deviceSerial,
               displayId: d.logicalId,
               userId: d.assignedUserId ?? card.userId,
               profileCode: d.assignedProfileCode || card.code,
@@ -602,6 +730,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           for (const t of batchTargets) {
             void dispatchControl({
               action: "swipe",
+              serial: t.deviceSerial,
               displayId: t.displayId,
               userId: t.userId,
               profileCode: t.code,
@@ -615,6 +744,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         } else {
           void dispatchControl({
             action: "swipe",
+            serial: card.deviceSerial,
             displayId: card.displayId,
             userId: card.userId,
             profileCode: card.code,
@@ -634,6 +764,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           for (const d of liveState?.displays || []) {
             void dispatchControl({
               action: "tap",
+              serial: card.deviceSerial,
               displayId: d.logicalId,
               userId: d.assignedUserId ?? card.userId,
               profileCode: d.assignedProfileCode || card.code,
@@ -645,6 +776,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           for (const t of batchTargets) {
             void dispatchControl({
               action: "tap",
+              serial: t.deviceSerial,
               displayId: t.displayId,
               userId: t.userId,
               profileCode: t.code,
@@ -655,6 +787,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         } else {
           void dispatchControl({
             action: "tap",
+            serial: card.deviceSerial,
             displayId: card.displayId,
             userId: card.userId,
             profileCode: card.code,
@@ -694,8 +827,8 @@ export const MobileFarmView = memo(function MobileFarmView({
     async (card: FarmPhoneCardItem) => {
       if (card.kind === "user_slot") {
         await dispatchControl(
-          { action: "switch-user", userId: card.userId },
-          `Switched Pixel 6a foreground to U${card.userId} (#${card.titleCode})`,
+          { action: "switch-user", serial: card.deviceSerial, userId: card.userId },
+          `Switched foreground to U${card.userId} (#${card.titleCode})`,
         );
       } else if (card.kind === "profile") {
         const pcProf = pcProfileByCode.get(card.code);
@@ -787,6 +920,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           selectedCards.map((c) =>
             dispatchControl({
               action: "launch-app",
+              serial: c.deviceSerial,
               userId: c.userId,
               displayId: c.displayId,
               packageName,
@@ -813,6 +947,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         selectedCards.map(async (c) => {
           await dispatchControl({
             action: "keyevent",
+            serial: c.deviceSerial,
             displayId: c.displayId,
             userId: c.userId,
             profileCode: c.code,
@@ -820,6 +955,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           });
           await dispatchControl({
             action: "swipe",
+            serial: c.deviceSerial,
             displayId: c.displayId,
             userId: c.userId,
             profileCode: c.code,
@@ -841,10 +977,12 @@ export const MobileFarmView = memo(function MobileFarmView({
   }, [dispatchControl, pushToast, selectedCards]);
 
   const handleBatchStopUsers = useCallback(async () => {
-    const targets = selectedCards.filter((c) => c.userId >= 10);
+    const targets = selectedCards.filter(
+      (c) => c.userId >= 10 && c.userId !== 95 && c.userId !== 999 && !/dual.?app|dual messenger/i.test(c.modelLabel),
+    );
     if (targets.length === 0) {
       pushToast(
-        "Select at least 1 secondary Multi-User slot (U10..U21) to stop",
+        "Select at least 1 secondary Multi-User slot (U10..U21) to stop (Dual App U95 is protected)",
         "info",
       );
       return;
@@ -855,6 +993,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         targets.map((c) =>
           dispatchControl({
             action: "stop-user",
+            serial: c.deviceSerial,
             userId: c.userId,
             profileCode: c.code,
           }),
@@ -949,10 +1088,14 @@ export const MobileFarmView = memo(function MobileFarmView({
     const slotsCount = liveState?.multiUserSlots?.length || 13;
     const runningSlots = (liveState?.multiUserSlots || []).filter((s) => s.running).length;
     const fbSyncedCount = profiles.filter((p) => p.cookieCount > 0).length;
+    const activeDev = (liveState?.availableDevices || deviceTelemetry?.availableDevices || []).find(
+      (d) => d.active || d.serial === liveState?.serial,
+    );
+    const activeDevLabel = activeDev?.model || deviceTelemetry?.liveDeviceModel || "Pixel 6a";
     return [
       {
         prefKey: "total",
-        label: engineMode === "pc_emulation" ? "PC Android Slots" : engineMode === "pixel6a_hardware" ? "Pixel 6a Screens" : "Farm Screens",
+        label: engineMode === "pc_emulation" ? "PC Android Slots" : engineMode === "pixel6a_hardware" ? `${activeDevLabel} Screens` : "Farm Screens",
         value: phoneCards.length,
         emojiGlyph: STEALTH_PROFILE_KPI_STICKER.total,
         tone: "indigo",
@@ -973,7 +1116,7 @@ export const MobileFarmView = memo(function MobileFarmView({
       },
       {
         prefKey: "headless",
-        label: "Pixel 6a Hardware",
+        label: `${activeDevLabel} Hardware`,
         value: liveState?.adbOnline ? `ONLINE · ${runningSlots}/${slotsCount} U` : `ADB STANDBY · ${displaysCount}D`,
         emojiGlyph: "📱",
         tone: liveState?.adbOnline ? "emerald" : "amber",
@@ -991,7 +1134,7 @@ export const MobileFarmView = memo(function MobileFarmView({
       },
       {
         prefKey: "failed",
-        label: "Pixel 6a (80–85%)",
+        label: `${activeDevLabel} (80–85%)`,
         value: `${liveState?.hardwareHealth?.batteryLevel ?? deviceTelemetry?.batteryLevel ?? 85}% · ${(liveState?.hardwareHealth?.batteryTempC ?? deviceTelemetry?.batteryTempC ?? 30.1).toFixed(1)}°C`,
         emojiGlyph: (liveState?.hardwareHealth?.batteryLevel ?? deviceTelemetry?.batteryLevel ?? 85) <= 20 ? "⚠️" : "🔋",
         tone: (liveState?.hardwareHealth?.batteryLevel ?? deviceTelemetry?.batteryLevel ?? 85) <= 20 ? "amber" : "emerald",
@@ -1112,6 +1255,8 @@ export const MobileFarmView = memo(function MobileFarmView({
             handleEnsureVirtualDisplayPool={handleEnsureVirtualDisplayPool}
             syncMaster={syncMaster}
             setSyncMaster={setSyncMaster}
+            dualWall={dualWall}
+            setDualWall={setDualWall}
             pushToast={pushToast}
             handleReconnectWifiAdb={handleReconnectWifiAdb}
             handleEnsureVirtualDisplay={handleEnsureVirtualDisplay}
@@ -1131,6 +1276,12 @@ export const MobileFarmView = memo(function MobileFarmView({
             batLevel={batLevel}
             deviceTelemetry={deviceTelemetry}
             liveState={liveState}
+            availableDevices={
+              (liveState?.availableDevices && liveState.availableDevices.length > 0
+                ? liveState.availableDevices
+                : deviceTelemetry?.availableDevices || []) as AvailableAdbDevice[]
+            }
+            handleSelectDevice={handleSelectDevice}
             onCollapse={() => setRailCollapsed(true)}
           />
         ) : null}
@@ -1517,7 +1668,14 @@ export const MobileFarmView = memo(function MobileFarmView({
         onClose={handleCloseTheater}
         handleScreenPointerDown={handleScreenPointerDown}
         handleScreenPointerUp={handleScreenPointerUp}
-        dispatchControl={dispatchControl}
+        dispatchControl={(payload, toastLabel) =>
+          dispatchControl(
+            theaterCard?.deviceSerial && !payload.serial
+              ? { serial: theaterCard.deviceSerial, ...payload }
+              : payload,
+            toastLabel,
+          )
+        }
         handleCopyCardScreenshot={handleCopyCardScreenshot}
         handleActivateCard={handleActivateCard}
         pushToast={pushToast}

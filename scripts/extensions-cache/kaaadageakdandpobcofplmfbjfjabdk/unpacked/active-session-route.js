@@ -12,7 +12,10 @@ import {
   isElevenLabsDomain,
   isFacebookDomain,
   isGoogleDomain,
+  isGoogleMarketingUrl,
   isGoogleOsidAppDomain,
+  isGoogleSignInPromptUrl,
+  isSignedOutLandingOrLoginTabUrl,
   normalizeDomainHost,
   relatedCookieDomains,
   resolveGoogleOsidApp,
@@ -24,8 +27,8 @@ import {
   hasNonEmptyAuthStorage,
 } from "./site-auth-storage.js";
 import { extractSiteSessionIdentityHint } from "./site-cookie-cleaner.js";
-import { authUserId, getCookiesForDomain } from "./sync-engine-core.js";
-import { bindingRouteKey, getBrowserId } from "./vault-api.js";
+import { authUserId, getCookiesForDomain, probeGoogleOsidSessionLive } from "./sync-engine-core.js";
+import { bindingRouteKey, getBrowserId, normalizeRouteDomain } from "./vault-api.js";
 
 const INTERNAL_HOST_PATTERNS = [
   /(^|\.)databox\.infi28\.com$/i,
@@ -173,6 +176,15 @@ export async function resolveActiveCurrentTab(tabsApi = globalThis.chrome?.tabs)
       const normalTabs = await tabsApi.query({ active: true, windowType: "normal" });
       const httpTab = (normalTabs || []).find((t) => /^https?:\/\//i.test(String(t?.url || "")));
       if (httpTab) candidate = httpTab;
+    }
+    if (!candidate || String(candidate.url || "").startsWith("chrome-extension://")) {
+      const allWinTabs = await tabsApi.query({ currentWindow: true });
+      const openWebTabs = (allWinTabs || []).filter(
+        (t) => /^https?:\/\//i.test(String(t?.url || "")) && !isInternalWorkspaceUrl(t.url),
+      );
+      if (openWebTabs.length) {
+        candidate = openWebTabs[openWebTabs.length - 1];
+      }
     }
   } catch (err) {
     return { ok: false, error: err?.message || "Unable to read active tab." };
@@ -983,25 +995,20 @@ async function collectCookiesForRouteScope(canonicalDomain, getCookiesFn = getCo
 }
 
 /**
- * End-to-end handler for the `+ New` button on Routes tab:
- * 1. Reads the active website tab
- * 2. Collects cookies + SPA auth storage & detects the logged-in account (`email` / `UID` / `@handle`)
- * 3. Reuses matching writable route or creates a new `notes` + `cookie_bridge_routes` entry on Cloud
- * 4. Immediately syncs cookies + SPA storage to Cloud Vault
+ * Step 1 (Read-Only): Inspect the active website tab, collect cookies + SPA auth storage,
+ * validate login state, detect logged-in account identity, and build a pre-filled draft
+ * for the `New Route` confirmation modal BEFORE creating anything on Cloud.
  */
-export async function createAndSyncActiveSessionRoute({
-  auth,
+export async function prepareActiveSessionRouteDraft({
   bindings = [],
   bindingStatus = {},
   canSyncFn = () => true,
-  syncBindingFn,
   brandRegistry = COOKIE_BRAND_ICON_REGISTRY,
   tabsApi = globalThis.chrome?.tabs,
   scriptingApi = globalThis.chrome?.scripting,
   getCookiesFn = getCookiesForDomain,
   captureStorageFn = captureSiteAuthStorageForDomain,
   getBrowserIdFn = getBrowserId,
-  fetchFn = globalThis.fetch,
 } = {}) {
   try {
     const activeTabRes = await resolveActiveCurrentTab(tabsApi);
@@ -1027,16 +1034,40 @@ export async function createAndSyncActiveSessionRoute({
     }
 
     const targetOsidApp = resolveGoogleOsidApp(canonicalDomain);
-    if (
-      (isGoogleDomain(canonicalDomain) || isGoogleOsidAppDomain(canonicalDomain)) &&
-      summarizeGoogleCookieNames(cookies).hasGoogleLogin !== true
-    ) {
+    if (isGoogleDomain(canonicalDomain) || Boolean(targetOsidApp)) {
+      if (isGoogleMarketingUrl(url) || isGoogleSignInPromptUrl(url)) {
+        const targetHost = targetOsidApp ? targetOsidApp.primaryHost : host;
+        const targetLabel = targetOsidApp ? targetOsidApp.label : "Google session";
+        return {
+          ok: false,
+          error: `${targetLabel} is not signed in (${targetHost}/about is the signed-out landing page) — sign in on ${targetHost} first before clicking New, or click Load on an existing route.`,
+        };
+      }
+      if (summarizeGoogleCookieNames(cookies).hasGoogleLogin !== true) {
+        return {
+          ok: false,
+          error: targetOsidApp
+            ? `${targetOsidApp.label} is not signed in on this browser. Sign in on ${targetOsidApp.primaryHost} first, then click New.`
+            : `Google session is not signed in on ${host}. Sign in first, then click New.`,
+        };
+      }
+    } else if (isSignedOutLandingOrLoginTabUrl(url, canonicalDomain)) {
       return {
         ok: false,
-        error: targetOsidApp
-          ? `${targetOsidApp.label} is not signed in on this browser. Sign in on ${targetOsidApp.primaryHost} first, then click New.`
-          : `Google session is not signed in on ${host}. Sign in first, then click New.`,
+        error: `${platformLabel || host} tab is on a sign-in/login page — sign in on ${host} first before clicking New, or click Load on an existing route.`,
       };
+    }
+
+    let wizEmail = "";
+    if (targetOsidApp) {
+      const liveProbe = await probeGoogleOsidSessionLive(targetOsidApp);
+      if (liveProbe.checked && !liveProbe.live) {
+        return {
+          ok: false,
+          error: `Local ${targetOsidApp.label} session on this browser is signed out/expired. Sign in on ${targetOsidApp.primaryHost} first, then click New.`,
+        };
+      }
+      if (liveProbe.email) wizEmail = liveProbe.email;
     }
 
     const detected = await detectActiveTabAccountIdentity({
@@ -1047,7 +1078,7 @@ export async function createAndSyncActiveSessionRoute({
       storage,
       scriptingApi,
     });
-    const accountIdentity = detected.identity || "";
+    const accountIdentity = detected.identity || wizEmail || "";
     const noteTitle = buildAutoSessionRouteTitle(platformLabel, host, accountIdentity);
 
     const existing = findMatchingWritableBinding({
@@ -1060,16 +1091,97 @@ export async function createAndSyncActiveSessionRoute({
       canSyncFn,
     });
 
-    const targetBinding =
-      existing ||
-      (await createCloudSessionRoute({
+    return {
+      ok: true,
+      url,
+      host,
+      registrableDomain,
+      canonicalDomain,
+      platformLabel,
+      accountIdentity,
+      noteTitle: existing?.noteTitle || noteTitle,
+      suggestedTitle: noteTitle,
+      cookieCount: cookies.length,
+      hasStorage: hasNonEmptyAuthStorage(storage),
+      browserId,
+      existingBinding: existing || null,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: formatSyncError(err),
+    };
+  }
+}
+
+/**
+ * Step 2 (Commit on `Save`): Persist the user-confirmed route draft to Cloud
+ * (reusing matching writable route when domain matches, or creating a new `notes` + `cookie_bridge_routes` entry)
+ * and immediately sync the browser's cookies + SPA auth storage to Cloud Vault.
+ */
+export async function saveActiveSessionRouteDraft({
+  auth,
+  draft,
+  noteTitleOverride = "",
+  domainOverride = "",
+  syncBindingFn,
+  fetchFn = globalThis.fetch,
+} = {}) {
+  try {
+    if (!draft?.ok) {
+      return { ok: false, error: draft?.error || "Route draft is not ready." };
+    }
+    const finalDomain =
+      normalizeRouteDomain(domainOverride || draft.canonicalDomain) ||
+      effectiveCookieDomain(domainOverride || draft.canonicalDomain);
+    if (!finalDomain) {
+      return { ok: false, error: "Enter a valid target domain (for example .flow.google.com)." };
+    }
+    const finalTitle =
+      String(noteTitleOverride || draft.noteTitle || draft.suggestedTitle || finalDomain).trim() ||
+      finalDomain;
+
+    const existing = draft.existingBinding;
+    const domainUnchanged =
+      existing &&
+      effectiveCookieDomain(existing.domain) === effectiveCookieDomain(finalDomain);
+
+    let targetBinding = null;
+    let created = false;
+
+    if (existing && domainUnchanged) {
+      targetBinding = {
+        ...existing,
+        noteTitle: finalTitle,
+      };
+      if (finalTitle !== String(existing.noteTitle || "").trim() && auth?.supabase_url && auth?.access_token && !isJwtExpired(auth)) {
+        const base = String(auth.supabase_url).replace(/\/$/, "");
+        await Promise.all([
+          fetchFn(`${base}/rest/v1/notes?id=eq.${encodeURIComponent(existing.noteId)}`, {
+            method: "PATCH",
+            headers: userHeaders(auth, { "Content-Type": "application/json", Prefer: "return=minimal" }),
+            body: JSON.stringify({ title: finalTitle }),
+          }).catch(() => null),
+          fetchFn(
+            `${base}/rest/v1/cookie_bridge_routes?note_id=eq.${encodeURIComponent(existing.noteId)}&domain=eq.${encodeURIComponent(existing.domain)}`,
+            {
+              method: "PATCH",
+              headers: userHeaders(auth, { "Content-Type": "application/json", Prefer: "return=minimal" }),
+              body: JSON.stringify({ note_title: finalTitle }),
+            },
+          ).catch(() => null),
+        ]);
+      }
+    } else {
+      targetBinding = await createCloudSessionRoute({
         auth,
-        canonicalDomain,
-        noteTitle,
-        browserId,
+        canonicalDomain: finalDomain,
+        noteTitle: finalTitle,
+        browserId: draft.browserId || "",
         fetchFn,
-      }));
-    const created = !existing;
+      });
+      created = true;
+    }
 
     const syncResult =
       typeof syncBindingFn === "function" ? await syncBindingFn(targetBinding) : { ok: true };
@@ -1078,11 +1190,11 @@ export async function createAndSyncActiveSessionRoute({
       ok: true,
       created,
       binding: targetBinding,
-      noteTitle: targetBinding.noteTitle || noteTitle,
-      canonicalDomain,
-      platformLabel,
-      accountIdentity,
-      cookieCount: cookies.length,
+      noteTitle: targetBinding.noteTitle || finalTitle,
+      canonicalDomain: targetBinding.domain || finalDomain,
+      platformLabel: draft.platformLabel,
+      accountIdentity: draft.accountIdentity,
+      cookieCount: draft.cookieCount,
       syncResult,
     };
   } catch (err) {
@@ -1091,4 +1203,43 @@ export async function createAndSyncActiveSessionRoute({
       error: formatSyncError(err),
     };
   }
+}
+
+/**
+ * Direct helper combining `prepareActiveSessionRouteDraft` + `saveActiveSessionRouteDraft`.
+ * Used by automated tests and programmatic flows; popup UI `+ New` calls `prepareActiveSessionRouteDraft`
+ * first to open `#route-new-modal` and commits via `saveActiveSessionRouteDraft` only when the user clicks `Save`.
+ */
+export async function createAndSyncActiveSessionRoute({
+  auth,
+  bindings = [],
+  bindingStatus = {},
+  canSyncFn = () => true,
+  syncBindingFn,
+  brandRegistry = COOKIE_BRAND_ICON_REGISTRY,
+  tabsApi = globalThis.chrome?.tabs,
+  scriptingApi = globalThis.chrome?.scripting,
+  getCookiesFn = getCookiesForDomain,
+  captureStorageFn = captureSiteAuthStorageForDomain,
+  getBrowserIdFn = getBrowserId,
+  fetchFn = globalThis.fetch,
+} = {}) {
+  const draft = await prepareActiveSessionRouteDraft({
+    bindings,
+    bindingStatus,
+    canSyncFn,
+    brandRegistry,
+    tabsApi,
+    scriptingApi,
+    getCookiesFn,
+    captureStorageFn,
+    getBrowserIdFn,
+  });
+  if (!draft.ok) return draft;
+  return saveActiveSessionRouteDraft({
+    auth,
+    draft,
+    syncBindingFn,
+    fetchFn,
+  });
 }

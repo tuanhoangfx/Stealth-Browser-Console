@@ -2,8 +2,10 @@ import { showToast } from "./toast.js";
 import { COOKIE_BRAND_ICON_REGISTRY } from "./cookie-brand-icons.generated.js";
 import {
   describeSiteClearTarget,
+  evaluateOpenTabsSyncBlockForDomain,
   extractRegistrableDomain,
   isGoogleDomain,
+  isGoogleOsidAppDomain,
   siteUrlForDomain,
 } from "./domain-routes.js";
 import {
@@ -58,7 +60,10 @@ import {
   syncBindingDirectFromPopup,
   syncMultipleBindingsDirectFromPopup,
 } from "./popup-direct-ops.js";
-import { createAndSyncActiveSessionRoute } from "./active-session-route.js";
+import {
+  prepareActiveSessionRouteDraft,
+  saveActiveSessionRouteDraft,
+} from "./active-session-route.js";
 import {
   applyHubUserZoomPct,
   HUB_USER_ZOOM_STEPS,
@@ -252,6 +257,18 @@ const cookieImportSubmitBtnEl = document.getElementById("cookie-import-submit");
 const cookieImportCancelBtnEl = document.getElementById("cookie-import-cancel");
 const cookieImportCloseBtnEl = document.getElementById("cookie-import-close");
 const cookieImportPasteBtnEl = document.getElementById("cookie-import-paste-btn");
+const routeNewModalEl = document.getElementById("route-new-modal");
+const routeNewFormEl = document.getElementById("route-new-form");
+const routeNewTitleHeadingEl = document.getElementById("route-new-title");
+const routeNewTitleInputEl = document.getElementById("route-new-title-input");
+const routeNewDomainInputEl = document.getElementById("route-new-domain-input");
+const routeNewDetectedMetaEl = document.getElementById("route-new-detected-meta");
+const routeNewStatusEl = document.getElementById("route-new-status");
+const routeNewSubmitBtnEl = document.getElementById("route-new-submit");
+const routeNewCancelBtnEl = document.getElementById("route-new-cancel");
+const routeNewCloseBtnEl = document.getElementById("route-new-close");
+let pendingNewRouteDraft = null;
+let pendingNewRouteAuth = null;
 const settingsModalEl = document.getElementById("settings-modal");
 const APPLY_LOCK_MIN_MS = 5000;
 /** Max route rows in popup — sorted by latest sync (no table scroll). */
@@ -727,7 +744,8 @@ function syncRouteToolbarUi() {
   if (routeFilterResetCountEl) routeFilterResetCountEl.textContent = String(activeCount);
   const selBindings = selectedRouteBindings();
   const selCount = selBindings.length;
-  const syncableCount = selBindings.filter((b) => bindingRoleInfo(b).canSync).length;
+  const syncableCount = selBindings.filter((b) => bindingSyncBlockInfo(b).canSync).length;
+  const loggedOutBlocked = selBindings.find((b) => bindingSyncBlockInfo(b).tabLoggedOut);
   if (routeSelectionBadgeEl) {
     routeSelectionBadgeEl.hidden = selCount === 0;
     routeSelectionBadgeEl.textContent = `${selCount} selected`;
@@ -735,15 +753,19 @@ function syncRouteToolbarUi() {
   if (routeNewSessionBtnEl) {
     routeNewSessionBtnEl.disabled = bulkRouteOpInFlight || createSessionRouteInFlight;
     routeNewSessionBtnEl.title = activeTabDetectedDomain
-      ? `Auto-create and sync a route for active tab (${activeTabDetectedDomain})`
-      : "Auto-create and sync a route for the active website tab and account";
+      ? `Review and save a cloud route for active tab (${activeTabDetectedDomain})`
+      : "Review and save a cloud route for the active website tab and account";
   }
   if (routeNewSessionLabelEl) {
-    routeNewSessionLabelEl.textContent = createSessionRouteInFlight ? "Creating..." : "New";
+    routeNewSessionLabelEl.textContent = createSessionRouteInFlight ? "Preparing..." : "New";
   }
   if (routeBulkSyncBtnEl) {
     routeBulkSyncBtnEl.disabled =
       bulkRouteOpInFlight || createSessionRouteInFlight || syncableCount === 0;
+    routeBulkSyncBtnEl.title =
+      selCount > 0 && syncableCount === 0 && loggedOutBlocked
+        ? bindingSyncBlockInfo(loggedOutBlocked).reason
+        : "Sync selected writable routes to Cloud Vault";
   }
   if (routeBulkSyncLabelEl) {
     routeBulkSyncLabelEl.textContent = `Sync (${syncableCount})`;
@@ -996,8 +1018,59 @@ function routeAccessContext() {
   };
 }
 
+let openBrowserTabsSnapshot = [];
+let openBrowserTabsSignature = "";
+
+async function refreshOpenBrowserTabs({ rerender = false } = {}) {
+  if (!chrome?.tabs?.query) return openBrowserTabsSnapshot;
+  try {
+    const tabs = await chrome.tabs.query({});
+    const normalized = (Array.isArray(tabs) ? tabs : []).map((t) => ({
+      id: t?.id ?? null,
+      url: String(t?.url || t?.pendingUrl || "").trim(),
+      active: Boolean(t?.active),
+    }));
+    const nextSig = normalized.map((t) => `${t.active ? "1" : "0"}:${t.url}`).join("\n");
+    const changed = nextSig !== openBrowserTabsSignature;
+    openBrowserTabsSnapshot = normalized;
+    openBrowserTabsSignature = nextSig;
+    if (rerender && changed && lastBindings.length) {
+      renderBindingsTable(lastBindings, lastBindingStatus, lastVaultOnServer);
+    }
+  } catch {
+    /* ignore tabs query error */
+  }
+  return openBrowserTabsSnapshot;
+}
+
+window.__e0001RefreshOpenTabs = () => refreshOpenBrowserTabs({ rerender: true });
+
 function bindingRoleInfo(binding) {
   return resolveBindingRoleInfo(binding, routeAccessContext());
+}
+
+function bindingSyncBlockInfo(binding) {
+  const role = bindingRoleInfo(binding);
+  if (!role.canSync) {
+    return {
+      canSync: false,
+      tabLoggedOut: false,
+      reason: role.syncDisabledReason || "This route only allows loading cookies.",
+    };
+  }
+  const tabBlock = evaluateOpenTabsSyncBlockForDomain(binding?.domain, openBrowserTabsSnapshot);
+  if (tabBlock.blocked) {
+    return {
+      canSync: false,
+      tabLoggedOut: true,
+      reason: tabBlock.reason,
+    };
+  }
+  return {
+    canSync: true,
+    tabLoggedOut: false,
+    reason: "Sync now",
+  };
 }
 
 function openCookieShareOnWeb(binding) {
@@ -1278,7 +1351,7 @@ function attachRouteIconFallback(row) {
 
 function runApplyVaultForBinding(binding) {
   if (!binding) {
-    showToast("Chọn một route trong bảng trước.", "warn");
+    showToast("Select a route in the table first.", "warn");
     return;
   }
   setSelectedNoteId(binding.noteId);
@@ -1291,7 +1364,7 @@ function runApplyVaultForBinding(binding) {
       showToast(`${formatApplyResult(res)}${extra}`, type, 12000);
       pushTabActivity(`Load ${binding.noteTitle || binding.domain || "route"}`);
     } else {
-      showToast(res?.error || res?.warning || "Load cookies thất bại", "error", 12000);
+      showToast(res?.error || res?.warning || "Failed to load cookies", "error", 12000);
       pushTabActivity(`Load failed: ${res?.error || res?.warning || "unknown"}`);
     }
     await setApplyLocked(false);
@@ -1305,13 +1378,14 @@ function runApplyVaultForBinding(binding) {
   }, (lockRes) => {
     const lockErr = chrome.runtime.lastError?.message;
     const lockOk = !lockErr && lockRes?.ok === true;
-    const needsOpenSite = !lockOk || isGoogleDomain(binding.domain);
+    const isGoogleOrOsid = isGoogleDomain(binding.domain) || isGoogleOsidAppDomain(binding.domain);
+    const needsOpenSite = !lockOk || isGoogleOrOsid;
     const applyPayload = {
       type: "APPLY_VAULT_NOW",
       noteId: binding.noteId,
       bindingKey: bindingKey(binding),
       binding,
-      clearBeforeLoad: !isGoogleDomain(binding.domain),
+      clearBeforeLoad: !isGoogleOrOsid,
       openSite: needsOpenSite,
       refreshTab: true,
       confirmSession: true,
@@ -1329,7 +1403,7 @@ function runApplyVaultForBinding(binding) {
           if (isAuthTransportError(err)) {
             setDirectModeActive(true);
             void applyVaultDirectFromPopup(binding, {
-              clearBeforeLoad: !isGoogleDomain(binding.domain),
+              clearBeforeLoad: !isGoogleOrOsid,
               openSite: needsOpenSite,
               activateSite: true,
               vaultPassOverride: "",
@@ -1342,7 +1416,7 @@ function runApplyVaultForBinding(binding) {
         if (!res) {
           setDirectModeActive(true);
           void applyVaultDirectFromPopup(binding, {
-            clearBeforeLoad: !isGoogleDomain(binding.domain),
+            clearBeforeLoad: !isGoogleOrOsid,
             openSite: needsOpenSite,
             activateSite: true,
             vaultPassOverride: "",
@@ -1356,7 +1430,7 @@ function runApplyVaultForBinding(binding) {
     if (lockErr && isAuthTransportError(lockErr)) {
       setDirectModeActive(true);
       void applyVaultDirectFromPopup(binding, {
-        clearBeforeLoad: !isGoogleDomain(binding.domain),
+        clearBeforeLoad: !isGoogleOrOsid,
         openSite: true,
         activateSite: true,
         vaultPassOverride: "",
@@ -1973,12 +2047,12 @@ async function ensureSessionOrLogin() {
 
 function runSyncNowForBinding(binding) {
   if (!binding) {
-    showToast("Chọn route trước.", "warn");
+    showToast("Select a route first.", "warn");
     return;
   }
-  const role = bindingRoleInfo(binding);
-  if (!role.canSync) {
-    showToast(role.syncDisabledReason || "Route này chỉ Load cookies.", "warn", 6000);
+  const syncInfo = bindingSyncBlockInfo(binding);
+  if (!syncInfo.canSync) {
+    showToast(syncInfo.reason || "This route only allows loading cookies.", "warn", 6500);
     return;
   }
   setSelectedNoteId(binding.noteId);
@@ -1988,8 +2062,8 @@ function runSyncNowForBinding(binding) {
       const syncedN = res.syncedCount ?? (typeof res.ok === "number" ? res.ok : 1);
       const totalN = res.total ?? 1;
       if (res.warning) showToast(res.warning, "warn", 9000);
-      else if (res.partial) showToast(res.warning || "Sync một phần — xem vault.", "warn", 7000);
-      else showToast(`Sync xong: ${syncedN}/${totalN} route`, "success");
+      else if (res.partial) showToast(res.warning || "Partial sync — check vault.", "warn", 7000);
+      else showToast(`Synced ${syncedN}/${totalN} route(s).`, "success");
       pushTabActivity(`Sync ${binding.noteTitle || binding.domain || "route"}`);
     } else {
       showToast(res?.error || res?.reason || "Sync failed", "error", 8000);
@@ -2051,9 +2125,15 @@ function sendRuntimeMessageAsync(payload) {
 
 async function runBulkSyncSelectedRoutes() {
   if (bulkRouteOpInFlight) return;
-  const targets = selectedRouteBindings().filter((b) => bindingRoleInfo(b).canSync);
+  const selected = selectedRouteBindings();
+  const targets = selected.filter((b) => bindingSyncBlockInfo(b).canSync);
   if (!targets.length) {
-    showToast("Select one or more writable routes to sync.", "warn");
+    const loggedOutBlocked = selected.find((b) => bindingSyncBlockInfo(b).tabLoggedOut);
+    if (loggedOutBlocked) {
+      showToast(bindingSyncBlockInfo(loggedOutBlocked).reason, "warn", 6500);
+    } else {
+      showToast("Select one or more writable routes to sync.", "warn");
+    }
     return;
   }
   const ready = await ensureSessionReady();
@@ -2181,7 +2261,7 @@ async function runBulkLoadSelectedRoutes() {
             noteId: b.noteId,
             bindingKey: bindingKey(b),
             binding: b,
-            clearBeforeLoad: !isGoogleDomain(b.domain),
+            clearBeforeLoad: !(isGoogleDomain(b.domain) || isGoogleOsidAppDomain(b.domain)),
             openSite: false,
             refreshTab: true,
             confirmSession: false,
@@ -2265,7 +2345,27 @@ async function syncSingleBindingSmart(binding) {
   return syncBindingDirectFromPopup(binding);
 }
 
-async function runCreateRouteFromActiveSession() {
+function setNewRouteModalStatus(text = "", isError = false) {
+  if (!routeNewStatusEl) return;
+  const msg = String(text ?? "").trim();
+  routeNewStatusEl.hidden = !msg;
+  routeNewStatusEl.textContent = msg;
+  routeNewStatusEl.style.color = isError ? "#fca5a5" : "#a7f3d0";
+}
+
+function closeNewRouteModal() {
+  if (!routeNewModalEl) return;
+  routeNewModalEl.hidden = true;
+  pendingNewRouteDraft = null;
+  pendingNewRouteAuth = null;
+  setNewRouteModalStatus("");
+  if (routeNewSubmitBtnEl) {
+    routeNewSubmitBtnEl.disabled = false;
+    routeNewSubmitBtnEl.textContent = "Save";
+  }
+}
+
+async function openNewRouteModalFromActiveSession() {
   if (createSessionRouteInFlight || bulkRouteOpInFlight) return;
   const ready = await ensureSessionOrLogin();
   if (!ready) return;
@@ -2289,15 +2389,99 @@ async function runCreateRouteFromActiveSession() {
     }
 
     if (!lastBindings.length) {
-      await pullCloudRoutesDirectFromPopup(auth).catch(() => null);
+      const cached = await chrome.storage.local.get(STORAGE_BINDINGS).catch(() => ({}));
+      if (Array.isArray(cached?.[STORAGE_BINDINGS]) && cached[STORAGE_BINDINGS].length) {
+        lastBindings = cached[STORAGE_BINDINGS];
+      }
     }
 
-    const res = await createAndSyncActiveSessionRoute({
-      auth,
+    const draft = await prepareActiveSessionRouteDraft({
       bindings: lastBindings,
       bindingStatus: lastBindingStatus,
       canSyncFn: (b) => bindingRoleInfo(b).canSync,
       brandRegistry: COOKIE_BRAND_ICON_REGISTRY,
+    });
+
+    if (!draft?.ok) {
+      showToast(draft?.error || "Unable to inspect active tab for new route.", "error", 6500);
+      pushTabActivity(`New route check failed: ${draft?.error || "unknown"}`);
+      return;
+    }
+
+    pendingNewRouteDraft = draft;
+    pendingNewRouteAuth = auth;
+    if (routeNewTitleHeadingEl) {
+      routeNewTitleHeadingEl.textContent = draft.existingBinding
+        ? "Update Existing Cloud Route"
+        : "New Cloud Route";
+    }
+    if (routeNewTitleInputEl) routeNewTitleInputEl.value = draft.noteTitle || "";
+    if (routeNewDomainInputEl) routeNewDomainInputEl.value = draft.canonicalDomain || "";
+    if (routeNewDetectedMetaEl) {
+      const parts = [
+        draft.platformLabel || draft.host || "Site",
+        `${draft.cookieCount ?? 0} cookies`,
+      ];
+      if (draft.accountIdentity) parts.push(draft.accountIdentity);
+      if (draft.existingBinding) {
+        parts.push("Matches existing route — Save updates & syncs");
+      } else {
+        parts.push("Click Save to create & sync");
+      }
+      routeNewDetectedMetaEl.textContent = parts.join(" · ");
+      routeNewDetectedMetaEl.classList.toggle(
+        "route-new-detected-meta--existing",
+        Boolean(draft.existingBinding),
+      );
+    }
+    setNewRouteModalStatus("");
+    if (routeNewSubmitBtnEl) {
+      routeNewSubmitBtnEl.disabled = false;
+      routeNewSubmitBtnEl.textContent = "Save";
+    }
+    if (routeNewModalEl) {
+      routeNewModalEl.hidden = false;
+      window.setTimeout(() => {
+        routeNewTitleInputEl?.focus();
+        routeNewTitleInputEl?.select();
+      }, 0);
+    }
+  } finally {
+    createSessionRouteInFlight = false;
+    syncRouteToolbarUi();
+  }
+}
+
+async function runSubmitNewRouteModal(event) {
+  event?.preventDefault?.();
+  if (!pendingNewRouteDraft || !pendingNewRouteAuth || createSessionRouteInFlight) return;
+  const editedTitle = String(routeNewTitleInputEl?.value ?? "").trim();
+  const editedDomain = String(routeNewDomainInputEl?.value ?? "").trim();
+  if (!editedTitle) {
+    setNewRouteModalStatus("Enter a route title before saving.", true);
+    routeNewTitleInputEl?.focus();
+    return;
+  }
+  if (!editedDomain) {
+    setNewRouteModalStatus("Enter a target domain (e.g. .flow.google.com).", true);
+    routeNewDomainInputEl?.focus();
+    return;
+  }
+
+  createSessionRouteInFlight = true;
+  syncRouteToolbarUi();
+  if (routeNewSubmitBtnEl) {
+    routeNewSubmitBtnEl.disabled = true;
+    routeNewSubmitBtnEl.textContent = "Saving...";
+  }
+  setNewRouteModalStatus("Saving route & syncing cookies to Cloud Vault...");
+
+  try {
+    const res = await saveActiveSessionRouteDraft({
+      auth: pendingNewRouteAuth,
+      draft: pendingNewRouteDraft,
+      noteTitleOverride: editedTitle,
+      domainOverride: editedDomain,
       syncBindingFn: async (targetBinding) => {
         const existsIdx = lastBindings.findIndex(
           (b) => b.noteId === targetBinding.noteId && b.domain === targetBinding.domain,
@@ -2321,11 +2505,16 @@ async function runCreateRouteFromActiveSession() {
     });
 
     if (!res?.ok) {
-      showToast(res?.error || "Unable to create route from active tab.", "error", 6500);
+      setNewRouteModalStatus(res?.error || "Unable to save cloud route.", true);
+      if (routeNewSubmitBtnEl) {
+        routeNewSubmitBtnEl.disabled = false;
+        routeNewSubmitBtnEl.textContent = "Save";
+      }
       pushTabActivity(`New route failed: ${res?.error || "unknown"}`);
       return;
     }
 
+    closeNewRouteModal();
     const createdBinding = res.binding;
     resetAllRouteFilters();
     if (createdBinding?.noteId) {
@@ -2358,7 +2547,15 @@ async function runCreateRouteFromActiveSession() {
 }
 
 routeNewSessionBtnEl?.addEventListener("click", () => {
-  void runCreateRouteFromActiveSession();
+  void openNewRouteModalFromActiveSession();
+});
+routeNewFormEl?.addEventListener("submit", (event) => {
+  void runSubmitNewRouteModal(event);
+});
+routeNewCancelBtnEl?.addEventListener("click", closeNewRouteModal);
+routeNewCloseBtnEl?.addEventListener("click", closeNewRouteModal);
+routeNewModalEl?.addEventListener("click", (event) => {
+  if (event.target === routeNewModalEl) closeNewRouteModal();
 });
 routeBulkSyncBtnEl?.addEventListener("click", () => {
   void runBulkSyncSelectedRoutes();
@@ -2372,13 +2569,13 @@ function openSiteForDomain(domain) {
   chrome.runtime.sendMessage({ type: "OPEN_BINDING_SITE", domain }, (res) => {
     const err = chrome.runtime.lastError?.message;
     if (!err && res?.ok) {
-      showToast("Đã mở site — đăng nhập nếu cần, rồi Sync now.", "info");
+      showToast("Opened site — sign in if needed, then click Sync.", "info");
       return;
     }
     if ((err && isAuthTransportError(err)) || !res) {
       chrome.tabs
         .create({ url: siteUrlForDomain(domain), active: true })
-        .then(() => showToast("Đã mở site — đăng nhập nếu cần, rồi Sync now.", "info"))
+        .then(() => showToast("Opened site — sign in if needed, then click Sync.", "info"))
         .catch((tabErr) => showToast(String(tabErr), "error"));
       return;
     }
@@ -2796,6 +2993,7 @@ function renderCookieJarTable() {
 }
 
 async function refreshCurrentSiteBar() {
+  void refreshOpenBrowserTabs({ rerender: true });
   try {
     const dir = await listAllCookieSitesForDirectory();
     if (dir?.ok) {
@@ -3189,6 +3387,7 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
     const userHtml = formatRouteUserCell(b, st, userActivity);
     const userTitle = routeOwnerTitle(b, vaultProbe, st, userActivity) || formatVaultUser(vaultProbe, st);
     const roleInfo = bindingRoleInfo(b);
+    const syncInfo = bindingSyncBlockInfo(b);
     const vaultN = vaultProbe?.hasVault ? vaultProbe.cookieCount : null;
     const lineN = typeof st.cookies === "number" ? st.cookies : typeof st.lines === "number" ? st.lines : null;
     const loadedAt = formatActivityTimeHtml(st.loadedAt);
@@ -3231,7 +3430,7 @@ function renderBindingsTable(bindings, bindingStatus, vaultOnServer) {
       </td>
       <td class="col-actions">
         <div class="route-actions">
-          <button type="button" class="route-action route-sync" ${roleInfo.canSync ? "" : "disabled"} title="${escapeHtml(roleInfo.syncDisabledReason || "Sync now")}">${icon("sync")}<span>Sync</span></button>
+          <button type="button" class="route-action route-sync${syncInfo.tabLoggedOut ? " route-sync--tab-logged-out" : ""}" ${syncInfo.canSync ? "" : "disabled"} title="${escapeHtml(syncInfo.reason)}">${icon("sync")}<span>Sync</span></button>
           <button type="button" class="route-action route-load">${icon("download")}<span>Load</span></button>
           ${
             roleInfo.ownsRoute && b.noteId
@@ -3436,7 +3635,7 @@ function renderStatus(data) {
   renderBindingsTable(list, data?.bindingStatus ?? {}, data?.vaultOnServer ?? {});
 
   if (!schemaOk && !data?.sessionExpired && data?.hasSupabase) {
-    toastOnce("schema", "Schema chưa đủ — chạy APPLY_FIX_V_NOTE_DROP.sql trên Supabase.", "error");
+    toastOnce("schema", "Database schema incomplete — run APPLY_FIX_V_NOTE_DROP.sql on Supabase.", "error");
   } else if (data?.displayWarning) {
     toastOnce("warn", data.displayWarning, "warn");
   } else if (firstErr) {
@@ -3585,6 +3784,7 @@ function pullCloudRoutesThenPaint(done) {
 }
 
 function refresh(done, opts = {}) {
+  void refreshOpenBrowserTabs({ rerender: true });
   const payload =
     opts.light === true
       ? { type: "GET_STATUS", light: true }
@@ -3670,6 +3870,7 @@ window.addEventListener("keydown", (event) => {
       renderBindingsTable(lastBindings, lastBindingStatus, lastVaultOnServer);
       return;
     }
+    closeNewRouteModal();
     closeCookieImportModal();
     closeUserModal();
     closeSettingsModal();
@@ -3700,6 +3901,7 @@ window.addEventListener("keydown", (event) => {
       active instanceof HTMLSelectElement ||
       Boolean(active?.isContentEditable);
     const anyModalOpen =
+      (routeNewModalEl && !routeNewModalEl.hidden) ||
       (cookieImportPanelEl && !cookieImportPanelEl.hidden) ||
       (userModalEl && !userModalEl.hidden) ||
       (settingsModalEl && !settingsModalEl.hidden) ||
@@ -3783,6 +3985,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refresh(null, { requestTool: false, light: true });
+});
+
+let openTabSyncRefreshTimer = null;
+function scheduleOpenTabSyncRefresh() {
+  if (openTabSyncRefreshTimer) window.clearTimeout(openTabSyncRefreshTimer);
+  openTabSyncRefreshTimer = window.setTimeout(() => {
+    openTabSyncRefreshTimer = null;
+    void refreshOpenBrowserTabs({ rerender: true });
+  }, 120);
+}
+chrome.tabs?.onUpdated?.addListener((_tabId, changeInfo) => {
+  if (changeInfo?.url || changeInfo?.status === "complete") {
+    scheduleOpenTabSyncRefresh();
+  }
+});
+chrome.tabs?.onActivated?.addListener(() => {
+  scheduleOpenTabSyncRefresh();
+});
+chrome.tabs?.onRemoved?.addListener(() => {
+  scheduleOpenTabSyncRefresh();
 });
 
 function openCookieBridgeWebSettings(event) {
@@ -4017,12 +4239,12 @@ function formatApplyResult(res) {
   const n = res.applied ?? 0;
   const t = res.total ?? res.decrypted ?? n;
   const failed = res.failedNames ?? [];
-  let msg = `Vault ${res.decrypted ?? t} cookie → ghi ${n}/${t}`;
-  if (res.jarAfter != null) msg += ` · jar hiện ${res.jarAfter}`;
-  if (failed.length) msg += ` — lỗi: ${failed.slice(0, 6).join(", ")}`;
-  if (res.vaultStale) msg += " — Sync lại trên browser gốc (vault lệch)";
-  if (res.tabsRefreshed > 0) msg += ` · refresh ${res.tabsRefreshed} tab`;
-  else if (n > 0) msg += " — tab site đã sẵn sàng";
+  let msg = `Loaded ${n}/${t} cookies from vault`;
+  if (res.jarAfter != null) msg += ` · jar ${res.jarAfter}`;
+  if (failed.length) msg += ` — failed: ${failed.slice(0, 6).join(", ")}`;
+  if (res.vaultStale) msg += " — re-sync on source browser (vault mismatch)";
+  if (res.tabsRefreshed > 0) msg += ` · refreshed ${res.tabsRefreshed} tab(s)`;
+  else if (n > 0) msg += " — site tab ready";
   return msg;
 }
 

@@ -235,7 +235,7 @@ function validateOperatorExtensionPackage(dir, contractOverride = null) {
 }
 
 const _operatorStageSyncCache = new Map();
-const OPERATOR_STAGE_SYNC_TTL_MS = 30_000;
+const OPERATOR_STAGE_SYNC_TTL_MS = 300_000;
 
 /**
  * Copy an extension into `.cloakbrowser/extension-stage/<id>` and junction that

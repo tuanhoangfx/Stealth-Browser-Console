@@ -21,6 +21,8 @@ function resolveTrayIcon() {
 function createSessionTray(sessionManager) {
   let tray = null;
   let timer = null;
+  let lastMenuSignature = "";
+  let lastToolTip = "";
   /** @type {{ showConsole?: () => void; requestQuit?: () => void } | null} */
   let handlers = null;
 
@@ -28,11 +30,18 @@ function createSessionTray(sessionManager) {
     if (!tray) return;
     const running = sessionManager.listRunning();
     const count = running.length;
-    tray.setToolTip(
+    const nextToolTip =
       count > 0
         ? `Stealth Browser Console — ${count} profile${count === 1 ? "" : "s"} running`
-        : "Stealth Browser Console — no profiles running",
-    );
+        : "Stealth Browser Console — no profiles running";
+    if (nextToolTip !== lastToolTip) {
+      lastToolTip = nextToolTip;
+      tray.setToolTip(nextToolTip);
+    }
+
+    const nextSignature = running.map((row) => `${row.id}:${row.name || ""}`).join("|");
+    if (nextSignature === lastMenuSignature) return;
+    lastMenuSignature = nextSignature;
 
     const items = running.map((row) => ({
       label: `${row.name || row.id} — focus window`,

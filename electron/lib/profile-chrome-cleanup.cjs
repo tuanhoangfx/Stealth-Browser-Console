@@ -6,6 +6,8 @@ const {
   pinToolbarExtension,
   pinStoreExtension,
   healSecurePreferencesExtensionState,
+  hasSignedSecurePreferences,
+  clearTrackedPreferenceResetNotice,
 } = require("./profile-chrome-preferences.cjs");
 const { COOKIE_BRIDGE_STORE_ID, SURFSHARK_STORE_ID } = require("./stealth-extension-store-ids.cjs");
 
@@ -566,6 +568,12 @@ function reconcileClosedProfileExtensionPrefs(userDataRoot, options = {}) {
     const userDataDir = path.join(profilesDir, entry.name);
     if (chromeProfileIsLive(userDataDir)) {
       skippedLive += 1;
+      continue;
+    }
+    if (hasSignedSecurePreferences(userDataDir)) {
+      // Never mutate HMAC-protected Preferences/Secure Preferences after Chromium has signed them;
+      // doing so triggers "Chrome reset these settings — Extension(s)". Clear stale banners only.
+      clearTrackedPreferenceResetNotice(userDataDir);
       continue;
     }
     const override = overridesById?.get(entry.name);

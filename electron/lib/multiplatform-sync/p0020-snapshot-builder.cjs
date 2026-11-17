@@ -58,6 +58,9 @@ const NON_OVERRIDABLE_RESTRICTED_RESULT_CODES = new Set([
   "password_rejected",
   "2fa_pending",
   "totp_secret_mismatch",
+  "unconfirmed_caa_reg",
+  "reg_unconfirmed",
+  "mobile_phone_not_detached",
 ]);
 
 let _checkpointFilesCache = null;
@@ -94,9 +97,27 @@ function getDiskCheckpointCodeForProfile(profileCode = "") {
   return _checkpointFilesCache.get(code) || "";
 }
 
+function isUnconfirmedFacebookRegRow(row) {
+  const svcLower = String(row?.service || "").trim().toLowerCase();
+  if (svcLower !== "facebook") return false;
+  const curSnap = row?.stealth_snapshot && typeof row.stealth_snapshot === "object" ? row.stealth_snapshot : {};
+  if (curSnap.mobile_farm_otp_confirmed === true && curSnap.mobile_farm_phone_detached === true) {
+    return false;
+  }
+  const curResCode = String(curSnap.result_code || "").trim().toLowerCase();
+  if (curResCode === "unconfirmed_caa_reg" || curResCode === "reg_unconfirmed" || curResCode === "mobile_phone_not_detached") {
+    return true;
+  }
+  const combinedNotes = `${String(row?.note || "")} ${String(row?.log_tip_message || "")} ${String(curSnap.note || "")} ${String(curSnap.evidence || "")}`;
+  return /(?:unconfirmed \/caa\/reg ghost|no OTP confirmed|phoneDetached=false|email=pending\s*·\s*phoneDetached=false)/i.test(
+    combinedNotes,
+  );
+}
+
 function isFacebookRowInCheckpointOrDisabled(row) {
   const svcLower = String(row?.service || "").trim().toLowerCase();
   if (svcLower !== "facebook") return false;
+  if (isUnconfirmedFacebookRegRow(row)) return true;
   const rowStatus = String(row?.status || "").trim().toLowerCase();
   if (rowStatus === "disable" || rowStatus === "banned" || rowStatus === "appeal") return true;
   const curSnap = row?.stealth_snapshot && typeof row.stealth_snapshot === "object" ? row.stealth_snapshot : {};
@@ -173,6 +194,9 @@ function shouldPreserveChallengedState(
   const msAuthVerified = Boolean((isLiveWindow && hasVerifiedMicrosoftLiveTab) || hasVerifiedMicrosoftAuth);
   const fbAuthVerified = Boolean(hasVerifiedFacebookAuth);
 
+  if (isUnconfirmedFacebookRegRow(row)) {
+    return true;
+  }
   if (svcLower === "facebook" && fbAuthVerified && loggedIn) {
     return false;
   }
@@ -256,7 +280,7 @@ function shouldPreserveChallengedState(
   if (
     !hasExplicitServiceLogout &&
     curSnapStatus === "logged_in" &&
-    (curSnap.source === "p0020_live_auth_verify" ||
+    ((curSnap.source === "p0020_live_auth_verify" && svcLower !== "adobe") ||
       curSnap.login_verified_method === "claude_api_organizations" ||
       curSnap.result_code === "claude_api_organizations" ||
       Boolean(curSnap.kyc_appeal))
@@ -377,6 +401,26 @@ function buildP0020RowSnapshotAndPatch({
         (gmailRestriction54Lifted || !rowRestrictionAppliesToService)
       ) {
         nextSnap.appeal_restored = true;
+      }
+      const pwVerTs = Date.parse(String(curSnap?.password_verified_at || "")) || 0;
+      const prevFailTs = Date.parse(String(curSnap?.checked_at || row?.stealth_checked_at || "")) || 0;
+      const flaggedTs = Date.parse(String(curSnap?.password_reverify_flagged_at || "")) || 0;
+      const hadUnverifiedPwFailure =
+        (isGoogleFamilyService(svcLower) || isMicrosoftFamilyService(svcLower)) &&
+        !fbForcedOverride &&
+        (rowStatusLower === "incorrect_info" ||
+          curSnap?.result_code === "wrong_password" ||
+          curSnap?.specific_label === "wrong_password" ||
+          /Wrong password on #|Mật khẩu không chính xác|Mật khẩu của bạn đã thay đổi|Your password was changed/i.test(existingRowNote)) &&
+        (!pwVerTs || (prevFailTs > 0 && pwVerTs < prevFailTs));
+      if (hadUnverifiedPwFailure) {
+        nextSnap.password_reverify_needed = true;
+        nextSnap.password_reverify_reason = "cookie_promoted_from_wrong_password";
+        nextSnap.password_reverify_flagged_at = curSnap?.password_reverify_flagged_at || nowIso;
+      } else if (curSnap?.password_reverify_needed && pwVerTs > 0 && pwVerTs >= flaggedTs) {
+        delete nextSnap.password_reverify_needed;
+        delete nextSnap.password_reverify_reason;
+        delete nextSnap.password_reverify_flagged_at;
       }
       delete nextSnap.specific_label;
       delete nextSnap.specific_label_text;
@@ -570,12 +614,26 @@ function buildP0020RowSnapshotAndPatch({
         delete nextSnap.gmail_session_ready;
         delete nextSnap.verified_google_email;
       }
-      if (match.resultCode === "account_mismatch" && match.actualAccount) {
-        nextSnap.actual_session_account = match.actualAccount;
+      if (match.resultCode === "account_mismatch") {
+        if (match.actualAccount) {
+          nextSnap.actual_session_account = match.actualAccount;
+        } else {
+          delete nextSnap.actual_session_account;
+        }
+        // Preserve the row's own bound AI UID on account_mismatch (never overwrite or wipe it from
+        // an overflowed Google/ChatGPT SSO cookie) while clearing any distinct legacy openai_user_id.
+        if (aiUidSpec?.key && curSnap?.[aiUidSpec.key]) {
+          nextSnap[aiUidSpec.key] = curSnap[aiUidSpec.key];
+        } else if (aiUidSpec?.key) {
+          delete nextSnap[aiUidSpec.key];
+        }
+        if (curSnap?.oai_user_id && nextSnap.openai_user_id && nextSnap.openai_user_id !== curSnap.oai_user_id) {
+          delete nextSnap.openai_user_id;
+        }
       } else {
         delete nextSnap.actual_session_account;
+        if (aiUidSpec?.key) delete nextSnap[aiUidSpec.key];
       }
-      if (aiUidSpec?.key) delete nextSnap[aiUidSpec.key];
       const hasTotpSecretMismatchLock =
         isGoogleFamilyService(svcLower) &&
         fbForcedOverride?.resultCode !== "checkpoint_qr" &&
@@ -622,7 +680,6 @@ function buildP0020RowSnapshotAndPatch({
     const patchBody = {
       stealth_snapshot: nextSnap,
       stealth_checked_at: nowIso,
-      updated_at: nowIso,
       ...(targetMailCloud ? { mail_cloud: targetMailCloud } : {}),
     };
     if (
@@ -681,7 +738,7 @@ function buildP0020RowSnapshotAndPatch({
     } else if (needsRowStatusPromotion && row.status !== "active") {
       patchBody.status = "active";
     }
-    if (hasStaleChallengeNoteWhenLoggedIn) {
+    if (hasStaleChallengeNoteWhenLoggedIn || (curSnap?.password_reverify_needed && !nextSnap.password_reverify_needed)) {
       const keptLines = existingRowNote
         .split(/\r?\n/)
         .map((l) =>
@@ -696,10 +753,13 @@ function buildP0020RowSnapshotAndPatch({
         .filter(
           (l) =>
             Boolean(l) &&
-            !/(?:Checkpoint Phone|\[CHỜ QUÉT QR\]|\/challenge\/iap|Lệch mã 2FA Secret|Sai\/Lệch mã 2FA Secret|\[TẠM BỎ QUA|\[CHỜ SIM OTP|Wrong password on #|Mật khẩu của bạn đã thay đổi|Your password was changed|Mật khẩu không chính xác|Lệch tài khoản Outlook trên #|Microsoft identity \/ recovery verification required|^📅\s*\d{2}\/\d{2}\/\d{2}$)/i.test(
+            !/(?:Checkpoint Phone|\[CHỜ QUÉT QR\]|\/challenge\/iap|Lệch mã 2FA Secret|Sai\/Lệch mã 2FA Secret|\[TẠM BỎ QUA|\[CHỜ SIM OTP|Wrong password on #|Mật khẩu của bạn đã thay đổi|Your password was changed|Mật khẩu không chính xác|Lệch tài khoản Outlook trên #|Microsoft identity \/ recovery verification required|Cookie sống nhưng mật khẩu DB chưa xác minh lại|^📅\s*\d{2}\/\d{2}\/\d{2}$)/i.test(
               l,
             ),
         );
+      if (nextSnap.password_reverify_needed) {
+        keptLines.unshift("⚠️ Cookie sống nhưng mật khẩu DB chưa xác minh lại — cần kiểm tra/đổi pass");
+      }
       patchBody.note = keptLines.join("\n");
     }
 
@@ -762,6 +822,72 @@ function buildP0020RowSnapshotAndPatch({
   return { nextSnap, patchBody };
 }
 
+const FORWARDING_SNAPSHOT_PRESERVE_KEYS = [
+  "forwarding_mode",
+  "forwarding_verified_server_side",
+  "forwarding_enabled",
+  "forwarding_target",
+  "forwarding_domain",
+  "forwarding_status",
+  "forwarding_updated_at",
+  "forwarding_verified_e2e_at",
+  "infi_forwarding_hub",
+  "fallback_infi_mail",
+  "anti_spam_filter_enabled",
+  "anti_spam_filter_sentinel",
+  "google_recovery_email_verified",
+  "google_recovery_email_verified_at",
+  "recovery_email_policy_unavailable",
+  "recovery_email_policy_checked_at",
+  "app_password",
+  "imap_app_password",
+  "app_password_generated_at",
+  "app_password_updated_at",
+  "previous_password_backup",
+  "google_language",
+  "twosv_enabled",
+];
+
+function isNonEmptySnapshotVal(v) {
+  return v !== undefined && v !== null && v !== "" && v !== false;
+}
+
+/**
+ * Preserves newer or already-verified forwarding, anti-spam, recovery-email, and app-password
+ * fields from the live DB snapshot so a `p0003_window_close_sync` pass cannot clobber concurrent
+ * verification updates (e.g. `#0155` losing `google_recovery_email_verified` or `app_password`).
+ */
+function mergePreserveNewerForwardingSnapshot(nextSnap = {}, latestDbSnap = null) {
+  if (!latestDbSnap || typeof latestDbSnap !== "object" || Array.isArray(latestDbSnap)) {
+    return nextSnap;
+  }
+  const cur = nextSnap && typeof nextSnap === "object" && !Array.isArray(nextSnap) ? { ...nextSnap } : {};
+  const latestAt = Date.parse(String(latestDbSnap.forwarding_updated_at || "")) || 0;
+  const curAt = Date.parse(String(cur.forwarding_updated_at || "")) || 0;
+  const hasMissingVerifiedField = FORWARDING_SNAPSHOT_PRESERVE_KEYS.some(
+    (k) => isNonEmptySnapshotVal(latestDbSnap[k]) && !isNonEmptySnapshotVal(cur[k]),
+  );
+  const shouldPreserve =
+    latestAt > curAt ||
+    (latestAt === curAt && hasMissingVerifiedField) ||
+    hasMissingVerifiedField ||
+    (latestDbSnap.anti_spam_filter_enabled === true && cur.anti_spam_filter_enabled !== true) ||
+    (latestDbSnap.forwarding_mode === "permanent_gmail_server_side" &&
+      cur.forwarding_mode !== "permanent_gmail_server_side");
+  if (!shouldPreserve) return cur;
+
+  for (const key of FORWARDING_SNAPSHOT_PRESERVE_KEYS) {
+    if (!isNonEmptySnapshotVal(latestDbSnap[key])) continue;
+    if (latestAt > curAt || !isNonEmptySnapshotVal(cur[key])) {
+      cur[key] = latestDbSnap[key];
+    }
+  }
+  if (cur.forwarding_enabled === true) {
+    delete cur.pending_mail_forward;
+  }
+  return cur;
+}
+
 module.exports = {
   STALE_NON_LOGGED_IN_SPECIFIC_LABELS,
   NON_OVERRIDABLE_RESTRICTED_RESULT_CODES,
@@ -769,4 +895,5 @@ module.exports = {
   isFacebookRowInCheckpointOrDisabled,
   shouldPreserveChallengedState,
   buildP0020RowSnapshotAndPatch,
+  mergePreserveNewerForwardingSnapshot,
 };

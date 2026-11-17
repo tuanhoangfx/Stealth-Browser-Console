@@ -1171,10 +1171,21 @@ function invalidateCatalogStatsCache({ statusOnly = false } = {}) {
   _catalogStatsCache.value = null;
   _runsListCache.at = 0;
   _runsListCache.value = null;
-  _profilesLiteCache.value = null;
   if (!statusOnly) {
+    _profilesLiteCache.value = null;
     _catalogSlowAggCache.at = 0;
     _catalogSlowAggCache.value = null;
+  }
+}
+
+function patchProfilesLiteStatusInPlace(id, nextStatus) {
+  if (!Array.isArray(_profilesLiteCache.value)) return;
+  const targetId = String(id || "");
+  for (const row of _profilesLiteCache.value) {
+    if (row && String(row.id) === targetId) {
+      row.status = nextStatus;
+      break;
+    }
   }
 }
 
@@ -1214,6 +1225,7 @@ function setProfileStatus(id, status, { reason, headless } = {}) {
   } else {
     prepareCached("UPDATE profiles SET status = ?, updated_at = ? WHERE id = ?").run(nextStatus, now, strId);
   }
+  patchProfilesLiteStatusInPlace(strId, nextStatus);
   if (prevRow && String(prevRow.status) === nextStatus) {
     return getProfile(id);
   }

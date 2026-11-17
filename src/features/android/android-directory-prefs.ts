@@ -8,6 +8,7 @@ import {
   createDirectoryTableColumnPresetManager,
   HUB_ACTIVITY_AGE_HINT_LINES,
   HUB_DIRECTORY_NOTE_COL_WIDTH,
+  hubDirectoryRunToggleHintLines,
   prefIconMapFromHubDirectoryColumnMeta,
   withDirectoryColumnIcons,
   withDirectoryColumnStickers,
@@ -78,10 +79,12 @@ const ANDROID_COLUMN_HINT_LINES: Partial<Record<StealthAndroidColumnKey, HubDire
     { emoji: "🟢", label: "ON", detail: "Closing the paired PC browser automatically pushes fresh cookies to Mobile Vault." },
     { emoji: "⚪", label: "OFF", detail: "Manual Push / Pull only." },
   ]),
-  status: withSortPriorityHintLines([
-    { emoji: "🟢", label: "Mounted", detail: "Active identity currently mounted on connected Android phone." },
-    { emoji: "▶️", label: "Mount", detail: "Click to switch connected Android phone hardware identity to this profile." },
-  ]),
+  status: withSortPriorityHintLines(
+    hubDirectoryRunToggleHintLines({
+      start: "Launch paired PC emulation browser (shows Mounted when identity is active on phone)",
+      stop: "Stop running PC Android emulation browser",
+    }),
+  ),
   deviceModel: withSortPriorityHintLines([
     { emoji: "📱", label: "Model", detail: "Single hardware model name (e.g., Pixel 8 Pro, SM-S928B)." },
   ]),
@@ -115,22 +118,22 @@ const ANDROID_COLUMN_HINT_LINES: Partial<Record<StealthAndroidColumnKey, HubDire
 export const STEALTH_ANDROID_COLUMN_META = withDirectoryColumnStickers(
   applyStandardDirectoryColumnHints(
     {
-      createdAt: col("Created", "hub-users-col--activity", "created", "col.directory.created", "6.25rem"),
-      updated: col("Update", "hub-users-col--created", "updated", "col.directory.lastActive", "6.25rem"),
-      profile: col("Profile", "hub-users-col--name", "browser", "col.directory.browser", "6.5rem", {
+      createdAt: col("Created", "hub-users-col--activity", "created", "col.directory.created", "7.25rem"),
+      updated: col("Update", "hub-users-col--created", "updated", "col.directory.lastActive", "7.25rem"),
+      profile: col("Profile", "hub-users-col--name", "browser", "col.directory.browser", "7.25rem", {
         columnKind: "compact",
         headerAlign: "center",
         enableFit: false,
       }),
-      group: col("Brand", "hub-users-col--role", "role", "col.directory.groups", "6.5rem"),
-      autoSync: col("Auto-Sync", "hub-users-col--metric-d", "tools", "col.directory.status", "7.25rem"),
+      group: col("Brand", "hub-users-col--role", "role", "col.directory.groups", "6.75rem"),
+      autoSync: col("Auto-Sync", "hub-users-col--metric-d", "tools", "col.directory.status", "8.75rem"),
       status: col("Phone", "hub-users-col--tools", "tools", "col.directory.status", "6.75rem"),
       deviceModel: col("Model", "hub-users-col--email", "name", "col.directory.username", "8.75rem"),
       gpu: col("GPU", "hub-users-col--display-name", "name", "col.directory.username", "8.75rem"),
-      androidId: col("Android ID", "hub-users-col--metric-c", "id", "col.directory.username", "8.25rem"),
+      androidId: col("Android ID", "hub-users-col--metric-c", "id", "col.directory.username", "8.75rem"),
       imei: col("IMEI", "hub-users-col--metric-e", "id", "col.directory.username", "8.25rem"),
-      cookies: col("Cookies", "hub-users-col--metric-a", "tools", "col.directory.status", "7rem"),
-      snapshot: col("Snapshot", "hub-users-col--metric-b", "tools", "col.directory.status", "6.75rem"),
+      cookies: col("Cookies", "hub-users-col--metric-a", "tools", "col.directory.status", "7.5rem"),
+      snapshot: col("Snapshot", "hub-users-col--metric-b", "tools", "col.directory.status", "8rem"),
       integrity: col("Integrity", "hub-users-col--metric-f", "tools", "col.directory.status", "8.5rem"),
       note: col(
         "Services & Note",

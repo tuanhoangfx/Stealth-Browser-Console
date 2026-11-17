@@ -643,6 +643,10 @@ export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
     };
   }
 
+  if (typeof opts.beforeWrite === "function") {
+    await opts.beforeWrite(cookies);
+  }
+
   const { applied, failed, total, failedNames, appliedNames, failedDetails } = cookies.length
     ? await applyCookiesToBrowser(cookies, {
         rounds: opts.rounds ?? 1,

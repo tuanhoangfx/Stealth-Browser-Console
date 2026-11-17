@@ -1,5 +1,7 @@
 /** Relays Tool Manager session + bindings into extension storage (same-origin postMessage). */
 const ORIGINS = new Set([
+  "http://127.0.0.1:3022",
+  "http://localhost:3022",
   "http://127.0.0.1:5176",
   "http://127.0.0.1:5177",
   "https://infi28.com",
@@ -16,6 +18,37 @@ function isAllowedOrigin(origin) {
   if (origin.endsWith(".infi28.com")) return true;
   if (origin.endsWith(".infi.io.vn")) return true;
   return false;
+}
+
+function resolveBridgeManifestVersion() {
+  try {
+    return String(chrome.runtime?.getManifest?.()?.version || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function announceBridgePresence() {
+  const version = resolveBridgeManifestVersion() || "installed";
+  try {
+    if (document.documentElement) {
+      document.documentElement.dataset.e0001CookieBridgeVersion = version;
+    }
+    window.postMessage(
+      {
+        type: "E0001_COOKIE_BRIDGE_PONG",
+        installed: true,
+        version,
+      },
+      window.location.origin,
+    );
+  } catch {
+    // ignore
+  }
+}
+
+if (isAllowedOrigin(window.location.origin)) {
+  announceBridgePresence();
 }
 
 function relayIdentityAuth(detail) {
@@ -89,6 +122,10 @@ window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (!isAllowedOrigin(event.origin)) return;
   const t = event.data?.type;
+  if (t === "E0001_COOKIE_BRIDGE_PING") {
+    announceBridgePresence();
+    return;
+  }
   if (t === "E0001_HUB_IDENTITY_AUTH") relayIdentityAuth(event.data);
   if (t === "E0001_COOKIE_BRIDGE_AUTH") relayAuth(event.data);
   if (t === "E0001_COOKIE_BRIDGE_BINDINGS") relayBindings(event.data.bindings);

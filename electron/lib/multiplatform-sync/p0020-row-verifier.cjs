@@ -19,6 +19,7 @@ const {
   verifyTwitterCookiesLiveViaHttp,
   verifyInstagramCookiesLiveViaHttp,
   verifyClaudeCookiesLiveViaHttp,
+  verifyAdobeCookiesLiveViaHttp,
 } = require("./http-cookie-verifiers.cjs");
 
 function isTwitterFamilyService(svcName) {
@@ -575,7 +576,7 @@ async function verifyRowPlatformAndAiSession({
             match.loggedIn = true;
             match.resultCode = "fb_cookies";
             match.matchedNames = ["c_user", "xs"];
-            hasVerifiedFacebookAuth = true;
+            hasVerifiedFacebookAuth = httpVerify.mode !== "offline_proxy_safe";
           } else if (httpVerify.ok) {
             fbForcedOverride = httpVerify;
             match.loggedIn = false;
@@ -621,8 +622,8 @@ async function verifyRowPlatformAndAiSession({
               match.loggedIn = false;
               match.resultCode = httpVerify.resultCode || "login_page";
             } else {
-              hasVerifiedFacebookAuth = true;
-              if (isLiveWindow && !isPassiveUserLiveSync && liveCdpTargets.length > 0) {
+              hasVerifiedFacebookAuth = httpVerify.mode !== "offline_proxy_safe";
+              if (isLiveWindow && !isPassiveUserLiveSync && liveCdpTargets.length > 0 && hasVerifiedFacebookAuth) {
                 await autoHealCompletedSocialChallengeTabs(liveCdpTargets, {
                   hasVerifiedFacebookAuth: true,
                 }).catch(() => undefined);
@@ -993,7 +994,7 @@ async function verifyRowPlatformAndAiSession({
         String(curSnapCheck?.result_code || "") === "account_disabled_banned" ||
         String(curSnapCheck?.auth_state || "") === "disabled";
       const curVerifiedMethod = String(curSnapCheck?.login_verified_method || "").trim();
-      const isCookieOnlyMethod = svcLower === "claude" && /_cookie$/i.test(curVerifiedMethod);
+      const isCookieOnlyMethod = (svcLower === "claude" || svcLower === "adobe") && /_cookie$/i.test(curVerifiedMethod);
       if (!verifiedAiServerUid && !isCurrentlyDisabledOrBanned && !isCookieOnlyMethod) {
         const candidateUid = String(
           curSnapCheck?.[aiUidSpec.key] ||
@@ -1048,7 +1049,7 @@ async function verifyRowPlatformAndAiSession({
         !verifiedAiServerUid &&
         !isCurrentlyDisabledOrBanned &&
         aiCookieList.length > 0 &&
-        !["claude", "elevenlabs"].includes(svcLower)
+        !["claude", "elevenlabs", "adobe"].includes(svcLower)
       ) {
         const hasChatgptSessionCookie =
           svcLower === "chatgpt" &&
@@ -1123,7 +1124,13 @@ async function verifyRowPlatformAndAiSession({
         const expEmail = normalizeComparableEmail(row.account);
         if (!apiEmail || !expEmail || !expEmail.includes("@")) return false;
         if (areComparableEmailsEqual(apiEmail, expEmail)) return false;
-        if (profileMicrosoftAliasEmails.has(apiEmail)) return false;
+        // Strict dual-key guard for ChatGPT (`ok 1`): never allow another profile's Outlook alias
+        // (e.g. e1c14@outlook.com on #2041 logged in inside #0214) to masquerade as #0214's Gmail ChatGPT row.
+        if (svcLower === "chatgpt" || svcLower === "adobe") {
+          return true;
+        }
+        const isExpMicrosoftDomain = /@(?:outlook|hotmail|live|msn)\./i.test(expEmail);
+        if (isExpMicrosoftDomain && profileMicrosoftAliasEmails.has(apiEmail)) return false;
         const recEmail = normalizeComparableEmail(row.mail_recover);
         if (recEmail && areComparableEmailsEqual(apiEmail, recEmail)) return false;
         const noteText = `${String(row.note || "")} ${String(row.log_tip_message || "")}`.toLowerCase();
@@ -1267,12 +1274,51 @@ async function verifyRowPlatformAndAiSession({
           }
         }
       }
+      if (
+        svcLower === "adobe" &&
+        aiCookieList.some(
+          (c) =>
+            /^(ims_sid|aux_sid|SIS)$/i.test(String(c?.name || "").trim()) &&
+            c?.value &&
+            c.value !== "disk_verified_sqlite" &&
+            String(c.value).length >= 8,
+        ) &&
+        (isLiveWindow ||
+          !verifiedAiServerUid ||
+          !String(row.browser || "").trim() ||
+          String(curSnapCheck?.status || "") !== "logged_in" ||
+          String(curSnapCheck?.login_verified_method || "") === "adobe_ims_session_cookie" ||
+          String(curSnapCheck?.result_code || "") === "service_cookies" ||
+          String(curSnapCheck?.result_code || "") === "UNVERIFIED_SESSION_BLOCKED")
+      ) {
+        const aVerify =
+          cachedAiHttpVerify.adobe ||
+          (cachedAiHttpVerify.adobe = await verifyAdobeCookiesLiveViaHttp(aiCookieList));
+        if (aVerify.ok && !aVerify.loggedIn) {
+          fbForcedOverride = aVerify;
+          match.loggedIn = false;
+          match.resultCode = aVerify.resultCode || "login_page";
+          verifiedAiServerUid = "";
+        } else if (aVerify.ok && aVerify.loggedIn && aVerify.adobeUserId) {
+          if (isAiAccountEmailMismatch(aVerify.adobeVerifiedEmail, aVerify.adobeUserId)) {
+            match.loggedIn = false;
+            match.resultCode = "account_mismatch";
+            match.actualAccount = normalizeComparableEmail(aVerify.adobeVerifiedEmail);
+            verifiedAiServerUid = "";
+          } else {
+            verifiedAiServerUid = aVerify.adobeUserId;
+            verifiedAiMethod = "adobe_ims_check_token_api";
+            match.resultCode = "adobe_ims_check_token_api";
+          }
+        }
+      }
       const needsLiveAiApiIdentityCheck =
         !cachedAiHttpVerify[svcLower] &&
         (svcLower === "grok" || svcLower === "cursor" || svcLower === "chatgpt") &&
         (isLiveWindow ||
           !verifiedAiServerUid ||
           verifiedAiServerUid === "nextauth_jwe_verified" ||
+          verifiedAiMethod === "chatgpt_nextauth_session_cookie" ||
           !String(row.browser || "").trim() ||
           String(curSnapCheck?.status || "") !== "logged_in");
       if (
@@ -1383,6 +1429,8 @@ async function verifyRowPlatformAndAiSession({
           svcLower === "chatgpt" ||
           svcLower === "cursor" ||
           svcLower === "grok" ||
+          (svcLower === "adobe" &&
+            aiCookieList.some((c) => c?.value && c.value !== "disk_verified_sqlite")) ||
           ((svcLower === "capcut" || svcLower === "elevenlabs") && !curSnapCheck?.login_verified_at))
       ) {
         match.loggedIn = false;

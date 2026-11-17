@@ -121,7 +121,7 @@ export const SystemExtensionsDirectoryTable = memo(function SystemExtensionsDire
     <HubDirectoryTableShell
       items={rows}
       ariaLabel="Extensions directory"
-      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table`}
+      tableClassName={`${hubDirectoryTableClass("6")} hub-directory-frame-table stealth-extensions-table`}
       wrapClassName={HUB_DIRECTORY_TABLE_PANE_WRAP_CLASS}
       paginatedShellClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       flushWrap

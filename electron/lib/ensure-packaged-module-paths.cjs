@@ -67,7 +67,7 @@ try {
   /* ignore */
 }
 
-// Enforce windowsHide: true across child_process and patch chrome-headless-shell.exe to IMAGE_SUBSYSTEM_WINDOWS_GUI (2)
+// Enforce windowsHide: true across child_process and ensure chrome-headless-shell.exe / chrome-headless.exe use IMAGE_SUBSYSTEM_WINDOWS_CUI (3)
 if (process.platform === "win32" && process.env.FORCE_VISIBLE_CONSOLE !== "1") {
   try {
     const cp = require("node:child_process");
@@ -128,8 +128,8 @@ if (process.platform === "win32" && process.env.FORCE_VISIBLE_CONSOLE !== "1") {
                 const subOffset = peOffset + 24 + 68;
                 const subBuf = Buffer.alloc(2);
                 fs.readSync(fd, subBuf, 0, 2, subOffset);
-                if (subBuf.readUInt16LE(0) === 3) {
-                  subBuf.writeUInt16LE(2, 0);
+                if (subBuf.readUInt16LE(0) === 2) {
+                  subBuf.writeUInt16LE(3, 0);
                   fs.writeSync(fd, subBuf, 0, 2, subOffset);
                 }
               }
@@ -139,6 +139,62 @@ if (process.platform === "win32" && process.env.FORCE_VISIBLE_CONSOLE !== "1") {
           } catch {
             /* ignore if locked */
           }
+        }
+      }
+    }
+
+    const cloakDir = process.env.CLOAKBROWSER_CACHE_DIR || path.join(os.homedir(), ".cloakbrowser");
+    if (fs.existsSync(cloakDir)) {
+      for (const entry of fs.readdirSync(cloakDir, { withFileTypes: true })) {
+        if (!entry.isDirectory() || !entry.name.startsWith("chromium-")) continue;
+        const binDir = path.join(cloakDir, entry.name);
+        const headlessExe = path.join(binDir, "chrome-headless.exe");
+        const guiExe = path.join(binDir, "chrome.exe");
+        if (!fs.existsSync(headlessExe)) continue;
+        try {
+          let curSub = 0;
+          let subOffset = 0;
+          const rfd = fs.openSync(headlessExe, "r");
+          try {
+            const hdr = Buffer.alloc(1024);
+            const n = fs.readSync(rfd, hdr, 0, 1024, 0);
+            if (n >= 256 && hdr.readUInt16LE(0) === 0x5a4d) {
+              const peOffset = hdr.readUInt32LE(0x3c);
+              if (peOffset + 96 <= n && hdr.readUInt32LE(peOffset) === 0x00004550) {
+                subOffset = peOffset + 24 + 68;
+                curSub = hdr.readUInt16LE(subOffset);
+              }
+            }
+          } finally {
+            fs.closeSync(rfd);
+          }
+          if (curSub === 2 && subOffset > 0) {
+            const writeCui = (targetPath) => {
+              const wfd = fs.openSync(targetPath, "r+");
+              try {
+                const b = Buffer.alloc(2);
+                b.writeUInt16LE(3, 0);
+                fs.writeSync(wfd, b, 0, 2, subOffset);
+              } finally {
+                fs.closeSync(wfd);
+              }
+            };
+            try {
+              writeCui(headlessExe);
+            } catch {
+              if (fs.existsSync(guiExe)) {
+                const stale = path.join(binDir, "chrome-headless.gui-stale.exe");
+                try { fs.unlinkSync(stale); } catch {}
+                const dst = fs.existsSync(stale) ? path.join(binDir, `chrome-headless.gui-stale-${process.pid}.exe`) : stale;
+                fs.renameSync(headlessExe, dst);
+                fs.copyFileSync(guiExe, headlessExe);
+                writeCui(headlessExe);
+                try { fs.unlinkSync(dst); } catch {}
+              }
+            }
+          }
+        } catch {
+          /* ignore */
         }
       }
     }

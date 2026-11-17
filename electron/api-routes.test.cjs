@@ -235,6 +235,37 @@ function test(name, fn) {
     assert.ok(jobsGet.pattern.test("/api/jobs/xyz"));
   });
 
+  await test("profiles.status reports isDirectProxy without leaking proxy credentials", () => {
+    const { buildProfileRoutes } = require("./routes/profile-routes.cjs");
+    let payload = null;
+    const routes = buildProfileRoutes({
+      sessionManager: { isRunning: () => false },
+      profileService: {
+        listProfilesLite: () => [],
+        getProfile: (id) =>
+          id === "p-direct"
+            ? { id, status: "idle", proxy: "direct" }
+            : id === "p-proxy"
+              ? { id, status: "idle", proxy: "http://secretuser:secretpass@1.2.3.4:8080" }
+              : { id, status: "idle", proxy: "" },
+      },
+      jobQueue: new JobQueue(),
+      userDataRoot: "",
+      send: { json: (_res, _code, body) => { payload = body; } },
+      lockGuards: { isCodePriorityLocked: () => false, readActivePriorityLockedCodes: () => [] },
+      runtimeHelpers: { patchProfileHandler: () => {} },
+    });
+    const statusRoute = routes.find((r) => r.id === "profiles.status");
+    assert.ok(statusRoute, "missing profiles.status route");
+    statusRoute.handler({ params: ["/api/profiles/p-direct/status", "p-direct"], res: {} });
+    assert.strictEqual(payload.isDirectProxy, true);
+    statusRoute.handler({ params: ["/api/profiles/p-empty/status", "p-empty"], res: {} });
+    assert.strictEqual(payload.isDirectProxy, true);
+    statusRoute.handler({ params: ["/api/profiles/p-proxy/status", "p-proxy"], res: {} });
+    assert.strictEqual(payload.isDirectProxy, false);
+    assert.strictEqual(payload.proxy, undefined);
+  });
+
   if (failures) {
     console.error(`\nâœ— api-routes: ${failures} test tháº¥t báº¡i`);
     process.exit(1);

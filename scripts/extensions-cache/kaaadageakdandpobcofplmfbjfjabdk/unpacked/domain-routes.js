@@ -31,7 +31,7 @@ export const GOOGLE_OSID_APP_DOMAINS = Object.freeze([
     relatedDomains: Object.freeze([".google.com", ".flow.google.com", ".labs.google"]),
     sessionUrl: "https://flow.google.com/?pli=1",
     marketingPaths: Object.freeze(["/about"]),
-    marketingHosts: Object.freeze([]),
+    marketingHosts: Object.freeze(["labs.google"]),
     preserveLegacyDomains: Object.freeze(["labs.google"]),
   }),
   Object.freeze({
@@ -40,11 +40,11 @@ export const GOOGLE_OSID_APP_DOMAINS = Object.freeze([
     canonicalDomain: ".aistudio.google.com",
     primaryHost: "aistudio.google.com",
     osidHosts: Object.freeze(["aistudio.google.com"]),
-    matchHosts: Object.freeze(["aistudio.google.com"]),
-    relatedDomains: Object.freeze([".google.com", ".aistudio.google.com"]),
+    matchHosts: Object.freeze(["aistudio.google.com", "ai.google.dev"]),
+    relatedDomains: Object.freeze([".google.com", ".aistudio.google.com", ".ai.google.dev"]),
     sessionUrl: "https://aistudio.google.com/prompts/new_chat",
-    marketingPaths: Object.freeze(["/welcome"]),
-    marketingHosts: Object.freeze([]),
+    marketingPaths: Object.freeze(["/welcome", "/about"]),
+    marketingHosts: Object.freeze(["ai.google.dev"]),
     preserveLegacyDomains: Object.freeze([]),
   }),
   Object.freeze({
@@ -92,6 +92,37 @@ export const GOOGLE_OSID_APP_DOMAINS = Object.freeze([
     sessionUrl: "https://studio.firebase.google.com/?pli=1",
     marketingPaths: Object.freeze([]),
     marketingHosts: Object.freeze(["firebase.studio"]),
+    preserveLegacyDomains: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: "google-gemini",
+    label: "Google Gemini",
+    canonicalDomain: ".gemini.google.com",
+    primaryHost: "gemini.google.com",
+    osidHosts: Object.freeze(["gemini.google.com"]),
+    matchHosts: Object.freeze(["gemini.google.com", "bard.google.com"]),
+    relatedDomains: Object.freeze([".google.com", ".gemini.google.com", ".bard.google.com"]),
+    sessionUrl: "https://gemini.google.com/app?pli=1",
+    marketingPaths: Object.freeze(["/about", "/faq", "/corp", "/overview"]),
+    marketingHosts: Object.freeze([]),
+    preserveLegacyDomains: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: "google-colab",
+    label: "Google Colab",
+    canonicalDomain: ".colab.research.google.com",
+    primaryHost: "colab.research.google.com",
+    osidHosts: Object.freeze(["colab.research.google.com"]),
+    matchHosts: Object.freeze(["colab.research.google.com", "colab.google"]),
+    relatedDomains: Object.freeze([
+      ".google.com",
+      ".colab.research.google.com",
+      ".research.google.com",
+      ".colab.google",
+    ]),
+    sessionUrl: "https://colab.research.google.com/?pli=1",
+    marketingPaths: Object.freeze(["/about"]),
+    marketingHosts: Object.freeze(["colab.google"]),
     preserveLegacyDomains: Object.freeze([]),
   }),
 ]);
@@ -207,6 +238,24 @@ export function effectiveCookieDomain(domain = "") {
   return domain.trim().startsWith(".") ? domain.trim() : `.${normalized}`;
 }
 
+/** True when URL is an unauthenticated Google sign-in / account-chooser / logout page. */
+export function isGoogleSignInPromptUrl(url = "") {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host !== "accounts.google.com") return false;
+    const path = parsed.pathname.toLowerCase();
+    return (
+      path.includes("/signin") ||
+      path.includes("/servicelogin") ||
+      path.includes("/accountchooser") ||
+      path.includes("/logout")
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Marketing / logged-out landing pages — not valid cookie-apply context for Gmail or Google OSID apps. */
 export function isGoogleMarketingUrl(url = "") {
   try {
@@ -214,14 +263,19 @@ export function isGoogleMarketingUrl(url = "") {
     const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
     if (host === "workspace.google.com") return true;
     const path = parsed.pathname.toLowerCase();
-    if (host === "google.com" && path.includes("/gmail")) return true;
+    if (host === "google.com" && (path.includes("/gmail") || path.startsWith("/account/about"))) return true;
+    if (host === "myaccount.google.com" && (path === "/intro" || path.startsWith("/intro/"))) return true;
     if (host === "firebase.google.com" && (path === "/studio" || path.startsWith("/studio/"))) return true;
     const osidApp = resolveGoogleOsidApp(url);
     if (osidApp) {
       if (hostMatchesEntry(host, osidApp.marketingHosts)) return true;
       if (
         osidApp.marketingPaths.some(
-          (marketingPath) => path === marketingPath || path.startsWith(`${marketingPath}/`),
+          (marketingPath) =>
+            path === marketingPath ||
+            path.startsWith(`${marketingPath}/`) ||
+            path.endsWith(marketingPath) ||
+            path.includes(`${marketingPath}/`),
         )
       ) {
         return true;
@@ -237,7 +291,8 @@ export function isGoogleAuthContextUrl(url = "") {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
-    if (host === "mail.google.com" || host === "accounts.google.com") return true;
+    if (host === "mail.google.com") return true;
+    if (host === "accounts.google.com") return !isGoogleSignInPromptUrl(url);
     if (resolveGoogleOsidApp(url) && !isGoogleMarketingUrl(url)) return true;
     return false;
   } catch {
@@ -267,6 +322,138 @@ export function tabMatchesRoute(url, domain) {
   if (!url || !urlMatchesCookieDomain(url, domain)) return false;
   if ((isGoogleDomain(domain) || isGoogleOsidAppDomain(domain)) && isGoogleMarketingUrl(url)) return false;
   return true;
+}
+
+const GENERIC_SIGNED_OUT_AUTH_PATH_RE =
+  /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:login|signin|sign-in|sign_in|signup|sign-up|sign_up|logged-out|logout|signout|sign-out|auth\/(?:login|signin|sign-in|signup)|account\/(?:login|signin)|app\/(?:sign-in|sign-up|login)|users\/sign_in|session\/new)(?:\/|$)/i;
+
+/**
+ * True when a browser tab URL is clearly an unauthenticated landing, marketing, or sign-in/login screen
+ * where clicking `Sync` would risk uploading logged-out/stale jar cookies instead of `Load`ing from Vault.
+ */
+export function isSignedOutLandingOrLoginTabUrl(url = "", routeDomain = "") {
+  const raw = String(url ?? "").trim();
+  if (!raw || !/^https?:\/\//i.test(raw)) return false;
+  if (isGoogleSignInPromptUrl(raw) || isGoogleMarketingUrl(raw)) return true;
+  try {
+    const parsed = new URL(raw);
+    const path = parsed.pathname.toLowerCase();
+    if (GENERIC_SIGNED_OUT_AUTH_PATH_RE.test(path)) return true;
+    if (routeDomain && isElevenLabsDomain(routeDomain) && (path === "/" || path === "")) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function formatCompactSignedOutUrlLabel(url = "") {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    const cleanPath = parsed.pathname.replace(/\/+$/, "");
+    if (!cleanPath || cleanPath === "/") return host;
+    const shortPath = cleanPath.length > 24 ? `${cleanPath.slice(0, 24)}…` : cleanPath;
+    return `${host}${shortPath}`;
+  } catch {
+    return "login page";
+  }
+}
+
+/**
+ * Evaluate open browser tabs for a route domain to decide whether UI `Sync` (and backend Sync guard)
+ * should be blocked because the browser is standing on a signed-out landing or login page.
+ */
+export function evaluateOpenTabsSyncBlockForDomain(routeDomain = "", openTabs = []) {
+  const rawDomain = String(routeDomain ?? "").trim();
+  if (!rawDomain || !Array.isArray(openTabs) || openTabs.length === 0) {
+    return { blocked: false, loggedOutUrl: null, activeBlocked: false, reason: "" };
+  }
+
+  const osidApp = resolveGoogleOsidApp(rawDomain);
+  const isPlainGoogle = !osidApp && isGoogleDomain(rawDomain);
+  const cleanBase = normalizeDomainHost(rawDomain);
+
+  const authTabs = [];
+  const loggedOutTabs = [];
+  let activeLoggedOutUrl = null;
+
+  for (const tab of openTabs) {
+    const u = String(tab?.url || "").trim();
+    if (!u || !/^https?:\/\//i.test(u)) continue;
+    let urlHost = "";
+    let decodedFull = "";
+    try {
+      const parsed = new URL(u);
+      urlHost = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+      decodedFull = decodeURIComponent(`${parsed.pathname}${parsed.search}${parsed.hash}`).toLowerCase();
+    } catch {
+      continue;
+    }
+
+    if (osidApp) {
+      const tabOsid = resolveGoogleOsidApp(u);
+      const mentionsAppInSignIn =
+        isGoogleSignInPromptUrl(u) &&
+        (Boolean(tab?.active) ||
+          osidApp.matchHosts.some((mh) => decodedFull.includes(mh.toLowerCase())));
+      const relatedToOsid =
+        tabOsid?.id === osidApp.id ||
+        hostMatchesEntry(urlHost, osidApp.marketingHosts) ||
+        mentionsAppInSignIn;
+      if (!relatedToOsid) continue;
+
+      if (isGoogleMarketingUrl(u) || isGoogleSignInPromptUrl(u)) {
+        loggedOutTabs.push(u);
+        if (tab?.active && !activeLoggedOutUrl) activeLoggedOutUrl = u;
+      } else if (tabOsid?.id === osidApp.id) {
+        authTabs.push(u);
+      }
+      continue;
+    }
+
+    if (isPlainGoogle) {
+      const tabOsid = resolveGoogleOsidApp(u);
+      const relatedToPlainGoogle =
+        (!tabOsid && isGoogleDomain(urlHost)) || urlHost === "workspace.google.com";
+      if (!relatedToPlainGoogle) continue;
+
+      if (isGoogleMarketingUrl(u) || isGoogleSignInPromptUrl(u)) {
+        loggedOutTabs.push(u);
+        if (tab?.active && !activeLoggedOutUrl) activeLoggedOutUrl = u;
+      } else if (isGoogleAuthContextUrl(u)) {
+        authTabs.push(u);
+      }
+      continue;
+    }
+
+    const mentionsDomainInOAuth =
+      Boolean(cleanBase) && isGoogleSignInPromptUrl(u) && decodedFull.includes(cleanBase);
+    const relatedToDomain = urlMatchesCookieDomain(u, rawDomain) || mentionsDomainInOAuth;
+    if (!relatedToDomain) continue;
+
+    if (isSignedOutLandingOrLoginTabUrl(u, rawDomain)) {
+      loggedOutTabs.push(u);
+      if (tab?.active && !activeLoggedOutUrl) activeLoggedOutUrl = u;
+    } else {
+      authTabs.push(u);
+    }
+  }
+
+  const loggedOutUrl = activeLoggedOutUrl || loggedOutTabs[0] || null;
+  const blocked = Boolean(activeLoggedOutUrl) || (loggedOutTabs.length > 0 && authTabs.length === 0);
+  if (!blocked || !loggedOutUrl) {
+    return { blocked: false, loggedOutUrl: null, activeBlocked: false, reason: "" };
+  }
+
+  const pageLabel = formatCompactSignedOutUrlLabel(loggedOutUrl);
+  return {
+    blocked: true,
+    loggedOutUrl,
+    activeBlocked: Boolean(activeLoggedOutUrl),
+    reason: `Open tab is on a signed-out/login page (${pageLabel}) — click Load to apply cloud cookies, or sign in first to Sync.`,
+  };
 }
 
 /** Gmail inbox URL — avoid workspace.google.com redirect when session cookies apply. */

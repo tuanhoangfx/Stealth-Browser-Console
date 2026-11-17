@@ -20,7 +20,9 @@ const facebookCreatePages = {
     if (!profile_id || !Array.isArray(names) || names.length === 0) {
       return send.json(res, 400, { ok: false, error: "profile_id và names[] là bắt buộc" });
     }
-    const context = services.sessionManager.getContext(profile_id);
+    const context =
+      (await services.sessionManager.ensureConnectedContext?.(profile_id)) ||
+      services.sessionManager.getContext(profile_id);
     if (!context) {
       return send.json(res, 400, {
         ok: false,

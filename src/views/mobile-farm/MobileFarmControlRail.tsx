@@ -4,6 +4,7 @@ import {
   BatteryCharging,
   BatteryWarning,
   ChevronRight,
+  Columns2,
   ExternalLink,
   Grid2x2,
   PanelLeftClose,
@@ -27,6 +28,7 @@ import {
 } from "@tool-workspace/hub-ui";
 import {
   fetchFarmApi,
+  type AvailableAdbDevice,
   type ExtendedLiveScreenState,
   type FarmEngineMode,
   type FarmFilterConnection,
@@ -51,6 +53,8 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
   handleEnsureVirtualDisplayPool,
   syncMaster,
   setSyncMaster,
+  dualWall,
+  setDualWall,
   pushToast,
   handleReconnectWifiAdb,
   handleEnsureVirtualDisplay,
@@ -70,6 +74,8 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
   batLevel,
   deviceTelemetry,
   liveState,
+  availableDevices,
+  handleSelectDevice,
   onCollapse,
 }: {
   engineMode: FarmEngineMode;
@@ -88,6 +94,8 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
   handleEnsureVirtualDisplayPool: () => Promise<void>;
   syncMaster: boolean;
   setSyncMaster: Dispatch<SetStateAction<boolean>>;
+  dualWall: boolean;
+  setDualWall: Dispatch<SetStateAction<boolean>>;
   pushToast: (msg: string, tone?: "success" | "error" | "info") => void;
   handleReconnectWifiAdb: () => Promise<void>;
   handleEnsureVirtualDisplay: () => Promise<void>;
@@ -113,6 +121,8 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
   batLevel: number;
   deviceTelemetry: MobileDeviceTelemetry | null;
   liveState: ExtendedLiveScreenState | null;
+  availableDevices?: AvailableAdbDevice[];
+  handleSelectDevice?: (serial: string) => Promise<void>;
   onCollapse: () => void;
 }) {
   const icon12 = compactIconSize(12);
@@ -229,6 +239,23 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
             />
 
             <HubBulkActionButton
+              tone={dualWall ? "emerald" : "neutral"}
+              icon={<Columns2 size={icon12} aria-hidden />}
+              label={dualWall ? "Dual Wall ON" : "Dual Wall"}
+              title="Show all connected Android devices side-by-side on the Phone Wall with independent touch routing"
+              onClick={() => {
+                setDualWall((v) => !v);
+                pushToast(
+                  !dualWall
+                    ? "Dual Wall enabled: streaming all online Android devices side-by-side"
+                    : "Dual Wall disabled: showing active device only",
+                  "info",
+                );
+              }}
+              className="w-full justify-center !px-2"
+            />
+
+            <HubBulkActionButton
               tone={syncMaster ? "indigo" : "neutral"}
               icon={<Radio size={icon12} aria-hidden />}
               label={syncMaster ? "Sync ON" : "Sync All"}
@@ -326,7 +353,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
                 { id: "running", label: "Running / Mounted", count: countsByGroup.running },
                 { id: "fb_ready", label: "Facebook Session Ready", count: countsByGroup.fb_ready },
                 { id: "google", label: "Google Pixel Fleet", count: countsByGroup.google },
-                { id: "samsung", label: "Samsung Galaxy S24", count: countsByGroup.samsung },
+                { id: "samsung", label: "Samsung Galaxy Fleet", count: countsByGroup.samsung },
               ] as const
             ).map((g) => (
               <button
@@ -379,6 +406,32 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
             <div className="truncate text-[10px] text-hub-muted">
               Endpoint: <span className="text-white">{liveState?.serial || "192.168.0.208:5555"}</span>
             </div>
+            {availableDevices && availableDevices.length > 0 && handleSelectDevice ? (
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {availableDevices.map((dev) => {
+                  const isActive = Boolean(dev.active || liveState?.serial === dev.serial);
+                  const shortIp = dev.serial.replace(":5555", "");
+                  return (
+                    <button
+                      key={dev.serial}
+                      type="button"
+                      disabled={Boolean(actionBusy) || isActive}
+                      onClick={() => void handleSelectDevice(dev.serial)}
+                      title={`Switch active P0003 Mobile control target to ${dev.model} (${dev.serial})`}
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] border transition ${
+                        isActive
+                          ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200 font-medium cursor-default"
+                          : "border-white/15 bg-black/35 text-hub-muted hover:border-cyan-400/40 hover:text-white"
+                      }`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-400" : "bg-slate-500"}`} />
+                      <span>{dev.model}</span>
+                      <span className="opacity-70">{shortIp}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             {liveState?.hardwareHealth?.ok ? (
               <div className="grid grid-cols-2 gap-1 rounded bg-black/35 p-1.5 text-[10px] text-white/90 tabular-nums">
                 <div title="Available RAM / Total RAM">

@@ -4,7 +4,6 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { execFileSync } = require("node:child_process");
 const {
   COOKIES_REL_PATH,
   COOKIES_BAK_REL_PATH,
@@ -148,31 +147,6 @@ function resolveProfileDpapiMasterKey(userDataDir) {
           /* ignore cache write failure */
         }
         return nativeBuf;
-      }
-      if (typeof unprotectDpapiKey === "function") {
-        _profileMasterKeyByDirCache.set(userDataDir, null);
-        return null;
-      }
-      const psCmd = `Add-Type -AssemblyName System.Security; $b=[Convert]::FromBase64String('${ek.replace(/'/g, "")}'); $d=[System.Security.Cryptography.ProtectedData]::Unprotect($b[5..($b.Length-1)],$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser); [Convert]::ToBase64String($d)`;
-      const outB64 = String(
-        execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", psCmd], {
-          windowsHide: true,
-          encoding: "utf8",
-          timeout: 4000,
-        }) || "",
-      ).trim();
-      if (outB64.length >= 40) {
-        const keyBuf = Buffer.from(outB64, "base64");
-        map.set(ek, keyBuf);
-        _profileMasterKeyByDirCache.set(userDataDir, keyBuf);
-        try {
-          const obj = {};
-          for (const [k, v] of map.entries()) obj[k] = v.toString("base64");
-          fs.writeFileSync(DPAPI_MASTER_KEYS_CACHE_FILE, JSON.stringify(obj), "utf8");
-        } catch {
-          /* ignore cache write failure */
-        }
-        return keyBuf;
       }
     }
   } catch {

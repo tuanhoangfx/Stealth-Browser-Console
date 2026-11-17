@@ -4,6 +4,7 @@ import {
   DirectoryTableBodyCell,
   formatHubTimestampCompact,
   getDirectorySearchHighlight,
+  HubDirectoryProfileCell,
   HubDirectorySearchHighlightText,
   HubDirectoryTimestampTooltipCell,
   HubDirectoryValuePopover,
@@ -84,13 +85,14 @@ export function renderSystemBackupDirectoryBodyCell(
         .join("\n");
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubDirectoryValuePopover value={popoverValue} title="🆔 Profile ID" className="justify-center">
-            <HubDirectorySearchHighlightText
-              text={display}
-              terms={profileNameTerms}
-              className={`hub-users-name-title text-center tabular-nums ${DIRECTORY_CELL_TRUNCATE}`}
-            />
-          </HubDirectoryValuePopover>
+          <HubDirectoryProfileCell
+            value={display}
+            heatTier={1}
+            copyToastLabel="Profile copied"
+            popoverTitle="🆔 Profile ID"
+            popoverText={popoverValue}
+            searchHighlightTerms={profileNameTerms}
+          />
         </DirectoryTableBodyCell>
       );
     }
@@ -123,7 +125,7 @@ export function renderSystemBackupDirectoryBodyCell(
               type="button"
               disabled={isRowBusy}
               onClick={() => ctx.onRowSnapshot?.(profile)}
-              className="inline-flex h-5 items-center gap-0.5 rounded border border-emerald-500/35 bg-emerald-500/12 px-1.5 text-[10px] font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/25 disabled:opacity-40"
+              className="inline-flex h-5 items-center gap-0.5 rounded border border-emerald-500/35 bg-emerald-500/[.12] px-1.5 text-[10px] font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/25 disabled:opacity-40"
               title={`Manual Backup (Snapshot v2) for Profile #${profile.name}`}
             >
               <ShieldCheck size={10} aria-hidden />
@@ -133,7 +135,7 @@ export function renderSystemBackupDirectoryBodyCell(
               type="button"
               disabled={isRowBusy || (!hasLatest && slotVer === 0)}
               onClick={() => ctx.onRowRestoreSlot?.(profile, "latest")}
-              className="inline-flex h-5 items-center gap-0.5 rounded border border-sky-500/35 bg-sky-500/12 px-1.5 text-[10px] font-medium text-sky-200 transition-colors hover:bg-sky-500/25 disabled:opacity-30"
+              className="inline-flex h-5 items-center gap-0.5 rounded border border-sky-500/35 bg-sky-500/[.12] px-1.5 text-[10px] font-medium text-sky-200 transition-colors hover:bg-sky-500/25 disabled:opacity-30"
               title={`Restore Slot Latest into Profile #${profile.name}`}
             >
               <RotateCcw size={10} aria-hidden />
@@ -143,7 +145,7 @@ export function renderSystemBackupDirectoryBodyCell(
               type="button"
               disabled={isRowBusy || !hasPrev}
               onClick={() => ctx.onRowRestoreSlot?.(profile, "previous")}
-              className="inline-flex h-5 items-center gap-0.5 rounded border border-violet-500/35 bg-violet-500/12 px-1.5 text-[10px] font-medium text-violet-200 transition-colors hover:bg-violet-500/25 disabled:opacity-25"
+              className="inline-flex h-5 items-center gap-0.5 rounded border border-violet-500/35 bg-violet-500/[.12] px-1.5 text-[10px] font-medium text-violet-200 transition-colors hover:bg-violet-500/25 disabled:opacity-25"
               title={
                 hasPrev
                   ? `Restore Slot Previous into Profile #${profile.name}`

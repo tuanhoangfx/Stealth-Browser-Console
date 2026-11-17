@@ -59,6 +59,15 @@ function buildSystemAndRuntimeRoutes(deps) {
         if (typeof lockLiveAppAsarAgainstOverwrite === "function") {
           lockLiveAppAsarAgainstOverwrite();
         }
+        try {
+          const bridgeLoader = require("../lib/android-bridge-loader.cjs");
+          if (typeof bridgeLoader?.invalidateAndroidStealthBridgeWorker === "function") {
+            bridgeLoader.invalidateAndroidStealthBridgeWorker();
+            res.androidBridgeWorkerInvalidated = true;
+          }
+        } catch {
+          /* ignore */
+        }
         const res = reloadHotPatchedModules({ force: Boolean(ctx.body?.force) });
         res.asarWriteLocked = true;
         if (typeof ctx.services?.rebuildRoutes === "function") {

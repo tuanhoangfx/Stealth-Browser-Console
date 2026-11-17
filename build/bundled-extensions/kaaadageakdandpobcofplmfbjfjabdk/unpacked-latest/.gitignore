@@ -13,3 +13,6 @@ scripts/cws-oauth-client.json
 dist-desktop/
 release/
 *.tsbuildinfo
+
+# Local Chrome publisher profile (cookies/session) - never commit
+.chrome-store-profile/

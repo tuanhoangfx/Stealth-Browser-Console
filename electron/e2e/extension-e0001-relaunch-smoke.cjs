@@ -13,7 +13,11 @@ const path = require("node:path");
 const { openDatabase, closeDatabase } = require("../db/init.cjs");
 const profileService = require("../db/profile-service.cjs");
 const { SessionManager } = require("../engine/session-manager.cjs");
-const { COOKIE_BRIDGE_STORE_ID } = require("../lib/cookie-bridge-store.cjs");
+const {
+  COOKIE_BRIDGE_STORE_ID,
+  resolveCookieBridgeExtensionDirSync,
+  isVerifiedStoreExtension,
+} = require("../lib/cookie-bridge-store.cjs");
 const {
   prepareProfileExtensions,
   isCookieBridgeProvisionedInPrefs,
@@ -25,6 +29,29 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function readMergedExtensionSettings(userDataDir) {
+  const out = {};
+  for (const name of ["Secure Preferences", "Preferences"]) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(path.join(userDataDir, "Default", name), "utf8"));
+      Object.assign(out, parsed?.extensions?.settings || {});
+    } catch {
+      /* ignore missing or unreadable prefs */
+    }
+  }
+  return out;
+}
+
+function hasEnabledCookieBridgeManifestInPrefs(userDataDir) {
+  const settings = readMergedExtensionSettings(userDataDir);
+  return Object.entries(settings).some(([id, entry]) => {
+    if (!entry || Number(entry.state) !== 1) return false;
+    const name = String(entry.manifest?.name || "");
+    if (/e0001|cookie bridge/i.test(name)) return true;
+    return id === COOKIE_BRIDGE_STORE_ID && Boolean(entry.manifest && entry.manifest.name);
+  });
+}
+
 // MV3 service workers are event-driven and usually dormant at idle, so
 // context.serviceWorkers() is only an optional positive signal (never fail on
 // its absence). The load-bearing checks are the CLI-arg selection and Chromium
@@ -34,7 +61,7 @@ function cookieBridgeWorkerSeen(context) {
 }
 
 async function launchAndProbe(sessions, profile) {
-  await sessions.launch(profile, { skipStartupUrl: true });
+  await sessions.launch({ ...profile, loadExtensionsInHeadless: true }, { skipStartupUrl: true });
   await sessions.awaitLaunchNavigation(profile.id);
   const context = sessions.getContext(profile.id);
   assert(context, "browser context");
@@ -80,21 +107,38 @@ async function main() {
     sessions = new SessionManager();
     sessions.setUserDataRoot(userDataRoot);
 
-    // Launch 1 â€” first open, provisions E0001 via --load-extension.
+    const resolvedBridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot);
+    const verifiedStore = Boolean(resolvedBridgeDir && isVerifiedStoreExtension(resolvedBridgeDir));
+
+    // Launch 1 — first open, provisions E0001 via --load-extension.
     const plan1 = prepareProfileExtensions(userDataDir, userDataRoot, binary.cacheDir);
     const cliLoad1 = (plan1.cliStoreLoads || []).some((r) => r.storeId === COOKIE_BRIDGE_STORE_ID);
     const worker1 = await launchAndProbe(sessions, profile);
     const provisionedAfter1 = isCookieBridgeProvisionedInPrefs(userDataDir);
+    const manifestInPrefsAfter1 = hasEnabledCookieBridgeManifestInPrefs(userDataDir);
 
-    // Launch 2 â€” Chromium already installed E0001, should load from prefs.
+    // Launch 2 — Chromium already installed E0001; verified store skips --load-extension,
+    // while unverified local workspace builds intentionally retain --load-extension.
     const plan2 = prepareProfileExtensions(userDataDir, userDataRoot, binary.cacheDir);
     const cliLoad2 = (plan2.cliStoreLoads || []).some((r) => r.storeId === COOKIE_BRIDGE_STORE_ID);
     const worker2 = await launchAndProbe(sessions, profile);
     const retainedAfter2 = isCookieBridgeProvisionedInPrefs(userDataDir);
+    const manifestInPrefsAfter2 = hasEnabledCookieBridgeManifestInPrefs(userDataDir);
 
     console.log(
       JSON.stringify(
-        { profileId: profile.id, cliLoad1, worker1, provisionedAfter1, cliLoad2, worker2, retainedAfter2 },
+        {
+          profileId: profile.id,
+          verifiedStore,
+          cliLoad1,
+          worker1,
+          provisionedAfter1,
+          manifestInPrefsAfter1,
+          cliLoad2,
+          worker2,
+          retainedAfter2,
+          manifestInPrefsAfter2,
+        },
         null,
         2,
       ),
@@ -102,11 +146,19 @@ async function main() {
 
     // Load-bearing invariants (deterministic, not observability-dependent):
     assert(cliLoad1, "launch 1 must force --load-extension (first open)");
-    assert(provisionedAfter1, "after launch 1 â€” Chromium must load E0001 and cache its manifest in prefs");
-    assert(!cliLoad2, "launch 2 must skip --load-extension (native prefs load)");
-    assert(retainedAfter2, "after flag-less launch 2 â€” Chromium must keep E0001 loaded + enabled");
+    if (verifiedStore) {
+      assert(provisionedAfter1, "after launch 1 — Chromium must load E0001 and cache its manifest in prefs");
+      assert(!cliLoad2, "launch 2 must skip --load-extension (native prefs load)");
+      assert(retainedAfter2, "after flag-less launch 2 — Chromium must keep E0001 loaded + enabled");
+    } else {
+      assert(manifestInPrefsAfter1, "after launch 1 — Chromium must cache enabled E0001 manifest in prefs");
+      assert(cliLoad2, "launch 2 keeps --load-extension for unverified workspace E0001 build");
+      assert(manifestInPrefsAfter2, "after launch 2 — Chromium must keep E0001 loaded + enabled");
+    }
 
-    console.log(`extension-e0001-relaunch-smoke: ok (worker seen: launch1=${worker1} launch2=${worker2})`);
+    console.log(
+      `extension-e0001-relaunch-smoke: ok (verifiedStore=${verifiedStore} worker seen: launch1=${worker1} launch2=${worker2})`,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/ENOENT|download|network|fetch|ECONNREF|ERR_PACKAGE/i.test(message)) {

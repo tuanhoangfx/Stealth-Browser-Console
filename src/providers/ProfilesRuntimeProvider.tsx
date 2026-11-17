@@ -180,15 +180,20 @@ export function ProfilesRuntimeProvider({
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     let historyTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleReconcile = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
         refreshTimer = undefined;
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
         void refreshRunningHeadless();
         void refreshCatalogStats();
       }, 1200);
       if (historyTimer) clearTimeout(historyTimer);
       historyTimer = setTimeout(() => {
         historyTimer = undefined;
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
         void refreshHistory();
       }, 3000);
     };
@@ -294,10 +299,27 @@ export function ProfilesRuntimeProvider({
   useEffect(() => {
     void refreshRunningHeadless();
     const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
       void refreshRunningHeadless();
       void refreshCatalogStats();
     }, 4000);
-    return () => clearInterval(timer);
+    const onVisChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void refreshRunningHeadless();
+        void refreshCatalogStats();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisChange);
+    }
+    return () => {
+      clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisChange);
+      }
+    };
   }, [refreshRunningHeadless, refreshCatalogStats]);
 
   useEffect(() => {
