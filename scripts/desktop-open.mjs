@@ -13,11 +13,19 @@ import {
 } from "./lib/resolve-packaged-exe.mjs";
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
+import {
+  launchDesktopExeVerified,
+  openDesktopExeWithPolicy,
+  parseDesktopOpenFlags,
+  probeDesktopHealth,
+} from "../../scripts/lib/desktop-exe-products.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const devRoot = path.resolve(root, "..", "..");
 const require = createRequire(path.join(root, "package.json"));
 const { spawnInteractiveDesktopProcess } = require(path.join(root, "..", "scripts", "lib", "win-shell-env.cjs"));
 const processName = "Stealth Browser Console";
-const replaceRunning = process.argv.includes("--replace");
+const flags = parseDesktopOpenFlags(process.argv, process.env);
 
 function killPackagedOnly() {
   if (process.platform !== "win32") return;
@@ -49,7 +57,6 @@ if (!exePath) {
 }
 
 const version = readExeProductVersion(exePath) || "unknown";
-const { launchDesktopExeVerified, probeDesktopHealth } = await import("../../scripts/lib/desktop-exe-products.mjs");
 
 function isPackagedExeProcessRunning() {
   if (process.platform !== "win32") return false;
@@ -70,31 +77,30 @@ function isPackagedExeProcessRunning() {
 const prodHealthyInitial = await probeDesktopHealth("http://127.0.0.1:6003/api/health", 3500);
 const allowEmergencyKillProd = process.env.STEALTH_EMERGENCY_HARD_KILL_PROD === "1";
 
-if (replaceRunning) {
-  if ((prodHealthyInitial || isPackagedExeProcessRunning()) && !allowEmergencyKillProd) {
-    const syncHotPatchScript = path.join(root, "scripts", "sync-hot-patch.cjs");
-    if (fs.existsSync(syncHotPatchScript)) {
-      spawnSync(
-        process.execPath,
-        [syncHotPatchScript, "--apply-prod", "--reload-ui", "--stage-asar"],
-        winSpawnOpts({ stdio: "inherit", timeout: 20000 }),
-      );
-    }
-    console.log(
-      "desktop:open: Prod Stealth (:6003) is online; applied zero-restart hot-patch reload instead of killing running Prod exe.",
-    );
-    process.exit(0);
-  } else {
-    killPackagedOnly();
-  }
+if (flags.replace && (prodHealthyInitial || isPackagedExeProcessRunning()) && allowEmergencyKillProd) {
+  killPackagedOnly();
 } else if (prodHealthyInitial || isPackagedExeProcessRunning()) {
-  console.log("desktop:open: Prod Stealth (:6003) is already running; leaving running exe + app.asar untouched.");
-  process.exit(0);
+  const res = await openDesktopExeWithPolicy({
+    devRoot,
+    code: "P0003",
+    exePath,
+    cwd: path.dirname(exePath),
+    env: packagedStealthSpawnEnv(),
+    replaceRunning: flags.replace,
+    noHotPatch: flags.noHotPatch,
+    skipBuild: flags.skipBuild,
+    releaseProd: flags.releaseProd,
+    spawnInteractiveDesktopProcess,
+  });
+  console.log(
+    `desktop:open: P0003 (${processName}) via ${res.method} (ok=${res.ok}, hotPatched=${Boolean(res.hotPatched)})`,
+  );
+  process.exit(res.ok ? 0 : 1);
 }
 
-// CRITICAL: Only promote staged/pending app.asar when Stealth Browser Console.exe is completely stopped!
-// Overwriting app.asar while Electron is running corrupts memory-mapped offsets and crashes the app.
-if (!isPackagedExeProcessRunning()) {
+// CRITICAL: Only promote staged/pending app.asar when Stealth Browser Console.exe is completely stopped
+// AND `--no-hot-patch` was NOT requested! Overwriting app.asar while running corrupts mmap offsets.
+if (!isPackagedExeProcessRunning() && !flags.noHotPatch) {
   try {
     const asar = require("@electron/asar");
     const parseVer = (asarFile) => {
