@@ -177,22 +177,22 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-11-21T21:15:40.830Z",
+  "manifestUpdatedAt": "2026-11-21T21:28:38.029Z",
   "release": {
     "version": "9.2.530",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v9.2.529",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.529",
-      "publishedAt": "2026-11-21T21:04:12Z",
+      "tag": "v9.2.530",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.530",
+      "publishedAt": "2026-11-21T21:27:42Z",
       "asset": {
-        "name": "Stealth-Browser-Console-Setup-9.2.529.exe",
-        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.529/Stealth-Browser-Console-Setup-9.2.529.exe",
-        "size": 131657283,
-        "sha256": "df1d61c8f92f84421715bf1a40cfb2a35e40f10ecfc205446fe3425f45e98895",
-        "sha512": "eBAz2Nah4JxBXL1TKFehtvjXaJHww+DCR939ZJhvbNMPySm0TMht3HHGyV6xP26bc4vg82WpEiOGbzCVJOYCow==",
-        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.529/latest.yml"
+        "name": "Stealth-Browser-Console-Setup-9.2.530.exe",
+        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.530/Stealth-Browser-Console-Setup-9.2.530.exe",
+        "size": 131654720,
+        "sha256": "cb2c45e1db4afe66833f5a0a8149cf7413341f0fe9c300228049961c24862ef6",
+        "sha512": "eGjmI4yAGpUlHyEcA+LpbggC2GkmKzdCMx2dKwXb1k/OZOJEYrrinkfDG64kKAEA0E3UOkuO8c+u6OMWXr85bw==",
+        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.530/latest.yml"
       }
     }
   },
@@ -221,6 +221,6 @@
   },
   "versions": {
     "current": "9.2.530",
-    "latestPublished": "9.2.529"
+    "latestPublished": "9.2.530"
   }
 }
