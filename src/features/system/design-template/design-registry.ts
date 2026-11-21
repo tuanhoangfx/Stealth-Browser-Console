@@ -1,8 +1,24 @@
+export type ActiveDesignFeature = {
+  id: string;
+  title: string;
+  subtitle: string;
+  project: string;
+};
+
+export const ACTIVE_DESIGN_FEATURES: ActiveDesignFeature[] = [
+  {
+    id: "mobile-farm-5devices",
+    title: "Mobile Farm · 5-Device Unified Console",
+    subtitle: "All 5 live physical screens (3 Android + 2 iOS) + SSOT Fleet Telemetry",
+    project: "P0003-Stealth-Browser-Console",
+  },
+];
+
 /**
  * Active design reviews in System → Design.
  * Design nav/route mounts only while this count is > 0 (SSOT design-preview-5).
  */
-export const ACTIVE_DESIGN_COUNT = 0;
+export const ACTIVE_DESIGN_COUNT = ACTIVE_DESIGN_FEATURES.length;
 
 /** Locked 2026-11-10 — Run History Design H1 (V1) Audit Trail & Session Summary (Before → After + Duration). */
 export const RUN_HISTORY_DESIGN_LOCK = "V1" as const;

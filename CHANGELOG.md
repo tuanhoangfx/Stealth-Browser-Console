@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Move Farm ticker to header, fix Android 53-profile load and P0003 backend guards (ship)
+
+- Version: `9.2.526`
+- Timestamp: 2026-11-22 03:15 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto patch bump for Deploy (P0003): WIP after published v9.2.525.
+
+### Verification
+
+- pending
+
+---
 ## 2026-11-22 - Move Farm ticker to header, fix Android 53-profile load and P0003 backend guards
 
 - Version: `9.2.525`

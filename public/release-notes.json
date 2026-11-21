@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-21T20:03:38.672Z",
+  "generatedAt": "2026-11-21T20:15:13.700Z",
   "entries": [
+    {
+      "version": "9.2.526",
+      "date": "2026-11-21",
+      "at": "2026-11-21T20:15:13.700Z",
+      "title": "chore: release v9.2.526",
+      "bullets": [
+        "Maintenance and polish since the last documented release."
+      ],
+      "kind": "improve",
+      "userTitle": "Release v9.2.526",
+      "userSummary": "",
+      "userHighlights": [
+        "Maintenance and polish since the last documented release."
+      ]
+    },
     {
       "version": "9.2.525",
       "date": "2026-11-22",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "9.2.513",
-      "date": "2026-11-21",
-      "at": "2026-11-21T05:34:00+07:00",
-      "title": "Prevent Facebook c_user cross-profile browser hijacking",
-      "bullets": [
-        "Require unassigned browser (!curBrowser / same-profile match) in stealth-multiplatform-sync Facebook c_user lookup and needsBrowserAssignmentUpdate to stop ping-pong profile flips."
-      ],
-      "kind": "improve",
-      "userTitle": "Prevent Facebook c user cross-profile browser hijacking",
-      "userSummary": "",
-      "userHighlights": [
-        "Require unassigned browser in stealth-multiplatform-sync Facebook c user lookup and needs Browser…"
       ]
     }
   ]

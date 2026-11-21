@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Glass } from "../../../theme/p0008";
 import { resolveAndroidPowerBadgeState } from "../../../views/mobile-farm/mobile-farm-stream";
+import { MobileFarm5DevicesDesignPreview } from "./design-preview/mobile-farm-5devices";
 import {
   ACTIVE_DESIGN_COUNT,
+  ACTIVE_DESIGN_FEATURES,
   PROFILE_KPI_TOOLTIP_DESIGN_LOCK,
   RUN_HISTORY_DESIGN_LOCK,
   RUNTIME_CONSOLE_LOG_DESIGN_LOCK,
@@ -127,6 +129,7 @@ export function DesignTemplatePage() {
 
   return (
     <div className="design-template-page flex-1 space-y-4 overflow-y-auto px-3 pb-10 pt-3">
+      {ACTIVE_DESIGN_FEATURES.length > 0 ? <MobileFarm5DevicesDesignPreview /> : null}
       <Glass tone="purple">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
