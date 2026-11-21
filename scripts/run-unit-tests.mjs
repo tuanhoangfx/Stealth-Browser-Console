@@ -18,7 +18,7 @@ runStep("verify-no-implicit-packaged-kill", "node", ["scripts/verify-no-implicit
 runStep("agent-smoke-context", "node", ["--test", "electron/lib/agent-smoke-context.test.cjs"]);
 runStep("catalog-backup-recovery", "node", ["--test", "electron/lib/catalog-backup-recovery.test.cjs"]);
 runStep("catalog-persist-guard", "node", ["--test", "electron/lib/catalog-persist-guard.test.cjs"]);
-runStep("verify-agent-smoke-headless", "node", ["scripts/verify-agent-smoke-headless.mjs", "0003"]);
+runStep("verify-agent-smoke-headless", "node", ["scripts/verify-agent-smoke-headless.mjs", "9990"]);
 runStep("cloakbrowser-packaged-resolve", "node", ["--test", "electron/lib/cloakbrowser-packaged-resolve.test.cjs"]);
 runStep("powershell-exec-asar-resolve", "node", ["--test", "electron/lib/powershell-exec.test.cjs"]);
 runStep("smoke-asar-ps1-resolve", "node", ["scripts/smoke-asar-ps1-resolve.mjs"]);
