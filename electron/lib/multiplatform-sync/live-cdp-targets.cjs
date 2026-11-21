@@ -635,9 +635,14 @@ function resolveGoogleRestrictionInfo(url = "") {
   return null;
 }
 
-function resolveGoogleRestrictionTargetServices(url = "") {
+function resolveGoogleRestrictionTargetServices(url = "", restrictedServiceId = "") {
   const info = resolveGoogleRestrictionInfo(url);
-  return info ? info.services : null;
+  if (info?.services) return info.services;
+  const id = String(restrictedServiceId || "").trim();
+  if (id && GOOGLE_RESTRICTION_ID_MAP[id]) {
+    return GOOGLE_RESTRICTION_ID_MAP[id].services;
+  }
+  return null;
 }
 
 function doesGoogleTargetRestrictionApplyToService(targetState, svcLower = "") {
@@ -673,7 +678,63 @@ function isAuthenticatedGoogleAppUrl(url = "") {
 
 function classifyGoogleLiveCdpTargets(targets = [], { hasGoogleAuthCookies = true } = {}) {
   const list = Array.isArray(targets) ? targets : [];
-  if (list.some((t) => isAuthenticatedGoogleAppUrl(t?.url))) {
+  const hasAuthAppTab = list.some((t) => isAuthenticatedGoogleAppUrl(t?.url));
+  if (hasAuthAppTab) {
+    // Service-scoped restrictions (/restrictions/54 = Gmail only, /restrictions/47 = GCP only, /restrictions/12 = YouTube only)
+    // can coexist with authenticated myaccount.google.com / one.google.com tabs when the restricted service itself failed to open.
+    for (const t of list) {
+      const u = String(t?.url || "");
+      const title = String(t?.title || "");
+      const restrictionInfo = resolveGoogleRestrictionInfo(u);
+      if (!restrictionInfo || restrictionInfo.restrictionId === "overview") continue;
+      if (
+        restrictionInfo.restrictionId === "54" &&
+        list.some((at) => /^https?:\/\/mail\.google\.com\/mail\//i.test(String(at?.url || "")) && isAuthenticatedGoogleAppUrl(at?.url))
+      ) {
+        continue;
+      }
+      if (
+        restrictionInfo.restrictionId === "47" &&
+        list.some((at) => /^https?:\/\/console\.cloud\.google\.com\//i.test(String(at?.url || "")) && isAuthenticatedGoogleAppUrl(at?.url))
+      ) {
+        continue;
+      }
+      if (
+        restrictionInfo.restrictionId === "12" &&
+        list.some((at) => /^https?:\/\/studio\.youtube\.com\//i.test(String(at?.url || "")) && isAuthenticatedGoogleAppUrl(at?.url))
+      ) {
+        continue;
+      }
+      if (
+        /myaccount\.google\.com\/restrictions\/\d+\/appeal|\/speedbump\/disabled\/confirmation|\/disabled\/confirmation/i.test(u) ||
+        (/myaccount\.google\.com\/restrictions\/\d+/i.test(u) && /appeal submitted/i.test(title))
+      ) {
+        return {
+          restricted: true,
+          status: "challenged",
+          rowStatus: "appeal",
+          resultCode: "disabled_appeal_submitted",
+          restrictedServiceId: restrictionInfo.restrictionId,
+          restrictedServices: restrictionInfo.services,
+          restrictedServiceLabel: restrictionInfo.label,
+          evidence: `Google:disabled_appeal_submitted url=${u.slice(0, 120)}`,
+          note: `${restrictionInfo.label} appeal submitted — waiting for review`,
+        };
+      }
+      if (/myaccount\.google\.com\/restrictions\/\d+/i.test(u)) {
+        return {
+          restricted: true,
+          status: "challenged",
+          rowStatus: "disable",
+          resultCode: "account_disabled",
+          restrictedServiceId: restrictionInfo.restrictionId,
+          restrictedServices: restrictionInfo.services,
+          restrictedServiceLabel: restrictionInfo.label,
+          evidence: `Google:account_disabled url=${u.slice(0, 120)}`,
+          note: `${restrictionInfo.label} restriction in live window`,
+        };
+      }
+    }
     return null;
   }
   for (const t of list) {

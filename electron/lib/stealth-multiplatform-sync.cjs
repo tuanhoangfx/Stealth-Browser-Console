@@ -117,6 +117,8 @@ const {
   NON_OVERRIDABLE_RESTRICTED_RESULT_CODES,
   isFacebookRowInCheckpointOrDisabled,
   shouldPreserveChallengedState,
+  normalizeFacebookDobToDdMmYyyy,
+  extractFacebookBirthdayFromAboutText,
   buildP0020RowSnapshotAndPatch,
   mergePreserveNewerForwardingSnapshot,
 } = require("./multiplatform-sync/p0020-snapshot-builder.cjs");
@@ -408,7 +410,9 @@ async function syncProfilePlatformsToP0020IfChanged({
   }
   if (!Array.isArray(rows)) rows = [];
 
-  // Auto-match Facebook UID (`c_user`) logged in on this profile even if its `browser` column in P0020 was empty or assigned elsewhere
+  // Auto-match unassigned (`browser` empty/null) Facebook UID (`c_user`) logged in on this profile.
+  // Never hijack or move a Facebook row that already has a non-empty `browser` assigned to another profile
+  // (prevents ping-pong when 2 profiles hold cookies for the same UID).
   const liveFbCUser = Array.isArray(pairs)
     ? String(
         pairs.find(
@@ -448,7 +452,9 @@ async function syncProfilePlatformsToP0020IfChanged({
         if (Array.isArray(fbRows) && fbRows.length > 0) {
           const existingIds = new Set(rows.map((r) => r.id));
           for (const fr of fbRows) {
-            if (fr && fr.id && !existingIds.has(fr.id)) {
+            if (!fr || !fr.id || existingIds.has(fr.id)) continue;
+            const curBrowser = String(fr.browser || "").trim();
+            if (!curBrowser || curBrowser.padStart(4, "0") === code) {
               rows.push(fr);
               existingIds.add(fr.id);
             }
@@ -546,7 +552,15 @@ async function syncProfilePlatformsToP0020IfChanged({
     );
   const fbLiveTargetState = isLiveWindow ? classifyFacebookLiveCdpTargets(liveCdpTargets) : null;
   let closedHistoryGoogleTargets = null;
-  let gmailRestriction54Lifted = false;
+  let gmailRestriction54Lifted = Boolean(
+    isLiveWindow &&
+      liveCdpTargets.some(
+        (t) =>
+          /^https?:\/\/mail\.google\.com\/mail\//i.test(String(t?.url || "")) &&
+          isAuthenticatedGoogleAppUrl(t?.url),
+      ) &&
+      !liveCdpTargets.some((t) => /myaccount\.google\.com\/restrictions\/54\b/i.test(String(t?.url || ""))),
+  );
   if (!isLiveWindow && userDataDir) {
     const histPath = path.join(userDataDir, "Default", "History");
     if (fs.existsSync(histPath)) {
@@ -556,7 +570,7 @@ async function syncProfilePlatformsToP0020IfChanged({
         const hdb = openGuardSqlite(tmpHist, { readOnly: true, busyTimeoutMs: 2000 });
         const hRows = hdb
           .prepare(
-            "SELECT u.url, u.title, CAST(v.visit_time / 1000000 AS INTEGER) AS visit_sec FROM visits v JOIN urls u ON v.url = u.id WHERE (u.url LIKE '%/signin/challenge/iap%' AND u.url NOT LIKE '%/signin/challenge/iap/verify%') OR u.url LIKE '%/signin/challenge/ipp%' OR u.url LIKE '%/devicephoneverification/%' OR u.url LIKE '%/signin/v2/disabled%' OR u.url LIKE '%/speedbump/disabled/%' OR u.url LIKE '%myaccount.google.com/restrictions/54%' OR u.url LIKE '%myaccount.google.com/restrictions/47%' OR (u.url LIKE 'https://mail.google.com/mail/u/%' AND u.url NOT LIKE '%/ServiceLogin%') OR (u.url LIKE 'https://myaccount.google.com/%' AND u.url NOT LIKE '%/restrictions/%' AND u.url NOT LIKE '%/verification/selfie%') OR u.url LIKE 'https://one.google.com/%' OR u.url LIKE 'https://studio.youtube.com/%' OR u.url LIKE 'https://drive.google.com/%' ORDER BY v.visit_time DESC LIMIT 5",
+            "SELECT u.url, u.title, CAST(v.visit_time / 1000000 AS INTEGER) AS visit_sec FROM visits v JOIN urls u ON v.url = u.id WHERE (u.url LIKE '%/signin/challenge/iap%' AND u.url NOT LIKE '%/signin/challenge/iap/verify%') OR u.url LIKE '%/signin/challenge/ipp%' OR u.url LIKE '%/devicephoneverification/%' OR u.url LIKE '%/signin/v2/disabled%' OR u.url LIKE '%/speedbump/disabled/%' OR u.url LIKE '%myaccount.google.com/restrictions/54%' OR u.url LIKE '%myaccount.google.com/restrictions/47%' OR u.url LIKE 'https://accounts.google.com/ServiceLogin%' OR u.url LIKE 'https://accounts.google.com/AccountChooser%' OR u.url LIKE 'https://accounts.google.com/v3/signin/confirmidentifier%' OR u.url LIKE 'https://accounts.google.com/v3/signin/identifier%' OR u.url LIKE 'https://accounts.google.com/v3/signin/challenge/pwd%' OR u.url LIKE 'https://accounts.google.com/v3/signin/challenge/ipe/%' OR u.url LIKE 'https://accounts.google.com/v3/signin/challenge/kpe/%' OR u.url LIKE 'https://accounts.google.com/v3/signin/challenge/ootp/%' OR u.url LIKE 'https://accounts.google.com/v3/signin/speedbump/endsession%' OR u.url LIKE 'https://accounts.google.com/signin/rejected%' OR (u.url LIKE 'https://mail.google.com/mail/u/%' AND u.url NOT LIKE '%/ServiceLogin%') OR (u.url LIKE 'https://myaccount.google.com/%' AND u.url NOT LIKE '%/restrictions/%' AND u.url NOT LIKE '%/verification/selfie%') OR u.url LIKE 'https://one.google.com/%' OR u.url LIKE 'https://studio.youtube.com/%' OR u.url LIKE 'https://drive.google.com/%' ORDER BY v.visit_time DESC LIMIT 5",
           )
           .all();
         hdb.close();
@@ -565,12 +579,28 @@ async function syncProfilePlatformsToP0020IfChanged({
           const topUrl = String(topVisit?.url || "");
           const webkitNowSec = Math.floor(Date.now() / 1000) + 11644473600;
           const ageSec = webkitNowSec - Number(topVisit?.visit_sec || 0);
-          if (
+          const isRestrictionOrHardBlock =
             /\/signin\/challenge\/(?:iap(?!\/verify)|ipp)\b|\/devicephoneverification\/|\/signin\/v2\/disabled\b|\/speedbump\/disabled\/|myaccount\.google\.com\/restrictions\/(?:54|47)\b/i.test(
               topUrl,
+            ) && ageSec < 14 * 86400;
+          const decodedTopUrl = (() => {
+            try {
+              return decodeURIComponent(topUrl);
+            } catch {
+              return topUrl;
+            }
+          })();
+          const isOauthOrStepUp =
+            /[?&](?:client_id|redirect_uri|rapt)=|\/o\/oauth2\//i.test(topUrl) ||
+            (/[?&]continue=https?:\/\/myaccount\.google\.com\//i.test(decodedTopUrl) &&
+              !/myaccount\.google\.com\/(?:restrictions\/\d+|verification\/selfie)/i.test(decodedTopUrl));
+          const isRecentSignedOutOrChallenge =
+            !isOauthOrStepUp &&
+            /^https?:\/\/accounts\.google\.com\/(?:ServiceLogin|AccountChooser|signin\/rejected|v3\/signin\/(?:confirmidentifier|identifier|challenge\/(?:pwd|ipe|kpe|ootp)|speedbump\/endsession))/i.test(
+              topUrl,
             ) &&
-            ageSec < 14 * 86400
-          ) {
+            ageSec < 24 * 3600;
+          if (isRestrictionOrHardBlock || isRecentSignedOutOrChallenge) {
             closedHistoryGoogleTargets = [{ url: topUrl, title: String(topVisit?.title || "") }];
           }
         }
@@ -584,17 +614,27 @@ async function syncProfilePlatformsToP0020IfChanged({
         }
       }
     }
+    const hasGmailAppealOrDisableRow = rows.some(
+      (r) =>
+        /^(gmail|google mail|googlemail|gmail edu)$/i.test(String(r?.service || "").trim()) &&
+        ["appeal", "disable"].includes(String(r?.status || "").trim().toLowerCase()),
+    );
     if (
-      closedHistoryGoogleTargets &&
       liveHasGoogleAuth &&
-      /myaccount\.google\.com\/restrictions\/54\b/i.test(String(closedHistoryGoogleTargets[0]?.url || ""))
+      ((closedHistoryGoogleTargets &&
+        /myaccount\.google\.com\/restrictions\/54\b/i.test(String(closedHistoryGoogleTargets[0]?.url || ""))) ||
+        hasGmailAppealOrDisableRow)
     ) {
       try {
         const seenAccCookies = new Map();
+        const seenMailCookies = new Map();
         for (const c of Array.isArray(pairs) ? pairs : []) {
           const dom = String(c?.domain || c?.host_key || "").replace(/^\./, "").toLowerCase();
           if (dom && ("accounts.google.com" === dom || "accounts.google.com".endsWith("." + dom))) {
             seenAccCookies.set(c.name, `${c.name}=${c.value}`);
+          }
+          if (dom && ("mail.google.com" === dom || "mail.google.com".endsWith("." + dom))) {
+            seenMailCookies.set(c.name, `${c.name}=${c.value}`);
           }
         }
         const slRes = await fetch(
@@ -613,6 +653,29 @@ async function syncProfilePlatformsToP0020IfChanged({
         if (/^https:\/\/mail\.google\.com\/(?:accounts\/SetOSID|mail\/u\/)/i.test(slLoc)) {
           closedHistoryGoogleTargets = null;
           gmailRestriction54Lifted = true;
+        } else if (seenMailCookies.size > 0) {
+          const mailRes = await fetch("https://mail.google.com/mail/u/0/", {
+            headers: {
+              Cookie: Array.from(seenMailCookies.values()).join("; "),
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            },
+            redirect: "manual",
+            signal: AbortSignal.timeout(3500),
+          });
+          const mailLoc = String(mailRes.headers.get("location") || "");
+          if (mailRes.status === 200) {
+            closedHistoryGoogleTargets = null;
+            gmailRestriction54Lifted = true;
+          } else if (/servicerestricted|myaccount\.google\.com\/restrictions\/54/i.test(mailLoc)) {
+            gmailRestriction54Lifted = false;
+            closedHistoryGoogleTargets = [
+              {
+                url: "https://myaccount.google.com/restrictions/54?continue=https://mail.google.com/mail/u/0/#inbox",
+                title: "Review service restriction",
+              },
+            ];
+          }
         }
       } catch {
         /* ignore network probe timeout */
@@ -829,6 +892,15 @@ async function syncProfilePlatformsToP0020IfChanged({
         // never inject vault cookies into closed Default/Network/Cookies during status probing.
       }
     }
+  }
+  if (
+    !hasVerifiedGoogleLiveTab &&
+    googleLiveTargetState?.restricted &&
+    ["google_one_logged_out", "mail_challenge", "account_locked_rejected", "selfie_verification_required"].includes(
+      String(googleLiveTargetState.resultCode || ""),
+    )
+  ) {
+    hasVerifiedGoogleAuth = false;
   }
   if (
     isLiveWindow &&
@@ -1149,9 +1221,29 @@ async function syncProfilePlatformsToP0020IfChanged({
     const rowResCodeLower = String(row?.stealth_snapshot?.result_code || "").trim().toLowerCase();
     const rowRestrictionServices = resolveGoogleRestrictionTargetServices(
       String(row?.stealth_snapshot?.evidence || ""),
+      String(row?.stealth_snapshot?.restricted_service_id || ""),
     );
+    const hasScopedSiblingRestrictionNotForThisService =
+      !rowRestrictionServices &&
+      isGoogleFamilyService(svcLower) &&
+      !/^(gmail|google mail|googlemail|gmail edu)$/i.test(svcLower) &&
+      rows.some((other) => {
+        if (!other || other.id === row.id) return false;
+        if (!/^(gmail|google mail|googlemail|gmail edu)$/i.test(String(other.service || "").trim())) return false;
+        if (normalizeComparableEmail(other.account) !== normalizeComparableEmail(row.account)) return false;
+        const otherSvcs = resolveGoogleRestrictionTargetServices(
+          String(other?.stealth_snapshot?.evidence || ""),
+          String(other?.stealth_snapshot?.restricted_service_id || ""),
+        );
+        return Array.isArray(otherSvcs) && !otherSvcs.includes(svcLower);
+      });
     const rowRestrictionAppliesToService =
-      !(gmailRestriction54Lifted && /restrictions\/54\b/i.test(String(row?.stealth_snapshot?.evidence || ""))) &&
+      !hasScopedSiblingRestrictionNotForThisService &&
+      !(
+        gmailRestriction54Lifted &&
+        (/restrictions\/54\b/i.test(String(row?.stealth_snapshot?.evidence || "")) ||
+          String(row?.stealth_snapshot?.restricted_service_id || "") === "54")
+      ) &&
       doesGoogleTargetRestrictionApplyToService(
         rowRestrictionServices ? { restrictedServices: rowRestrictionServices } : null,
         svcLower,
@@ -1165,7 +1257,10 @@ async function syncProfilePlatformsToP0020IfChanged({
       (rowStatusLower === "appeal" &&
         (svcLower === "claude" ||
           svcLower === "facebook" ||
-          (isGoogleFamilyService(svcLower) && rowRestrictionAppliesToService && !hasVerifiedGoogleLiveTab))) ||
+          (isGoogleFamilyService(svcLower) &&
+            rowRestrictionAppliesToService &&
+            !hasVerifiedGoogleLiveTab &&
+            !gmailRestriction54Lifted))) ||
       (NON_OVERRIDABLE_RESTRICTED_RESULT_CODES.has(rowResCodeLower) &&
         !(isGoogleFamilyService(svcLower) && hasVerifiedGoogleAuth) &&
         !(isMicrosoftFamilyService(svcLower) && hasVerifiedMicrosoftAuth)) ||
@@ -1250,6 +1345,7 @@ async function syncProfilePlatformsToP0020IfChanged({
         hasVerifiedGoogleLiveTab,
         hasVerifiedGoogleAuth,
         gmailRestriction54Lifted,
+        siblingRestrictionDoesNotApply: hasScopedSiblingRestrictionNotForThisService,
         hasVerifiedMicrosoftLiveTab,
         hasVerifiedMicrosoftAuth,
         hasVerifiedFacebookAuth,
@@ -1315,18 +1411,16 @@ async function syncProfilePlatformsToP0020IfChanged({
     const curRowBrowser = String(row.browser || "").trim();
     const needsBrowserAssignmentUpdate =
       match.loggedIn &&
-      ((svcLower === "facebook" &&
-        hasVerifiedFacebookAuth &&
-        curRowBrowser.padStart(4, "0") !== code) ||
-        (!curRowBrowser &&
-          ((isGoogleFamilyService(svcLower) && hasVerifiedGoogleAuth) ||
-            (isMicrosoftFamilyService(svcLower) && hasVerifiedMicrosoftAuth) ||
-            (svcLower === "tiktok" && hasVerifiedTikTokAuth) ||
-            (isTwitterFamilyService(svcLower) && hasVerifiedTwitterAuth) ||
-            (svcLower === "instagram" && hasVerifiedInstagramAuth) ||
-            (Boolean(aiUidSpec) &&
-              Boolean(verifiedAiServerUid) &&
-              verifiedAiServerUid !== "nextauth_jwe_verified"))));
+      !curRowBrowser &&
+      ((svcLower === "facebook" && hasVerifiedFacebookAuth) ||
+        (isGoogleFamilyService(svcLower) && hasVerifiedGoogleAuth) ||
+        (isMicrosoftFamilyService(svcLower) && hasVerifiedMicrosoftAuth) ||
+        (svcLower === "tiktok" && hasVerifiedTikTokAuth) ||
+        (isTwitterFamilyService(svcLower) && hasVerifiedTwitterAuth) ||
+        (svcLower === "instagram" && hasVerifiedInstagramAuth) ||
+        (Boolean(aiUidSpec) &&
+          Boolean(verifiedAiServerUid) &&
+          verifiedAiServerUid !== "nextauth_jwe_verified"));
     const needsRowStatusPromotion =
       match.loggedIn &&
       !fbForcedOverride &&
@@ -1441,6 +1535,7 @@ async function syncProfilePlatformsToP0020IfChanged({
       verifiedCapcutConnectsCount,
       cachedGoogleHttpVerify,
       cachedMicrosoftHttpVerify,
+      hasVerifiedGoogleLiveTab,
       hasVerifiedFacebookAuth,
       hasVerifiedTikTokAuth,
       cachedTikTokHttpVerify,
@@ -1676,6 +1771,8 @@ module.exports = {
   appendStealthSessionLogToP0020Row,
   shouldPreserveChallengedState,
   isFacebookRowInCheckpointOrDisabled,
+  normalizeFacebookDobToDdMmYyyy,
+  extractFacebookBirthdayFromAboutText,
   healStaleRunningP0020Rows,
   healStaleChallengedAndErrorP0020Rows,
   startStaleRunningP0020Healer,

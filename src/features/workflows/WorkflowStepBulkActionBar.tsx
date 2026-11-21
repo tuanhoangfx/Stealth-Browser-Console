@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp, Check, Redo2, Save, Trash2, Undo2 } from "lucide-react";
+import { Check, Save, Trash2 } from "lucide-react";
 
 export type WorkflowStepBulkActionBarProps = {
   savePulse: boolean;
@@ -49,7 +49,7 @@ export function WorkflowStepBulkActionBar({
         title="Undo"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
       >
-        <Undo2 size={14} aria-hidden />
+        <span className="inline-flex text-[13px] leading-none" aria-hidden>↩️</span>
         Undo
       </button>
       <button
@@ -59,7 +59,7 @@ export function WorkflowStepBulkActionBar({
         title="Redo"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
       >
-        <Redo2 size={14} aria-hidden />
+        <span className="inline-flex text-[13px] leading-none" aria-hidden>↪️</span>
         Redo
       </button>
       <button
@@ -69,7 +69,7 @@ export function WorkflowStepBulkActionBar({
         title="Move up"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
       >
-        <ArrowUp size={14} aria-hidden />
+        <span className="inline-flex text-[13px] leading-none" aria-hidden>⬆️</span>
         Up
       </button>
       <button
@@ -79,7 +79,7 @@ export function WorkflowStepBulkActionBar({
         title="Move down"
         className="hub-bulk-action-btn hub-bulk-action-btn--neutral"
       >
-        <ArrowDown size={14} aria-hidden />
+        <span className="inline-flex text-[13px] leading-none" aria-hidden>⬇️</span>
         Down
       </button>
       <button

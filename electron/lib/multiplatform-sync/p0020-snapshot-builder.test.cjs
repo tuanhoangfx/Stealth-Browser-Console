@@ -7,7 +7,12 @@ const path = require("node:path");
 const {
   buildP0020RowSnapshotAndPatch,
   mergePreserveNewerForwardingSnapshot,
+  normalizeFacebookDobToDdMmYyyy,
+  extractFacebookBirthdayFromAboutText,
 } = require("./p0020-snapshot-builder.cjs");
+const {
+  canPropagatePasswordBetweenServices,
+} = require("./service-cookie-matchers.cjs");
 
 test("flags password_reverify_needed when cookie promotes incorrect_info without fresh password verification", () => {
   const { nextSnap, patchBody } = buildP0020RowSnapshotAndPatch({
@@ -203,4 +208,171 @@ test("mergePreserveNewerForwardingSnapshot preserves google_recovery_email_verif
   assert.equal(merged.imap_app_password, "abcdefghijklmnop");
   assert.equal(merged.previous_password_backup, "oldPass@1");
   assert.equal(merged.source, "p0003_window_close_sync:gmail");
+});
+
+test("canPropagatePasswordBetweenServices keeps Google SSO (including Google Flow and Gmail Edu) isolated from Facebook, Muse, and ChatGPT", () => {
+  assert.equal(canPropagatePasswordBetweenServices("Gmail", "Google One"), true);
+  assert.equal(canPropagatePasswordBetweenServices("Gmail", "Google Flow"), true);
+  assert.equal(canPropagatePasswordBetweenServices("Gmail", "Gmail Edu"), true);
+  assert.equal(canPropagatePasswordBetweenServices("Gmail", "YouTube"), true);
+  assert.equal(canPropagatePasswordBetweenServices("Facebook", "Gmail"), false);
+  assert.equal(canPropagatePasswordBetweenServices("Muse", "Gmail"), false);
+  assert.equal(canPropagatePasswordBetweenServices("Gmail", "Facebook"), false);
+  assert.equal(canPropagatePasswordBetweenServices("ChatGPT", "Gmail"), false);
+});
+
+test("Facebook c_user auto-match never hijacks a row already assigned to another profile", () => {
+  const syncSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "stealth-multiplatform-sync.cjs"),
+    "utf8",
+  );
+  const uidLookupIdx = syncSrc.indexOf("const fbUidUrl =");
+  assert.notEqual(uidLookupIdx, -1, "missing Facebook c_user lookup in stealth-multiplatform-sync.cjs");
+  const uidLookupSlice = syncSrc.slice(uidLookupIdx, uidLookupIdx + 900);
+  assert.match(
+    uidLookupSlice,
+    /if\s*\(\s*!curBrowser\s*\|\|\s*curBrowser\.padStart\(4,\s*"0"\)\s*===\s*code\s*\)/,
+    "Facebook c_user lookup must skip rows already assigned to a different browser profile",
+  );
+
+  const assignIdx = syncSrc.indexOf("const needsBrowserAssignmentUpdate =");
+  assert.notEqual(assignIdx, -1, "missing needsBrowserAssignmentUpdate in stealth-multiplatform-sync.cjs");
+  const assignSlice = syncSrc.slice(assignIdx, assignIdx + 650);
+  assert.match(
+    assignSlice,
+    /match\.loggedIn\s*&&\s*!curRowBrowser\s*&&/,
+    "needsBrowserAssignmentUpdate must require !curRowBrowser across all services including Facebook",
+  );
+});
+
+test("normalizeFacebookDobToDdMmYyyy converts unambiguous dates and preserves ambiguous D/M vs M/D dates", () => {
+  assert.equal(normalizeFacebookDobToDdMmYyyy("1998-09-18"), "18/09/1998");
+  assert.equal(normalizeFacebookDobToDdMmYyyy("1/25/01"), "25/01/2001");
+  assert.equal(normalizeFacebookDobToDdMmYyyy("25/1/1995"), "25/01/1995");
+  assert.equal(normalizeFacebookDobToDdMmYyyy("5.5.1993"), "05/05/1993");
+  assert.equal(normalizeFacebookDobToDdMmYyyy("17/11/1995"), "17/11/1995");
+  // Ambiguous short date must remain untouched rather than guessing DD/MM vs MM/DD
+  assert.equal(normalizeFacebookDobToDdMmYyyy("1/11/92"), "1/11/92");
+  // Reject impossible calendar day (Feb 30)
+  assert.equal(normalizeFacebookDobToDdMmYyyy("1995-02-30"), "1995-02-30");
+
+  const { patchBody } = buildP0020RowSnapshotAndPatch({
+    row: {
+      id: "row-fb-dob",
+      account: "1001276236",
+      status: "active",
+      fb_dob: "1995-11-17",
+      stealth_cookies: [],
+    },
+    svc: "Facebook",
+    svcLower: "facebook",
+    code: "0003",
+    profileId: "prof-3",
+    source: "p0003_live_nav",
+    nowIso: "2026-11-21T06:00:00.000Z",
+    match: { loggedIn: true, resultCode: "facebook_cookies", matchedNames: ["c_user", "xs"] },
+    curSnap: { status: "logged_in", account: "1001276236" },
+    targetStatus: "logged_in",
+    rowStatusLower: "active",
+    pairs: [],
+    vaultEntryCookies: [],
+    needsRowStatusPromotion: false,
+    hasStaleChallengeNoteWhenLoggedIn: false,
+    existingRowNote: "",
+    hasFreshDecryptedPairs: false,
+    needsBrowserAssignmentUpdate: false,
+  });
+  assert.equal(patchBody.fb_dob, "17/11/1995");
+});
+
+test("extractFacebookBirthdayFromAboutText parses VI and EN Facebook /me/about_contact_and_basic_info birthday blocks", () => {
+  assert.equal(
+    extractFacebookBirthdayFromAboutText("Thông tin cơ bản\n7 tháng 11\nNgày sinh\n1995\nNăm sinh"),
+    "07/11/1995",
+  );
+  assert.equal(
+    extractFacebookBirthdayFromAboutText("Basic info\nAugust 6, 1991\nBirthday\nMale"),
+    "06/08/1991",
+  );
+  assert.equal(
+    extractFacebookBirthdayFromAboutText("Basic info\n8 June\nBirthday\n1991\nBirth year"),
+    "08/06/1991",
+  );
+  assert.equal(extractFacebookBirthdayFromAboutText("Basic info\nNovember 7\nBirthday\nFemale"), "");
+});
+
+test("buildP0020RowSnapshotAndPatch clears stale mail_checking = ❌ Skipped on active Gmail & non-Mail rows", () => {
+  const { patchBody: activeMailPatch } = buildP0020RowSnapshotAndPatch({
+    svc: "Gmail",
+    svcLower: "gmail",
+    match: {
+      loggedIn: true,
+      resultCode: "inbox_ok",
+      matchedNames: ["SID", "HSID"],
+      accountEmail: "th.moonlight143@gmail.com",
+      note: "Verified Gmail inbox",
+      evidence: "mail.google.com inbox active on #0030",
+    },
+    row: {
+      id: "row-gmail-0030",
+      service: "Gmail",
+      account: "th.moonlight143@gmail.com",
+      status: "active",
+      mail_checking: "❌ Skipped",
+      stealth_snapshot: { status: "logged_in", result_code: "inbox_ok" },
+      stealth_cookies: [],
+    },
+    curSnap: { status: "logged_in", result_code: "inbox_ok" },
+    targetStatus: "logged_in",
+    rowStatusLower: "active",
+    pairs: [],
+    vaultEntryCookies: [],
+    code: "0030",
+    profileId: "prof-0030",
+    source: "p0003_live_nav:gmail",
+    nowIso: "2026-11-21T11:50:00.000Z",
+    needsRowStatusPromotion: false,
+    hasStaleChallengeNoteWhenLoggedIn: false,
+    existingRowNote: "",
+    hasFreshDecryptedPairs: false,
+    needsBrowserAssignmentUpdate: false,
+  });
+  assert.equal(activeMailPatch.mail_checking, "✅ Checked");
+
+  const { patchBody: servicePatch } = buildP0020RowSnapshotAndPatch({
+    svc: "Google One",
+    svcLower: "google one",
+    match: {
+      loggedIn: true,
+      resultCode: "google_cookies",
+      matchedNames: ["SID", "HSID"],
+      accountEmail: "th.moonlight143@gmail.com",
+      note: "Logged in Google One",
+      evidence: "one.google.com active",
+    },
+    row: {
+      id: "row-g1-0030",
+      service: "Google One",
+      account: "th.moonlight143@gmail.com",
+      status: "active",
+      mail_checking: "❌ Skipped",
+      stealth_snapshot: { status: "logged_in" },
+      stealth_cookies: [],
+    },
+    curSnap: { status: "logged_in" },
+    targetStatus: "logged_in",
+    rowStatusLower: "active",
+    pairs: [],
+    vaultEntryCookies: [],
+    code: "0030",
+    profileId: "prof-0030",
+    source: "p0003_live_nav:google",
+    nowIso: "2026-11-21T11:50:00.000Z",
+    needsRowStatusPromotion: false,
+    hasStaleChallengeNoteWhenLoggedIn: false,
+    existingRowNote: "",
+    hasFreshDecryptedPairs: false,
+    needsBrowserAssignmentUpdate: false,
+  });
+  assert.equal(servicePatch.mail_checking, null);
 });

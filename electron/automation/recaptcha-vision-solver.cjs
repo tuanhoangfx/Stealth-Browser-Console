@@ -137,6 +137,19 @@ function mapRecaptchaPromptToCapsolverCode(rawPrompt = "") {
 }
 
 /**
+ * Builds a properly typed data URL for 9Router vision messages based on base64 magic bytes.
+ */
+function buildVisionImageDataUrl(base64Data = "") {
+  const raw = String(base64Data || "").trim();
+  const mime = raw.startsWith("/9j/")
+    ? "image/jpeg"
+    : raw.startsWith("UklGR")
+      ? "image/webp"
+      : "image/png";
+  return `data:${mime};base64,${raw}`;
+}
+
+/**
  * Calls CapSolver `ReCaptchaV2Classification` first, then falls back to 9Router Vision API to identify matching reCAPTCHA grid tiles.
  */
 async function askVisionForRecaptchaTiles(
@@ -267,7 +280,7 @@ async function askVisionForRecaptchaTiles(
                 { type: "text", text: systemPrompt },
                 {
                   type: "image_url",
-                  image_url: { url: `data:image/png;base64,${base64Png}` },
+                  image_url: { url: buildVisionImageDataUrl(base64Png) },
                 },
               ],
             },
@@ -617,10 +630,19 @@ async function solveGoogleRecaptchaViaCdp(
           });
         })()`,
       ).catch(() => {});
-      const s = await cdpSend("Page.captureScreenshot", {
-        format: "png",
+      let s = await cdpSend("Page.captureScreenshot", {
+        format: "jpeg",
+        quality: 82,
         clip: gridClip,
       }).catch(() => null);
+      if (s?.data && s.data.length > 450_000) {
+        const smaller = await cdpSend("Page.captureScreenshot", {
+          format: "jpeg",
+          quality: 55,
+          clip: gridClip,
+        }).catch(() => null);
+        if (smaller?.data && smaller.data.length < s.data.length) s = smaller;
+      }
       await evalInFrameViaIsolatedWorld(
         cdpSend,
         curBframe.id,
@@ -886,6 +908,16 @@ async function solveGoogleRecaptchaOnPlaywrightPage(page, options = {}) {
         if (await isBframeIframeVisibleOnPage()) return false;
         let clicked = false;
         for (const af of [...curAnchorList].reverse()) {
+          const anchorLoc = af.locator("#recaptcha-anchor, .recaptcha-checkbox-border").first();
+          if (await clickFrameLocatorViaMouseBox(anchorLoc)) {
+            clicked = true;
+            break;
+          }
+          const directLocOk = await anchorLoc.click({ timeout: 2000 }).then(() => true).catch(() => false);
+          if (directLocOk) {
+            clicked = true;
+            break;
+          }
           const ok = await af
             .evaluate(() => {
               const el = document.querySelector("#recaptcha-anchor");
@@ -904,7 +936,7 @@ async function solveGoogleRecaptchaOnPlaywrightPage(page, options = {}) {
         if (!clicked) {
           await curAnchor.evaluate(() => document.querySelector("#recaptcha-anchor")?.click()).catch(() => {});
         }
-        onLog?.("info", "Clicked reCAPTCHA anchor checkbox via Playwright frame");
+        onLog?.("info", "Clicked reCAPTCHA anchor checkbox via Playwright trusted mouse");
         for (let w = 0; w < 6; w += 1) {
           await sleep(700);
           if ((await isAnyAnchorChecked()) || (await isBframeIframeVisibleOnPage())) break;
@@ -997,11 +1029,30 @@ async function solveGoogleRecaptchaOnPlaywrightPage(page, options = {}) {
             `[reCAPTCHA R${round}] empty tiles (streak=${emptyTileStreak + 1}): bframeVis=${bframeVis} body=${JSON.stringify(bfInfo?.bodyTxt || "")}`,
           );
           if (!bframeVis && round > 1) {
-            await clickMainNextIfNeeded();
-            const afterNextUrl = typeof page.url === "function" ? page.url() : "";
-            if (afterNextUrl && !/challenge\/recaptcha|recaptcha\/(?:api2|enterprise)/i.test(afterNextUrl)) {
-              onLog?.("success", `reCAPTCHA advanced past /challenge/recaptcha after bframe closed on round ${round}`);
-              return { ok: true, solved: true, rounds: round - 1, reason: "bframe_closed_advanced" };
+            await sleep(1100);
+            if (await isAnyAnchorChecked()) {
+              onLog?.("success", `reCAPTCHA solved (aria-checked=true) after bframe closed at round ${round}`);
+              await clickMainNextIfNeeded();
+              return { ok: true, solved: true, rounds: round - 1, reason: "bframe_closed_checked" };
+            }
+            const hasVisibleAnchor = await getFrames().anchorFrames.reduce(async (accP, af) => {
+              if (await accP) return true;
+              return af
+                .evaluate(() => {
+                  const el = document.querySelector("#recaptcha-anchor");
+                  if (!el) return false;
+                  const r = el.getBoundingClientRect();
+                  return r.width > 0 && r.height > 0;
+                })
+                .catch(() => false);
+            }, Promise.resolve(false));
+            if (!hasVisibleAnchor) {
+              await clickMainNextIfNeeded();
+              const afterNextUrl = typeof page.url === "function" ? page.url() : "";
+              if (afterNextUrl && !/challenge\/recaptcha|recaptcha\/(?:api2|enterprise)/i.test(afterNextUrl)) {
+                onLog?.("success", `reCAPTCHA advanced past /challenge/recaptcha after bframe closed on round ${round}`);
+                return { ok: true, solved: true, rounds: round - 1, reason: "bframe_closed_advanced" };
+              }
             }
           }
           emptyTileStreak += 1;
@@ -1047,7 +1098,11 @@ async function solveGoogleRecaptchaOnPlaywrightPage(page, options = {}) {
               });
             })
             .catch(() => {});
-          const buf = await targetLoc.screenshot({ type: "png", timeout: 4000 }).catch(() => null);
+          let buf = await targetLoc.screenshot({ type: "jpeg", quality: 82, timeout: 4000 }).catch(() => null);
+          if (buf && buf.length > 350_000) {
+            const smaller = await targetLoc.screenshot({ type: "jpeg", quality: 55, timeout: 4000 }).catch(() => null);
+            if (smaller && smaller.length < buf.length) buf = smaller;
+          }
           await bframe
             .evaluate(() => {
               document.querySelectorAll(".__rc_num_badge").forEach((el) => el.remove());
@@ -1080,15 +1135,15 @@ async function solveGoogleRecaptchaOnPlaywrightPage(page, options = {}) {
         }
 
         const clickTileTrusted = async (idx0) => {
-          await bframe
-            .evaluate((i) => {
-              const tiles = Array.from(document.querySelectorAll('.rc-imageselect-tile, td[role="button"]'));
-              const el = tiles[i];
-              if (!el || el.classList.contains("rc-imageselect-tileselected")) return false;
-              el.click();
-              return true;
-            }, idx0)
-            .catch(() => {});
+          const tileLoc = bframe.locator('.rc-imageselect-tile, td[role="button"]').nth(idx0);
+          const shouldClick = await tileLoc
+            .evaluate((el) => Boolean(el && !el.classList.contains("rc-imageselect-tileselected")))
+            .catch(() => false);
+          if (!shouldClick) return;
+          if (await clickFrameLocatorViaMouseBox(tileLoc)) return;
+          const locOk = await tileLoc.click({ timeout: 2000 }).then(() => true).catch(() => false);
+          if (locOk) return;
+          await tileLoc.evaluate((el) => el?.click()).catch(() => {});
         };
 
         if (Array.isArray(vision.tiles) && vision.tiles.length > 0) {
@@ -1127,12 +1182,19 @@ async function solveGoogleRecaptchaOnPlaywrightPage(page, options = {}) {
           }
         }
 
-        await bframe
-          .evaluate(() => {
-            const btn = document.querySelector("#recaptcha-verify-button");
-            if (btn) btn.click();
-          })
-          .catch(() => {});
+        const verifyLoc = bframe.locator("#recaptcha-verify-button").first();
+        const verifyMouseOk = await clickFrameLocatorViaMouseBox(verifyLoc);
+        if (!verifyMouseOk) {
+          const verifyClickOk = await verifyLoc.click({ timeout: 2000 }).then(() => true).catch(() => false);
+          if (!verifyClickOk) {
+            await bframe
+              .evaluate(() => {
+                const btn = document.querySelector("#recaptcha-verify-button");
+                if (btn) btn.click();
+              })
+              .catch(() => {});
+          }
+        }
         await sleep(2400);
 
         if (await isAnyAnchorChecked()) {
@@ -1879,7 +1941,7 @@ async function askVisionForArkoseOrTextCaptcha(
             { type: "text", text: instruction },
             {
               type: "image_url",
-              image_url: { url: `data:image/png;base64,${base64Png}` },
+              image_url: { url: buildVisionImageDataUrl(base64Png) },
             },
           ],
         },
@@ -2167,18 +2229,37 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
     account = "",
     contactEmail = "a1infi@outlook.com",
     onLog = null,
+    simHelpers: customSimHelpers = null,
+    onRefreshCdpSend = null,
+    pollMaxAttempts = 15,
+    pollIntervalMs = 4000,
+    stepDelayMs = 2200,
   } = {},
 ) {
-  let simHelpers = null;
-  try {
-    simHelpers = await import("../../../P0002-Social-Hub/server/stealth-cdp-client.mjs");
-  } catch (err) {
-    return { ok: false, solved: false, reason: `sim_helper_import_failed:${err?.message || err}` };
+  let activeCdpSend = cdpSend;
+  const runEval = async (expression) => {
+    const first = await evalInMainPage(activeCdpSend, expression);
+    if (first !== null || typeof onRefreshCdpSend !== "function") return first;
+    const refreshed = await onRefreshCdpSend().catch(() => null);
+    if (typeof refreshed === "function") {
+      activeCdpSend = refreshed;
+      return evalInMainPage(activeCdpSend, expression);
+    }
+    return first;
+  };
+  const pause = (ms) => sleep(stepDelayMs === 0 ? 0 : ms);
+
+  let simHelpers = customSimHelpers;
+  if (!simHelpers) {
+    try {
+      simHelpers = await import("../../../P0002-Social-Hub/server/stealth-cdp-client.mjs");
+    } catch (err) {
+      return { ok: false, solved: false, reason: `sim_helper_import_failed:${err?.message || err}` };
+    }
   }
 
   // Step 1: If on /restrictions/<id> overview, click Submit appeal / Start appeal
-  const startPt = await evalInMainPage(
-    cdpSend,
+  const startPt = await runEval(
     `(() => {
       for (const el of document.querySelectorAll("a[href*='/appeal'], button, [role='button'], [role='link']")) {
         const txt = (el.innerText || "").replace(/\\s+/g, " ").trim();
@@ -2195,33 +2276,36 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
   );
   if (startPt?.x > 0) {
     onLog?.("info", `[AppealSMS #${code}] Clicking '${startPt.text}' on restriction overview`);
-    await cdpClickPoint(cdpSend, startPt.x, startPt.y);
+    await cdpClickPoint(activeCdpSend, startPt.x, startPt.y);
     for (let i = 0; i < 20; i += 1) {
-      await sleep(1000);
-      const u = await evalInMainPage(cdpSend, "location.href");
-      if (String(u || "").includes("/uplevelingstep/") || String(u || "").includes("/challenge/iap") || String(u || "").includes("/appeal")) {
+      await pause(1000);
+      const u = String((await runEval("location.href")) || "");
+      if (
+        (u.includes("/uplevelingstep/") && !u.includes("/uplevelingstep/spinner")) ||
+        u.includes("/challenge/iap") ||
+        /\/restrictions\/\d+\/appeal/i.test(u)
+      ) {
         break;
       }
     }
-    await sleep(2200);
+    await pause(2200);
   }
 
   // Step 2: If on /uplevelingstep/selection or /challenge/iap, verify phone via GrizzlySMS
-  const curUrl = String((await evalInMainPage(cdpSend, "location.href")) || "");
+  const curUrl = String((await runEval("location.href")) || "");
   let phoneUsed = null;
   if (/\/uplevelingstep\/selection|\/challenge\/iap/i.test(curUrl)) {
     const triedCountries = [];
     let otpVerified = false;
     for (let attempt = 1; attempt <= 4 && !otpVerified; attempt += 1) {
-      const stepUrl = String((await evalInMainPage(cdpSend, "location.href")) || "");
+      const stepUrl = String((await runEval("location.href")) || "");
       if (stepUrl.includes("/uplevelingstep/selection")) {
-        const smsPt = await evalInMainPage(
-          cdpSend,
+        const smsPt = await runEval(
           `(() => {
-            for (const li of document.querySelectorAll("li, div[role='link']")) {
-              const txt = (li.innerText || "").replace(/\\s+/g, " ").trim();
+            for (const item of document.querySelectorAll("li, div[role='link'], div[role='button'], [role='link'], [role='button'], div[data-challengetype]")) {
+              const txt = (item.innerText || "").replace(/\\s+/g, " ").trim();
               if (/Xác minh số điện thoại|Verify your phone number|SMS/i.test(txt) && !/Quét mã QR|Scan a QR/i.test(txt)) {
-                const target = li.querySelector("div[role='link']") || li;
+                const target = item.querySelector("div[role='link'], div[role='button'], [role='link'], [role='button'], a, button") || item;
                 const r = target.getBoundingClientRect();
                 if (r.width > 10 && r.height > 10) {
                   return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), text: txt };
@@ -2233,13 +2317,13 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
         );
         if (smsPt?.x > 0) {
           onLog?.("info", `[AppealSMS #${code}] Clicking SMS verification option on /uplevelingstep/selection`);
-          await cdpClickPoint(cdpSend, smsPt.x, smsPt.y);
+          await cdpClickPoint(activeCdpSend, smsPt.x, smsPt.y);
           for (let i = 0; i < 15; i += 1) {
-            await sleep(1000);
-            const uAfter = String((await evalInMainPage(cdpSend, "location.href")) || "");
-            if (uAfter.includes("/challenge/iap")) break;
+            await pause(1000);
+            const uAfter = String((await runEval("location.href")) || "");
+            if (uAfter.includes("/challenge/iap") || /\/restrictions\/\d+\/appeal/i.test(uAfter)) break;
           }
-          await sleep(2200);
+          await pause(2200);
         }
       }
 
@@ -2260,8 +2344,7 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
         "info",
         `[AppealSMS #${code}] Rented GrizzlySMS ${simAlloc.phoneNumber} (req=${simAlloc.requestId}, cost=$${simAlloc.cost ?? "?"})`,
       );
-      await evalInMainPage(
-        cdpSend,
+      await runEval(
         `((phoneVal) => {
           const inp = document.querySelector("input#deviceAddress, input#phoneNumberId, input[type='tel']");
           if (!inp) return false;
@@ -2283,9 +2366,8 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
 
       let postPhone = null;
       for (let w = 0; w < 10; w += 1) {
-        await sleep(1000);
-        postPhone = await evalInMainPage(
-          cdpSend,
+        await pause(1000);
+        postPhone = await runEval(
           `(() => {
             const url = location.href;
             const body = (document.body?.innerText || "").replace(/\\s+/g, " ").trim().slice(0, 600);
@@ -2309,22 +2391,21 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
         continue;
       }
 
-      await sleep(2200);
+      await pause(2200);
       const smsOtp = await simHelpers
         .pollLongTermSimOtp({
           provider: "grizzlysms",
           requestId: simAlloc.requestId,
           service: "google",
-          maxAttempts: 15,
-          intervalMs: 4000,
+          maxAttempts: pollMaxAttempts,
+          intervalMs: pollIntervalMs,
         })
         .catch(() => ({ ok: false }));
 
       if (smsOtp?.ok && smsOtp.otpCode) {
         onLog?.("info", `[AppealSMS #${code}] Received OTP ${smsOtp.otpCode} for ${simAlloc.phoneNumber}`);
         phoneUsed = simAlloc.phoneNumber;
-        await evalInMainPage(
-          cdpSend,
+        await runEval(
           `((otpVal) => {
             const pinInp =
               document.querySelector("input#idvAnyPhonePin, input#smsUserPin, input#idvPin, input[name='idvPin'], input[name='pin'], input[type='tel']") ||
@@ -2346,26 +2427,31 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
           })(${JSON.stringify(String(smsOtp.otpCode).trim())})`,
         );
         otpVerified = true;
-        for (let rIdx = 0; rIdx < 30; rIdx += 1) {
-          await sleep(1000);
-          const uNow = String((await evalInMainPage(cdpSend, "location.href")) || "");
+        for (let rIdx = 0; rIdx < 35; rIdx += 1) {
+          await pause(1000);
+          const uNow = String((await runEval("location.href")) || "");
           if (/^https?:\/\/myaccount\.google\.com\//i.test(uNow)) break;
+          if (uNow.includes("/uplevelingstep/spinner") && rIdx % 4 === 0) {
+            onLog?.("info", `[AppealSMS #${code}] Waiting for /uplevelingstep/spinner redirect...`);
+          }
         }
-        await sleep(3200);
+        await pause(2500);
       } else if (simAlloc.requestId) {
         await simHelpers.cancelGrizzlySmsActivation({ requestId: simAlloc.requestId }).catch(() => undefined);
       }
     }
   }
 
-  // Step 3: Fill and submit the /restrictions/<id>/appeal form
+  // Step 3: Fill and submit the /restrictions/<id>/appeal form (wait through any lingering /uplevelingstep/spinner)
   let submitted = false;
-  for (let step = 1; step <= 5; step += 1) {
-    const st = await evalInMainPage(
-      cdpSend,
+  for (let step = 1; step <= 8; step += 1) {
+    const st = await runEval(
       `((contactEmailVal) => {
         const url = location.href;
         const body = (document.body?.innerText || "").replace(/\\s+/g, " ").trim().slice(0, 900);
+        if (/\\/uplevelingstep\\/spinner/i.test(url)) {
+          return { url, body, spinning: true, clickedBtn: null };
+        }
         if (/Đã nộp đơn khiếu nại|Appeal submitted|received your appeal|review your request/i.test(body)) {
           return { url, body, appealSubmitted: true };
         }
@@ -2413,12 +2499,15 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
       submitted = true;
       break;
     }
+    if (st?.spinning) {
+      await pause(2500);
+      continue;
+    }
     if (!st?.clickedBtn) break;
-    await sleep(4200);
+    await pause(4200);
   }
 
-  const finalCheck = await evalInMainPage(
-    cdpSend,
+  const finalCheck = await runEval(
     `(() => ({
       url: location.href,
       body: (document.body?.innerText || "").replace(/\\s+/g, " ").trim().slice(0, 600),
@@ -2454,6 +2543,7 @@ async function handleGoogleUplevelingSmsAppealViaCdp(
 
 module.exports = {
   loadRouterConfig,
+  buildVisionImageDataUrl,
   extractVisionResponseText,
   parseVisionTileNumbers,
   askVisionForRecaptchaTiles,

@@ -132,7 +132,7 @@ try {
     }
   }
 
-  $bundledE0001 = Join-Path $RepoRoot "build\bundled-extensions"
+  $bundledE0001 = Join-Path $RepoRoot "build\bundled-extensions.asar"
   $skipNative = $SkipBuild -or ($Fast -and (Test-Path (Join-Path $RepoRoot "node_modules\better-sqlite3")))
   if (-not $skipNative) {
     Invoke-Step "Verify Visual Studio Build Tools" {
@@ -222,6 +222,9 @@ try {
 
   if ($Publish) {
     $tag = "v$pkgVersion"
+    Invoke-Step "Snapshot known-good (installer backup)" {
+      node scripts/snapshot-known-good.mjs --label "v$pkgVersion-stable"
+    }
     Invoke-Step "Sync release metadata (post-gh-release)" {
       node (Join-Path $ToolScripts "post-gh-release.mjs") --product-root $RepoRoot --tag $tag
     }
@@ -234,10 +237,6 @@ try {
       )
       if ($WithPortable) { $verifyArgs += "--require-portable" }
       node @verifyArgs
-    }
-
-    Invoke-Step "Snapshot known-good (installer backup)" {
-      node scripts/snapshot-known-good.mjs --label "v$pkgVersion-stable"
     }
 
     Invoke-Step "Sync P0003-SITE landing (stealth.infi28.com)" {

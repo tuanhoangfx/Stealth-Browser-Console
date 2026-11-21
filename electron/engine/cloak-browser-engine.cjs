@@ -357,7 +357,10 @@ function loadCloakbrowser() {
   if (!cloakModulePromise) {
     const runtime = packagedRuntime();
     const specifier = resolveCloakbrowserImportSpecifier(runtime);
-    cloakModulePromise = import(specifier);
+    cloakModulePromise = import(specifier).catch((err) => {
+      cloakModulePromise = null;
+      throw err;
+    });
   }
   return cloakModulePromise;
 }
@@ -468,6 +471,7 @@ function buildStealthChromeArgs(profile, userDataRoot = "") {
       "--mute-audio",
       "--disable-logging",
       "--disable-backgrounding-occluded-windows",
+      "--disable-direct-composition",
     );
   } else {
     // Headed User Browser Tuning: offload DOM/table tile rasterization from 2.30GHz Xeon cores

@@ -104,26 +104,33 @@ async function main() {
   }
 
   await openDatabase(userDataRoot);
-  try {
-    // Sync any newly added profiles from Prod's known-good catalog into the worker catalog (read-only attach, zero WAL lock)
-    const prodRoot = path.join(path.dirname(userDataRoot), "stealth-browser-console");
-    const prodKnownGood = path.join(prodRoot, "data", "stealth-console.db.known-good.bak");
-    if (fs.existsSync(prodKnownGood)) {
+  const prodRoot = path.join(path.dirname(userDataRoot), "stealth-browser-console");
+  const prodKnownGood = path.join(prodRoot, "data", "stealth-console.db.known-good.bak");
+  let lastSyncedKnownGoodMtimeMs = 0;
+  function syncCatalogFromProdKnownGood() {
+    try {
+      if (!fs.existsSync(prodKnownGood)) return;
+      const st = fs.statSync(prodKnownGood);
+      if (st.mtimeMs <= lastSyncedKnownGoodMtimeMs) return;
       const { getDb } = require("../electron/db/init.cjs");
       const db = getDb();
       const escapedPath = prodKnownGood.replace(/'/g, "''");
       db.exec(`ATTACH DATABASE '${escapedPath}' AS prod_kg;`);
       try {
-        db.exec(`INSERT OR IGNORE INTO main.profiles SELECT * FROM prod_kg.profiles;`);
+        db.exec(`INSERT OR REPLACE INTO main.profiles SELECT * FROM prod_kg.profiles;`);
+        lastSyncedKnownGoodMtimeMs = st.mtimeMs;
       } finally {
         try {
           db.exec(`DETACH DATABASE prod_kg;`);
         } catch {}
       }
+    } catch {
+      /* non-fatal */
     }
-  } catch {
-    /* non-fatal */
   }
+  syncCatalogFromProdKnownGood();
+  const catalogSyncTimer = setInterval(syncCatalogFromProdKnownGood, 60_000);
+  if (typeof catalogSyncTimer.unref === "function") catalogSyncTimer.unref();
   try {
     profileService.ensureSeedProfiles?.();
   } catch {

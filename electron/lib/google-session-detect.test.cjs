@@ -1298,6 +1298,178 @@ test("isAuthenticatedMicrosoftAppUrl, classifyMicrosoftLiveCdpTargets, and verif
   }
 });
 
+test("verifyGoogleCookiesLiveViaHttp and verifyRowPlatformAndAiSession reject stale ListAccounts acc[14]=1 when password changed / ServiceLogin redirect (#1058 regression)", async () => {
+  const {
+    verifyGoogleCookiesLiveViaHttp,
+    classifyGoogleLiveCdpTargets,
+  } = require("./stealth-multiplatform-sync.cjs");
+  const { verifyRowPlatformAndAiSession } = require("./multiplatform-sync/p0020-row-verifier.cjs");
+
+  const stalePwChangedCookies = [
+    { domain: ".google.com", name: "SID", value: "g.a0003gght4hPW_CHANGED_SID_1058" },
+    { domain: ".google.com", name: "HSID", value: "HSID_1058" },
+    { domain: ".google.com", name: "SSID", value: "SSID_1058" },
+    { domain: ".google.com", name: "SAPISID", value: "SAPISID_1058" },
+    { domain: ".google.com", name: "__Secure-1PSIDTS", value: "sidts-CjIBnJZza_STALE_1058" },
+    { domain: "accounts.google.com", name: "LSID", value: "LSID_1058_STALE_TOKEN_123456" },
+    { domain: "accounts.google.com", name: "__Host-1PLSID", value: "1PLSID_1058_STALE_TOKEN_123456" },
+  ];
+  const staleListPayload =
+    `)]}'\n["gaia.l.a.r",[["gaia.l.a",1,"mayur","tm.mayur@gmail.com","https://lh3.googleusercontent.com/a/default-user=s48",0,null,null,null,0,"116131800579556741112",null,null,null,1,null,"mayur"]]]`;
+
+  const res = await verifyGoogleCookiesLiveViaHttp(
+    stalePwChangedCookies,
+    3000,
+    async (url) => {
+      if (String(url).includes("ListAccounts")) {
+        return { status: 200, headers: { get: () => null }, text: async () => staleListPayload };
+      }
+      return {
+        status: 302,
+        headers: {
+          get: (k) =>
+            String(k).toLowerCase() === "location"
+              ? "https://accounts.google.com/ServiceLogin?service=one&continue=https%3A%2F%2Fone.google.com%2Fstorage"
+              : null,
+        },
+        text: async () => "",
+      };
+    },
+    { resolveIdentity: true },
+  );
+  assert.equal(res.ok, true);
+  assert.equal(res.loggedIn, false);
+  assert.equal(res.expired, true);
+  assert.equal(res.resultCode, "login_page");
+
+  const confirmIdState = classifyGoogleLiveCdpTargets(
+    [{ url: "https://accounts.google.com/v3/signin/confirmidentifier?continue=https://www.google.com/&hl=vi" }],
+    { hasGoogleAuthCookies: false },
+  );
+  assert.equal(confirmIdState?.restricted, true);
+  assert.equal(confirmIdState?.resultCode, "google_one_logged_out");
+
+  const match = { loggedIn: true, resultCode: "google_cookies", matchedNames: ["LSID"] };
+  const verified = await verifyRowPlatformAndAiSession({
+    row: { id: "gm-1058", service: "Gmail", account: "tm.mayur@gmail.com", status: "active", stealth_snapshot: {} },
+    svcLower: "gmail",
+    rowStatusLower: "active",
+    rowResCodeLower: "google_cookies",
+    match,
+    pairs: stalePwChangedCookies,
+    vaultEntryCookies: null,
+    rows: [],
+    code: "1058",
+    userDataDir: "",
+    isLiveWindow: false,
+    isPassiveUserLiveSync: false,
+    liveCdpTargets: [],
+    fbLiveTargetState: null,
+    googleLiveTargetState: confirmIdState,
+    msLiveTargetState: null,
+    claudeLiveTargetState: null,
+    hasVerifiedGoogleLiveTab: false,
+    hasVerifiedMicrosoftLiveTab: false,
+    hasPlaintextGoogleAuth: () => true,
+    hasPlaintextMsAuth: () => false,
+    candidateGoogleCookies: stalePwChangedCookies,
+    cachedGoogleHttpVerify: { ok: true, loggedIn: true },
+    hasChallengedOrBlockedGoogleRow: false,
+    cachedMicrosoftHttpVerify: null,
+    hasVerifiedMicrosoftAuth: false,
+    profileMicrosoftAliasEmails: new Set(),
+    probeState: { hasVerifiedGoogleAuth: true },
+  });
+  assert.equal(match.loggedIn, false);
+  assert.equal(match.resultCode, "google_one_logged_out");
+  assert.equal(verified.fbForcedOverride?.status, "not_logged_in");
+});
+
+test("classifyGoogleLiveCdpTargets and shouldPreserveChallengedState keep /restrictions/54 scoped to Gmail when myaccount.google.com is open and allow checkpoint_qr / sibling promotion (#0325 / #0330)", () => {
+  const {
+    classifyGoogleLiveCdpTargets,
+    doesGoogleTargetRestrictionApplyToService,
+    shouldPreserveChallengedState,
+  } = require("./stealth-multiplatform-sync.cjs");
+
+  // 1. Coexisting myaccount.google.com/personal-info + /restrictions/54 must STILL surface /restrictions/54 for Gmail only
+  const coexisting54 = classifyGoogleLiveCdpTargets([
+    { url: "https://myaccount.google.com/personal-info?hl=vi", title: "Thông tin cá nhân" },
+    {
+      url: "https://myaccount.google.com/restrictions/54?continue=https://mail.google.com/mail/u/0/#inbox",
+      title: "0325 — Xem hạn chế về dịch vụ",
+    },
+  ]);
+  assert.equal(coexisting54?.restricted, true);
+  assert.equal(coexisting54?.restrictedServiceId, "54");
+  assert.equal(doesGoogleTargetRestrictionApplyToService(coexisting54, "gmail"), true);
+  assert.equal(doesGoogleTargetRestrictionApplyToService(coexisting54, "youtube"), false);
+  assert.equal(doesGoogleTargetRestrictionApplyToService(coexisting54, "google one"), false);
+
+  // 2. When mail.google.com/mail/u/0/#inbox IS open, stale /restrictions/54 tab no longer overrides
+  const lifted54 = classifyGoogleLiveCdpTargets([
+    { url: "https://mail.google.com/mail/u/0/#inbox", title: "Inbox" },
+    { url: "https://myaccount.google.com/restrictions/54", title: "Old" },
+  ]);
+  assert.equal(lifted54, null);
+
+  // 3. checkpoint_qr Gmail row promotes when Google auth is verified
+  const qrGmailRow = {
+    service: "Gmail",
+    status: "checkpoint_qr",
+    stealth_snapshot: { status: "quarantined_sms", result_code: "checkpoint_qr", specific_label: "checkpoint_qr" },
+  };
+  assert.equal(
+    shouldPreserveChallengedState(qrGmailRow, true, { isLiveWindow: true, hasVerifiedGoogleLiveTab: true }),
+    false,
+  );
+  assert.equal(
+    shouldPreserveChallengedState(qrGmailRow, true, { isLiveWindow: false, hasVerifiedGoogleAuth: true }),
+    false,
+  );
+
+  // 4. YouTube/Google One in appeal from sibling Gmail restrictions/54 promote when Google auth is verified, while Gmail stays in appeal unless gmailRestriction54Lifted=true
+  const ytSiblingRow = {
+    service: "YouTube",
+    status: "appeal",
+    stealth_snapshot: { status: "challenged", result_code: "disabled_appeal_submitted", evidence: "YouTube:logged_in" },
+  };
+  assert.equal(
+    shouldPreserveChallengedState(ytSiblingRow, true, {
+      isLiveWindow: false,
+      hasVerifiedGoogleAuth: true,
+      siblingRestrictionDoesNotApply: true,
+    }),
+    false,
+  );
+  const gm54Row = {
+    service: "Gmail",
+    status: "appeal",
+    stealth_snapshot: {
+      status: "challenged",
+      result_code: "disabled_appeal_submitted",
+      evidence: "Google:account_disabled url=https://myaccount.google.com/restrictions/54",
+    },
+  };
+  assert.equal(
+    shouldPreserveChallengedState(gm54Row, true, {
+      isLiveWindow: false,
+      hasVerifiedGoogleAuth: true,
+      gmailRestriction54Lifted: false,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldPreserveChallengedState(gm54Row, true, {
+      isLiveWindow: false,
+      hasVerifiedGoogleAuth: true,
+      gmailRestriction54Lifted: true,
+    }),
+    false,
+  );
+});
+
+
 
 
 

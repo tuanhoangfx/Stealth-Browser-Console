@@ -254,13 +254,13 @@ export function downloadJson(filename: string, data: unknown) {
 }
 
 export function formatRunDuration(ms?: number) {
-  if (ms == null || !Number.isFinite(ms)) return "—";
+  if (ms == null || !Number.isFinite(ms)) return "";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
 export function formatRunTimestamp(value?: string) {
-  if (!value) return "—";
+  if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();

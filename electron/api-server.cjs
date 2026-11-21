@@ -22,28 +22,140 @@ const {
   shouldOffloadAgentRequestToWorker,
   proxyRequestToWorker,
 } = require("./lib/agent-worker-proxy.cjs");
+const { verifyPackagedRuntime } = require("./lib/packaged-runtime-check.cjs");
+
+function buildHealthPayload({
+  apiPort = DEFAULT_API_PORT,
+  authRequired = false,
+  verifyRuntime = verifyPackagedRuntime,
+} = {}) {
+  let packagedRuntime;
+  try {
+    packagedRuntime = verifyRuntime();
+  } catch (err) {
+    packagedRuntime = {
+      ok: false,
+      isPackaged: false,
+      missing: [],
+      root: "",
+      cloakbrowserUnpacked: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+  return {
+    ok: true,
+    product: "P0003",
+    apiPort,
+    authRequired: Boolean(authRequired),
+    features: ["cdp", "jobs", "plugins", "live-events"],
+    packagedRuntime,
+  };
+}
 
 const DEFAULT_API_PORT = 6003;
 const API_HOST = "127.0.0.1";
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
+const BODY_READ_TIMEOUT_MS = 30_000;
 
-function readBody(req) {
-  return new Promise((resolve) => {
-    let data = "";
-    req.on("data", (chunk) => (data += chunk));
-    req.on("end", () => {
-      try { resolve(data ? JSON.parse(data) : {}); }
-      catch { resolve({}); }
+function abortRequestStreamAfterReply(req) {
+  try {
+    if (typeof req.pause === "function") req.pause();
+  } catch {
+    /* ignore */
+  }
+  const destroyReq = () => {
+    try {
+      if (typeof req.destroy === "function" && !req.destroyed) req.destroy();
+    } catch {
+      /* ignore */
+    }
+  };
+  const res = req?.res || req?.socket?._httpMessage;
+  if (res && typeof res.once === "function" && !res.writableEnded) {
+    res.once("finish", destroyReq);
+    const fallback = setTimeout(destroyReq, 1000);
+    if (typeof fallback.unref === "function") fallback.unref();
+  } else {
+    destroyReq();
+  }
+}
+
+function readBody(req, { maxBytes = MAX_BODY_BYTES, timeoutMs = BODY_READ_TIMEOUT_MS } = {}) {
+  return new Promise((resolve, reject) => {
+    const contentLength = Number(req?.headers?.["content-length"]);
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      abortRequestStreamAfterReply(req);
+      const err = new Error(`Request body exceeds limit (${maxBytes} bytes)`);
+      err.statusCode = 413;
+      reject(err);
+      return;
+    }
+
+    const chunks = [];
+    let totalBytes = 0;
+    let settled = false;
+
+    const cleanup = () => {
+      clearTimeout(timer);
+    };
+
+    const fail = (message, statusCode) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      chunks.length = 0;
+      abortRequestStreamAfterReply(req);
+      const err = new Error(message);
+      err.statusCode = statusCode;
+      reject(err);
+    };
+
+    const timer = setTimeout(() => {
+      fail(`Request body read timed out after ${timeoutMs}ms`, 408);
+    }, timeoutMs);
+    if (typeof timer.unref === "function") timer.unref();
+
+    req.on("data", (chunk) => {
+      if (settled) return;
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalBytes += buf.length;
+      if (totalBytes > maxBytes) {
+        fail(`Request body exceeds limit (${maxBytes} bytes)`, 413);
+        return;
+      }
+      chunks.push(buf);
     });
-    req.on("error", () => resolve({}));
+    req.on("end", () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      const raw = chunks.length > 0 ? Buffer.concat(chunks).toString("utf8") : "";
+      try {
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch {
+        resolve({});
+      }
+    });
+    req.on("error", () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve({});
+    });
   });
 }
 
 function sendJson(res, statusCode, data) {
+  if (res.writableEnded || res.destroyed) return;
   const body = JSON.stringify(data);
-  res.writeHead(statusCode, {
+  const headers = {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*"
-  });
+    "Access-Control-Allow-Origin": "*",
+  };
+  if (statusCode === 413 || statusCode === 408) {
+    headers.Connection = "close";
+  }
+  res.writeHead(statusCode, headers);
   res.end(body);
 }
 
@@ -140,13 +252,14 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
 
     // GET /api/health — luôn mở (probe + báo có cần auth không).
     if (req.method === "GET" && urlPath === "/api/health") {
-      return sendJson(res, 200, {
-        ok: true,
-        product: "P0003",
-        apiPort: API_PORT,
-        authRequired: Boolean(getConfiguredToken()),
-        features: ["cdp", "jobs", "plugins", "live-events"],
-      });
+      return sendJson(
+        res,
+        200,
+        buildHealthPayload({
+          apiPort: API_PORT,
+          authRequired: Boolean(getConfiguredToken()),
+        }),
+      );
     }
 
     // GET /api/stealth/live-events — Real-time SSE stream (`ok 3`) for P0020 2FA Manager (<100ms sync).
@@ -178,16 +291,34 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
     // Mobile Stealth Bridge direct fallback on :6003 / :6004 (`📱 Android` tab in P0003)
     if (urlPath.startsWith("/api/mobile-stealth/")) {
       try {
+        if (req.method === "GET" && urlPath === "/api/mobile-stealth/execution-board") {
+          const boardModPath = require.resolve("./lib/mobile-farm-execution-board.cjs");
+          delete require.cache[boardModPath];
+          const { collectMobileFarmExecutionBoard } = require(boardModPath);
+          return sendJson(res, 200, collectMobileFarmExecutionBoard());
+        }
+        if (req.method === "POST" && urlPath === "/api/mobile-stealth/daemon-control") {
+          const body = await readBody(req);
+          const boardModPath = require.resolve("./lib/mobile-farm-execution-board.cjs");
+          delete require.cache[boardModPath];
+          const { controlMobileFarmDaemon } = require(boardModPath);
+          const out = controlMobileFarmDaemon({ daemonId: body?.daemonId, action: body?.action || "start" });
+          return sendJson(res, out?.ok ? 200 : 400, out);
+        }
         const { loadAndroidStealthBridge } = require("./lib/android-bridge-loader.cjs");
+        const iosBridge = require("./lib/ios-stealth-bridge.cjs");
         const bridge = await loadAndroidStealthBridge(__dirname);
         if (bridge) {
           if (req.method === "GET" && urlPath === "/api/mobile-stealth/profiles") {
             const out = await bridge.listMobileVaultProfiles();
-            return sendJson(res, 200, out);
+            const augmented = await iosBridge.augmentMobileProfilesResponse(out).catch(() => out);
+            return sendJson(res, 200, augmented);
           }
           if (req.method === "GET" && urlPath === "/api/mobile-stealth/status") {
             const profileCode = query.get("profile") || query.get("code") || "0001";
             const status = await bridge.getMobileVaultProfileStatus(profileCode);
+            const aug = await iosBridge.augmentMobileProfilesResponse({ device: status?.device || {} }).catch(() => null);
+            if (aug?.device && status) status.device = aug.device;
             return sendJson(res, 200, { ok: true, status });
           }
           if (req.method === "POST") {
@@ -209,36 +340,120 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
               });
               return sendJson(res, 200, out);
             }
+            const targetIsIos = iosBridge.isIosSerial(body.serial) || (!body.serial && Boolean(iosBridge.getActiveIosDeviceSerial()));
             if (urlPath === "/api/mobile-stealth/switch") {
-              const swRes = await bridge.switchAndroidDeviceProfile(profileCode, {
-                proxy: String(body.proxy || ""),
-                clearPackages: Boolean(body.clearPackages),
-                restoreIfAvailable: body.restoreIfAvailable !== false,
-              });
+              const swRes = targetIsIos
+                ? await iosBridge.switchIosDeviceProfile(profileCode, {
+                    serial: String(body.serial || ""),
+                    proxy: String(body.proxy || ""),
+                    clearPackages: Boolean(body.clearPackages),
+                    restoreIfAvailable: body.restoreIfAvailable !== false,
+                  })
+                : await bridge.switchAndroidDeviceProfile(profileCode, {
+                    proxy: String(body.proxy || ""),
+                    clearPackages: Boolean(body.clearPackages),
+                    restoreIfAvailable: body.restoreIfAvailable !== false,
+                  });
               const status = await bridge.getMobileVaultProfileStatus(profileCode);
               return sendJson(res, 200, { ...swRes, status });
             }
             if (urlPath === "/api/mobile-stealth/push-cookies") {
-              const pushRes = await bridge.pushBrowserCookiesToMobileDevice(profileCode, {
-                serial: String(body.serial || ""),
-              });
+              const pushRes = targetIsIos
+                ? await iosBridge.pushBrowserCookiesToIosDevice(profileCode, {
+                    serial: String(body.serial || ""),
+                    cookies: Array.isArray(body.cookies) ? body.cookies : null,
+                  })
+                : await bridge.pushBrowserCookiesToMobileDevice(profileCode, {
+                    serial: String(body.serial || ""),
+                  });
               const status = await bridge.getMobileVaultProfileStatus(profileCode);
               return sendJson(res, 200, { ...pushRes, status });
             }
             if (urlPath === "/api/mobile-stealth/pull-cookies") {
-              const pullRes = await bridge.extractMobileCookiesToBrowserProfile(profileCode, {
-                serial: String(body.serial || ""),
-              });
+              const pullRes = targetIsIos
+                ? await iosBridge.extractIosCookiesToBrowserProfile(profileCode, {
+                    serial: String(body.serial || ""),
+                  })
+                : await bridge.extractMobileCookiesToBrowserProfile(profileCode, {
+                    serial: String(body.serial || ""),
+                  });
               const status = await bridge.getMobileVaultProfileStatus(profileCode);
               return sendJson(res, 200, { ...pullRes, status });
             }
             if (urlPath === "/api/mobile-stealth/snapshot") {
-              const snapRes = await bridge.backupAndroidProfileSnapshot(profileCode);
+              const wantCrane = body?.target === "crane" || Boolean(body?.craneContainer);
+              const snapRes = targetIsIos
+                ? wantCrane
+                  ? await iosBridge.offloadCraneLiteContainer(profileCode, {
+                      serial: String(body.serial || ""),
+                      containerName: String(body.craneContainer || ""),
+                      bundleId: String(body.bundleId || "com.facebook.Facebook"),
+                      removeFromDevice: body.removeFromDevice !== false,
+                    })
+                  : await iosBridge.backupIosProfileSnapshot(profileCode, {
+                      serial: String(body.serial || ""),
+                    })
+                : await bridge.backupAndroidProfileSnapshot(profileCode);
               const status = await bridge.getMobileVaultProfileStatus(profileCode);
               return sendJson(res, 200, { ...snapRes, status });
             }
+            if (urlPath === "/api/mobile-stealth/crane-offload") {
+              const offRes = targetIsIos
+                ? await iosBridge.offloadCraneLiteContainer(profileCode, {
+                    serial: String(body.serial || ""),
+                    containerName: String(body.craneContainer || ""),
+                    bundleId: String(body.bundleId || "com.facebook.Facebook"),
+                    removeFromDevice: body.removeFromDevice !== false,
+                  })
+                : await bridge.backupAndroidProfileSnapshot(profileCode);
+              const status = await bridge.getMobileVaultProfileStatus(profileCode);
+              return sendJson(res, 200, { ...offRes, status });
+            }
+            if (urlPath === "/api/mobile-stealth/crane-restore" || urlPath === "/api/mobile-stealth/restore") {
+              const wantCrane =
+                urlPath === "/api/mobile-stealth/crane-restore" ||
+                body?.target === "crane" ||
+                Boolean(body?.craneContainer);
+              const resOut = targetIsIos
+                ? wantCrane
+                  ? await iosBridge.restoreCraneLiteContainer(profileCode, {
+                      serial: String(body.serial || ""),
+                      containerName: String(body.craneContainer || ""),
+                      activate: body.activate !== false,
+                    })
+                  : await iosBridge.restoreIosProfileSnapshot(profileCode, {
+                      serial: String(body.serial || ""),
+                    })
+                : await bridge.restoreAndroidProfileSnapshot(profileCode);
+              const status = await bridge.getMobileVaultProfileStatus(profileCode);
+              return sendJson(res, 200, { ...resOut, status });
+            }
+            if (urlPath === "/api/mobile-stealth/crane-mount") {
+              const mountRes = targetIsIos
+                ? await iosBridge.mountCraneLiteProfile(profileCode, {
+                    serial: String(body.serial || ""),
+                    containerName: String(body.craneContainer || ""),
+                    bundleId: String(body.bundleId || "com.facebook.Facebook"),
+                    minFreeGb: Number.isFinite(Number(body.minFreeGb)) ? Number(body.minFreeGb) : 10,
+                    maxOnDevice: Number.isFinite(Number(body.maxOnDevice)) ? Number(body.maxOnDevice) : 0,
+                    autoOffloadLru: body.autoOffloadLru !== false,
+                    activate: body.activate !== false,
+                    proxy: String(body.proxy || ""),
+                    rotateProxy: Boolean(body.rotateProxy),
+                  })
+                : await bridge.switchAndroidDeviceProfile(profileCode, {
+                    proxy: String(body.proxy || ""),
+                    restoreIfAvailable: body.restoreIfAvailable !== false,
+                  });
+              const status = await bridge.getMobileVaultProfileStatus(profileCode);
+              return sendJson(res, 200, { ...mountRes, status });
+            }
             if (urlPath === "/api/mobile-stealth/mirror") {
-              const mirRes = await bridge.launchMobileScreenMirror(profileCode);
+              const mirRes = targetIsIos
+                ? await iosBridge.launchIosScreenMirror(profileCode, {
+                    serial: String(body.serial || ""),
+                  })
+                : await bridge.launchMobileScreenMirror(profileCode);
               const status = await bridge.getMobileVaultProfileStatus(profileCode);
               return sendJson(res, 200, { ...mirRes, status });
             }
@@ -268,7 +483,8 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
           }
         }
       } catch (err) {
-        return sendJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        const status = Number.isInteger(err?.statusCode) ? err.statusCode : 500;
+        return sendJson(res, status, { ok: false, error: err instanceof Error ? err.message : String(err) });
       }
     }
 
@@ -327,14 +543,60 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      try { sendJson(res, 500, { ok: false, error: msg }); }
+      const status = Number.isInteger(err?.statusCode) ? err.statusCode : 500;
+      try { sendJson(res, status, { ok: false, error: msg }); }
       catch { res.end(); }
     }
   });
+  server.headersTimeout = 60_000;
+  server.keepAliveTimeout = 15_000;
+
+  let androidWatchdogTimer = null;
+  let androidWatchdogStarted = false;
+  const ensureLocalAndroidWatchdog = async () => {
+    if (androidWatchdogStarted) return true;
+    try {
+      const { loadAndroidStealthBridge } = require("./lib/android-bridge-loader.cjs");
+      const bridge = await loadAndroidStealthBridge(__dirname);
+      if (bridge && typeof bridge.startMobileHotplugWatcher === "function") {
+        const res = await bridge
+          .startMobileHotplugWatcher({
+            intervalMs: 60_000,
+            hardwareWatchdogIntervalMs: 5 * 60_000,
+            autoProvision: false,
+          })
+          .catch(() => null);
+        if (res?.running) {
+          androidWatchdogStarted = true;
+          if (androidWatchdogTimer) {
+            clearInterval(androidWatchdogTimer);
+            androidWatchdogTimer = null;
+          }
+          return true;
+        }
+      }
+    } catch {
+      /* ignore when bridge unavailable */
+    }
+    return false;
+  };
 
   server.listen(API_PORT, API_HOST, () => {
     const mode = getConfiguredToken() ? "auth=token" : "auth=open";
     console.log(`[BrowserHub] API running → http://${API_HOST}:${API_PORT} (${mode}, concurrency=${concurrency})`);
+    if (API_PORT === DEFAULT_API_PORT && process.env.STEALTH_DISABLE_ANDROID_WATCHDOG !== "1" && !process.env.NODE_TEST_CONTEXT) {
+      const bootDelay = setTimeout(() => void ensureLocalAndroidWatchdog(), 15_000);
+      if (typeof bootDelay.unref === "function") bootDelay.unref();
+      androidWatchdogTimer = setInterval(() => void ensureLocalAndroidWatchdog(), 5 * 60_000);
+      if (typeof androidWatchdogTimer.unref === "function") androidWatchdogTimer.unref();
+    }
+  });
+
+  server.on("close", () => {
+    if (androidWatchdogTimer) {
+      clearInterval(androidWatchdogTimer);
+      androidWatchdogTimer = null;
+    }
   });
 
   server.on("error", (err) => {
@@ -344,4 +606,4 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
   return server;
 }
 
-module.exports = { startApiServer };
+module.exports = { startApiServer, buildHealthPayload, readBody };

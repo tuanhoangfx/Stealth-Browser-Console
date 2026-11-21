@@ -2,9 +2,12 @@ import type { MouseEvent } from "react";
 import {
   DirectoryTableBodyCell,
   HubCopyBadge,
+  HubDirectoryCopyText,
+  HubDirectoryEmptyCell,
   HubDirectoryIconCell,
   HubDirectoryTimestampLabel,
   HubDirectoryValuePopover,
+  HubTwofaCopyControl,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import { DIRECTORY_CELL_TRUNCATE } from "../../lib/directory-cell-format";
@@ -23,7 +26,7 @@ import type { StealthWorkflowSortKey } from "./StealthWorkflowDirectoryTable";
 
 function renderWorkflowTimestampCell(ms: number | null) {
   if (ms == null || !Number.isFinite(ms) || !ms) {
-    return <span className="hub-directory-table-body-text">—</span>;
+    return <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />;
   }
   return <HubDirectoryTimestampLabel at={ms} />;
 }
@@ -50,22 +53,33 @@ export function renderStealthWorkflowDirectoryBodyCell(
     case "platform":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="workflow-platform-cell">
-            <HubDirectoryIconCell
-              icon={FallbackIcon}
-              imageSrc={platformImageSrc || undefined}
-              imageShell={brand?.shell}
-              iconClassName={workflowPlatformTone(displayPlatform)}
-              label={displayPlatform}
-            />
-          </span>
+          <HubTwofaCopyControl
+            value={displayPlatform}
+            copyToastLabel="Platform copied"
+            className="twofa-copy-control--account"
+            display={
+              <span className="workflow-platform-cell">
+                <HubDirectoryIconCell
+                  icon={FallbackIcon}
+                  imageSrc={platformImageSrc || undefined}
+                  imageShell={brand?.shell}
+                  iconClassName={workflowPlatformTone(displayPlatform)}
+                  label={displayPlatform}
+                />
+              </span>
+            }
+          />
         </DirectoryTableBodyCell>
       );
     case "name":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <span className="stealth-workflow-name-cell min-w-0">
-            <span className="hub-users-name-title truncate">{workflow.name}</span>
+            <HubDirectoryCopyText
+              value={workflow.name}
+              copyToastLabel="Workflow name copied"
+              className="hub-users-name-title"
+            />
           </span>
         </DirectoryTableBodyCell>
       );
@@ -140,7 +154,7 @@ export function renderStealthWorkflowDirectoryBodyCell(
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          —
+          <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
         </DirectoryTableBodyCell>
       );
   }

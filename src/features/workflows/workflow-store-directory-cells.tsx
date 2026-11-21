@@ -1,8 +1,11 @@
 import {
   DirectoryTableBodyCell,
+  HubDirectoryCopyText,
+  HubDirectoryEmptyCell,
   HubDirectoryIconCell,
   HubDirectoryTimestampLabel,
   HubDirectoryValuePopover,
+  HubTwofaCopyControl,
   HubUsersStatusLabel,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
@@ -21,7 +24,7 @@ import { WorkflowStoreSourceDirectoryCell } from "./workflow-store-source-brand"
 function renderStoreCreatedCell(entry: WorkflowStoreEntry) {
   const ms = workflowStoreCreatedMs(entry);
   if (ms == null) {
-    return <span className="hub-directory-table-body-text">—</span>;
+    return <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />;
   }
   return <HubDirectoryTimestampLabel at={ms} />;
 }
@@ -29,7 +32,7 @@ function renderStoreCreatedCell(entry: WorkflowStoreEntry) {
 function renderStoreUpdatedCell(entry: WorkflowStoreEntry) {
   const ms = workflowStoreUpdatedMs(entry);
   if (ms == null) {
-    return <span className="hub-directory-table-body-text">—</span>;
+    return <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />;
   }
   return <HubDirectoryTimestampLabel at={ms} />;
 }
@@ -62,11 +65,18 @@ export function renderWorkflowStoreDirectoryBodyCell(
     case "platform":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubDirectoryIconCell
-            icon={FallbackIcon ?? undefined}
-            imageSrc={platformImageSrc || undefined}
-            imageShell={brand?.shell}
-            label={entry.platform}
+          <HubTwofaCopyControl
+            value={entry.platform}
+            copyToastLabel="Platform copied"
+            className="twofa-copy-control--account"
+            display={
+              <HubDirectoryIconCell
+                icon={FallbackIcon ?? undefined}
+                imageSrc={platformImageSrc || undefined}
+                imageShell={brand?.shell}
+                label={entry.platform}
+              />
+            }
           />
         </DirectoryTableBodyCell>
       );
@@ -74,20 +84,30 @@ export function renderWorkflowStoreDirectoryBodyCell(
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <span className="stealth-workflow-name-cell min-w-0">
-            <span className={`hub-users-name-title ${DIRECTORY_CELL_TRUNCATE}`}>{entry.name}</span>
+            <HubDirectoryCopyText
+              value={entry.name}
+              copyToastLabel="Workflow name copied"
+              className="hub-users-name-title"
+            />
           </span>
         </DirectoryTableBodyCell>
       );
     case "version":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass} typographyClass="hub-users-cell-muted">
-          <span className={DIRECTORY_CELL_TRUNCATE}>v{entry.version}</span>
+          <HubDirectoryCopyText
+            value={`v${entry.version}`}
+            copyToastLabel="Version copied"
+          />
         </DirectoryTableBodyCell>
       );
     case "group":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className={`hub-directory-table-body-text ${DIRECTORY_CELL_TRUNCATE}`}>{entry.group}</span>
+          <HubDirectoryCopyText
+            value={entry.group}
+            copyToastLabel="Group copied"
+          />
         </DirectoryTableBodyCell>
       );
     case "status": {
@@ -148,7 +168,7 @@ export function renderWorkflowStoreDirectoryBodyCell(
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text">—</span>
+          <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
         </DirectoryTableBodyCell>
       );
   }

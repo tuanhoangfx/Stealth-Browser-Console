@@ -2,7 +2,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const net = require("node:net");
-const { parseProxy, probeTcpPort } = require("./proxy-pool.cjs");
+const { parseProxy, probeTcpPort, verifyProxyHttpsTunnel, checkProxy } = require("./proxy-pool.cjs");
 
 test("probeTcpPort returns tcpAlive=true and positive RTT on listening local TCP port", async () => {
   const server = net.createServer((socket) => {
@@ -44,4 +44,44 @@ test("parseProxy handles antidetect host:port:user:pass and scheme URLs", () => 
     username: "czp1",
     password: "secret",
   });
+});
+
+test("verifyProxyHttpsTunnel distinguishes 407 auth failure and https_tls_timeout after CONNECT 200", async () => {
+  const server407 = net.createServer((socket) => {
+    socket.once("data", () => {
+      socket.end("HTTP/1.1 407 Proxy Authentication Required\r\n\r\n");
+    });
+  });
+  await new Promise((r) => server407.listen(0, "127.0.0.1", r));
+  const port407 = server407.address().port;
+
+  const stalledSockets = [];
+  const serverStall = net.createServer((socket) => {
+    stalledSockets.push(socket);
+    socket.once("data", () => {
+      socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+      // Intentionally swallow TLS ClientHello to simulate carrier CGNAT HTTPS stall
+    });
+  });
+  await new Promise((r) => serverStall.listen(0, "127.0.0.1", r));
+  const portStall = serverStall.address().port;
+
+  try {
+    const authRes = await verifyProxyHttpsTunnel(`127.0.0.1:${port407}:u:p`, { timeoutMs: 1500 });
+    assert.equal(authRes.ok, false);
+    assert.equal(authRes.reason, "proxy_auth_required");
+
+    const tlsStallRes = await verifyProxyHttpsTunnel(`127.0.0.1:${portStall}:u:p`, { timeoutMs: 1050 });
+    assert.equal(tlsStallRes.ok, false);
+    assert.equal(tlsStallRes.reason, "https_tls_timeout");
+
+    const sockRes = await checkProxy(`socks5://127.0.0.1:${portStall}`, { verifyHttps: true });
+    assert.equal(sockRes.alive, null);
+  } finally {
+    for (const s of stalledSockets) {
+      try { s.destroy(); } catch {}
+    }
+    await new Promise((r) => server407.close(r));
+    await new Promise((r) => serverStall.close(r));
+  }
 });

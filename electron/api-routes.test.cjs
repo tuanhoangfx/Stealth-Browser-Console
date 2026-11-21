@@ -5,6 +5,8 @@ const assert = require("node:assert");
 const { checkAuth } = require("./lib/api-auth.cjs");
 const { JobQueue } = require("./lib/job-queue.cjs");
 const { buildRoutes } = require("./api-routes.cjs");
+const { buildHealthPayload } = require("./api-server.cjs");
+const { REQUIRED_UNPACKED, verifyPackagedRuntime } = require("./lib/packaged-runtime-check.cjs");
 
 let failures = 0;
 function test(name, fn) {
@@ -264,6 +266,69 @@ function test(name, fn) {
     statusRoute.handler({ params: ["/api/profiles/p-proxy/status", "p-proxy"], res: {} });
     assert.strictEqual(payload.isDirectProxy, false);
     assert.strictEqual(payload.proxy, undefined);
+  });
+
+  console.log("packaged runtime health:");
+  await test("verifyPackagedRuntime works safely in plain Node and reports missing/present unpacked files", () => {
+    const os = require("node:os");
+    const path = require("node:path");
+    const fs = require("node:fs");
+
+    const plainNode = verifyPackagedRuntime();
+    assert.strictEqual(plainNode.ok, true);
+    assert.strictEqual(plainNode.isPackaged, false);
+    assert.strictEqual(plainNode.cloakbrowserUnpacked, true);
+    assert.deepStrictEqual(plainNode.missing, []);
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-rt-"));
+    try {
+      const missingRes = verifyPackagedRuntime({ isPackaged: true, resourcesPath: tmpDir });
+      assert.strictEqual(missingRes.ok, false);
+      assert.strictEqual(missingRes.isPackaged, true);
+      assert.strictEqual(missingRes.cloakbrowserUnpacked, false);
+      assert.ok(missingRes.missing.includes("node_modules/cloakbrowser/package.json"));
+
+      const unpackedBase = path.join(tmpDir, "app.asar.unpacked");
+      for (const rel of REQUIRED_UNPACKED) {
+        const full = path.join(unpackedBase, rel);
+        fs.mkdirSync(path.dirname(full), { recursive: true });
+        fs.writeFileSync(full, "ok", "utf8");
+      }
+
+      const presentRes = verifyPackagedRuntime({ isPackaged: true, resourcesPath: tmpDir });
+      assert.strictEqual(presentRes.ok, true);
+      assert.strictEqual(presentRes.isPackaged, true);
+      assert.strictEqual(presentRes.cloakbrowserUnpacked, true);
+      assert.deepStrictEqual(presentRes.missing, []);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  await test("buildHealthPayload surfaces packagedRuntime cleanly", () => {
+    const okPayload = buildHealthPayload({ apiPort: 6003, authRequired: false });
+    assert.strictEqual(okPayload.ok, true);
+    assert.strictEqual(okPayload.product, "P0003");
+    assert.strictEqual(okPayload.apiPort, 6003);
+    assert.strictEqual(okPayload.packagedRuntime.ok, true);
+    assert.strictEqual(okPayload.packagedRuntime.cloakbrowserUnpacked, true);
+    assert.ok(Array.isArray(okPayload.packagedRuntime.missing));
+
+    const degradedPayload = buildHealthPayload({
+      apiPort: 6003,
+      authRequired: true,
+      verifyRuntime: () => ({
+        ok: false,
+        isPackaged: true,
+        missing: ["node_modules/cloakbrowser/package.json"],
+        root: "C:/fake/app.asar.unpacked",
+        cloakbrowserUnpacked: false,
+      }),
+    });
+    assert.strictEqual(degradedPayload.ok, true);
+    assert.strictEqual(degradedPayload.authRequired, true);
+    assert.strictEqual(degradedPayload.packagedRuntime.ok, false);
+    assert.strictEqual(degradedPayload.packagedRuntime.cloakbrowserUnpacked, false);
   });
 
   if (failures) {

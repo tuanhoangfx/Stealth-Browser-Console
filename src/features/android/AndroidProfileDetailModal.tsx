@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Download, ExternalLink, RotateCcw, Save, Smartphone, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, Camera, Download, ExternalLink, RotateCcw, Save, Smartphone, Upload } from "lucide-react";
 import {
   HubAccountDetailAdmScaffold,
   HubAccountDetailHeaderSearch,
@@ -54,6 +54,9 @@ export type AndroidProfileDetailModalProps = {
   onPushCookies: (code: string) => Promise<void>;
   onPullCookies: (code: string) => Promise<void>;
   onSaveSnapshot: (code: string) => Promise<void>;
+  onOffloadCrane?: (code: string) => Promise<void>;
+  onRestoreCrane?: (code: string) => Promise<void>;
+  onMountCrane?: (code: string) => Promise<void>;
   onOpenPcBrowser?: (code: string) => void;
   busy?: boolean;
 };
@@ -67,6 +70,9 @@ export function AndroidProfileDetailModal({
   onPushCookies,
   onPullCookies,
   onSaveSnapshot,
+  onOffloadCrane,
+  onRestoreCrane,
+  onMountCrane,
   onOpenPcBrowser,
   busy = false,
 }: AndroidProfileDetailModalProps) {
@@ -197,6 +203,31 @@ export function AndroidProfileDetailModal({
                   disabled={anyBusy}
                   onClick={() => void onSaveSnapshot(profile.code)}
                 />
+                {onOffloadCrane ? (
+                  <HubToolDetailModalSecondaryAction
+                    label="Offload Crane"
+                    icon={Archive}
+                    disabled={anyBusy}
+                    onClick={() => void onOffloadCrane(profile.code)}
+                  />
+                ) : null}
+                {onRestoreCrane ? (
+                  <HubToolDetailModalSecondaryAction
+                    label="Restore Crane"
+                    icon={ArchiveRestore}
+                    disabled={anyBusy}
+                    onClick={() => void onRestoreCrane(profile.code)}
+                  />
+                ) : null}
+                {onMountCrane ? (
+                  <HubToolDetailModalSecondaryAction
+                    label="Mount Crane (LRU)"
+                    icon={Smartphone}
+                    tone="emerald"
+                    disabled={anyBusy}
+                    onClick={() => void onMountCrane(profile.code)}
+                  />
+                ) : null}
                 {onOpenPcBrowser ? (
                   <HubToolDetailModalSecondaryAction
                     label="Open PC Browser"
@@ -246,9 +277,7 @@ export function AndroidProfileDetailModal({
                 updated={
                   profile.updatedAt ? (
                     <HubAdmPlainRelativeTime at={profile.updatedAt} />
-                  ) : (
-                    <span className="text-[var(--muted)]">—</span>
-                  )
+                  ) : null
                 }
               />
 
@@ -407,6 +436,44 @@ export function AndroidProfileDetailModal({
                     </button>
                   </HubAdmReadonlyField>
                 </div>
+                {profile.iosCrane ? (
+                  <div className={PROFILE_DETAIL_FORM_ROW_ALIGNED_3}>
+                    <HubAdmReadonlyField
+                      header={{ label: "iOS Crane Container", headerEmoji: "📦" }}
+                      valueLayout="inline"
+                    >
+                      <HubCopyBadge
+                        value={profile.iosCrane.containerName || profile.code}
+                        title="Copy Crane Container Name"
+                        className="hub-adm-detail-value-text font-mono truncate"
+                      />
+                    </HubAdmReadonlyField>
+                    <HubAdmReadonlyField
+                      header={{ label: "Crane Storage State", headerEmoji: "💽" }}
+                      valueLayout="inline"
+                    >
+                      <span className="hub-adm-detail-value-text truncate">
+                        {profile.iosCrane.state === "active"
+                          ? "Active on Device Flash"
+                          : profile.iosCrane.state === "on-device"
+                            ? "On-Device Flash"
+                            : profile.iosCrane.state === "offloaded"
+                              ? "Offloaded (.crane.tar.gz)"
+                              : "Initialized"}
+                      </span>
+                    </HubAdmReadonlyField>
+                    <HubAdmReadonlyField
+                      header={{ label: "Crane Vault Archive", headerEmoji: "📦" }}
+                      valueLayout="inline"
+                    >
+                      <span className="hub-adm-detail-value-text truncate">
+                        {profile.iosCrane.archiveBytes
+                          ? `${(profile.iosCrane.archiveBytes / (1024 * 1024)).toFixed(1)} MB`
+                          : "No Vault Archive"}
+                      </span>
+                    </HubAdmReadonlyField>
+                  </div>
+                ) : null}
               </HubAdmSectionBlock>
             </div>
           }

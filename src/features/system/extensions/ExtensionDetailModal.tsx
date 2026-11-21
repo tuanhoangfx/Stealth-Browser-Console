@@ -147,23 +147,21 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
                 <>
                   <HubAdmRecordMetaRow
                     vaultId={
-                      <span className={`${HUB_ADM_TYPE_MONO_CLASS} break-all font-mono text-[10px]`}>
-                        {extension.storeId || extension.localKey || "—"}
-                      </span>
+                      extension.storeId || extension.localKey ? (
+                        <span className={`${HUB_ADM_TYPE_MONO_CLASS} break-all font-mono text-[10px]`}>
+                          {extension.storeId || extension.localKey}
+                        </span>
+                      ) : null
                     }
                     created={
                       extension.createdAt || extension.updatedAt ? (
                         <HubAdmPlainRelativeTime at={(extension.createdAt ?? extension.updatedAt)!} />
-                      ) : (
-                        "—"
-                      )
+                      ) : null
                     }
                     updated={
                       extension.updatedAt ? (
                         <HubAdmPlainRelativeTime at={extension.updatedAt} />
-                      ) : (
-                        "—"
-                      )
+                      ) : null
                     }
                   />
                   <dl className="grid gap-2 rounded-lg border border-white/5 bg-white/[.02] px-3 py-3 text-xs">
@@ -175,7 +173,7 @@ export const ExtensionDetailModal = memo(function ExtensionDetailModal({
                     </div>
                     <div className="flex justify-between gap-3">
                       <dt className="font-medium text-[var(--muted)]">Version</dt>
-                      <dd className="font-normal tabular-nums text-[var(--text)]">{extension.version || "—"}</dd>
+                      <dd className="font-normal tabular-nums text-[var(--text)]">{extension.version || ""}</dd>
                     </div>
                     <div>
                       <dt className="font-medium text-[var(--muted)]">Path</dt>

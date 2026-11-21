@@ -27,7 +27,7 @@ import type { WorkflowStoreDirectoryColumnKey } from "./workflow-store-directory
 
 function formatStoreUpdatedLabel(entry: WorkflowStoreEntry) {
   const ms = workflowStoreUpdatedMs(entry);
-  if (ms == null) return "—";
+  if (ms == null) return "";
   const tone = lastOpenedAgeTone(ms);
   return tone === "stale" ? formatLastOpenedStaleDate(ms) : formatLastOpenedRelativeAge(ms);
 }
@@ -123,7 +123,7 @@ export function WorkflowStoreCard({
               {entry.group}
             </StoreCardStickerMeta>
           ) : null}
-          {visible.has("updated") ? (
+          {visible.has("updated") && formatStoreUpdatedLabel(entry) ? (
             <StoreCardStickerMeta emoji={STEALTH_WORKFLOW_STORE_COLUMN_STICKER.updated}>
               {formatStoreUpdatedLabel(entry)}
             </StoreCardStickerMeta>

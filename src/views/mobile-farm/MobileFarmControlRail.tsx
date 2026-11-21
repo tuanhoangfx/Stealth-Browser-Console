@@ -1,24 +1,10 @@
 import { memo, type Dispatch, type SetStateAction } from "react";
 import {
-  Activity,
   BatteryCharging,
   BatteryWarning,
   ChevronRight,
-  Columns2,
-  ExternalLink,
-  Grid2x2,
-  PanelLeftClose,
-  Pause,
-  Play,
-  Plus,
-  Radio,
-  RefreshCw,
   Settings2,
-  ShieldCheck,
-  Trash2,
-  Wifi,
   WifiOff,
-  XCircle,
 } from "lucide-react";
 import {
   HubBulkActionButton,
@@ -28,6 +14,7 @@ import {
 } from "@tool-workspace/hub-ui";
 import {
   fetchFarmApi,
+  resolveAndroidPowerBadgeState,
   type AvailableAdbDevice,
   type ExtendedLiveScreenState,
   type FarmEngineMode,
@@ -140,7 +127,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
           <HubBulkActionButton
             variant="ghost"
             tone="neutral"
-            icon={<PanelLeftClose size={icon12} aria-hidden />}
+            icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>◀️</span>}
             label="Hide"
             title="Collapse Farm Control Rail"
             onClick={onCollapse}
@@ -210,7 +197,11 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             <HubBulkActionButton
               tone={autoStream ? "emerald" : "neutral"}
-              icon={autoStream ? <Pause size={icon12} aria-hidden /> : <Play size={icon12} aria-hidden />}
+              icon={
+                <span className="inline-flex text-[13px] leading-none" aria-hidden>
+                  {autoStream ? "⏸️" : "▶️"}
+                </span>
+              }
               label={autoStream ? "Live On" : "Paused"}
               title="Toggle live H.264 & JPEG screen auto-stream"
               onClick={() => setAutoStream((v) => !v)}
@@ -219,7 +210,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone={patrolRunning ? "emerald" : "neutral"}
-              icon={<Activity size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📡</span>}
               iconPulsing={patrolRunning}
               label={patrolRunning ? "Patrol ON" : "Auto Patrol"}
               title="Autonomous Antidetect feed scroll & touch patrol across active displays"
@@ -230,7 +221,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone="sky"
-              icon={<Grid2x2 size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>▦</span>}
               label={`4x Pool (${virtualPoolCount}/4)`}
               title="Spawn 4 concurrent Virtual Displays (D1–D4) bound to isolated Multi-User slots (U10–U13)"
               disabled={Boolean(actionBusy)}
@@ -240,7 +231,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone={dualWall ? "emerald" : "neutral"}
-              icon={<Columns2 size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🖥️</span>}
               label={dualWall ? "Dual Wall ON" : "Dual Wall"}
               title="Show all connected Android devices side-by-side on the Phone Wall with independent touch routing"
               onClick={() => {
@@ -257,7 +248,11 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone={syncMaster ? "indigo" : "neutral"}
-              icon={<Radio size={icon12} aria-hidden />}
+              icon={
+                <span className="inline-flex text-[13px] leading-none" aria-hidden>
+                  {syncMaster ? "🟢" : "📡"}
+                </span>
+              }
               label={syncMaster ? "Sync ON" : "Sync All"}
               title="Broadcast taps, swipes, and keyevents across all active displays"
               onClick={() => {
@@ -274,7 +269,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone="emerald"
-              icon={<Wifi size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📶</span>}
               label="Wi-Fi Heal"
               title="Auto-scan Android 11-16 dynamic Wireless Debugging port & reconnect ADB over Wi-Fi"
               disabled={Boolean(actionBusy)}
@@ -284,7 +279,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone="sky"
-              icon={<Plus size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>➕</span>}
               label="+1 Display"
               title="Spawn 1 parallel 1080x2400 virtual display for background Agent tasks"
               disabled={Boolean(actionBusy)}
@@ -294,7 +289,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone="neutral"
-              icon={<ExternalLink size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>↗️</span>}
               label="Scrcpy 60f"
               title="Open native 60fps Scrcpy window"
               onClick={() => void dispatchControl({ action: "open-scrcpy" }, "Opened 60fps Scrcpy Window")}
@@ -303,7 +298,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
 
             <HubBulkActionButton
               tone="neutral"
-              icon={<RefreshCw size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🔄</span>}
               iconSpinning={loading}
               label="Refresh"
               title="Capture fresh frame across all displays now"
@@ -316,7 +311,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
           {virtualPoolCount > 0 ? (
             <HubBulkActionButton
               tone="rose"
-              icon={<XCircle size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>✖️</span>}
               label={`Close ${virtualPoolCount} Virtual Display(s)`}
               title="Release virtual displays D1..D4"
               disabled={Boolean(actionBusy)}
@@ -504,34 +499,39 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
                 .join(" ");
               const y85 = h - ((85 - 75) / 15) * (h - 8) - 4;
               const y80 = h - ((80 - 75) / 15) * (h - 8) - 4;
-              const acOff = liveState?.hardwareHealth?.acPowered === false;
-              const curBat = liveState?.hardwareHealth?.batteryLevel ?? batLevel;
-              const batCritical = acOff && curBat < 75;
-              const bypassOn =
-                !acOff &&
-                (liveState?.hardwareHealth?.chargeDisable ?? (curBat >= 85 ? 1 : 0)) === 1;
+              const hh = liveState?.hardwareHealth;
+              const curBat = hh?.batteryLevel ?? batLevel;
+              const startLv = hh?.chargeStartLevel ?? 80;
+              const stopLv = hh?.chargeStopLevel ?? 85;
+              const {
+                acOff,
+                batCritical,
+                isStoreHold,
+                bypassOn,
+                isThermalHold,
+                attachedLabel,
+                badgeLabel,
+              } = resolveAndroidPowerBadgeState(hh, curBat, stopLv);
               return (
                 <div className="rounded bg-black/45 p-1.5 text-[10px]">
                   <div className="mb-1 flex items-center justify-between text-[9px]">
-                    <span className={acOff ? "text-amber-300" : "text-emerald-300"}>24h Hysteresis (80–85%)</span>
+                    <span className={acOff ? "text-amber-300" : "text-emerald-300"}>
+                      {isStoreHold ? "24h Safe Hold (60–70%)" : `24h Hysteresis (${startLv}–${stopLv}%)`}
+                    </span>
                     <span
                       className={`rounded px-1 py-0.2 ${
                         batCritical
                           ? "border border-rose-400/40 bg-rose-500/25 text-rose-200"
                           : acOff
                             ? "border border-amber-400/35 bg-amber-500/20 text-amber-200"
-                            : bypassOn
-                              ? "border border-emerald-400/30 bg-emerald-500/20 text-emerald-200"
-                              : "border border-sky-400/30 bg-sky-500/20 text-sky-200"
+                            : isThermalHold
+                              ? "border border-amber-400/40 bg-amber-500/20 text-amber-200"
+                              : bypassOn
+                                ? "border border-emerald-400/30 bg-emerald-500/20 text-emerald-200"
+                                : "border border-sky-400/30 bg-sky-500/20 text-sky-200"
                       }`}
                     >
-                      {batCritical
-                        ? "🚨 USB Unplugged (<75%)"
-                        : acOff
-                          ? "⚠️ USB Unplugged"
-                          : bypassOn
-                            ? "Bypass ON (85%)"
-                            : "Charging (80→85%)"}
+                      {badgeLabel ?? `⚡ Charging${attachedLabel}`}
                     </span>
                   </div>
                   <svg viewBox={`0 0 ${w} ${h}`} className="h-11 w-full overflow-visible">
@@ -567,7 +567,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
                   </span>
                   <HubBulkActionButton
                     tone="emerald"
-                    icon={<Trash2 size={compactIconSize(11)} aria-hidden />}
+                    icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🗑️</span>}
                     label="Reap RAM & Prune"
                     title="Stop idle secondary Android users (u10..u99), drop kernel caches, and prune stale slots"
                     disabled={Boolean(actionBusy)}
@@ -582,7 +582,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
                 </div>
                 <HubBulkActionButton
                   tone="sky"
-                  icon={<ShieldCheck size={compactIconSize(11)} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🛡️</span>}
                   label={actionBusy === "provision-npo" ? "Provisioning 80–85%…" : "Verify / Provision 80–85% Never-Power-Off"}
                   title="Push 01-p0002-stealth-boot.sh & 99-stealth-server-hardening.sh, enforce 80-85% charge hysteresis & Display 0 OFF"
                   disabled={Boolean(actionBusy)}
@@ -623,7 +623,7 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
                 </div>
                 <HubBulkActionButton
                   tone="indigo"
-                  icon={<RefreshCw size={compactIconSize(11)} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🔄</span>}
                   label={
                     actionBusy === "harvest-marl"
                       ? "Scanning 48h Recovery Mailboxes…"

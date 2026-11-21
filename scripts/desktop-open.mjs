@@ -14,6 +14,7 @@ import {
 import { winSpawnOpts } from "./lib/win-spawn.mjs";
 
 import {
+  isDesktopInstallLocked,
   launchDesktopExeVerified,
   openDesktopExeWithPolicy,
   parseDesktopOpenFlags,
@@ -22,6 +23,10 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const devRoot = path.resolve(root, "..", "..");
+if (isDesktopInstallLocked(devRoot, "P0003")) {
+  console.log("desktop:open: skipped — P0003 installer in progress");
+  process.exit(0);
+}
 const require = createRequire(path.join(root, "package.json"));
 const { spawnInteractiveDesktopProcess } = require(path.join(root, "..", "scripts", "lib", "win-shell-env.cjs"));
 const processName = "Stealth Browser Console";
@@ -47,7 +52,7 @@ function killPackagedOnly() {
   );
 }
 
-const exePath = resolvePackagedStealthExe(root);
+const exePath = resolvePackagedStealthExe(root, { target: flags.target });
 if (!exePath) {
   console.error(
     `Desktop exe not found. Run: pnpm desktop:dist\n` +
@@ -90,6 +95,7 @@ if (flags.replace && (prodHealthyInitial || isPackagedExeProcessRunning()) && al
     noHotPatch: flags.noHotPatch,
     skipBuild: flags.skipBuild,
     releaseProd: flags.releaseProd,
+    target: flags.target,
     spawnInteractiveDesktopProcess,
   });
   console.log(

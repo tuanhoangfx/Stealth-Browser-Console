@@ -3,6 +3,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  buildVisionImageDataUrl,
   extractVisionResponseText,
   parseVisionTileNumbers,
   findRecaptchaFramesInTree,
@@ -14,6 +15,7 @@ const {
   findUniversalCaptchaFramesInTree,
   askVisionForArkoseOrTextCaptcha,
   solveArkoseOrFacebookCaptchaViaCdp,
+  handleGoogleUplevelingSmsAppealViaCdp,
 } = require("./recaptcha-vision-solver.cjs");
 
 describe("recaptcha-vision-solver SSOT (ok 1, ok 2, ok 3)", () => {
@@ -322,5 +324,198 @@ describe("recaptcha-vision-solver SSOT (ok 1, ok 2, ok 3)", () => {
     assert.equal(textSolve.solved, true);
     assert.equal(textSolve.reason, "text_captcha_submitted");
     assert.equal(submittedText, "K9X4M");
+  });
+
+  it("captures CDP reCAPTCHA grids as JPEG, shrinks oversized shots, and tags image/jpeg MIME (ok 1)", async () => {
+    const pngUrl = buildVisionImageDataUrl("iVBORw0KGgo=");
+    const jpegUrl = buildVisionImageDataUrl("/9j/4AAQSkZJRg==");
+    const webpUrl = buildVisionImageDataUrl("UklGRh4AAABXRUJQ");
+    assert.match(pngUrl, /^data:image\/png;base64,/);
+    assert.match(jpegUrl, /^data:image\/jpeg;base64,/);
+    assert.match(webpUrl, /^data:image\/webp;base64,/);
+
+    let checked = false;
+    const captureCalls = [];
+    let seenVisionUrl = "";
+    const bigJpegB64 = "/9j/" + "A".repeat(460_000);
+    const smallJpegB64 = "/9j/small";
+
+    const cdpSend = async (method, params = {}) => {
+      if (method === "Page.getFrameTree") {
+        return {
+          frameTree: {
+            frame: { id: "main", url: "https://accounts.google.com/v3/signin/challenge/recaptcha" },
+            childFrames: [
+              { frame: { id: "f-anchor", url: "https://www.google.com/recaptcha/enterprise/anchor" } },
+              { frame: { id: "f-bframe", url: "https://www.google.com/recaptcha/enterprise/bframe" } },
+            ],
+          },
+        };
+      }
+      if (method === "Page.createIsolatedWorld") return { executionContextId: `ctx-${params.frameId}` };
+      if (method === "Page.captureScreenshot") {
+        captureCalls.push({ format: params.format, quality: params.quality });
+        return { data: captureCalls.length === 1 ? bigJpegB64 : smallJpegB64 };
+      }
+      if (method === "Runtime.evaluate") {
+        const expr = String(params.expression || "");
+        if (params.contextId === "ctx-f-anchor") {
+          return { result: { value: expr.includes("return { checked:") ? { checked } : checked } };
+        }
+        if (params.contextId === "ctx-f-bframe") {
+          if (expr.includes("promptText")) {
+            return {
+              result: {
+                value: {
+                  promptText: "Select all images with cars",
+                  target: "cars",
+                  tileCount: 9,
+                  gridSize: 3,
+                  isDynamic: false,
+                  verifyLabel: "Verify",
+                  hasError: false,
+                },
+              },
+            };
+          }
+          if (expr.includes("#recaptcha-verify-button")) {
+            checked = true;
+            return { result: { value: true } };
+          }
+          return { result: { value: false } };
+        }
+        if (expr.includes("hasAnchor")) {
+          return {
+            result: {
+              value: {
+                url: "https://accounts.google.com/v3/signin/challenge/recaptcha",
+                hasAnchor: true,
+                anchorRect: { x: 40, y: 200, width: 300, height: 74 },
+                hasBframe: !checked,
+                bframeRect: { x: 50, y: 80, width: 400, height: 580 },
+              },
+            },
+          };
+        }
+      }
+      return {};
+    };
+
+    const mockFetch = async (_url, init = {}) => {
+      const parsed = JSON.parse(String(init.body || "{}"));
+      seenVisionUrl = parsed?.messages?.[0]?.content?.[1]?.image_url?.url || "";
+      return {
+        ok: true,
+        text: async () => '{"choices":[{"message":{"content":"{\\"tiles\\":[2,7]}"}}]}',
+      };
+    };
+
+    const out = await solveGoogleRecaptchaViaCdp(cdpSend, { maxRounds: 2, fetchFn: mockFetch });
+    assert.equal(out.ok, true);
+    assert.deepEqual(captureCalls, [
+      { format: "jpeg", quality: 82 },
+      { format: "jpeg", quality: 55 },
+    ]);
+    assert.equal(seenVisionUrl, `data:image/jpeg;base64,${smallJpegB64}`);
+  });
+
+  it("handles /uplevelingstep/selection SMS OTP + /uplevelingstep/spinner transition before /restrictions/54/appeal submit", async () => {
+    let stage = "selection";
+    let refreshedSessionCount = 0;
+    let spinnerChecks = 0;
+
+    const makeCdpSend = (stale = false) => async (method, params = {}) => {
+      if (method === "Input.dispatchMouseEvent") {
+        if (params.type === "mouseReleased" && stage === "selection") {
+          stage = "iap_phone";
+        }
+        return {};
+      }
+      if (method !== "Runtime.evaluate") return {};
+      const expr = String(params.expression || "");
+
+      if (stale && stage === "selection" && expr === "location.href") {
+        throw new Error("Target closed");
+      }
+
+      if (expr === "location.href") {
+        if (stage === "selection") return { result: { value: "https://accounts.google.com/uplevelingstep/selection?continue=https%3A%2F%2Fmyaccount.google.com%2Frestrictions%2F54%2Fappeal" } };
+        if (stage === "iap_phone") return { result: { value: "https://accounts.google.com/v3/signin/challenge/iap" } };
+        if (stage === "iap_verify") return { result: { value: "https://accounts.google.com/v3/signin/challenge/iap/verify" } };
+        if (stage === "spinner") {
+          spinnerChecks += 1;
+          if (spinnerChecks >= 2) stage = "appeal_form";
+          return { result: { value: "https://accounts.google.com/uplevelingstep/spinner?continue=https%3A%2F%2Fmyaccount.google.com%2Frestrictions%2F54%2Fappeal" } };
+        }
+        if (stage === "appeal_form") return { result: { value: "https://myaccount.google.com/restrictions/54/appeal?hl=en" } };
+        return { result: { value: "https://myaccount.google.com/restrictions/54/appeal?ai=54&hl=en" } };
+      }
+
+      if (expr.includes("a[href*='/appeal']")) {
+        return { result: { value: null } };
+      }
+      if (expr.includes("Xác minh số điện thoại")) {
+        return { result: { value: { x: 180, y: 260, text: "Xác minh số điện thoại của bạn" } } };
+      }
+      if (expr.includes("deviceAddress")) {
+        stage = "iap_verify";
+        return { result: { value: true } };
+      }
+      if (expr.includes("isVerifyUrl")) {
+        return { result: { value: { url: "https://accounts.google.com/v3/signin/challenge/iap/verify", hasPin: true, isError: false } } };
+      }
+      if (expr.includes("idvAnyPhonePin")) {
+        stage = "spinner";
+        return { result: { value: true } };
+      }
+      if (expr.includes("contactEmailVal")) {
+        if (stage === "spinner") {
+          spinnerChecks += 1;
+          if (spinnerChecks >= 2) stage = "appeal_form";
+          return { result: { value: { url: "https://accounts.google.com/uplevelingstep/spinner", body: "Unlocking access...", spinning: true, clickedBtn: null } } };
+        }
+        if (stage === "appeal_form") {
+          stage = "submitted";
+          return { result: { value: { url: "https://myaccount.google.com/restrictions/54/appeal?hl=en", body: "Submit an appeal", clickedBtn: "Submit appeal" } } };
+        }
+        return { result: { value: { url: "https://myaccount.google.com/restrictions/54/appeal?ai=54&hl=en", body: "Appeal submitted Gmail Entire service unavailable", appealSubmitted: true } } };
+      }
+      if (expr.includes("document.body?.innerText")) {
+        return { result: { value: { url: "https://myaccount.google.com/restrictions/54/appeal?ai=54&hl=en", body: "Appeal submitted Gmail Entire service unavailable" } } };
+      }
+      return { result: { value: null } };
+    };
+
+    const mockSimHelpers = {
+      rentOrReuseLongTermSim: async () => ({
+        ok: true,
+        phoneNumber: "+6285198422850",
+        requestId: "req-1",
+        grizzlyCountryId: "6",
+        cost: 0.007,
+      }),
+      pollLongTermSimOtp: async () => ({ ok: true, otpCode: "101147" }),
+      cancelGrizzlySmsActivation: async () => ({ ok: true }),
+    };
+
+    const out = await handleGoogleUplevelingSmsAppealViaCdp(makeCdpSend(true), {
+      code: "0325",
+      account: "nurulemanbk@gmail.com",
+      contactEmail: "q1g3@outlook.com",
+      simHelpers: mockSimHelpers,
+      stepDelayMs: 0,
+      pollMaxAttempts: 1,
+      pollIntervalMs: 0,
+      onRefreshCdpSend: async () => {
+        refreshedSessionCount += 1;
+        return makeCdpSend(false);
+      },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.appealSubmitted, true);
+    assert.equal(out.restrictionId, "54");
+    assert.equal(out.phoneUsed, "+6285198422850");
+    assert.equal(refreshedSessionCount, 1);
   });
 });

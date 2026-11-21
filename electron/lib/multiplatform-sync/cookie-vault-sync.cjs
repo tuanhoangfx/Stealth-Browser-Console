@@ -31,6 +31,44 @@ const _liveVaultJsonMemoryCache =
 const _liveVaultFlushTimers =
   globalThis.__STEALTH_LIVE_VAULT_FLUSH_TIMERS__ ||
   (globalThis.__STEALTH_LIVE_VAULT_FLUSH_TIMERS__ = new Map());
+for (const prevTimer of _liveVaultFlushTimers.values()) {
+  try {
+    clearTimeout(prevTimer);
+  } catch {
+    /* ignore */
+  }
+}
+_liveVaultFlushTimers.clear();
+
+function isP0002MetadataVaultPath(targetPath) {
+  return /P0002-Social-Hub[\\/]data/i.test(String(targetPath || ""));
+}
+
+function stripCookiesForMetadataMirror(rawObj) {
+  if (!rawObj || typeof rawObj !== "object") return rawObj;
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return node;
+    if (Array.isArray(node)) return node.map(walk);
+    const out = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "cookies" && Array.isArray(v)) {
+        out.cookieCount = v.length;
+        out.hasCookies = v.length > 0;
+        continue;
+      }
+      if (k === "cookieHeader" && typeof v === "string") {
+        continue;
+      }
+      if (k === "spaStorage" && v && typeof v === "object") {
+        out.hasSpaStorage = true;
+        continue;
+      }
+      out[k] = walk(v);
+    }
+    return out;
+  };
+  return walk(rawObj);
+}
 
 function readVaultJsonCached(filePath, fallbackFactory) {
   const key = path.resolve(String(filePath));
@@ -123,18 +161,24 @@ function scheduleDebouncedVaultJsonWrite(filePath, payload) {
   const baseName = path.basename(key);
   _liveVaultJsonMemoryCache.set(key, { mtimeMs: Date.now(), dirty: true, data: payload });
 
-  const mirrorVaultFileSync = (jsonText) => {
+  const serializeForTarget = (targetPath, obj, fullJsonText) =>
+    isP0002MetadataVaultPath(targetPath)
+      ? JSON.stringify(stripCookiesForMetadataMirror(obj))
+      : fullJsonText;
+
+  const mirrorVaultFileSync = (fullJsonText, obj) => {
     for (const altDir of P0002_VAULT_DIR_CANDIDATES) {
       try {
         if (!fs.existsSync(altDir)) continue;
         const altPath = path.resolve(altDir, baseName);
         if (altPath !== key) {
+          const targetJson = serializeForTarget(altPath, obj, fullJsonText);
           const altTmp = `${altPath}.tmp.${process.pid}.${Date.now()}`;
-          fs.writeFileSync(altTmp, jsonText, "utf8");
+          fs.writeFileSync(altTmp, targetJson, "utf8");
           try {
             fs.renameSync(altTmp, altPath);
           } catch {
-            fs.writeFileSync(altPath, jsonText, "utf8");
+            fs.writeFileSync(altPath, targetJson, "utf8");
             try { fs.unlinkSync(altTmp); } catch { /* ignore */ }
           }
         }
@@ -152,16 +196,17 @@ function scheduleDebouncedVaultJsonWrite(filePath, payload) {
     !process.versions?.electron
   ) {
     try {
-      const jsonText = JSON.stringify(payload);
+      const fullJsonText = JSON.stringify(payload);
+      const primaryJson = serializeForTarget(key, payload, fullJsonText);
       const syncTmp = `${key}.tmp.${process.pid}.${Date.now()}`;
-      fs.writeFileSync(syncTmp, jsonText, "utf8");
+      fs.writeFileSync(syncTmp, primaryJson, "utf8");
       try {
         fs.renameSync(syncTmp, key);
       } catch {
-        fs.writeFileSync(key, jsonText, "utf8");
+        fs.writeFileSync(key, primaryJson, "utf8");
         try { fs.unlinkSync(syncTmp); } catch { /* ignore */ }
       }
-      mirrorVaultFileSync(jsonText);
+      mirrorVaultFileSync(fullJsonText, payload);
       const st = fs.statSync(key);
       _liveVaultJsonMemoryCache.set(key, { mtimeMs: st.mtimeMs, dirty: false, data: payload });
     } catch {
@@ -177,12 +222,13 @@ function scheduleDebouncedVaultJsonWrite(filePath, payload) {
     if (!entry || !entry.dirty) return;
     const tmpPath = `${key}.tmp.${process.pid}.${Date.now()}`;
     try {
-      const jsonText = JSON.stringify(entry.data);
-      await fs.promises.writeFile(tmpPath, jsonText, "utf8");
+      const fullJsonText = JSON.stringify(entry.data);
+      const primaryJson = serializeForTarget(key, entry.data, fullJsonText);
+      await fs.promises.writeFile(tmpPath, primaryJson, "utf8");
       try {
         await fs.promises.rename(tmpPath, key);
       } catch {
-        await fs.promises.writeFile(key, jsonText, "utf8");
+        await fs.promises.writeFile(key, primaryJson, "utf8");
         await fs.promises.unlink(tmpPath).catch(() => undefined);
       }
       for (const altDir of P0002_VAULT_DIR_CANDIDATES) {
@@ -190,12 +236,13 @@ function scheduleDebouncedVaultJsonWrite(filePath, payload) {
           if (!fs.existsSync(altDir)) continue;
           const altPath = path.resolve(altDir, baseName);
           if (altPath !== key) {
+            const targetJson = serializeForTarget(altPath, entry.data, fullJsonText);
             const altTmp = `${altPath}.tmp.${process.pid}.${Date.now()}`;
-            await fs.promises.writeFile(altTmp, jsonText, "utf8");
+            await fs.promises.writeFile(altTmp, targetJson, "utf8");
             try {
               await fs.promises.rename(altTmp, altPath);
             } catch {
-              await fs.promises.writeFile(altPath, jsonText, "utf8");
+              await fs.promises.writeFile(altPath, targetJson, "utf8");
               await fs.promises.unlink(altTmp).catch(() => undefined);
             }
           }

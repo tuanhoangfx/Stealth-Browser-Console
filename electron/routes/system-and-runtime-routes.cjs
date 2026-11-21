@@ -59,16 +59,20 @@ function buildSystemAndRuntimeRoutes(deps) {
         if (typeof lockLiveAppAsarAgainstOverwrite === "function") {
           lockLiveAppAsarAgainstOverwrite();
         }
+        let androidBridgeWorkerInvalidated = false;
         try {
           const bridgeLoader = require("../lib/android-bridge-loader.cjs");
           if (typeof bridgeLoader?.invalidateAndroidStealthBridgeWorker === "function") {
             bridgeLoader.invalidateAndroidStealthBridgeWorker();
-            res.androidBridgeWorkerInvalidated = true;
+            androidBridgeWorkerInvalidated = true;
           }
         } catch {
           /* ignore */
         }
         const res = reloadHotPatchedModules({ force: Boolean(ctx.body?.force) });
+        if (androidBridgeWorkerInvalidated) {
+          res.androidBridgeWorkerInvalidated = true;
+        }
         res.asarWriteLocked = true;
         if (typeof ctx.services?.rebuildRoutes === "function") {
           res.routesCount = ctx.services.rebuildRoutes();

@@ -1,13 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  Camera,
-  Database,
-  Download,
-  MonitorSmartphone,
-  RefreshCw,
-  Smartphone,
-  Upload,
-} from "lucide-react";
+import { Smartphone } from "lucide-react";
 import {
   buildDirectoryColgroup,
   buildDirectoryColumns,
@@ -24,8 +16,10 @@ import {
   HubDirectoryBulkActionBar,
   HubDirectoryBulkDetailModal,
   HubDirectoryBulkMoreMenu,
+  HubDirectoryCopyText,
   HubDirectoryDeleteBulkAction,
   HubDirectoryEllipsisCell,
+  HubDirectoryEmptyCell,
   HubDirectoryNewBulkAction,
   HubDirectoryProfileCell,
   HubDirectoryRunToggle,
@@ -33,6 +27,7 @@ import {
   HubDirectoryTableShell,
   HubDirectoryTimestampTooltipCell,
   HubDirectoryValuePopover,
+  HubTwofaCopyControl,
   hubBrandFilterGlyphFields,
   hubDirectoryListResetKey,
   hubDirectoryTableClass,
@@ -84,6 +79,7 @@ import { applyStealthFilterLabelHints } from "../lib/stealth-filter-hints";
 import { profileAdaptiveEditLabelHint } from "../features/profiles/profile-bulk-action-hints";
 import { useStealthManualSortEnabled } from "../lib/stealth-manual-sort-prefs";
 import { useStealthHubListPrefs } from "../lib/useStealthHubListPrefs";
+import { fetchFarmApi as fetchMobileApi } from "./mobile-farm/mobile-farm-stream";
 
 export type MobileProfileRow = {
   code: string;
@@ -100,6 +96,15 @@ export type MobileProfileRow = {
   hasSnapshot: boolean;
   snapshotSizeBytes: number;
   hasIosContainer: boolean;
+  iosCrane?: {
+    containerName?: string;
+    containerUuid?: string;
+    state: "active" | "on-device" | "offloaded" | "uninitialized";
+    activeOnDevice?: boolean;
+    onDevice?: boolean;
+    offloaded?: boolean;
+    archiveBytes?: number;
+  } | null;
   cookieCount: number;
   mobilePulledCount: number;
   c_user?: string | null;
@@ -128,8 +133,6 @@ type MobileDeviceTelemetry = {
 
 export type StealthAndroidSortKey = StealthAndroidColumnKey;
 
-const MOBILE_API_BASES = ["", "http://127.0.0.1:6004", "http://127.0.0.1:6003", "http://127.0.0.1:3002"];
-
 function normalizeAndroidBrandName(raw: string | undefined | null): string {
   const s = String(raw || "").trim();
   const lower = s.toLowerCase();
@@ -148,24 +151,6 @@ function resolveAndroidBrandId(brandLabel: string): HubDirectoryBrandNameCellPro
   if (lower === "google") return "google";
   if (lower === "apple") return "apple";
   return undefined;
-}
-
-async function fetchMobileApi(path: string, init?: RequestInit) {
-  const altPath = path.startsWith("/api/mobile-stealth/")
-    ? path.replace("/api/mobile-stealth/", "/api/android-vault/")
-    : path;
-  const candidatePaths = altPath !== path ? [altPath, path] : [path];
-  for (const candidatePath of candidatePaths) {
-    for (const base of MOBILE_API_BASES) {
-      try {
-        const res = await fetch(`${base}${candidatePath}`, init);
-        if (res.ok) return await res.json();
-      } catch {
-        /* try next base */
-      }
-    }
-  }
-  throw new Error("Mobile Stealth Bridge API (127.0.0.1:6004 / 6003 / 3002) unreachable");
 }
 
 function mobileRowKey(row: MobileProfileRow) {
@@ -405,6 +390,8 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
         searchTextIncludes(p.androidId, q) ||
         searchTextIncludes(p.imei, q) ||
         searchTextIncludes(p.customNote || "", q) ||
+        searchTextIncludes(p.iosCrane?.containerName || "", q) ||
+        searchTextIncludes(p.iosCrane?.state || "", q) ||
         p.services.some((s) => searchTextIncludes(s, q)) ||
         searchTextIncludes(String(pc?.name || ""), q)
       );
@@ -632,19 +619,85 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
 
   const targetCode = selectedRows[0]?.code || rows.find((r) => r.activeOnPhone)?.code || "0046";
 
-  const handleBulkPushCookies = useCallback(async () => {
-    const targets = selectedRows.length > 0 ? selectedRows.map((r) => r.code) : [targetCode];
-    for (const code of targets) {
-      await runAction(code, "/api/mobile-stealth/push-cookies", "Push PC Cookies");
-    }
-  }, [runAction, selectedRows, targetCode]);
+  const runBulkAction = useCallback(
+    async (
+      endpoint: string,
+      label: string,
+      extraBody: Record<string, unknown> = {},
+    ) => {
+      const targets = selectedRows.length > 0 ? selectedRows.map((r) => r.code) : [targetCode];
+      let okCount = 0;
+      let failCount = 0;
+      let lruOffloaded = 0;
+      for (const code of targets) {
+        setBusyCode(`${code}:${endpoint}`);
+        try {
+          const data = await fetchMobileApi(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profileCode: code, ...extraBody }),
+          });
+          if (data?.ok) {
+            okCount += 1;
+            if (Array.isArray(data.offloadedContainers)) {
+              lruOffloaded += data.offloadedContainers.length;
+            }
+          } else {
+            failCount += 1;
+          }
+        } catch {
+          failCount += 1;
+        }
+      }
+      setBusyCode("");
+      await loadProfiles();
+      const extraNote = lruOffloaded > 0 ? ` · ${lruOffloaded} LRU offloaded` : "";
+      if (failCount === 0) {
+        pushToast(`${label}: ${okCount}/${targets.length} succeeded${extraNote}.`, "success");
+      } else {
+        pushToast(`${label}: ${okCount}/${targets.length} succeeded, ${failCount} failed${extraNote}.`, "info");
+      }
+    },
+    [loadProfiles, pushToast, selectedRows, targetCode],
+  );
 
-  const handleBulkPullCookies = useCallback(async () => {
-    const targets = selectedRows.length > 0 ? selectedRows.map((r) => r.code) : [targetCode];
-    for (const code of targets) {
-      await runAction(code, "/api/mobile-stealth/pull-cookies", "Pull Mobile Cookies");
-    }
-  }, [runAction, selectedRows, targetCode]);
+  const handleBulkPushCookies = useCallback(
+    () => runBulkAction("/api/mobile-stealth/push-cookies", "Push PC Cookies"),
+    [runBulkAction],
+  );
+
+  const handleBulkPullCookies = useCallback(
+    () => runBulkAction("/api/mobile-stealth/pull-cookies", "Pull Mobile Cookies"),
+    [runBulkAction],
+  );
+
+  const handleBulkCraneOffload = useCallback(
+    () =>
+      runBulkAction("/api/mobile-stealth/crane-offload", "Offload Crane", {
+        target: "crane",
+        removeFromDevice: true,
+      }),
+    [runBulkAction],
+  );
+
+  const handleBulkCraneRestore = useCallback(
+    () =>
+      runBulkAction("/api/mobile-stealth/crane-restore", "Restore Crane", {
+        target: "crane",
+        activate: selectedRows.length <= 1,
+      }),
+    [runBulkAction, selectedRows.length],
+  );
+
+  const handleBulkCraneMount = useCallback(
+    () =>
+      runBulkAction("/api/mobile-stealth/crane-mount", "Mount Crane (LRU)", {
+        target: "crane",
+        autoOffloadLru: true,
+        minFreeGb: 10,
+      }),
+    [runBulkAction],
+  );
 
   const manualSort = useStealthManualSortEnabled("p0003-android");
 
@@ -732,41 +785,9 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
   const moreMenuItems = useMemo<HubDirectoryBulkMoreAction[]>(
     () => [
       {
-        key: "mount",
-        label: `Mount #${targetCode}`,
-        icon: Smartphone,
-        title: "Switch connected Android phone hardware identity to selected profile",
-        disabled: Boolean(busyCode),
-        onClick: () => void runAction(targetCode, "/api/mobile-stealth/switch", "Mount on Phone"),
-      },
-      {
-        key: "push-cookies",
-        label: "Push Cookies (PC → Phone)",
-        icon: Upload,
-        title: "Inject PC Cookie Vault sessions into Android Chrome via Wireless CDP",
-        disabled: Boolean(busyCode),
-        onClick: () => void handleBulkPushCookies(),
-      },
-      {
-        key: "pull-cookies",
-        label: "Pull Cookies (Phone → PC)",
-        icon: Download,
-        title: "Extract live cookies from Android Chrome back into PC Cookie Vault",
-        disabled: Boolean(busyCode),
-        onClick: () => void handleBulkPullCookies(),
-      },
-      {
-        key: "snapshot",
-        label: "Save Snapshot",
-        icon: Camera,
-        title: "Capture encrypted app data snapshot from connected phone",
-        disabled: Boolean(busyCode),
-        onClick: () => void runAction(targetCode, "/api/mobile-stealth/snapshot", "Save Snapshot"),
-      },
-      {
         key: "mirror",
         label: "Mirror Phone",
-        icon: MonitorSmartphone,
+        emoji: "📲",
         title: "Open live scrcpy screen mirror for connected Pixel 6a",
         disabled: Boolean(busyCode),
         onClick: () => void runAction(targetCode, "/api/mobile-stealth/mirror", "Mirror Screen"),
@@ -774,7 +795,7 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
       {
         key: "sync-p0020",
         label: "Sync P0020",
-        icon: Database,
+        emoji: "🗄️",
         title: "Sync Mobile Vault status tags and unlock QR-challenged Gmail rows in P0020 Data Box",
         disabled: Boolean(busyCode),
         onClick: () =>
@@ -784,16 +805,30 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           }),
       },
       {
-        key: "refresh",
-        label: "Refresh",
-        icon: RefreshCw,
-        iconSpinning: loading,
-        title: "Reload Mobile Antidetect Vault & Wireless ADB telemetry",
-        disabled: loading,
-        onClick: () => void loadProfiles(),
+        key: "crane-offload",
+        label: selectedRows.length > 1 ? `Offload Crane (${selectedRows.length})` : "Offload Crane",
+        emoji: "📦",
+        title: "Pack selected Crane container(s) (.tar.gz) to PC Vault and reclaim device storage",
+        disabled: Boolean(busyCode),
+        onClick: () => void handleBulkCraneOffload(),
+      },
+      {
+        key: "crane-restore",
+        label: selectedRows.length > 1 ? `Restore Crane (${selectedRows.length})` : "Restore Crane",
+        emoji: "♻️",
+        title: "Push archived Crane container(s) (.tar.gz) back to iOS",
+        disabled: Boolean(busyCode),
+        onClick: () => void handleBulkCraneRestore(),
       },
     ],
-    [busyCode, handleBulkPullCookies, handleBulkPushCookies, loadProfiles, loading, runAction, targetCode],
+    [
+      busyCode,
+      handleBulkCraneOffload,
+      handleBulkCraneRestore,
+      runAction,
+      selectedRows.length,
+      targetCode,
+    ],
   );
 
   const bulkDetailFields = useMemo<HubDirectoryBulkDetailFieldSpec[]>(
@@ -942,13 +977,18 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
       switch (key) {
         case "profile": {
           const display = formatDirectoryOneLine(pcProf?.name || row.code);
+          const craneSummary = row.iosCrane
+            ? `\niOS Crane: ${row.iosCrane.containerName || "Mapped"} (${row.iosCrane.state}${
+                row.iosCrane.archiveBytes ? ` · ${Math.max(1, Math.round(row.iosCrane.archiveBytes / (1024 * 1024)))} MB` : ""
+              })`
+            : "";
           const popoverValue = [
             `Profile ID: #${row.code}`,
             `PC Profile: ${pcProf?.name || row.name}`,
             `Device: ${row.manufacturer} ${row.model}`,
             `Android_ID: ${row.androidId}`,
             `IMEI: ${row.imei}`,
-          ].join("\n");
+          ].join("\n") + craneSummary;
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
               <HubDirectoryProfileCell
@@ -970,12 +1010,20 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
               <HubDirectoryValuePopover
                 value={`Brand: ${label}\nModel: ${row.model}\nGPU: ${row.glRenderer}`}
                 title="📱 Hardware Brand"
+                className="min-w-0 max-w-full"
               >
-                <HubDirectoryBrandNameCell
-                  label={label}
-                  brandId={brandId}
-                  fallbackGlyph="📱"
-                  searchHighlightTerms={terms}
+                <HubTwofaCopyControl
+                  value={label}
+                  copyToastLabel="Brand copied"
+                  className="twofa-copy-control--account min-w-0 max-w-full"
+                  display={
+                    <HubDirectoryBrandNameCell
+                      label={label}
+                      brandId={brandId}
+                      fallbackGlyph="📱"
+                      searchHighlightTerms={terms}
+                    />
+                  }
                 />
               </HubDirectoryValuePopover>
             </DirectoryTableBodyCell>
@@ -1040,7 +1088,7 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           const display = formatDirectoryOneLine(row.model);
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
-              <HubDirectoryEllipsisCell value={display} />
+              <HubDirectoryCopyText value={display} copyToastLabel="Model copied" />
             </DirectoryTableBodyCell>
           );
         }
@@ -1048,7 +1096,7 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           const display = formatDirectoryOneLine(row.glRenderer);
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
-              <HubDirectoryEllipsisCell value={display} />
+              <HubDirectoryCopyText value={display} copyToastLabel="GPU copied" />
             </DirectoryTableBodyCell>
           );
         }
@@ -1063,10 +1111,13 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           ].join("\n");
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
-              <HubDirectoryValuePopover value={detail} title="🆔 Android ID & Telemetry">
-                <span className={`hub-directory-table-body-text tabular-nums ${DIRECTORY_CELL_TRUNCATE}`}>
-                  {display}
-                </span>
+              <HubDirectoryValuePopover value={detail} title="🆔 Android ID & Telemetry" className="min-w-0 max-w-full">
+                <HubDirectoryCopyText
+                  value={row.androidId || display}
+                  display={display}
+                  copyToastLabel="Android ID copied"
+                  className="hub-directory-table-body-text tabular-nums"
+                />
               </HubDirectoryValuePopover>
             </DirectoryTableBodyCell>
           );
@@ -1080,10 +1131,13 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           ].join("\n");
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
-              <HubDirectoryValuePopover value={detail} title="📟 Hardware IMEI">
-                <span className={`hub-directory-table-body-text tabular-nums ${DIRECTORY_CELL_TRUNCATE}`}>
-                  {display}
-                </span>
+              <HubDirectoryValuePopover value={detail} title="📟 Hardware IMEI" className="min-w-0 max-w-full">
+                <HubDirectoryCopyText
+                  value={row.imei || display}
+                  display={display}
+                  copyToastLabel="IMEI copied"
+                  className="hub-directory-table-body-text tabular-nums"
+                />
               </HubDirectoryValuePopover>
             </DirectoryTableBodyCell>
           );
@@ -1102,12 +1156,44 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
             </DirectoryTableBodyCell>
           );
         }
-        case "snapshot":
+        case "snapshot": {
+          const crane = row.iosCrane;
+          if (crane) {
+            const mb = crane.archiveBytes ? `${Math.max(1, Math.round(crane.archiveBytes / (1024 * 1024)))}M` : "";
+            const label =
+              crane.state === "active"
+                ? "Crane Active"
+                : crane.state === "on-device"
+                  ? "Crane Flash"
+                  : crane.state === "offloaded"
+                    ? `Offload${mb ? ` ${mb}` : ""}`
+                    : "Crane Init";
+            const tone = crane.state === "active" ? "online" : crane.state === "on-device" ? "idle" : "offline";
+            const titleLines = [
+              `iOS Container: ${crane.containerName || row.code}`,
+              crane.containerUuid ? `UUID: ${crane.containerUuid}` : "",
+              `State: ${crane.state === "active" ? "Active on Device" : crane.state === "on-device" ? "On-Device Flash" : crane.state === "offloaded" ? "Offloaded to Vault Archive" : "Initialized"}`,
+              crane.archiveBytes ? `Archive: ${(crane.archiveBytes / (1024 * 1024)).toFixed(1)} MB` : "",
+              row.hasSnapshot ? `Android Snapshot: ${(Math.max(1, Math.round(row.snapshotSizeBytes / 1024)))} KB` : "",
+            ].filter(Boolean);
+            return (
+              <DirectoryTableBodyCell key={key} colClass={colClass}>
+                <HubUsersStatusLabel
+                  label={label}
+                  tone={tone}
+                  capitalize={false}
+                  title={titleLines.join("\n")}
+                  popoverTitle="📱 iOS Crane Container"
+                />
+              </DirectoryTableBodyCell>
+            );
+          }
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
               <HubUsersOnOffLabel on={row.hasSnapshot} />
             </DirectoryTableBodyCell>
           );
+        }
         case "createdAt":
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
@@ -1165,7 +1251,7 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
         default:
           return (
             <DirectoryTableBodyCell key={key} colClass={colClass}>
-              <span className="hub-directory-table-body-text">—</span>
+              <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
             </DirectoryTableBodyCell>
           );
       }
@@ -1287,6 +1373,25 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
           onPushCookies={(code) => runAction(code, "/api/mobile-stealth/push-cookies", "Push PC Cookies")}
           onPullCookies={(code) => runAction(code, "/api/mobile-stealth/pull-cookies", "Pull Mobile Cookies")}
           onSaveSnapshot={(code) => runAction(code, "/api/mobile-stealth/snapshot", "Save Snapshot")}
+          onOffloadCrane={(code) =>
+            runAction(code, "/api/mobile-stealth/crane-offload", "Offload Crane", {
+              target: "crane",
+              removeFromDevice: true,
+            })
+          }
+          onRestoreCrane={(code) =>
+            runAction(code, "/api/mobile-stealth/crane-restore", "Restore Crane", {
+              target: "crane",
+              activate: true,
+            })
+          }
+          onMountCrane={(code) =>
+            runAction(code, "/api/mobile-stealth/crane-mount", "Mount Crane (LRU)", {
+              target: "crane",
+              autoOffloadLru: true,
+              minFreeGb: 10,
+            })
+          }
           onOpenPcBrowser={(code) => {
             const pc = pcProfileByCode.get(code);
             if (pc) void openOne(pc);
@@ -1315,16 +1420,44 @@ export const AndroidProfilesView = memo(function AndroidProfilesView({
               {
                 key: "push-cookies",
                 label: "Push Cookies (PC → Phone)",
-                icon: <Upload size={14} aria-hidden />,
+                icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>📤</span>,
                 tone: "sky",
                 onClick: () => void handleBulkPushCookies(),
               },
               {
                 key: "pull-cookies",
                 label: "Pull Cookies (Phone → PC)",
-                icon: <Download size={14} aria-hidden />,
+                icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>📥</span>,
                 tone: "indigo",
                 onClick: () => void handleBulkPullCookies(),
+              },
+            ],
+          },
+          {
+            id: "crane-vault",
+            label: "Crane Container Vault",
+            emoji: "📦",
+            actions: [
+              {
+                key: "bulk-crane-offload",
+                label: "Bulk Offload Crane (.tar.gz)",
+                icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>📦</span>,
+                tone: "amber",
+                onClick: () => void handleBulkCraneOffload(),
+              },
+              {
+                key: "bulk-crane-restore",
+                label: "Bulk Restore Crane (.tar.gz)",
+                icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>♻️</span>,
+                tone: "emerald",
+                onClick: () => void handleBulkCraneRestore(),
+              },
+              {
+                key: "bulk-crane-mount",
+                label: "Mount + Auto-Offload LRU",
+                icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>📲</span>,
+                tone: "sky",
+                onClick: () => void handleBulkCraneMount(),
               },
             ],
           },

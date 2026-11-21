@@ -1,4 +1,3 @@
-import { Download } from "lucide-react";
 import { HubBulkActionButton } from "@tool-workspace/hub-ui";
 
 export type WorkflowStoreBulkActionsProps = {
@@ -18,7 +17,7 @@ export function WorkflowStoreBulkActions({
 }: WorkflowStoreBulkActionsProps) {
   return (
     <HubBulkActionButton
-      icon={<Download size={14} aria-hidden />}
+      icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📥</span>}
       label={installLabel}
       title={hasSelection ? `${installLabel} selected workflows` : "Select workflows to install"}
       tone="sky"

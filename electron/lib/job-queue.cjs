@@ -16,6 +16,35 @@
 const { randomUUID } = require("node:crypto");
 
 const MAX_EVENTS_BUFFER = 500;
+const MAX_FINISHED_JOBS = 200;
+const FINISHED_JOB_TTL_MS = 30 * 60 * 1000;
+const MAX_FINISHED_EVENTS = 50;
+const MAX_FINISHED_RESULT_BYTES = 64 * 1024;
+const MAX_FINISHED_ERROR_CHARS = 4000;
+const FINISHED_JOB_STATUSES = new Set(["done", "error", "completed", "failed", "cancelled"]);
+
+function compactFinishedJobPayload(job) {
+  if (Array.isArray(job.events) && job.events.length > MAX_FINISHED_EVENTS) {
+    job.events = job.events.slice(-MAX_FINISHED_EVENTS);
+  }
+  if (typeof job.error === "string" && job.error.length > MAX_FINISHED_ERROR_CHARS) {
+    job.error = `${job.error.slice(0, MAX_FINISHED_ERROR_CHARS)}...[truncated]`;
+  }
+  if (job.result !== null && job.result !== undefined) {
+    try {
+      const serialized = typeof job.result === "string" ? job.result : JSON.stringify(job.result);
+      if (serialized && serialized.length > MAX_FINISHED_RESULT_BYTES) {
+        job.result = {
+          truncated: true,
+          originalBytes: serialized.length,
+          preview: serialized.slice(0, 2048),
+        };
+      }
+    } catch {
+      job.result = { truncated: true, nonSerializable: true };
+    }
+  }
+}
 
 function jitterDelay(maxMs) {
   if (!maxMs || maxMs <= 0) return 0;
@@ -24,6 +53,8 @@ function jitterDelay(maxMs) {
 
 class JobQueue {
   #concurrency;
+  #maxFinishedJobs;
+  #finishedJobTtlMs;
   #running = 0;
   /** @type {Array<string>} */
   #pending = [];
@@ -36,8 +67,14 @@ class JobQueue {
   /** key → jobId đang active (dedupe). */
   #activeKeys = new Map();
 
-  constructor({ concurrency = 1 } = {}) {
+  constructor({
+    concurrency = 1,
+    maxFinishedJobs = MAX_FINISHED_JOBS,
+    finishedJobTtlMs = FINISHED_JOB_TTL_MS,
+  } = {}) {
     this.#concurrency = Math.max(1, Number(concurrency) || 1);
+    this.#maxFinishedJobs = Math.max(1, Number(maxFinishedJobs) || MAX_FINISHED_JOBS);
+    this.#finishedJobTtlMs = Math.max(1000, Number(finishedJobTtlMs) || FINISHED_JOB_TTL_MS);
   }
 
   get concurrency() {
@@ -106,8 +143,8 @@ class JobQueue {
     for (const j of this.#jobs.values()) {
       if (j.status === "queued") queued += 1;
       else if (j.status === "running") running += 1;
-      else if (j.status === "done") done += 1;
-      else if (j.status === "error") error += 1;
+      else if (j.status === "done" || j.status === "completed") done += 1;
+      else if (j.status === "error" || j.status === "failed" || j.status === "cancelled") error += 1;
     }
     return { concurrency: this.#concurrency, queued, running, done, error, total: this.#jobs.size };
   }
@@ -116,7 +153,7 @@ class JobQueue {
     const job = this.#jobs.get(String(id));
     if (!job) return null;
     for (const evt of job.events) listener(evt);
-    if (job.status === "done" || job.status === "error") {
+    if (FINISHED_JOB_STATUSES.has(job.status)) {
       listener({ event: "end", status: job.status, result: job.result, error: job.error });
       return () => {};
     }
@@ -136,14 +173,52 @@ class JobQueue {
     if (set) for (const fn of set) { try { fn(stamped); } catch { /* listener lỗi không phá job */ } }
   }
 
+  #pruneFinishedJobs(nowMs = Date.now()) {
+    const finished = [];
+    for (const [id, job] of this.#jobs.entries()) {
+      if (!job || job.status === "queued" || job.status === "running") continue;
+      if (!FINISHED_JOB_STATUSES.has(job.status)) continue;
+      const finishedMs =
+        typeof job._finishedAtMs === "number"
+          ? job._finishedAtMs
+          : job.finishedAt
+            ? Date.parse(job.finishedAt) || nowMs
+            : nowMs;
+      if (nowMs - finishedMs > this.#finishedJobTtlMs) {
+        this.#jobs.delete(id);
+        this.#listeners.delete(id);
+        this.#runners.delete(id);
+      } else {
+        finished.push({ id, finishedMs });
+      }
+    }
+    if (finished.length > this.#maxFinishedJobs) {
+      finished.sort((a, b) => a.finishedMs - b.finishedMs);
+      const excess = finished.length - this.#maxFinishedJobs;
+      for (let i = 0; i < excess; i += 1) {
+        const id = finished[i].id;
+        this.#jobs.delete(id);
+        this.#listeners.delete(id);
+        this.#runners.delete(id);
+      }
+    }
+  }
+
   #finish(job, status) {
+    const nowMs = Date.now();
     job.status = status;
-    job.finishedAt = new Date().toISOString();
+    job.finishedAt = new Date(nowMs).toISOString();
+    job._finishedAtMs = nowMs;
     this.#emit(job.id, { event: "end", status, result: job.result, error: job.error });
+    compactFinishedJobPayload(job);
     this.#runners.delete(job.id);
     if (job.key && this.#activeKeys.get(job.key) === job.id) this.#activeKeys.delete(job.key);
     const set = this.#listeners.get(job.id);
-    if (set) set.clear();
+    if (set) {
+      set.clear();
+      this.#listeners.delete(job.id);
+    }
+    this.#pruneFinishedJobs(nowMs);
   }
 
   async #drain() {

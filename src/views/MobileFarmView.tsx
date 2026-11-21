@@ -1,25 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import {
-  Activity,
-  ArrowLeft,
-  ArrowUp,
   CheckSquare,
-  Circle,
-  Grid2x2,
   Laptop,
-  Layers,
-  MessageCircle,
   MonitorSmartphone,
-  PanelLeftOpen,
-  Power,
   ShieldCheck,
-  Wifi,
   WifiOff,
-  XCircle,
 } from "lucide-react";
 import {
   HUB_VIRTUAL_ROW_THRESHOLD,
-  HubBrandIcon,
   HubBulkActionButton,
   HubListChromeHeader,
   HubResultCount,
@@ -39,6 +27,7 @@ import { useStealthHubListPrefs } from "../lib/useStealthHubListPrefs";
 import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import type { MobileProfileRow } from "./AndroidProfilesView";
 import { MobileFarmControlRail } from "./mobile-farm/MobileFarmControlRail";
+import { MobileFarmExecutionBoard, resolveDevicePowerBadge } from "./mobile-farm/MobileFarmExecutionBoard";
 import { MobileFarmPhoneCard } from "./mobile-farm/MobileFarmPhoneCard";
 import { MobileFarmTheaterOverlay } from "./mobile-farm/MobileFarmTheaterOverlay";
 import {
@@ -59,6 +48,7 @@ import {
   type FarmTouchVector,
   type FarmUiPrefs,
   type MobileDeviceTelemetry,
+  type MobileFarmExecutionBoardData,
 } from "./mobile-farm/mobile-farm-stream";
 
 export const MobileFarmView = memo(function MobileFarmView({
@@ -106,6 +96,10 @@ export const MobileFarmView = memo(function MobileFarmView({
   const [lastGestureByCard, setLastGestureByCard] = useState<Record<string, FarmTouchVector & { ts: number }>>({});
   const [railCollapsed, setRailCollapsed] = useState<boolean>(initialFarmPrefs.railCollapsed);
   const [theaterCardId, setTheaterCardId] = useState<string | null>(null);
+  const [executionBoard, setExecutionBoard] = useState<MobileFarmExecutionBoardData | null>(null);
+  const [boardExpanded, setBoardExpanded] = useState<boolean>(true);
+  const [boardRefreshing, setBoardRefreshing] = useState<boolean>(false);
+  const [controllingDaemonId, setControllingDaemonId] = useState<string | null>(null);
   const pointerDownRef = useRef<{
     cardId: string;
     relX: number;
@@ -147,6 +141,38 @@ export const MobileFarmView = memo(function MobileFarmView({
 
   const pullInFlightRef = useRef<boolean>(false);
   const pollTickRef = useRef<number>(0);
+
+  const pullExecutionBoard = useCallback(async () => {
+    setBoardRefreshing(true);
+    try {
+      const board = (await fetchFarmApi("/api/mobile-stealth/execution-board")) as MobileFarmExecutionBoardData;
+      if (board?.ok) setExecutionBoard(board);
+    } catch {
+      /* ignore transient board fetch errors */
+    } finally {
+      setBoardRefreshing(false);
+    }
+  }, []);
+
+  const handleControlDaemon = useCallback(
+    async (daemonId: string, action: "start" | "restart") => {
+      setControllingDaemonId(daemonId);
+      try {
+        await fetchFarmApi("/api/mobile-farm/daemon-control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ daemonId, action }),
+        });
+        await new Promise((r) => setTimeout(r, 900));
+        await pullExecutionBoard();
+      } catch {
+        /* ignore transient daemon control errors */
+      } finally {
+        setControllingDaemonId(null);
+      }
+    },
+    [pullExecutionBoard],
+  );
 
   const pullFarmLiveState = useCallback(async (includeShot = true) => {
     if (pullInFlightRef.current) return;
@@ -211,7 +237,16 @@ export const MobileFarmView = memo(function MobileFarmView({
   useEffect(() => {
     void loadProfilesAndTelemetry();
     void pullFarmLiveState(engineMode !== "pc_emulation");
-  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullFarmLiveState]);
+    void pullExecutionBoard();
+  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullExecutionBoard, pullFarmLiveState]);
+
+  useEffect(() => {
+    const boardTimer = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      void pullExecutionBoard();
+    }, 12_000);
+    return () => window.clearInterval(boardTimer);
+  }, [pullExecutionBoard]);
 
   useEffect(() => {
     if (!autoStream || engineMode === "pc_emulation") return;
@@ -363,12 +398,15 @@ export const MobileFarmView = memo(function MobileFarmView({
     );
     const primarySerial = activeAvailable?.serial || liveState?.serial || serialEndpoint;
     const activeDevModel = activeAvailable?.model || deviceTelemetry?.liveDeviceModel || "Pixel 6a";
-    const activeDevBrand = /samsung|sm-|galaxy/i.test(activeDevModel) ? "Samsung" : "Google";
-    const activeShortTag = /sm-g965|s9\+/i.test(activeDevModel)
-      ? "S9+"
-      : /pixel/i.test(activeDevModel)
-        ? "PIXEL"
-        : "DEV";
+    const isIosActive = primarySerial.startsWith("ios:") || /iphone|ipad|ios|apple/i.test(activeDevModel);
+    const activeDevBrand = isIosActive ? "Apple" : /samsung|sm-|galaxy/i.test(activeDevModel) ? "Samsung" : "Google";
+    const activeShortTag = isIosActive
+      ? "IOS"
+      : /sm-g965|s9\+/i.test(activeDevModel)
+        ? "S9+"
+        : /pixel/i.test(activeDevModel)
+          ? "PIXEL"
+          : "DEV";
 
     if (engineMode !== "pc_emulation") {
       // 1. Active Physical & Virtual Displays (Display 0 + Display 1..4)
@@ -423,8 +461,8 @@ export const MobileFarmView = memo(function MobileFarmView({
                 : `Foreground U${fgUserId} · 24fps H.264 Stream`,
             displayId: disp.logicalId,
             userId: boundUserId,
-            coordWidth: parsedW || (is540p ? 540 : is720p ? 720 : 1080),
-            coordHeight: parsedH || (is540p ? 1200 : is720p ? 1600 : /sm-g965|s9\+/i.test(activeDevModel) ? 2220 : 2400),
+            coordWidth: parsedW || (is540p ? 540 : is720p ? 720 : isIosActive ? 414 : 1080),
+            coordHeight: parsedH || (is540p ? 1200 : is720p ? 1600 : isIosActive ? 736 : /sm-g965|s9\+/i.test(activeDevModel) ? 2220 : 2400),
             isLiveForeground: true,
             isRunning: true,
             cookieCount: boundSlot?.cookieCount || boundProf?.cookieCount || 435,
@@ -473,14 +511,18 @@ export const MobileFarmView = memo(function MobileFarmView({
         );
         for (const [peerSerial, peerSnap] of peerEntries) {
           const peerAvail = (liveState.availableDevices || []).find((d) => d.serial === peerSerial);
-          const peerModel = peerAvail?.model || (peerSerial.includes("120") ? "SM-G965N" : "Android");
-          const peerBrand = /samsung|sm-|galaxy/i.test(peerModel) ? "Samsung" : "Google";
-          const peerShortTag = /sm-g965|s9\+/i.test(peerModel)
-            ? "S9+"
-            : /pixel/i.test(peerModel)
-              ? "PIXEL"
-              : "PEER";
-          const peerDefaultH = /sm-g965|s9\+/i.test(peerModel) ? 2220 : 2400;
+          const peerModel = peerAvail?.model || (peerSerial.includes("120") ? "SM-G965N" : peerSerial.startsWith("ios:") ? "iPhone" : "Android");
+          const isIosPeer = peerSerial.startsWith("ios:") || /iphone|ipad|ios|apple/i.test(peerModel);
+          const peerBrand = isIosPeer ? "Apple" : /samsung|sm-|galaxy/i.test(peerModel) ? "Samsung" : "Google";
+          const peerShortTag = isIosPeer
+            ? "IOS"
+            : /sm-g965|s9\+/i.test(peerModel)
+              ? "S9+"
+              : /pixel/i.test(peerModel)
+                ? "PIXEL"
+                : "PEER";
+          const peerDefaultW = isIosPeer ? 414 : 1080;
+          const peerDefaultH = isIosPeer ? 736 : /sm-g965|s9\+/i.test(peerModel) ? 2220 : 2400;
           const peerDisplays = peerSnap.displays || [];
           const peerFgUser = peerSnap.currentUserId ?? 0;
           for (const disp of peerDisplays) {
@@ -509,7 +551,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               subMetaLabel: `${peerBrand} · U${boundUserId} · Dual Wall Live`,
               displayId: disp.logicalId,
               userId: boundUserId,
-              coordWidth: parsedW || 1080,
+              coordWidth: parsedW || peerDefaultW,
               coordHeight: parsedH || peerDefaultH,
               isLiveForeground: true,
               isRunning: true,
@@ -1171,7 +1213,6 @@ export const MobileFarmView = memo(function MobileFarmView({
   const patrolRunning = Boolean(liveState?.patrolRunning);
   const virtualPoolCount = (liveState?.displays || []).filter((d) => d.kind === "virtual").length;
   const recentEvents = liveState?.liveEvents || [];
-  const icon12 = compactIconSize(12);
 
   const farmGridScrollRef = useRef<HTMLDivElement>(null);
   const [farmWallWidth, setFarmWallWidth] = useState(1200);
@@ -1235,6 +1276,18 @@ export const MobileFarmView = memo(function MobileFarmView({
         <KpiStrip items={kpiTiles} />
       </div>
 
+      <div className="px-3 pt-1">
+        <MobileFarmExecutionBoard
+          board={executionBoard}
+          expanded={boardExpanded}
+          onToggleExpand={() => setBoardExpanded((prev) => !prev)}
+          onRefresh={() => void pullExecutionBoard()}
+          refreshing={boardRefreshing}
+          onControlDaemon={(daemonId, action) => void handleControlDaemon(daemonId, action)}
+          controllingDaemonId={controllingDaemonId}
+        />
+      </div>
+
       {/* Main Split Farm Workspace: Left Control Rail + Right Multi-Screen Phone Grid */}
       <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden px-3 pb-3 pt-1">
         {!railCollapsed ? (
@@ -1294,7 +1347,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               {railCollapsed ? (
                 <HubBulkActionButton
                   tone="neutral"
-                  icon={<PanelLeftOpen size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>▶️</span>}
                   label="Controls"
                   title="Expand Farm Control Rail"
                   onClick={() => setRailCollapsed(false)}
@@ -1315,7 +1368,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               />
               <HubBulkActionButton
                 tone={selectedCardIds.size > 0 ? "sky" : "neutral"}
-                icon={<CheckSquare size={icon12} aria-hidden />}
+                icon={<CheckSquare size={compactIconSize(11)} aria-hidden />}
                 label={
                   filteredCards.length > 0 &&
                   filteredCards.every((c) => selectedCardIds.has(c.id))
@@ -1345,7 +1398,7 @@ export const MobileFarmView = memo(function MobileFarmView({
             <div className="flex flex-wrap items-center gap-1.5">
               <HubBulkActionButton
                 tone="sky"
-                icon={<Grid2x2 size={icon12} aria-hidden />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>▦</span>}
                 label={`4x Virtual Pool (${virtualPoolCount}/4)`}
                 title="Spawn 4 concurrent Virtual Displays (Display 1..4) bound to Multi-User U10..U13"
                 disabled={Boolean(actionBusy)}
@@ -1353,7 +1406,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               />
               <HubBulkActionButton
                 tone={patrolRunning ? "emerald" : "neutral"}
-                icon={<Activity size={icon12} aria-hidden />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📡</span>}
                 iconPulsing={patrolRunning}
                 label={patrolRunning ? `Auto Patrol #${liveState?.patrolStepCount || 0}` : "Auto Patrol"}
                 title="Run autonomous Antidetect feed scroll & swipe behavior across active displays"
@@ -1362,21 +1415,21 @@ export const MobileFarmView = memo(function MobileFarmView({
               />
               <HubBulkActionButton
                 tone="neutral"
-                icon={<ArrowLeft size={icon12} aria-hidden />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⬅️</span>}
                 label="Back"
                 title="Send Android Hardware Back Key (KEYCODE_BACK)"
                 onClick={() => void dispatchControl({ action: "keyevent", keyCode: "KEYCODE_BACK" }, "Sent Back Key")}
               />
               <HubBulkActionButton
                 tone="neutral"
-                icon={<Circle size={compactIconSize(11)} aria-hidden />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⚪</span>}
                 label="Home"
                 title="Send Android Hardware Home Key (KEYCODE_HOME)"
                 onClick={() => void dispatchControl({ action: "keyevent", keyCode: "KEYCODE_HOME" }, "Sent Home Key")}
               />
               <HubBulkActionButton
                 tone="neutral"
-                icon={<Layers size={icon12} aria-hidden />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🗂️</span>}
                 label="Recents"
                 title="Open Android Recent Apps Switcher (KEYCODE_APP_SWITCH)"
                 onClick={() =>
@@ -1385,7 +1438,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               />
               <HubBulkActionButton
                 tone="indigo"
-                icon={<HubBrandIcon brandId="facebook" size={12} />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📘</span>}
                 label="Open FB"
                 title="Launch Facebook on Foreground User"
                 onClick={() =>
@@ -1401,7 +1454,7 @@ export const MobileFarmView = memo(function MobileFarmView({
               />
               <HubBulkActionButton
                 tone="sky"
-                icon={<MessageCircle size={icon12} aria-hidden />}
+                icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>💬</span>}
                 label="Messenger"
                 title="Launch Messenger on Foreground User"
                 onClick={() =>
@@ -1432,7 +1485,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                   <>
                     <HubBulkActionButton
                       tone="emerald"
-                      icon={<Laptop size={icon12} aria-hidden />}
+                      icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>💻</span>}
                       label="Launch PC Selected"
                       selectedCount={selectedCards.filter((c) => c.kind === "profile").length}
                       disabled={Boolean(actionBusy)}
@@ -1441,7 +1494,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                     />
                     <HubBulkActionButton
                       tone="rose"
-                      icon={<Power size={icon12} aria-hidden />}
+                      icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⏹️</span>}
                       label="Stop PC Selected"
                       selectedCount={selectedCards.filter((c) => c.kind === "profile" && c.isPcRunning).length || undefined}
                       disabled={Boolean(actionBusy)}
@@ -1452,7 +1505,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                 ) : null}
                 <HubBulkActionButton
                   tone="indigo"
-                  icon={<HubBrandIcon brandId="facebook" size={12} />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📘</span>}
                   label="Open FB Selected"
                   selectedCount={selectedCardIds.size}
                   disabled={Boolean(actionBusy)}
@@ -1461,7 +1514,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                 />
                 <HubBulkActionButton
                   tone="sky"
-                  icon={<MessageCircle size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>💬</span>}
                   label="Messenger Selected"
                   selectedCount={selectedCardIds.size}
                   disabled={Boolean(actionBusy)}
@@ -1470,7 +1523,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                 />
                 <HubBulkActionButton
                   tone="emerald"
-                  icon={<ArrowUp size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⬆️</span>}
                   label="Wake & Scroll Selected"
                   selectedCount={selectedCardIds.size}
                   disabled={Boolean(actionBusy)}
@@ -1479,7 +1532,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                 />
                 <HubBulkActionButton
                   tone="rose"
-                  icon={<Power size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⏹️</span>}
                   label="Stop Users Selected"
                   selectedCount={selectedCards.filter((c) => c.userId >= 10).length || undefined}
                   disabled={Boolean(actionBusy)}
@@ -1489,7 +1542,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                 <HubBulkActionButton
                   variant="ghost"
                   tone="neutral"
-                  icon={<XCircle size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>✖️</span>}
                   label="Clear"
                   title="Clear selection"
                   onClick={() => setSelectedCardIds(new Set())}
@@ -1540,14 +1593,14 @@ export const MobileFarmView = memo(function MobileFarmView({
               <div className="flex items-center gap-1.5">
                 <HubBulkActionButton
                   tone="sky"
-                  icon={<Laptop size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>💻</span>}
                   label={`Use PC Emulation (${profiles.length || 52})`}
                   title="Switch to 100% independent PC Android 14 Emulation mode"
                   onClick={() => setEngineMode("pc_emulation")}
                 />
                 <HubBulkActionButton
                   tone="emerald"
-                  icon={<Wifi size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📶</span>}
                   iconSpinning={actionBusy === "wifi-adb"}
                   label={actionBusy === "wifi-adb" ? "Scanning LAN…" : "Reconnect Wi-Fi / USB"}
                   title="Scan LAN for Wireless Debugging or USB ADB"
@@ -1595,16 +1648,36 @@ export const MobileFarmView = memo(function MobileFarmView({
                     >
                       Swap {((liveState.hardwareHealth.swapFreeMb || 0) / 1024).toFixed(2)}GB free
                     </span>
-                    <span
-                      className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-white/90"
-                      title="Battery Level, Temperature & Never-Power-Off Hardware Charge Band (80-85%)"
-                    >
-                      🔋 {liveState.hardwareHealth.batteryLevel ?? batLevel}% ·{" "}
-                      {typeof liveState.hardwareHealth.batteryTempC === "number"
-                        ? `${liveState.hardwareHealth.batteryTempC.toFixed(1)}°C `
-                        : ""}
-                      ({liveState.hardwareHealth.chargeStartLevel ?? 80}–{liveState.hardwareHealth.chargeStopLevel ?? 85}%)
-                    </span>
+                    {(() => {
+                      const pBadge = resolveDevicePowerBadge({
+                        ok: Boolean(liveState.hardwareHealth.ok),
+                        chargeMode:
+                          liveState.hardwareHealth.chargeMode ||
+                          (liveState.hardwareHealth.storeMode === 1
+                            ? "hold_store_mode"
+                            : liveState.hardwareHealth.chargeDisable === 1
+                              ? "hold_pixel_limit"
+                              : liveState.hardwareHealth.acPowered
+                                ? "charging"
+                                : "unplugged"),
+                        attachedDev: liveState.hardwareHealth.attachedDev || null,
+                        cableAttached: liveState.hardwareHealth.cableAttached ?? null,
+                        acPowered: liveState.hardwareHealth.acPowered ?? null,
+                        storeModeRecoveryTriggered: false,
+                      });
+                      return (
+                        <span
+                          className={`rounded border px-1.5 py-0.5 ${pBadge.toneClass}`}
+                          title={pBadge.title}
+                        >
+                          🔋 {liveState.hardwareHealth.batteryLevel ?? batLevel}% ·{" "}
+                          {typeof liveState.hardwareHealth.batteryTempC === "number"
+                            ? `${liveState.hardwareHealth.batteryTempC.toFixed(1)}°C · `
+                            : ""}
+                          {pBadge.label}
+                        </span>
+                      );
+                    })()}
                     <span
                       className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-emerald-200"
                       title="Running Android Users & Physical Display 0 State"

@@ -207,11 +207,20 @@ function shouldOffloadAgentRequestToWorker({
 
   if (!isOffloadRoute) return false;
 
-  // With Dual-Lane Shadow Isolation (%TEMP%/p0003-agent-shadow/<id>), even if the User has
-  // this profile open in Headed mode on :6003, Agent requests still offload to :6004 Shadow Lane.
-  void params;
-  void body;
-  void sessionManager;
+  // Standing order guard (2026-10-22): never offload a profile that is already open on :6003
+  // (especially User Headed profiles). Let :6003 handle it via its deferred-user-headed queue.
+  const targetProfileId = extractTargetProfileId({ urlPath, params, body });
+  if (targetProfileId && sessionManager) {
+    try {
+      const existing =
+        typeof sessionManager.getSession === "function"
+          ? sessionManager.getSession(targetProfileId)
+          : sessionManager.sessions?.get?.(targetProfileId);
+      if (existing) return false;
+    } catch {
+      /* ignore lookup failure */
+    }
+  }
   return true;
 }
 

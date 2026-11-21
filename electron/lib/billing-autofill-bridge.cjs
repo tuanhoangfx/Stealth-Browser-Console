@@ -13,9 +13,47 @@ const BIOMETRIC_VAULT_FILE = "E:\\Dev\\Tool\\P0002-Social-Hub\\data\\profile-bio
 const DATABOX_ORIGIN_CACHE_FILE = "E:\\Dev\\Tool\\P0002-Social-Hub\\data\\.databox-origin-auth.json";
 
 const LOCKED_BANK_STK_SET = new Set(["0825846888"]);
+const STATIC_BAD_CARD_DECLINE_CODES = new Set([
+  "incorrect_number",
+  "incorrect_cvc",
+  "invalid_number",
+  "invalid_cvc",
+]);
+
+function passesLuhnCheck(rawPan = "") {
+  const digits = String(rawPan || "").replace(/\D/g, "");
+  if (digits.length < 13 || digits.length > 19) return false;
+  let sum = 0;
+  let doubleNext = false;
+  for (let i = digits.length - 1; i >= 0; i -= 1) {
+    let d = Number(digits[i]);
+    if (doubleNext) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    doubleNext = !doubleNext;
+  }
+  return sum % 10 === 0;
+}
+
+function classifyStaticBadCard({ number = "", cvc = "", lastCode = "", note = "", staticFlag = false } = {}) {
+  const digits = String(number || "").replace(/\D/g, "");
+  const cleanCode = String(lastCode || "").trim().toLowerCase();
+  const cleanNote = String(note || "");
+  if (digits && !passesLuhnCheck(digits)) return { bad: true, reason: "luhn_invalid" };
+  if (String(cvc || "").replace(/\D/g, "").length < 3) return { bad: true, reason: "invalid_cvc_len" };
+  if (STATIC_BAD_CARD_DECLINE_CODES.has(cleanCode)) return { bad: true, reason: cleanCode };
+  if (staticFlag || /\[Static Bad Data:|SKIP_STRIPE_BAD_DATA/i.test(cleanNote)) {
+    return { bad: true, reason: cleanCode || "static_bad_data" };
+  }
+  return { bad: false, reason: "" };
+}
 
 const KNOWN_OPENAI_TRIAL_CLAIMED_MAP = new Map([
   ["msb-0516", { claimedAt: "2026-11-12T06:46:44.000Z", claimedBy: "khahaox28@outlook.com" }],
+  ["mb-bank-7320", { claimedAt: "2026-11-12T11:57:31.000Z", claimedBy: "p0020_audit_12_11" }],
+  ["vib-3641", { claimedAt: "2026-11-21T10:47:59.000Z", claimedBy: "killonfriday@gmail.com" }],
 ]);
 
 const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
@@ -39,8 +77,13 @@ const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
   ["mb-bank-4422", "generic_decline"],
   ["mb-bank-3140", "generic_decline"],
   ["mb-bank-8190", "generic_decline"],
+  ["mb-bank-0937", "generic_decline"],
+  ["mb-bank-6169", "generic_decline"],
+  ["mb-bank-7528", "generic_decline"],
+  ["mb-bank-7302", "generic_decline"],
   ["vietcombank-4853", "generic_decline"],
   ["vietcombank-5055", "generic_decline"],
+  ["vietcombank-2169", "generic_decline"],
   ["cake-0516", "generic_decline"],
   ["scb-2114", "generic_decline"],
   ["bidv-1916", "generic_decline"],
@@ -49,6 +92,14 @@ const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
   ["tp-bank-0613", "generic_decline"],
   ["liobank-9315", "generic_decline"],
   ["liobank-2372", "generic_decline"],
+  ["liobank-2923", "generic_decline"],
+  ["techcombank-5028", "generic_decline"],
+  ["techcombank-0944", "generic_decline"],
+  ["techcombank-2522", "generic_decline"],
+  ["techcombank-3767", "generic_decline"],
+  ["techcombank-9355", "generic_decline"],
+  ["techcombank-1816", "generic_decline"],
+  ["ocb-4567", "generic_decline"],
 ]);
 
 const PROVINCE_POSTAL_MAP = {
@@ -282,7 +333,7 @@ async function syncP0020CardsToLocalCache() {
   const { origin, key } = resolveDataboxRestCredentials();
   if (!origin || !key) return { ok: false, reason: "missing_databox_credentials" };
   try {
-    const url = `${origin}/rest/v1/twofa_accounts?select=id,service,browser,account,password,phone,bank_login_id,bank_holder,bank_name,bank_stk,status,ownership,note&deleted_at=is.null&service=in.(Card,card)&limit=200`;
+    const url = `${origin}/rest/v1/twofa_accounts?select=id,service,browser,account,password,phone,bank_login_id,bank_holder,bank_name,bank_stk,status,ownership,note,stealth_snapshot&deleted_at=is.null&service=in.(Card,card)&limit=200`;
     const res = await fetch(url, {
       headers: { apikey: key, authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(6000),
@@ -327,21 +378,37 @@ async function syncP0020CardsToLocalCache() {
       const knownTrial = KNOWN_OPENAI_TRIAL_CLAIMED_MAP.get(aliasKey) || null;
       const knownDecline = KNOWN_STRIPE_DECLINE_CODE_MAP.get(aliasKey) || null;
       const noteStr = String(row.note || "");
+      const platformStates = row?.stealth_snapshot?.platform_states || {};
+      const cgNode = platformStates.chatgpt || {};
+      const gpNode = platformStates.gpay || {};
+      const cgLastCode = String(cgNode.last_code || "").trim();
       const noteDeclinedMatch = noteStr.match(/declined[^(\r\n]*(?:\(([^)]+)\))?/i);
       const openaiTrialClaimedAt =
         prevEntry.openai_trial_claimed_at ||
         knownTrial?.claimedAt ||
+        (String(cgNode.status || "").toLowerCase() === "live" && /TRIAL_CLAIMED/i.test(cgLastCode)
+          ? cgNode.checked_at || new Date().toISOString()
+          : null) ||
         (/openai_trial_claimed|ChatGPT Plus 1m/i.test(noteStr) ? new Date().toISOString() : null);
       const openaiTrialClaimedBy =
         prevEntry.openai_trial_claimed_by || knownTrial?.claimedBy || null;
       const lastStripeDeclineCode =
+        (String(cgNode.status || "").toLowerCase() === "rejected" && cgLastCode ? cgLastCode : null) ||
         prevEntry.last_stripe_decline_code ||
         knownDecline ||
         (noteDeclinedMatch ? "generic_decline" : null);
       const lastStripeDeclinedAt =
+        cgNode.checked_at ||
         prevEntry.last_stripe_declined_at ||
         (lastStripeDeclineCode ? prevEntry.updatedAt || new Date().toISOString() : null);
       const lockedBankStk = LOCKED_BANK_STK_SET.has(bankStk);
+      const isDomesticNapas9704 = /^9704/.test(pan);
+      const badMeta = classifyStaticBadCard({
+        number: pan,
+        cvc,
+        lastCode: lastStripeDeclineCode || cgLastCode,
+        note: noteStr,
+      });
 
       const entry = {
         id: row.id,
@@ -355,6 +422,13 @@ async function syncP0020CardsToLocalCache() {
         bankName,
         bankStk,
         locked_bank_stk: lockedBankStk,
+        luhn_valid: passesLuhnCheck(pan),
+        is_domestic_napas_9704: isDomesticNapas9704,
+        static_bad_card: badMeta.bad,
+        static_bad_reason: badMeta.reason || null,
+        chatgpt_status: String(cgNode.status || "").trim() || null,
+        gpay_status: String(gpNode.status || "").trim() || null,
+        gpay_last_code: String(gpNode.last_code || "").trim() || null,
         openai_trial_claimed_at: openaiTrialClaimedAt,
         openai_trial_claimed_by: openaiTrialClaimedBy,
         last_stripe_decline_code: lastStripeDeclineCode,
@@ -372,6 +446,8 @@ async function syncP0020CardsToLocalCache() {
         !cards.default &&
         entry.status === "active" &&
         !entry.locked_bank_stk &&
+        !entry.static_bad_card &&
+        !entry.is_domestic_napas_9704 &&
         !entry.openai_trial_claimed_at &&
         !entry.last_stripe_decline_code &&
         holderName.toUpperCase().includes("HOANG ANH TUAN")
@@ -384,7 +460,10 @@ async function syncP0020CardsToLocalCache() {
         (c) =>
           c &&
           typeof c === "object" &&
+          c.status !== "inactive" &&
           !c.locked_bank_stk &&
+          !c.static_bad_card &&
+          !c.is_domestic_napas_9704 &&
           !c.openai_trial_claimed_at &&
           !c.last_stripe_decline_code,
       );
@@ -561,6 +640,15 @@ function resolveBillingCardFromVault(opts = {}) {
     knownDecline ||
     (/declined/i.test(String(rawEntry.note || "")) ? "generic_decline" : null);
   const lastStripeDeclinedAt = rawEntry.last_stripe_declined_at || null;
+  const luhnValid = passesLuhnCheck(number);
+  const isDomesticNapas9704 = /^9704/.test(number);
+  const badMeta = classifyStaticBadCard({
+    number,
+    cvc,
+    lastCode: lastStripeDeclineCode,
+    note: rawEntry.note,
+    staticFlag: Boolean(rawEntry.static_bad_card),
+  });
 
   return {
     ok: true,
@@ -571,7 +659,14 @@ function resolveBillingCardFromVault(opts = {}) {
     maskedCard: maskCardNumber(number),
     bankName: rawEntry.bankName || "",
     bankStk: String(rawEntry.bankStk || ""),
+    status: String(rawEntry.status || "active"),
     locked_bank_stk: lockedBankStk,
+    luhn_valid: luhnValid,
+    is_domestic_napas_9704: isDomesticNapas9704,
+    static_bad_card: badMeta.bad,
+    static_bad_reason: badMeta.reason || null,
+    gpay_status: String(rawEntry.gpay_status || "").trim() || null,
+    gpay_last_code: String(rawEntry.gpay_last_code || "").trim() || null,
     openai_trial_claimed_at: openaiTrialClaimedAt,
     openai_trial_claimed_by: openaiTrialClaimedBy,
     last_stripe_decline_code: lastStripeDeclineCode,
@@ -601,11 +696,26 @@ function resolveCandidateBillingCardsFromVault(opts = {}) {
   );
   const includeTrialClaimed = Boolean(opts.includeTrialClaimed);
   const includeDeclined = Boolean(opts.includeDeclined);
+  const includeInactive = Boolean(opts.includeInactive);
+  const allowStaticBad = Boolean(opts.allowStaticBad);
+  const allowDomesticNapas = Boolean(opts.allowDomesticNapas);
+  const excludeGpayRejected = Boolean(opts.excludeGpayRejected);
   const isCardDisqualified = (resolved) => {
     if (!resolved || !resolved.ok || !resolved.card?.number) return true;
+    if (!includeInactive && String(resolved.status || "").toLowerCase() === "inactive") return true;
+    if (!allowStaticBad && resolved.static_bad_card) return true;
+    if (!allowDomesticNapas && resolved.is_domestic_napas_9704) return true;
     if (resolved.locked_bank_stk) return true;
     if (!includeTrialClaimed && resolved.openai_trial_claimed_at) return true;
     if (!includeDeclined && resolved.last_stripe_decline_code) return true;
+    if (
+      excludeGpayRejected &&
+      (resolved.gpay_status === "dead" ||
+        resolved.gpay_status === "rejected" ||
+        /^(?:OR_MIVEM_02|OR_CCREU_01|OR_CCREU_02|OR-CCSEH-21)$/i.test(resolved.gpay_last_code || ""))
+    ) {
+      return true;
+    }
     const al = String(resolved.alias || "").toLowerCase();
     const l4 = String(resolved.last4 || "").toLowerCase();
     if (excludeAliases.has(al) || excludeAliases.has(l4)) return true;

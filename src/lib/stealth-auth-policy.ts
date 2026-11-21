@@ -15,8 +15,15 @@ export function isLocalStealthRuntime(): boolean {
   return false;
 }
 
+/** True only for automated Playwright / `?smoke=1` test runs on local runtime. */
+function isAutomatedStealthSmoke(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.navigator?.webdriver === true) return true;
+  return /[?&](smoke|mobileSmoke)=1\b/i.test(window.location.search || "");
+}
+
 /**
- * Hub sign-in gate — ON by default for remote web, optional/bypassed on Local runtime.
+ * Hub sign-in gate — ON by default for remote web and packaged Desktop Prod.
  * Opt out completely with `VITE_STEALTH_HUB_AUTH=0` in `.env.local`.
  */
 export function isStealthHubAuthEnabled(): boolean {
@@ -26,14 +33,15 @@ export function isStealthHubAuthEnabled(): boolean {
 }
 
 /**
- * Local desktop & loopback (`127.0.0.1` / `localhost` / `file://` / `window.stealthApi`)
- * do not require Hub sign-in to use Stealth Browser Console unless `VITE_STEALTH_FORCE_HUB_AUTH=1`.
+ * Hub sign-in is mandatory for packaged Desktop Prod builds (even on `file://` / `127.0.0.1`)
+ * so installed apps always bind user identity before syncing data.
+ * Only automated webdriver/`?smoke=1` smokes or explicit `VITE_STEALTH_AUTH_OPTIONAL=1` bypasses.
  */
 export function isStealthHubAuthOptional(): boolean {
   if (import.meta.env.VITE_STEALTH_FORCE_HUB_AUTH === "1") return false;
   if (import.meta.env.VITE_STEALTH_AUTH_OPTIONAL === "1" || import.meta.env.VITE_STEALTH_AUTH_OPTIONAL === "true") {
     return true;
   }
-  if (isLocalStealthRuntime()) return true;
+  if (isLocalStealthRuntime() && isAutomatedStealthSmoke()) return true;
   return isWorkspaceAnonymousAllowed();
 }

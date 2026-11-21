@@ -1,28 +1,8 @@
 import { memo, useEffect, useState, type PointerEvent } from "react";
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowUp,
-  Camera,
-  Circle,
-  ClipboardPaste,
-  CornerDownLeft,
-  Delete,
-  ExternalLink,
-  Globe,
-  Layers,
-  MessageCircle,
-  Play,
-  Send,
-  Settings2,
-  Sun,
-  Zap,
-} from "lucide-react";
-import {
   HubBrandIcon,
   HubBulkActionButton,
   HubModalCloseButton,
-  compactIconSize,
 } from "@tool-workspace/hub-ui";
 import {
   fetchFarmApi,
@@ -56,7 +36,6 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
 }) {
   const [theaterText, setTheaterText] = useState<string>("");
   const [directKeyCapture, setDirectKeyCapture] = useState<boolean>(true);
-  const icon12 = compactIconSize(12);
 
   // Proposal 2 (ok 2): Adaptive Bitrate H.264 Stream Quality (850Kbps @ 20fps Grid vs 2.6Mbps @ 30fps Focus Modal)
   const theaterDisplayId = theaterCard ? theaterCard.displayId : null;
@@ -292,7 +271,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="emerald"
-                  icon={<Send size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📤</span>}
                   label="Send"
                   title="Send typed text to Android display"
                   disabled={!theaterText.trim()}
@@ -314,7 +293,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="sky"
-                  icon={<ClipboardPaste size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📋</span>}
                   label="Paste Clipboard"
                   title="Paste PC Clipboard directly into phone input field"
                   onClick={() => {
@@ -341,7 +320,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="indigo"
-                  icon={<Camera size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📷</span>}
                   label="Copy Screenshot"
                   title="Copy current live H.264 frame as PNG to PC Clipboard"
                   onClick={() => void handleCopyCardScreenshot(theaterCard)}
@@ -357,7 +336,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               <div className="grid grid-cols-4 gap-1.5">
                 <HubBulkActionButton
                   tone="neutral"
-                  icon={<ArrowLeft size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⬅️</span>}
                   label="Back"
                   title="Send Back key (KEYCODE_BACK)"
                   onClick={() =>
@@ -371,7 +350,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="neutral"
-                  icon={<Circle size={compactIconSize(11)} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⚪</span>}
                   label="Home"
                   title="Send Home key (KEYCODE_HOME)"
                   onClick={() =>
@@ -385,7 +364,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="neutral"
-                  icon={<Layers size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>🗂️</span>}
                   label="Recents"
                   title="Open Recent Apps (KEYCODE_APP_SWITCH)"
                   onClick={() =>
@@ -399,7 +378,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="amber"
-                  icon={<Sun size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>☀️</span>}
                   label="Wake"
                   title="Wake display (KEYCODE_WAKEUP)"
                   onClick={() =>
@@ -416,7 +395,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="emerald"
-                  icon={<ArrowUp size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⬆️</span>}
                   label="Scroll Feed"
                   title="Swipe up to scroll feed down"
                   onClick={() =>
@@ -434,7 +413,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="sky"
-                  icon={<ArrowDown size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⬇️</span>}
                   label="Scroll Up"
                   title="Swipe down to scroll feed up"
                   onClick={() =>
@@ -452,7 +431,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="neutral"
-                  icon={<Delete size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⌫</span>}
                   label="Backspace"
                   title="Send Backspace key (KEYCODE_DEL)"
                   onClick={() =>
@@ -466,7 +445,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                 />
                 <HubBulkActionButton
                   tone="neutral"
-                  icon={<CornerDownLeft size={icon12} aria-hidden />}
+                  icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⏎</span>}
                   label="Enter"
                   title="Send Enter key (KEYCODE_ENTER)"
                   onClick={() =>
@@ -481,7 +460,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               </div>
             </div>
 
-            {/* Contextual App Launcher (HubBulkActionButton + HubBrandIcon SSOT) */}
+            {/* Contextual App Launcher (HubBulkActionButton SSOT) */}
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <div className="mb-2 text-xs uppercase tracking-wider text-hub-muted">
                 Launch App on Display #{theaterCard.displayId} (U{theaterCard.userId})
@@ -493,43 +472,43 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                       label: "Facebook",
                       pkg: "com.facebook.katana",
                       tone: "indigo" as const,
-                      icon: <HubBrandIcon brandId="facebook" size={12} />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>📘</span>,
                     },
                     {
                       label: "FB Lite",
                       pkg: "com.facebook.lite",
                       tone: "sky" as const,
-                      icon: <HubBrandIcon brandId="facebook" size={12} />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>📘</span>,
                     },
                     {
                       label: "Messenger",
                       pkg: "com.facebook.orca",
                       tone: "indigo" as const,
-                      icon: <MessageCircle size={icon12} aria-hidden />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>💬</span>,
                     },
                     {
                       label: "YouTube",
                       pkg: "com.google.android.youtube",
                       tone: "rose" as const,
-                      icon: <HubBrandIcon brandId="youtube" size={12} />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>▶️</span>,
                     },
                     {
                       label: "Chrome",
                       pkg: "com.android.chrome",
                       tone: "emerald" as const,
-                      icon: <Globe size={icon12} aria-hidden />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>🌐</span>,
                     },
                     {
                       label: "Play Store",
                       pkg: "com.android.vending",
                       tone: "sky" as const,
-                      icon: <Zap size={icon12} aria-hidden />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>⚡</span>,
                     },
                     {
                       label: "Settings",
                       pkg: "com.android.settings",
                       tone: "neutral" as const,
-                      icon: <Settings2 size={icon12} aria-hidden />,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>⚙️</span>,
                     },
                   ]
                 ).map((app) => (
@@ -561,7 +540,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
           <div className="flex items-center justify-between border-t border-white/10 pt-2.5">
             <HubBulkActionButton
               tone="emerald"
-              icon={<Play size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>▶️</span>}
               label={
                 theaterCard.kind === "user_slot"
                   ? `Switch Foreground to User U${theaterCard.userId}`
@@ -572,7 +551,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
             />
             <HubBulkActionButton
               tone="neutral"
-              icon={<ExternalLink size={icon12} aria-hidden />}
+              icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>↗️</span>}
               label="Pop Out Native 60fps Window (scrcpy)"
               title="Open native 60fps Scrcpy window for this display"
               onClick={() =>

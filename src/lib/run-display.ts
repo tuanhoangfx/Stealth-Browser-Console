@@ -41,7 +41,7 @@ const RUN_DATE_TIME_FMT = new Intl.DateTimeFormat("en-US", {
 });
 
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "";
   try {
     return RUN_DATE_TIME_FMT.format(new Date(iso));
   } catch {

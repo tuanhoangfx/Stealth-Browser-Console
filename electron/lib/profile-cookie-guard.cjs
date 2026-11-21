@@ -3003,8 +3003,43 @@ function harvestDiskSqliteToEcosystemVaults({
     }
   }
 
-  const mirrorVaultWrite = (primaryPath, fileName, jsonStr) => {
-    fs.writeFileSync(primaryPath, jsonStr, "utf8");
+  const stripCookiesForMetadataMirror = (rawObj) => {
+    if (!rawObj || typeof rawObj !== "object") return rawObj;
+    const walk = (node) => {
+      if (!node || typeof node !== "object") return node;
+      if (Array.isArray(node)) return node.map(walk);
+      const out = {};
+      for (const [k, v] of Object.entries(node)) {
+        if (k === "cookies" && Array.isArray(v)) {
+          out.cookieCount = v.length;
+          out.hasCookies = v.length > 0;
+          continue;
+        }
+        if (k === "cookieHeader" && typeof v === "string") {
+          continue;
+        }
+        if (k === "spaStorage" && v && typeof v === "object") {
+          out.hasSpaStorage = true;
+          continue;
+        }
+        out[k] = walk(v);
+      }
+      return out;
+    };
+    return walk(rawObj);
+  };
+
+  const mirrorVaultWrite = (primaryPath, fileName, jsonStr, rawObj = null) => {
+    const isP0002DataPath = (p) => /P0002-Social-Hub[\\/]data/i.test(String(p || ""));
+    const getSlimJsonStr = () => {
+      try {
+        const obj = rawObj || JSON.parse(jsonStr);
+        return JSON.stringify(stripCookiesForMetadataMirror(obj));
+      } catch {
+        return jsonStr;
+      }
+    };
+    fs.writeFileSync(primaryPath, isP0002DataPath(primaryPath) ? getSlimJsonStr() : jsonStr, "utf8");
     for (const altDir of [
       "D:\\StealthBrowser\\data\\cookie-vaults",
       "E:\\Dev\\Tool\\P0002-Social-Hub\\data",
@@ -3013,7 +3048,7 @@ function harvestDiskSqliteToEcosystemVaults({
         if (!fs.existsSync(altDir)) continue;
         const altPath = path.join(altDir, fileName);
         if (path.resolve(altPath) !== path.resolve(primaryPath)) {
-          fs.writeFileSync(altPath, jsonStr, "utf8");
+          fs.writeFileSync(altPath, isP0002DataPath(altPath) ? getSlimJsonStr() : jsonStr, "utf8");
         }
       } catch {
         /* ignore mirror write error */

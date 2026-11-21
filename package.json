@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "9.2.484",
+  "version": "9.2.525",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -132,6 +132,7 @@
     "files": [
       "dist/**",
       "electron/**",
+      "!electron/packaged-node_modules/**",
       "shared/**",
       "build/icons/**",
       "package.json",
@@ -155,8 +156,8 @@
         "to": "updater-gh-token"
       },
       {
-        "from": "build/bundled-extensions",
-        "to": "bundled-extensions"
+        "from": "build/bundled-extensions.asar",
+        "to": "bundled-extensions.asar"
       },
       {
         "from": "build/icons/app.ico",
@@ -180,6 +181,7 @@
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": false,
       "differentialPackage": false,
       "include": "build/installer.nsh",
       "createDesktopShortcut": true,

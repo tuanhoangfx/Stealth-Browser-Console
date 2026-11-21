@@ -115,14 +115,21 @@ export const STEALTH_PROFILE_COLUMN_META = withExtensionColumnHeaderIcons(
     }),
     group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "6rem"),
     status: col("Action", "hub-users-col--tools", "tools", "col.directory.status", "7rem"),
-    activityLog: col("Log", "hub-users-col--id", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH),
+    activityLog: col("Log", "hub-users-col--id", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH, {
+      headerAlign: "start",
+    }),
     updated: col("Update", "hub-users-col--created", "updated", "col.directory.lastActive", "7.25rem"),
     createdAt: col("Created", "hub-users-col--activity", "created", "col.directory.created", "7.25rem"),
     startupUrl: col("URL", "hub-users-col--email", "email", "col.directory.username", "7rem", {
+      columnKind: "code",
       enableFit: false,
     }),
-    proxy: col("Proxy", "hub-users-col--metric-c", "name", "col.directory.username", "8.5rem"),
-    note: col("Note", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_NOTE_COL_WIDTH),
+    proxy: col("Proxy", "hub-users-col--metric-c", "name", "col.directory.username", "8.5rem", {
+      columnKind: "code",
+    }),
+    note: col("Note", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_NOTE_COL_WIDTH, {
+      headerAlign: "start",
+    }),
     e0001: col("E0001", "hub-users-col--metric-a", "tools", "col.directory.status", "6.75rem"),
     e0002: col("E0002", "hub-users-col--metric-d", "tools", "col.directory.status", "6.75rem"),
     surfshark: col("Surfshark", "hub-users-col--metric-b", "tools", "col.directory.status", "8.25rem"),
@@ -138,14 +145,22 @@ export const STEALTH_PROFILE_COLUMN_META = withExtensionColumnHeaderIcons(
 export const STEALTH_WORKFLOW_PANEL_COLUMN_META = withDirectoryColumnStickers(
   applyStandardDirectoryColumnHints(
   {
-  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "10rem"),
-  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "16rem"),
-  id: col("ID", "hub-users-col--id", "id", "col.directory.pageId", "10rem"),
+  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "10rem", {
+    columnKind: "code",
+  }),
+  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "16rem", {
+    columnKind: "code",
+  }),
+  id: col("ID", "hub-users-col--id", "id", "col.directory.pageId", "10rem", {
+    columnKind: "code",
+  }),
   steps: col("Steps", "hub-users-col--tools", "tools", "col.directory.posts", "6.5rem"),
   created: col("Created", "hub-users-col--created", "created", "col.directory.created", HUB_DIRECTORY_PLAN_DATE_COL_WIDTH),
   updated: col("Update", "hub-users-col--activity", "updated", "col.directory.lastActive", HUB_DIRECTORY_PLAN_DUE_COL_WIDTH),
   lastRun: col("Last Run", "hub-users-col--metric-b", "activity", "col.directory.lastActive", "8rem"),
-  activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH),
+  activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH, {
+    headerAlign: "start",
+  }),
   },
   STEALTH_WORKFLOW_DIRECTORY_HINT_DESCRIPTIONS,
   STEALTH_WORKFLOW_DIRECTORY_HINT_LINES,
@@ -162,13 +177,19 @@ export const STEALTH_WORKFLOW_STORE_COLUMN_META = withDirectoryColumnStickers(
   {
   created: col("Created", "hub-users-col--created", "created", "col.directory.created", HUB_DIRECTORY_PLAN_DATE_COL_WIDTH),
   updated: col("Update", "hub-users-col--activity", "updated", "col.directory.lastActive", HUB_DIRECTORY_PLAN_DUE_COL_WIDTH),
-  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "10rem"),
-  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "16rem"),
+  platform: col("Platform", "hub-users-col--email", "email", "col.directory.category", "10rem", {
+    columnKind: "code",
+  }),
+  name: col("Name", "hub-users-col--name", "name", "col.directory.account", "16rem", {
+    columnKind: "code",
+  }),
   version: col("Version", "hub-users-col--id", "id", "col.directory.pageId", "7.5rem"),
   group: col("Group", "hub-users-col--role", "role", "col.directory.groups", "7rem"),
   status: col("Status", "hub-users-col--tools", "tools", "col.directory.status", "7rem"),
   source: col("Source", "hub-users-col--metric-a", "tools", "col.directory.status", "7rem"),
-  activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH),
+  activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH, {
+    headerAlign: "start",
+  }),
   },
   STEALTH_WORKFLOW_STORE_DIRECTORY_HINT_DESCRIPTIONS,
   STEALTH_WORKFLOW_STORE_DIRECTORY_HINT_LINES,
@@ -218,7 +239,9 @@ export const STEALTH_BACKUP_COLUMN_META = withDirectoryColumnStickers(
   cookies: col("Cookies", "hub-users-col--email", "name", "col.directory.account", "9.5rem"),
   historyState: col("History", "hub-users-col--metric-b", "name", "col.directory.posts", "8.5rem"),
   folder: col("Folder", "hub-users-col--metric-d", "tools", "col.directory.status", "7rem"),
-  activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH),
+  activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH, {
+    headerAlign: "start",
+  }),
   },
   STEALTH_BACKUP_DIRECTORY_HINT_DESCRIPTIONS,
   STEALTH_BACKUP_DIRECTORY_HINT_LINES,
@@ -231,12 +254,20 @@ export const STEALTH_EXTENSIONS_COLUMN_META = withDirectoryColumnStickers(
     {
       createdAt: col("Created", "hub-users-col--created", "created", "col.directory.created", HUB_DIRECTORY_PLAN_DATE_COL_WIDTH),
       updated: col("Update", "hub-users-col--activity", "updated", "col.directory.lastActive", HUB_DIRECTORY_PLAN_DUE_COL_WIDTH),
-      extension: col("Extension", "hub-users-col--name", "name", "col.directory.account", "16rem"),
+      extension: col("Extension", "hub-users-col--name", "name", "col.directory.account", "16rem", {
+        columnKind: "code",
+      }),
       kind: col("Kind", "hub-users-col--role", "role", "col.directory.groups", "6.25rem"),
       version: col("Version", "hub-users-col--id", "id", "col.directory.pageId", "7.5rem"),
-      storeId: col("Store ID", "hub-users-col--email", "email", "col.directory.username", "12rem"),
-      path: col("Path", "hub-users-col--metric-c", "name", "col.directory.posts", "14rem"),
-      activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH),
+      storeId: col("Store ID", "hub-users-col--email", "email", "col.directory.username", "12rem", {
+        columnKind: "code",
+      }),
+      path: col("Path", "hub-users-col--metric-c", "name", "col.directory.posts", "14rem", {
+        columnKind: "code",
+      }),
+      activityLog: col("Log", "hub-users-col--metric-e", "notes", "col.directory.posts", HUB_DIRECTORY_LOG_COL_WIDTH, {
+    headerAlign: "start",
+  }),
     },
     {
       createdAt: "When this extension folder was first created or installed on disk.",

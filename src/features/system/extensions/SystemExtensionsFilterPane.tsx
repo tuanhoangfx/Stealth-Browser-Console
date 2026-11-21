@@ -107,7 +107,7 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
             {
               key: "reload-open-profiles",
               label: "Reload Open Profiles",
-              icon: RefreshCw,
+              emoji: "🔄",
               tone: "sky" as const,
               disabled: busy,
               iconSpinning: busy,
@@ -119,7 +119,7 @@ export const SystemExtensionsFilterPane = memo(function SystemExtensionsFilterPa
       {
         key: "guide-docs",
         label: "Guide & Docs",
-        icon: BookOpen,
+        emoji: "📖",
         title: "Open P0003 Landing & Illustrated Guide (stealth.infi28.com/intro/)",
         onClick: () => openStealthGuide("guide/"),
       },

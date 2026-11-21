@@ -15,7 +15,8 @@ if (-not (Test-Path $ConfigPath)) {
 }
 
 $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-$backupRoot = Join-Path $RepoRoot ($cfg.backup.dir -replace "/", "\")
+$rawBackupDir = ($cfg.backup.dir -replace "/", "\")
+$backupRoot = if ([System.IO.Path]::IsPathRooted($rawBackupDir)) { $rawBackupDir } else { Join-Path $RepoRoot $rawBackupDir }
 $installer = Join-Path $backupRoot $cfg.backup.installer
 $unpackedExe = Join-Path (Join-Path $backupRoot $cfg.backup.winUnpacked) "Stealth Browser Console.exe"
 

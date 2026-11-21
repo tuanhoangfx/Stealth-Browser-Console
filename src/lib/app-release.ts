@@ -45,7 +45,7 @@ export function stealthHostVersionMeta() {
 export function resolveAppVersionReleaseMeta(): AppVersionReleaseMeta {
   const meta = stealthHostVersionMeta();
   return {
-    shortLabel: meta.publishedAt ? formatTabHeaderTimestamp(meta.publishedAt) : "—",
+    shortLabel: meta.publishedAt ? formatTabHeaderTimestamp(meta.publishedAt) : "",
     live: meta.live,
     publishedAt: meta.publishedAt,
   };

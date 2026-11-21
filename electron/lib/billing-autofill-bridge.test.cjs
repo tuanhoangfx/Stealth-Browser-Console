@@ -72,6 +72,64 @@ test("billing-autofill-bridge unifies Card Vault, Fallback Rotation (ok 1), Biom
     });
     assert.equal(pool.ok, true);
     assert.equal(pool.candidates[0].last4, "4444");
+
+    // Static bad data & domestic Napas 9704 cards are automatically filtered out by default
+    upsertBillingCardInVault("napas-ocb", {
+      number: "9704480313639738",
+      expiry: "11/31",
+      cvc: "598",
+      name: "TUAN HOANG",
+    });
+    upsertBillingCardInVault("bad-cvc", {
+      number: "4553720125721254",
+      expiry: "08/29",
+      cvc: "456",
+      name: "TUAN HOANG",
+    });
+    upsertBillingCardInVault("bad-num-note", {
+      number: "5438960063137331",
+      expiry: "09/27",
+      cvc: "123",
+      name: "TUAN HOANG",
+    });
+    const rawVault = JSON.parse(fs.readFileSync(tmpVault, "utf8"));
+    rawVault.cards["bad-cvc"].last_stripe_decline_code = "incorrect_cvc";
+    rawVault.cards["bad-num-note"].note = "[Static Bad Data: incorrect_number]";
+    fs.writeFileSync(tmpVault, JSON.stringify(rawVault, null, 2), "utf8");
+
+    const filteredPool = resolveCandidateBillingCardsFromVault({ profileCode: "0001" });
+    const filteredAliases = new Set(filteredPool.candidates.map((c) => c.alias));
+    assert.equal(filteredAliases.has("napas-ocb"), false);
+    assert.equal(filteredAliases.has("bad-cvc"), false);
+    assert.equal(filteredAliases.has("bad-num-note"), false);
+    assert.equal(filteredAliases.has("backup-card"), true);
+
+    // GPay rejected cards (OR_MIVEM_02 / OR_CCREU_01) are filtered out when excludeGpayRejected is set
+    rawVault.cards["gpay-bad-6169"] = {
+      ...rawVault.cards["backup-card"],
+      alias: "mb-bank-6169",
+      last4: "6169",
+      gpay_status: "rejected",
+      gpay_last_code: "OR_MIVEM_02",
+    };
+    rawVault.cards["gpay-bad-7320"] = {
+      ...rawVault.cards["backup-card"],
+      alias: "mb-bank-7320",
+      last4: "7320",
+      gpay_status: "rejected",
+      gpay_last_code: "OR_CCREU_01",
+    };
+    fs.writeFileSync(tmpVault, JSON.stringify(rawVault, null, 2), "utf8");
+    const gpayPool = resolveCandidateBillingCardsFromVault({
+      profileCode: "0001",
+      excludeGpayRejected: true,
+      includeTrialClaimed: true,
+      includeDeclined: true,
+    });
+    const gpayAliases = new Set(gpayPool.candidates.map((c) => c.alias));
+    assert.equal(gpayAliases.has("mb-bank-6169"), false);
+    assert.equal(gpayAliases.has("mb-bank-7320"), false);
+    assert.equal(gpayAliases.has("backup-card"), true);
   } finally {
     delete process.env.STEALTH_BILLING_VAULT_PATH;
     try {

@@ -125,13 +125,23 @@ export const STEALTH_ANDROID_COLUMN_META = withDirectoryColumnStickers(
         headerAlign: "center",
         enableFit: false,
       }),
-      group: col("Brand", "hub-users-col--role", "role", "col.directory.groups", "6.75rem"),
+      group: col("Brand", "hub-users-col--role", "role", "col.directory.groups", "6.75rem", {
+        columnKind: "code",
+      }),
       autoSync: col("Auto-Sync", "hub-users-col--metric-d", "tools", "col.directory.status", "8.75rem"),
       status: col("Phone", "hub-users-col--tools", "tools", "col.directory.status", "6.75rem"),
-      deviceModel: col("Model", "hub-users-col--email", "name", "col.directory.username", "8.75rem"),
-      gpu: col("GPU", "hub-users-col--display-name", "name", "col.directory.username", "8.75rem"),
-      androidId: col("Android ID", "hub-users-col--metric-c", "id", "col.directory.username", "8.75rem"),
-      imei: col("IMEI", "hub-users-col--metric-e", "id", "col.directory.username", "8.25rem"),
+      deviceModel: col("Model", "hub-users-col--email", "name", "col.directory.username", "8.75rem", {
+        columnKind: "code",
+      }),
+      gpu: col("GPU", "hub-users-col--display-name", "name", "col.directory.username", "8.75rem", {
+        columnKind: "code",
+      }),
+      androidId: col("Android ID", "hub-users-col--metric-c", "id", "col.directory.username", "8.75rem", {
+        columnKind: "code",
+      }),
+      imei: col("IMEI", "hub-users-col--metric-e", "id", "col.directory.username", "8.25rem", {
+        columnKind: "code",
+      }),
       cookies: col("Cookies", "hub-users-col--metric-a", "tools", "col.directory.status", "7.5rem"),
       snapshot: col("Snapshot", "hub-users-col--metric-b", "tools", "col.directory.status", "8rem"),
       integrity: col("Integrity", "hub-users-col--metric-f", "tools", "col.directory.status", "8.5rem"),
@@ -141,6 +151,7 @@ export const STEALTH_ANDROID_COLUMN_META = withDirectoryColumnStickers(
         "notes",
         "col.directory.posts",
         HUB_DIRECTORY_NOTE_COL_WIDTH,
+        { headerAlign: "start" },
       ),
     },
     ANDROID_COLUMN_HINT_DESCRIPTIONS,

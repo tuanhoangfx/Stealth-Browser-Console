@@ -5,7 +5,7 @@ export type BackupRowState = {
 };
 
 export function formatBackupBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "—";
+  if (!Number.isFinite(bytes) || bytes <= 0) return "";
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
@@ -51,11 +51,12 @@ export function formatBackupSuccessMessage(payload: {
 }) {
   const count = payload.profiles ?? 0;
   const size = formatBackupBytes(payload.bytes ?? 0);
+  const sizePart = size ? `, ${size}` : "";
   const file = backupFileBasename(payload.path);
   const fileSuffix = file ? ` → ${file}` : "";
   return payload.selected
-    ? `Backup saved — ${count} profile(s), ${size}${fileSuffix}`
-    : `Full backup — ${count} profile(s), ${size}${fileSuffix}`;
+    ? `Backup saved — ${count} profile(s)${sizePart}${fileSuffix}`
+    : `Full backup — ${count} profile(s)${sizePart}${fileSuffix}`;
 }
 
 export function backupFileBasename(filePath?: string) {

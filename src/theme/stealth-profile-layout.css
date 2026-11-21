@@ -26,22 +26,22 @@
   overscroll-behavior: none;
 }
 
-.hub-main--split > div,
+.hub-main--split > div:not([data-hub-chrome-bar]):not([hidden]),
 .hub-main--split .hub-tab-chrome-stack,
 .hub-main--split .hub-tab-content-zone,
 .hub-main--split .hub-tab-body-zone--split,
 .hub-main--split .stealth-profile-layout,
-.hub-main--profiles > div,
+.hub-main--profiles > div:not([data-hub-chrome-bar]):not([hidden]),
 .hub-main--profiles .hub-tab-chrome-stack,
 .hub-main--profiles .hub-tab-content-zone,
 .hub-main--profiles .hub-tab-body-zone--split,
 .hub-main--profiles .stealth-profile-layout,
-.hub-main--android > div,
+.hub-main--android > div:not([data-hub-chrome-bar]):not([hidden]),
 .hub-main--android .hub-tab-chrome-stack,
 .hub-main--android .hub-tab-content-zone,
 .hub-main--android .hub-tab-body-zone--split,
 .hub-main--android .stealth-profile-layout,
-.hub-main--workflow > div,
+.hub-main--workflow > div:not([data-hub-chrome-bar]):not([hidden]),
 .hub-main--workflow .hub-tab-chrome-stack,
 .hub-main--workflow .hub-tab-content-zone,
 .hub-main--workflow .hub-tab-body-zone--split,
@@ -50,7 +50,7 @@
 .hub-main--workflow .script-builder,
 .hub-main--workflow .script-workflows,
 .hub-main--workflow .script-editor-stack,
-.hub-main--system > div,
+.hub-main--system > div:not([data-hub-chrome-bar]):not([hidden]),
 .hub-main--system .hub-tab-chrome-stack,
 .hub-main--system .hub-tab-content-zone,
 .hub-main--system .hub-tab-body-zone--split,
@@ -414,7 +414,7 @@
   }
 }
 
-.hub-main--settings > div,
+.hub-main--settings > div:not([data-hub-chrome-bar]):not([hidden]),
 .hub-main--settings .stealth-settings-directory {
   flex: 1 1 0;
   min-height: 0;

@@ -66,6 +66,13 @@ function getOrphanNativeApi() {
         TerminateProcess: kernel32.func("bool __stdcall TerminateProcess(void*, uint32_t)"),
         SetPriorityClass: kernel32.func("bool __stdcall SetPriorityClass(void*, uint32_t)"),
         GetProcessTimes: kernel32.func("bool __stdcall GetProcessTimes(void*, void*, void*, void*, void*)"),
+        K32GetProcessMemoryInfo: (() => {
+          try {
+            return kernel32.func("bool __stdcall K32GetProcessMemoryInfo(void*, void*, uint32_t)");
+          } catch {
+            return null;
+          }
+        })(),
         CloseHandle: kernel32.func("bool __stdcall CloseHandle(void*)"),
         NtQueryInformationProcess: ntdll.func("int __stdcall NtQueryInformationProcess(void*, int, void*, uint32_t, uint32_t*)"),
       };
@@ -1408,6 +1415,250 @@ function reapUntrackedHeadlessBrowsersNative({
   return { scanned: headlessProcs.length, killed, rootTrees: toKillRoots.length };
 }
 
+/**
+ * Zero-WMI native RAM measurement (<5ms via Toolhelp32Snapshot + K32GetProcessMemoryInfo)
+ * returning true Windows WorkingSet MB for tracked headless browser trees (or all headless
+ * Chrome processes when no root PIDs are supplied). Returns `null` if unavailable.
+ */
+function measureHeadlessChromeWorkingSetMbNative(trackedRootPids = []) {
+  const api = getOrphanNativeApi();
+  if (!api || typeof api.K32GetProcessMemoryInfo !== "function" || process.platform !== "win32") {
+    return null;
+  }
+  const snap = api.CreateToolhelp32Snapshot(0x00000002, 0);
+  if (!snap) return null;
+
+  const procs = [];
+  const pe = { dwSize: api.peSize };
+  try {
+    if (api.Process32FirstW(snap, pe)) {
+      do {
+        const pid = Number(pe.th32ProcessID);
+        const ppid = Number(pe.th32ParentProcessID);
+        let end = 0;
+        while (end < 260 && pe.szExeFile[end] !== 0) end++;
+        const name = String.fromCharCode(...pe.szExeFile.subarray(0, end)).toLowerCase();
+        procs.push({ pid, ppid, name });
+      } while (api.Process32NextW(snap, pe));
+    }
+  } finally {
+    api.CloseHandle(snap);
+  }
+
+  const rootSet = new Set(
+    (Array.isArray(trackedRootPids) ? trackedRootPids : [])
+      .map((p) => Number(p))
+      .filter((p) => Number.isInteger(p) && p > 0),
+  );
+  const targetPids = new Set();
+  if (rootSet.size > 0) {
+    for (const rp of rootSet) targetPids.add(rp);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const proc of procs) {
+        if (!targetPids.has(proc.pid) && targetPids.has(proc.ppid)) {
+          targetPids.add(proc.pid);
+          added = true;
+        }
+      }
+    }
+  } else {
+    for (const proc of procs) {
+      if (proc.name === "chrome-headless.exe" || proc.name === "chrome-headless-shell.exe") {
+        targetPids.add(proc.pid);
+      }
+    }
+  }
+
+  if (targetPids.size === 0) return 0;
+  let totalBytes = 0;
+  const memBuf = Buffer.alloc(72);
+  for (const pid of targetPids) {
+    const h = api.OpenProcess(0x1000, false, pid);
+    if (!h) continue;
+    try {
+      memBuf.writeUInt32LE(72, 0);
+      if (api.K32GetProcessMemoryInfo(h, memBuf, 72)) {
+        // PROCESS_MEMORY_COUNTERS.WorkingSetSize is at byte offset 16 on 64-bit Windows
+        totalBytes += Number(memBuf.readBigUInt64LE(16));
+      }
+    } catch {
+      /* ignore individual exited process */
+    } finally {
+      api.CloseHandle(h);
+    }
+  }
+  return Math.round(totalBytes / (1024 * 1024));
+}
+
+function resolveHeadlessSessionRootPid(session, alivePidSet = null, scanRows = null) {
+  if (!session || typeof session !== "object") return 0;
+  const directPid = Number(session.pid || session.browserPid || session.rootPid || 0);
+  if (Number.isInteger(directPid) && directPid > 0 && (!alivePidSet || alivePidSet.has(directPid))) {
+    return directPid;
+  }
+  const udir = String(session.userDataDir || "").trim();
+  if (udir) {
+    try {
+      const sidecarFile = path.join(path.resolve(udir), "stealth-pid.json");
+      if (fs.existsSync(sidecarFile)) {
+        const parsed = JSON.parse(fs.readFileSync(sidecarFile, "utf8"));
+        const sidecarPid = Number(parsed?.pid || 0);
+        if (Number.isInteger(sidecarPid) && sidecarPid > 0 && (!alivePidSet || alivePidSet.has(sidecarPid))) {
+          return sidecarPid;
+        }
+      }
+    } catch {
+      /* fallback to scanRows */
+    }
+  }
+  const rows = Array.isArray(scanRows) ? scanRows : scanChromeProcessesNative() || [];
+  const port = Number(session.debugPort || session.port || 0);
+  const udirLower = udir.toLowerCase();
+  const idLower = String(session.profileId || session.id || "").trim().toLowerCase();
+  for (const r of rows) {
+    const pid = Number(r?.pid || 0);
+    const cmd = String(r?.cmdLower || "");
+    if (!(pid > 0) || !cmd || cmd.includes("--type=")) continue;
+    if (alivePidSet && !alivePidSet.has(pid)) continue;
+    if (port > 0 && cmd.includes(`--remote-debugging-port=${port}`)) {
+      return pid;
+    }
+    if (udirLower && cmd.includes(udirLower)) {
+      return pid;
+    }
+    if (idLower && idLower.length >= 8 && cmd.includes(idLower)) {
+      return pid;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Measures real per-session process tree WorkingSet RAM (MB) for each running headless session
+ * in a single native Toolhelp32Snapshot + K32GetProcessMemoryInfo pass (<5ms).
+ * Resolves root PIDs via `session.pid`, `<userDataDir>/stealth-pid.json`, or command-line scan.
+ */
+function measureHeadlessChromeSessionTreesMbNative(sessions = []) {
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return { totalMb: 0, bySessionKey: new Map(), resolvedSessionCount: 0 };
+  }
+  const api = getOrphanNativeApi();
+  if (!api || typeof api.K32GetProcessMemoryInfo !== "function" || process.platform !== "win32") {
+    return null;
+  }
+  const snap = api.CreateToolhelp32Snapshot(0x00000002, 0);
+  if (!snap) return null;
+
+  const procs = [];
+  const alivePidSet = new Set();
+  const childrenByPpid = new Map();
+  const pe = { dwSize: api.peSize };
+  try {
+    if (api.Process32FirstW(snap, pe)) {
+      do {
+        const pid = Number(pe.th32ProcessID);
+        const ppid = Number(pe.th32ParentProcessID);
+        let end = 0;
+        while (end < 260 && pe.szExeFile[end] !== 0) end++;
+        const name = String.fromCharCode(...pe.szExeFile.subarray(0, end)).toLowerCase();
+        procs.push({ pid, ppid, name });
+        alivePidSet.add(pid);
+        if (!childrenByPpid.has(ppid)) childrenByPpid.set(ppid, []);
+        childrenByPpid.get(ppid).push(pid);
+      } while (api.Process32NextW(snap, pe));
+    }
+  } finally {
+    api.CloseHandle(snap);
+  }
+
+  let scanRows = null;
+  const sessionEntries = [];
+  const allTargetPids = new Set();
+  let hasRealHint = false;
+
+  for (let idx = 0; idx < sessions.length; idx += 1) {
+    const s = sessions[idx];
+    if (!s || typeof s !== "object") continue;
+    if (s.pid || s.browserPid || s.rootPid || s.userDataDir || s.debugPort || s.port) {
+      hasRealHint = true;
+    }
+    const key = String(s.profileId || s.id || s.name || `idx:${idx}`);
+    let rootPid = resolveHeadlessSessionRootPid(s, alivePidSet, scanRows);
+    if (!rootPid && (s.debugPort || s.port || s.userDataDir || s.profileId || s.id) && scanRows === null) {
+      scanRows = scanChromeProcessesNative() || [];
+      rootPid = resolveHeadlessSessionRootPid(s, alivePidSet, scanRows);
+    }
+    const treePids = new Set();
+    if (rootPid > 0) {
+      const queue = [rootPid];
+      treePids.add(rootPid);
+      allTargetPids.add(rootPid);
+      while (queue.length > 0) {
+        const cur = queue.shift();
+        const kids = childrenByPpid.get(cur) || [];
+        for (const k of kids) {
+          if (!treePids.has(k)) {
+            treePids.add(k);
+            allTargetPids.add(k);
+            queue.push(k);
+          }
+        }
+      }
+    }
+    sessionEntries.push({ key, session: s, rootPid, treePids });
+  }
+
+  const resolvedSessionCount = sessionEntries.filter((e) => e.rootPid > 0).length;
+  if (resolvedSessionCount === 0 && !hasRealHint) {
+    // Pure mock objects in unit tests without PIDs/dirs/ports -> allow caller fallback
+    return null;
+  }
+
+  const bytesByPid = new Map();
+  const memBuf = Buffer.alloc(72);
+  if (allTargetPids.size > 0) {
+    for (const pid of allTargetPids) {
+      const h = api.OpenProcess(0x1000, false, pid);
+      if (!h) continue;
+      try {
+        memBuf.writeUInt32LE(72, 0);
+        if (api.K32GetProcessMemoryInfo(h, memBuf, 72)) {
+          bytesByPid.set(pid, Number(memBuf.readBigUInt64LE(16)));
+        }
+      } catch {
+        /* ignore exited process */
+      } finally {
+        api.CloseHandle(h);
+      }
+    }
+  }
+
+  const bySessionKey = new Map();
+  let totalBytes = 0;
+  for (const entry of sessionEntries) {
+    let sessionBytes = 0;
+    for (const pid of entry.treePids) {
+      sessionBytes += bytesByPid.get(pid) || 0;
+    }
+    const ramMb = entry.rootPid > 0 ? Math.max(1, Math.round(sessionBytes / (1024 * 1024))) : 0;
+    totalBytes += sessionBytes;
+    const stats = {
+      rootPid: entry.rootPid || null,
+      procCount: entry.treePids.size,
+      ramMb,
+    };
+    bySessionKey.set(entry.key, stats);
+  }
+
+  return {
+    totalMb: Math.round(totalBytes / (1024 * 1024)),
+    bySessionKey,
+    resolvedSessionCount,
+  };
+}
+
 module.exports = {
   CHROME_NAMES,
   PROFILE_LOCK_FILES,
@@ -1425,6 +1676,9 @@ module.exports = {
   reapOrphanAdbScrcpyProcessesNative,
   reapDuplicateTaskbarPwaProcessesNative,
   reapUntrackedHeadlessBrowsersNative,
+  measureHeadlessChromeWorkingSetMbNative,
+  measureHeadlessChromeSessionTreesMbNative,
+  resolveHeadlessSessionRootPid,
   findLiveHeadedBrowserPidNative,
   getOrphanUser32Api,
   findMainWindowForPidsNative,

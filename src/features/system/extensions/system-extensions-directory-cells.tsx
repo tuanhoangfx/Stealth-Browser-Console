@@ -1,9 +1,12 @@
 import {
   DirectoryTableBodyCell,
   getDirectorySearchHighlight,
+  HubDirectoryCopyText,
+  HubDirectoryEmptyCell,
   HubDirectorySearchHighlightText,
   HubDirectoryTimestampLabel,
   HubDirectoryValuePopover,
+  HubTwofaCopyControl,
   type HubDirectoryColumnDef,
 } from "@tool-workspace/hub-ui";
 import type { CachedStoreExtension } from "../../../types";
@@ -13,9 +16,9 @@ import { ExtensionKindBadge } from "./extension-kind-badge";
 import { formatSwHealthDetailLabel } from "./extension-sw-health-label";
 
 function renderUpdatedCell(iso?: string) {
-  if (!iso) return <span className="hub-directory-table-body-text">—</span>;
+  if (!iso) return <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />;
   const ms = Date.parse(iso);
-  if (!Number.isFinite(ms)) return <span className="hub-directory-table-body-text">—</span>;
+  if (!Number.isFinite(ms)) return <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />;
   return <HubDirectoryTimestampLabel at={iso} />;
 }
 
@@ -53,10 +56,18 @@ export function renderSystemExtensionsDirectoryBodyCell(
                 Ext
               </span>
             )}
-            <HubDirectorySearchHighlightText
-              text={displayName}
-              terms={nameTerms}
-              className="hub-users-name-title truncate"
+            <HubTwofaCopyControl
+              value={displayName}
+              copyToastLabel="Extension copied"
+              className="twofa-copy-control--account min-w-0 max-w-full"
+              wrapClassName="min-w-0 flex-1"
+              display={
+                <HubDirectorySearchHighlightText
+                  text={displayName}
+                  terms={nameTerms}
+                  className="hub-users-name-title truncate"
+                />
+              }
             />
           </div>
         </DirectoryTableBodyCell>
@@ -70,17 +81,29 @@ export function renderSystemExtensionsDirectoryBodyCell(
     case "version":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text tabular-nums">{ext.version || "—"}</span>
+          {ext.version ? (
+            <span className="hub-directory-table-body-text tabular-nums">{ext.version}</span>
+          ) : (
+            <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
+          )}
         </DirectoryTableBodyCell>
       );
-    case "storeId":
+    case "storeId": {
+      const storeOrLocalId = ext.storeId || ext.localKey;
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text hub-users-cell-muted">
-            {ext.storeId || ext.localKey || "—"}
-          </span>
+          {storeOrLocalId ? (
+            <HubDirectoryCopyText
+              value={storeOrLocalId}
+              copyToastLabel="Store ID copied"
+              className="hub-directory-table-body-text hub-users-cell-muted"
+            />
+          ) : (
+            <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
+          )}
         </DirectoryTableBodyCell>
       );
+    }
     case "createdAt":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
@@ -96,10 +119,13 @@ export function renderSystemExtensionsDirectoryBodyCell(
     case "path":
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubDirectoryValuePopover value={ext.unpackedPath} title="📁 Extension Path">
-            <span className="hub-directory-table-body-text hub-users-cell-muted max-w-[18rem] truncate">
-              {ext.unpackedPath}
-            </span>
+          <HubDirectoryValuePopover value={ext.unpackedPath} title="📁 Extension Path" className="min-w-0 max-w-full">
+            <HubDirectoryCopyText
+              value={ext.unpackedPath}
+              copyToastLabel="Path copied"
+              className="hub-directory-table-body-text hub-users-cell-muted min-w-0 max-w-full"
+              wrapClassName="min-w-0 max-w-full"
+            />
           </HubDirectoryValuePopover>
         </DirectoryTableBodyCell>
       );
@@ -111,9 +137,9 @@ export function renderSystemExtensionsDirectoryBodyCell(
       const popoverLines = [
         `Extension: ${displayName}`,
         `Kind: ${ext.kind === "store" ? "Chrome Web Store" : "Local Operator"}`,
-        `Version: ${ext.version || "—"}`,
+        ext.version ? `Version: ${ext.version}` : "",
         `Status: ${logText}`,
-      ];
+      ].filter(Boolean);
       if (swDetail) {
         popoverLines.push(`MV3 Service Worker: ${swDetail.text}`);
         if (ext.swHealth?.sampleMissingCodes?.length) {
@@ -125,7 +151,7 @@ export function renderSystemExtensionsDirectoryBodyCell(
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
           <HubDirectoryValuePopover value={popoverValue} title="📋 Extension Activity Log">
-            <span className={`hub-directory-table-body-text max-w-[15rem] truncate ${toneClass}`}>
+            <span className={`hub-directory-table-body-text block max-w-full truncate ${toneClass}`}>
               {logText}
             </span>
           </HubDirectoryValuePopover>
@@ -135,7 +161,7 @@ export function renderSystemExtensionsDirectoryBodyCell(
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text">—</span>
+          <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
         </DirectoryTableBodyCell>
       );
   }

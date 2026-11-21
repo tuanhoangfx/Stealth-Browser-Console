@@ -199,8 +199,6 @@ export const StealthAppShell = memo(function StealthAppShell({
   const [hubSignInRequested, setHubSignInRequested] = useState(false);
   const { view, setView, engineStatus } = useStealthShell();
 
-  const headerActions = useMemo(() => <StealthTabHeaderActions screen={view} />, [view]);
-
   const hasRealHubSession = !isOfflineWorkspaceSession(session, offline);
 
   const authPaint = resolveWorkspaceAuthPaint({
@@ -212,6 +210,24 @@ export const StealthAppShell = memo(function StealthAppShell({
     sessionLoading: loading,
     toolAccess,
   });
+
+  const showFarmHeaderTicker = authPaint === "app" && !(view === "android" && androidTab === "farm");
+  const headerActions = useMemo(
+    () => (
+      <StealthTabHeaderActions
+        screen={view}
+        onOpenMobileFarm={
+          showFarmHeaderTicker
+            ? () => {
+                setView("android");
+                onAndroidTabChange("farm");
+              }
+            : undefined
+        }
+      />
+    ),
+    [onAndroidTabChange, setView, showFarmHeaderTicker, view],
+  );
 
   const consoleScreens = (
     <StealthConsoleScreens

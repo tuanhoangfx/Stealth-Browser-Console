@@ -276,6 +276,13 @@ function buildProfileRoutes(deps) {
             ? true
             : undefined;
         const reqSkipStartupUrl = Boolean(ctx.body?.skipStartupUrl || ctx.query?.get?.("skipStartupUrl") === "1" || isReqAgentSmoke);
+        const reqTaskExempt = Boolean(
+          ctx.body?.taskExempt === true ||
+            ctx.body?.taskExempt === "1" ||
+            ctx.body?.taskExempt === "true" ||
+            ctx.query?.get?.("taskExempt") === "1",
+        );
+        const reqAgentReason = String(ctx.body?.agentReason || ctx.query?.get?.("agentReason") || "").trim();
         try {
           const reqCallerId = parseAgentCallerId(ctx.req, ctx.body) || getAgentCallerId() || "";
           const result = await runWithAgentSmokeRequest(
@@ -294,6 +301,8 @@ function buildProfileRoutes(deps) {
                   shadowLane: reqShadowLane,
                   skipStartupUrl: reqSkipStartupUrl,
                   loadExtensionsInHeadless: Boolean(ctx.body?.loadExtensionsInHeadless),
+                  taskExempt: reqTaskExempt,
+                  agentReason: reqAgentReason,
                 },
               ),
             reqCallerId,

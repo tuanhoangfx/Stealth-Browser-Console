@@ -1,10 +1,130 @@
 {
-  "generatedAt": "2026-11-17T21:30:32.664Z",
+  "generatedAt": "2026-11-21T19:40:15.599Z",
   "entries": [
     {
-      "version": "9.2.485",
-      "date": "2026-11-18",
-      "at": "2026-11-18T04:17:00+07:00",
+      "version": "9.2.525",
+      "date": "2026-11-22",
+      "at": "2026-11-22T02:39:00+07:00",
+      "title": "Move Farm ticker to header, fix Android 53-profile load and P0003 backend guards",
+      "bullets": [
+        "Move StealthGlobalFarmTicker into StealthTabHeaderActions pill (only when runningTasks > 0), unify Android API fetch onto fetchFarmApi (6003-first + base loop outer), add SWR cache for /api/android-vault/profiles, fix missing hasVerifiedGoogleLiveTab/headedRunningCodeSet in Electron libs, add StealthAppShell.layout.test.ts and smoke-android-ui.mjs."
+      ],
+      "kind": "improve",
+      "userTitle": "Move Farm ticker to header, fix Android 53-profile load and P0003 bac…",
+      "userSummary": "",
+      "userHighlights": [
+        "Move Stealth Global Farm Ticker into Stealth Tab Header Actions pill , unify Android API fetch on…"
+      ]
+    },
+    {
+      "version": "9.2.524",
+      "date": "2026-11-22",
+      "at": "2026-11-22T00:11:00+07:00",
+      "title": "Add 24/7 All-SIM Reader routes (/api/mobile-sim/*) and dynamic cellular status",
+      "bullets": [
+        "Expose 24/7 SIM fleet, inbox filtering, sweep, and wait-otp routes on P0003 API server alongside 24/7 daemon (:6016)"
+      ],
+      "kind": "improve",
+      "userTitle": "Add 24 7 All-SIM Reader routes and dynamic cellular status",
+      "userSummary": "",
+      "userHighlights": [
+        "Expose 24 7 SIM fleet, inbox filtering, sweep, and wait-otp routes on P0003 API server alongside…"
+      ]
+    },
+    {
+      "version": "9.2.523",
+      "date": "2026-11-21",
+      "at": "2026-11-21T23:06:00+07:00",
+      "title": "Update card billing hygiene and GPay rejection filtering",
+      "bullets": [
+        "Track mb-bank-7320 and vib-3641 trial claims plus 21 newly verified Stripe generic_decline cards and optional excludeGpayRejected filter in billing-autofill-bridge"
+      ],
+      "kind": "improve",
+      "userTitle": "Update card billing hygiene and GPay rejection filtering",
+      "userSummary": "",
+      "userHighlights": [
+        "Track mb-bank-7320 and vib-3641 trial claims plus 21 newly verified Stripe generic decline cards…"
+      ]
+    },
+    {
+      "version": "9.2.522",
+      "date": "2026-11-21",
+      "at": "2026-11-21T22:04:00+07:00",
+      "title": "Disable DirectComposition on headless launches to stop DWM handle leak",
+      "bullets": [
+        "Pass --disable-direct-composition only for headless CloakBrowser sessions while preserving hardware D3D11 WebGL fingerprint"
+      ],
+      "kind": "improve",
+      "userTitle": "Disable Direct Composition on headless launches to stop DWM handle leak",
+      "userSummary": "",
+      "userHighlights": [
+        "Pass --disable-direct-composition only for headless Cloak Browser sessions while preserving hardw…"
+      ]
+    },
+    {
+      "version": "9.2.521",
+      "date": "2026-11-21",
+      "at": "2026-11-21T18:53:00+07:00",
+      "title": "Fix upleveling SMS/spinner CDP recovery & clear stale mail_checking",
+      "bullets": [
+        "Harden handleGoogleUplevelingSmsAppealViaCdp against /uplevelingstep/spinner waits and detached CDP sessions; clear stale mail_checking=❌ Skipped on active Gmail & non-Mail sync writes"
+      ],
+      "kind": "fix",
+      "userTitle": "Fix upleveling SMS spinner CDP recovery & clear stale mail checking",
+      "userSummary": "",
+      "userHighlights": [
+        "Harden handle Google Upleveling Sms Appeal Via Cdp against uplevelingstep spinner waits and detac…"
+      ]
+    },
+    {
+      "version": "9.2.520",
+      "date": "2026-11-21",
+      "at": "2026-11-21T18:02:00+07:00",
+      "title": "Fix live Gmail appeal probe for P0003->P0020 sync",
+      "bullets": [
+        "Probe mail.google.com/mail/u/0/ for appeal/disable Gmail rows even when prior evidence lost /restrictions/54 URL."
+      ],
+      "kind": "fix",
+      "userTitle": "Fix live Gmail appeal probe for P0003->P0020 sync",
+      "userSummary": "",
+      "userHighlights": [
+        "Probe mail.google.com mail u 0 for appeal disable Gmail rows even when prior evidence lost restri…"
+      ]
+    },
+    {
+      "version": "9.2.519",
+      "date": "2026-11-21",
+      "at": "2026-11-21T17:49:00+07:00",
+      "title": "Fix realtime P0003->P0020 Google checkpoint_qr & restrictions/54 sync",
+      "bullets": [
+        "Keep /restrictions/54 scoped to Gmail when myaccount.google.com is open, pass liveCdp/values in manual reconcile-p0020, and unblock sibling YouTube/Google One promotion."
+      ],
+      "kind": "fix",
+      "userTitle": "Fix realtime P0003->P0020 Google checkpoint qr & restrictions 54 sync",
+      "userSummary": "",
+      "userHighlights": [
+        "Keep restrictions 54 scoped to Gmail when myaccount.google.com is open, pass live Cdp values in m…"
+      ]
+    },
+    {
+      "version": "9.2.518",
+      "date": "2026-11-21",
+      "at": "2026-11-21T13:45:00+07:00",
+      "title": "Facebook /me/about birthday parser",
+      "bullets": [
+        "Added extractFacebookBirthdayFromAboutText supporting VI/EN Facebook About Basic Info formats with unit tests."
+      ],
+      "kind": "improve",
+      "userTitle": "Facebook me about birthday parser",
+      "userSummary": "",
+      "userHighlights": [
+        "Added extract Facebook Birthday From About Text supporting VI EN Facebook About Basic Info format…"
+      ]
+    },
+    {
+      "version": "9.2.517",
+      "date": "2026-11-21",
+      "at": "2026-11-21T13:45:00+07:00",
       "title": "Patch bump for completed agent task",
       "bullets": [
         "Automatic patch bump after completed P0003 task."
@@ -17,24 +137,24 @@
       ]
     },
     {
-      "version": "9.2.483",
-      "date": "2026-11-18",
-      "at": "2026-11-18T03:45:00+07:00",
-      "title": "Generate fixed col CSS for Workflows/Store/Extensions and unify 7.25rem",
+      "version": "9.2.516",
+      "date": "2026-11-21",
+      "at": "2026-11-21T13:18:00+07:00",
+      "title": "FB DoB normalization parity in snapshot builder",
       "bullets": [
-        "Unified Workflows, WorkflowStore, and SystemExtensions Created/Update to 7.25rem and added generate-p0003-directory-fixed-col-css.mjs."
+        "Added normalizeFacebookDobToDdMmYyyy and wired FB DoB auto-normalization into buildP0020RowSnapshotAndPatch plus unit tests."
       ],
       "kind": "improve",
-      "userTitle": "Generate fixed col CSS for Workflows Store Extensions and unify 7.25rem",
+      "userTitle": "FB Do B normalization parity in snapshot builder",
       "userSummary": "",
       "userHighlights": [
-        "Unified Workflows, Workflow Store, and System Extensions Created Update to 7.25rem and added ."
+        "Added normalize Facebook Dob To Dd Mm Yyyy and wired FB Do B auto-normalization into build P0020…"
       ]
     },
     {
-      "version": "9.2.482",
-      "date": "2026-11-18",
-      "at": "2026-11-18T03:39:00+07:00",
+      "version": "9.2.515",
+      "date": "2026-11-21",
+      "at": "2026-11-21T13:07:00+07:00",
       "title": "Patch bump for completed agent task",
       "bullets": [
         "Automatic patch bump after completed P0003 task."
@@ -47,138 +167,18 @@
       ]
     },
     {
-      "version": "9.2.479",
-      "date": "2026-11-18",
-      "at": "2026-11-18T03:21:00+07:00",
-      "title": "Pause background UI polling when hidden and preserve profilesLiteCache on status changes",
+      "version": "9.2.513",
+      "date": "2026-11-21",
+      "at": "2026-11-21T05:34:00+07:00",
+      "title": "Prevent Facebook c_user cross-profile browser hijacking",
       "bullets": [
-        "Added visibilityState guard, skipped hidden IPC broadcasts, patched _profilesLiteCache in-place on statusOnly invalidation, and dirty-checked tray menu."
+        "Require unassigned browser (!curBrowser / same-profile match) in stealth-multiplatform-sync Facebook c_user lookup and needsBrowserAssignmentUpdate to stop ping-pong profile flips."
       ],
       "kind": "improve",
-      "userTitle": "Pause background UI polling when hidden and preserve profiles Lite Ca…",
+      "userTitle": "Prevent Facebook c user cross-profile browser hijacking",
       "userSummary": "",
       "userHighlights": [
-        "Added visibility State guard, skipped hidden IPC broadcasts, patched profiles Lite Cache in-place…"
-      ]
-    },
-    {
-      "version": "9.2.478",
-      "date": "2026-11-18",
-      "at": "2026-11-18T03:20:00+07:00",
-      "title": "Align Log 15rem, Profile 7.25rem, and HubDirectoryProfileCell",
-      "bullets": [
-        "Updated P0003 Log columns to HUB_DIRECTORY_LOG_COL_WIDTH (15rem), removed 6rem/6.5rem Profile and Android date CSS overrides in favor of 7.25rem SSOT, and upgraded Profile cells to HubDirectoryProfileCell."
-      ],
-      "kind": "improve",
-      "userTitle": "Align Log 15rem, Profile 7.25rem, and Hub Directory Profile Cell",
-      "userSummary": "",
-      "userHighlights": [
-        "Updated P0003 Log columns to HUB DIRECTORY LOG COL WIDTH , removed 6rem 6.5rem Profile and Androi…"
-      ]
-    },
-    {
-      "version": "9.2.477",
-      "date": "2026-11-18",
-      "at": "2026-11-18T03:19:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "9.2.475",
-      "date": "2026-11-18",
-      "at": "2026-11-18T02:18:00+07:00",
-      "title": "Isolated Android ESM Bridge Worker & Multi-Browser Socket",
-      "bullets": [
-        "Replaced in-process ESM cache-sensitive Android bridge imports with an isolated hot-reloadable Node ESM child-bridge worker SSOT across api-server and multiplatform-sync-routes"
-      ],
-      "kind": "improve",
-      "userTitle": "Isolated Android ESM Bridge Worker & Multi-Browser Socket",
-      "userSummary": "",
-      "userHighlights": [
-        "Replaced in-process ESM cache-sensitive Android bridge imports with an isolated hot-reloadable No…"
-      ]
-    },
-    {
-      "version": "9.2.474",
-      "date": "2026-11-18",
-      "at": "2026-11-18T01:47:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "9.2.473",
-      "date": "2026-11-18",
-      "at": "2026-11-18T01:47:00+07:00",
-      "title": "Auth-Proxy Fast-Spawn & multi-proxy isolation E2E guard + CWS E0001 auto-upgrade sync",
-      "bullets": [
-        "Added automated <250ms warm auth-proxy Fast-Spawn SLA + cross-proxy isolation checks to proxy-smoke.cjs (auto-fetching diverse P0020 proxies), added --upgrade-cws to sync-bundled-e0001.mjs & release-desktop.ps1."
-      ],
-      "kind": "improve",
-      "userTitle": "Auth-Proxy Fast-Spawn & multi-proxy isolation E2 E guard + CWS E0001…",
-      "userSummary": "",
-      "userHighlights": [
-        "Added automated <250ms warm auth-proxy Fast-Spawn SLA + cross-proxy isolation checks to , added -…"
-      ]
-    },
-    {
-      "version": "9.2.472",
-      "date": "2026-11-18",
-      "at": "2026-11-18T01:44:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "9.2.471",
-      "date": "2026-11-18",
-      "at": "2026-11-18T01:43:00+07:00",
-      "title": "Mobile Farm Dual-Device Wall & Prod Hot-Patch",
-      "bullets": [
-        "Added Dual Wall side-by-side multi-device rendering and per-card ADB serial touch/app dispatch across Pixel 6a and Galaxy S9+, plus multi-device allDevices live-screen forwarding"
-      ],
-      "kind": "improve",
-      "userTitle": "Mobile Farm Dual-Device Wall & Prod Hot-Patch",
-      "userSummary": "",
-      "userHighlights": [
-        "Added Dual Wall side-by-side multi-device rendering and per-card ADB serial touch app dispatch ac…"
-      ]
-    },
-    {
-      "version": "9.2.470",
-      "date": "2026-11-18",
-      "at": "2026-11-18T01:43:00+07:00",
-      "title": "Write structured platform_states from billing autofill card association",
-      "bullets": [
-        "Update recordLinkedCardAssociation in billing-autofill-bridge.cjs to merge stealth_snapshot.platform_states entries for ChatGPT, Stripe, ElevenLabs, Muse, PipoPay, and Google Pay alongside Card notes."
-      ],
-      "kind": "improve",
-      "userTitle": "Write structured platform states from billing autofill card association",
-      "userSummary": "",
-      "userHighlights": [
-        "Update record Linked Card Association in to merge stealth snapshot.platform states entries for Ch…"
+        "Require unassigned browser in stealth-multiplatform-sync Facebook c user lookup and needs Browser…"
       ]
     }
   ]

@@ -659,8 +659,8 @@ body.hub-modal-open {
   filter: brightness(1.05);
 }
 
-.hub-tool-detail-modal__confirm:disabled,
-.cookie-dl-modal__confirm:disabled {
+.hub-tool-detail-modal__confirm:disabled:not(.hub-tool-detail-modal__confirm--busy),
+.cookie-dl-modal__confirm:disabled:not(.hub-tool-detail-modal__confirm--busy) {
   opacity: 0.38;
   cursor: not-allowed;
   box-shadow: none;

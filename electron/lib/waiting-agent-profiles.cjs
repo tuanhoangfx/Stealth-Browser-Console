@@ -9,6 +9,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { getDb, isDatabaseReady } = require("../db/init.cjs");
 const { extractProfileCode } = require("./profile-code.cjs");
+const { readDeferredQueue } = require("./deferred-headed-queue-ssot.cjs");
 
 const P0002_ROOT = "E:\\Dev\\Tool\\P0002-Social-Hub";
 const P0002_DATA_DIR = path.join(P0002_ROOT, "data");
@@ -281,6 +282,7 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
   const runningHeadlessCodeSet = new Set();
   const runningHeadlessLaunchedAt = new Map();
   const headedRunningIdSet = new Set();
+  const headedRunningCodeSet = new Set();
   const allAliveIdSet = new Set();
 
   try {
@@ -291,6 +293,8 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
       allAliveIdSet.add(id);
       if (row?.headless !== true && row?.shadowLane !== true) {
         headedRunningIdSet.add(id);
+        const hCode = extractProfileCode(row?.name || "", id) || normalizeCode(row?.name);
+        if (hCode) headedRunningCodeSet.add(hCode);
       }
     }
     for (const row of Array.isArray(sessions) ? sessions : []) {
@@ -369,7 +373,7 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
         if (entry?.code) addCandidate(entry.code, label);
       }
     }
-    const defParsed = readJsonSafe(path.join(P0002_DATA_DIR, "deferred-user-headed-queue.json"));
+    const defParsed = readDeferredQueue({ runningHeadedCodes: headedRunningCodeSet, runningHeadedIds: headedRunningIdSet });
     if (defParsed) {
       const pending = Array.isArray(defParsed.pendingWhileUserHeaded) ? defParsed.pendingWhileUserHeaded : [];
       const ready = Array.isArray(defParsed.readyForRetry) ? defParsed.readyForRetry : [];

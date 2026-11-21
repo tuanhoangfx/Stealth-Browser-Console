@@ -24,7 +24,7 @@ export function toFilterOptions<T extends { value: string; label: string }>(opti
 function platformEmoji(platform: string): string {
   if (platform === "macos") return "🍎";
   if (platform === "linux") return "🐧";
-  return "🪟";
+  return "🖥️";
 }
 
 const TIMEZONE_COUNTRY_MAP: Record<string, string> = {

@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { pickPatch, resolveProfileId, PATCH_ALLOWED_FIELDS } = require("./profile-ops.cjs");
+const { pickPatch, resolveProfileId, PATCH_ALLOWED_FIELDS, launchProfile } = require("./profile-ops.cjs");
 
 function test(name, fn) {
   try {
@@ -39,4 +39,33 @@ test("PATCH_ALLOWED_FIELDS stable", () => {
   assert.ok(!PATCH_ALLOWED_FIELDS.includes("id"));
 });
 
-if (process.exitCode) process.exit(process.exitCode);
+async function runAsyncTests() {
+  let seenProfile = null;
+  const res = await launchProfile(
+    {
+      profileService: {
+        resolveProfileForLaunch: ({ id }) => ({ id, name: "0244-flow", startupUrl: "" }),
+      },
+      sessionManager: {
+        launch: async (launchTarget) => {
+          seenProfile = launchTarget;
+          return { ok: true, status: "running", debugPort: 9222, headless: true };
+        },
+      },
+    },
+    {
+      id: "prof-244",
+      headless: true,
+      shadowLane: false,
+      taskExempt: true,
+      agentReason: "workflow:p0006_flow_render",
+    },
+  );
+  assert.equal(res.ok, true);
+  assert.equal(seenProfile?.taskExempt, true);
+  assert.equal(seenProfile?.agentReason, "workflow:p0006_flow_render");
+  console.log("ok launchProfile preserves taskExempt and agentReason");
+  if (process.exitCode) process.exit(process.exitCode);
+}
+
+void runAsyncTests();

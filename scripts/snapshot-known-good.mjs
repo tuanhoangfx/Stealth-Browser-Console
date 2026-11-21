@@ -69,10 +69,12 @@ function gitDirty() {
   return Boolean(r.stdout?.trim());
 }
 
+import { resolveDesktopKnownGoodDir } from "../../scripts/lib/desktop-exe-products.mjs";
+
 const pkg = readJson(path.join(root, "package.json"));
 const version = pkg.version;
 const distDesktop = path.join(root, "dist-desktop");
-const backupRoot = path.join(distDesktop, "known-good");
+const backupRoot = resolveDesktopKnownGoodDir("P0003", root);
 const installerName = `Stealth-Browser-Console-Setup-${version}.exe`;
 const installerSrc = path.join(distDesktop, installerName);
 const unpackedSrc = path.join(distDesktop, "win-unpacked");
@@ -131,7 +133,7 @@ const next = {
     ? (String(labelArg).startsWith("v") ? String(labelArg) : `v${version}-stable`)
     : `v${version}-stable`,
   backup: {
-    dir: "dist-desktop/known-good",
+    dir: path.isAbsolute(backupRoot) ? backupRoot.replace(/\\/g, "/") : path.relative(root, backupRoot).replace(/\\/g, "/"),
     installer: installerName,
     winUnpacked: "win-unpacked",
     sha512,

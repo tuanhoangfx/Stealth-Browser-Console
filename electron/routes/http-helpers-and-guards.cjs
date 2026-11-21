@@ -24,15 +24,25 @@ const {
 } = require("../lib/agent-smoke-context.cjs");
 const { diagnoseMailCredentials } = require("../lib/twofa-vault-bridge.cjs");
 
+const {
+  completeDeferredItem,
+  enqueueDeferredItem,
+  isCustomer8xxxProfileCode,
+  migrateLegacyQueuesOnce,
+  readDeferredQueue,
+  resolveDeferredQueuePath,
+} = require("../lib/deferred-headed-queue-ssot.cjs");
+const {
+  collectLiveHeadedSnapshot,
+  drainReadyDeferredQueue,
+} = require("../lib/deferred-queue-drainer.cjs");
+
 const ELECTRON_DIR = path.resolve(__dirname, "..");
 const PRODUCT_ROOT = path.resolve(ELECTRON_DIR, "..");
 const SOCIAL_HUB_DATA_DIR = "E:\\Dev\\Tool\\P0002-Social-Hub\\data";
 const PRIORITY_AGENT_LOCKS_PATH = path.join(SOCIAL_HUB_DATA_DIR, "priority-agent-locks.json");
 const ACTIVE_AGENT_LOCKS_PATH = path.join(SOCIAL_HUB_DATA_DIR, "active-agent-locks.json");
-const DEFERRED_USER_HEADED_QUEUE_PATH = path.join(SOCIAL_HUB_DATA_DIR, "deferred-user-headed-queue.json");
-const P0020_DEFERRED_QUEUE_PATH = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\deferred-user-headed-queue.json";
-const P0020_REVOKE_EXPIRED_SCRIPT_PATH = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\revoke-expired-action-orders.mjs";
-const P0020_ANTIGRAVITY_APPEAL_SCRIPT_PATH = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\appeal-antigravity-tos-fleet.mjs";
+const DEFERRED_USER_HEADED_QUEUE_PATH = resolveDeferredQueuePath();
 
 function stepsNeedMailCredentials(steps) {
   return (
@@ -253,115 +263,61 @@ function createLockGuardState({ enabled = true } = {}) {
 
 /**
  * Deferred agent task persistence when a profile is actively open in User Headed mode.
+ * Delegates 100% to the single SSOT queue (`%APPDATA%\stealth-browser-console\data\deferred-user-headed-queue.json`)
+ * and Multi-Domain Auto-Drainer (`deferred-queue-drainer.cjs`).
  */
 function createDeferredAgentQueueHelpers({ sessionManager, profileService, deferredMap }) {
-  const isCustomer8xxx = (v) => /^8\d{3}$/.test(String(v || "").replace(/^#/, "").trim().padStart(4, "0"));
-  const mergeDeferredTasks = (prevTasks, nextTasks, fallbackReason = "") => {
-    const merged = [];
-    const seen = new Set();
-    const pushTask = (t) => {
-      const r = String(t?.taskReason || t?.reason || t || "").trim();
-      if (!r || seen.has(r)) return;
-      seen.add(r);
-      merged.push(typeof t === "object" && t ? { ...t, taskReason: r } : { taskReason: r, queuedAt: new Date().toISOString() });
-    };
-    if (Array.isArray(prevTasks)) prevTasks.forEach(pushTask);
-    if (Array.isArray(nextTasks)) nextTasks.forEach(pushTask);
-    if (fallbackReason) pushTask(fallbackReason);
-    return merged;
-  };
-  const canCheckInteractive = typeof sessionManager?.isUserInteractiveSession === "function";
-
   function persistDeferredFile(extraReadyItem = null) {
     try {
-      if (!fs.existsSync(SOCIAL_HUB_DATA_DIR)) return;
-      let prevPending = [];
-      let prevReady = [];
-      try {
-        if (fs.existsSync(DEFERRED_USER_HEADED_QUEUE_PATH)) {
-          const parsed = JSON.parse(fs.readFileSync(DEFERRED_USER_HEADED_QUEUE_PATH, "utf8")) || {};
-          if (Array.isArray(parsed.pendingWhileUserHeaded)) {
-            prevPending = parsed.pendingWhileUserHeaded.filter((x) => x?.code && !isCustomer8xxx(x.code));
-          }
-          if (Array.isArray(parsed.readyForRetry)) {
-            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-            prevReady = parsed.readyForRetry.filter(
-              (x) => !isCustomer8xxx(x?.code) && Number(x?.windowClosedAt || 0) > cutoff,
-            );
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      const upsertReady = (entry) => {
-        const c = String(entry?.code || "").trim();
-        if (!c || isCustomer8xxx(c)) return;
-        const existingReady = prevReady.find((x) => x?.code === c || (entry.profileId && x?.profileId === entry.profileId));
-        const merged = {
-          ...(existingReady || {}),
-          ...entry,
-          tasks: mergeDeferredTasks(existingReady?.tasks, entry?.tasks, entry?.taskReason || entry?.reason),
-          windowClosedAt: Number(entry?.windowClosedAt || existingReady?.windowClosedAt || Date.now()),
-          readyForAgentRetry: true,
-        };
-        prevReady = [
-          merged,
-          ...prevReady.filter((x) => x?.code !== c && (!entry.profileId || x?.profileId !== entry.profileId)),
-        ].slice(0, 100);
-      };
-      const byCodePending = new Map();
-      for (const item of prevPending) {
-        const c = String(item?.code || "").trim();
-        if (!c || isCustomer8xxx(c)) continue;
-        if (item?.profileId && canCheckInteractive && !sessionManager.isUserInteractiveSession(item.profileId)) {
-          upsertReady({ ...item, windowClosedAt: item.windowClosedAt || Date.now(), readyForAgentRetry: true });
-          continue;
-        }
-        byCodePending.set(c, item);
-      }
+      const { runningHeadedCodes, runningHeadedIds, resolveProfile } = collectLiveHeadedSnapshot({
+        sessionManager,
+        profileService,
+      });
+      migrateLegacyQueuesOnce({
+        runningHeadedCodes,
+        runningHeadedIds,
+        resolveProfile,
+      });
       for (const [pidKey, item] of [...deferredMap.entries()]) {
-        const c = String(item?.code || "").trim();
-        if (!c || isCustomer8xxx(c)) continue;
-        const prev = byCodePending.get(c);
-        const mergedItem = {
-          ...(prev || {}),
-          ...item,
-          tasks: mergeDeferredTasks(prev?.tasks, item?.tasks, item?.reason),
-        };
-        if (canCheckInteractive && !sessionManager.isUserInteractiveSession(pidKey)) {
+        const code = String(item?.code || "").trim();
+        if (!code || isCustomer8xxxProfileCode(code)) {
           deferredMap.delete(pidKey);
-          byCodePending.delete(c);
-          upsertReady({ ...mergedItem, windowClosedAt: Date.now(), readyForAgentRetry: true });
           continue;
         }
-        byCodePending.set(c, mergedItem);
-      }
-      if (extraReadyItem?.code && !isCustomer8xxx(extraReadyItem.code)) {
-        const prevPend = byCodePending.get(extraReadyItem.code);
-        byCodePending.delete(extraReadyItem.code);
-        upsertReady({
-          ...extraReadyItem,
-          tasks: mergeDeferredTasks(prevPend?.tasks, extraReadyItem.tasks, extraReadyItem.taskReason || extraReadyItem.reason),
-          windowClosedAt: extraReadyItem.windowClosedAt || Date.now(),
-          readyForAgentRetry: true,
-        });
-      }
-      const pending = [...byCodePending.values()];
-      const pendingCodes = new Set(pending.map((x) => x.code));
-      prevReady = prevReady.filter((x) => !pendingCodes.has(x?.code));
-      fs.writeFileSync(
-        DEFERRED_USER_HEADED_QUEUE_PATH,
-        JSON.stringify(
+        const stillHeaded = Boolean(
+          runningHeadedIds.has(String(pidKey)) ||
+            runningHeadedCodes.has(code) ||
+            sessionManager?.isUserInteractiveSession?.(pidKey),
+        );
+        enqueueDeferredItem(
           {
-            updatedAt: new Date().toISOString(),
-            pendingWhileUserHeaded: pending,
-            readyForRetry: prevReady,
+            profileId: item.profileId || pidKey,
+            code,
+            account: item.account || null,
+            taskType: item.taskType || item.taskReason || item.reason,
+            reason: item.reason,
+            isHeaded: stillHeaded,
           },
-          null,
-          2,
-        ),
-        "utf8",
-      );
+          { resolveProfile },
+        );
+        if (!stillHeaded) {
+          deferredMap.delete(pidKey);
+        }
+      }
+      if (extraReadyItem?.code && !isCustomer8xxxProfileCode(extraReadyItem.code)) {
+        enqueueDeferredItem(
+          {
+            profileId: extraReadyItem.profileId,
+            code: extraReadyItem.code,
+            account: extraReadyItem.account || null,
+            taskType: extraReadyItem.taskType || extraReadyItem.taskReason || extraReadyItem.reason,
+            reason: extraReadyItem.reason,
+            isHeaded: false,
+          },
+          { resolveProfile },
+        );
+      }
+      readDeferredQueue({ runningHeadedCodes, runningHeadedIds, resolveProfile });
     } catch {
       /* ignore */
     }
@@ -369,25 +325,7 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
 
   function removeReadyDeferredEntry(codeOrId) {
     try {
-      if (!fs.existsSync(DEFERRED_USER_HEADED_QUEUE_PATH)) return;
-      const parsed = JSON.parse(fs.readFileSync(DEFERRED_USER_HEADED_QUEUE_PATH, "utf8")) || {};
-      if (!Array.isArray(parsed.readyForRetry)) return;
-      const nextReady = parsed.readyForRetry.filter(
-        (x) => x?.code !== codeOrId && x?.profileId !== codeOrId,
-      );
-      fs.writeFileSync(
-        DEFERRED_USER_HEADED_QUEUE_PATH,
-        JSON.stringify(
-          {
-            ...parsed,
-            updatedAt: new Date().toISOString(),
-            readyForRetry: nextReady,
-          },
-          null,
-          2,
-        ),
-        "utf8",
-      );
+      completeDeferredItem({ code: codeOrId, ok: true, outcome: "removed_ready_entry" });
     } catch {
       /* ignore */
     }
@@ -397,32 +335,12 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
     try {
       const rawCode = String(codeOrId || "").replace(/^#/, "").trim();
       const code4 = /^\d{1,4}$/.test(rawCode) ? rawCode.padStart(4, "0") : "";
-      if (!fs.existsSync(P0020_DEFERRED_QUEUE_PATH)) return;
-      const raw = fs.readFileSync(P0020_DEFERRED_QUEUE_PATH, "utf8").trim();
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
-      if (list.length === 0) return;
-      const hasMatch =
-        !code4 ||
-        list.some((x) => String(x?.profileSlot || x?.code || "").replace(/^#/, "").padStart(4, "0") === code4);
-      if (!hasMatch) return;
-
-      const winShellCandidates = [
-        path.resolve(ELECTRON_DIR, "../../scripts/lib/win-shell-env.cjs"),
-        "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs",
-      ];
-      const winShellPath = winShellCandidates.find((p) => fs.existsSync(p));
-      if (!winShellPath || !fs.existsSync(P0020_REVOKE_EXPIRED_SCRIPT_PATH)) return;
-      const { startHiddenDetachedProcess } = require(winShellPath);
-      const args = [P0020_REVOKE_EXPIRED_SCRIPT_PATH, "--drain-deferred"];
-      if (code4) args.push(code4);
-      args.push("--apply", "--telegram");
-      startHiddenDetachedProcess("E:\\Dev\\.tools\\nodew.exe", args, {
-        cwd: "E:\\Dev",
-        pidFile: path.join(SOCIAL_HUB_DATA_DIR, "deferred-order-drain.pid"),
-        logFile: path.join(SOCIAL_HUB_DATA_DIR, "deferred-order-drain.log"),
-        env: { ...process.env, STEALTH_AGENT_CALLER: "agent:deferred-order-drain" },
+      if (code4 && isCustomer8xxxProfileCode(code4)) return;
+      drainReadyDeferredQueue({
+        sessionManager,
+        profileService,
+        targetCodes: code4 ? [code4] : null,
+        taskTypes: ["revoke-expired-order"],
       });
     } catch {
       /* ignore */
@@ -433,35 +351,17 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
     try {
       const rawCode = String(codeOrId || "").replace(/^#/, "").trim();
       const code4 = /^\d{1,4}$/.test(rawCode) ? rawCode.padStart(4, "0") : "";
-      if (code4 && isCustomer8xxx(code4)) return;
-      if (!fs.existsSync(DEFERRED_USER_HEADED_QUEUE_PATH)) return;
-      const raw = fs.readFileSync(DEFERRED_USER_HEADED_QUEUE_PATH, "utf8").trim();
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const list = Array.isArray(parsed?.readyForRetry) ? parsed.readyForRetry : [];
-      const agTasks = new Set(["appeal-antigravity-tos", "reconcile-cloud-ag", "unlock-ag-validation"]);
-      const hasMatch = list.some((x) => {
-        if (!x || isCustomer8xxx(x.code)) return false;
-        if (code4 && String(x.code || "").padStart(4, "0") !== code4) return false;
-        const tasks = Array.isArray(x.tasks) ? x.tasks : [];
-        return (
-          agTasks.has(String(x.taskReason || "")) ||
-          tasks.some((t) => agTasks.has(String(t?.taskReason || t?.reason || "")))
-        );
-      });
-      if (!hasMatch || !fs.existsSync(P0020_ANTIGRAVITY_APPEAL_SCRIPT_PATH)) return;
-      const winShellCandidates = [
-        path.resolve(ELECTRON_DIR, "../../scripts/lib/win-shell-env.cjs"),
-        "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs",
-      ];
-      const winShellPath = winShellCandidates.find((p) => fs.existsSync(p));
-      if (!winShellPath) return;
-      const { startHiddenDetachedProcess } = require(winShellPath);
-      startHiddenDetachedProcess("E:\\Dev\\.tools\\nodew.exe", [P0020_ANTIGRAVITY_APPEAL_SCRIPT_PATH, "--drain-deferred"], {
-        cwd: "E:\\Dev",
-        pidFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-drain.pid",
-        logFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-fleet.log",
-        env: { ...process.env, STEALTH_AGENT_CALLER: "agent:deferred-ag-drain" },
+      if (code4 && isCustomer8xxxProfileCode(code4)) return;
+      drainReadyDeferredQueue({
+        sessionManager,
+        profileService,
+        targetCodes: code4 ? [code4] : null,
+        taskTypes: [
+          "appeal-antigravity-tos",
+          "reconcile-ag-appeal",
+          "reconcile-cloud-ag",
+          "unlock-ag-validation",
+        ],
       });
     } catch {
       /* ignore */
@@ -471,7 +371,7 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
   function scheduleDeferredAgentAutoDrain(defEntry) {
     const pid = String(defEntry?.profileId || "").trim();
     const code = String(defEntry?.code || "").trim();
-    if (!pid || isCustomer8xxx(code)) return;
+    if (!pid || isCustomer8xxxProfileCode(code)) return;
     const timer = setTimeout(async () => {
       try {
         if (sessionManager.isUserInteractiveSession(pid)) return;
@@ -484,9 +384,11 @@ function createDeferredAgentQueueHelpers({ sessionManager, profileService, defer
             await sessionManager.close(pid, { agentOnly: true, ignoreIfUserInteractive: true }).catch(() => null);
           }
         });
-        triggerDeferredExpiredOrderDrain(code || pid);
-        triggerDeferredAntigravityDrain(code || pid);
-        removeReadyDeferredEntry(code || pid);
+        drainReadyDeferredQueue({
+          sessionManager,
+          profileService,
+          targetCodes: code ? [code] : null,
+        });
       } catch {
         /* ignore */
       }

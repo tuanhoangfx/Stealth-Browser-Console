@@ -1,4 +1,4 @@
-import { Bot, GitBranch, ListTree, Loader2, Wand2 } from "lucide-react";
+import { Bot, GitBranch, ListTree } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import {
   HubAlert,
@@ -120,7 +120,11 @@ export const WorkflowAiStepsPanel = memo(function WorkflowAiStepsPanel({
         />
         <div className="workflow-ai-composer__actions">
           <HubBulkActionButton
-            icon={busy ? <Loader2 size={14} className="spin" aria-hidden /> : <Wand2 size={14} aria-hidden />}
+            icon={
+              <span className={`inline-flex text-[13px] leading-none${busy ? " spin" : ""}`} aria-hidden>
+                {busy ? "⏳" : "⚡"}
+              </span>
+            }
             label="Gen"
             title="Generate and apply to workflow"
             tone="indigo"

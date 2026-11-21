@@ -895,8 +895,8 @@ function ProfileDetailBulkBody({
                     {selectedCount} profile{selectedCount === 1 ? "" : "s"} selected
                   </span>
                 }
-                created={<span className="text-[var(--muted)]">—</span>}
-                updated={<span className="text-[var(--muted)]">—</span>}
+                created={null}
+                updated={null}
               />
               <ProfileBulkFormFields
                 groupId={draft.groupId}

@@ -8,6 +8,7 @@ let nativeDb = null;
 let dbFilePath = null;
 let initPromise = null;
 let persistTimer = null;
+let retentionPruneTimer = null;
 let dbBackend = "unknown";
 
 const PERSIST_DEBOUNCE_MS = 1500;
@@ -629,6 +630,14 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
       tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
     }
     pruneProfileEventsRetention(nativeDb, 365);
+  if (!retentionPruneTimer && process.env.STEALTH_AGENT_WORKER !== "1") {
+    retentionPruneTimer = setInterval(() => {
+      if (dbBackend === "better-sqlite3" && nativeDb) {
+        pruneProfileEventsRetention(nativeDb, 365);
+      }
+    }, 6 * 60 * 60 * 1000);
+    if (typeof retentionPruneTimer.unref === "function") retentionPruneTimer.unref();
+  }
     dbBackend = "better-sqlite3";
     console.info("[db] backend=better-sqlite3 (agent worker shared WAL)");
     return createBetterSqliteAdapter(nativeDb);
@@ -650,6 +659,14 @@ async function openBetterSqliteDatabase(DatabaseCtor, userDataPath) {
   backfillLastOpenedAt(nativeDb);
   resetProfilesDefaultIpV1(nativeDb);
   pruneProfileEventsRetention(nativeDb, 365);
+  if (!retentionPruneTimer && process.env.STEALTH_AGENT_WORKER !== "1") {
+    retentionPruneTimer = setInterval(() => {
+      if (dbBackend === "better-sqlite3" && nativeDb) {
+        pruneProfileEventsRetention(nativeDb, 365);
+      }
+    }, 6 * 60 * 60 * 1000);
+    if (typeof retentionPruneTimer.unref === "function") retentionPruneTimer.unref();
+  }
   if (repairedOnOpen && !verifyBetterSqliteIntegrity(nativeDb)) {
     tryInPlaceSqliteIndexAndEventsRepair(nativeDb);
     if (!verifyBetterSqliteIntegrity(nativeDb)) {
@@ -981,6 +998,10 @@ function checkpointDatabase({ truncate = false } = {}) {
 }
 
 function closeDatabase() {
+  if (retentionPruneTimer) {
+    clearInterval(retentionPruneTimer);
+    retentionPruneTimer = null;
+  }
   if (dbInstance) {
     checkpointDatabase({ truncate: true });
     dbInstance.close();

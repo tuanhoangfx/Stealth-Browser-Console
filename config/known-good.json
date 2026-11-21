@@ -1,29 +1,29 @@
-{
-  "schemaVersion": 1,
-  "label": "v9.2.397-stable",
-  "version": "9.2.397",
-  "gitCommit": null,
-  "gitTag": "v9.2.397-stable",
-  "packagedFrom": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
-  "notes": "v9.1.1: Release Major bump 8.1.4→9.1.1. Fast prepackaged rebuild seeded build/icons into app.asar.",
-  "backup": {
-    "dir": "dist-desktop/known-good",
-    "installer": "Stealth-Browser-Console-Setup-9.2.397.exe",
-    "winUnpacked": "win-unpacked",
-    "sha512": "sa9sDI0h7lqu/Of0+els6VUOVvILYUb0FeATa9Y1mjb+eZ8V5xverOuvBSo7dDPRQP3onnUCr2Qz/ZLfc+0qyw==",
-    "capturedAt": "2026-11-12T10:49:07.460Z"
-  },
-  "restore": {
-    "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",
-    "verifyAuth": "node scripts/smoke-packaged-auth.mjs dist/index.html"
-  },
-  "checklist": [
-    "Run normal profile on Setup.exe — no ERR_MODULE_NOT_FOUND",
-    "Run proxy profile on Setup.exe — no mmdb-lib crash",
-    "Sign-in works on packaged exe (not only dev)",
-    "Profile Run opens in <5s typical",
-    "Taskbar shows profile code digits on Chromium icon (OK_ICON)",
-    "gitCommit matches packaged source or snapshot label recorded"
-  ],
-  "gitDirty": false
+﻿{
+    "schemaVersion":  1,
+    "label":  "v9.2.495-stable",
+    "version":  "9.2.495",
+    "gitCommit":  null,
+    "gitTag":  "v9.2.495-stable",
+    "packagedFrom":  "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
+    "notes":  "v9.1.1: Release Major bump 8.1.4â†’9.1.1. Fast prepackaged rebuild seeded build/icons into app.asar.",
+    "backup":  {
+                   "dir":  "D:/DevStore/known-good/P0003",
+                   "installer":  "Stealth-Browser-Console-Setup-9.2.495.exe",
+                   "winUnpacked":  "win-unpacked",
+                   "sha512":  "kQsyfsOcSIOn4ky5f+SE5Yp0exfx0WCqPlpwBv4itBjU9m7qtEaeiQMKrnXTwXu9kqsMXHT6he17gKzi/WE8Hw==",
+                   "capturedAt":  "2026-11-18T12:03:18.334Z"
+               },
+    "restore":  {
+                    "purgeSurfshark":  "node scripts/purge-surfshark-runtime.mjs",
+                    "verifyAuth":  "node scripts/smoke-packaged-auth.mjs dist/index.html"
+                },
+    "checklist":  [
+                      "Run normal profile on Setup.exe â€” no ERR_MODULE_NOT_FOUND",
+                      "Run proxy profile on Setup.exe â€” no mmdb-lib crash",
+                      "Sign-in works on packaged exe (not only dev)",
+                      "Profile Run opens in \u003c5s typical",
+                      "Taskbar shows profile code digits on Chromium icon (OK_ICON)",
+                      "gitCommit matches packaged source or snapshot label recorded"
+                  ],
+    "gitDirty":  false
 }

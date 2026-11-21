@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import { HubPanel } from "@tool-workspace/hub-ui";
 import { useAppToast } from "../../components/toast";
+import { fetchFarmApi as fetchLiveAndroidApi } from "../../views/mobile-farm/mobile-farm-stream";
 import { AutomationRuntimePanel } from "../runtime/AutomationRuntimePanel";
+import { resolveAndroidPowerBadgeState } from "../../views/mobile-farm/mobile-farm-stream";
 
 export type AndroidDisplayInfo = {
   logicalId: number;
@@ -49,6 +51,11 @@ export type AndroidLiveScreenState = {
     batteryLevel?: number | null;
     batteryTempC?: number | null;
     acPowered?: boolean;
+    cableAttached?: boolean;
+    attachedDev?: string | null;
+    chargeMode?: string | null;
+    storeMode?: number | null;
+    slateMode?: number | null;
     chargeStartLevel?: number;
     chargeStopLevel?: number;
     chargeDisable?: number;
@@ -77,26 +84,6 @@ export type AndroidLiveScreenState = {
   screenDataUrl?: string | null;
   capturedAt?: string;
 };
-
-const MOBILE_API_BASES = ["", "http://127.0.0.1:6004", "http://127.0.0.1:6003", "http://127.0.0.1:3002", "http://127.0.0.1:8814"];
-
-async function fetchLiveAndroidApi(path: string, init?: RequestInit) {
-  const altPath = path.startsWith("/api/mobile-stealth/")
-    ? path.replace("/api/mobile-stealth/", "/api/android-vault/")
-    : path;
-  const candidatePaths = altPath !== path ? [altPath, path] : [path];
-  for (const candidatePath of candidatePaths) {
-    for (const base of MOBILE_API_BASES) {
-      try {
-        const res = await fetch(`${base}${candidatePath}`, init);
-        if (res.ok) return await res.json();
-      } catch {
-        /* try next */
-      }
-    }
-  }
-  throw new Error("Android Live Screen Bridge unreachable");
-}
 
 export const AndroidLiveFarmRail = memo(function AndroidLiveFarmRail({
   selectedProfileCode = "0049",
@@ -576,9 +563,11 @@ export const AndroidLiveFarmRail = memo(function AndroidLiveFarmRail({
             const tempC = hw?.batteryTempC ?? 30.1;
             const startLv = hw?.chargeStartLevel ?? 80;
             const stopLv = hw?.chargeStopLevel ?? 85;
-            const acOff = hw?.acPowered === false;
-            const batCritical = acOff && batLv < 75;
-            const bypassOn = !acOff && (hw?.chargeDisable ?? (batLv >= stopLv ? 1 : 0)) === 1;
+            const { acOff, batCritical, bypassOn, badgeLabel } = resolveAndroidPowerBadgeState(
+              hw,
+              batLv,
+              stopLv,
+            );
             const hist =
               hw?.history24h && hw.history24h.length >= 2
                 ? hw.history24h
@@ -635,13 +624,7 @@ export const AndroidLiveFarmRail = memo(function AndroidLiveFarmRail({
                           : "bg-emerald-500/20 text-emerald-200 border-emerald-400/30"
                     }`}
                   >
-                    {batCritical
-                      ? "🚨 USB Unplugged (<75%)"
-                      : acOff
-                        ? "⚠️ USB Unplugged"
-                        : bypassOn
-                          ? `Bypass ON (${stopLv}%)`
-                          : `Band ${startLv}–${stopLv}%`}
+                    {badgeLabel ?? `Band ${startLv}–${stopLv}%`}
                   </span>
                 </div>
                 {acOff ? (

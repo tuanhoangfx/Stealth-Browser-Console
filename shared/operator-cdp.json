@@ -54,6 +54,11 @@
         "js": ["content-checkout.js"],
         "run_at": "document_idle",
         "all_frames": true
+      },
+      {
+        "matches": ["https://*.airwallex.com/*"],
+        "js": ["content-airwallex.js"],
+        "run_at": "document_idle"
       }
     ]
   }

@@ -51,6 +51,10 @@ function isVerifiedStoreExtension(extensionDir) {
 function workspaceExtensionDir() {
   const override = String(process.env.STEALTH_COOKIE_BRIDGE_WORKSPACE_DIR || "").trim();
   const storeId = COOKIE_BRIDGE_STORE_ID;
+  const packagedAsarLatest =
+    typeof process.resourcesPath === "string" && process.resourcesPath
+      ? path.join(process.resourcesPath, "bundled-extensions.asar", storeId, "unpacked-latest")
+      : "";
   const packagedLatest =
     typeof process.resourcesPath === "string" && process.resourcesPath
       ? path.join(process.resourcesPath, "bundled-extensions", storeId, "unpacked-latest")
@@ -62,6 +66,7 @@ function workspaceExtensionDir() {
       ? path.resolve(process.env.STEALTH_WORKSPACE_ROOT, "Extension", "E0001-cookie-bridge")
       : "",
     path.resolve("E:/Dev/Extension/E0001-cookie-bridge"),
+    packagedAsarLatest,
     packagedLatest,
     path.resolve(__dirname, "..", "..", "build", "bundled-extensions", storeId, "unpacked-latest"),
   ].filter(Boolean);
@@ -354,16 +359,36 @@ function bundledCookieBridgeDir() {
   try {
     const { app } = require("electron");
     if (app?.isPackaged && process.resourcesPath) {
+      candidates.push(path.join(process.resourcesPath, "bundled-extensions.asar", storeId, "unpacked"));
       candidates.push(path.join(process.resourcesPath, "bundled-extensions", storeId, "unpacked"));
     }
   } catch {
     // not running under Electron (unit tests / node) — fall back to repo build dir
+  }
+  const repoBuildAsar = path.resolve(__dirname, "..", "..", "build", "bundled-extensions.asar", storeId, "unpacked");
+  if (process.versions?.electron && fs.existsSync(repoBuildAsar)) {
+    candidates.push(repoBuildAsar);
   }
   candidates.push(path.resolve(__dirname, "..", "..", "build", "bundled-extensions", storeId, "unpacked"));
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, "manifest.json"))) return dir;
   }
   return null;
+}
+
+/** Recursive fs copy that transparently reads out of Electron `.asar` bundles onto real disk. */
+function copyBundledTreeSync(srcDir, destDir) {
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const name of fs.readdirSync(srcDir)) {
+    const from = path.join(srcDir, name);
+    const to = path.join(destDir, name);
+    const st = fs.statSync(from);
+    if (st.isDirectory()) {
+      copyBundledTreeSync(from, to);
+    } else if (st.isFile()) {
+      fs.writeFileSync(to, fs.readFileSync(from));
+    }
+  }
 }
 
 /** Copy the bundled verified store snapshot into the AppData cache (once, when empty). */
@@ -377,7 +402,7 @@ function seedCacheFromBundle(userDataRoot = defaultUserDataRoot()) {
   try {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
-    fs.cpSync(bundle, staging, { recursive: true, force: true });
+    copyBundledTreeSync(bundle, staging);
     if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
     fs.renameSync(staging, dest);
     return dest;

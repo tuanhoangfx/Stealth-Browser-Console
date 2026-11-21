@@ -10,6 +10,7 @@ const { pathToFileURL } = require("node:url");
 const { extractProfileCode } = require("../lib/profile-code.cjs");
 const { getStealthSyncDiagnostics } = require("../lib/stealth-sync-outbox.cjs");
 const { loadAndroidStealthBridge } = require("../lib/android-bridge-loader.cjs");
+const iosBridge = require("../lib/ios-stealth-bridge.cjs");
 
 async function loadStealthCdpClient(electronDir) {
   const clientCandidates = [
@@ -63,11 +64,20 @@ function buildMobileAndStealthSyncRoutes(deps) {
           const { switchAndroidDeviceProfile, getMobileVaultProfileStatus } = require("../lib/mobile-stealth-bridge.cjs");
           const rawIdOrName = decodeURIComponent(ctx.params[1] || "");
           const { profileCode, proxy } = resolveMobileVaultTarget(profileService, rawIdOrName, ctx.body?.proxy);
-          const result = await switchAndroidDeviceProfile(profileCode, {
-            proxy,
-            clearPackages: Boolean(ctx.body?.clearPackages),
-            restoreIfAvailable: ctx.body?.restoreIfAvailable !== false,
-          });
+          const serial = String(ctx.body?.serial || "");
+          const useIos = iosBridge.isIosSerial(serial) || (!serial && Boolean(iosBridge.getActiveIosDeviceSerial()));
+          const result = useIos
+            ? await iosBridge.switchIosDeviceProfile(profileCode, {
+                serial,
+                proxy,
+                clearPackages: Boolean(ctx.body?.clearPackages),
+                restoreIfAvailable: ctx.body?.restoreIfAvailable !== false,
+              })
+            : await switchAndroidDeviceProfile(profileCode, {
+                proxy,
+                clearPackages: Boolean(ctx.body?.clearPackages),
+                restoreIfAvailable: ctx.body?.restoreIfAvailable !== false,
+              });
           const status = await getMobileVaultProfileStatus(profileCode, { proxy });
           return send.json(ctx.res, 200, { ...result, status });
         } catch (err) {
@@ -84,7 +94,19 @@ function buildMobileAndStealthSyncRoutes(deps) {
           const { backupAndroidProfileSnapshot, getMobileVaultProfileStatus } = require("../lib/mobile-stealth-bridge.cjs");
           const rawIdOrName = decodeURIComponent(ctx.params[1] || "");
           const { profileCode, proxy } = resolveMobileVaultTarget(profileService, rawIdOrName, ctx.body?.proxy);
-          const result = await backupAndroidProfileSnapshot(profileCode);
+          const serial = String(ctx.body?.serial || "");
+          const useIos = iosBridge.isIosSerial(serial) || (!serial && Boolean(iosBridge.getActiveIosDeviceSerial()));
+          const wantCrane = ctx.body?.target === "crane" || Boolean(ctx.body?.craneContainer);
+          const result = useIos
+            ? wantCrane
+              ? await iosBridge.offloadCraneLiteContainer(profileCode, {
+                  serial,
+                  containerName: String(ctx.body?.craneContainer || ""),
+                  bundleId: String(ctx.body?.bundleId || "com.facebook.Facebook"),
+                  removeFromDevice: ctx.body?.removeFromDevice !== false,
+                })
+              : await iosBridge.backupIosProfileSnapshot(profileCode, { serial })
+            : await backupAndroidProfileSnapshot(profileCode);
           const status = await getMobileVaultProfileStatus(profileCode, { proxy });
           return send.json(ctx.res, 200, { ...result, status });
         } catch (err) {
@@ -101,7 +123,18 @@ function buildMobileAndStealthSyncRoutes(deps) {
           const { restoreAndroidProfileSnapshot, getMobileVaultProfileStatus } = require("../lib/mobile-stealth-bridge.cjs");
           const rawIdOrName = decodeURIComponent(ctx.params[1] || "");
           const { profileCode, proxy } = resolveMobileVaultTarget(profileService, rawIdOrName, ctx.body?.proxy);
-          const result = await restoreAndroidProfileSnapshot(profileCode);
+          const serial = String(ctx.body?.serial || "");
+          const useIos = iosBridge.isIosSerial(serial) || (!serial && Boolean(iosBridge.getActiveIosDeviceSerial()));
+          const wantCrane = ctx.body?.target === "crane" || Boolean(ctx.body?.craneContainer);
+          const result = useIos
+            ? wantCrane
+              ? await iosBridge.restoreCraneLiteContainer(profileCode, {
+                  serial,
+                  containerName: String(ctx.body?.craneContainer || ""),
+                  activate: ctx.body?.activate !== false,
+                })
+              : await iosBridge.restoreIosProfileSnapshot(profileCode, { serial })
+            : await restoreAndroidProfileSnapshot(profileCode);
           const status = await getMobileVaultProfileStatus(profileCode, { proxy });
           return send.json(ctx.res, 200, { ...result, status });
         } catch (err) {
@@ -118,7 +151,11 @@ function buildMobileAndStealthSyncRoutes(deps) {
           const { launchMobileScreenMirror, getMobileVaultProfileStatus } = require("../lib/mobile-stealth-bridge.cjs");
           const rawIdOrName = decodeURIComponent(ctx.params[1] || "");
           const { profileCode, proxy } = resolveMobileVaultTarget(profileService, rawIdOrName, ctx.body?.proxy);
-          const result = await launchMobileScreenMirror(profileCode);
+          const serial = String(ctx.body?.serial || "");
+          const useIos = iosBridge.isIosSerial(serial) || (!serial && Boolean(iosBridge.getActiveIosDeviceSerial()));
+          const result = useIos
+            ? await iosBridge.launchIosScreenMirror(profileCode, { serial })
+            : await launchMobileScreenMirror(profileCode);
           const status = await getMobileVaultProfileStatus(profileCode, { proxy });
           return send.json(ctx.res, 200, { ...result, status });
         } catch (err) {
@@ -252,6 +289,33 @@ function buildMobileAndStealthSyncRoutes(deps) {
 
 function buildAndroidVaultRoutes(deps) {
   const { send, electronDir } = deps;
+  const profilesCache = { data: null, at: 0, inflight: null };
+  const PROFILES_FRESH_MS = 15_000;
+  const PROFILES_SWR_MS = 60_000;
+
+  async function refreshProfilesCache() {
+    if (profilesCache.inflight) return profilesCache.inflight;
+    profilesCache.inflight = (async () => {
+      const bridge = await loadAndroidStealthBridge(electronDir);
+      if (!bridge) return null;
+      const out = await bridge.listMobileVaultProfiles();
+      const augmented = await iosBridge.augmentMobileProfilesResponse(out).catch(() => out);
+      if (augmented?.ok) {
+        profilesCache.data = augmented;
+        profilesCache.at = Date.now();
+      }
+      return augmented;
+    })().finally(() => {
+      profilesCache.inflight = null;
+    });
+    return profilesCache.inflight;
+  }
+
+  // Pre-warm lazily after server boot so first Android tab click responds in <5ms instead of ~7s.
+  const prewarmTimer = setTimeout(() => {
+    void refreshProfilesCache().catch(() => null);
+  }, 4000);
+  if (typeof prewarmTimer.unref === "function") prewarmTimer.unref();
 
   return [
     {
@@ -260,10 +324,21 @@ function buildAndroidVaultRoutes(deps) {
       pattern: /^\/api\/android-vault\/profiles$/,
       async handler(ctx) {
         try {
+          const forceRefresh = ctx.query?.get("refresh") === "1";
+          const ageMs = Date.now() - profilesCache.at;
+          if (!forceRefresh && profilesCache.data) {
+            if (ageMs < PROFILES_FRESH_MS) {
+              return send.json(ctx.res, 200, profilesCache.data);
+            }
+            if (ageMs < PROFILES_SWR_MS) {
+              void refreshProfilesCache().catch(() => null);
+              return send.json(ctx.res, 200, profilesCache.data);
+            }
+          }
           const bridge = await loadAndroidStealthBridge(electronDir);
           if (!bridge) return send.json(ctx.res, 404, { ok: false, error: "android_bridge_not_found" });
-          const out = await bridge.listMobileVaultProfiles();
-          return send.json(ctx.res, 200, out);
+          const augmented = await refreshProfilesCache();
+          return send.json(ctx.res, 200, augmented);
         } catch (error) {
           return send.json(ctx.res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
         }
@@ -279,6 +354,8 @@ function buildAndroidVaultRoutes(deps) {
           if (!bridge) return send.json(ctx.res, 404, { ok: false, error: "android_bridge_not_found" });
           const profileCode = ctx.query.get("profile") || ctx.query.get("code") || "0001";
           const status = await bridge.getMobileVaultProfileStatus(profileCode);
+          const aug = await iosBridge.augmentMobileProfilesResponse({ device: status?.device || {} }).catch(() => null);
+          if (aug?.device && status) status.device = aug.device;
           return send.json(ctx.res, 200, { ok: true, status });
         } catch (error) {
           return send.json(ctx.res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
@@ -411,12 +488,15 @@ function buildAndroidVaultRoutes(deps) {
           const serial = ctx.query.get("serial") || "";
           const allDevices = ctx.query.get("allDevices") === "1" || ctx.query.get("allDevices") === "true";
           const out = await bridge.getAndroidLiveScreenAndFarmState({
-            serial,
+            serial: iosBridge.isIosSerial(serial) ? "" : serial,
             displayId,
             includeScreenshot,
             allDevices,
           });
-          return send.json(ctx.res, 200, out);
+          const augmented = await iosBridge
+            .augmentLiveScreenResponse(out, { serial, includeScreenshot, allDevices })
+            .catch(() => out);
+          return send.json(ctx.res, 200, augmented);
         } catch (error) {
           return send.json(ctx.res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
         }
@@ -443,12 +523,13 @@ function buildAndroidVaultRoutes(deps) {
     {
       id: "androidVault.actions",
       method: "POST",
-      pattern: /^\/api\/android-vault\/(switch|push-cookies|pull-cookies|snapshot|mirror|auto-sync|update-profile|sync-p0020|create|delete|live-control|wifi-adb)$/,
+      pattern: /^\/api\/(?:android-vault|mobile-stealth)\/(switch|push-cookies|pull-cookies|snapshot|restore|crane-offload|crane-restore|crane-mount|mirror|auto-sync|update-profile|sync-p0020|create|delete|live-control|wifi-adb)$/,
       async handler(ctx) {
         try {
           const bridge = await loadAndroidStealthBridge(electronDir);
           if (!bridge) return send.json(ctx.res, 404, { ok: false, error: "android_bridge_not_found" });
           const action = ctx.params[1];
+          if (action !== "live-control") profilesCache.at = 0;
           const body = ctx.body || {};
           const profileCode = String(body.profileCode || body.profile || body.code || "0001");
           if (action === "wifi-adb") {
@@ -456,6 +537,17 @@ function buildAndroidVaultRoutes(deps) {
             return send.json(ctx.res, 200, out);
           }
           if (action === "live-control") {
+            const targetSerial = String(body.serial || "");
+            if (body.action === "select-device") {
+              if (iosBridge.isIosSerial(targetSerial)) {
+                const iosOut = await iosBridge.dispatchIosLiveControlAction(body);
+                return send.json(ctx.res, 200, iosOut);
+              }
+              iosBridge.setActiveIosDeviceSerial("");
+            } else if (iosBridge.isIosSerial(targetSerial) || (!targetSerial && iosBridge.getActiveIosDeviceSerial())) {
+              const iosOut = await iosBridge.dispatchIosLiveControlAction(body);
+              return send.json(ctx.res, 200, iosOut);
+            }
             const out = await bridge.dispatchAndroidLiveControlAction(body);
             return send.json(ctx.res, 200, out);
           }
@@ -475,36 +567,117 @@ function buildAndroidVaultRoutes(deps) {
             });
             return send.json(ctx.res, 200, out);
           }
+          const targetIsIos = iosBridge.isIosSerial(body.serial) || (!body.serial && Boolean(iosBridge.getActiveIosDeviceSerial()));
           if (action === "switch") {
-            const swRes = await bridge.switchAndroidDeviceProfile(profileCode, {
-              proxy: String(body.proxy || ""),
-              clearPackages: Boolean(body.clearPackages),
-              restoreIfAvailable: body.restoreIfAvailable !== false,
-            });
+            const swRes = targetIsIos
+              ? await iosBridge.switchIosDeviceProfile(profileCode, {
+                  serial: String(body.serial || ""),
+                  proxy: String(body.proxy || ""),
+                  clearPackages: Boolean(body.clearPackages),
+                  restoreIfAvailable: body.restoreIfAvailable !== false,
+                })
+              : await bridge.switchAndroidDeviceProfile(profileCode, {
+                  proxy: String(body.proxy || ""),
+                  clearPackages: Boolean(body.clearPackages),
+                  restoreIfAvailable: body.restoreIfAvailable !== false,
+                });
             const status = await bridge.getMobileVaultProfileStatus(profileCode);
             return send.json(ctx.res, 200, { ...swRes, status });
           }
           if (action === "push-cookies") {
-            const pushRes = await bridge.pushBrowserCookiesToMobileDevice(profileCode, {
-              serial: String(body.serial || ""),
-            });
+            const pushRes = targetIsIos
+              ? await iosBridge.pushBrowserCookiesToIosDevice(profileCode, {
+                  serial: String(body.serial || ""),
+                  cookies: Array.isArray(body.cookies) ? body.cookies : null,
+                })
+              : await bridge.pushBrowserCookiesToMobileDevice(profileCode, {
+                  serial: String(body.serial || ""),
+                });
             const status = await bridge.getMobileVaultProfileStatus(profileCode);
             return send.json(ctx.res, 200, { ...pushRes, status });
           }
           if (action === "pull-cookies") {
-            const pullRes = await bridge.extractMobileCookiesToBrowserProfile(profileCode, {
-              serial: String(body.serial || ""),
-            });
+            const pullRes = targetIsIos
+              ? await iosBridge.extractIosCookiesToBrowserProfile(profileCode, {
+                  serial: String(body.serial || ""),
+                })
+              : await bridge.extractMobileCookiesToBrowserProfile(profileCode, {
+                  serial: String(body.serial || ""),
+                });
             const status = await bridge.getMobileVaultProfileStatus(profileCode);
             return send.json(ctx.res, 200, { ...pullRes, status });
           }
           if (action === "snapshot") {
-            const snapRes = await bridge.backupAndroidProfileSnapshot(profileCode);
+            const wantCrane = body?.target === "crane" || Boolean(body?.craneContainer);
+            const snapRes = targetIsIos
+              ? wantCrane
+                ? await iosBridge.offloadCraneLiteContainer(profileCode, {
+                    serial: String(body.serial || ""),
+                    containerName: String(body.craneContainer || ""),
+                    bundleId: String(body.bundleId || "com.facebook.Facebook"),
+                    removeFromDevice: body.removeFromDevice !== false,
+                  })
+                : await iosBridge.backupIosProfileSnapshot(profileCode, {
+                    serial: String(body.serial || ""),
+                  })
+              : await bridge.backupAndroidProfileSnapshot(profileCode);
             const status = await bridge.getMobileVaultProfileStatus(profileCode);
             return send.json(ctx.res, 200, { ...snapRes, status });
           }
+          if (action === "crane-offload") {
+            const offRes = targetIsIos
+              ? await iosBridge.offloadCraneLiteContainer(profileCode, {
+                  serial: String(body.serial || ""),
+                  containerName: String(body.craneContainer || ""),
+                  bundleId: String(body.bundleId || "com.facebook.Facebook"),
+                  removeFromDevice: body.removeFromDevice !== false,
+                })
+              : await bridge.backupAndroidProfileSnapshot(profileCode);
+            const status = await bridge.getMobileVaultProfileStatus(profileCode);
+            return send.json(ctx.res, 200, { ...offRes, status });
+          }
+          if (action === "crane-restore" || action === "restore") {
+            const wantCrane = action === "crane-restore" || body?.target === "crane" || Boolean(body?.craneContainer);
+            const resOut = targetIsIos
+              ? wantCrane
+                ? await iosBridge.restoreCraneLiteContainer(profileCode, {
+                    serial: String(body.serial || ""),
+                    containerName: String(body.craneContainer || ""),
+                    activate: body.activate !== false,
+                  })
+                : await iosBridge.restoreIosProfileSnapshot(profileCode, {
+                    serial: String(body.serial || ""),
+                  })
+              : await bridge.restoreAndroidProfileSnapshot(profileCode);
+            const status = await bridge.getMobileVaultProfileStatus(profileCode);
+            return send.json(ctx.res, 200, { ...resOut, status });
+          }
+          if (action === "crane-mount") {
+            const mountRes = targetIsIos
+              ? await iosBridge.mountCraneLiteProfile(profileCode, {
+                  serial: String(body.serial || ""),
+                  containerName: String(body.craneContainer || ""),
+                  bundleId: String(body.bundleId || "com.facebook.Facebook"),
+                  minFreeGb: Number.isFinite(Number(body.minFreeGb)) ? Number(body.minFreeGb) : 10,
+                  maxOnDevice: Number.isFinite(Number(body.maxOnDevice)) ? Number(body.maxOnDevice) : 0,
+                  autoOffloadLru: body.autoOffloadLru !== false,
+                  activate: body.activate !== false,
+                  proxy: String(body.proxy || ""),
+                  rotateProxy: Boolean(body.rotateProxy),
+                })
+              : await bridge.switchAndroidDeviceProfile(profileCode, {
+                  proxy: String(body.proxy || ""),
+                  restoreIfAvailable: body.restoreIfAvailable !== false,
+                });
+            const status = await bridge.getMobileVaultProfileStatus(profileCode);
+            return send.json(ctx.res, 200, { ...mountRes, status });
+          }
           if (action === "mirror") {
-            const mirRes = await bridge.launchMobileScreenMirror(profileCode);
+            const mirRes = targetIsIos
+              ? await iosBridge.launchIosScreenMirror(profileCode, {
+                  serial: String(body.serial || ""),
+                })
+              : await bridge.launchMobileScreenMirror(profileCode);
             const status = await bridge.getMobileVaultProfileStatus(profileCode);
             return send.json(ctx.res, 200, { ...mirRes, status });
           }

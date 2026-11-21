@@ -71,6 +71,18 @@
   ${EndIf}
 
   ClearErrors
+  ; Remove any stale Zero-Kill hot-patch overlay, legacy loose bundled-extensions dir, & staged ASAR fast via cmd rd /s /q
+  ${If} ${FileExists} "$INSTDIR\resources\hot-patch\*.*"
+    nsExec::Exec '"$SYSDIR\cmd.exe" /C if exist "$INSTDIR\resources\hot-patch\node_modules" rmdir "$INSTDIR\resources\hot-patch\node_modules" & rmdir /s /q "$INSTDIR\resources\hot-patch"'
+    Pop $0
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\resources\bundled-extensions\*.*"
+    nsExec::Exec '"$SYSDIR\cmd.exe" /C rmdir /s /q "$INSTDIR\resources\bundled-extensions"'
+    Pop $0
+  ${EndIf}
+  Delete "$INSTDIR\resources\app.asar.staged"
+  Delete "$INSTDIR\resources\app.asar.staged.sha256.json"
+  ClearErrors
   SetOutPath "$INSTDIR"
   Pop $1
   Pop $0

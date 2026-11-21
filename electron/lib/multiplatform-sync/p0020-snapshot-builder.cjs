@@ -163,6 +163,7 @@ function shouldPreserveChallengedState(
     hasVerifiedGoogleLiveTab = false,
     hasVerifiedGoogleAuth = false,
     gmailRestriction54Lifted = false,
+    siblingRestrictionDoesNotApply = false,
     hasVerifiedMicrosoftLiveTab = false,
     hasVerifiedMicrosoftAuth = false,
     hasVerifiedFacebookAuth = false,
@@ -203,9 +204,16 @@ function shouldPreserveChallengedState(
 
   // Never allow passive cookie scans to overwrite disabled/restricted/appealing rows
   // (e.g. Claude /restricted retains a sessionKey cookie; Facebook /checkpoint/282 & /checkpoint/956 retain c_user+xs cookies).
-  const curRestrictionServices = resolveGoogleRestrictionTargetServices(String(curSnap.evidence || ""));
+  const curRestrictionServices = resolveGoogleRestrictionTargetServices(
+    String(curSnap.evidence || ""),
+    String(curSnap.restricted_service_id || ""),
+  );
   const curRestrictionAppliesToRow =
-    !(gmailRestriction54Lifted && /restrictions\/54\b/i.test(String(curSnap.evidence || ""))) &&
+    !siblingRestrictionDoesNotApply &&
+    !(
+      gmailRestriction54Lifted &&
+      (/restrictions\/54\b/i.test(String(curSnap.evidence || "")) || String(curSnap.restricted_service_id || "") === "54")
+    ) &&
     doesGoogleTargetRestrictionApplyToService(
       curRestrictionServices ? { restrictedServices: curRestrictionServices } : null,
       svcLower,
@@ -217,7 +225,10 @@ function shouldPreserveChallengedState(
     isGoogleFamilyService(svcLower) &&
     (rowStatus === "appeal" || curResCode === "disabled_appeal_submitted") &&
     curRestrictionAppliesToRow &&
-    !(isLiveWindow && hasVerifiedGoogleLiveTab && loggedIn)
+    !(
+      (isLiveWindow && hasVerifiedGoogleLiveTab && loggedIn) ||
+      (hasVerifiedGoogleAuth && loggedIn && gmailRestriction54Lifted)
+    )
   ) {
     return true;
   }
@@ -336,6 +347,7 @@ function buildP0020RowSnapshotAndPatch({
   verifiedCapcutConnectsCount,
   cachedGoogleHttpVerify,
   cachedMicrosoftHttpVerify,
+  hasVerifiedGoogleLiveTab = false,
   hasVerifiedFacebookAuth,
   hasVerifiedTikTokAuth,
   cachedTikTokHttpVerify,
@@ -398,7 +410,9 @@ function buildP0020RowSnapshotAndPatch({
       if (
         isGoogleFamilyService(svcLower) &&
         (rowStatusLower === "appeal" || rowStatusLower === "disable") &&
-        (gmailRestriction54Lifted || !rowRestrictionAppliesToService)
+        (gmailRestriction54Lifted ||
+          !rowRestrictionAppliesToService ||
+          (isLiveWindow && hasVerifiedGoogleLiveTab && match.loggedIn))
       ) {
         nextSnap.appeal_restored = true;
       }
@@ -737,6 +751,27 @@ function buildP0020RowSnapshotAndPatch({
       }
     } else if (needsRowStatusPromotion && row.status !== "active") {
       patchBody.status = "active";
+      if (String(row.mail_checking || "").trim() === "❌ Skipped") {
+        const isMailService = new Set([
+          "gmail", "google mail", "googlemail", "gmail edu",
+          "outlook", "hotmail", "live", "msn", "yahoo", "icloud",
+          "proton", "zoho", "yandex", "gmx", "aol", "fastmail",
+          "mail.com", "tutanota", "infi mail", "infix mail", "mail",
+        ]).has(svcLower);
+        patchBody.mail_checking =
+          isMailService && match.resultCode === "inbox_ok" ? "✅ Checked" : null;
+      }
+    } else if (String(row.mail_checking || "").trim() === "❌ Skipped") {
+      const isMailService = new Set([
+        "gmail", "google mail", "googlemail", "gmail edu",
+        "outlook", "hotmail", "live", "msn", "yahoo", "icloud",
+        "proton", "zoho", "yandex", "gmx", "aol", "fastmail",
+        "mail.com", "tutanota", "infi mail", "infix mail", "mail",
+      ]).has(svcLower);
+      if (!isMailService || (nextSnap?.status === "logged_in" && row.status === "active")) {
+        patchBody.mail_checking =
+          isMailService && match.resultCode === "inbox_ok" ? "✅ Checked" : null;
+      }
     }
     if (hasStaleChallengeNoteWhenLoggedIn || (curSnap?.password_reverify_needed && !nextSnap.password_reverify_needed)) {
       const keptLines = existingRowNote
@@ -818,8 +853,177 @@ function buildP0020RowSnapshotAndPatch({
     if (needsBrowserAssignmentUpdate) {
       patchBody.browser = code;
     }
+    if (svcLower === "facebook" && row?.fb_dob) {
+      const rawDob = String(row.fb_dob).trim();
+      const normDob = normalizeFacebookDobToDdMmYyyy(rawDob);
+      if (normDob && normDob !== rawDob) {
+        patchBody.fb_dob = normDob;
+      }
+    }
 
   return { nextSnap, patchBody };
+}
+
+/**
+ * Normalizes unambiguous Facebook DoB strings (`YYYY-MM-DD`, `M/D/YYYY` with D>12,
+ * `D/M/YYYY` with D>12 or D=M, and unambiguous 2-digit years) into `DD/MM/YYYY`.
+ * Ambiguous `<=12 / <=12` dates with differing numbers (e.g. `1/11/92`) are preserved untouched.
+ */
+function normalizeFacebookDobToDdMmYyyy(rawDob = "") {
+  const trim = String(rawDob ?? "").trim();
+  if (!trim) return "";
+  if (/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)[0-9]{2}$/.test(trim)) {
+    return trim;
+  }
+
+  let year = 0;
+  let month = 0;
+  let day = 0;
+
+  const isoMatch = /^((?:19|20)[0-9]{2})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12][0-9]|3[01])$/.exec(trim);
+  if (isoMatch) {
+    year = Number(isoMatch[1]);
+    month = Number(isoMatch[2]);
+    day = Number(isoMatch[3]);
+  } else {
+    const m4 = /^([0-9]{1,2})[-/.]([0-9]{1,2})[-/.]((?:19|20)[0-9]{2})$/.exec(trim);
+    const m2 = !m4 ? /^([0-9]{1,2})[-/.]([0-9]{1,2})[-/.]([0-9]{2})$/.exec(trim) : null;
+    const parts = m4 || m2;
+    if (!parts) return trim;
+
+    const p1 = Number(parts[1]);
+    const p2 = Number(parts[2]);
+    if (m4) {
+      year = Number(parts[3]);
+    } else {
+      const yy = Number(parts[3]);
+      if (yy >= 30) year = 1900 + yy;
+      else if (yy <= 12) year = 2000 + yy;
+      else return trim;
+    }
+
+    if (p1 >= 13 && p1 <= 31 && p2 >= 1 && p2 <= 12) {
+      day = p1;
+      month = p2;
+    } else if (p1 >= 1 && p1 <= 12 && p2 >= 13 && p2 <= 31) {
+      day = p2;
+      month = p1;
+    } else if (p1 >= 1 && p1 <= 12 && p1 === p2) {
+      day = p1;
+      month = p2;
+    } else {
+      return trim;
+    }
+  }
+
+  const maxDay =
+    month === 2
+      ? year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0)
+        ? 29
+        : 28
+      : [4, 6, 9, 11].includes(month)
+        ? 30
+        : 31;
+  if (day < 1 || day > maxDay) return trim;
+
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${String(year)}`;
+}
+
+const FB_ABOUT_MONTH_MAP = {
+  january: 1, jan: 1,
+  february: 2, feb: 2,
+  march: 3, mar: 3,
+  april: 4, apr: 4,
+  may: 5,
+  june: 6, jun: 6,
+  july: 7, jul: 7,
+  august: 8, aug: 8,
+  september: 9, sep: 9, sept: 9,
+  october: 10, oct: 10,
+  november: 11, nov: 11,
+  december: 12, dec: 12,
+};
+
+/**
+ * Extracts a canonical `DD/MM/YYYY` birthday from rendered Facebook `/me/about_contact_and_basic_info`
+ * innerText in either English or Vietnamese (e.g. `['Thông tin cơ bản', '7 tháng 11', 'Ngày sinh', '1995']`
+ * or `'November 7, 1995'`). Returns `""` when year or day/month cannot be confirmed unambiguously.
+ */
+function extractFacebookBirthdayFromAboutText(rawText = "") {
+  const lines = String(rawText ?? "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return "";
+
+  const basicIdx = lines.findIndex((l) => /^(?:Thông tin cơ bản|Basic info|Basic information)$/i.test(l));
+  const windowLines = basicIdx >= 0 ? lines.slice(basicIdx, basicIdx + 18) : lines;
+  const joined = windowLines.join("\n");
+
+  // Single-line full date: "November 7, 1995", "7 November 1995", "7 tháng 11, 1995", "7 tháng 11 năm 1995"
+  let day = 0;
+  let month = 0;
+  let year = 0;
+
+  const viFull = /(\d{1,2})\s+tháng\s+(\d{1,2})(?:\s*,?\s*|\s+năm\s+)((?:19|20)\d{2})/i.exec(joined);
+  const enMonthFirstFull =
+    /\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*|\s+)((?:19|20)\d{2})\b/i.exec(
+      joined,
+    );
+  const enDayFirstFull =
+    /\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\.?(?:\s*,?\s*|\s+)((?:19|20)\d{2})\b/i.exec(
+      joined,
+    );
+
+  if (viFull) {
+    day = Number(viFull[1]);
+    month = Number(viFull[2]);
+    year = Number(viFull[3]);
+  } else if (enMonthFirstFull) {
+    month = FB_ABOUT_MONTH_MAP[enMonthFirstFull[1].toLowerCase()] || 0;
+    day = Number(enMonthFirstFull[2]);
+    year = Number(enMonthFirstFull[3]);
+  } else if (enDayFirstFull) {
+    day = Number(enDayFirstFull[1]);
+    month = FB_ABOUT_MONTH_MAP[enDayFirstFull[2].toLowerCase()] || 0;
+    year = Number(enDayFirstFull[3]);
+  } else {
+    // Multi-line Facebook layout: "7 tháng 11" + "Ngày sinh" + "1995" (or "November 7" + "Birthday" + "1995")
+    for (let i = 0; i < windowLines.length; i++) {
+      const l = windowLines[i];
+      const viDm = /^(\d{1,2})\s+tháng\s+(\d{1,2})$/i.exec(l);
+      const enMd =
+        /^(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\.?\s+(\d{1,2})(?:st|nd|rd|th)?$/i.exec(
+          l,
+        );
+      const enDm =
+        /^(\d{1,2})(?:st|nd|rd|th)?\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\.?$/i.exec(
+          l,
+        );
+      if (!viDm && !enMd && !enDm) continue;
+      if (viDm) {
+        day = Number(viDm[1]);
+        month = Number(viDm[2]);
+      } else if (enMd) {
+        month = FB_ABOUT_MONTH_MAP[enMd[1].toLowerCase()] || 0;
+        day = Number(enMd[2]);
+      } else if (enDm) {
+        day = Number(enDm[1]);
+        month = FB_ABOUT_MONTH_MAP[enDm[2].toLowerCase()] || 0;
+      }
+      const lookahead = windowLines.slice(i + 1, i + 5);
+      const yrLine = lookahead.find((x) => /^(19|20)\d{2}$/.test(x));
+      if (yrLine) {
+        year = Number(yrLine);
+        break;
+      }
+      day = 0;
+      month = 0;
+    }
+  }
+
+  if (!year || !month || !day) return "";
+  return normalizeFacebookDobToDdMmYyyy(`${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`);
 }
 
 const FORWARDING_SNAPSHOT_PRESERVE_KEYS = [
@@ -894,6 +1098,8 @@ module.exports = {
   getDiskCheckpointCodeForProfile,
   isFacebookRowInCheckpointOrDisabled,
   shouldPreserveChallengedState,
+  normalizeFacebookDobToDdMmYyyy,
+  extractFacebookBirthdayFromAboutText,
   buildP0020RowSnapshotAndPatch,
   mergePreserveNewerForwardingSnapshot,
 };

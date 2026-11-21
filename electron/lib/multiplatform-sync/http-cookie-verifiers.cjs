@@ -530,7 +530,7 @@ async function verifyGoogleCookiesLiveViaHttp(cookies = [], timeoutMs = 4500, fe
         });
         if (
           validAccounts.length > 0 &&
-          opts?.hasChallengedOrBlockedRow &&
+          (opts?.hasChallengedOrBlockedRow || hasAccountsDomainAuth) &&
           !validAccounts.some((acc) => acc.length < 15 || ((acc[15] === 1 || acc[5] === 1) && acc[9] !== 0))
         ) {
           try {
@@ -546,13 +546,13 @@ async function verifyGoogleCookiesLiveViaHttp(cookies = [], timeoutMs = 4500, fe
             });
             const g1Loc = String(g1Res?.headers?.get?.("location") || "");
             if (
-              g1Res.status !== 200 ||
-              /CookieMismatch|ServiceLogin|AccountChooser|\/signin\//i.test(g1Loc)
+              /CookieMismatch|ServiceLogin|AccountChooser|confirmidentifier|\/signin\//i.test(g1Loc) ||
+              (opts?.hasChallengedOrBlockedRow && g1Res.status !== 200)
             ) {
               validAccounts = [];
             }
           } catch {
-            validAccounts = [];
+            if (opts?.hasChallengedOrBlockedRow) validAccounts = [];
           }
         }
         if (validAccounts.length > 0) {

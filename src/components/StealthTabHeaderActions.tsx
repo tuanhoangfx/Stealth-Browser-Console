@@ -5,9 +5,16 @@ import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import { buildStealthNotifyPanelProps } from "../lib/stealth-notify";
 import { StoreExtensionUpdateChip } from "../features/system/extensions/StoreExtensionUpdateChip";
 import { StealthDisplayPrefs } from "./StealthDisplayPrefs";
+import { StealthGlobalFarmTicker } from "./StealthGlobalFarmTicker";
 import type { StealthScreen } from "../lib/stealth-screen";
 
-export function StealthTabHeaderActions({ screen }: { screen: StealthScreen }) {
+export function StealthTabHeaderActions({
+  screen,
+  onOpenMobileFarm,
+}: {
+  screen: StealthScreen;
+  onOpenMobileFarm?: () => void;
+}) {
   const { engineStatus, syncBusy } = useStealthShell();
   const { catalogStats, history } = useProfilesRuntime();
 
@@ -25,6 +32,9 @@ export function StealthTabHeaderActions({ screen }: { screen: StealthScreen }) {
 
   return (
     <span className="inline-flex min-w-0 items-center gap-2">
+      {onOpenMobileFarm ? (
+        <StealthGlobalFarmTicker visible={true} onOpenMobileFarm={onOpenMobileFarm} />
+      ) : null}
       <StoreExtensionUpdateChip />
       <HubHeaderOpsPanels
         log={{ variant: "tab" }}

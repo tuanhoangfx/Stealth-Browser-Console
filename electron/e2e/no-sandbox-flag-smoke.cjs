@@ -11,12 +11,19 @@ const { openProfile, closeContext } = require("../engine/cloak-browser-engine.cj
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stealth-nosandbox-"));
 
+const tmpRootBasename = path.basename(tmpRoot);
+
 function findBrowserCommandLine() {
   if (process.platform !== "win32") return null;
   try {
     const out = execSync(
-      'powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -match \'chrome|chromium|cloak\' -and $_.CommandLine -match \'fingerprint=\' } | Select-Object -ExpandProperty CommandLine"',
-      { encoding: "utf8", timeout: 15000 , windowsHide: true }
+      'powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -match \'chrome|chromium|cloak\' -and $_.CommandLine -match \'fingerprint=\' -and $_.CommandLine -and $_.CommandLine.Contains($env:STEALTH_NOSANDBOX_BASENAME) } | Select-Object -ExpandProperty CommandLine"',
+      {
+        encoding: "utf8",
+        timeout: 15000,
+        windowsHide: true,
+        env: { ...process.env, STEALTH_NOSANDBOX_BASENAME: tmpRootBasename },
+      }
     );
     return out.trim() || null;
   } catch {

@@ -10,6 +10,7 @@ const {
   DEV_DIR,
   roamingAppData,
 } = require("../../electron/lib/user-data-root.cjs");
+const { resolveRealOperatorHomeEnv } = require("../../../scripts/lib/win-shell-env.cjs");
 
 /**
  * Build env for Electron child processes.
@@ -18,8 +19,9 @@ const {
  * only for `--prod-data` / explicit prod userData.
  */
 export function stealthElectronEnv(extra = {}) {
+  const operatorEnv = resolveRealOperatorHomeEnv(process.env);
   const env = {
-    ...process.env,
+    ...operatorEnv,
     STEALTH_COOKIE_BRIDGE: "1",
     STEALTH_FAST_LAUNCH: process.env.STEALTH_FAST_LAUNCH ?? "1",
     ...extra,
@@ -46,7 +48,8 @@ export function stealthElectronEnv(extra = {}) {
     // against prod and kills the profiles the user has open in the packaged app.
     // Also ignore any stale inherited STEALTH_USER_DATA (=prod) unless the caller
     // explicitly overrides it via `extra`.
-    env.STEALTH_USER_DATA = extra.STEALTH_USER_DATA ?? path.join(roamingAppData(), DEV_DIR);
+    const appDataRoot = env.APPDATA || roamingAppData();
+    env.STEALTH_USER_DATA = extra.STEALTH_USER_DATA ?? path.join(appDataRoot, DEV_DIR);
     // Always use dev API port when isolated — ignore workspace STEALTH_API_PORT=6003 (prod).
     env.STEALTH_API_PORT = extra.STEALTH_API_PORT ?? String(DEFAULT_DEV_API_PORT);
   } else if (!env.STEALTH_API_PORT) {

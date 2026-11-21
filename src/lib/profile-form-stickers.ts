@@ -35,7 +35,7 @@ export const PROFILE_FORM_FIELD_STICKER = {
   colorScheme: "🎨",
   timezone: "🌍",
   locale: "🗣️",
-  windowMode: "🪟",
+  windowMode: "🖼️",
   viewport: "📐",
   fingerprintSeed: "🔢",
   humanize: "🤖",

@@ -84,6 +84,8 @@ async function launchProfileOnce(
     headless,
     shadowLane,
     loadExtensionsInHeadless,
+    taskExempt,
+    agentReason,
   } = {},
 ) {
   const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
@@ -132,11 +134,14 @@ async function launchProfileOnce(
     process.env.STEALTH_FORCE_TEMP_SHADOW_DIR === "1" && typeof shadowLane === "boolean"
       ? shadowLane
       : undefined;
+  const cleanAgentReason = String(agentReason || "").trim();
   const launchTarget = {
     ...baseTarget,
     ...(typeof effectiveHeadless === "boolean" ? { headless: effectiveHeadless } : {}),
     ...(typeof effectiveShadowLane === "boolean" ? { shadowLane: effectiveShadowLane } : {}),
     ...(typeof loadExtensionsInHeadless === "boolean" ? { loadExtensionsInHeadless } : {}),
+    ...(taskExempt === true ? { taskExempt: true } : {}),
+    ...(cleanAgentReason ? { agentReason: cleanAgentReason } : {}),
   };
   const isHeadedLaunch = Boolean(launchTarget.headless !== true && !effectiveHeadless);
   let targetWorkArea = null;
@@ -186,7 +191,13 @@ async function launchProfileOnce(
     };
     applyWin32Placement();
   }
-  return countryProxy ? { ...res, vpnProxy: countryProxy, ...(geoSync?.summary ? { geoSyncSummary: geoSync.summary } : {}) } : res;
+  const baseRes =
+    res && res.ok === true && typeof effectiveHeadless === "boolean" && typeof res.headless !== "boolean"
+      ? { ...res, headless: effectiveHeadless }
+      : res;
+  return countryProxy
+    ? { ...baseRes, vpnProxy: countryProxy, ...(geoSync?.summary ? { geoSyncSummary: geoSync.summary } : {}) }
+    : baseRes;
 }
 
 /**
@@ -206,6 +217,8 @@ async function launchProfile(
     headless,
     shadowLane,
     loadExtensionsInHeadless,
+    taskExempt,
+    agentReason,
   } = {},
 ) {
   const logger = createLaunchLogger();
@@ -258,6 +271,8 @@ async function launchProfile(
       headless,
       shadowLane,
       loadExtensionsInHeadless,
+      taskExempt,
+      agentReason,
     });
     logger.push("success", result.focused ? "Existing browser focused" : "Browser launched");
     logger.push("success", `Profile status: ${result.status || "running"}`);
@@ -293,6 +308,9 @@ async function launchProfile(
         locale,
         headless,
         shadowLane,
+        loadExtensionsInHeadless,
+        taskExempt,
+        agentReason,
       });
       logger.push("success", result.focused ? "Existing browser focused" : "Browser launched");
       logger.push("success", `Profile status: ${result.status || "running"}`);

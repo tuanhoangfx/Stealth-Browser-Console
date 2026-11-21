@@ -1,8 +1,26 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app } = require("electron");
+
+function resolveElectronApp() {
+  try {
+    const electron = require("electron");
+    return electron && typeof electron === "object" ? electron.app || null : null;
+  } catch {
+    return null;
+  }
+}
 
 const RELEASE_URL = "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/latest";
+
+/** Top-level packages required under resources/app.asar.unpacked/node_modules. */
+const REQUIRED_UNPACKED_PACKAGES = [
+  "better-sqlite3",
+  "sql.js",
+  "playwright-core",
+  "cloakbrowser",
+  "tar",
+  "mmdb-lib",
+];
 
 /** Relative paths under resources/app.asar.unpacked required at runtime. */
 const REQUIRED_UNPACKED = [
@@ -14,22 +32,42 @@ const REQUIRED_UNPACKED = [
   "node_modules/mmdb-lib/package.json",
 ];
 
-function unpackedRoot() {
-  return path.join(process.resourcesPath, "app.asar.unpacked");
+function unpackedRoot(resourcesPath = process.resourcesPath) {
+  return path.join(resourcesPath || "", "app.asar.unpacked");
 }
 
-function verifyPackagedRuntime() {
-  if (!app.isPackaged) {
-    return { ok: true, missing: [], root: "" };
+function verifyPackagedRuntime(options = {}) {
+  const hasIsPackagedOverride = typeof options.isPackaged === "boolean";
+  const packaged = hasIsPackagedOverride
+    ? options.isPackaged
+    : Boolean(resolveElectronApp()?.isPackaged);
+  if (!packaged) {
+    return {
+      ok: true,
+      isPackaged: false,
+      missing: [],
+      root: "",
+      cloakbrowserUnpacked: true,
+    };
   }
-  const root = unpackedRoot();
+  const resPath =
+    typeof options.resourcesPath === "string" && options.resourcesPath
+      ? options.resourcesPath
+      : process.resourcesPath || "";
+  const root = unpackedRoot(resPath);
   const missing = [];
   for (const rel of REQUIRED_UNPACKED) {
     if (!fs.existsSync(path.join(root, rel))) {
       missing.push(rel);
     }
   }
-  return { ok: missing.length === 0, missing, root };
+  return {
+    ok: missing.length === 0,
+    isPackaged: true,
+    missing,
+    root,
+    cloakbrowserUnpacked: !missing.includes("node_modules/cloakbrowser/package.json"),
+  };
 }
 
 function formatPackagedRuntimeRepairMessage(result = verifyPackagedRuntime()) {
@@ -46,6 +84,8 @@ function formatPackagedRuntimeRepairMessage(result = verifyPackagedRuntime()) {
 
 module.exports = {
   RELEASE_URL,
+  REQUIRED_UNPACKED_PACKAGES,
+  REQUIRED_UNPACKED,
   verifyPackagedRuntime,
   formatPackagedRuntimeRepairMessage,
 };

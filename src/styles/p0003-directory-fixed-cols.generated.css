@@ -389,3 +389,222 @@ table.hub-users-table--directory-6.stealth-extensions-table[data-hub-directory-s
   font-variant-numeric: tabular-nums;
 }
 
+/* Android Profiles (matches STEALTH_ANDROID_COLUMN_META) */
+/* Code/date fixed columns only — edit tool manifest then re-run generator. */
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--activity {
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--created {
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--name {
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--role {
+  width: 6.75rem;
+  min-width: 6.75rem;
+  max-width: 6.75rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-d {
+  width: 8.75rem;
+  min-width: 8.75rem;
+  max-width: 8.75rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--tools {
+  width: 6.75rem;
+  min-width: 6.75rem;
+  max-width: 6.75rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--email {
+  width: 8.75rem;
+  min-width: 8.75rem;
+  max-width: 8.75rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--display-name {
+  width: 8.75rem;
+  min-width: 8.75rem;
+  max-width: 8.75rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-c {
+  width: 8.75rem;
+  min-width: 8.75rem;
+  max-width: 8.75rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-e {
+  width: 8.25rem;
+  min-width: 8.25rem;
+  max-width: 8.25rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-a {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  max-width: 7.5rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-b {
+  width: 8rem;
+  min-width: 8rem;
+  max-width: 8rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--metric-f,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--metric-f,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--metric-f,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--metric-f,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-f,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-f {
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 8.5rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] col.hub-users-col--id,
+.stealth-profile-directory-pane table.stealth-android-directory-table col.hub-users-col--id,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] th.hub-users-col--id,
+.stealth-profile-directory-pane table.stealth-android-directory-table th.hub-users-col--id,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--id,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--id {
+  width: 20rem;
+  min-width: 20rem;
+  max-width: 20rem;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--role,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--email,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--display-name,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-c,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-e,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--id,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--id {
+  text-align: left;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--activity,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--created,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--name,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-d,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--tools,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-a,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-b,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-f,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-f {
+  text-align: center;
+}
+
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--activity .hub-directory-timestamp,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--activity .hub-directory-timestamp,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--created .hub-directory-timestamp,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--created .hub-directory-timestamp,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--role .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--role .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--email .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--email .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--display-name .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--display-name .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-c .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-c .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--metric-e .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--metric-e .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table[data-hub-directory-select] td.hub-users-col--id .customer-copy-text,
+.stealth-profile-directory-pane table.stealth-android-directory-table td.hub-users-col--id .customer-copy-text {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Align left-aligned identifier/URL/Proxy/Note/Log bodies in Profiles & Backup directories */
+.stealth-profile-directory-frame:not(.stealth-system-backup-directory-frame) table.stealth-profile-directory-table:not(.stealth-android-directory-table) td.hub-users-col--email,
+.stealth-profile-directory-frame:not(.stealth-system-backup-directory-frame) table.stealth-profile-directory-table:not(.stealth-android-directory-table) td.hub-users-col--id,
+.stealth-profile-directory-frame:not(.stealth-system-backup-directory-frame) table.stealth-profile-directory-table:not(.stealth-android-directory-table) td.hub-users-col--metric-c,
+.stealth-profile-directory-frame:not(.stealth-system-backup-directory-frame) table.stealth-profile-directory-table:not(.stealth-android-directory-table) td.hub-users-col--metric-e,
+.stealth-system-backup-directory-frame table.stealth-profile-directory-table td.hub-users-col--metric-e {
+  text-align: left;
+}
+

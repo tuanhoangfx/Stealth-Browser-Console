@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  DirectoryEmptyDash,
+  HubDirectoryEmptyCell,
   HUB_ADM_LOG_MUTED_CLASS,
   HubAdmSearchHighlightText,
   HubChangeLogActorFilterBar,
@@ -102,7 +102,7 @@ function resolveDeltaFieldMeta(rawLabel: string): {
   if (key === "timezone" || key === "tz") return { field: "device", label: "Timezone", emoji: "🕐" };
   if (key === "locale") return { field: "device", label: "Locale", emoji: "🗣️" };
   if (key === "color scheme" || key === "colorscheme") return { field: "device", label: "Color Scheme", emoji: "🎨" };
-  if (key === "window mode" || key === "windowmode") return { field: "device", label: "Window Mode", emoji: "🪟" };
+  if (key === "window mode" || key === "windowmode") return { field: "device", label: "Window Mode", emoji: "🖼️" };
   if (key === "viewport") return { field: "device", label: "Viewport", emoji: "📐" };
   if (key === "user-agent" || key === "user agent" || key === "useragent") {
     return { field: "device", label: "User-Agent", emoji: "🧭" };
@@ -484,7 +484,7 @@ function StealthLogInlineValue({
   const trimmed = value?.trim();
   if (!trimmed || isDirectoryEmptyLabel(trimmed)) {
     return (
-      <DirectoryEmptyDash className="twofa-adm-log-inline-val twofa-adm-log-inline-val--empty hub-users-cell-muted" />
+      <HubDirectoryEmptyCell className="twofa-adm-log-inline-val twofa-adm-log-inline-val--empty hub-users-cell-muted" />
     );
   }
   const statusDot = resolveInlineValueStatusDot(trimmed);

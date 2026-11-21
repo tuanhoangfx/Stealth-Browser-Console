@@ -51,6 +51,9 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
   let hotPatchGroupSeq = 0;
 
   const {
+    drainReadyDeferredQueue,
+  } = require("../lib/deferred-queue-drainer.cjs");
+  const {
     persistDeferredFile,
     triggerDeferredExpiredOrderDrain,
     triggerDeferredAntigravityDrain,
@@ -767,8 +770,7 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
           profileService.setProfileStatus(activeRow.id, "closed", { reason: "reconcile" });
           const rowCode = extractProfileCode(activeRow?.name || "", String(activeRow.id)) || "";
           if (rowCode) {
-            triggerDeferredExpiredOrderDrain(rowCode);
-            triggerDeferredAntigravityDrain(rowCode);
+            drainReadyDeferredQueue({ sessionManager, profileService, targetCodes: [rowCode] });
           }
         }
       } catch {
@@ -856,9 +858,10 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
         scheduleDeferredAgentAutoDrain(readyItem);
       }
       if (code) {
-        triggerDeferredExpiredOrderDrain(code);
-        triggerDeferredAntigravityDrain(code);
+        drainReadyDeferredQueue({ sessionManager, profileService, targetCodes: [code] });
       }
+      void triggerDeferredExpiredOrderDrain;
+      void triggerDeferredAntigravityDrain;
     }
     return res;
   };
@@ -910,6 +913,17 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
 
   sessionManager._idleGuardHotPatchedV16 = true;
   sessionManager._workerMemoryGuardStartedV1 = true;
+  if (!globalThis.__STEALTH_DEFERRED_DRAIN_TIMER__) {
+    const drainTimer = setInterval(() => {
+      try {
+        drainReadyDeferredQueue({ sessionManager, profileService });
+      } catch {
+        /* ignore */
+      }
+    }, 60_000);
+    drainTimer.unref?.();
+    globalThis.__STEALTH_DEFERRED_DRAIN_TIMER__ = drainTimer;
+  }
   try {
     const { startAgentWorkerMemoryGuard } = require("../lib/agent-worker-memory-guard.cjs");
     startAgentWorkerMemoryGuard({

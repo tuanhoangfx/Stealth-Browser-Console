@@ -67,15 +67,112 @@ function getWorkerSessionLastActivity(profileId, fallbackStartedAt) {
 }
 
 /**
- * Queries total RAM (MB) of headless Chrome processes on Windows without spawning PowerShell.
- * Uses `tasklist /FI "IMAGENAME eq chrome.exe" /FO CSV /NH` (~25ms, hidden).
+ * Queries real Windows WorkingSet RAM (MB) of headless Chrome process trees per session without spawning PowerShell.
+ * Uses native Toolhelp32Snapshot + K32GetProcessMemoryInfo (<5ms) via `profile-browser-orphan.cjs`,
+ * resolving each session's root PID via `s.pid`, `<userDataDir>/stealth-pid.json`, or command-line debugPort/userDataDir,
+ * annotating `s.rootPid`, `s.procCount`, and `s.ramMb` in place, and falling back to `175 MB * count` only for synthetic unit-test mocks.
  */
 function measureHeadlessChromeRamMb(runningHeadlessSessions = []) {
   if (!Array.isArray(runningHeadlessSessions) || runningHeadlessSessions.length === 0) {
     return 0;
   }
-  // Always use non-blocking O(1) estimate on Electron Main Thread — never call spawnSync(tasklist.exe)
+  try {
+    const {
+      measureHeadlessChromeSessionTreesMbNative,
+      measureHeadlessChromeWorkingSetMbNative,
+    } = require("./profile-browser-orphan.cjs");
+    if (typeof measureHeadlessChromeSessionTreesMbNative === "function") {
+      const treeRes = measureHeadlessChromeSessionTreesMbNative(runningHeadlessSessions);
+      if (treeRes && typeof treeRes.totalMb === "number" && Number.isFinite(treeRes.totalMb)) {
+        for (let idx = 0; idx < runningHeadlessSessions.length; idx += 1) {
+          const s = runningHeadlessSessions[idx];
+          if (!s || typeof s !== "object") continue;
+          const key = String(s.profileId || s.id || s.name || `idx:${idx}`);
+          const st = treeRes.bySessionKey?.get(key);
+          if (st) {
+            if (st.rootPid) s.rootPid = st.rootPid;
+            s.procCount = st.procCount;
+            s.ramMb = st.ramMb;
+          }
+        }
+        if (treeRes.resolvedSessionCount > 0) {
+          return treeRes.totalMb;
+        }
+      }
+    }
+    if (typeof measureHeadlessChromeWorkingSetMbNative === "function") {
+      const rootPids = runningHeadlessSessions
+        .map((s) => Number(s?.rootPid || s?.pid || s?.browserPid || 0))
+        .filter((n) => Number.isInteger(n) && n > 0);
+      const measuredMb = measureHeadlessChromeWorkingSetMbNative(rootPids.length > 0 ? rootPids : []);
+      if (typeof measuredMb === "number" && Number.isFinite(measuredMb) && measuredMb > 0) {
+        return measuredMb;
+      }
+    }
+  } catch {
+    /* fallback below on non-Win32 or missing koffi */
+  }
+  for (const s of runningHeadlessSessions) {
+    if (s && typeof s === "object" && !Number.isFinite(s.ramMb)) {
+      s.ramMb = 175;
+    }
+  }
   return runningHeadlessSessions.length * 175;
+}
+
+async function fetchPeerSessionsSafe(port) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/v1/sessions`, {
+      signal: AbortSignal.timeout(450),
+    });
+    if (!res.ok) return { reachable: false, timedOut: res.status >= 500, sessions: [] };
+    const payload = await res.json().catch(() => null);
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.sessions)
+        ? payload.sessions
+        : [];
+    return { reachable: true, timedOut: false, sessions: list };
+  } catch (err) {
+    const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError";
+    return { reachable: false, timedOut: isTimeout, sessions: [] };
+  }
+}
+
+async function reapUntrackedHeadlessAcrossPeers(sessionManager) {
+  if (process.platform !== "win32" || process.env.STEALTH_WORKER_SKIP_ORPHAN_REAP === "1") {
+    return null;
+  }
+  try {
+    const { reapUntrackedHeadlessBrowsersNative } = require("./profile-browser-orphan.cjs");
+    if (typeof reapUntrackedHeadlessBrowsersNative !== "function") return null;
+    const localSessions = sessionManager?.listRunning?.() || [];
+    const [p6003, p6004] = await Promise.all([
+      fetchPeerSessionsSafe(6003),
+      fetchPeerSessionsSafe(6004),
+    ]);
+    // If either peer API timed out under load (instead of clean ECONNREFUSED/200), abort root reap to avoid killing an active peer session.
+    if (p6003.timedOut || p6004.timedOut) return null;
+    const allSessions = [...localSessions, ...p6003.sessions, ...p6004.sessions];
+    const trackedDirs = [];
+    const trackedIds = [];
+    const trackedPorts = [];
+    for (const s of allSessions) {
+      if (!s || typeof s !== "object") continue;
+      if (s.userDataDir) trackedDirs.push(String(s.userDataDir));
+      if (s.id || s.profileId) trackedIds.push(String(s.id || s.profileId));
+      const port = Number(s.debugPort || s.port || 0);
+      if (Number.isInteger(port) && port > 0) trackedPorts.push(port);
+    }
+    return reapUntrackedHeadlessBrowsersNative({
+      trackedDirs,
+      trackedIds,
+      trackedPorts,
+      minAgeMs: 180_000,
+    });
+  } catch {
+    return null;
+  }
 }
 
 function isStealthDesktopProcessRunningWin32() {
@@ -586,6 +683,9 @@ async function runWorkerGuardSweep({
     code: s.code || extractSessionProfileCode(s) || s.name || s.profileId,
     callerId: String(s.callerId || "default-agent"),
     idleMs: Number(s.idleMs || 0),
+    ramMb: Number(s.ramMb || 0),
+    rootPid: s.rootPid || null,
+    procCount: Number(s.procCount || 0),
     supportChatProtected: Boolean(s.supportChatProtected),
     isLocked: Boolean(s.isLocked),
   }));
@@ -637,8 +737,17 @@ function startAgentWorkerMemoryGuard({
     });
   }
 
+  let sweepCount = 0;
   const timer = setInterval(() => {
-    runWorkerGuardSweep({ sessionManager, maxRamMb, maxIdleMs }).catch(() => {});
+    sweepCount += 1;
+    runWorkerGuardSweep({ sessionManager, maxRamMb, maxIdleMs })
+      .then(() => {
+        if (sweepCount % 3 === 0) {
+          return reapUntrackedHeadlessAcrossPeers(sessionManager);
+        }
+        return null;
+      })
+      .catch(() => {});
   }, intervalMs);
   if (typeof timer.unref === "function") timer.unref();
   globalThis.__stealthWorkerGuardTimer = timer;
@@ -667,6 +776,7 @@ function getWorkerGuardState(sessionManager) {
     const headlessList = (sessionManager.listRunning() || []).filter(
       (s) => s && (s.headless === true || s.shadowLane === true) && !USER_RESERVED_PROFILE_CODES.has(extractSessionProfileCode(s)),
     );
+    guardState.lastTotalHeadlessRamMb = measureHeadlessChromeRamMb(headlessList);
     guardState.lastRunningHeadlessCount = headlessList.length;
     guardState.activeHeadlessSessions = headlessList.map((s) => {
       const id = String(s.profileId || s.id || "");
@@ -694,6 +804,9 @@ function getWorkerGuardState(sessionManager) {
         code,
         callerId: normCallerId,
         idleMs: lastActive > 0 ? Math.max(0, now - lastActive) : 0,
+        ramMb: Number(s.ramMb || 0),
+        rootPid: s.rootPid || null,
+        procCount: Number(s.procCount || 0),
         supportChatProtected,
         isLocked,
       };
@@ -705,91 +818,14 @@ function getWorkerGuardState(sessionManager) {
 /**
  * Spawns a tiny hidden detached Node helper on `will-quit` of `Stealth Browser Console.exe`
  * that waits for the Electron process to exit, verifies SHA256 + ASAR header integrity of
- * `app.asar.staged`, and swaps `app.asar.staged` -> `app.asar` (or rolls back if corrupted).
+ * `app.asar.staged`, and swaps `app.asar.staged` -> `app.asar` (delegating to `@dev/hub-desktop-host-kit`).
  */
 function scheduleStagedAsarSwapOnQuit() {
   const localAppData = process.env.LOCALAPPDATA || "C:\\Users\\CzP\\AppData\\Local";
   const resDir = path.join(localAppData, "Programs", "stealth-browser-console", "resources");
-  const stagedAsar = path.join(resDir, "app.asar.staged");
-  const targetAsar = path.join(resDir, "app.asar");
-  const stagedMeta = `${stagedAsar}.sha256.json`;
-  const backupAsar = path.join(resDir, "app.asar.prev");
   try {
-    if (!fs.existsSync(stagedAsar)) return false;
-    const { spawn } = require("node:child_process");
-    const nodew = "E:\\Dev\\.tools\\nodew.exe";
-    const exe = fs.existsSync(nodew) ? nodew : process.execPath;
-    const inline = `
-      setTimeout(() => {
-        const fs = require("fs");
-        const crypto = require("crypto");
-        const s = ${JSON.stringify(stagedAsar)};
-        const t = ${JSON.stringify(targetAsar)};
-        const m = ${JSON.stringify(stagedMeta)};
-        const b = ${JSON.stringify(backupAsar)};
-        if (!fs.existsSync(s)) process.exit(0);
-        try {
-          const st = fs.statSync(s);
-          if (st.size < 10000000) {
-            fs.unlinkSync(s);
-            if (fs.existsSync(m)) fs.unlinkSync(m);
-            process.exit(0);
-          }
-          const fd = fs.openSync(s, "r");
-          const hdr = Buffer.alloc(16);
-          fs.readSync(fd, hdr, 0, 16, 0);
-          if (hdr.readUInt32LE(0) !== 4) {
-            fs.closeSync(fd);
-            fs.unlinkSync(s);
-            if (fs.existsSync(m)) fs.unlinkSync(m);
-            process.exit(0);
-          }
-          if (fs.existsSync(m)) {
-            const meta = JSON.parse(fs.readFileSync(m, "utf8"));
-            const hash = crypto.createHash("sha256");
-            const buf = Buffer.allocUnsafe(8 * 1024 * 1024);
-            let pos = 0;
-            while (pos < st.size) {
-              const n = fs.readSync(fd, buf, 0, Math.min(buf.length, st.size - pos), pos);
-              if (n <= 0) break;
-              hash.update(buf.subarray(0, n));
-              pos += n;
-            }
-            const digest = hash.digest("hex");
-            if ((meta.size && Number(meta.size) !== st.size) || (meta.sha256 && digest !== String(meta.sha256).toLowerCase())) {
-              fs.closeSync(fd);
-              fs.unlinkSync(s);
-              fs.unlinkSync(m);
-              process.exit(0);
-            }
-          }
-          fs.closeSync(fd);
-        } catch {
-          process.exit(0);
-        }
-        for (let i = 0; i < 20; i++) {
-          try {
-            if (!fs.existsSync(s)) process.exit(0);
-            try { if (fs.existsSync(t)) { fs.chmodSync(t, 0o666); fs.copyFileSync(t, b); } } catch {}
-            fs.copyFileSync(s, t);
-            try { fs.chmodSync(t, 0o444); } catch {}
-            fs.unlinkSync(s);
-            try { if (fs.existsSync(m)) fs.unlinkSync(m); } catch {}
-            process.exit(0);
-          } catch {
-            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 400);
-          }
-        }
-      }, 900);
-    `;
-    const child = spawn(exe, ["-e", inline], {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
-    });
-    child.unref();
-    return true;
+    const { scheduleStagedAsarSwapOnQuit: scheduleSharedSwap } = require("./desktop-host-kit.cjs");
+    return scheduleSharedSwap({ resourcesDir: resDir, minSizeBytes: 10_000_000 });
   } catch {
     return false;
   }
@@ -798,6 +834,7 @@ function scheduleStagedAsarSwapOnQuit() {
 module.exports = {
   touchWorkerSessionActivity,
   setOpenUrlProfileActive,
+  measureHeadlessChromeRamMb,
   runWorkerGuardSweep,
   startAgentWorkerMemoryGuard,
   getWorkerGuardState,

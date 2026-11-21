@@ -698,6 +698,10 @@ async function verifyRowPlatformAndAiSession({
           Boolean(googleLiveTargetState.restrictedServices) &&
           (googleLiveTargetState.resultCode === "checkpoint_qr" ||
             googleLiveTargetState.resultCode === "phone_sms_required")) ||
+        (!hasVerifiedGoogleLiveTab &&
+          ["google_one_logged_out", "mail_challenge", "account_locked_rejected", "selfie_verification_required"].includes(
+            String(googleLiveTargetState.resultCode || ""),
+          )) ||
         googleLiveTargetState.resultCode === "account_disabled" ||
         googleLiveTargetState.resultCode === "disabled_appeal_submitted")
     ) {

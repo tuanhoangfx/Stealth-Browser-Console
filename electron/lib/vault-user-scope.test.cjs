@@ -41,7 +41,7 @@ withEnv("STEALTH_VAULT_SCOPE_EMAIL", undefined, () => {
       assert.equal(getVaultHubLoginEmail(), "x1e3@outlook.com");
       assert.equal(resolveVaultScopeEmail(), "x1e3@outlook.com");
       setVaultHubLoginEmail(null);
-      assert.throws(() => resolveVaultScopeEmail(), /Vault user scope missing/);
+      assert.equal(resolveVaultScopeEmail(), DEFAULT_DEV_VAULT_EMAIL);
     });
   });
 });

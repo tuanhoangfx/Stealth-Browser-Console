@@ -121,7 +121,12 @@ export const ExtensionDetailOperatorPanel = memo(function ExtensionDetailOperato
             <div className="flex justify-between gap-2">
               <dt className="text-[var(--muted)]">Workspace / Stage</dt>
               <dd className="font-mono font-medium text-[var(--text)]">
-                v{status.manifestVersion || "—"} / stage v{status.stageVersion || "—"}
+                {[
+                  status.manifestVersion ? `v${status.manifestVersion}` : "",
+                  status.stageVersion ? `stage v${status.stageVersion}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" / ") || null}
               </dd>
             </div>
             <div className="flex justify-between gap-2">

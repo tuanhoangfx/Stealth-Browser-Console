@@ -1,5 +1,646 @@
 # Changelog
 
+## 2026-11-22 - Move Farm ticker to header, fix Android 53-profile load and P0003 backend guards
+
+- Version: `9.2.525`
+- Timestamp: 2026-11-22 02:39 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Move StealthGlobalFarmTicker into StealthTabHeaderActions pill (only when runningTasks > 0), unify Android API fetch onto fetchFarmApi (6003-first + base loop outer), add SWR cache for /api/android-vault/profiles, fix missing hasVerifiedGoogleLiveTab/headedRunningCodeSet in Electron libs, add StealthAppShell.layout.test.ts and smoke-android-ui.mjs.
+
+### Verification
+
+- gate --code P0003 --stage post (39/39 OK), vitest (56 files, 224 tests), smoke-android-ui PASS
+
+---
+## 2026-11-22 - Add 24/7 All-SIM Reader routes (/api/mobile-sim/*) and dynamic cellular status
+
+- Version: `9.2.524`
+- Timestamp: 2026-11-22 00:11 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Expose 24/7 SIM fleet, inbox filtering, sweep, and wait-otp routes on P0003 API server alongside 24/7 daemon (:6016)
+
+### Verification
+
+- 53/53 node tests + live :6016 HTTP check pass
+
+---
+## 2026-11-21 - Update card billing hygiene and GPay rejection filtering
+
+- Version: `9.2.523`
+- Timestamp: 2026-11-21 23:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Track mb-bank-7320 and vib-3641 trial claims plus 21 newly verified Stripe generic_decline cards and optional excludeGpayRejected filter in billing-autofill-bridge
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs (2/2 pass)
+
+---
+## 2026-11-21 - Disable DirectComposition on headless launches to stop DWM handle leak
+
+- Version: `9.2.522`
+- Timestamp: 2026-11-21 22:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Pass --disable-direct-composition only for headless CloakBrowser sessions while preserving hardware D3D11 WebGL fingerprint
+
+### Verification
+
+- node --check electron/engine/cloak-browser-engine.cjs
+
+---
+## 2026-11-21 - Fix upleveling SMS/spinner CDP recovery & clear stale mail_checking
+
+- Version: `9.2.521`
+- Timestamp: 2026-11-21 18:53 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Harden handleGoogleUplevelingSmsAppealViaCdp against /uplevelingstep/spinner waits and detached CDP sessions; clear stale mail_checking=❌ Skipped on active Gmail & non-Mail sync writes
+
+### Verification
+
+- node --test P0003 5 test files 61/61 pass
+
+---
+## 2026-11-21 - Fix live Gmail appeal probe for P0003->P0020 sync
+
+- Version: `9.2.520`
+- Timestamp: 2026-11-21 18:02 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Probe mail.google.com/mail/u/0/ for appeal/disable Gmail rows even when prior evidence lost /restrictions/54 URL.
+
+### Verification
+
+- node --test google-session-detect.test.cjs profile-cookie-guard.test.cjs p0020-snapshot-builder.test.cjs api-routes.test.cjs (48/48 pass)
+
+---
+## 2026-11-21 - Fix realtime P0003->P0020 Google checkpoint_qr & restrictions/54 sync
+
+- Version: `9.2.519`
+- Timestamp: 2026-11-21 17:49 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Keep /restrictions/54 scoped to Gmail when myaccount.google.com is open, pass liveCdp/values in manual reconcile-p0020, and unblock sibling YouTube/Google One promotion.
+
+### Verification
+
+- node --test google-session-detect.test.cjs profile-cookie-guard.test.cjs p0020-snapshot-builder.test.cjs api-routes.test.cjs (48/48 pass)
+
+---
+## 2026-11-21 - Facebook /me/about birthday parser
+
+- Version: `9.2.518`
+- Timestamp: 2026-11-21 13:45 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added extractFacebookBirthdayFromAboutText supporting VI/EN Facebook About Basic Info formats with unit tests.
+
+### Verification
+
+- node --test electron/lib/multiplatform-sync/*.test.cjs (11/11 passed)
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.517`
+- Timestamp: 2026-11-21 13:45 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - FB DoB normalization parity in snapshot builder
+
+- Version: `9.2.516`
+- Timestamp: 2026-11-21 13:18 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added normalizeFacebookDobToDdMmYyyy and wired FB DoB auto-normalization into buildP0020RowSnapshotAndPatch plus unit tests.
+
+### Verification
+
+- node --test electron/lib/multiplatform-sync/*.test.cjs (10/10 passed)
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.515`
+- Timestamp: 2026-11-21 13:07 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.514`
+- Timestamp: 2026-11-21 05:36 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Prevent Facebook c_user cross-profile browser hijacking
+
+- Version: `9.2.513`
+- Timestamp: 2026-11-21 05:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Require unassigned browser (!curBrowser / same-profile match) in stealth-multiplatform-sync Facebook c_user lookup and needsBrowserAssignmentUpdate to stop ping-pong profile flips.
+
+### Verification
+
+- node --test electron/lib/multiplatform-sync/p0020-snapshot-builder.test.cjs + P0003 lint chain + tsc
+
+---
+## 2026-11-21 - Metadata-only P0002 cookie mirror, unpacked ESM sync, and unit test SSOT
+
+- Version: `9.2.512`
+- Timestamp: 2026-11-21 04:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Strip raw cookie arrays when mirroring to P0002 data directory across cookie-vault-sync/profile-cookie-guard/mobile-stealth-bridge, resolve ESM/transitive packages in ensureUnpackedCloakbrowserSynced, and align user-data-root/vault-user-scope/outlook-email-detect-fill tests.
+
+### Verification
+
+- node Tool/P0003-Stealth-Browser-Console/scripts/run-unit-tests.mjs --fast
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.511`
+- Timestamp: 2026-11-21 04:51 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.510`
+- Timestamp: 2026-11-21 04:19 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Per-session process-tree WorkingSet RAM telemetry in agent-worker-memory-guard
+
+- Version: `9.2.509`
+- Timestamp: 2026-11-21 04:19 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added resolveHeadlessSessionRootPid and measureHeadlessChromeSessionTreesMbNative in profile-browser-orphan.cjs and wired per-session rootPid/procCount/ramMb telemetry into agent-worker-memory-guard.cjs.
+
+### Verification
+
+- node --check Tool/P0003-Stealth-Browser-Console/electron/lib/agent-worker-memory-guard.cjs
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.508`
+- Timestamp: 2026-11-21 03:44 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Unified Deferred User-Headed Queue SSOT & Multi-Domain Auto-Drainer
+
+- Version: `9.2.507`
+- Timestamp: 2026-11-21 03:33 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Consolidate 3 fragmented deferred-user-headed-queue.json files into %APPDATA%\\stealth-browser-console\\data\\deferred-user-headed-queue.json, add /api/automation/deferred-queue* HTTP routes, idempotent migration, 8xxx quarantine, transient guard expiry, and multi-domain auto-drainer
+
+### Verification
+
+- test-deferred-headed-queue-ssot.mjs + deferred-headed-queue-ssot.test.cjs + api-routes.test.cjs + live :6003 verify
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.506`
+- Timestamp: 2026-11-21 03:28 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.505`
+- Timestamp: 2026-11-21 03:12 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Harden 24/7 headless stability, retention, and zero-WMI guard
+
+- Version: `9.2.504`
+- Timestamp: 2026-11-21 03:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Fatal unhandled error exit in hot-patch-loader, 6h profile_events retention timer, K32GetProcessMemoryInfo working-set sampler, :6004 peer-aware orphan reaper
+
+### Verification
+
+- node --check ok; profile-browser-orphan + running-profile-cap + P0003-lib 245/249 pass (unrelated env/legacy 4); Patchright SSOT 5/5 pass
+
+---
+## 2026-11-21 - Patch bump for completed agent task
+
+- Version: `9.2.503`
+- Timestamp: 2026-11-21 02:40 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-21 - Harden 24/7 Electron main, API server, and JobQueue
+
+- Version: `9.2.502`
+- Timestamp: 2026-11-21 02:38 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add global crash guard and always-on 12h cache prune scheduler in main.cjs; bound readBody (16MB/30s) and HTTP timeouts in api-server.cjs; prune finished jobs (>200 or >30m) and compact payloads in job-queue.cjs.
+
+### Verification
+
+- node --check, api-routes.test.cjs, hardening suite, probe-stealth-browser
+
+---
+## 2026-11-20 - Patch bump for completed agent task
+
+- Version: `9.2.501`
+- Timestamp: 2026-11-20 15:42 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-20 - Fix Google window-close sync stale session false-positive
+
+- Version: `9.2.500`
+- Timestamp: 2026-11-20 15:42 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Check Google ServiceLogin/confirmidentifier/challenge History targets on window close and verify one.google.com/storage redirect when ListAccounts only matches acc[14]=1.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/google-session-detect.test.cjs Tool/P0003-Stealth-Browser-Console/electron/lib/profile-cookie-guard.test.cjs
+
+---
+## 2026-11-19 - Patch bump for completed agent task
+
+- Version: `9.2.499`
+- Timestamp: 2026-11-19 18:11 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-19 - Patch bump for completed agent task
+
+- Version: `9.2.498`
+- Timestamp: 2026-11-19 15:17 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-19 - Patch bump for completed agent task
+
+- Version: `9.2.497`
+- Timestamp: 2026-11-19 14:54 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-19 - Restore & harden packaged app.asar.unpacked sync
+
+- Version: `9.2.496`
+- Timestamp: 2026-11-19 14:49 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Export REQUIRED_UNPACKED_PACKAGES in packaged-runtime-check.cjs and extend ensureUnpackedCloakbrowserSynced in sync-hot-patch.cjs to repair all 6 required unpacked runtime modules.
+
+### Verification
+
+- hub-ui-preflight + typecheck + lint + test:fast + cloakbrowser-packaged-resolve
+
+---
+## 2026-11-18 - P0003 version sync
+
+- Version: `9.2.495`
+- Timestamp: 2026-11-18 18:57 (UTC+7)
+- Type: Patch
+- Status: Verified
+- Release: https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.495
+
+### Changes
+
+- Align CHANGELOG with package.json v9.2.495.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Scope no-sandbox-flag-smoke Win32_Process query to tmpRoot
+
+- Version: `9.2.494`
+- Timestamp: 2026-11-18 15:24 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Filter Win32_Process Chrome command line lookup by tmpRoot basename so external running Stealth profiles do not trigger false no-sandbox failures.
+
+### Verification
+
+- no-sandbox-flag-smoke ok + lint + vitest
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.493`
+- Timestamp: 2026-11-18 15:22 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Add Gmail Edu to Google SSO credential ecosystem matcher
+
+- Version: `9.2.492`
+- Timestamp: 2026-11-18 13:14 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added gmail edu to resolveServicePasswordEcosystem in service-cookie-matchers.cjs with p0020-snapshot-builder.test.cjs coverage
+
+### Verification
+
+- p0020-snapshot-builder.test.cjs 6/6 PASS
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.491`
+- Timestamp: 2026-11-18 13:03 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Android fixed-col SSOT, headerAlign, and directory click-to-copy
+
+- Version: `9.2.490`
+- Timestamp: 2026-11-18 07:09 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Generate Android fixed-col CSS parity, remove conflicting manual CSS, enable headerAlign start on left columns, and wire click-to-copy on Profile/Android/Workflow/Extension cells.
+
+### Verification
+
+- verify-directory-fixed-col-css-parity + hub-directory-table-gate + lint + vitest
+
+---
+## 2026-11-18 - Include Google Flow in Google SSO credential ecosystem matcher
+
+- Version: `9.2.489`
+- Timestamp: 2026-11-18 06:50 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Google Flow to resolveServicePasswordEcosystem in service-cookie-matchers.cjs and added unit coverage in p0020-snapshot-builder.test.cjs
+
+### Verification
+
+- p0020-snapshot-builder.test.cjs 6/6 PASS
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.488`
+- Timestamp: 2026-11-18 06:21 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Patch bump for completed agent task
+
+- Version: `9.2.487`
+- Timestamp: 2026-11-18 05:55 (UTC+7)
+- Type: Patch
+- Status: Draft
+
+### Changes
+
+- Automatic patch bump after completed P0003 task.
+
+### Verification
+
+- pending
+
+---
+## 2026-11-18 - Preserve verified Gmail snapshot keys across window_close_sync
+
+- Version: `9.2.486`
+- Timestamp: 2026-11-18 04:39 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Expanded FORWARDING_SNAPSHOT_PRESERVE_KEYS and mergePreserveNewerForwardingSnapshot to protect google_recovery_email_verified, app_password, imap_app_password, recovery_email_policy_unavailable, and previous_password_backup even when forwarding_updated_at matches.
+
+### Verification
+
+- node --test p0020-snapshot-builder.test.cjs (5/5 pass)
+
+---
 ## 2026-11-18 - Patch bump for completed agent task
 
 - Version: `9.2.485`

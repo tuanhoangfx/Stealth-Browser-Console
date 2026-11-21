@@ -25,10 +25,17 @@ export function packagedStealthSpawnEnv(baseEnv = process.env) {
   return env;
 }
 
-export function resolvePackagedStealthExe(root) {
+export function resolvePackagedStealthExe(root, { target = "auto" } = {}) {
   const localAppData = process.env.LOCALAPPDATA || "";
-  const installed = path.join(localAppData, "Programs", "stealth-browser-console", PACKAGED_EXE_NAME);
-  if (fs.existsSync(installed)) return installed;
+  const installed = localAppData
+    ? path.join(localAppData, "Programs", "stealth-browser-console", PACKAGED_EXE_NAME)
+    : "";
+  if (target === "installed") {
+    return installed && fs.existsSync(installed) ? installed : null;
+  }
+  if (target !== "unpacked" && installed && fs.existsSync(installed)) {
+    return installed;
+  }
   const candidates = [
     path.join(root, "dist-desktop", "win-unpacked-pending", PACKAGED_EXE_NAME),
     path.join(root, "dist-desktop", "win-unpacked", PACKAGED_EXE_NAME),

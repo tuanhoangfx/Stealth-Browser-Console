@@ -14,6 +14,7 @@
 const fs = require("node:fs");
 const net = require("node:net");
 const path = require("node:path");
+const tls = require("node:tls");
 const { pathToFileURL } = require("node:url");
 
 // ── Pure core (test được offline) ─────────────────────────────────────────
@@ -223,7 +224,177 @@ function probeTcpPort(host, port, { timeoutMs = 2000 } = {}) {
  * Chỉ hỗ trợ proxy http(s); socks → trả alive:null (cần lib socks riêng).
  * @returns {Promise<{ alive: boolean|null, exitIp?: string, countryCode?: string, timezone?: string, latencyMs?: number, reason?: string }>}
  */
-function checkProxy(proxyInput, { timeoutMs = 8000 } = {}) {
+/**
+ * Opens an HTTP CONNECT tunnel through an HTTP proxy and verifies the real TLS handshake to targetHost:targetPort.
+ */
+function verifyProxyHttpsTunnel(
+  proxyInput,
+  { targetHost = "accounts.google.com", targetPort = 443, timeoutMs = 6000 } = {},
+) {
+  const proxy = parseProxy(proxyInput);
+  if (!proxy) return Promise.resolve({ ok: false, targetHost, latencyMs: null, reason: "proxy không hợp lệ" });
+  if (proxy.protocol.startsWith("socks")) {
+    return Promise.resolve({ ok: null, targetHost, latencyMs: null, reason: "socks-check-unsupported" });
+  }
+
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    let settled = false;
+    let phase = "tcp";
+    let tcpSocket = null;
+    let tlsSocket = null;
+    let headBuf = "";
+    const deadlineMs = Math.max(1000, Number(timeoutMs) || 6000);
+
+    const finish = (res) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        tlsSocket?.destroy();
+      } catch {}
+      try {
+        tcpSocket?.destroy();
+      } catch {}
+      resolve(res);
+    };
+
+    const timer = setTimeout(() => {
+      finish({
+        ok: false,
+        targetHost,
+        latencyMs: Date.now() - startedAt,
+        reason: `https_${phase}_timeout`,
+      });
+    }, deadlineMs);
+
+    const connectReq = [
+      `CONNECT ${targetHost}:${targetPort} HTTP/1.1`,
+      `Host: ${targetHost}:${targetPort}`,
+      proxy.username || proxy.password
+        ? `Proxy-Authorization: Basic ${Buffer.from(`${proxy.username || ""}:${proxy.password || ""}`).toString("base64")}`
+        : null,
+      "Connection: keep-alive",
+      "",
+      "",
+    ]
+      .filter((line) => line !== null)
+      .join("\r\n");
+
+    const onTcpError = (err) => {
+      finish({
+        ok: false,
+        targetHost,
+        latencyMs: Date.now() - startedAt,
+        reason: `https_${phase}_${err?.code || err?.message || "error"}`,
+      });
+    };
+
+    const onTcpClose = () => {
+      if (!settled) {
+        finish({ ok: false, targetHost, latencyMs: Date.now() - startedAt, reason: `https_${phase}_closed` });
+      }
+    };
+
+    const onConnectData = (chunk) => {
+      headBuf += chunk.toString("latin1");
+      const headerEnd = headBuf.indexOf("\r\n\r\n");
+      if (headerEnd === -1) {
+        if (headBuf.length > 8192) {
+          finish({ ok: false, targetHost, latencyMs: Date.now() - startedAt, reason: "https_connect_header_overflow" });
+        }
+        return;
+      }
+      const statusLine = headBuf.slice(0, headerEnd).split("\r\n")[0] || "";
+      const m = statusLine.match(/^HTTP\/\d\.\d\s+(\d{3})/i);
+      const status = m ? Number(m[1]) : 0;
+      if (status !== 200) {
+        finish({
+          ok: false,
+          targetHost,
+          latencyMs: Date.now() - startedAt,
+          reason: status === 407 ? "proxy_auth_required" : `https_connect_http_${status || "invalid"}`,
+        });
+        return;
+      }
+
+      tcpSocket.removeListener("data", onConnectData);
+      tcpSocket.removeListener("error", onTcpError);
+      tcpSocket.removeListener("close", onTcpClose);
+      if (headBuf.length > headerEnd + 4) {
+        tcpSocket.unshift(Buffer.from(headBuf.slice(headerEnd + 4), "latin1"));
+      }
+      phase = "tls";
+
+      tlsSocket = tls.connect({
+        socket: tcpSocket,
+        servername: targetHost,
+        rejectUnauthorized: true,
+      });
+      tlsSocket.once("secureConnect", () => {
+        finish({
+          ok: true,
+          targetHost,
+          latencyMs: Math.max(1, Date.now() - startedAt),
+          protocol: typeof tlsSocket.getProtocol === "function" ? tlsSocket.getProtocol() : null,
+          reason: null,
+        });
+      });
+      tlsSocket.once("error", (err) => {
+        finish({
+          ok: false,
+          targetHost,
+          latencyMs: Date.now() - startedAt,
+          reason: `https_tls_${err?.code || err?.message || "error"}`,
+        });
+      });
+    };
+
+    tcpSocket = net.connect({ host: proxy.host, port: proxy.port }, () => {
+      phase = "connect";
+      tcpSocket.write(connectReq);
+    });
+    tcpSocket.on("data", onConnectData);
+    tcpSocket.on("error", onTcpError);
+    tcpSocket.once("close", onTcpClose);
+  });
+}
+
+/**
+ * Checks proxy HTTP/geo health and optionally verifies real TLS connectivity (`verifyHttps: true`).
+ */
+async function checkProxy(proxyInput, options = {}) {
+  const res = await checkProxyHttpOnly(proxyInput, options);
+  if (!options?.verifyHttps || res?.alive !== true) {
+    return res;
+  }
+  const tlsRes = await verifyProxyHttpsTunnel(proxyInput, {
+    targetHost: options.httpsHost || "accounts.google.com",
+    targetPort: Number(options.httpsPort) || 443,
+    timeoutMs: Number(options.httpsTimeoutMs) || Math.min(Number(options.timeoutMs) || 8000, 6000),
+  });
+  if (!tlsRes.ok) {
+    return {
+      ...res,
+      alive: false,
+      httpAlive: true,
+      httpsAlive: false,
+      httpsError: tlsRes.reason,
+      httpsLatencyMs: tlsRes.latencyMs ?? null,
+      reason: tlsRes.reason || "https_tls_timeout",
+    };
+  }
+  return {
+    ...res,
+    httpAlive: true,
+    httpsAlive: true,
+    httpsHost: tlsRes.targetHost,
+    httpsLatencyMs: tlsRes.latencyMs,
+    httpsTlsProtocol: tlsRes.protocol || null,
+  };
+}
+
+function checkProxyHttpOnly(proxyInput, { timeoutMs = 8000 } = {}) {
   const proxy = parseProxy(proxyInput);
   if (!proxy) return Promise.resolve({ alive: false, reason: "proxy không hợp lệ" });
   if (proxy.protocol.startsWith("socks")) {
@@ -504,7 +675,11 @@ async function checkOrAcquireProfileProxy(proxyInput, options = {}) {
       localProxyUrl: resolved.resolvedProxy,
     };
   }
-  return checkProxy(trimmed, { timeoutMs: Number(options.timeoutMs) || 8000 });
+  return checkProxy(trimmed, {
+    timeoutMs: Number(options.timeoutMs) || 8000,
+    verifyHttps: Boolean(options.verifyHttps),
+    httpsHost: options.httpsHost,
+  });
 }
 
 module.exports = {
@@ -516,6 +691,7 @@ module.exports = {
   ProxyPool,
   probeTcpPort,
   checkProxy,
+  verifyProxyHttpsTunnel,
   parseCountryProxySpec,
   COUNTRY_GEO_DEFAULTS,
   resolveVpnProxyPoolPath,

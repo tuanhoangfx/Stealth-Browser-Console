@@ -24,9 +24,13 @@ async function main() {
   assert.equal(String(picked.credentials?.email || "").toLowerCase(), preferred);
   assert.equal(picked.matchMode, "email_detect");
 
-  // Single-Outlook profile 0140 — cold login path.
+  // Profile 0140 — cold login path (now multi-Outlook on 0140; resolve via preferredEmail when ambiguous).
   clearCredentialsCache();
-  const single = await diagnoseMailCredentials("0140", "Outlook");
+  let single = await diagnoseMailCredentials("0140", "Outlook");
+  if (!single.ok && single.matchMode === "ambiguous") {
+    clearCredentialsCache();
+    single = await diagnoseMailCredentials("0140", "Outlook", { preferredEmail: "qzx0140@outlook.com" });
+  }
   assert.equal(single.ok, true);
   assert.ok(single.credentials?.email);
 

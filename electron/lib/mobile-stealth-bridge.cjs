@@ -1462,6 +1462,11 @@ async function extractMobileCookiesToBrowserProfile(
     }
   };
 
+  const isMetadataVaultDir = /P0002-Social-Hub[\\/]data/i.test(String(dataDir || ""));
+  const withCookiePayload = (arr) =>
+    isMetadataVaultDir
+      ? { cookieCount: arr.length, hasCookies: arr.length > 0 }
+      : { cookies: arr };
   const servicesUpdated = [];
   const gmCookies = cookies.filter((c) => c.domain.includes("google.com") || c.domain.includes("youtube.com"));
   const olCookies = cookies.filter(
@@ -1478,7 +1483,7 @@ async function extractMobileCookiesToBrowserProfile(
         provider: "gmail",
         updatedAt: nowIso,
         source: "mobile_vault_adb_extract",
-        cookies: gmCookies,
+        ...withCookiePayload(gmCookies),
       };
       servicesUpdated.push("Gmail");
     }
@@ -1488,12 +1493,12 @@ async function extractMobileCookiesToBrowserProfile(
         provider: "outlook",
         updatedAt: nowIso,
         source: "mobile_vault_adb_extract",
-        cookies: olCookies,
+        ...withCookiePayload(olCookies),
       };
       servicesUpdated.push("Outlook");
     }
     mailRaw.updatedAt = nowIso;
-    fs.writeFileSync(mailPath, JSON.stringify(mailRaw, null, 2), "utf8");
+    fs.writeFileSync(mailPath, JSON.stringify(mailRaw, null, isMetadataVaultDir ? 0 : 2), "utf8");
   }
 
   const fbCookies = cookies.filter((c) => c.domain.includes("facebook.com"));
@@ -1506,9 +1511,9 @@ async function extractMobileCookiesToBrowserProfile(
       fbUserId: cUser ? cUser.value : null,
       updatedAt: nowIso,
       source: "mobile_vault_adb_extract",
-      cookies: fbCookies,
+      ...withCookiePayload(fbCookies),
     };
-    fs.writeFileSync(fbPath, JSON.stringify(fbVault, null, 2), "utf8");
+    fs.writeFileSync(fbPath, JSON.stringify(fbVault, null, isMetadataVaultDir ? 0 : 2), "utf8");
     servicesUpdated.push("Facebook");
   }
 
@@ -1521,10 +1526,10 @@ async function extractMobileCookiesToBrowserProfile(
       code: cleanCode,
       updatedAt: nowIso,
       source: "mobile_vault_adb_extract",
-      cookies: ttCookies,
+      ...withCookiePayload(ttCookies),
     };
     ttRaw.updatedAt = nowIso;
-    fs.writeFileSync(ttPath, JSON.stringify(ttRaw, null, 2), "utf8");
+    fs.writeFileSync(ttPath, JSON.stringify(ttRaw, null, isMetadataVaultDir ? 0 : 2), "utf8");
     servicesUpdated.push("TikTok");
   }
 

@@ -81,6 +81,11 @@ type AndroidHardwareHealth = {
   batteryLevel?: number | null;
   batteryTempC?: number | null;
   acPowered?: boolean;
+  cableAttached?: boolean;
+  attachedDev?: string | null;
+  storeMode?: number | null;
+  slateMode?: number | null;
+  chargeMode?: string | null;
   chargeStartLevel?: number;
   chargeStopLevel?: number;
   chargeDisable?: number;
@@ -91,6 +96,117 @@ type AndroidHardwareHealth = {
   wakeState?: string;
   history24h?: AndroidTelemetryPoint[];
   capturedAt?: string;
+};
+
+export function resolveAndroidPowerBadgeState(
+  hw: Pick<
+    AndroidHardwareHealth,
+    "acPowered" | "cableAttached" | "attachedDev" | "chargeMode" | "chargeDisable" | "slateMode" | "storeMode" | "batteryTempC"
+  > | null | undefined,
+  batLv: number,
+  stopLv: number,
+) {
+  const powerConnected = hw?.cableAttached ?? hw?.acPowered !== false;
+  const acOff = powerConnected === false;
+  const batCritical = acOff && batLv < 75;
+  const mode = String(hw?.chargeMode || "");
+  const attachedLabel = hw?.attachedDev ? ` (${hw.attachedDev})` : "";
+  const isStoreHold = !acOff && (mode === "hold_store_mode" || hw?.storeMode === 1);
+  const bypassOn =
+    isStoreHold ||
+    (!acOff &&
+      ((hw?.chargeDisable ?? (batLv >= stopLv ? 1 : 0)) === 1 ||
+        hw?.slateMode === 1 ||
+        mode.startsWith("hold_")));
+  const isThermalHold =
+    bypassOn &&
+    !isStoreHold &&
+    typeof hw?.batteryTempC === "number" &&
+    hw.batteryTempC >= 39.5;
+  const badgeLabel = batCritical
+    ? "🚨 Unplugged (<75%)"
+    : acOff
+      ? "⚠️ Unplugged / No Cable"
+      : isThermalHold
+        ? `🌡️ Power OK${attachedLabel} · Thermal Cut`
+        : isStoreHold
+          ? `🔌 Power OK${attachedLabel} · Store Hold`
+          : bypassOn
+            ? `🔌 Power OK${attachedLabel} · Bypass ON (${stopLv}%)`
+            : mode === "full"
+              ? `🔌 Power OK${attachedLabel} · Full`
+              : null;
+  return { powerConnected, acOff, batCritical, isStoreHold, bypassOn, isThermalHold, attachedLabel, badgeLabel };
+}
+
+export type MobileFarmBoardDevice = {
+  serial: string;
+  label: string;
+  platform: "android" | "ios";
+  ok: boolean;
+  batteryLevel: number | null;
+  batteryTempC: number | null;
+  acPowered: boolean | null;
+  cableAttached: boolean | null;
+  attachedDev: string | null;
+  chargeMode: string;
+  storeMode: number | null;
+  slateMode: number | null;
+  chargeDisable: number | null;
+  chargeLimiterEnabled: boolean | null;
+  storeModeRecoveryTriggered: boolean;
+  unreachableReason: string | null;
+  ramUsedPct: number | null;
+};
+
+export type MobileFarmBoardTask = {
+  id: string;
+  canControl?: boolean;
+  title: string;
+  kind: string;
+  status: "running" | "completed" | "attention" | "standby";
+  percent: number;
+  progressLabel: string;
+  currentStep: string;
+  metricsText: string;
+  targetDevice: string;
+  updatedAt: string | null;
+};
+
+export type MobileFarmExperimentLane = {
+  device: string;
+  platform: string;
+  geo?: string;
+  provider: string;
+  attempts: number;
+  createdLive: number;
+  linkedOrPassed: number;
+  conversionPct: number;
+  otpRatePct: number | null;
+  avgElapsedSec: number | null;
+  statuses?: Record<string, number>;
+  gates?: Record<string, number>;
+};
+
+export type MobileFarmExecutionBoardData = {
+  ok: boolean;
+  updatedAt: string;
+  summary: {
+    runningTasks: number;
+    attentionTasks: number;
+    totalTasks: number;
+    overallProgressPct: number;
+    onlineDevices: number;
+    totalDevices: number;
+  };
+  devices: MobileFarmBoardDevice[];
+  tasks: MobileFarmBoardTask[];
+  experiments?: {
+    updatedAt: string | null;
+    totalRunsRecorded: number;
+    bestByPlatform: Record<string, MobileFarmExperimentLane>;
+    lanes: MobileFarmExperimentLane[];
+  } | null;
 };
 
 type GmailMarlHarvesterState = {
@@ -166,12 +282,13 @@ const MOBILE_API_BASES = [
 let _preferredApiBase: string | null = null;
 
 function getOrderedApiBases(): string[] {
-  const isHttpOrigin =
+  const isApiOrigin =
     typeof window !== "undefined" &&
-    (window.location?.protocol === "http:" || window.location?.protocol === "https:");
-  const defaults = isHttpOrigin
-    ? ["", "http://127.0.0.1:6003", "http://127.0.0.1:6004", "http://127.0.0.1:3002", "http://127.0.0.1:8814"]
-    : MOBILE_API_BASES;
+    (window.location?.protocol === "http:" || window.location?.protocol === "https:") &&
+    ["6003", "6004", "3002", "8814"].includes(window.location?.port || "");
+  const defaults = isApiOrigin
+    ? ["", ...MOBILE_API_BASES.filter(Boolean)]
+    : MOBILE_API_BASES.filter(Boolean);
   if (_preferredApiBase !== null) {
     return [_preferredApiBase, ...defaults.filter((b) => b !== _preferredApiBase)];
   }
@@ -182,13 +299,14 @@ export async function fetchFarmApi(path: string, init?: RequestInit) {
   const altPath = path.startsWith("/api/mobile-stealth/")
     ? path.replace("/api/mobile-stealth/", "/api/android-vault/")
     : path;
-  const candidatePaths = altPath !== path ? [altPath, path] : [path];
+  const candidatePaths = altPath !== path ? [path, altPath] : [path];
   const bases = getOrderedApiBases();
-  for (const candidatePath of candidatePaths) {
-    for (const base of bases) {
+  for (const base of bases) {
+    for (const candidatePath of candidatePaths) {
       try {
         const res = await fetch(`${base}${candidatePath}`, init);
-        if (res.ok) {
+        const ct = res.headers.get("content-type") || "";
+        if (res.ok && (!ct || ct.includes("json"))) {
           _preferredApiBase = base;
           return await res.json();
         }

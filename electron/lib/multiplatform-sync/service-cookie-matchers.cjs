@@ -1122,7 +1122,7 @@ function resolveServicePasswordEcosystem(service = "") {
   const s = String(service || "").trim().toLowerCase();
   if (!s) return "unknown";
   if (/^(outlook|hotmail|live|msn|microsoft)$/.test(s)) return "microsoft_mail";
-  if (/^(gmail|google|google one|goole one|youtube|gemini|google cloud)$/.test(s)) return "google_sso";
+  if (/^(gmail|gmail edu|google|google one|goole one|youtube|gemini|google cloud|google flow)$/.test(s)) return "google_sso";
   return `standalone:${s}`;
 }
 

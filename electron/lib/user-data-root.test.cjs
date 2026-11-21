@@ -11,15 +11,22 @@ const {
   configureElectronUserData,
 } = require("./user-data-root.cjs");
 
-test("resolveStealthUserDataRoot uses prod folder by default when unpackaged", () => {
+test("resolveStealthUserDataRoot uses isolated -dev folder by default when unpackaged", () => {
   const prev = process.env.STEALTH_DEV_ISOLATED;
+  const prevAllow = process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
   delete process.env.STEALTH_DEV_ISOLATED;
+  delete process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
   try {
     const root = resolveStealthUserDataRoot({ packaged: false });
-    assert.ok(root.endsWith(PROD_DIR));
+    assert.ok(root.endsWith(DEV_DIR));
+    process.env.STEALTH_ALLOW_UNPACKAGED_PROD = "1";
+    const prodRoot = resolveStealthUserDataRoot({ packaged: false });
+    assert.ok(prodRoot.endsWith(PROD_DIR));
   } finally {
     if (prev === undefined) delete process.env.STEALTH_DEV_ISOLATED;
     else process.env.STEALTH_DEV_ISOLATED = prev;
+    if (prevAllow === undefined) delete process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
+    else process.env.STEALTH_ALLOW_UNPACKAGED_PROD = prevAllow;
   }
 });
 
@@ -53,12 +60,16 @@ test("resolveStealthUserDataRoot honors STEALTH_USER_DATA", () => {
   }
 });
 
-test("resolveStealthApiPort defaults prod unless isolated dev", () => {
+test("resolveStealthApiPort defaults to isolated dev port when unpackaged unless STEALTH_ALLOW_UNPACKAGED_PROD=1", () => {
   const prevPort = process.env.STEALTH_API_PORT;
   const prevIso = process.env.STEALTH_DEV_ISOLATED;
+  const prevAllow = process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
   delete process.env.STEALTH_API_PORT;
   delete process.env.STEALTH_DEV_ISOLATED;
+  delete process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
   try {
+    assert.equal(resolveStealthApiPort({ packaged: false }), DEFAULT_DEV_API_PORT);
+    process.env.STEALTH_ALLOW_UNPACKAGED_PROD = "1";
     assert.equal(resolveStealthApiPort({ packaged: false }), DEFAULT_PROD_API_PORT);
     process.env.STEALTH_DEV_ISOLATED = "1";
     assert.equal(resolveStealthApiPort({ packaged: false }), DEFAULT_DEV_API_PORT);
@@ -68,6 +79,8 @@ test("resolveStealthApiPort defaults prod unless isolated dev", () => {
     else process.env.STEALTH_API_PORT = prevPort;
     if (prevIso === undefined) delete process.env.STEALTH_DEV_ISOLATED;
     else process.env.STEALTH_DEV_ISOLATED = prevIso;
+    if (prevAllow === undefined) delete process.env.STEALTH_ALLOW_UNPACKAGED_PROD;
+    else process.env.STEALTH_ALLOW_UNPACKAGED_PROD = prevAllow;
   }
 });
 

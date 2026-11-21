@@ -1,12 +1,12 @@
 "use strict";
 
 /**
- * Shared Zero-Restart Hot-Patch Loader & EPIPE Process Guard (`P0001`, `P0003`, `P0006`, `P0009`):
+ * Shared Zero-Restart Hot-Patch Loader & EPIPE Process Guard (`P0001`, `P0003`, `P0006`, `P0009`, `P0010`):
  * - Prevents broken pipe (`Error: write EPIPE`) on stdout/stderr/child pipes from triggering
  *   an Electron main-process Uncaught Exception modal.
- * - Resolves updated `electron/*.cjs` modules and `dist/*` assets from `<resourcesPath>/hot-patch/`
- *   when explicitly opted in, while protecting stateful singletons (`taskbar-apply-worker.cjs`,
- *   `init.cjs`, `session-manager.cjs`, etc.) from cache eviction.
+ * - Resolves updated `electron/*.cjs` modules, `host/*.mjs` entries, `package.json`, and `dist/*`
+ *   assets from `<resourcesPath>/hot-patch/` when present, while protecting stateful singletons
+ *   (`main.cjs`, `init.cjs`, `session-manager.cjs`, etc.) from `require.cache` eviction.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -27,20 +27,60 @@ const STATEFUL_SINGLETON_BASENAMES = new Set([
   "powershell-exec.cjs",
 ]);
 
-function installEpipeProcessGuard() {
-  if (globalThis.__STEALTH_EPIPE_GUARD_INSTALLED__) return;
+function isEpipeLikeError(err) {
+  if (!err) return false;
+  const code = String(err.code || "");
+  const msg = String(err.message || err || "");
+  return code === "EPIPE" || code === "ERR_STREAM_DESTROYED" || msg.includes("write EPIPE");
+}
+
+function appendGuardBootLog(tag, err, opts = {}) {
+  try {
+    const detail = err && err.stack ? String(err.stack) : String(err || "unknown");
+    try {
+      process.stderr?.write?.(`[hot-patch-loader:${tag}] ${detail}\n`);
+    } catch {
+      /* ignore broken stderr pipe */
+    }
+    let logFile = typeof opts.logFile === "string" ? opts.logFile.trim() : "";
+    if (!logFile) {
+      let userDataDir = "";
+      try {
+        const electron = require("electron");
+        userDataDir = electron?.app?.getPath?.("userData") || "";
+      } catch {
+        /* outside Electron main */
+      }
+      if (userDataDir) {
+        logFile = path.join(userDataDir, "runtime", "desktop-boot.log");
+      }
+    }
+    if (!logFile) return;
+    fs.mkdirSync(path.dirname(logFile), { recursive: true });
+    fs.appendFileSync(logFile, `${new Date().toISOString()} [${tag}] ${detail}\n`, "utf8");
+  } catch {
+    /* never throw from process error guard */
+  }
+}
+
+function installEpipeProcessGuard(opts = {}) {
+  if (globalThis.__STEALTH_EPIPE_GUARD_INSTALLED__ && !opts.logFile) return;
   globalThis.__STEALTH_EPIPE_GUARD_INSTALLED__ = true;
   try {
     process.stdout?.on?.("error", (err) => {
-      if (err && (err.code === "EPIPE" || err.code === "ERR_STREAM_DESTROYED")) return;
+      if (isEpipeLikeError(err)) return;
+      appendGuardBootLog("stdout:error", err, opts);
     });
     process.stderr?.on?.("error", (err) => {
-      if (err && (err.code === "EPIPE" || err.code === "ERR_STREAM_DESTROYED")) return;
+      if (isEpipeLikeError(err)) return;
     });
     process.on("uncaughtException", (err) => {
-      if (err && (err.code === "EPIPE" || String(err.message || "").includes("write EPIPE"))) {
-        return;
-      }
+      if (isEpipeLikeError(err)) return;
+      appendGuardBootLog("uncaughtException", err, opts);
+    });
+    process.on("unhandledRejection", (reason) => {
+      if (isEpipeLikeError(reason)) return;
+      appendGuardBootLog("unhandledRejection", reason, opts);
     });
   } catch {
     /* ignore */
@@ -48,13 +88,73 @@ function installEpipeProcessGuard() {
 }
 installEpipeProcessGuard();
 
-function resolveHotPatchRoot() {
-  if (process.env.STEALTH_HOT_PATCH_DIR && fs.existsSync(process.env.STEALTH_HOT_PATCH_DIR)) {
-    return path.resolve(process.env.STEALTH_HOT_PATCH_DIR);
+function compareSemverSafe(a, b) {
+  const pa = String(a || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .map((n) => Number.parseInt(n, 10) || 0);
+  const pb = String(b || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i += 1) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
   }
-  if (typeof process.resourcesPath === "string" && process.resourcesPath) {
+  return 0;
+}
+
+function readPackageVersionSafe(pkgPath) {
+  try {
+    if (!pkgPath || !fs.existsSync(pkgPath)) return "";
+    return String(JSON.parse(fs.readFileSync(pkgPath, "utf8"))?.version || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function removeStaleHotPatchSafely(hotDir) {
+  try {
+    const nmLink = path.join(hotDir, "node_modules");
+    if (fs.existsSync(nmLink)) {
+      const st = fs.lstatSync(nmLink);
+      if (st.isSymbolicLink()) {
+        try {
+          fs.unlinkSync(nmLink);
+        } catch {
+          fs.rmdirSync(nmLink);
+        }
+      }
+    }
+    fs.rmSync(hotDir, { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
+}
+
+function resolveHotPatchRoot(opts = {}) {
+  const envDir = process.env.HUB_HOT_PATCH_DIR || process.env.STEALTH_HOT_PATCH_DIR;
+  if (envDir && fs.existsSync(envDir)) {
+    return path.resolve(envDir);
+  }
+  if (opts && typeof opts.hotPatchDir === "string" && opts.hotPatchDir && fs.existsSync(opts.hotPatchDir)) {
+    return path.resolve(opts.hotPatchDir);
+  }
+  if (
+    typeof process.resourcesPath === "string" &&
+    process.resourcesPath &&
+    !/[\\/]node_modules[\\/]electron[\\/]dist[\\/]resources$/i.test(process.resourcesPath)
+  ) {
     const candidate = path.join(process.resourcesPath, "hot-patch");
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {
+      const hotVer = readPackageVersionSafe(path.join(candidate, "package.json"));
+      const baseVer = readPackageVersionSafe(path.join(process.resourcesPath, "app.asar", "package.json"));
+      if (baseVer && hotVer && compareSemverSafe(baseVer, hotVer) > 0) {
+        removeStaleHotPatchSafely(candidate);
+        return "";
+      }
+      return candidate;
+    }
   }
   return "";
 }
@@ -117,7 +217,7 @@ function reloadHotPatchedModules({ force = false } = {}) {
       norm.toLowerCase().includes("\\app.asar\\electron\\") &&
       !norm.toLowerCase().includes("\\packaged-node_modules\\");
     const isWorkspaceElectronFile =
-      norm.toLowerCase().includes("\\p0003-stealth-browser-console\\electron\\") &&
+      /[\\/]p\d{4}-[^\\/]+[\\/]electron[\\/]/i.test(norm) &&
       !norm.toLowerCase().includes("\\packaged-node_modules\\") &&
       !norm.toLowerCase().includes("\\node_modules\\");
 
@@ -149,19 +249,100 @@ function reloadHotPatchedModules({ force = false } = {}) {
   };
 }
 
+function promoteStagedHotPatchDist(hotRoot) {
+  if (!hotRoot) return false;
+  const nextDist = path.join(hotRoot, "dist.next");
+  const curDist = path.join(hotRoot, "dist");
+  const prevDist = path.join(hotRoot, "dist.prev");
+  try {
+    if (!fs.existsSync(path.join(nextDist, "index.html"))) return false;
+    if (fs.existsSync(prevDist)) {
+      fs.rmSync(prevDist, { recursive: true, force: true });
+    }
+    if (fs.existsSync(curDist)) {
+      fs.renameSync(curDist, prevDist);
+    }
+    fs.renameSync(nextDist, curDist);
+    if (fs.existsSync(prevDist)) {
+      try {
+        fs.rmSync(prevDist, { recursive: true, force: true });
+      } catch {
+        /* ignore cleanup race */
+      }
+    }
+    return true;
+  } catch {
+    try {
+      if (!fs.existsSync(path.join(curDist, "index.html")) && fs.existsSync(path.join(prevDist, "index.html"))) {
+        fs.renameSync(prevDist, curDist);
+      }
+    } catch {
+      /* ignore rollback error */
+    }
+    return false;
+  }
+}
+
 function resolveHotPatchedDistIndexHtml(defaultDistIndexPath) {
   const hotRoot = resolveHotPatchRoot();
   if (hotRoot) {
+    promoteStagedHotPatchDist(hotRoot);
     const hotIndex = path.join(hotRoot, "dist", "index.html");
     if (fs.existsSync(hotIndex)) return hotIndex;
   }
   return defaultDistIndexPath;
 }
 
+function resolveHotPatchedDistDir(defaultDistDir) {
+  const hotRoot = resolveHotPatchRoot();
+  if (hotRoot) {
+    promoteStagedHotPatchDist(hotRoot);
+    const hotDist = path.join(hotRoot, "dist");
+    if (fs.existsSync(path.join(hotDist, "index.html"))) return hotDist;
+  }
+  return defaultDistDir;
+}
+
+function resolveHotPatchedEntry(relPath, defaultAbsPath) {
+  const hotRoot = resolveHotPatchRoot();
+  if (hotRoot && relPath) {
+    const normalizedRel = String(relPath).replace(/^[\\/]+/, "");
+    const candidate = path.join(hotRoot, normalizedRel);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return defaultAbsPath;
+}
+
+function resolveHotPatchedPackageVersion(defaultVersion = "") {
+  const hotRoot = resolveHotPatchRoot();
+  if (hotRoot) {
+    try {
+      const pkgPath = path.join(hotRoot, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        const ver = String(JSON.parse(fs.readFileSync(pkgPath, "utf8"))?.version || "").trim();
+        if (ver) return ver;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return defaultVersion;
+}
+
 module.exports = {
   installEpipeProcessGuard,
   resolveHotPatchRoot,
+  promoteStagedHotPatchDist,
   installHotPatchResolveHook,
   reloadHotPatchedModules,
   resolveHotPatchedDistIndexHtml,
+  resolveHotPatchedDistDir,
+  resolveHotPatchedEntry,
+  resolveHotPatchedPackageVersion,
 };

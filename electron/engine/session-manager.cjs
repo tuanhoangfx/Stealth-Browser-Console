@@ -321,6 +321,37 @@ function isContextAlive(context) {
   }
 }
 
+function isPidProcessAlive(pid) {
+  const n = Number(pid);
+  if (!Number.isInteger(n) || n <= 0) return false;
+  try {
+    process.kill(n, 0);
+    return true;
+  } catch (err) {
+    return Boolean(err && err.code === "EPERM");
+  }
+}
+
+function isSidecarPidDefinitelyDead(
+  userDataDir,
+  {
+    readSidecarPidFn = readSidecarPid,
+    isPidAliveFn = isPidProcessAlive,
+    findLiveHeadedFn = findLiveHeadedBrowserPidNative,
+  } = {},
+) {
+  if (!userDataDir) return false;
+  const sidecar = readSidecarPidFn(userDataDir);
+  const pid = Number(sidecar?.pid || 0);
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  if (isPidAliveFn(pid)) return false;
+  if (sidecar?.headless !== true) {
+    const liveNativePid = Number(findLiveHeadedFn(userDataDir) || 0);
+    if (liveNativePid > 0) return false;
+  }
+  return true;
+}
+
 class SessionManager {
   /** @type {Map<string, { context: import('playwright-core').BrowserContext, userDataDir: string, primaryUserDataDir?: string, alive: boolean, watchdog?: NodeJS.Timeout, startupNavigation?: Promise<void>, launchedAt?: number }>} */
   #sessions = new Map();
@@ -366,74 +397,34 @@ class SessionManager {
 
   #persistDeferredQueueFile(extraReadyItem = null) {
     try {
-      const candidateDirs = ["E:\\Dev\\Tool\\P0002-Social-Hub\\data"];
-      const isCustomer8xxx = (v) => /^8\d{3}$/.test(String(v || "").replace(/^#/, "").trim().padStart(4, "0"));
-      for (const dir of candidateDirs) {
-        if (!fs.existsSync(dir)) continue;
-        const fp = path.join(dir, "deferred-user-headed-queue.json");
-        let prevPending = [];
-        let prevReady = [];
-        try {
-          if (fs.existsSync(fp)) {
-            const parsed = JSON.parse(fs.readFileSync(fp, "utf8")) || {};
-            if (Array.isArray(parsed.pendingWhileUserHeaded)) {
-              prevPending = parsed.pendingWhileUserHeaded.filter((x) => x?.code && !isCustomer8xxx(x.code));
-            }
-            if (Array.isArray(parsed.readyForRetry)) {
-              const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-              prevReady = parsed.readyForRetry.filter(
-                (x) => !isCustomer8xxx(x?.code) && Number(x?.windowClosedAt || 0) > cutoff,
-              );
-            }
-          }
-        } catch {
-          /* ignore */
-        }
-        const byCodePending = new Map();
-        for (const item of prevPending) {
-          const c = String(item.code || "").trim();
-          if (c && !isCustomer8xxx(c)) byCodePending.set(c, item);
-        }
-        for (const item of this.listDeferredAgentTasks()) {
-          const c = String(item?.code || "").trim();
-          if (!c || isCustomer8xxx(c)) continue;
-          const prev = byCodePending.get(c);
-          byCodePending.set(c, { ...(prev || {}), ...item, ...(prev?.tasks ? { tasks: prev.tasks } : {}) });
-        }
-        if (extraReadyItem?.code && !isCustomer8xxx(extraReadyItem.code)) {
-          const prevPend = byCodePending.get(extraReadyItem.code);
-          byCodePending.delete(extraReadyItem.code);
-          const mergedExtra = {
-            ...extraReadyItem,
-            ...(Array.isArray(extraReadyItem.tasks) && extraReadyItem.tasks.length > 0
-              ? { tasks: extraReadyItem.tasks }
-              : prevPend?.tasks
-                ? { tasks: prevPend.tasks }
-                : {}),
-          };
-          prevReady = [
-            mergedExtra,
-            ...prevReady.filter((x) => x?.code !== extraReadyItem.code && x?.profileId !== extraReadyItem.profileId),
-          ].slice(0, 100);
-        }
-        const pending = [...byCodePending.values()];
-        const pendingCodes = new Set(pending.map((x) => x.code));
-        prevReady = prevReady.filter((x) => !pendingCodes.has(x?.code));
-        fs.writeFileSync(
-          fp,
-          JSON.stringify(
-            {
-              updatedAt: new Date().toISOString(),
-              pendingWhileUserHeaded: pending,
-              readyForRetry: prevReady,
-            },
-            null,
-            2,
-          ),
-          "utf8",
-        );
-        break;
+      const {
+        enqueueDeferredItem,
+        isCustomer8xxxProfileCode,
+        readDeferredQueue,
+      } = require("../lib/deferred-headed-queue-ssot.cjs");
+      for (const item of this.listDeferredAgentTasks()) {
+        const c = String(item?.code || "").trim();
+        if (!c || isCustomer8xxxProfileCode(c)) continue;
+        enqueueDeferredItem({
+          profileId: item.profileId,
+          code: c,
+          account: item.account || null,
+          taskType: item.taskType || item.taskReason || item.reason,
+          reason: item.reason,
+          isHeaded: true,
+        });
       }
+      if (extraReadyItem?.code && !isCustomer8xxxProfileCode(extraReadyItem.code)) {
+        enqueueDeferredItem({
+          profileId: extraReadyItem.profileId,
+          code: extraReadyItem.code,
+          account: extraReadyItem.account || null,
+          taskType: extraReadyItem.taskType || extraReadyItem.taskReason || extraReadyItem.reason,
+          reason: extraReadyItem.reason,
+          isHeaded: false,
+        });
+      }
+      readDeferredQueue();
     } catch {
       /* ignore */
     }
@@ -473,11 +464,27 @@ class SessionManager {
     this.#onSessionChange = handler ?? null;
   }
 
+  #pruneDeadSidecarSessionIfAny(id, session) {
+    if (!session?.alive || this.#inLaunchGrace(session)) return false;
+    if (session.context && isContextAlive(session.context)) return false;
+    if (!isSidecarPidDefinitelyDead(session.userDataDir)) return false;
+    if (session.watchdog) {
+      clearInterval(session.watchdog);
+      session.watchdog = null;
+    }
+    session.alive = false;
+    this.#sessions.delete(id);
+    removeSidecarPid(session.userDataDir);
+    const closed = profileService.setProfileStatus(id, "closed", { reason: "dead-sidecar-pid" });
+    this.#emitSessionChange(id, closed, "closed");
+    return true;
+  }
+
   isRunning(profileId) {
     const id = String(profileId);
     if (this.#launchingIds.has(id) || this.#agentLaunchingIds.has(id)) return true;
     const session = this.#sessions.get(id);
-    if (session?.alive) return true;
+    if (session?.alive && !this.#pruneDeadSidecarSessionIfAny(id, session)) return true;
     const agentSession = this.#agentSessions.get(id);
     return Boolean(agentSession?.alive);
   }
@@ -504,7 +511,9 @@ class SessionManager {
   isUserInteractiveSession(profileId) {
     const id = String(profileId);
     const session = this.#sessions.get(id);
-    if (session?.alive) return session.headless !== true;
+    if (session?.alive && !this.#pruneDeadSidecarSessionIfAny(id, session)) {
+      return session.headless !== true;
+    }
     if (!this.#userDataRoot) return false;
     try {
       const primaryUserDataDir = profileDataDir(this.#userDataRoot, id);
@@ -615,29 +624,12 @@ class SessionManager {
                 ).catch(() => undefined);
                 if (code && !/^8\d{3}$/.test(String(code).replace(/^#/, "").trim().padStart(4, "0"))) {
                   try {
-                    const qPath = "E:\\Dev\\Tool\\P0002-Social-Hub\\data\\deferred-user-headed-queue.json";
-                    const raw = fs.existsSync(qPath) ? JSON.parse(fs.readFileSync(qPath, "utf8")) : null;
-                    const ready = Array.isArray(raw?.readyForRetry) ? raw.readyForRetry : [];
-                    const agTasks = new Set(["appeal-antigravity-tos", "reconcile-cloud-ag", "unlock-ag-validation"]);
-                    const code4 = String(code).replace(/^#/, "").trim().padStart(4, "0");
-                    const hasAgTask = ready.some((x) => {
-                      if (String(x?.code || "").padStart(4, "0") !== code4) return false;
-                      const tasks = Array.isArray(x.tasks) ? x.tasks : [];
-                      return agTasks.has(String(x.taskReason || "")) || tasks.some((t) => agTasks.has(String(t?.taskReason || "")));
+                    const { drainReadyDeferredQueue } = require("../lib/deferred-queue-drainer.cjs");
+                    drainReadyDeferredQueue({
+                      sessionManager: this,
+                      profileService,
+                      targetCodes: [String(code).replace(/^#/, "").trim().padStart(4, "0")],
                     });
-                    if (hasAgTask) {
-                      const winShellPath = "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs";
-                      const scriptPath = "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\appeal-antigravity-tos-fleet.mjs";
-                      if (fs.existsSync(winShellPath) && fs.existsSync(scriptPath)) {
-                        const { startHiddenDetachedProcess } = require(winShellPath);
-                        startHiddenDetachedProcess("E:\\Dev\\.tools\\nodew.exe", [scriptPath, "--drain-deferred"], {
-                          cwd: "E:\\Dev",
-                          pidFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-drain.pid",
-                          logFile: "E:\\Dev\\Tool\\.ship\\appeal-antigravity-tos-fleet.log",
-                          env: { ...process.env, STEALTH_AGENT_CALLER: "agent:deferred-ag-drain" },
-                        });
-                      }
-                    }
                   } catch {
                     /* ignore */
                   }
@@ -1163,6 +1155,7 @@ class SessionManager {
       userDataDir,
       debugPort: focusDebugPort,
       focused: true,
+      ...launchMeta(profile),
     };
   }
 
@@ -1181,6 +1174,10 @@ class SessionManager {
     // instead of merely deleting the Map entry (which previously orphaned chrome-headless.exe + conhost.exe).
     for (const [id, session] of this.#sessions.entries()) {
       if (!session.alive) continue;
+      if (this.#pruneDeadSidecarSessionIfAny(id, session)) {
+        changed = true;
+        continue;
+      }
       if (!session.focusOnly && session.context && !this.#inLaunchGrace(session) && !isContextAlive(session.context)) {
         if (session.headless !== true && session.userDataDir && findLiveHeadedBrowserPidNative(session.userDataDir) > 0) {
           if (session.watchdog) clearInterval(session.watchdog);
@@ -2837,6 +2834,7 @@ class SessionManager {
     const rows = [];
     for (const [id, session] of this.#sessions.entries()) {
       if (!session.alive) continue;
+      if (this.#pruneDeadSidecarSessionIfAny(id, session)) continue;
       const name = session.profile?.name || session.profileCode || id;
       const supportChatProtected = Boolean(session.headless && isSupportChatProtectedSession(session));
       rows.push({
@@ -3013,6 +3011,7 @@ module.exports = {
   removeStaleProfileLocks,
   isLaunchLockError,
   isContextAlive,
+  isSidecarPidDefinitelyDead,
   prepareProfileForLaunch,
   shouldSkipOrphanProbe,
   isExemptActiveChatOrTaskSession,

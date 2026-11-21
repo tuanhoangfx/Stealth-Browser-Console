@@ -205,6 +205,7 @@ function buildCookieGuardRoutes(deps) {
           const userDataDir = path.join(resolveProfilesRoot(screenshotsRoot()), String(profile.id));
           const profileCode = extractProfileCode(profile.name, profile.id);
           const isRunning = sessionManager.isRunning(profile.id);
+          const debugPort = isRunning ? Number(sessionManager.getDebugPort?.(profile.id) || 0) : 0;
           const context = isRunning
             ? (await sessionManager.ensureConnectedContext?.(profile.id)) || sessionManager.getContext(profile.id)
             : null;
@@ -212,7 +213,15 @@ function buildCookieGuardRoutes(deps) {
           if (context && typeof context.cookies === "function") {
             await syncLiveContextCookiesToVaultIfChanged(context, { profileCode }).catch(() => undefined);
             const liveCookies = await context.cookies().catch(() => []);
-            cookiePairs = liveCookies.map((c) => ({ domain: String(c.domain || ""), name: String(c.name || "") }));
+            cookiePairs = liveCookies.map((c) => ({
+              domain: String(c.domain || ""),
+              name: String(c.name || ""),
+              value: String(c.value || ""),
+              path: String(c.path || "/"),
+              ...(Number.isFinite(c.expires) ? { expires: c.expires } : {}),
+              secure: Boolean(c.secure),
+              httpOnly: Boolean(c.httpOnly),
+            }));
           }
           const syncRes = await syncProfilePlatformsToP0020IfChanged({
             userDataDir,
@@ -220,6 +229,8 @@ function buildCookieGuardRoutes(deps) {
             profileId: String(profile.id),
             cookiePairs,
             source: "p0003_manual_reconcile",
+            liveCdp: Boolean(isRunning && debugPort > 0),
+            debugPort: isRunning ? debugPort : 0,
           });
           return send.json(ctx.res, 200, {
             ...syncRes,

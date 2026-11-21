@@ -417,8 +417,12 @@ function buildCdpProxyAndJobRoutes(deps) {
             typeof mod.getP0020ProxyWatchdogStatus === "function" ? mod.getP0020ProxyWatchdogStatus() : null,
           ),
         ]);
-        const pool = Array.isArray(mod.MOBILE_CELLULAR_DEVICE_POOL)
-          ? mod.MOBILE_CELLULAR_DEVICE_POOL.map((d) => ({
+        const rawPool =
+          typeof mod.getMobileCellularDevicePool === "function"
+            ? mod.getMobileCellularDevicePool()
+            : mod.MOBILE_CELLULAR_DEVICE_POOL;
+        const pool = Array.isArray(rawPool)
+          ? rawPool.map((d) => ({
               deviceId: d.deviceId,
               label: d.label,
               carrier: d.carrier,
@@ -447,6 +451,42 @@ function buildCdpProxyAndJobRoutes(deps) {
         }
         const result = await mod.switchPixelEsimProfile({ deviceSpec, targetProfile });
         return send.json(ctx.res, result?.ok ? 200 : 503, result);
+      },
+    },
+    {
+      id: "mobileStealth.executionBoard",
+      method: "GET",
+      pattern: /^\/api\/mobile-stealth\/execution-board$/,
+      handler(ctx) {
+        const nodePath = require("node:path");
+        const boardPath = nodePath.join(__dirname, "..", "lib", "mobile-farm-execution-board.cjs");
+        try {
+          delete require.cache[require.resolve(boardPath)];
+        } catch {
+          /* ignore */
+        }
+        const mod = require(boardPath);
+        return send.json(ctx.res, 200, mod.collectMobileFarmExecutionBoard());
+      },
+    },
+    {
+      id: "mobileStealth.daemonControl",
+      method: "POST",
+      pattern: /^\/api\/mobile-farm\/daemon-control$/,
+      handler(ctx) {
+        const nodePath = require("node:path");
+        const boardPath = nodePath.join(__dirname, "..", "lib", "mobile-farm-execution-board.cjs");
+        try {
+          delete require.cache[require.resolve(boardPath)];
+        } catch {
+          /* ignore */
+        }
+        const mod = require(boardPath);
+        const res = mod.controlMobileFarmDaemon({
+          daemonId: ctx.body?.daemonId,
+          action: ctx.body?.action || "start",
+        });
+        return send.json(ctx.res, res.ok ? 200 : 400, res);
       },
     },
     {

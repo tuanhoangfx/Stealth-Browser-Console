@@ -1,4 +1,4 @@
-import { Copy, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { HubBulkActionButton, HubDirectoryNewBulkAction } from "@tool-workspace/hub-ui";
 
 export type StealthWorkflowsDirectoryBulkActionsProps = {
@@ -21,7 +21,7 @@ export function StealthWorkflowsDirectoryBulkActions({
     <>
       <HubDirectoryNewBulkAction title="Create workflow" onClick={onNew} />
       <HubBulkActionButton
-        icon={<Copy size={14} aria-hidden />}
+        icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>📋</span>}
         label="Copy"
         title={hasSelection ? "Duplicate selected workflows" : "Duplicate active workflow"}
         tone="indigo"

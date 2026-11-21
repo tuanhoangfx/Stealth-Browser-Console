@@ -21,6 +21,19 @@ function copyDir(src, dest) {
 
 exports.default = async function afterPack(context) {
   await runPackGuardAfterPack(context);
+  const resDir = path.join(context.appOutDir, "resources");
+  for (const staleRel of ["hot-patch", "bundled-extensions"]) {
+    const staleDir = path.join(resDir, staleRel);
+    if (!fs.existsSync(staleDir)) continue;
+    try {
+      const nm = path.join(staleDir, "node_modules");
+      if (fs.existsSync(nm)) fs.rmSync(nm, { recursive: true, force: true });
+      fs.rmSync(staleDir, { recursive: true, force: true });
+      console.log(`[afterPack] pruned loose resources/${staleRel} before NSIS compression`);
+    } catch (e) {
+      console.warn(`[afterPack] prune ${staleRel} skipped (${e?.message || e})`);
+    }
+  }
   const projectDir = context.packager.projectDir;
   const srcRoot = path.join(projectDir, "electron", "packaged-node_modules", "node_modules");
   const destRoot = path.join(context.appOutDir, "resources", "app.asar.unpacked", "node_modules");

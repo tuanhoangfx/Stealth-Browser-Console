@@ -3,9 +3,10 @@ import {
   HubBulkActionButton,
   HubDirectoryAdaptiveEditAction,
   HubDirectoryBulkMoreMenu,
+  HubDirectoryDeleteBulkAction,
   HubDirectoryNewBulkAction,
 } from "@tool-workspace/hub-ui";
-import { Blocks, Cable, CloudUpload, Cookie, FolderTree, Layers, Pin, Play, RotateCcw, Square, Trash2, Download, Upload, Shield } from "lucide-react";
+import { Blocks, Cable, Cookie, Layers, Shield } from "lucide-react";
 import { profileAdaptiveEditLabelHint } from "./profile-bulk-action-hints";
 import type { ExtensionIconMap } from "./useExtensionIcons";
 
@@ -113,15 +114,15 @@ export function StealthProfilesDirectoryBulkActions({
   onCreate,
   onEditSingle,
   onEditBulk,
-  onGroups,
+  onGroups: _onGroups,
   onExport,
-  onImport,
+  onImport: _onImport,
   onSyncP0020,
   syncP0020Busy = false,
-  onResetLocalIp,
-  onPinStaticIp,
-  allSelectedStaticIp = false,
-  proxyBulkBusy = false,
+  onResetLocalIp: _onResetLocalIp,
+  onPinStaticIp: _onPinStaticIp,
+  allSelectedStaticIp: _allSelectedStaticIp = false,
+  proxyBulkBusy: _proxyBulkBusy = false,
   onExtensionSet,
 }: {
   hasSelection: boolean;
@@ -205,8 +206,13 @@ export function StealthProfilesDirectoryBulkActions({
         bulkTitle="Open bulk detail modal for selected profiles"
         labelHint={profileAdaptiveEditLabelHint(selectedCount)}
       />
+      <HubDirectoryDeleteBulkAction
+        title="Delete selected profiles"
+        disabled={!hasSelection || syncBusy}
+        onClick={onDelete}
+      />
       <HubBulkActionButton
-        icon={<Square size={14} aria-hidden />}
+        icon={<span className="inline-flex text-[13px] leading-none" aria-hidden>⏹️</span>}
         label="Close"
         title={closeTitle}
         tone="rose"
@@ -214,13 +220,12 @@ export function StealthProfilesDirectoryBulkActions({
         onClick={closeAllMode ? onCloseAllRunning : onClose}
       />
       <HubDirectoryBulkMoreMenu
-        title="Launch, Extension, Delete, Groups, Export, Import"
+        title="Launch, Extension, Export, Sync"
         actions={[
           {
             key: "launch",
             label: "Launch",
-            icon: Play,
-            iconClassName: "text-emerald-300",
+            emoji: "▶️",
             title: launchTitle,
             tone: "emerald",
             disabled: !hasSelection || syncBusy || launchBusy || launchDisabled,
@@ -230,8 +235,7 @@ export function StealthProfilesDirectoryBulkActions({
           {
             key: "extension",
             label: "Extension",
-            icon: Blocks,
-            iconClassName: "text-violet-300",
+            emoji: "🧩",
             title: hasSelection
               ? "Toggle Cookie Bridge, Browser Operator, or Surfshark VPN for selected profiles"
               : "Select one or more profiles first to configure extensions",
@@ -242,29 +246,9 @@ export function StealthProfilesDirectoryBulkActions({
             onClick: () => setExtensionOpen((v) => !v),
           },
           {
-            key: "delete",
-            label: "Delete",
-            icon: Trash2,
-            iconClassName: "text-rose-400",
-            title: "Delete selected profiles",
-            tone: "rose",
-            disabled: !hasSelection || syncBusy,
-            onClick: onDelete,
-          },
-          {
-            key: "groups",
-            label: "Groups",
-            icon: FolderTree,
-            iconClassName: "text-amber-300",
-            title: "Manage profile groups (create, rename, or delete groups)",
-            tone: "amber",
-            onClick: onGroups,
-          },
-          {
             key: "export",
             label: "Export",
-            icon: Download,
-            iconClassName: "text-sky-300",
+            emoji: "📤",
             title: hasSelection
               ? `Export selected profiles (${selectedCount}) configuration to JSON bundle`
               : "Select one or more profiles first to export their configuration",
@@ -272,58 +256,12 @@ export function StealthProfilesDirectoryBulkActions({
             disabled: !hasSelection || syncBusy,
             onClick: onExport,
           },
-          {
-            key: "import",
-            label: "Import",
-            icon: Upload,
-            iconClassName: "text-teal-300",
-            title: "Import profiles configuration from a JSON bundle",
-            tone: "emerald",
-            onClick: onImport,
-          },
-          ...(onResetLocalIp
-            ? [
-                {
-                  key: "reset-local-ip",
-                  label: hasSelection ? "Reset to Local IP" : "Reset All to Local IP",
-                  icon: RotateCcw,
-                  iconClassName: "text-amber-300",
-                  title: hasSelection
-                    ? `Reset selected profiles (${selectedCount}) to 📍 Local IP and default auto-geo settings`
-                    : "Reset all profiles in catalog to 📍 Local IP and default auto-geo settings so agents auto-select IP per task",
-                  tone: "amber" as const,
-                  disabled: syncBusy || proxyBulkBusy,
-                  selectedCount: hasSelection ? selectedCount : undefined,
-                  onClick: onResetLocalIp,
-                },
-              ]
-            : []),
-          ...(onPinStaticIp
-            ? [
-                {
-                  key: "pin-static-ip",
-                  label: allSelectedStaticIp ? "Unpin Static IP" : "Pin Static IP",
-                  icon: Pin,
-                  iconClassName: "text-indigo-300",
-                  title: hasSelection
-                    ? allSelectedStaticIp
-                      ? `Unpin 📌 Static IP on selected profiles (${selectedCount}) so they auto-reset to Local IP on close`
-                      : `Pin 📌 Static IP on selected profiles (${selectedCount}) so their proxy never resets on close`
-                    : "Select one or more profiles first to pin or unpin Static IP",
-                  tone: "indigo" as const,
-                  disabled: !hasSelection || syncBusy || proxyBulkBusy,
-                  selectedCount: hasSelection ? selectedCount : undefined,
-                  onClick: () => onPinStaticIp(!allSelectedStaticIp),
-                },
-              ]
-            : []),
           ...(onSyncP0020
             ? [
                 {
                   key: "sync-p0020",
                   label: syncP0020Busy ? "Syncing P0020…" : "Sync P0020 Status",
-                  icon: CloudUpload,
-                  iconClassName: "text-cyan-300",
+                  emoji: "🔄",
                   title: hasSelection
                     ? `Scan selected profiles (${selectedCount}) on-disk Cookies & Local Storage and sync their login status to P0020 DataBox`
                     : "Scan all profiles' on-disk Cookies & Local Storage and reconcile login status with P0020 DataBox",

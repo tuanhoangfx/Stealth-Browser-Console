@@ -543,7 +543,7 @@ function BrowserDefaultsSectionBody() {
 
         <HubDetailFieldRow slots={2}>
           <HubAdmClickFilterField
-            header={{ label: "Window mode", headerEmoji: "🪟" }}
+            header={{ label: "Window mode", headerEmoji: "🖼️" }}
             fieldLabel="Window mode"
             filterKey="browser-window-mode"
             labelHint={stealthFormFieldHintContent("windowMode")}
@@ -856,10 +856,10 @@ function DataFolderSectionBody() {
           <HubAdmClickEditField
             header={{ label: "App data", headerEmoji: "🗂️" }}
             fieldLabel="App data path"
-            value={userDataPath || "—"}
+            value={userDataPath || ""}
             onChange={() => {}}
             disabled
-            showCopyAction
+            showCopyAction={Boolean(userDataPath)}
             trailingAction={
               <button
                 type="button"
@@ -877,15 +877,15 @@ function DataFolderSectionBody() {
           <HubAdmClickEditField
             header={{ label: "Profiles folder", headerEmoji: "💾" }}
             fieldLabel="Profiles storage path"
-            value={loc?.profilesRoot || "—"}
+            value={loc?.profilesRoot || ""}
             onChange={() => {}}
             disabled
-            showCopyAction
+            showCopyAction={Boolean(loc?.profilesRoot)}
             trailingAction={
               <div className="flex items-center gap-1">
-                <span className={SSOT_BADGE_PILL_CLASS}>
-                  {loc ? `${loc.profileDirCount} dirs` : "—"}
-                </span>
+                {loc ? (
+                  <span className={SSOT_BADGE_PILL_CLASS}>{`${loc.profileDirCount} dirs`}</span>
+                ) : null}
                 <button
                   type="button"
                   className={SSOT_COMPACT_BTN_CLASS}
@@ -997,7 +997,7 @@ function AboutSectionBody() {
         <HubAdmClickEditField
           header={{ label: "Console version", headerEmoji: "🚀" }}
           fieldLabel="Console version"
-          value={`v${version || "—"}`}
+          value={version ? `v${version}` : ""}
           onChange={() => {}}
           disabled
           showCopyAction={false}

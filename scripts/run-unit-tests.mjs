@@ -36,6 +36,7 @@ runStep("taskbar-badge-guard", "node", ["--test", "electron/lib/taskbar-badge-gu
 runStep("taskbar-apply-worker", "node", ["--test", "electron/lib/taskbar-apply-worker.test.cjs"]);
 runStep("profile-code", "node", ["--test", "electron/lib/profile-code.test.cjs"]);
 runStep("running-profile-cap", "node", ["--test", "electron/lib/running-profile-cap.test.cjs"]);
+runStep("deferred-headed-queue-ssot", "node", ["--test", "electron/lib/deferred-headed-queue-ssot.test.cjs"]);
 runStep("shutdown-log", "node", ["--test", "electron/lib/shutdown-log.test.cjs"]);
 runStep("desktop-updater", "node", ["--test", "electron/desktop-updater.test.cjs"]);
 runStep("kill-port-guard", "node", ["scripts/kill-port.test.cjs"]);

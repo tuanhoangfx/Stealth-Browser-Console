@@ -18,7 +18,48 @@ const {
   writeShutdownLog,
   writeBootLog,
   readLifecycleLog,
+  appendLifecycleLog,
 } = require("./lib/shutdown-log.cjs");
+
+function installGlobalCrashGuard() {
+  if (globalThis.__STEALTH_MAIN_CRASH_GUARD_INSTALLED__) return;
+  globalThis.__STEALTH_MAIN_CRASH_GUARD_INSTALLED__ = true;
+
+  const logCrash = (event, err) => {
+    if (err && (err.code === "EPIPE" || err.code === "ERR_STREAM_DESTROYED" || String(err.message || "").includes("write EPIPE"))) {
+      return;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack || "" : "";
+    try {
+      console.error(`[crash-guard] ${event}:`, stack || message);
+    } catch {
+      /* ignore console write errors */
+    }
+    try {
+      const root = app.getPath("userData");
+      if (root) {
+        appendLifecycleLog(root, {
+          kind: "crash-guard",
+          event,
+          message: message.slice(0, 2000),
+          stack: stack.slice(0, 4000),
+        });
+      }
+    } catch {
+      /* never throw inside crash guard */
+    }
+  };
+
+  process.on("uncaughtException", (err) => {
+    logCrash("uncaughtException", err);
+  });
+  process.on("unhandledRejection", (reason) => {
+    logCrash("unhandledRejection", reason);
+  });
+}
+
+installGlobalCrashGuard();
 
 /** Interactive UI must not inherit Cursor/agent smoke env (headless profiles with no window). API smokes use X-Stealth-Agent-Smoke per request. */
 for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGENT"]) {
@@ -1975,63 +2016,66 @@ app.whenReady().then(async () => {
   setImmediate(() => {
     try {
       purgeIdentityToolbarRoot(userDataRoot());
-      if (FAST_PREP) return;
-      const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
-      if (bulk.removed > 0) {
-        console.log(
-          `[legacy-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
-        );
-      }
-      if (!nativeExtensionsEnabled()) {
-        const surfshark = purgeAllProfilesSurfshark(userDataRoot());
-        if (!surfshark.skipped && (surfshark.removed > 0 || surfshark.cacheRemoved)) {
+      if (!FAST_PREP) {
+        const bulk = purgeAllProfilesIdentityToolbar(userDataRoot());
+        if (bulk.removed > 0) {
           console.log(
-            `[surfshark-purge] startup profiles=${surfshark.profiles} removed=${surfshark.removed} prefsCleaned=${surfshark.prefsCleaned} cacheRemoved=${surfshark.cacheRemoved}`,
+            `[legacy-purge] startup profiles=${bulk.profiles} removed=${bulk.removed} prefsCleaned=${bulk.prefsCleaned}`,
           );
         }
-      }
-      const broken = FAST_PREP ? { removed: 0 } : purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
-      if (broken.removed > 0) {
-        console.log(
-          `[extension-purge] startup profiles=${broken.profiles} brokenRemoved=${broken.removed} prefsCleaned=${broken.prefsCleaned}`,
-        );
-      }
-      if (nativeExtensionsEnabled() && getProfileExtensionsEnabled() && !FAST_PREP) {
-        const deduped = purgeAllProfilesDuplicateUnpackedStoreExtensions(userDataRoot());
-        if (deduped.removed > 0) {
+        if (!nativeExtensionsEnabled()) {
+          const surfshark = purgeAllProfilesSurfshark(userDataRoot());
+          if (!surfshark.skipped && (surfshark.removed > 0 || surfshark.cacheRemoved)) {
+            console.log(
+              `[surfshark-purge] startup profiles=${surfshark.profiles} removed=${surfshark.removed} prefsCleaned=${surfshark.prefsCleaned} cacheRemoved=${surfshark.cacheRemoved}`,
+            );
+          }
+        }
+        const broken = purgeAllProfilesBrokenExtensionPrefs(userDataRoot());
+        if (broken.removed > 0) {
           console.log(
-            `[extension-dedupe] startup profiles=${deduped.profiles} shadowRemoved=${deduped.removed}`,
+            `[extension-purge] startup profiles=${broken.profiles} brokenRemoved=${broken.removed} prefsCleaned=${broken.prefsCleaned}`,
           );
         }
-        void (async () => {
-          try {
-            const binary = await getBinaryInfoCached();
-            const { repairAllProfileExtensionPaths } = require("./lib/native-extension-load.cjs");
-            const repaired = repairAllProfileExtensionPaths(userDataRoot(), binary.cacheDir);
-            if (repaired.rewritten > 0) {
+        if (nativeExtensionsEnabled() && getProfileExtensionsEnabled()) {
+          const deduped = purgeAllProfilesDuplicateUnpackedStoreExtensions(userDataRoot());
+          if (deduped.removed > 0) {
+            console.log(
+              `[extension-dedupe] startup profiles=${deduped.profiles} shadowRemoved=${deduped.removed}`,
+            );
+          }
+          void (async () => {
+            try {
+              const binary = await getBinaryInfoCached();
+              const { repairAllProfileExtensionPaths } = require("./lib/native-extension-load.cjs");
+              const repaired = repairAllProfileExtensionPaths(userDataRoot(), binary.cacheDir);
+              if (repaired.rewritten > 0) {
+                console.log(
+                  `[extension-repair] startup profiles=${repaired.profiles} rewritten=${repaired.rewritten}`,
+                );
+              }
+            } catch (error) {
+              console.warn("[extension-repair] startup:", error instanceof Error ? error.message : error);
+            }
+          })();
+        }
+        if (getProfileExtensionsEnabled()) {
+          const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
+          if (bridgeDir) {
+            const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
+            if (stale.removed > 0) {
               console.log(
-                `[extension-repair] startup profiles=${repaired.profiles} rewritten=${repaired.rewritten}`,
+                `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
               );
             }
-          } catch (error) {
-            console.warn("[extension-repair] startup:", error instanceof Error ? error.message : error);
-          }
-        })();
-      }
-      if (getProfileExtensionsEnabled() && !FAST_PREP) {
-        const bridgeDir = resolveCookieBridgeExtensionDirSync(userDataRoot());
-        if (bridgeDir) {
-          const stale = purgeAllProfilesStaleCookieBridgePrefs(userDataRoot(), bridgeDir);
-          if (stale.removed > 0) {
-            console.log(
-              `[cookie-bridge-purge] startup profiles=${stale.profiles} staleRemoved=${stale.removed} prefsCleaned=${stale.prefsCleaned}`,
-            );
           }
         }
       }
       // Schedule automatic 12-hour background disk hygiene sweep (closed profile caches, orphan dirs, D:\Temp)
+      // Must always register even when FAST_PREP === true.
       const pruneScript = path.join(__dirname, "..", "scripts", "prune-closed-profile-caches.cjs");
-      if (fs.existsSync(pruneScript)) {
+      if (!globalThis.__STEALTH_DISK_HYGIENE_SCHEDULED__ && fs.existsSync(pruneScript)) {
+        globalThis.__STEALTH_DISK_HYGIENE_SCHEDULED__ = true;
         const runBgDiskHygiene = () => {
           if (isAppQuitting() || appShutdownDone) return;
           try {

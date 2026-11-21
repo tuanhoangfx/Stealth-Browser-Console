@@ -40,6 +40,7 @@ const targetManifest = path.join(targetDir, "manifest.json");
 const targetVerified = path.join(targetDir, "_metadata", "verified_contents.json");
 const { shouldCopyExtensionEntry } = require("../electron/lib/cloakbrowser-extension-stage.cjs");
 const { syncExtensionDirToCache } = require("../electron/lib/cookie-bridge-store.cjs");
+const { packBundledExtensionsAsar } = require("./lib/bundled-extensions-asar.cjs");
 
 function readVersion(dir) {
   try {
@@ -62,12 +63,14 @@ function syncLatestWorkspaceSnapshot() {
         /* ignore */
       }
     }
-    fs.mkdirSync(dest, { recursive: true });
-    fs.cpSync(workspaceDir, dest, {
+    fs.mkdirSync(staging, { recursive: true });
+    fs.cpSync(workspaceDir, staging, {
       recursive: true,
       force: true,
       filter: (entry) => shouldCopyExtensionEntry(path.relative(workspaceDir, entry)),
     });
+    fs.rmSync(dest, { recursive: true, force: true });
+    fs.renameSync(staging, dest);
     console.log(
       `sync-bundled-e0001: synced latest workspace snapshot v${curVer || "none"} → v${wsVer} (${path.relative(repoRoot, dest)})`,
     );
@@ -80,6 +83,15 @@ function syncLatestWorkspaceSnapshot() {
 }
 
 syncLatestWorkspaceSnapshot();
+
+async function ensurePackedAsar() {
+  const res = await packBundledExtensionsAsar(repoRoot);
+  if (res.ok) {
+    console.log(
+      `sync-bundled-e0001: packed ${path.relative(repoRoot, res.outAsar)} (${Math.round(res.sizeBytes / 1024)} KB)`,
+    );
+  }
+}
 
 const hasCommitted = fs.existsSync(targetManifest) && fs.existsSync(targetVerified);
 
@@ -95,9 +107,11 @@ if (hasCommitted && !force && !upgradeCws) {
     fs.rmSync(targetDir, { recursive: true, force: true });
     fs.renameSync(staging, targetDir);
     console.log(`sync-bundled-e0001: upgraded bundled snapshot v${committedVer} → v${cacheVer} from local verified cache.`);
+    await ensurePackedAsar();
     process.exit(0);
   }
   console.log(`sync-bundled-e0001: snapshot present (v${committedVer}), skipping download. Use --force or --upgrade-cws to refresh.`);
+  await ensurePackedAsar();
   process.exit(0);
 }
 
@@ -126,6 +140,7 @@ try {
   fs.renameSync(staging, targetDir);
   const count = fs.readdirSync(targetDir, { recursive: true }).length;
   console.log(`sync-bundled-e0001: refreshed v${readVersion(targetDir)} (${count} entries, cached=${cached}) → ${path.relative(repoRoot, targetDir)}`);
+  await ensurePackedAsar();
 } catch (error) {
   const msg = error instanceof Error ? error.message : String(error);
   if (hasCommitted) {

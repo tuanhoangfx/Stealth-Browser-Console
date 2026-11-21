@@ -8,6 +8,7 @@
  */
 
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
@@ -16,8 +17,53 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 export function isPackagedAsarPath(targetPath) {
+  if (process.env.HUB_DESKTOP_PACKAGED === "1") return true;
   const norm = String(targetPath || "").replace(/\\/g, "/").toLowerCase();
-  return norm.includes(".asar/") || norm.endsWith(".asar");
+  return (
+    norm.includes(".asar/") ||
+    norm.endsWith(".asar") ||
+    norm.includes("/hot-patch/") ||
+    norm.endsWith("/hot-patch")
+  );
+}
+
+/**
+ * Forward an HTTP `POST /api/system/hot-reload` request from an ESM host child process
+ * (`host/server.mjs`) to its parent Electron `createDesktopHotReloadControlBridge` using
+ * `<userDataDir>/desktop-control.json`.
+ */
+export async function forwardHotReloadToDesktopControl({ userDataDir, body = {} } = {}) {
+  const dirs = [];
+  if (userDataDir) dirs.push(path.resolve(userDataDir));
+  if (process.env.HUB_DESKTOP_CONTROL_FILE) {
+    dirs.unshift(path.dirname(path.resolve(process.env.HUB_DESKTOP_CONTROL_FILE)));
+  }
+  const appData = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+  for (const dir of dirs) {
+    const ctlPath = path.join(dir, "desktop-control.json");
+    if (!fs.existsSync(ctlPath)) continue;
+    try {
+      const ctl = JSON.parse(fs.readFileSync(ctlPath, "utf8"));
+      if (!ctl?.port || !ctl?.token) continue;
+      if (ctl.pid && !isPidAlive(ctl.pid)) continue;
+      const res = await fetch(`http://127.0.0.1:${ctl.port}/hot-reload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Hub-Control-Token": String(ctl.token),
+        },
+        body: JSON.stringify(body || {}),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      /* try next candidate */
+    }
+  }
+  void appData;
+  return { ok: false, reason: "desktop_control_bridge_offline" };
 }
 
 function isPidAlive(pid) {
@@ -70,7 +116,12 @@ export function writeJsonStateAtomic(stateFile, payload) {
  */
 export function createSovereignRuntimeBridge(config) {
   const productRoot = path.resolve(config.productRoot);
-  const monorepoRoot = path.resolve(productRoot, "..", "..");
+  const rawMonorepoRoot = path.resolve(productRoot, "..", "..");
+  const monorepoRoot = fs.existsSync(path.join(rawMonorepoRoot, "Tool", "scripts"))
+    ? rawMonorepoRoot
+    : ([process.env.DEV_ROOT, "E:\\Dev"].find(
+        (p) => p && fs.existsSync(path.join(p, "Tool", "scripts")),
+      ) || rawMonorepoRoot);
   const appHomeDir = path.join(os.homedir(), config.homeDirName || ".hub_desktop_app");
   const stateFileName = config.stateFileName || "state.json";
   const stateEnvVar = config.stateEnvVar || "";
@@ -193,35 +244,363 @@ export function createSovereignRuntimeBridge(config) {
 
   async function resolveDataboxAuthSafe() {
     const wsDatabox = path.join(monorepoRoot, "Tool", "scripts", "lib", "databox-plane-ssot.mjs");
-    if (!isPackagedAsar() && fs.existsSync(wsDatabox)) {
+    if (fs.existsSync(wsDatabox)) {
       try {
         const mod = await import(pathToFileURL(wsDatabox).href);
         if (typeof mod.resolveDataboxAuth === "function") {
-          return mod.resolveDataboxAuth("linux");
+          const auth = mod.resolveDataboxAuth();
+          const origin = String(auth?.origin || auth?.url || auth?.apiUrl || "").replace(/\/+$/, "");
+          const key = String(auth?.key || auth?.serviceKey || "");
+          if (origin && key) {
+            return { ...auth, origin, url: origin, apiUrl: origin, key, serviceRoleKey: key };
+          }
         }
       } catch {
         /* fall through */
       }
     }
-    const envShared = path.join(monorepoRoot, ".env.shared");
-    let url = process.env.DATABOX_API_URL || process.env.SUPABASE_URL || "";
-    let key = process.env.DATABOX_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-    if ((!url || !key) && !isPackagedAsar() && fs.existsSync(envShared)) {
+    let url =
+      process.env.DATABOX_SUPABASE_URL ||
+      process.env.DATABOX_API_URL ||
+      process.env.LINUX_SUPABASE_URL ||
+      process.env.SUPABASE_URL ||
+      process.env.VITE_TWOFA_SUPABASE_URL ||
+      "";
+    let key =
+      process.env.DATABOX_SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.DATABOX_SERVICE_ROLE_KEY ||
+      process.env.LINUX_SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.VITE_TWOFA_SUPABASE_ANON_KEY ||
+      "";
+    const envCandidates = [];
+    for (const rootDir of [monorepoRoot, process.env.DEV_ROOT, os.homedir(), appHomeDir, "E:\\Dev"]) {
+      if (!rootDir) continue;
+      for (const fileName of [".env.shared", ".env.local", ".env"]) {
+        const candidate = path.join(rootDir, fileName);
+        if (!envCandidates.includes(candidate)) envCandidates.push(candidate);
+      }
+    }
+    for (const envFile of envCandidates) {
+      if (url && key) break;
+      if (!fs.existsSync(envFile)) continue;
       try {
-        const lines = fs.readFileSync(envShared, "utf8").split(/\r?\n/);
+        const lines = fs.readFileSync(envFile, "utf8").split(/\r?\n/);
         for (const line of lines) {
           const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
           if (!m) continue;
           const k = m[1];
-          const v = m[2].replace(/^['"]|['"]$/g, "");
-          if (!url && (k === "LINUX_SUPABASE_URL" || k === "DATABOX_API_URL")) url = v;
-          if (!key && (k === "LINUX_SUPABASE_SERVICE_ROLE_KEY" || k === "DATABOX_SERVICE_ROLE_KEY")) key = v;
+          const v = m[2].replace(/^['"]|['"]$/g, "").trim();
+          if (!v) continue;
+          if (
+            !url &&
+            (k === "DATABOX_SUPABASE_URL" ||
+              k === "LINUX_SUPABASE_URL" ||
+              k === "DATABOX_API_URL" ||
+              k === "VITE_TWOFA_SUPABASE_URL")
+          ) {
+            url = v;
+          }
+          if (
+            !key &&
+            (k === "DATABOX_SUPABASE_SERVICE_ROLE_KEY" ||
+              k === "LINUX_SUPABASE_SERVICE_ROLE_KEY" ||
+              k === "DATABOX_SERVICE_ROLE_KEY" ||
+              k === "VITE_TWOFA_SUPABASE_ANON_KEY")
+          ) {
+            key = v;
+          }
         }
       } catch {
         /* ignore */
       }
     }
-    return { apiUrl: url, serviceRoleKey: key };
+    const origin = String(url || "").replace(/\/+$/, "");
+    return { apiUrl: origin, serviceRoleKey: key, origin, url: origin, key };
+  }
+
+  const hubSessionFile = path.join(appHomeDir, "hub-session.json");
+
+  function readHubUserSession() {
+    const raw = readValidJsonState(
+      hubSessionFile,
+      (d) => Boolean(d && typeof d === "object" && typeof d.accessToken === "string" && d.accessToken.trim()),
+    );
+    return raw || null;
+  }
+
+  function saveHubUserSession(payload) {
+    if (!payload || typeof payload !== "object" || !String(payload.accessToken || "").trim()) {
+      clearHubUserSession();
+      return null;
+    }
+    const next = {
+      accessToken: String(payload.accessToken).trim(),
+      refreshToken: String(payload.refreshToken || "").trim(),
+      expiresAt: typeof payload.expiresAt === "number" ? payload.expiresAt : null,
+      userId: payload.userId ? String(payload.userId).trim() : null,
+      email: payload.email ? String(payload.email).trim() : null,
+      updatedAt: new Date().toISOString(),
+    };
+    writeJsonStateAtomic(hubSessionFile, next);
+    return next;
+  }
+
+  function clearHubUserSession() {
+    try {
+      if (fs.existsSync(hubSessionFile)) fs.unlinkSync(hubSessionFile);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Decode and validate Hub Supabase JWT structure + expiry without external deps. */
+  function decodeHubJwtClaims(rawToken, { nowSec = Math.floor(Date.now() / 1000), skewSec = 60 } = {}) {
+    const token = String(rawToken || "").trim();
+    if (!token) return { ok: false, error: "empty_token" };
+    const parts = token.split(".");
+    if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+      return { ok: false, error: "malformed_jwt" };
+    }
+    try {
+      const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+      const payload = JSON.parse(Buffer.from(`${b64}${pad}`, "base64").toString("utf8"));
+      if (!payload || typeof payload !== "object") {
+        return { ok: false, error: "invalid_jwt_payload" };
+      }
+      const sub = typeof payload.sub === "string" ? payload.sub.trim() : "";
+      if (!sub) return { ok: false, error: "missing_sub" };
+      const exp = typeof payload.exp === "number" ? payload.exp : Number(payload.exp);
+      if (Number.isFinite(exp) && exp > 0 && exp + skewSec < nowSec) {
+        return { ok: false, error: "token_expired", exp };
+      }
+      return {
+        ok: true,
+        claims: payload,
+        user: {
+          id: sub,
+          email: typeof payload.email === "string" ? payload.email.trim() || null : null,
+          role: typeof payload.role === "string" ? payload.role : null,
+          exp: Number.isFinite(exp) ? exp : null,
+        },
+      };
+    } catch {
+      return { ok: false, error: "invalid_jwt_encoding" };
+    }
+  }
+
+  /**
+   * Verify HTTP request Hub authentication via:
+   * 1. Explicit `Authorization: Bearer <jwt>` (ALWAYS rejected on invalid/expired JWT), OR
+   * 2. Active persisted non-expired `hub-session.json` when no Bearer header was provided.
+   */
+  function verifyHubRequestAuth(req, { requireAuth = false, skewSec = 60 } = {}) {
+    const authHeader = String(req?.headers?.authorization || "").trim();
+    const xHubToken = String(req?.headers?.["x-hub-token"] || "").trim();
+    if (authHeader || xHubToken) {
+      let bearer = xHubToken;
+      if (authHeader) {
+        const m = /^Bearer\s+(.+)$/i.exec(authHeader);
+        if (!m || !m[1].trim()) {
+          return {
+            ok: false,
+            status: 401,
+            error: "Invalid Authorization header format (expected Bearer token)",
+            code: "invalid_auth_header",
+            source: "bearer",
+            hubUser: null,
+          };
+        }
+        bearer = m[1].trim();
+      }
+      const decoded = decodeHubJwtClaims(bearer, { skewSec });
+      if (!decoded.ok) {
+        return {
+          ok: false,
+          status: 401,
+          error: decoded.error === "token_expired" ? "Hub session expired" : "Invalid Hub Bearer token",
+          code: decoded.error,
+          source: "bearer",
+          hubUser: null,
+        };
+      }
+      return { ok: true, status: 200, source: "bearer", hubUser: decoded.user, token: bearer };
+    }
+
+    const sess = readHubUserSession();
+    if (sess?.accessToken) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const exp = typeof sess.expiresAt === "number" ? sess.expiresAt : Number(sess.expiresAt);
+      const decoded = decodeHubJwtClaims(sess.accessToken, { nowSec, skewSec });
+      if (decoded.ok || (!Number.isFinite(exp) || exp === 0 || exp + skewSec >= nowSec)) {
+        // Reject explicitly expired persisted sessions when JWT has exp in the past
+        if (decoded.error === "token_expired" || (Number.isFinite(exp) && exp > 0 && exp + skewSec < nowSec)) {
+          return {
+            ok: !requireAuth,
+            status: requireAuth ? 401 : 200,
+            error: "Persisted Hub session expired",
+            code: "session_expired",
+            source: "session-file",
+            hubUser: null,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          source: "session-file",
+          hubUser: {
+            id: sess.userId || decoded.user?.id || null,
+            email: sess.email || decoded.user?.email || null,
+            exp: Number.isFinite(exp) && exp > 0 ? exp : decoded.user?.exp ?? null,
+          },
+          token: sess.accessToken,
+        };
+      }
+    }
+
+    if (requireAuth) {
+      return {
+        ok: false,
+        status: 401,
+        error: "Hub authentication required",
+        code: "hub_auth_required",
+        source: "none",
+        hubUser: null,
+      };
+    }
+    return { ok: true, status: 200, source: "none", hubUser: null };
+  }
+
+  const _hubOnlineCache = new Map();
+
+  function resolveHubSupabaseAuthConfig() {
+    const candidates = [
+      path.join(productRoot, ".env.local"),
+      path.join(monorepoRoot, ".env.shared"),
+      "E:\\Dev\\.env.shared",
+    ];
+    const readKey = (keys) => {
+      for (const k of keys) {
+        const direct = String(process.env[k] || "").trim();
+        if (direct) return direct;
+      }
+      for (const fp of candidates) {
+        if (!fp || !fs.existsSync(fp)) continue;
+        try {
+          const content = fs.readFileSync(fp, "utf8");
+          for (const k of keys) {
+            const m = content.match(new RegExp(`^${k}=(.+)$`, "m"));
+            if (m?.[1]?.trim()) return m[1].trim().replace(/^["']|["']$/g, "");
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      return "";
+    };
+    const url = (
+      readKey(["HUB_SUPABASE_URL", "VITE_HUB_SUPABASE_URL"]) || "https://hub-api.infi28.com"
+    ).replace(/\/+$/, "");
+    const anonKey = readKey(["HUB_SUPABASE_ANON_KEY", "VITE_HUB_SUPABASE_ANON_KEY"]);
+    return { url, anonKey };
+  }
+
+  async function verifyHubTokenOnline(
+    rawToken,
+    { ttlMs = 5 * 60 * 1000, timeoutMs = 4000, fetchFn = globalThis.fetch } = {},
+  ) {
+    const token = String(rawToken || "").trim();
+    if (!token) return { ok: false, status: 401, error: "Empty Bearer token", code: "empty_token" };
+    const cfg = resolveHubSupabaseAuthConfig();
+    if (!cfg.url || !cfg.anonKey || typeof fetchFn !== "function") {
+      return { ok: true, verifiedOnline: false, skipped: true };
+    }
+    const cacheKey = `${cfg.url}|${crypto.createHash("sha256").update(token).digest("hex")}`;
+    const now = Date.now();
+    const cached = _hubOnlineCache.get(cacheKey);
+    if (cached && cached.expiresAtMs > now) {
+      return { ...cached.result, cached: true };
+    }
+    try {
+      const res = await fetchFn(`${cfg.url}/auth/v1/user`, {
+        method: "GET",
+        headers: {
+          apikey: cfg.anonKey,
+          Authorization: `Bearer ${token}`,
+        },
+        signal: typeof AbortSignal?.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined,
+      });
+      if (res.status === 401 || res.status === 403) {
+        const result = {
+          ok: false,
+          status: 401,
+          verifiedOnline: true,
+          error: "Hub rejected Bearer token",
+          code: "token_rejected_by_hub",
+          hubUser: null,
+        };
+        _hubOnlineCache.set(cacheKey, { expiresAtMs: now + 60_000, result });
+        return result;
+      }
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        const result = {
+          ok: true,
+          status: 200,
+          verifiedOnline: true,
+          user: {
+            id: typeof data?.id === "string" ? data.id : null,
+            email: typeof data?.email === "string" ? data.email : null,
+          },
+        };
+        _hubOnlineCache.set(cacheKey, { expiresAtMs: now + ttlMs, result });
+        return result;
+      }
+      return { ok: true, verifiedOnline: false, httpStatus: res.status };
+    } catch {
+      if (process.env.HUB_JWT_STRICT_ONLINE === "1") {
+        return {
+          ok: false,
+          status: 401,
+          verifiedOnline: false,
+          error: "Hub online verification unreachable",
+          code: "hub_online_unreachable",
+          hubUser: null,
+        };
+      }
+      return { ok: true, verifiedOnline: false, offlineFallback: true };
+    }
+  }
+
+  async function verifyHubRequestAuthAsync(req, { requireAuth = false, skewSec = 60, verifyOnline = true, fetchFn } = {}) {
+    const base = verifyHubRequestAuth(req, { requireAuth, skewSec });
+    if (!base.ok || base.source === "none" || !verifyOnline || !base.token) {
+      return base;
+    }
+    const online = await verifyHubTokenOnline(base.token, { fetchFn });
+    if (!online.ok) {
+      return {
+        ok: false,
+        status: online.status || 401,
+        error: online.error || "Hub rejected Bearer token",
+        code: online.code || "token_rejected_by_hub",
+        source: base.source,
+        verifiedOnline: true,
+        hubUser: null,
+      };
+    }
+    return {
+      ...base,
+      verifiedOnline: Boolean(online.verifiedOnline),
+      hubUser: online.user?.id
+        ? {
+            id: online.user.id,
+            email: online.user.email || base.hubUser?.email || null,
+            exp: base.hubUser?.exp ?? null,
+          }
+        : base.hubUser,
+    };
   }
 
   return {
@@ -235,6 +614,13 @@ export function createSovereignRuntimeBridge(config) {
     acquireSingletonLockSafe,
     spawnHiddenNodeSafe,
     resolveDataboxAuthSafe,
+    readHubUserSession,
+    saveHubUserSession,
+    clearHubUserSession,
+    decodeHubJwtClaims,
+    verifyHubRequestAuth,
+    verifyHubTokenOnline,
+    verifyHubRequestAuthAsync,
     readValidJsonState,
     writeJsonStateAtomic,
     pickAvailablePort: (startPort, options) => pickAvailablePort(startPort, options),

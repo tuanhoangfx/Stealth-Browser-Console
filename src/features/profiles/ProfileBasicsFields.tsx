@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, CloudUpload, FolderPlus, RotateCcw, Shield, ShieldCheck } from "lucide-react";
 import {
   HubAdmGridSlotPad,
+  HubDirectoryEmptyCell,
   HubDirectoryRunToggle,
   HubPromptDialog,
   HubUsersOnOffLabel,
@@ -751,7 +752,7 @@ export function ProfileSessionFields({
                   }\nTotal State Bundle: ${
                     stateBytes > 0
                       ? `${(stateBytes / (1024 * 1024)).toFixed(1)} MB (${slotLatest?.stateFilesCount ?? 0} files)`
-                      : "—"
+                      : "None"
                   }`
                 : "Checking session backups…"
             }
@@ -763,7 +764,7 @@ export function ProfileSessionFields({
                 <span className="text-[var(--muted)]">No backup</span>
               )
             ) : (
-              <span className="text-[var(--muted)]">—</span>
+              <HubDirectoryEmptyCell className="hub-users-cell-muted" />
             )}
           </span>
         </ProfileDetailReadonlyField>

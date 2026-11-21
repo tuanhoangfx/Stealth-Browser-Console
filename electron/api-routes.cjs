@@ -61,6 +61,8 @@ function buildRoutes(services) {
     buildCdpProxyAndJobRoutes,
     buildJobEventsRoutes,
   } = require("./routes/session-and-cdp-routes.cjs");
+  const { buildDeferredQueueRoutes } = require("./routes/deferred-queue-routes.cjs");
+  const { buildMobileSimRoutes } = require("./routes/mobile-sim-routes.cjs");
 
   refreshCoreRouteModuleCaches({ profileService, userDataRoot });
   const lockGuards = installUnifiedSessionManagerRuntime({
@@ -98,6 +100,8 @@ function buildRoutes(services) {
     ...buildExtensionRoutes(deps),
     ...buildAndroidVaultRoutes(deps),
     ...buildJobEventsRoutes(deps),
+    ...buildDeferredQueueRoutes(deps),
+    ...buildMobileSimRoutes(deps),
   ];
 
   const { ensureProfileContext, resolveProfileId, jobRunners } = runtimeHelpers;

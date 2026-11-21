@@ -12,192 +12,121 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const crypto = require("node:crypto");
+const { createRequire } = require("node:module");
+const { pathToFileURL } = require("node:url");
 
 const srcRoot = path.resolve(__dirname, "..");
+const { CLOAK_ESM_DEPS } = require("../electron/lib/cloakbrowser-esm-deps.cjs");
+const { REQUIRED_UNPACKED_PACKAGES } = require("../electron/lib/packaged-runtime-check.cjs");
 const {
   tryAcquireProductMaintenanceLease,
   releaseProductMaintenanceLease,
 } = require("../../scripts/lib/ensure-dev-lease.cjs");
+
+function ensureUnpackedCloakbrowserSynced({ repoRoot = srcRoot, installResourcesDir = installResources } = {}) {
+  const unpackedRoot = path.join(installResourcesDir, "app.asar.unpacked");
+  const targetNodeModules = path.join(unpackedRoot, "node_modules");
+  const distUnpackedRoot = path.join(repoRoot, "dist-desktop", "win-unpacked", "resources", "app.asar.unpacked");
+  const distNodeModules = path.join(distUnpackedRoot, "node_modules");
+  const requiredPkgs = Array.from(new Set([...REQUIRED_UNPACKED_PACKAGES, ...CLOAK_ESM_DEPS]));
+  const synced = [];
+  const errors = [];
+
+  let repoRequire = null;
+  const getRepoRequire = () => {
+    if (!repoRequire) {
+      repoRequire = createRequire(path.join(repoRoot, "package.json"));
+    }
+    return repoRequire;
+  };
+
+  for (const pkg of requiredPkgs) {
+    const destPkgDir = path.join(targetNodeModules, ...pkg.split("/"));
+    const readyCheck =
+      pkg === "cloakbrowser"
+        ? path.join(destPkgDir, "dist", "index.js")
+        : pkg === "better-sqlite3"
+          ? path.join(destPkgDir, "build", "Release", "better_sqlite3.node")
+          : pkg === "sql.js"
+            ? path.join(destPkgDir, "dist", "sql-wasm.wasm")
+            : pkg === "playwright-core"
+              ? path.join(destPkgDir, "index.js")
+              : path.join(destPkgDir, "package.json");
+    if (fs.existsSync(readyCheck)) continue;
+
+    let copied = false;
+    const distPkgDir = path.join(distNodeModules, ...pkg.split("/"));
+    if (fs.existsSync(path.join(distPkgDir, "package.json"))) {
+      try {
+        fs.mkdirSync(path.dirname(destPkgDir), { recursive: true });
+        fs.cpSync(distPkgDir, destPkgDir, { recursive: true, force: true, dereference: true });
+        synced.push(`${pkg} (dist-desktop)`);
+        copied = true;
+      } catch (err) {
+        errors.push(`${pkg}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    if (!copied) {
+      try {
+        const directCandidates = [
+          path.join(repoRoot, "electron", "packaged-node_modules", "node_modules", ...pkg.split("/")),
+          path.join(repoRoot, "node_modules", ...pkg.split("/")),
+        ];
+        let resolvedDir = directCandidates.find((d) => fs.existsSync(path.join(d, "package.json"))) || "";
+        if (!resolvedDir) {
+          try {
+            resolvedDir = path.dirname(getRepoRequire().resolve(`${pkg}/package.json`));
+          } catch {
+            const tarPkgJson = path.join(repoRoot, "node_modules", "tar", "package.json");
+            if (fs.existsSync(tarPkgJson)) {
+              const tarReq = createRequire(tarPkgJson);
+              try {
+                resolvedDir = path.dirname(tarReq.resolve(`${pkg}/package.json`));
+              } catch {
+                const entry = tarReq.resolve(pkg);
+                let cur = path.dirname(entry);
+                while (cur && cur !== path.dirname(cur)) {
+                  if (fs.existsSync(path.join(cur, "package.json"))) {
+                    resolvedDir = cur;
+                    break;
+                  }
+                  cur = path.dirname(cur);
+                }
+              }
+            }
+          }
+        }
+        if (!resolvedDir) {
+          throw new Error(`Cannot locate package directory for ${pkg}`);
+        }
+        fs.mkdirSync(path.dirname(destPkgDir), { recursive: true });
+        fs.cpSync(resolvedDir, destPkgDir, { recursive: true, force: true, dereference: true });
+        synced.push(`${pkg} (node_modules)`);
+      } catch (err) {
+        errors.push(`${pkg}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, synced, errors, targetNodeModules };
+}
 const installResources =
   process.env.STEALTH_RESOURCES_DIR ||
   "C:\\Users\\CzP\\AppData\\Local\\Programs\\stealth-browser-console\\resources";
 const hotPatchRoot = path.join(installResources, "hot-patch");
 
-function computeAsarIntegrity(buf) {
-  const blockSize = 4 * 1024 * 1024;
-  const blocks = [];
-  for (let i = 0; i < buf.length; i += blockSize) {
-    const slice = buf.subarray(i, Math.min(i + blockSize, buf.length));
-    blocks.push(crypto.createHash("sha256").update(slice).digest("hex"));
-  }
-  if (blocks.length === 0) {
-    blocks.push(crypto.createHash("sha256").update(Buffer.alloc(0)).digest("hex"));
-  }
-  return {
-    algorithm: "SHA256",
-    hash: crypto.createHash("sha256").update(buf).digest("hex"),
-    blockSize,
-    blocks,
-  };
-}
-
-function collectFilesRecursive(dir, relPrefix = "", out = []) {
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    const rel = relPrefix ? `${relPrefix}/${ent.name}` : ent.name;
-    const full = path.join(dir, ent.name);
-    if (ent.isDirectory()) {
-      collectFilesRecursive(full, rel, out);
-    } else if (ent.isFile()) {
-      out.push({ rel, full });
-    }
-  }
-  return out;
-}
-
-function setHeaderEntry(rootHeader, relPath, entryMeta) {
-  const parts = relPath.split("/").filter(Boolean);
-  let cur = rootHeader;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const seg = parts[i];
-    if (!cur.files) cur.files = {};
-    if (!cur.files[seg] || !cur.files[seg].files) {
-      cur.files[seg] = { files: {} };
-    }
-    cur = cur.files[seg];
-  }
-  const leaf = parts[parts.length - 1];
-  if (!cur.files) cur.files = {};
-  if (cur.files[leaf]?.unpacked) {
-    return false;
-  }
-  cur.files[leaf] = entryMeta;
-  return true;
-}
-
-function updateStagedAsarFromHotPatch() {
-  const baseAsar = path.join(installResources, "app.asar");
-  const stagedAsar = path.join(installResources, "app.asar.staged");
-  if (!fs.existsSync(baseAsar)) return { ok: false, reason: "missing_base_asar" };
-
+async function updateStagedAsarFromHotPatch() {
   try {
-    const asar = require("@electron/asar");
-    const raw = asar.getRawHeader(baseAsar);
-    const headerObj = JSON.parse(raw.headerString);
-    const baseStat = fs.statSync(baseAsar);
-    const dataStart = 8 + raw.headerSize;
-    const origPayloadSize = baseStat.size - dataStart;
-
-    const filesToPatch = collectFilesRecursive(hotPatchRoot);
-    const appendedBuffers = [];
-    let currentOffset = origPayloadSize;
-    let patchedFilesCount = 0;
-
-    for (const item of filesToPatch) {
-      const buf = fs.readFileSync(item.full);
-      const entryMeta = {
-        size: buf.length,
-        offset: String(currentOffset),
-        integrity: computeAsarIntegrity(buf),
-      };
-      const applied = setHeaderEntry(headerObj, item.rel, entryMeta);
-      if (applied) {
-        appendedBuffers.push(buf);
-        currentOffset += buf.length;
-        patchedFilesCount += 1;
-      } else {
-        // Also copy unpacked files directly to app.asar.unpacked
-        const unpackedDest = path.join(installResources, "app.asar.unpacked", ...item.rel.split("/"));
-        try {
-          fs.mkdirSync(path.dirname(unpackedDest), { recursive: true });
-          fs.copyFileSync(item.full, unpackedDest);
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    const newHeaderJsonBuf = Buffer.from(JSON.stringify(headerObj), "utf8");
-    const jsonLen = newHeaderJsonBuf.length;
-    const alignedJsonLen = Math.ceil(jsonLen / 4) * 4;
-    const newHeaderSize = alignedJsonLen + 8;
-
-    const prefixBuf = Buffer.alloc(8 + newHeaderSize, 0);
-    prefixBuf.writeUInt32LE(4, 0);
-    prefixBuf.writeUInt32LE(newHeaderSize, 4);
-    prefixBuf.writeUInt32LE(alignedJsonLen + 4, 8);
-    prefixBuf.writeUInt32LE(jsonLen, 12);
-    newHeaderJsonBuf.copy(prefixBuf, 16);
-
-    const outFd = fs.openSync(stagedAsar, "w");
-    const inFd = fs.openSync(baseAsar, "r");
-    try {
-      fs.writeSync(outFd, prefixBuf, 0, prefixBuf.length);
-      const chunkSize = 8 * 1024 * 1024;
-      const chunkBuf = Buffer.allocUnsafe(chunkSize);
-      let readPos = dataStart;
-      while (readPos < baseStat.size) {
-        const toRead = Math.min(chunkSize, baseStat.size - readPos);
-        const bytesRead = fs.readSync(inFd, chunkBuf, 0, toRead, readPos);
-        if (bytesRead <= 0) break;
-        fs.writeSync(outFd, chunkBuf, 0, bytesRead);
-        readPos += bytesRead;
-      }
-      for (const b of appendedBuffers) {
-        fs.writeSync(outFd, b, 0, b.length);
-      }
-    } finally {
-      fs.closeSync(inFd);
-      fs.closeSync(outFd);
-    }
-
-    const stagedStat = fs.statSync(stagedAsar);
-    const shaHash = crypto.createHash("sha256");
-    const verifyFd = fs.openSync(stagedAsar, "r");
-    try {
-      const vChunk = Buffer.allocUnsafe(8 * 1024 * 1024);
-      let vPos = 0;
-      while (vPos < stagedStat.size) {
-        const n = fs.readSync(verifyFd, vChunk, 0, Math.min(vChunk.length, stagedStat.size - vPos), vPos);
-        if (n <= 0) break;
-        shaHash.update(vChunk.subarray(0, n));
-        vPos += n;
-      }
-    } finally {
-      fs.closeSync(verifyFd);
-    }
-    const stagedSha256 = shaHash.digest("hex");
-    let pkgVer = null;
-    try {
-      pkgVer = JSON.parse(fs.readFileSync(path.join(srcRoot, "package.json"), "utf8"))?.version || null;
-    } catch {
-      /* ignore */
-    }
-    const shaMetaPath = `${stagedAsar}.sha256.json`;
-    fs.writeFileSync(
-      shaMetaPath,
-      JSON.stringify(
-        {
-          version: pkgVer,
-          size: stagedStat.size,
-          sha256: stagedSha256,
-          stagedAt: new Date().toISOString(),
-        },
-        null,
-        2,
-      ) + "\n",
-      "utf8",
-    );
-
-    return {
-      ok: true,
-      stagedAsar,
-      stagedMeta: shaMetaPath,
-      sha256: stagedSha256,
-      version: pkgVer,
-      patchedFilesCount,
-      stagedSize: stagedStat.size,
-    };
+    const helperUrl = pathToFileURL(path.resolve(srcRoot, "..", "scripts", "lib", "desktop-hot-patch.mjs")).href;
+    const { stageAsarFromHotPatch } = await import(helperUrl);
+    return stageAsarFromHotPatch({
+      resourcesDir: installResources,
+      hotPatchRoot,
+      productRoot: srcRoot,
+      exeName: "Stealth Browser Console.exe",
+      swapIfIdle: false,
+    });
   } catch (err) {
     return {
       ok: false,
@@ -286,9 +215,22 @@ async function main() {
       fs.cpSync(from, to, {
         recursive: true,
         force: true,
-        filter: (src) => !src.includes("packaged-node_modules"),
+        filter: (src) => {
+          const norm = src.replace(/\\/g, "/");
+          if (norm.includes("/packaged-node_modules")) return false;
+          if (/\/(?:__tests__|e2e)\//i.test(norm) || /\.test\.(?:[cm]?js|tsx?)$/i.test(norm)) return false;
+          return true;
+        },
       });
       synced.push(rel);
+    }
+    const staleHotPatchPackagedNm = path.join(hotPatchRoot, "electron", "packaged-node_modules");
+    if (fs.existsSync(staleHotPatchPackagedNm)) {
+      try {
+        fs.rmSync(staleHotPatchPackagedNm, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
     }
 
     try {
@@ -302,26 +244,44 @@ async function main() {
       /* ignore */
     }
 
+    const unpackedCloakSynced = ensureUnpackedCloakbrowserSynced({
+      repoRoot: srcRoot,
+      installResourcesDir: installResources,
+    });
+
     const bundledExtensionsSynced = [];
     try {
-      const repoRoot = path.resolve(srcRoot, "..", "..");
-      const bundledRoot = path.join(installResources, "bundled-extensions");
-      for (const extFolder of ["E0001-cookie-bridge", "E0002-browser-operator"]) {
-        const extSrc = path.join(repoRoot, "Extension", extFolder);
-        if (!fs.existsSync(path.join(extSrc, "manifest.json"))) continue;
-        const extDest = path.join(bundledRoot, extFolder);
-        fs.mkdirSync(extDest, { recursive: true });
-        fs.cpSync(extSrc, extDest, {
-          recursive: true,
-          force: true,
-          filter: (src) => {
-            const rel = path.relative(extSrc, src).replace(/\\/g, "/");
-            if (!rel) return true;
-            const first = rel.split("/")[0];
-            return !["node_modules", ".git", "tests", "scripts", ".cursor", "docs"].includes(first);
-          },
-        });
-        bundledExtensionsSynced.push(extFolder);
+      const asarSrc = path.join(srcRoot, "build", "bundled-extensions.asar");
+      const asarDest = path.join(installResources, "bundled-extensions.asar");
+      const legacyDir = path.join(installResources, "bundled-extensions");
+      if (fs.existsSync(asarSrc)) {
+        fs.copyFileSync(asarSrc, asarDest);
+        if (fs.existsSync(legacyDir)) {
+          try {
+            fs.rmSync(legacyDir, { recursive: true, force: true });
+          } catch {
+            /* ignore */
+          }
+        }
+        bundledExtensionsSynced.push("bundled-extensions.asar");
+      } else {
+        const repoRoot = path.resolve(srcRoot, "..", "..");
+        const { shouldCopyExtensionEntry } = require(path.join(srcRoot, "electron", "lib", "cloakbrowser-extension-stage.cjs"));
+        for (const extFolder of ["E0001-cookie-bridge", "E0002-browser-operator"]) {
+          const extSrc = path.join(repoRoot, "Extension", extFolder);
+          if (!fs.existsSync(path.join(extSrc, "manifest.json"))) continue;
+          const extDest = path.join(legacyDir, extFolder);
+          fs.mkdirSync(extDest, { recursive: true });
+          fs.cpSync(extSrc, extDest, {
+            recursive: true,
+            force: true,
+            filter: (src) => {
+              const rel = path.relative(extSrc, src).replace(/\\/g, "/");
+              return !rel || shouldCopyExtensionEntry(rel);
+            },
+          });
+          bundledExtensionsSynced.push(extFolder);
+        }
       }
     } catch {
       /* ignore */
@@ -331,7 +291,7 @@ async function main() {
     const stagedPath = path.join(installResources, "app.asar.staged");
     let stagedAsarResult = { ok: true, skipped: true, reason: "hot_patch_dir_active" };
     if (stageAsar) {
-      stagedAsarResult = updateStagedAsarFromHotPatch();
+      stagedAsarResult = await updateStagedAsarFromHotPatch();
     } else if (fs.existsSync(stagedPath)) {
       try {
         fs.unlinkSync(stagedPath);
@@ -416,6 +376,7 @@ async function main() {
           ok: true,
           hotPatchRoot,
           synced,
+          unpackedCloakSynced,
           bundledExtensionsSynced,
           stagedAsar: stagedAsarResult,
           hotReload: results,
@@ -433,7 +394,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("[sync-hot-patch] error:", err);
-  process.exit(1);
-});
+module.exports = { ensureUnpackedCloakbrowserSynced };
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error("[sync-hot-patch] error:", err);
+    process.exit(1);
+  });
+}

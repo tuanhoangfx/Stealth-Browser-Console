@@ -4,11 +4,14 @@ import {
   DirectoryTableBodyCell,
   formatHubTimestampCompact,
   getDirectorySearchHighlight,
+  HubDirectoryCopyText,
   HubDirectoryEllipsisCell,
+  HubDirectoryEmptyCell,
   HubDirectoryProfileCell,
   HubDirectoryRunToggle,
   HubDirectorySearchHighlightText,
   HubDirectoryValuePopover,
+  HubTwofaCopyControl,
   HubUsersOnOffLabel,
   HubUsersStatusLabel,
   localeFlagIconSrc,
@@ -207,7 +210,7 @@ export function renderStealthProfileDirectoryBodyCell(
       if (!rawLog || rawLog === "—") {
         return (
           <DirectoryTableBodyCell key={key} colClass={colClass}>
-            <HubDirectoryEllipsisCell value="—" />
+            <HubDirectoryEmptyCell className="hub-users-directory-body-text hub-users-cell-muted" />
           </DirectoryTableBodyCell>
         );
       }
@@ -262,14 +265,18 @@ export function renderStealthProfileDirectoryBodyCell(
           )}
         </DirectoryTableBodyCell>
       );
-    case "startupUrl":
+    case "startupUrl": {
+      const displayUrl = formatDirectoryOneLine(formatStartupUrlDisplay(profile.startupUrl || ""));
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <HubDirectoryEllipsisCell
-            value={formatDirectoryOneLine(formatStartupUrlDisplay(profile.startupUrl || ""))}
+          <HubDirectoryCopyText
+            value={profile.startupUrl?.trim() || ""}
+            display={displayUrl}
+            copyToastLabel="URL copied"
           />
         </DirectoryTableBodyCell>
       );
+    }
     case "proxy": {
       const badge = formatProxyBadgeLabel(
         profile.proxy,
@@ -332,19 +339,26 @@ export function renderStealthProfileDirectoryBodyCell(
         return (
           <DirectoryTableBodyCell key={key} colClass={proxyCellClass}>
             <span className={`group/proxy-cell inline-flex min-w-0 max-w-full items-center gap-1 ${DIRECTORY_CELL_TRUNCATE}`}>
-              <HubDirectoryValuePopover value={popoverValue} title={popoverTitle}>
-                <span className={`inline-flex min-w-0 items-center gap-1.5 ${DIRECTORY_CELL_TRUNCATE}`}>
-                  {flagSrc ? (
-                    <img
-                      src={flagSrc}
-                      alt={badge.countryCode}
-                      className="h-3.5 w-3.5 shrink-0 rounded-[2px] object-cover"
-                      loading="lazy"
-                    />
-                  ) : null}
-                  <span className={`truncate ${textToneClass}`}>{badge.label}</span>
-                  {staticIcon}
-                </span>
+              <HubDirectoryValuePopover value={popoverValue} title={popoverTitle} className="min-w-0">
+                <HubTwofaCopyControl
+                  value={formatDirectoryOneLine(profile.proxy || `[vpn:${badge.countryCode}]`)}
+                  copyToastLabel="Proxy copied"
+                  className="twofa-copy-control--account min-w-0"
+                  display={
+                    <span className={`inline-flex min-w-0 items-center gap-1.5 ${DIRECTORY_CELL_TRUNCATE}`}>
+                      {flagSrc ? (
+                        <img
+                          src={flagSrc}
+                          alt={badge.countryCode}
+                          className="h-3.5 w-3.5 shrink-0 rounded-[2px] object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      <span className={`truncate ${textToneClass}`}>{badge.label}</span>
+                      {staticIcon}
+                    </span>
+                  }
+                />
               </HubDirectoryValuePopover>
               {resetBtn}
             </span>
@@ -385,7 +399,11 @@ export function renderStealthProfileDirectoryBodyCell(
       return (
         <DirectoryTableBodyCell key={key} colClass={proxyCellClass}>
           <span className={`group/proxy-cell inline-flex min-w-0 max-w-full items-center gap-1 ${DIRECTORY_CELL_TRUNCATE}`}>
-            <HubDirectoryEllipsisCell value={formatDirectoryOneLine(rawProxy)} />
+            <HubDirectoryCopyText
+              value={formatDirectoryOneLine(rawProxy)}
+              copyToastLabel="Proxy copied"
+              className="min-w-0 flex-1"
+            />
             {staticIcon}
             {resetBtn}
           </span>

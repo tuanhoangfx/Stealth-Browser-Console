@@ -4,6 +4,7 @@ import {
   DirectoryTableBodyCell,
   formatHubTimestampCompact,
   getDirectorySearchHighlight,
+  HubDirectoryEmptyCell,
   HubDirectoryProfileCell,
   HubDirectorySearchHighlightText,
   HubDirectoryTimestampTooltipCell,
@@ -237,10 +238,10 @@ export function renderSystemBackupDirectoryBodyCell(
               }`
             : "None (created automatically on next rotation)"
         }`,
-        `Total Backup Footprint: ${formatBackupBytes(totalBackupBytes)}${
-          savedPct > 0 ? ` (saved ${savedPct}% vs ${formatBackupBytes(totalUncompressed)} raw)` : ""
+        `Total Backup Footprint: ${formatBackupBytes(totalBackupBytes) || "0 B"}${
+          savedPct > 0 ? ` (saved ${savedPct}% vs ${formatBackupBytes(totalUncompressed) || "0 B"} raw)` : ""
         }`,
-        `Average per Backup: ${formatBackupBytes(avgBackupBytes)}`,
+        `Average per Backup: ${formatBackupBytes(avgBackupBytes) || "0 B"}`,
       ].join("\n");
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
@@ -278,18 +279,18 @@ export function renderSystemBackupDirectoryBodyCell(
         `Profile: #${profile.name}`,
         `Format: ${anyCompressed ? "Standard 2 (.zpack Compressed)" : "Standard 1 (Uncompressed Flat)"}`,
         `Total Backups Stored: ${backupCount} copy/copies`,
-        `Total Backup Size: ${formatBackupBytes(totalBackupBytes)}`,
+        `Total Backup Size: ${formatBackupBytes(totalBackupBytes) || "0 B"}`,
         savedPct > 0
-          ? `Compression Savings: -${savedPct}% (saved ${formatBackupBytes(savedBytes)} from ${formatBackupBytes(totalUncompressed)})`
+          ? `Compression Savings: -${savedPct}% (saved ${formatBackupBytes(savedBytes) || "0 B"} from ${formatBackupBytes(totalUncompressed) || "0 B"})`
           : "",
-        `Average / 1 Backup: ${formatBackupBytes(avgBackupBytes)}`,
+        `Average / 1 Backup: ${formatBackupBytes(avgBackupBytes) || "0 B"}`,
         slotLatestBytes > 0
           ? `• Slot Latest: ${formatBackupBytes(slotLatestBytes)}${latestCompressed ? " (.zpack)" : ""}`
           : "",
         slotPreviousBytes > 0
           ? `• Slot Previous: ${formatBackupBytes(slotPreviousBytes)}${prevCompressed ? " (.zpack)" : ""}`
           : "",
-        `Live Profile State: ${formatBackupBytes(liveStateBytes)} (${meta?.stateFilesCount ?? 0} files)`,
+        `Live Profile State: ${formatBackupBytes(liveStateBytes) || "0 B"} (${meta?.stateFilesCount ?? 0} files)`,
       ]
         .filter(Boolean)
         .join("\n");
@@ -302,15 +303,17 @@ export function renderSystemBackupDirectoryBodyCell(
                 <span className="text-[var(--text)]">
                   {formatBackupBytes(totalBackupBytes)}
                 </span>
-                <span className="truncate text-[var(--muted)]">
-                  {savedPct > 0
-                    ? `· Avg ${formatBackupBytes(avgBackupBytes)} (-${savedPct}%)`
-                    : `· Avg ${formatBackupBytes(avgBackupBytes)}`}
-                </span>
+                {avgBackupBytes > 0 ? (
+                  <span className="truncate text-[var(--muted)]">
+                    {savedPct > 0
+                      ? `· Avg ${formatBackupBytes(avgBackupBytes)} (-${savedPct}%)`
+                      : `· Avg ${formatBackupBytes(avgBackupBytes)}`}
+                  </span>
+                ) : null}
               </span>
             </HubDirectoryValuePopover>
           ) : (
-            <span className="hub-directory-table-body-text text-[var(--muted)]">—</span>
+            <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
           )}
         </DirectoryTableBodyCell>
       );
@@ -350,7 +353,7 @@ export function renderSystemBackupDirectoryBodyCell(
               </span>
             </HubDirectoryValuePopover>
           ) : (
-            <span className="hub-directory-table-body-text text-[var(--muted)]">—</span>
+            <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
           )}
         </DirectoryTableBodyCell>
       );
@@ -364,8 +367,8 @@ export function renderSystemBackupDirectoryBodyCell(
         `Profile: #${profile.name}`,
         `Unique History URLs: ${BACKUP_NUM_FMT.format(urlsCount)} URLs`,
         `Total Page Visits: ${BACKUP_NUM_FMT.format(visitsCount)} visits`,
-        `History SQLite File: ${formatBackupBytes(histBytes)}`,
-        `SPA Local Storage (leveldb): ${formatBackupBytes(lsBytes)}`,
+        `History SQLite File: ${formatBackupBytes(histBytes) || "0 B"}`,
+        `SPA Local Storage (leveldb): ${formatBackupBytes(lsBytes) || "0 B"}`,
         `Backed-up State Files: ${meta?.stateFilesCount ?? 0} files`,
         `Source: Direct SQLite query on Chromium Default/History (urls table)`,
       ].join("\n");
@@ -377,13 +380,15 @@ export function renderSystemBackupDirectoryBodyCell(
                 <span className="text-[var(--text)]">
                   {`${BACKUP_NUM_FMT.format(urlsCount)} URLs`}
                 </span>
-                <span className="truncate text-[var(--muted)]">
-                  {`· ${formatBackupBytes(histBytes)}`}
-                </span>
+                {histBytes > 0 ? (
+                  <span className="truncate text-[var(--muted)]">
+                    {`· ${formatBackupBytes(histBytes)}`}
+                  </span>
+                ) : null}
               </span>
             </HubDirectoryValuePopover>
           ) : (
-            <span className="hub-directory-table-body-text text-[var(--muted)]">—</span>
+            <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
           )}
         </DirectoryTableBodyCell>
       );
@@ -402,9 +407,16 @@ export function renderSystemBackupDirectoryBodyCell(
       const cookiesCount = meta?.cookiesCount ?? 0;
       const urlsCount = meta?.historyUrlsCount ?? 0;
       const anyCompressed = Boolean(meta?.slotLatestCompressed || meta?.slotPreviousCompressed);
+      const totalSizeText = formatBackupBytes(totalBackupBytes);
       const inlineText =
         backupCount > 0
-          ? `v2 Snapshot (${backupCount} slot${backupCount === 1 ? "" : "s"}) · ${formatBackupBytes(totalBackupBytes)} · ${BACKUP_NUM_FMT.format(cookiesCount)} cookies`
+          ? [
+              `v2 Snapshot (${backupCount} slot${backupCount === 1 ? "" : "s"})`,
+              totalSizeText,
+              `${BACKUP_NUM_FMT.format(cookiesCount)} cookies`,
+            ]
+              .filter(Boolean)
+              .join(" · ")
           : folderExists
             ? `Live folder ready · ${BACKUP_NUM_FMT.format(cookiesCount)} cookies · ${BACKUP_NUM_FMT.format(urlsCount)} URLs`
             : "No profile folder on disk";
@@ -412,7 +424,7 @@ export function renderSystemBackupDirectoryBodyCell(
         `Profile: #${profile.name} (${profile.groupId || "Default"})`,
         `Folder on Disk: ${folderExists ? "Present" : "Missing"}`,
         `Backup Slots: ${backupCount} copy/copies (${anyCompressed ? ".zpack Compressed" : "Flat"})`,
-        `Total Backup Size: ${formatBackupBytes(totalBackupBytes)}`,
+        `Total Backup Size: ${totalSizeText || "0 B"}`,
         `Cookies & History: ${BACKUP_NUM_FMT.format(cookiesCount)} cookies · ${BACKUP_NUM_FMT.format(urlsCount)} URLs`,
         ctx.lastBackupAt ? `Last Snapshot: ${ctx.lastBackupAt}` : "Last Snapshot: Never",
       ].join("\n");
@@ -429,7 +441,7 @@ export function renderSystemBackupDirectoryBodyCell(
     default:
       return (
         <DirectoryTableBodyCell key={key} colClass={colClass}>
-          <span className="hub-directory-table-body-text">—</span>
+          <HubDirectoryEmptyCell className="hub-directory-table-body-text hub-users-cell-muted" />
         </DirectoryTableBodyCell>
       );
   }

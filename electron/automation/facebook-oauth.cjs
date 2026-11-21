@@ -126,10 +126,21 @@ async function runFacebookOAuth(context, oauthUrl, { maxAttempts = 80, waitMs = 
   const maxRunMs = 480_000;
   try {
     // Warm FB session on www.facebook.com (developers login ≠ oauth dialog cookies).
-    await page.goto("https://www.facebook.com/", { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.goto("https://www.facebook.com/", { waitUntil: "domcontentloaded", timeout: 120_000 }).catch((err) => {
+      if (!/ERR_ABORTED/i.test(String(err?.message || err))) throw err;
+    });
     await page.waitForTimeout(2500);
 
-    await page.goto(oauthUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.goto(oauthUrl, { waitUntil: "domcontentloaded", timeout: 120_000 }).catch(async (err) => {
+      if (!/ERR_ABORTED/i.test(String(err?.message || err))) throw err;
+      await page.waitForTimeout(1500);
+      const cur = page.url();
+      if (!/dialog\/oauth|fb_oauth=|\/api\/facebook\/oauth\/callback/.test(cur) && !isChathubHost(cur)) {
+        await page.goto(oauthUrl, { waitUntil: "domcontentloaded", timeout: 120_000 }).catch((err2) => {
+          if (!/ERR_ABORTED/i.test(String(err2?.message || err2))) throw err2;
+        });
+      }
+    });
     await page.waitForTimeout(2000);
 
     let lastUrl = "";

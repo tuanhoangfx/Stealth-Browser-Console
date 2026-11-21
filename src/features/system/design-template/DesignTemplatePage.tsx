@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Glass } from "../../../theme/p0008";
+import { resolveAndroidPowerBadgeState } from "../../../views/mobile-farm/mobile-farm-stream";
 import {
   ACTIVE_DESIGN_COUNT,
   PROFILE_KPI_TOOLTIP_DESIGN_LOCK,
@@ -26,6 +27,11 @@ type NeverPowerOffState = {
     batteryLevel?: number | null;
     batteryTempC?: number | null;
     acPowered?: boolean;
+    cableAttached?: boolean;
+    attachedDev?: string | null;
+    chargeMode?: string | null;
+    storeMode?: number | null;
+    slateMode?: number | null;
     chargeStartLevel?: number;
     chargeStopLevel?: number;
     chargeDisable?: number;
@@ -84,7 +90,7 @@ export function DesignTemplatePage() {
   const tempC = hw?.batteryTempC ?? 30.1;
   const startLv = hw?.chargeStartLevel ?? 80;
   const stopLv = hw?.chargeStopLevel ?? 85;
-  const bypassOn = (hw?.chargeDisable ?? (batLv >= stopLv ? 1 : 0)) === 1;
+  const { bypassOn } = resolveAndroidPowerBadgeState(hw, batLv, stopLv);
   const hist =
     hw?.history24h && hw.history24h.length >= 2
       ? hw.history24h

@@ -348,12 +348,21 @@ function syncUnpackedTaskbarPs1(unpackedDir) {
 }
 
 function syncUnpackedBundledExtensions(unpackedDir) {
+  const srcAsar = path.join(root, "build", "bundled-extensions.asar");
   const srcDir = path.join(root, "build", "bundled-extensions");
-  const destDir = path.join(unpackedDir, "resources", "bundled-extensions");
-  if (!fs.existsSync(srcDir)) return false;
+  const destAsar = path.join(unpackedDir, "resources", "bundled-extensions.asar");
+  const destLooseDir = path.join(unpackedDir, "resources", "bundled-extensions");
   try {
-    rmDir(destDir);
-    copyDir(srcDir, destDir);
+    if (fs.existsSync(srcAsar)) {
+      fs.mkdirSync(path.dirname(destAsar), { recursive: true });
+      fs.copyFileSync(srcAsar, destAsar);
+      if (fs.existsSync(destLooseDir)) rmDir(destLooseDir);
+      console.log("run-electron-package: synced build/bundled-extensions.asar into resources/bundled-extensions.asar");
+      return true;
+    }
+    if (!fs.existsSync(srcDir)) return false;
+    rmDir(destLooseDir);
+    copyDir(srcDir, destLooseDir);
     console.log("run-electron-package: synced build/bundled-extensions into resources/bundled-extensions");
     return true;
   } catch (e) {
