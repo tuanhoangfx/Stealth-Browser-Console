@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-21T20:50:00.577Z",
+  "generatedAt": "2026-11-21T20:52:38.870Z",
   "entries": [
+    {
+      "version": "9.2.529",
+      "date": "2026-11-22",
+      "at": "2026-11-22T03:50:00+07:00",
+      "title": "Promote V1 Split-Dock 5-device live wall to Mobile Farm",
+      "bullets": [
+        "Promote locked V1 Split-Dock Console to production MobileFarmView with live 5-device Wi-Fi screens, deduplicated Pixel 7 USB/Wi-Fi nodes, /api/mobile-farm/live-fleet, live 4G Carrier Kaizen lanes, Cooldown Burst telemetry, and cleanup of temporary design preview."
+      ],
+      "kind": "improve",
+      "userTitle": "Promote V1 Split-Dock 5-device live wall to Mobile Farm",
+      "userSummary": "",
+      "userHighlights": [
+        "Promote locked V1 Split-Dock Console to production Mobile Farm View with live 5-device Wi-Fi scre…"
+      ]
+    },
     {
       "version": "9.2.528",
       "date": "2026-11-22",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Automatic patch bump after completed P0003 task."
-      ]
-    },
-    {
-      "version": "9.2.516",
-      "date": "2026-11-21",
-      "at": "2026-11-21T13:18:00+07:00",
-      "title": "FB DoB normalization parity in snapshot builder",
-      "bullets": [
-        "Added normalizeFacebookDobToDdMmYyyy and wired FB DoB auto-normalization into buildP0020RowSnapshotAndPatch plus unit tests."
-      ],
-      "kind": "improve",
-      "userTitle": "FB Do B normalization parity in snapshot builder",
-      "userSummary": "",
-      "userHighlights": [
-        "Added normalize Facebook Dob To Dd Mm Yyyy and wired FB Do B auto-normalization into build P0020…"
       ]
     }
   ]

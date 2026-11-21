@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Promote V1 Split-Dock 5-device live wall to Mobile Farm
+
+- Version: `9.2.529`
+- Timestamp: 2026-11-22 03:50 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Promote locked V1 Split-Dock Console to production MobileFarmView with live 5-device Wi-Fi screens, deduplicated Pixel 7 USB/Wi-Fi nodes, /api/mobile-farm/live-fleet, live 4G Carrier Kaizen lanes, Cooldown Burst telemetry, and cleanup of temporary design preview.
+
+### Verification
+
+- tsc --noEmit, vitest stealth-system-tab (1/1), mobile-farm-execution-board.test.cjs (3/3), agent-verify-gate static pass, headless Stealth V1 live wall smoke (profile 9019, 0 pageErrors)
+
+---
 ## 2026-11-22 - Record ChatGPT Plus trial win (vietcombank-5733) and 14 verified Stripe generic_decline cards
 
 - Version: `9.2.528`
