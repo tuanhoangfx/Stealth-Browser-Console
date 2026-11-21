@@ -54,6 +54,7 @@ const KNOWN_OPENAI_TRIAL_CLAIMED_MAP = new Map([
   ["msb-0516", { claimedAt: "2026-11-12T06:46:44.000Z", claimedBy: "khahaox28@outlook.com" }],
   ["mb-bank-7320", { claimedAt: "2026-11-12T11:57:31.000Z", claimedBy: "p0020_audit_12_11" }],
   ["vib-3641", { claimedAt: "2026-11-21T10:47:59.000Z", claimedBy: "killonfriday@gmail.com" }],
+  ["vietcombank-5733", { claimedAt: "2026-11-21T20:28:52.000Z", claimedBy: "iagomdseverino.22062011@edu.sme.prefeitura.sp.gov.br" }],
 ]);
 
 const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
@@ -81,13 +82,23 @@ const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
   ["mb-bank-6169", "generic_decline"],
   ["mb-bank-7528", "generic_decline"],
   ["mb-bank-7302", "generic_decline"],
+  ["mb-bank-8809", "generic_decline"],
+  ["mb-bank-0400", "generic_decline"],
+  ["mb-bank-0164", "generic_decline"],
+  ["mb-bank-5641", "generic_decline"],
   ["vietcombank-4853", "generic_decline"],
   ["vietcombank-5055", "generic_decline"],
   ["vietcombank-2169", "generic_decline"],
+  ["vietcombank-2654", "generic_decline"],
+  ["vietcombank-5713", "generic_decline"],
+  ["vietcombank-6923", "generic_decline"],
+  ["vietcombank-5804", "generic_decline"],
   ["cake-0516", "generic_decline"],
   ["scb-2114", "generic_decline"],
+  ["scb-0573", "generic_decline"],
   ["bidv-1916", "generic_decline"],
   ["acb-1234", "generic_decline"],
+  ["acb-0466", "generic_decline"],
   ["vp-bank-0063", "generic_decline"],
   ["tp-bank-0613", "generic_decline"],
   ["liobank-9315", "generic_decline"],
@@ -99,7 +110,11 @@ const KNOWN_STRIPE_DECLINE_CODE_MAP = new Map([
   ["techcombank-3767", "generic_decline"],
   ["techcombank-9355", "generic_decline"],
   ["techcombank-1816", "generic_decline"],
+  ["techcombank-1010", "generic_decline"],
+  ["techcombank-5916", "generic_decline"],
+  ["techcombank-1417", "generic_decline"],
   ["ocb-4567", "generic_decline"],
+  ["mastercard-8068", "generic_decline"],
 ]);
 
 const PROVINCE_POSTAL_MAP = {

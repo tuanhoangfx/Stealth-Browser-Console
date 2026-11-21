@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-21T20:42:08.488Z",
+  "generatedAt": "2026-11-21T20:50:00.577Z",
   "entries": [
+    {
+      "version": "9.2.528",
+      "date": "2026-11-22",
+      "at": "2026-11-22T03:48:00+07:00",
+      "title": "Record ChatGPT Plus trial win (vietcombank-5733) and 14 verified Stripe generic_decline cards",
+      "bullets": [
+        "Updated KNOWN_OPENAI_TRIAL_CLAIMED_MAP with vietcombank-5733 (#0092 iagomdseverino) and KNOWN_STRIPE_DECLINE_CODE_MAP with 14 newly verified 402 generic_decline cards across VN BINs"
+      ],
+      "kind": "improve",
+      "userTitle": "Record Chat GPT Plus trial win and 14 verified Stripe generic decline…",
+      "userSummary": "",
+      "userHighlights": [
+        "Updated KNOWN OPENAI TRIAL CLAIMED MAP with vietcombank-5733 and KNOWN STRIPE DECLINE CODE MAP wi…"
+      ]
+    },
     {
       "version": "9.2.527",
       "date": "2026-11-22",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Added normalize Facebook Dob To Dd Mm Yyyy and wired FB Do B auto-normalization into build P0020…"
-      ]
-    },
-    {
-      "version": "9.2.515",
-      "date": "2026-11-21",
-      "at": "2026-11-21T13:07:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
       ]
     }
   ]

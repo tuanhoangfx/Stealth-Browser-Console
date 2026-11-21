@@ -236,8 +236,8 @@ export const MobileFarmView = memo(function MobileFarmView({
         setCachedSlotScreens((prev) => {
           let changed = false;
           const next = { ...prev };
-          const assignIfChanged = (key: string, val: string | null | undefined) => {
-            if (isNonBlackScreenUrl(val) && next[key] !== val) {
+          const assignIfChanged = (key: string, val: string | null | undefined, minLen = 7800) => {
+            if (isNonBlackScreenUrl(val, minLen) && next[key] !== val) {
               next[key] = val!;
               changed = true;
             }
@@ -261,13 +261,14 @@ export const MobileFarmView = memo(function MobileFarmView({
           if (data.deviceStates) {
             for (const [peerSerial, peerSnap] of Object.entries(data.deviceStates)) {
               if (!peerSnap || peerSerial === data.serial) continue;
+              const minPeerLen = peerSerial.startsWith("ios:") ? 2000 : 7800;
               if (peerSnap.displayScreenshots) {
                 for (const [dispId, url] of Object.entries(peerSnap.displayScreenshots)) {
-                  assignIfChanged(`peer:${peerSerial}:disp:${dispId}`, url);
+                  assignIfChanged(`peer:${peerSerial}:disp:${dispId}`, url, minPeerLen);
                 }
               }
               if (peerSnap.screenDataUrl) {
-                assignIfChanged(`peer:${peerSerial}:disp:0`, peerSnap.screenDataUrl);
+                assignIfChanged(`peer:${peerSerial}:disp:0`, peerSnap.screenDataUrl, minPeerLen);
               }
             }
           }
@@ -886,7 +887,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         snap?.screenDataUrl ||
         (stateEntry ? cachedSlotScreens[`peer:${stateEntry[0]}:disp:0`] : null) ||
         null;
-      const screenDataUrl = isNonBlackScreenUrl(rawScreen) ? rawScreen : null;
+      const screenDataUrl = isNonBlackScreenUrl(rawScreen, sp.os === "ios" ? 2000 : 7800) ? rawScreen : null;
       const snapHw = (snap as ExtendedLiveScreenState | null)?.hardwareHealth;
       const ok = Boolean(bDev ? bDev.ok : snap?.ok ?? isPrimary);
       const batteryPct = bDev?.batteryLevel ?? snapHw?.batteryLevel ?? null;

@@ -108,7 +108,9 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
                 : "border-rose-400/35 bg-rose-950/45 text-rose-200",
               title: dev.ok ? "Connected over Wi-Fi" : "Waiting for Wi-Fi health check",
             };
-        const validImg = isNonBlackScreenUrl(dev.screenDataUrl) ? dev.screenDataUrl : null;
+        const validImg = isNonBlackScreenUrl(dev.screenDataUrl, dev.os === "ios" ? 2000 : 7800)
+          ? dev.screenDataUrl
+          : null;
         const gesture = localGestures[dev.interactiveCard.id];
         const activeTouch =
           gesture && gesture.type === "tap" && Date.now() - gesture.ts < 600 ? gesture : null;
@@ -152,23 +154,23 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
             {/* Live Screen Canvas */}
             <div className={`${screenClass} w-full`}>
               {/* Top Phone Hardware Telemetry Bar */}
-              <div className="relative z-10 flex items-center justify-between gap-1 border-b border-white/10 bg-black/60 px-2 py-1 text-[9px] font-medium text-slate-200 backdrop-blur-xs">
-                <span className="flex items-center gap-1 font-mono">
+              <div className="relative z-10 flex items-center justify-between gap-1 whitespace-nowrap border-b border-white/10 bg-black/60 px-1.5 py-1 text-[8.5px] font-medium text-slate-200 backdrop-blur-xs">
+                <span className="flex min-w-0 items-center gap-1 font-mono">
                   {dev.ok ? (
-                    <Wifi className="h-2.5 w-2.5 text-emerald-400" />
+                    <Wifi className="h-2.5 w-2.5 shrink-0 text-emerald-400" />
                   ) : (
-                    <WifiOff className="h-2.5 w-2.5 text-rose-400" />
+                    <WifiOff className="h-2.5 w-2.5 shrink-0 text-rose-400" />
                   )}
-                  {dev.shortCode}
+                  <span className="truncate">{dev.shortCode}</span>
                 </span>
                 <span
-                  className={`rounded border px-1 py-0.5 text-[8.5px] font-semibold ${
+                  className={`shrink-0 rounded border px-1 py-0.5 text-[8px] font-semibold ${
                     PHASE_TONE[dev.taskPhase] || PHASE_TONE.RUNNING
                   }`}
                 >
                   {dev.taskPhase}
                 </span>
-                <span className="flex items-center gap-1 font-mono tabular-nums">
+                <span className="flex shrink-0 items-center gap-1 font-mono tabular-nums">
                   {dev.boardDevice?.chargeMode === "charging" ? (
                     <BatteryCharging className="h-2.5 w-2.5 text-sky-400" />
                   ) : (
@@ -244,7 +246,7 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
                       }
                     }}
                     title="Copy latest OTP from 24/7 SIM gateway"
-                    className="absolute left-2 right-2 bottom-9 z-10 flex items-center justify-between gap-1 rounded border border-amber-400/45 bg-slate-950/90 px-2 py-1 font-mono text-[10px] text-amber-200 shadow"
+                    className="absolute left-2 right-2 bottom-14 z-10 flex items-center justify-between gap-1 rounded border border-amber-400/45 bg-slate-950/90 px-2 py-1 font-mono text-[10px] text-amber-200 shadow"
                   >
                     <span className="truncate">OTP: {dev.lastOtp}</span>
                     <Copy className="h-3 w-3 shrink-0 opacity-80" />

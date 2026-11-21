@@ -347,14 +347,22 @@ export async function fetchFarmApi(path: string, init?: RequestInit) {
     ? path.replace("/api/mobile-stealth/", "/api/android-vault/")
     : path;
   const candidatePaths = altPath !== path ? [path, altPath] : [path];
-  const bases = getOrderedApiBases();
+  const isViteBoardRoute =
+    typeof window !== "undefined" &&
+    window.location?.port === "5175" &&
+    (path === "/api/mobile-stealth/execution-board" ||
+      path === "/api/mobile-farm/daemon-control" ||
+      path === "/api/mobile-sim/fleet" ||
+      path.startsWith("/api/mobile-farm/ios-screenshot"));
+  const baseOrder = getOrderedApiBases();
+  const bases = isViteBoardRoute ? ["", ...baseOrder.filter(Boolean)] : baseOrder;
   for (const base of bases) {
     for (const candidatePath of candidatePaths) {
       try {
         const res = await fetch(`${base}${candidatePath}`, init);
         const ct = res.headers.get("content-type") || "";
         if (res.ok && (!ct || ct.includes("json"))) {
-          _preferredApiBase = base;
+          if (!isViteBoardRoute) _preferredApiBase = base;
           return await res.json();
         }
       } catch {
@@ -622,8 +630,8 @@ export function resetMuxDisplayStreams(): void {
   }
 }
 
-export function isNonBlackScreenUrl(url: string | null | undefined): boolean {
-  return Boolean(url && url.length >= 7800);
+export function isNonBlackScreenUrl(url: string | null | undefined, minLength = 7800): boolean {
+  return Boolean(url && url.length >= minLength);
 }
 
 export const H264PhoneStreamCanvas = memo(function H264PhoneStreamCanvas({

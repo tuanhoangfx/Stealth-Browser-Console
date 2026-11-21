@@ -57,6 +57,18 @@ export default defineConfig(async ({ command }) => {
     }
   }
 
+  const mobileFarmDevApiPath = path.resolve(rootDir, "scripts/mobile-farm-dev-api-vite-plugin.mjs");
+  if (command === "serve" && fs.existsSync(mobileFarmDevApiPath)) {
+    try {
+      const mod = await import(pathToFileURL(mobileFarmDevApiPath).href);
+      if (typeof mod?.mobileFarmDevApiPlugin === "function") {
+        plugins.push(mod.mobileFarmDevApiPlugin({ toolRoot: rootDir }));
+      }
+    } catch {
+      // Non-fatal: falls back to :6003 Electron API.
+    }
+  }
+
   return {
     // Serve: absolute base so `/profiles` hard-refresh works. Build: `./` for Electron file://.
     base: command === "serve" ? "/" : "./",

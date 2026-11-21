@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Record ChatGPT Plus trial win (vietcombank-5733) and 14 verified Stripe generic_decline cards
+
+- Version: `9.2.528`
+- Timestamp: 2026-11-22 03:48 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Updated KNOWN_OPENAI_TRIAL_CLAIMED_MAP with vietcombank-5733 (#0092 iagomdseverino) and KNOWN_STRIPE_DECLINE_CODE_MAP with 14 newly verified 402 generic_decline cards across VN BINs
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
 ## 2026-11-22 - Add Mobile Farm 5-device System Design V1-V5 previews
 
 - Version: `9.2.527`
