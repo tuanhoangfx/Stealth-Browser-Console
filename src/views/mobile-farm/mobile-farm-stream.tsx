@@ -165,11 +165,38 @@ export type MobileFarmBoardTask = {
   title: string;
   kind: string;
   status: "running" | "completed" | "attention" | "standby";
+  phaseLabel?: string;
+  isCooldown?: boolean;
+  waveNumber?: number;
+  liveTotal?: number;
+  targetTotal?: number;
+  recentResults?: Array<{
+    attempt?: number;
+    method?: string;
+    proxyUrl?: string;
+    outcome?: string;
+    ok?: boolean;
+    iosHost?: string;
+    serial?: string;
+    email?: string;
+  }>;
   percent: number;
   progressLabel: string;
   currentStep: string;
   metricsText: string;
   targetDevice: string;
+  updatedAt: string | null;
+};
+
+export type MobileFarmCarrierKaizenRow = {
+  laneId: string;
+  label: string;
+  attempts: number;
+  live: number;
+  conversionPct: number;
+  avgElapsedMs: number;
+  latencyMs: number;
+  lastOutcome: string;
   updatedAt: string | null;
 };
 

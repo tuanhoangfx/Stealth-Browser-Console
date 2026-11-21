@@ -70,26 +70,21 @@ function normalizeIosChargeMode(d) {
 
 function buildDevicesBoard(watchdogJson) {
   const rawDevices = Array.isArray(watchdogJson?.devices) ? watchdogJson.devices : [];
-  const onlineSet = new Set(rawDevices.filter((d) => d?.ok).map((d) => d.serial));
-  const filtered = rawDevices.filter((d) => {
-    const alias = KNOWN_USB_ALIAS_MAP[d?.serial];
-    if (alias && (onlineSet.has(alias) || rawDevices.some((x) => x?.serial === alias))) {
-      return false;
-    }
-    return true;
-  });
+  const p7Usb = rawDevices.find((d) => d?.serial === "33241FDH2004B9");
+  const p7Wifi = rawDevices.find((d) => d?.serial === "192.168.0.253:5555");
+  const keepPixel7Serial =
+    p7Wifi?.ok
+      ? "192.168.0.253:5555"
+      : p7Usb?.ok
+        ? "33241FDH2004B9"
+        : p7Wifi
+          ? "192.168.0.253:5555"
+          : "33241FDH2004B9";
 
   const bySerial = new Map();
   for (const d of rawDevices) {
     if (!d?.serial) continue;
-    // Deduplicate Pixel 7 USB (33241FDH2004B9) vs Wi-Fi (192.168.0.253:5555): keep whichever is online (ok=true).
-    if (d.serial === "192.168.0.253:5555" && !d.ok && rawDevices.some((x) => x?.serial === "33241FDH2004B9" && x?.ok)) {
-      continue;
-    }
-    if (d.serial === "33241FDH2004B9" && !d.ok && rawDevices.some((x) => x?.serial === "192.168.0.253:5555" && x?.ok)) {
-      continue;
-    }
-    if (d.serial === "192.168.0.253:5555" && rawDevices.some((x) => x?.serial === "33241FDH2004B9" && x?.ok)) {
+    if ((d.serial === "33241FDH2004B9" || d.serial === "192.168.0.253:5555") && d.serial !== keepPixel7Serial) {
       continue;
     }
     const isIos = String(d.serial).startsWith("ios:");
@@ -126,7 +121,7 @@ function buildDevicesBoard(watchdogJson) {
 
   for (const required of [
     "192.168.0.208:5555",
-    "33241FDH2004B9",
+    keepPixel7Serial,
     "192.168.0.120:5555",
     "ios:192.168.0.222",
     "ios:192.168.0.183",
@@ -196,12 +191,25 @@ function collectMobileFarmExecutionBoard({
       title: "FB Multi-Method 100 Campaign",
       kind: "campaign",
       status: live >= target ? "completed" : active ? "running" : "standby",
+      phaseLabel:
+        live >= target
+          ? "DONE"
+          : active && rawStatus === "cooldown"
+            ? "COOLDOWN BURST"
+            : active
+              ? "RUNNING"
+              : "STANDBY",
       percent: clampPct((live / Math.max(1, target)) * 100),
       progressLabel: `${live} / ${target} live`,
       currentStep: `Wave #${fbBatch.waveNumber || 0} · ${stepPrefix}${fbBatch.activeMethod || "idle"}`,
       metricsText: `Remaining ${fbBatch.remainingTo100 ?? Math.max(0, target - live)} · Pool ${fbBatch.usableGmailPool ?? 0} Gmail · $${Number(fbBatch.grizzlyBalanceUsd || 0).toFixed(2)} SMS`,
       targetDevice: fbBatch.lastAttempt?.iosHost || fbBatch.lastAttempt?.serial || "Multi-Node",
       updatedAt: fbBatch.updatedAt || null,
+      waveNumber: Number(fbBatch.waveNumber || 0),
+      liveTotal: live,
+      targetTotal: target,
+      isCooldown: rawStatus === "cooldown",
+      recentResults: Array.isArray(fbBatch.recentResults) ? fbBatch.recentResults.slice(-5) : [],
     });
   }
 
@@ -349,6 +357,26 @@ function collectMobileFarmExecutionBoard({
       }
     : null;
 
+  const carrierLabels = {
+    pixel6a_fpt_4g: "Pixel 6a FPT 4G (:31080)",
+    pixel7_viettel_4g: "Pixel 7 Viettel 4G (:31082)",
+    s9_viettel_4g: "S9+ Viettel 4G (:31081)",
+    static_vn_proxy: "Static VN Proxy Pool",
+  };
+  const carrierKaizen = fbBatch?.kaizenByCarrierLane
+    ? Object.entries(fbBatch.kaizenByCarrierLane).map(([laneId, st]) => ({
+        laneId,
+        label: carrierLabels[laneId] || laneId,
+        attempts: Number(st?.attempts || 0),
+        live: Number(st?.live || 0),
+        conversionPct: Number(st?.conversionPct || 0),
+        avgElapsedMs: Number(st?.avgElapsedMs || 0),
+        latencyMs: Number(st?.lastLatencyMs || 0),
+        lastOutcome: String(st?.lastOutcome || ""),
+        updatedAt: st?.updatedAt || null,
+      }))
+    : [];
+
   return {
     ok: true,
     updatedAt: new Date(nowMs).toISOString(),
@@ -363,6 +391,7 @@ function collectMobileFarmExecutionBoard({
     devices,
     tasks,
     experiments,
+    carrierKaizen,
   };
 }
 

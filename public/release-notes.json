@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-11-21T20:23:40.322Z",
+  "generatedAt": "2026-11-21T20:37:22.552Z",
   "entries": [
     {
-      "version": "9.2.526",
-      "date": "2026-11-21",
-      "at": "2026-11-21T20:23:40.321Z",
-      "title": "chore: release v9.2.526",
+      "version": "9.2.527",
+      "date": "2026-11-22",
+      "at": "2026-11-22T03:25:00+07:00",
+      "title": "Add Mobile Farm 5-device System Design V1-V5 previews",
       "bullets": [
-        "Maintenance and polish since the last documented release."
+        "Mount 5 layout-direction variants (V1-V5) in System Design preview showcasing live screens for all 5 physical Wi-Fi phones, non-idle Cooldown Burst telemetry, and Hub-UI SSOT chrome."
       ],
       "kind": "improve",
-      "userTitle": "Release v9.2.526",
+      "userTitle": "Add Mobile Farm 5-device System Design V1-V5 previews",
       "userSummary": "",
       "userHighlights": [
-        "Maintenance and polish since the last documented release."
+        "Mount 5 layout-direction variants in System Design preview showcasing live screens for all 5 phys…"
       ]
     },
     {

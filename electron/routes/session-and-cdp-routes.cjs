@@ -470,6 +470,46 @@ function buildCdpProxyAndJobRoutes(deps) {
       },
     },
     {
+      id: "mobileFarm.liveFleet",
+      method: "GET",
+      pattern: /^\/api\/mobile-farm\/live-fleet$/,
+      async handler(ctx) {
+        const nodePath = require("node:path");
+        const boardPath = nodePath.join(__dirname, "..", "lib", "mobile-farm-execution-board.cjs");
+        try {
+          delete require.cache[require.resolve(boardPath)];
+        } catch {
+          /* ignore */
+        }
+        const boardMod = require(boardPath);
+        const includeScreenshot = ctx.query.get("screenshot") !== "0";
+        const { loadAndroidStealthBridge } = require(nodePath.join(__dirname, "..", "lib", "android-bridge-loader.cjs"));
+        const iosBridge = require(nodePath.join(__dirname, "..", "lib", "ios-stealth-bridge.cjs"));
+        const bridge = await loadAndroidStealthBridge(nodePath.join(__dirname, "..")).catch(() => null);
+        const [board, rawLive, simFleet] = await Promise.all([
+          Promise.resolve(boardMod.collectMobileFarmExecutionBoard()),
+          bridge
+            ? bridge
+                .getAndroidLiveScreenAndFarmState({ displayId: "all", includeScreenshot, allDevices: true })
+                .then((out) =>
+                  iosBridge.augmentLiveScreenResponse(out, { includeScreenshot, allDevices: true }).catch(() => out),
+                )
+                .catch(() => null)
+            : Promise.resolve(null),
+          fetch("http://127.0.0.1:6016/api/mobile-sim/fleet", { signal: AbortSignal.timeout(1200) })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ]);
+        return send.json(ctx.res, 200, {
+          ok: true,
+          updatedAt: new Date().toISOString(),
+          board,
+          liveScreen: rawLive,
+          simFleet,
+        });
+      },
+    },
+    {
       id: "mobileStealth.daemonControl",
       method: "POST",
       pattern: /^\/api\/mobile-farm\/daemon-control$/,

@@ -478,7 +478,7 @@ function buildAndroidVaultRoutes(deps) {
     {
       id: "androidVault.liveScreen",
       method: "GET",
-      pattern: /^\/api\/android-vault\/live-screen$/,
+      pattern: /^\/api\/(?:android-vault|mobile-stealth)\/live-screen$/,
       async handler(ctx) {
         try {
           const bridge = await loadAndroidStealthBridge(electronDir);

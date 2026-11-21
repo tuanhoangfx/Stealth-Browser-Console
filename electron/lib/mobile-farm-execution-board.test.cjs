@@ -133,3 +133,60 @@ test("collectMobileFarmExecutionBoard exposes Multi-Platform & Geo Kaizen experi
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("collectMobileFarmExecutionBoard deduplicates Pixel 7 USB vs Wi-Fi, exposes COOLDOWN BURST phaseLabel, and maps carrierKaizen", () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-exec-dedup-"));
+  const nowIso = "2026-11-22T03:30:00.000Z";
+  try {
+    fs.writeFileSync(
+      path.join(tmpDir, "android-hardware-watchdog-status.json"),
+      JSON.stringify({
+        ok: true,
+        pid: 13240,
+        updatedAt: nowIso,
+        devices: [
+          { serial: "192.168.0.253:5555", ok: true, batteryLevel: 45, chargeMode: "charging" },
+          { serial: "33241FDH2004B9", ok: false, unreachableReason: "offline" },
+          { serial: "192.168.0.208:5555", ok: true, batteryLevel: 85, chargeMode: "hold_pixel_limit" },
+          { serial: "192.168.0.120:5555", ok: true, batteryLevel: 58, chargeMode: "hold_slate_emergency" },
+          { serial: "ios:192.168.0.222", ok: true, externalConnected: true, chargeLimiterEnabled: true },
+          { serial: "ios:192.168.0.183", ok: true, externalConnected: true, chargeLimiterEnabled: true },
+        ],
+      }),
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, "fb-multi-method-100-daemon-status.json"),
+      JSON.stringify({
+        ok: true,
+        pid: 16984,
+        status: "cooldown",
+        targetTotal: 100,
+        liveTotal: 87,
+        remainingTo100: 13,
+        waveNumber: 250,
+        activeMethod: "ios_safari_gmail_s9lte",
+        updatedAt: nowIso,
+        kaizenByCarrierLane: {
+          pixel6a_fpt_4g: { attempts: 82, live: 12, conversionPct: 14.6, lastLatencyMs: 478 },
+          pixel7_viettel_4g: { attempts: 2, live: 0, conversionPct: 0, lastLatencyMs: 740 },
+        },
+      }),
+    );
+    const board = collectMobileFarmExecutionBoard({
+      dataDir: tmpDir,
+      nowMs: Date.parse(nowIso),
+      isPidAliveFn: (pid) => Number(pid) === 16984 || Number(pid) === 13240,
+    });
+    assert.equal(board.devices.length, 5);
+    assert.equal(board.devices.filter((d) => /Pixel 7/.test(d.label)).length, 1);
+    assert.equal(board.devices.find((d) => d.serial === "192.168.0.253:5555")?.ok, true);
+    const fbTask = board.tasks.find((t) => t.id === "fb-multi-method-100");
+    assert.equal(fbTask.phaseLabel, "COOLDOWN BURST");
+    assert.equal(fbTask.isCooldown, true);
+    assert.equal(board.carrierKaizen.length, 2);
+    assert.equal(board.carrierKaizen[0].laneId, "pixel6a_fpt_4g");
+    assert.equal(board.carrierKaizen[0].conversionPct, 14.6);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Add Mobile Farm 5-device System Design V1-V5 previews
+
+- Version: `9.2.527`
+- Timestamp: 2026-11-22 03:25 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Mount 5 layout-direction variants (V1-V5) in System Design preview showcasing live screens for all 5 physical Wi-Fi phones, non-idle Cooldown Burst telemetry, and Hub-UI SSOT chrome.
+
+### Verification
+
+- tsc --noEmit, vitest stealth-system-tab.test.ts (1/1), stealth-smoke-hub shell-only (profile 9017), headless Stealth V1-V5 smoke (profile 9018, 0 pageErrors)
+
+---
 ## 2026-11-22 - Move Farm ticker to header, fix Android 53-profile load and P0003 backend guards (ship)
 
 - Version: `9.2.526`

@@ -1,22 +1,22 @@
 {
   "devices": [
     {
-      "host": "192.168.0.222",
-      "port": 8090,
-      "udid": "d2d95212a2dee88a25c1b58877f6f9ade5472802",
-      "productType": "iPhone8,2",
-      "iosVersion": "15.8.2",
-      "model": "iPhone 6s Plus",
-      "updatedAt": "2026-11-21T20:15:41.780Z"
-    },
-    {
       "host": "192.168.0.183",
       "port": 8090,
       "udid": "553e7c44ca0d03eb12986fdef4229eb43ac12026",
       "productType": "iPhone8,1",
       "iosVersion": "14.8",
       "model": "iPhone 6s",
-      "updatedAt": "2026-11-21T20:15:41.782Z"
+      "updatedAt": "2026-11-21T20:32:53.995Z"
+    },
+    {
+      "host": "192.168.0.222",
+      "port": 8090,
+      "udid": "d2d95212a2dee88a25c1b58877f6f9ade5472802",
+      "productType": "iPhone8,2",
+      "iosVersion": "15.8.2",
+      "model": "iPhone 6s Plus",
+      "updatedAt": "2026-11-21T20:32:54.073Z"
     }
   ]
 }
