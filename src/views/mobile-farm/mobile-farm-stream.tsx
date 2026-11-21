@@ -234,7 +234,27 @@ export type MobileFarmExecutionBoardData = {
     bestByPlatform: Record<string, MobileFarmExperimentLane>;
     lanes: MobileFarmExperimentLane[];
   } | null;
+  carrierKaizen?: MobileFarmCarrierKaizenRow[];
 };
+
+export function deduplicateBoardDevices(devices: MobileFarmBoardDevice[]): MobileFarmBoardDevice[] {
+  const raw = Array.isArray(devices) ? devices : [];
+  const p7Wifi = raw.find((d) => d.serial === "192.168.0.253:5555");
+  const p7Usb = raw.find((d) => d.serial === "33241FDH2004B9");
+  const keepPixel7Serial = p7Wifi?.ok
+    ? "192.168.0.253:5555"
+    : p7Usb?.ok
+      ? "33241FDH2004B9"
+      : p7Wifi
+        ? "192.168.0.253:5555"
+        : "33241FDH2004B9";
+  return raw.filter((d) => {
+    if (d.serial === "192.168.0.253:5555" || d.serial === "33241FDH2004B9") {
+      return d.serial === keepPixel7Serial;
+    }
+    return true;
+  });
+}
 
 type GmailMarlHarvesterState = {
   ok?: boolean;
@@ -671,8 +691,11 @@ export const H264PhoneStreamCanvas = memo(function H264PhoneStreamCanvas({
 
 export const FARM_PREFS_STORAGE_KEY = "p0003:mobile-farm-prefs:v1";
 
+export type FarmWallSegment = "physical_all" | "physical_android" | "physical_ios" | "virtual_pc";
+
 export type FarmUiPrefs = {
   engineMode: FarmEngineMode;
+  wallSegment: FarmWallSegment;
   cardWidth: number;
   refreshIntervalMs: number;
   connectionFilter: FarmFilterConnection;
@@ -684,9 +707,10 @@ export type FarmUiPrefs = {
 };
 
 const DEFAULT_FARM_UI_PREFS: FarmUiPrefs = {
-  engineMode: "pc_emulation",
+  engineMode: "unified",
+  wallSegment: "physical_all",
   cardWidth: 218,
-  refreshIntervalMs: 850,
+  refreshIntervalMs: 1500,
   connectionFilter: "all",
   groupFilter: "all",
   railCollapsed: false,
@@ -729,8 +753,16 @@ export function readFarmUiPrefs(): FarmUiPrefs {
       parsed.groupFilter === "samsung"
         ? parsed.groupFilter
         : "all";
+    const wallSegment: FarmWallSegment =
+      parsed.wallSegment === "physical_all" ||
+      parsed.wallSegment === "physical_android" ||
+      parsed.wallSegment === "physical_ios" ||
+      parsed.wallSegment === "virtual_pc"
+        ? parsed.wallSegment
+        : DEFAULT_FARM_UI_PREFS.wallSegment;
     return {
       engineMode,
+      wallSegment,
       cardWidth,
       refreshIntervalMs,
       connectionFilter,

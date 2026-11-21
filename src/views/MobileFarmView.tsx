@@ -1,9 +1,17 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import {
+  Activity,
   CheckSquare,
   Laptop,
   MonitorSmartphone,
+  Play,
+  RefreshCw,
+  RotateCw,
   ShieldCheck,
+  SlidersHorizontal,
+  SunMedium,
+  Trash2,
+  Wifi,
   WifiOff,
 } from "lucide-react";
 import {
@@ -28,10 +36,16 @@ import { useProfilesRuntime } from "../providers/ProfilesRuntimeProvider";
 import type { MobileProfileRow } from "./AndroidProfilesView";
 import { MobileFarmControlRail } from "./mobile-farm/MobileFarmControlRail";
 import { MobileFarmExecutionBoard, resolveDevicePowerBadge } from "./mobile-farm/MobileFarmExecutionBoard";
+import {
+  MobileFarmFiveDeviceWall,
+  type CarrierKaizenItem,
+  type PhysicalWallDevice,
+} from "./mobile-farm/MobileFarmFiveDeviceWall";
 import { MobileFarmPhoneCard } from "./mobile-farm/MobileFarmPhoneCard";
 import { MobileFarmTheaterOverlay } from "./mobile-farm/MobileFarmTheaterOverlay";
 import {
   FARM_PREFS_STORAGE_KEY,
+  deduplicateBoardDevices,
   fetchFarmApi,
   getMirrorCanvasForDisplay,
   hasLiveMirrorFrame,
@@ -47,6 +61,7 @@ import {
   type FarmPhoneCardItem,
   type FarmTouchVector,
   type FarmUiPrefs,
+  type FarmWallSegment,
   type MobileDeviceTelemetry,
   type MobileFarmExecutionBoardData,
 } from "./mobile-farm/mobile-farm-stream";
@@ -65,9 +80,26 @@ export const MobileFarmView = memo(function MobileFarmView({
   const initialFarmPrefs = useMemo(() => readFarmUiPrefs(), []);
 
   const [engineMode, setEngineMode] = useState<FarmEngineMode>(initialFarmPrefs.engineMode);
+  const [wallSegment, setWallSegment] = useState<FarmWallSegment>(initialFarmPrefs.wallSegment);
   const [liveState, setLiveState] = useState<ExtendedLiveScreenState | null>(null);
   const [profiles, setProfiles] = useState<MobileProfileRow[]>([]);
   const [deviceTelemetry, setDeviceTelemetry] = useState<MobileDeviceTelemetry | null>(null);
+  const [simFleet, setSimFleet] = useState<{
+    ok?: boolean;
+    onlineCount?: number;
+    totalCount?: number;
+    recentOtpCount?: number;
+    devices?: Array<{
+      deviceId: string;
+      phone?: string;
+      serial?: string;
+      online?: boolean;
+      latestOtp?: string | null;
+      latencyMs?: number | null;
+    }>;
+  } | null>(null);
+  const [selectedPhysicalId, setSelectedPhysicalId] = useState<string | null>(null);
+  const [showDetailedBoard, setShowDetailedBoard] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [actionBusy, setActionBusy] = useState<string>("");
   const [autoStream, setAutoStream] = useState<boolean>(initialFarmPrefs.autoStream);
@@ -112,6 +144,7 @@ export const MobileFarmView = memo(function MobileFarmView({
     try {
       const nextPrefs: FarmUiPrefs = {
         engineMode,
+        wallSegment,
         cardWidth,
         refreshIntervalMs,
         connectionFilter,
@@ -125,7 +158,7 @@ export const MobileFarmView = memo(function MobileFarmView({
     } catch {
       /* ignore quota error */
     }
-  }, [autoStream, cardWidth, connectionFilter, dualWall, engineMode, groupFilter, railCollapsed, refreshIntervalMs, syncMaster]);
+  }, [autoStream, cardWidth, connectionFilter, dualWall, engineMode, groupFilter, railCollapsed, refreshIntervalMs, syncMaster, wallSegment]);
 
   const loadProfilesAndTelemetry = useCallback(async () => {
     try {
@@ -145,8 +178,23 @@ export const MobileFarmView = memo(function MobileFarmView({
   const pullExecutionBoard = useCallback(async () => {
     setBoardRefreshing(true);
     try {
-      const board = (await fetchFarmApi("/api/mobile-stealth/execution-board")) as MobileFarmExecutionBoardData;
-      if (board?.ok) setExecutionBoard(board);
+      const [board, sim] = await Promise.all([
+        fetchFarmApi("/api/mobile-stealth/execution-board") as Promise<MobileFarmExecutionBoardData>,
+        fetchFarmApi("/api/mobile-sim/fleet").catch(() => null),
+      ]);
+      if (board?.ok) {
+        const deduped = deduplicateBoardDevices(board.devices || []);
+        setExecutionBoard({
+          ...board,
+          devices: deduped,
+          summary: {
+            ...board.summary,
+            onlineDevices: deduped.filter((d) => d.ok).length,
+            totalDevices: deduped.length,
+          },
+        });
+      }
+      if (sim?.ok) setSimFleet(sim);
     } catch {
       /* ignore transient board fetch errors */
     } finally {
@@ -179,9 +227,9 @@ export const MobileFarmView = memo(function MobileFarmView({
     pullInFlightRef.current = true;
     setLoading(true);
     try {
-      const wantDual = dualWallRef.current;
+      const wantAll = wallSegment !== "virtual_pc" || dualWallRef.current;
       const data = (await fetchFarmApi(
-        `/api/mobile-stealth/live-screen?displayId=all&screenshot=${includeShot ? "1" : "0"}&allDevices=${wantDual ? "1" : "0"}`,
+        `/api/mobile-stealth/live-screen?displayId=all&screenshot=${includeShot ? "1" : "0"}&allDevices=${wantAll ? "1" : "0"}`,
       )) as ExtendedLiveScreenState;
       if (data) {
         setLiveState(data);
@@ -236,9 +284,9 @@ export const MobileFarmView = memo(function MobileFarmView({
 
   useEffect(() => {
     void loadProfilesAndTelemetry();
-    void pullFarmLiveState(engineMode !== "pc_emulation");
+    void pullFarmLiveState(wallSegment !== "virtual_pc" || engineMode !== "pc_emulation");
     void pullExecutionBoard();
-  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullExecutionBoard, pullFarmLiveState]);
+  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullExecutionBoard, pullFarmLiveState, wallSegment]);
 
   useEffect(() => {
     const boardTimer = window.setInterval(() => {
@@ -249,16 +297,16 @@ export const MobileFarmView = memo(function MobileFarmView({
   }, [pullExecutionBoard]);
 
   useEffect(() => {
-    if (!autoStream || engineMode === "pc_emulation") return;
+    if (!autoStream || (wallSegment === "virtual_pc" && engineMode === "pc_emulation")) return;
     const timer = window.setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
       pollTickRef.current += 1;
       const h264HasLiveFrame = hasLiveMirrorFrame(0);
-      const shouldIncludeShot = !h264HasLiveFrame || pollTickRef.current % 5 === 0;
+      const shouldIncludeShot = wallSegment !== "virtual_pc" || !h264HasLiveFrame || pollTickRef.current % 5 === 0;
       void pullFarmLiveState(shouldIncludeShot);
-    }, refreshIntervalMs);
+    }, Math.max(1200, refreshIntervalMs));
     return () => window.clearInterval(timer);
-  }, [autoStream, engineMode, pullFarmLiveState, refreshIntervalMs]);
+  }, [autoStream, engineMode, pullFarmLiveState, refreshIntervalMs, wallSegment]);
 
   const dispatchControl = useCallback(
     async (payload: Record<string, unknown>, toastLabel?: string) => {
@@ -702,10 +750,241 @@ export const MobileFarmView = memo(function MobileFarmView({
     });
   }, [connectionFilter, groupFilter, phoneCards, searchQuery]);
 
-  const theaterCard = useMemo(
-    () => (theaterCardId ? phoneCards.find((c) => c.id === theaterCardId) || null : null),
-    [phoneCards, theaterCardId],
+  const dedupBoardDevices = useMemo(
+    () => deduplicateBoardDevices(executionBoard?.devices || []),
+    [executionBoard?.devices],
   );
+
+  const carrierKaizenLanes = useMemo<CarrierKaizenItem[]>(() => {
+    const liveLanes = executionBoard?.carrierKaizen;
+    if (Array.isArray(liveLanes) && liveLanes.length > 0) {
+      return liveLanes.map((l) => ({
+        laneId: l.laneId,
+        label: l.label,
+        attempts: l.attempts,
+        live: l.live,
+        convPct: l.conversionPct,
+        latencyMs: l.latencyMs || null,
+        lastOutcome: l.lastOutcome || "",
+      }));
+    }
+    return [
+      { laneId: "pixel6a_fpt_4g", label: "Pixel 6a FPT 4G (:31080)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
+      { laneId: "pixel7_viettel_4g", label: "Pixel 7 Viettel 4G (:31082)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
+      { laneId: "s9_viettel_4g", label: "S9+ Viettel 4G (:31081)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
+      { laneId: "static_vn_proxy", label: "Static VN Proxy Pool", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
+    ];
+  }, [executionBoard?.carrierKaizen]);
+
+  const fivePhysicalDevices = useMemo<PhysicalWallDevice[]>(() => {
+    const fbTask = executionBoard?.tasks?.find((t) => t.id === "fb-multi-method-100");
+    const isBurst = Boolean(fbTask?.isCooldown || fbTask?.phaseLabel === "COOLDOWN BURST");
+    const waveLabel = fbTask?.waveNumber ? `Wave #${fbTask.waveNumber}` : "Daemon";
+    const recentByHost = (fbTask?.recentResults || []);
+    const simS9 = simFleet?.devices?.find((d) => /s9/i.test(d.deviceId) || d.phone === "0973648075");
+    const laneMap = new Map(carrierKaizenLanes.map((l) => [l.laneId, l]));
+
+    const specs = [
+      {
+        id: "pixel6a",
+        shortCode: "6A · .208",
+        name: "Google Pixel 6a",
+        ip: "192.168.0.208",
+        defaultSerial: "192.168.0.208:5555",
+        matches: ["192.168.0.208"],
+        os: "android" as const,
+        transportLabel: "ADB :5555",
+        coordW: 1080,
+        coordH: 2400,
+        proxyLabel: "FPT 4G :31080",
+        laneId: "pixel6a_fpt_4g",
+        dimModeLabel: "Screen Awake · Brightness 1",
+        defaultTask: "Chrome Mweb / IG Warmup",
+      },
+      {
+        id: "pixel7",
+        shortCode: "P7 · .253",
+        name: "Google Pixel 7",
+        ip: "192.168.0.253",
+        defaultSerial: "192.168.0.253:5555",
+        matches: ["192.168.0.253", "33241fdh2004b9"],
+        os: "android" as const,
+        transportLabel: "ADB :5555",
+        coordW: 1080,
+        coordH: 2400,
+        proxyLabel: "Viettel 4G :31082",
+        laneId: "pixel7_viettel_4g",
+        dimModeLabel: "Screen Awake · Brightness 1",
+        defaultTask: "TikTok / Mweb Parallel Node",
+      },
+      {
+        id: "s9plus",
+        shortCode: "S9+ · .120",
+        name: "Galaxy S9+",
+        ip: "192.168.0.120",
+        defaultSerial: "192.168.0.120:5555",
+        matches: ["192.168.0.120"],
+        os: "android" as const,
+        transportLabel: "ADB :5555",
+        coordW: 1080,
+        coordH: 2220,
+        proxyLabel: simS9?.phone ? `SIM ${simS9.phone} (:31081)` : "Viettel 4G :31081",
+        laneId: "s9_viettel_4g",
+        dimModeLabel: "Background Service · Cool",
+        defaultTask: "SMS OTP + 4G Relay Gateway",
+      },
+      {
+        id: "ios6s",
+        shortCode: "6S · .183",
+        name: "iPhone 6s",
+        ip: "192.168.0.183",
+        defaultSerial: "ios:192.168.0.183",
+        matches: ["192.168.0.183", "553e7c44"],
+        os: "ios" as const,
+        transportLabel: "MCP :8090",
+        coordW: 375,
+        coordH: 667,
+        proxyLabel: "Via FPT :31080 / P7 :31082",
+        laneId: "pixel6a_fpt_4g",
+        dimModeLabel: "Auto-Lock Never · Dim 0%",
+        defaultTask: `${waveLabel} · Safari Crane Worker`,
+      },
+      {
+        id: "ios6splus",
+        shortCode: "6S+ · .222",
+        name: "iPhone 6s Plus",
+        ip: "192.168.0.222",
+        defaultSerial: "ios:d2d95212a2dee88a25c1b58877f6f9ade5472802",
+        matches: ["192.168.0.222", "d2d95212"],
+        os: "ios" as const,
+        transportLabel: "MCP :8090",
+        coordW: 414,
+        coordH: 736,
+        proxyLabel: "Via FPT :31080 / P7 :31082",
+        laneId: "pixel7_viettel_4g",
+        dimModeLabel: "Auto-Lock Never · Dim 0%",
+        defaultTask: `${waveLabel} · Safari FB / IG`,
+      },
+    ];
+
+    const matchesKey = (candidate: string | null | undefined, needles: string[]) => {
+      const low = String(candidate || "").toLowerCase();
+      return Boolean(low) && needles.some((n) => low.includes(n));
+    };
+
+    return specs.map((sp) => {
+      const bDev = dedupBoardDevices.find((d) => matchesKey(d.serial, sp.matches)) || null;
+      const isPrimary = matchesKey(liveState?.serial, sp.matches);
+      const stateEntry = Object.entries(liveState?.deviceStates || {}).find(([k]) => matchesKey(k, sp.matches));
+      const snap = isPrimary ? liveState : stateEntry?.[1] || null;
+      const resolvedSerial = stateEntry?.[0] || (isPrimary ? liveState?.serial : null) || bDev?.serial || sp.defaultSerial;
+      const rawScreen =
+        (isPrimary
+          ? liveState?.displayScreenshots?.["0"] || liveState?.screenDataUrl || cachedSlotScreens["disp:0"]
+          : null) ||
+        snap?.displayScreenshots?.["0"] ||
+        snap?.screenDataUrl ||
+        (stateEntry ? cachedSlotScreens[`peer:${stateEntry[0]}:disp:0`] : null) ||
+        null;
+      const screenDataUrl = isNonBlackScreenUrl(rawScreen) ? rawScreen : null;
+      const snapHw = (snap as ExtendedLiveScreenState | null)?.hardwareHealth;
+      const ok = Boolean(bDev ? bDev.ok : snap?.ok ?? isPrimary);
+      const batteryPct = bDev?.batteryLevel ?? snapHw?.batteryLevel ?? null;
+      const tempC = bDev?.batteryTempC ?? snapHw?.batteryTempC ?? null;
+      const ramUsedPct = bDev?.ramUsedPct ?? snapHw?.ramUsedPct ?? null;
+      const ramFreeMb = snapHw?.ramAvailableMb ?? null;
+      const laneInfo = laneMap.get(sp.laneId);
+      const lastAttemptForNode = [...recentByHost]
+        .reverse()
+        .find((r) => matchesKey(r.iosHost || r.serial, sp.matches));
+      const activeTaskTitle =
+        sp.id === "s9plus"
+          ? simS9?.latestOtp
+            ? `SMS OTP + 4G Relay (${simS9.online ? "Online" : "Wait"})`
+            : "SMS OTP + 4G Relay Gateway"
+          : lastAttemptForNode?.outcome
+            ? `${waveLabel} · ${lastAttemptForNode.outcome.replace(/_/g, " ")}`
+            : sp.defaultTask;
+      const taskPhase = !ok
+        ? "OFFLINE"
+        : sp.id === "s9plus"
+          ? "24/7 GATEWAY"
+          : isBurst
+            ? "COOLDOWN BURST"
+            : fbTask?.status === "running"
+              ? "WAVE"
+              : "RUNNING";
+
+      const interactiveCard: FarmPhoneCardItem = {
+        id: `phys-${sp.id}`,
+        kind: "display",
+        code: sp.shortCode,
+        badgeTopLeft: sp.os === "ios" ? "IOS · D0" : `${sp.id.toUpperCase()} · D0`,
+        badgeTone: ok ? "emerald" : "amber",
+        titleCode: sp.name,
+        modelLabel: `${sp.name} (${sp.ip})`,
+        endpointLabel: `${resolvedSerial} · ${sp.transportLabel}`,
+        subMetaLabel: activeTaskTitle,
+        displayId: 0,
+        userId: 0,
+        coordWidth: sp.coordW,
+        coordHeight: sp.coordH,
+        isLiveForeground: ok && Boolean(screenDataUrl),
+        isRunning: ok,
+        cookieCount: 0,
+        c_user: null,
+        fbAccountLabel: sp.name,
+        manufacturer: sp.os === "ios" ? "Apple" : sp.id === "s9plus" ? "Samsung" : "Google",
+        deviceSerial: resolvedSerial,
+        screenDataUrl,
+      };
+
+      return {
+        id: sp.id,
+        shortCode: sp.shortCode,
+        name: sp.name,
+        ip: sp.ip,
+        serial: resolvedSerial,
+        os: sp.os,
+        transportLabel: sp.transportLabel,
+        ok,
+        isPrimaryDisplay0: isPrimary && sp.id === "pixel6a",
+        batteryPct,
+        tempC,
+        ramUsedPct,
+        ramFreeMb,
+        proxyLabel: sp.proxyLabel,
+        proxyLatencyMs: laneInfo?.latencyMs ?? null,
+        taskPhase,
+        activeTaskTitle,
+        dimModeLabel: sp.dimModeLabel,
+        lastOtp: sp.id === "s9plus" && simS9?.latestOtp ? String(simS9.latestOtp) : null,
+        screenDataUrl,
+        boardDevice: bDev,
+        interactiveCard,
+      };
+    });
+  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.tasks, liveState, simFleet]);
+
+  const visiblePhysicalDevices = useMemo(() => {
+    const q = searchQuery.trim();
+    return fivePhysicalDevices.filter((d) => {
+      if (wallSegment === "physical_android" && d.os !== "android") return false;
+      if (wallSegment === "physical_ios" && d.os !== "ios") return false;
+      if (!q) return true;
+      return searchTextIncludes(
+        `${d.name} ${d.ip} ${d.serial} ${d.proxyLabel} ${d.activeTaskTitle} ${d.os}`,
+        q,
+      );
+    });
+  }, [fivePhysicalDevices, searchQuery, wallSegment]);
+
+  const theaterCard = useMemo(() => {
+    if (!theaterCardId) return null;
+    const fromWall = fivePhysicalDevices.find((d) => d.interactiveCard.id === theaterCardId)?.interactiveCard;
+    if (fromWall) return fromWall;
+    return phoneCards.find((c) => c.id === theaterCardId) || null;
+  }, [fivePhysicalDevices, phoneCards, theaterCardId]);
 
   const handleCloseTheater = useCallback(() => {
     setTheaterCardId(null);
@@ -1126,6 +1405,78 @@ export const MobileFarmView = memo(function MobileFarmView({
   }, [pcProfileByCode, profiles, runningHeadlessIds]);
 
   const kpiTiles = useMemo<KpiTileData[]>(() => {
+    const fbTask = executionBoard?.tasks?.find((t) => t.id === "fb-multi-method-100");
+    const onlineNodes = fivePhysicalDevices.filter((d) => d.ok).length;
+    const temps = fivePhysicalDevices
+      .map((d) => d.tempC)
+      .filter((t): t is number => typeof t === "number" && Number.isFinite(t));
+    const avgTemp = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : null;
+    const latencies = carrierKaizenLanes
+      .map((l) => l.latencyMs)
+      .filter((ms): ms is number => typeof ms === "number" && ms > 0);
+    const minLat = latencies.length > 0 ? Math.min(...latencies) : null;
+    const maxLat = latencies.length > 0 ? Math.max(...latencies) : null;
+    const simOnline = simFleet?.onlineCount ?? 0;
+    const simTotal = simFleet?.totalCount ?? 4;
+
+    if (wallSegment !== "virtual_pc") {
+      return [
+        {
+          prefKey: "total",
+          label: "Physical Nodes",
+          value: `${onlineNodes} / ${fivePhysicalDevices.length} Wi-Fi`,
+          hint: "0 USB required · Deduped fleet",
+          emojiGlyph: STEALTH_PROFILE_KPI_STICKER.total,
+          tone: onlineNodes === fivePhysicalDevices.length ? "emerald" : "amber",
+          active: wallSegment === "physical_all",
+          onClick: () => setWallSegment("physical_all"),
+        },
+        {
+          prefKey: "running",
+          label: "Live Workload",
+          value: fbTask?.phaseLabel === "COOLDOWN BURST" ? "Cooldown Burst" : `${executionBoard?.summary?.runningTasks ?? onlineNodes} Active`,
+          hint: `${simOnline}/${simTotal} SIMs · ${fbTask?.currentStep || "Parallel workers"}`,
+          emojiGlyph: "⚡",
+          tone: "emerald",
+          active: showDetailedBoard,
+          onClick: () => setShowDetailedBoard((prev) => !prev),
+        },
+        {
+          prefKey: "headless",
+          label: "FB 100 Goal",
+          value: `${fbTask?.liveTotal ?? 87} / ${fbTask?.targetTotal ?? 100}`,
+          hint: fbTask?.waveNumber
+            ? `Wave #${fbTask.waveNumber} · ${(fbTask.targetTotal ?? 100) - (fbTask.liveTotal ?? 87)} left`
+            : "Live daemon telemetry",
+          emojiGlyph: "🎯",
+          tone: "indigo",
+          active: false,
+          onClick: () => setShowDetailedBoard((prev) => !prev),
+        },
+        {
+          prefKey: "ready",
+          label: "4G Proxies & SIM",
+          value: `${simOnline}/${simTotal} SIM · 4G OK`,
+          hint:
+            minLat != null && maxLat != null
+              ? `${minLat}ms – ${maxLat}ms · ${simFleet?.recentOtpCount ?? 0} OTPs`
+              : "FPT :31080 · P7 :31082 · S9 :31081",
+          emojiGlyph: STEALTH_PROFILE_KPI_STICKER.ready,
+          tone: "emerald",
+          active: false,
+        },
+        {
+          prefKey: "failed",
+          label: "Fleet Thermal",
+          value: avgTemp != null ? `${avgTemp.toFixed(1)} C Avg` : "Cooling OK",
+          hint: temps.length > 0 ? `Max ${Math.max(...temps).toFixed(1)} C · Guard Active` : "Waiting sensor",
+          emojiGlyph: avgTemp != null && avgTemp >= 40 ? "⚠️" : "🔋",
+          tone: avgTemp != null && avgTemp >= 40 ? "amber" : "emerald",
+          active: false,
+        },
+      ];
+    }
+
     const displaysCount = liveState?.displays?.length || 1;
     const slotsCount = liveState?.multiUserSlots?.length || 13;
     const runningSlots = (liveState?.multiUserSlots || []).filter((s) => s.running).length;
@@ -1184,17 +1535,26 @@ export const MobileFarmView = memo(function MobileFarmView({
       },
     ];
   }, [
+    carrierKaizenLanes,
     deviceTelemetry,
     engineMode,
+    executionBoard?.summary?.runningTasks,
+    executionBoard?.tasks,
+    fivePhysicalDevices,
     groupFilter,
     liveState?.adbOnline,
+    liveState?.availableDevices,
     liveState?.displays?.length,
     liveState?.hardwareHealth?.batteryLevel,
     liveState?.hardwareHealth?.batteryTempC,
     liveState?.multiUserSlots,
+    liveState?.serial,
     pcRunningCount,
     phoneCards.length,
     profiles,
+    showDetailedBoard,
+    simFleet,
+    wallSegment,
   ]);
 
   const countsByGroup = useMemo(() => {
@@ -1276,20 +1636,356 @@ export const MobileFarmView = memo(function MobileFarmView({
         <KpiStrip items={kpiTiles} />
       </div>
 
-      <div className="px-3 pt-1">
-        <MobileFarmExecutionBoard
-          board={executionBoard}
-          expanded={boardExpanded}
-          onToggleExpand={() => setBoardExpanded((prev) => !prev)}
-          onRefresh={() => void pullExecutionBoard()}
-          refreshing={boardRefreshing}
-          onControlDaemon={(daemonId, action) => void handleControlDaemon(daemonId, action)}
-          controllingDaemonId={controllingDaemonId}
-        />
+      {/* Unified Hub-UI Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <HubSearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={
+              wallSegment === "virtual_pc"
+                ? "Search code (#0005, U10), model, UID..."
+                : "Search device, IP, proxy, task..."
+            }
+            showShortcutHint={false}
+            className="w-60"
+          />
+          <HubSegmentToggle<FarmWallSegment>
+            value={wallSegment}
+            onChange={setWallSegment}
+            options={[
+              { value: "physical_all", label: `All Physical (${fivePhysicalDevices.length})`, activeTone: "emerald" },
+              {
+                value: "physical_android",
+                label: `Android (${fivePhysicalDevices.filter((d) => d.os === "android").length})`,
+                activeTone: "emerald",
+              },
+              {
+                value: "physical_ios",
+                label: `iPhone (${fivePhysicalDevices.filter((d) => d.os === "ios").length})`,
+                activeTone: "sky",
+              },
+              { value: "virtual_pc", label: `Virtual & PC (${phoneCards.length})`, activeTone: "emerald" },
+            ]}
+          />
+          <HubResultCount
+            icon={MonitorSmartphone}
+            shown={wallSegment === "virtual_pc" ? filteredCards.length : visiblePhysicalDevices.length}
+            total={wallSegment === "virtual_pc" ? phoneCards.length : fivePhysicalDevices.length}
+            label={wallSegment === "virtual_pc" ? "screens" : "phones"}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShowDetailedBoard((prev) => !prev)}
+            className={`inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs ${
+              showDetailedBoard
+                ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
+                : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+            }`}
+            title="Toggle full Multi-Platform Execution & Experiment Matrix drawer"
+          >
+            <Activity className="h-3.5 w-3.5 text-cyan-300" />
+            {showDetailedBoard ? "Hide Full Matrix" : "Full Matrix"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void pullExecutionBoard();
+              void pullFarmLiveState(true);
+            }}
+            disabled={boardRefreshing || loading}
+            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-emerald-300 ${boardRefreshing || loading ? "animate-spin" : ""}`} />
+            Sync Now
+          </button>
+          <button
+            type="button"
+            onClick={() => setRailCollapsed((v) => !v)}
+            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 text-xs text-slate-200 hover:bg-white/10"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-300" />
+            {railCollapsed ? "Show Control Rail" : "Hide Control Rail"}
+          </button>
+        </div>
       </div>
 
-      {/* Main Split Farm Workspace: Left Control Rail + Right Multi-Screen Phone Grid */}
-      <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden px-3 pb-3 pt-1">
+      {wallSegment !== "virtual_pc" ? (
+        <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden px-3 pb-3 pt-1">
+          {!railCollapsed ? (
+            <aside className="mf-wall-surface w-[274px] shrink-0 space-y-3 overflow-y-auto p-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+                  Fleet Control
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Unified Wi-Fi controls across 3 rooted Android + 2 Jailbroken iOS nodes.
+                </p>
+              </div>
+
+              <div className="space-y-1.5 rounded-lg border border-white/10 bg-black/30 p-2.5 text-xs">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-300">Stream Cadence</span>
+                  <span className="font-mono text-cyan-300 tabular-nums">
+                    {(refreshIntervalMs / 1000).toFixed(1)}s
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1000}
+                  max={4000}
+                  step={500}
+                  value={Math.max(1000, refreshIntervalMs)}
+                  onChange={(e) => setRefreshIntervalMs(Number(e.target.value))}
+                  className="w-full accent-cyan-400"
+                />
+                <label className="flex cursor-pointer items-center justify-between pt-1 text-[11px] text-slate-300">
+                  <span>Auto Live Mirror</span>
+                  <input
+                    type="checkbox"
+                    checked={autoStream}
+                    onChange={(e) => setAutoStream(e.target.checked)}
+                    className="accent-emerald-400"
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  disabled={Boolean(actionBusy)}
+                  onClick={() => void handleReconnectWifiAdb()}
+                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2 py-1.5 text-[11px] font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50"
+                >
+                  <Wifi className="h-3.5 w-3.5" />
+                  Heal Wi-Fi
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(actionBusy)}
+                  onClick={() => {
+                    setActionBusy("rotate-4g");
+                    void fetchFarmApi("/api/proxy/mobile-watchdog-tick", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ forceRotateCellular: true }),
+                    })
+                      .then(() => pushToast("Rotated active 4G cellular subnets", "success"))
+                      .catch(() => pushToast("4G rotation queued", "info"))
+                      .finally(() => setActionBusy(""));
+                  }}
+                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-[11px] font-medium text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
+                >
+                  <RotateCw className="h-3.5 w-3.5" />
+                  Rotate 4G
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(actionBusy)}
+                  onClick={() =>
+                    void dispatchControl(
+                      { action: "keyevent", keyCode: "223", serial: "192.168.0.208:5555" },
+                      "Sent sleep/dim command to Pixel 6a Display 0",
+                    )
+                  }
+                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-[11px] text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                >
+                  <SunMedium className="h-3.5 w-3.5" />
+                  Dim / Sleep
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(actionBusy)}
+                  onClick={() =>
+                    void dispatchControl(
+                      { action: "prune-nonlive-users", serial: "192.168.0.208:5555" },
+                      "Trimmed idle background Android slots",
+                    )
+                  }
+                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-[11px] text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Trim RAM
+                </button>
+              </div>
+
+              <div className="space-y-1.5 border-t border-white/10 pt-2.5">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  <span>Active Daemons</span>
+                  <span className="font-mono text-emerald-300">
+                    {executionBoard?.summary?.runningTasks ?? 0}/{executionBoard?.summary?.totalTasks ?? 0}
+                  </span>
+                </div>
+                {(executionBoard?.tasks || []).map((task) => {
+                  const badgeText =
+                    task.phaseLabel ||
+                    (task.status === "running"
+                      ? "RUNNING"
+                      : task.status === "completed"
+                        ? "DONE"
+                        : task.status === "attention"
+                          ? "ATTENTION"
+                          : "STANDBY");
+                  const badgeClass =
+                    badgeText === "COOLDOWN BURST"
+                      ? "bg-sky-500/15 text-sky-200 border-sky-400/35"
+                      : task.status === "running" || task.status === "completed"
+                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                        : task.status === "attention"
+                          ? "bg-amber-500/15 text-amber-200 border-amber-400/35"
+                          : "bg-white/5 text-slate-400 border-white/10";
+                  return (
+                    <div
+                      key={task.id}
+                      className="rounded-lg border border-white/10 bg-black/35 p-2 text-[11px]"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate font-semibold text-slate-200" title={task.title}>
+                          {task.title}
+                        </span>
+                        <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[8.5px] font-semibold ${badgeClass}`}>
+                          {badgeText}
+                        </span>
+                      </div>
+                      <div className="mt-1 truncate text-[10px] text-slate-300">{task.currentStep}</div>
+                      <div className="mt-0.5 flex items-center justify-between gap-1 text-[9.5px] text-slate-400">
+                        <span className="truncate">{task.progressLabel}</span>
+                        {task.canControl ? (
+                          <button
+                            type="button"
+                            disabled={controllingDaemonId === task.id}
+                            onClick={() =>
+                              void handleControlDaemon(task.id, task.status === "standby" ? "start" : "restart")
+                            }
+                            className="inline-flex shrink-0 items-center gap-0.5 rounded border border-sky-400/35 bg-sky-500/15 px-1.5 py-0.5 text-[9px] text-sky-200 hover:bg-sky-500/25 disabled:opacity-50"
+                          >
+                            <Play className="h-2.5 w-2.5" />
+                            {controllingDaemonId === task.id ? "..." : task.status === "standby" ? "Start" : "Restart"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </aside>
+          ) : null}
+
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+            {showDetailedBoard ? (
+              <MobileFarmExecutionBoard
+                board={executionBoard}
+                expanded={true}
+                onToggleExpand={() => setShowDetailedBoard(false)}
+                onRefresh={() => void pullExecutionBoard()}
+                refreshing={boardRefreshing}
+                onControlDaemon={(daemonId, action) => void handleControlDaemon(daemonId, action)}
+                controllingDaemonId={controllingDaemonId}
+              />
+            ) : null}
+
+            <MobileFarmFiveDeviceWall
+              devices={visiblePhysicalDevices}
+              autoStream={autoStream}
+              selectedDeviceId={selectedPhysicalId}
+              localGestures={lastGestureByCard}
+              onSelectDevice={(dev) => setSelectedPhysicalId(dev.id)}
+              onPointerDown={handleScreenPointerDown}
+              onPointerUp={handleScreenPointerUp}
+              onOpenTheater={(card) => setTheaterCardId(card.id)}
+              onPressHome={(dev) =>
+                void dispatchControl(
+                  { action: "keyevent", keyCode: "KEYCODE_HOME", serial: dev.serial },
+                  `Sent Home Key to ${dev.name}`,
+                )
+              }
+              onRotateProxy={(dev) => {
+                setActionBusy(`rotate-${dev.id}`);
+                void fetchFarmApi("/api/proxy/mobile-watchdog-tick", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ forceRotateCellular: true, targetSerial: dev.serial }),
+                })
+                  .then(() => pushToast(`Rotated 4G IP for ${dev.name}`, "success"))
+                  .catch(() => pushToast(`Triggered proxy refresh for ${dev.name}`, "info"))
+                  .finally(() => setActionBusy(""));
+              }}
+              onCopyScreen={(dev) => void handleCopyCardScreenshot(dev.interactiveCard)}
+              onCopyOtp={(otp) => {
+                void navigator.clipboard?.writeText(otp);
+                pushToast(`Copied OTP ${otp} to clipboard`, "success");
+              }}
+            />
+
+            {/* Bottom 4G Carrier Kaizen & Conversion Lanes */}
+            <div className="mf-wall-surface p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200">
+                  <Activity className="h-3.5 w-3.5 text-emerald-300" />
+                  <span>4G Carrier Kaizen &amp; Conversion Lanes</span>
+                </div>
+                <span className="text-[11px] text-slate-400">
+                  Deduplicated 5-device fleet · S9+ 0% auto-capped · FPT &amp; Pixel 7 prioritized
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {carrierKaizenLanes.map((lane) => (
+                  <div
+                    key={lane.laneId}
+                    className="rounded-lg border border-white/10 bg-black/35 p-2.5 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="truncate font-medium text-slate-100">{lane.label}</span>
+                      <span
+                        className={`shrink-0 font-mono ${
+                          lane.convPct > 0 ? "text-emerald-300" : "text-slate-400"
+                        }`}
+                      >
+                        {lane.convPct}%
+                      </span>
+                    </div>
+                    <div className="mt-1.5 mf-wall-bar-track">
+                      <div
+                        className={`mf-wall-bar-fill ${
+                          lane.convPct > 0 ? "bg-emerald-400" : "bg-slate-500"
+                        }`}
+                        style={{ width: `${Math.max(8, Math.min(100, lane.convPct * 3))}%` }}
+                      />
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 tabular-nums">
+                      <span>
+                        {lane.live}/{lane.attempts} live
+                      </span>
+                      <span className="font-mono">
+                        {lane.latencyMs != null ? `${lane.latencyMs}ms` : "--"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {showDetailedBoard ? (
+            <div className="px-3 pt-1">
+              <MobileFarmExecutionBoard
+                board={executionBoard}
+                expanded={boardExpanded}
+                onToggleExpand={() => setBoardExpanded((prev) => !prev)}
+                onRefresh={() => void pullExecutionBoard()}
+                refreshing={boardRefreshing}
+                onControlDaemon={(daemonId, action) => void handleControlDaemon(daemonId, action)}
+                controllingDaemonId={controllingDaemonId}
+              />
+            </div>
+          ) : null}
+
+          {/* Virtual Pool & PC Emulation Split Workspace */}
+          <div className="flex min-h-0 flex-1 gap-2.5 overflow-hidden px-3 pb-3 pt-1">
         {!railCollapsed ? (
           <MobileFarmControlRail
             engineMode={engineMode}
@@ -1733,6 +2429,8 @@ export const MobileFarmView = memo(function MobileFarmView({
           </div>
         </section>
       </div>
+        </>
+      )}
 
       <MobileFarmTheaterOverlay
         theaterCard={theaterCard}

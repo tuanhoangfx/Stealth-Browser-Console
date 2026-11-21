@@ -85,7 +85,15 @@ export function resolveDevicePowerBadge(dev: Pick<
   }
 }
 
-function TaskStatusPill({ status }: { status: MobileFarmBoardTask["status"] }) {
+function TaskStatusPill({ status, phaseLabel }: { status: MobileFarmBoardTask["status"]; phaseLabel?: string }) {
+  if (phaseLabel === "COOLDOWN BURST") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded border border-sky-400/40 bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-200">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400" />
+        COOLDOWN BURST
+      </span>
+    );
+  }
   if (status === "running") {
     return (
       <span className="inline-flex items-center gap-1 rounded border border-emerald-400/35 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-medium text-emerald-200">
@@ -272,7 +280,7 @@ export const MobileFarmExecutionBoard = memo(function MobileFarmExecutionBoard({
                       <span className="text-[10px] font-semibold text-sky-200 tabular-nums">
                         {task.percent}%
                       </span>
-                      <TaskStatusPill status={task.status} />
+                      <TaskStatusPill status={task.status} phaseLabel={task.phaseLabel} />
                     </div>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
