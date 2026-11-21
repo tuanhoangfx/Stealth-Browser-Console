@@ -11,11 +11,13 @@ export function V3HeroStageFilmstrip({ onAction }: { onAction: (msg: string) => 
   return (
     <div className="mf5-root space-y-3">
       <HubListChromeHeader
+        ariaLabel="Mobile Farm Hero Inspector"
         title="Mobile Farm · Hero Focus + 5-Phone Filmstrip"
-        icon={<Smartphone className="h-4 w-4 text-violet-300" />}
-        meta={[
-          { label: "Focused Node", value: `${focused.name} (${focused.ip})` },
-          { label: "Fleet Online", value: "5 / 5 Wi-Fi" },
+        titleIcon={Smartphone}
+        embedded
+        metaItems={[
+          { icon: Smartphone, title: "Focused Node", value: `${focused.name} (${focused.ip})` },
+          { icon: Terminal, title: "Fleet Online", value: "5 / 5 Wi-Fi" },
         ]}
       />
 

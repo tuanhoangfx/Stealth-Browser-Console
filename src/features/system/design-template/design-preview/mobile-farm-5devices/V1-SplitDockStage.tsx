@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Activity, MonitorSmartphone, RotateCw, SlidersHorizontal, SunMedium, Trash2 } from "lucide-react";
+import { Activity, MonitorSmartphone, RotateCw, SlidersHorizontal, SunMedium, Trash2, Wifi } from "lucide-react";
 import {
   HubListChromeHeader,
   HubResultCount,
@@ -23,61 +23,61 @@ export function V1SplitDockStage({ onAction }: { onAction: (msg: string) => void
       PHYSICAL_PHONES.filter((p) => {
         if (osFilter !== "all" && p.os !== osFilter) return false;
         if (!query.trim()) return true;
-        return searchTextIncludes([p.name, p.ip, p.activeTaskTitle, p.proxyLabel], query);
+        return searchTextIncludes([p.name, p.ip, p.activeTaskTitle, p.proxyLabel].join(" "), query);
       }),
     [osFilter, query],
   );
 
   const kpiTiles: KpiTileData[] = [
-    { id: "nodes", label: "Physical Nodes", value: "5 / 5 Wi-Fi", hint: "0 USB cables · 0% loss" },
-    { id: "busy", label: "Live Workload", value: "5 / 5 Active", hint: "Cooldown Burst + Gateway" },
-    { id: "fb100", label: "FB 100 Goal", value: "86 / 100", hint: "Wave #249 · 14 left" },
-    { id: "proxy4g", label: "4G Proxies", value: "3 / 3 200 OK", hint: "502ms – 966ms avg" },
-    { id: "thermal", label: "Fleet Thermal", value: "35.8 C Avg", hint: "All under emergency" },
+    { label: "Physical Nodes", value: "5 / 5 Wi-Fi", hint: "0 USB cables · 0% loss" },
+    { label: "Live Workload", value: "5 / 5 Active", hint: "Cooldown Burst + Gateway" },
+    { label: "FB 100 Goal", value: "86 / 100", hint: "Wave #249 · 14 left" },
+    { label: "4G Proxies", value: "3 / 3 200 OK", hint: "502ms – 966ms avg" },
+    { label: "Fleet Thermal", value: "35.8 C Avg", hint: "All under emergency" },
   ];
 
   return (
     <div className="mf5-root space-y-3">
       <HubListChromeHeader
+        ariaLabel="Mobile Farm Split-Dock Console"
         title="Mobile Farm"
-        icon={<MonitorSmartphone className="h-4 w-4 text-cyan-300" />}
-        meta={[
-          { label: "Nodes", value: "5/5 Wi-Fi" },
-          { label: "Phase", value: "Cooldown Burst (4/5)" },
-          { label: "Virtual Profiles", value: String(VIRTUAL_PROFILES_SUMMARY.total) },
+        titleIcon={MonitorSmartphone}
+        embedded
+        metaItems={[
+          { icon: Wifi, title: "Physical Wi-Fi Nodes", value: "5/5 Wi-Fi", live: true },
+          { icon: Activity, title: "Current Workload Phase", value: "Cooldown Burst (4/5)" },
+          { icon: MonitorSmartphone, title: "Virtual Profiles", value: `${VIRTUAL_PROFILES_SUMMARY.total} profiles` },
         ]}
-        kpiStrip={<KpiStrip tiles={kpiTiles} />}
-        toolbar={
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <HubSearchField
-                value={query}
-                onChange={setQuery}
-                placeholder="Search device, IP, proxy, task..."
-                className="w-60"
-              />
-              <HubSegmentToggle
-                value={osFilter}
-                onChange={(v) => setOsFilter(v as "all" | "android" | "ios")}
-                options={[
-                  { value: "all", label: "All Physical (5)" },
-                  { value: "android", label: "Android (3)" },
-                  { value: "ios", label: "iPhone (2)" },
-                ]}
-              />
-              <HubResultCount shown={visiblePhones.length} total={PHYSICAL_PHONES.length} noun="phones" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setRailOpen((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-white/10"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-300" />
-              {railOpen ? "Hide Control Rail" : "Show Control Rail"}
-            </button>
-          </div>
-        }
       />
+      <KpiStrip items={kpiTiles} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <HubSearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search device, IP, proxy, task..."
+            className="w-60"
+          />
+          <HubSegmentToggle
+            value={osFilter}
+            onChange={(v) => setOsFilter(v as "all" | "android" | "ios")}
+            options={[
+              { value: "all", label: "All Physical (5)" },
+              { value: "android", label: "Android (3)" },
+              { value: "ios", label: "iPhone (2)" },
+            ]}
+          />
+          <HubResultCount shown={visiblePhones.length} total={PHYSICAL_PHONES.length} label="phones" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setRailOpen((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-white/10"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-300" />
+          {railOpen ? "Hide Control Rail" : "Show Control Rail"}
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
         {railOpen ? (

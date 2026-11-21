@@ -10,12 +10,14 @@ export function V4ExecutionLanesMatrix({ onAction }: { onAction: (msg: string) =
   return (
     <div className="mf5-root space-y-3">
       <HubListChromeHeader
+        ariaLabel="Mobile Farm OS-Segmented Parallel Lanes"
         title="Mobile Farm · OS-Segmented Parallel Lanes"
-        icon={<Layers className="h-4 w-4 text-sky-300" />}
-        meta={[
-          { label: "Android Fleet", value: "3/3 Wi-Fi + 4G" },
-          { label: "iOS Fleet", value: "2/2 Unlocked · Dim 0%" },
-          { label: "Goal", value: "86 / 100 FB Live" },
+        titleIcon={Layers}
+        embedded
+        metaItems={[
+          { icon: Cpu, title: "Android Fleet", value: "3/3 Wi-Fi + 4G" },
+          { icon: ShieldCheck, title: "iOS Fleet", value: "2/2 Unlocked · Dim 0%" },
+          { icon: Activity, title: "Goal", value: "86 / 100 FB Live" },
         ]}
       />
 

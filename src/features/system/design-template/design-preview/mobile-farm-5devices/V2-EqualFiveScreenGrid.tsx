@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Cpu, MonitorSmartphone } from "lucide-react";
+import { Activity, ChevronDown, ChevronUp, Cpu, MonitorSmartphone, Wifi } from "lucide-react";
 import { HubListChromeHeader, KpiStrip, type KpiTileData } from "@tool-workspace/hub-ui";
 import { DeviceScreenCard } from "./DeviceScreenMock";
 import { FARM_DAEMONS, KAIZEN_CARRIER_LANES, PHYSICAL_PHONES } from "./mock";
@@ -8,22 +8,24 @@ export function V2EqualFiveScreenGrid({ onAction }: { onAction: (msg: string) =>
   const [telemetryExpanded, setTelemetryExpanded] = useState(false);
 
   const kpiTiles: KpiTileData[] = [
-    { id: "wall", label: "Live Mirrors", value: "5 / 5 Active", hint: "Pixel 6a · Pixel 7 · S9+ · 6s · 6s+" },
-    { id: "fb", label: "Campaign", value: "86 / 100", hint: "Wave #249 · Parallel Cooldown" },
-    { id: "avg", label: "Thermal Peak", value: "39.2 C Max", hint: "S9+ cooled · Pixels < 36 C" },
+    { label: "Live Mirrors", value: "5 / 5 Active", hint: "Pixel 6a · Pixel 7 · S9+ · 6s · 6s+" },
+    { label: "Campaign", value: "86 / 100", hint: "Wave #249 · Parallel Cooldown" },
+    { label: "Thermal Peak", value: "39.2 C Max", hint: "S9+ cooled · Pixels < 36 C" },
   ];
 
   return (
     <div className="mf5-root space-y-3">
       <HubListChromeHeader
+        ariaLabel="Mobile Farm 5-Screen Wall"
         title="Mobile Farm · 5-Screen Wall"
-        icon={<MonitorSmartphone className="h-4 w-4 text-emerald-300" />}
-        meta={[
-          { label: "Stream", value: "scrcpy + iOS MCP :8090" },
-          { label: "Sync", value: "Live 1.0s" },
+        titleIcon={MonitorSmartphone}
+        embedded
+        metaItems={[
+          { icon: MonitorSmartphone, title: "Mirror Protocol", value: "scrcpy + iOS MCP :8090" },
+          { icon: Wifi, title: "Sync Cadence", value: "Live 1.0s", live: true },
         ]}
-        kpiStrip={<KpiStrip tiles={kpiTiles} />}
       />
+      <KpiStrip items={kpiTiles} />
 
       {/* Primary Hero: All 5 Physical Phone Screens side-by-side at full panoramic priority */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">

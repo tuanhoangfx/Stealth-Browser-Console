@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LayoutGrid } from "lucide-react";
-import { Glass } from "../../../../theme/p0008";
+import { Glass } from "../../../../../theme/p0008";
 import { MOBILE_FARM_PREVIEW_VARIANTS, type MobileFarmPreviewVariantId } from "./tokens";
 import { V1SplitDockStage } from "./V1-SplitDockStage";
 import { V2EqualFiveScreenGrid } from "./V2-EqualFiveScreenGrid";

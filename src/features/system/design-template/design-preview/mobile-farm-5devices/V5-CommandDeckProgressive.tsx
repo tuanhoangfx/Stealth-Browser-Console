@@ -15,46 +15,46 @@ export function V5CommandDeckProgressive({ onAction }: { onAction: (msg: string)
   return (
     <div className="mf5-root space-y-3">
       <HubListChromeHeader
+        ariaLabel="Mobile Farm Executive Deck"
         title="Mobile Farm"
-        icon={<Command className="h-4 w-4 text-cyan-300" />}
-        meta={[
-          { label: "Physical Fleet", value: "5 / 5 Wi-Fi" },
-          { label: "Campaign", value: "86 / 100 FB Live" },
+        titleIcon={Command}
+        embedded
+        metaItems={[
+          { icon: Command, title: "Physical Fleet", value: "5 / 5 Wi-Fi" },
+          { icon: Command, title: "Campaign", value: "86 / 100 FB Live" },
         ]}
-        toolbar={
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setFocusedId("all")}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                focusedId === "all"
-                  ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
-                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              All 5 Devices
-            </button>
-            {PHYSICAL_PHONES.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setFocusedId((cur) => (cur === p.id ? "all" : p.id))}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                  focusedId === p.id
-                    ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
-                    : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-                }`}
-              >
-                <span className="mf5-pulse-dot bg-emerald-400 text-emerald-400" />
-                <span>{p.shortCode}</span>
-                <span className="font-mono text-[10px] text-slate-400">
-                  {p.batteryPct}% · {p.tempC.toFixed(0)}C
-                </span>
-              </button>
-            ))}
-          </div>
-        }
       />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setFocusedId("all")}
+          className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+            focusedId === "all"
+              ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
+              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+          }`}
+        >
+          All 5 Devices
+        </button>
+        {PHYSICAL_PHONES.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setFocusedId((cur) => (cur === p.id ? "all" : p.id))}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+              focusedId === p.id
+                ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
+                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            <span className="mf5-pulse-dot bg-emerald-400 text-emerald-400" />
+            <span>{p.shortCode}</span>
+            <span className="font-mono text-[10px] text-slate-400">
+              {p.batteryPct}% · {p.tempC.toFixed(0)}C
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* Hover-Clean 5-Screen Grid (actions appear cleanly on hover to reduce idle noise) */}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
