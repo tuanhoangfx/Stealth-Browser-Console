@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { ACTIVE_DESIGN_COUNT } from "../features/system/design-template/design-registry";
 import { migrateStealthAppUrl, readStealthAppUrl, writeStealthAppUrl } from "./stealth-app-url";
 
 describe("stealth-app-url", () => {
@@ -28,11 +29,11 @@ describe("stealth-app-url", () => {
     expect(window.location.search).toContain("stab=backup");
   });
 
-  it("maps leftover Overview / hidden Design onto Extensions", () => {
+  it("maps leftover Overview onto Extensions and respects Design registry count", () => {
     window.history.replaceState(null, "", "/?screen=system&stab=overview");
     expect(readStealthAppUrl().systemTab).toBe("extensions");
     window.history.replaceState(null, "", "/system?stab=design");
-    expect(readStealthAppUrl().systemTab).toBe("extensions");
+    expect(readStealthAppUrl().systemTab).toBe(ACTIVE_DESIGN_COUNT > 0 ? "design" : "extensions");
   });
 
   it("writes path /system and clears defaults on Profiles", () => {

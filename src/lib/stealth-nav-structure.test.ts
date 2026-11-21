@@ -6,6 +6,7 @@ import {
   STEALTH_NAV_STRUCTURE,
 } from "./stealth-nav-structure";
 import { resolveStealthActiveScreenId } from "./stealth-active-screen";
+import { ACTIVE_DESIGN_COUNT } from "../features/system/design-template/design-registry";
 
 describe("stealthScreenChrome", () => {
   it("matches workflow sidebar group entry", () => {
@@ -37,11 +38,9 @@ describe("resolveStealthActiveScreenId", () => {
 });
 
 describe("STEALTH_NAV_STRUCTURE system children", () => {
-  it("omits Overview and empty Design", () => {
+  it("omits Overview and only includes Design when ACTIVE_DESIGN_COUNT > 0", () => {
     const system = STEALTH_NAV_STRUCTURE.find((item) => item.kind === "group" && item.id === "system");
-    expect(system && system.kind === "group" ? system.children.map((child) => child.view) : []).toEqual([
-      "extensions",
-      "backup",
-    ]);
+    const expected = ACTIVE_DESIGN_COUNT > 0 ? ["design", "extensions", "backup"] : ["extensions", "backup"];
+    expect(system && system.kind === "group" ? system.children.map((child) => child.view) : []).toEqual(expected);
   });
 });

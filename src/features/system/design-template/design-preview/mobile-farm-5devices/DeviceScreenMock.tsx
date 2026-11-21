@@ -116,12 +116,12 @@ export function DeviceScreenCard({
           </div>
 
           {/* Dim Mode / Backlight Clarity Overlay so user knows Dim 0% = Active! */}
-          <div className="mt-2 flex items-center justify-between rounded border border-white/10 bg-black/60 px-2 py-1 text-[9px] text-slate-300">
-            <span className="flex items-center gap-1 truncate">
-              <Eye className="h-2.5 w-2.5 text-cyan-300 shrink-0" />
-              {phone.dimModeLabel}
+          <div className="mt-2 flex items-center justify-between gap-2 rounded border border-white/10 bg-black/60 px-2 py-1 text-[9px] text-slate-300">
+            <span className="flex min-w-0 items-center gap-1">
+              <Eye className="h-2.5 w-2.5 shrink-0 text-cyan-300" />
+              <span className="truncate">{phone.dimModeLabel}</span>
             </span>
-            <span className="font-mono text-emerald-300">{phone.tempC.toFixed(1)}C</span>
+            <span className="shrink-0 font-mono text-emerald-300">{phone.tempC.toFixed(1)}C</span>
           </div>
         </div>
       </div>
