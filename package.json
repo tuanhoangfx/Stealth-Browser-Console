@@ -1,6 +1,6 @@
 {
   "name": "stealth-browser-console",
-  "version": "9.2.529",
+  "version": "9.2.530",
   "private": true,
   "description": "Standalone desktop console for CloakBrowser antidetect profiles and automation.",
   "author": "Stealth Browser Console",
@@ -146,7 +146,8 @@
       "**/node_modules/sql.js/**",
       "**/node_modules/cloakbrowser/**",
       "**/node_modules/playwright-core/**",
-      "**/electron/lib/*.ps1"
+      "**/electron/lib/*.ps1",
+      "**/electron/lib/*.mjs"
     ],
     "afterExtract": "./electron/lib/electron-builder-pack-guard.cjs",
     "afterPack": "./electron/after-pack.cjs",

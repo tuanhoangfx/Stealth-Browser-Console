@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-21T21:05:02.312Z",
+  "generatedAt": "2026-11-21T21:16:02.643Z",
   "entries": [
+    {
+      "version": "9.2.530",
+      "date": "2026-11-22",
+      "at": "2026-11-22T04:15:00+07:00",
+      "title": "Unpack android-bridge-worker.mjs for packaged Android Profiles API",
+      "bullets": [
+        "Add **/electron/lib/*.mjs to asarUnpack and resolve android-bridge-worker.mjs via resolveElectronLibScript so packaged Prod /api/android-vault/profiles loads cleanly outside app.asar"
+      ],
+      "kind": "improve",
+      "userTitle": "Unpack for packaged Android Profiles API",
+      "userSummary": "",
+      "userHighlights": [
+        "Add ** electron lib *.mjs to asar Unpack and resolve via resolve Electron Lib Script so packaged…"
+      ]
+    },
     {
       "version": "9.2.529",
       "date": "2026-11-22",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Added extract Facebook Birthday From About Text supporting VI EN Facebook About Basic Info format…"
-      ]
-    },
-    {
-      "version": "9.2.517",
-      "date": "2026-11-21",
-      "at": "2026-11-21T13:45:00+07:00",
-      "title": "Patch bump for completed agent task",
-      "bullets": [
-        "Automatic patch bump after completed P0003 task."
-      ],
-      "kind": "improve",
-      "userTitle": "Patch bump for completed agent task",
-      "userSummary": "",
-      "userHighlights": [
-        "Automatic patch bump after completed P0003 task."
       ]
     }
   ]

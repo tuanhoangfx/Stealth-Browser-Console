@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Unpack android-bridge-worker.mjs for packaged Android Profiles API
+
+- Version: `9.2.530`
+- Timestamp: 2026-11-22 04:15 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Add **/electron/lib/*.mjs to asarUnpack and resolve android-bridge-worker.mjs via resolveElectronLibScript so packaged Prod /api/android-vault/profiles loads cleanly outside app.asar
+
+### Verification
+
+- node --test electron/lib/mobile-stealth-bridge.test.cjs PASS
+
+---
 ## 2026-11-22 - Promote V1 Split-Dock 5-device live wall to Mobile Farm
 
 - Version: `9.2.529`

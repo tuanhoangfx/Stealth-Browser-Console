@@ -175,4 +175,24 @@ describe("mobile-stealth-bridge", () => {
     assert.equal(typeof reloaded.getAndroidLiveScreenAndFarmState, "function");
     invalidateAndroidStealthBridgeWorker();
   });
+
+  it("unpacks android-bridge-worker.mjs out of app.asar and resolves it via resolveElectronLibScript", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const { resolveElectronLibScript } = require("./powershell-exec.cjs");
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", "..", "package.json"), "utf8"));
+    const unpack = Array.isArray(pkg?.build?.asarUnpack) ? pkg.build.asarUnpack : [];
+    assert.ok(
+      unpack.some((p) => p.includes("electron/lib/*.mjs") || p.includes("android-bridge-worker.mjs")),
+      `package.json build.asarUnpack must unpack android-bridge-worker.mjs, got: ${JSON.stringify(unpack)}`,
+    );
+    const loaderSrc = fs.readFileSync(path.join(__dirname, "android-bridge-loader.cjs"), "utf8");
+    assert.ok(
+      loaderSrc.includes('resolveElectronLibScript("android-bridge-worker.mjs"'),
+      "android-bridge-loader.cjs must use resolveElectronLibScript to avoid passing app.asar virtual path to Node",
+    );
+    const fakeAsarDir = path.join("C:", "app", "resources", "app.asar", "electron", "lib");
+    const resolved = resolveElectronLibScript("android-bridge-worker.mjs", fakeAsarDir);
+    assert.ok(resolved.includes(`app.asar.unpacked${path.sep}electron${path.sep}lib${path.sep}android-bridge-worker.mjs`), resolved);
+  });
 });

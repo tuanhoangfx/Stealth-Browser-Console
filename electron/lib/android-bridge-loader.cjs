@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
+const { resolveElectronLibScript } = require("./powershell-exec.cjs");
 
 const SHARED_KEY = "__p0003AndroidBridgeWorkerState_v1";
 
@@ -116,7 +117,7 @@ async function ensureBridgeWorker(bridgeFile, versionTag) {
 
   invalidateAndroidStealthBridgeWorker();
 
-  const workerScript = path.join(__dirname, "android-bridge-worker.mjs");
+  const workerScript = resolveElectronLibScript("android-bridge-worker.mjs", __dirname);
   const { exe, isElectronNode } = resolveSystemNodeExecutable();
   const env = { ...process.env, P0003_ANDROID_BRIDGE_FILE: bridgeFile };
   if (isElectronNode) env.ELECTRON_RUN_AS_NODE = "1";
