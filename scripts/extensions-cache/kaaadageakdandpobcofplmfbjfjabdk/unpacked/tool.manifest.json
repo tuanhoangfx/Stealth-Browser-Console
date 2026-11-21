@@ -65,18 +65,18 @@
     "appLocal": "http://127.0.0.1:5177/cookie"
   },
   "chromeWebStore": {
-    "listingStatus": "rejected",
+    "listingStatus": "in_review",
     "visibility": "public",
     "submittedAt": "2026-11-13",
-    "lastStatusAt": "2026-11-19T23:37:01.118Z",
+    "lastStatusAt": "2026-11-21T19:37:01.662Z",
     "shareHint": "While in review: team installs via GitHub ZIP. After approval: switch Distribution â†’ Unlisted for link-only sharing.",
     "submittedVersion": "1.2.64",
-    "submittedState": "REJECTED",
+    "submittedState": "PENDING_REVIEW",
     "publishedVersion": "1.2.8"
   },
   "health": {
     "status": "Active",
-    "note": "CWS rejected v1.2.8 — kaaadageakdandpobcofplmfbjfjabdk"
+    "note": "CWS in_review v1.2.64 (live v1.2.8) — kaaadageakdandpobcofplmfbjfjabdk"
   },
   "nextActions": [
     "Monitor CWS review outcome; set Unlisted visibility for team-only sharing if needed.",
@@ -91,7 +91,7 @@
     "Optional: switch Distribution to Unlisted for link-only team sharing.",
     "Load unpacked / GitHub ZIP: v1.1.11 (hub-api + sb-api). CWS published v1.1.11 â€” Store installs auto-update."
   ],
-  "manifestUpdatedAt": "2026-11-19T23:37:01.118Z",
+  "manifestUpdatedAt": "2026-11-21T19:37:01.662Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Push",

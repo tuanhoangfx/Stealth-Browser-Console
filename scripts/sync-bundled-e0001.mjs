@@ -69,8 +69,15 @@ function syncLatestWorkspaceSnapshot() {
       force: true,
       filter: (entry) => shouldCopyExtensionEntry(path.relative(workspaceDir, entry)),
     });
-    fs.rmSync(dest, { recursive: true, force: true });
-    fs.renameSync(staging, dest);
+    fs.rmSync(dest, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 });
+    try {
+      fs.renameSync(staging, dest);
+    } catch {
+      // Windows Defender / indexer briefly holds DeletePending handles; copy in-place fallback.
+      fs.mkdirSync(dest, { recursive: true });
+      fs.cpSync(staging, dest, { recursive: true, force: true });
+      fs.rmSync(staging, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    }
     console.log(
       `sync-bundled-e0001: synced latest workspace snapshot v${curVer || "none"} → v${wsVer} (${path.relative(repoRoot, dest)})`,
     );
