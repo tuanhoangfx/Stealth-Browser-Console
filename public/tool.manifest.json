@@ -177,22 +177,22 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-11-22T00:59:21.372Z",
+  "manifestUpdatedAt": "2026-11-22T01:19:09.877Z",
   "release": {
     "version": "9.2.532",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
-      "tag": "v9.2.530",
-      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.530",
-      "publishedAt": "2026-11-21T21:27:42Z",
+      "tag": "v9.2.532",
+      "url": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/tag/v9.2.532",
+      "publishedAt": "2026-11-22T01:17:56Z",
       "asset": {
-        "name": "Stealth-Browser-Console-Setup-9.2.530.exe",
-        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.530/Stealth-Browser-Console-Setup-9.2.530.exe",
-        "size": 131654720,
-        "sha256": "cb2c45e1db4afe66833f5a0a8149cf7413341f0fe9c300228049961c24862ef6",
-        "sha512": "eGjmI4yAGpUlHyEcA+LpbggC2GkmKzdCMx2dKwXb1k/OZOJEYrrinkfDG64kKAEA0E3UOkuO8c+u6OMWXr85bw==",
-        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.530/latest.yml"
+        "name": "Stealth-Browser-Console-Setup-9.2.532.exe",
+        "downloadUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.532/Stealth-Browser-Console-Setup-9.2.532.exe",
+        "size": 131657346,
+        "sha256": "8d8ab7ff3aeb23625c98ab20e9a66197691c56871839c293c859d5a34fb8f207",
+        "sha512": "8jL4xkHoJ1O1m8qivgVl6HzG1mCWOTvr02FZFSq2R9z3EKqkJ7XMjSCUzP35oo9FvS4jNH97MjDz1KArGV68Kg==",
+        "feedUrl": "https://github.com/tuanhoangfx/Stealth-Browser-Console/releases/download/v9.2.532/latest.yml"
       }
     }
   },
@@ -219,8 +219,58 @@
     },
     "syncedAt": "2026-08-19T22:47:57.996Z"
   },
+  "areas": {
+    "packaging": {
+      "paths": [
+        "scripts/**",
+        "build/**",
+        "electron/after-pack.cjs",
+        "electron/desktop-updater*",
+        "electron/lib/electron-builder-pack-guard.cjs",
+        "electron/lib/android-bridge-loader.cjs",
+        "electron/lib/android-bridge-worker.mjs"
+      ],
+      "note": "Desktop packaging, NSIS/install-lock, desktop-open, and smoke scripts"
+    },
+    "mobile-farm": {
+      "paths": [
+        "src/views/mobile-farm/**",
+        "src/features/android/**",
+        "src/views/AndroidProfilesView.tsx"
+      ]
+    },
+    "ui-profiles": {
+      "paths": [
+        "src/features/profiles/**",
+        "src/components/**",
+        "src/theme/**"
+      ]
+    },
+    "workflow": {
+      "paths": [
+        "src/features/workflows/**",
+        "src/views/Workflow*",
+        "src/features/system/**"
+      ]
+    },
+    "electron-core": {
+      "paths": [
+        "electron/**"
+      ]
+    },
+    "shared": {
+      "paths": [
+        "package.json",
+        "tool.manifest.json",
+        "public/tool.manifest.json",
+        "CHANGELOG.md",
+        "src/App.tsx",
+        "src/lib/**"
+      ]
+    }
+  },
   "versions": {
     "current": "9.2.532",
-    "latestPublished": "9.2.530"
+    "latestPublished": "9.2.532"
   }
 }
