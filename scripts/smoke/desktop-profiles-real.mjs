@@ -17,7 +17,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { hubSignIn, readDevLoginCredentials, walkSidebarNav } from "../../../scripts/lib/desktop-cdp-session.mjs";
+import {
+  assertFullHeightMainAndHeader,
+  hubSignIn,
+  readDevLoginCredentials,
+  walkSidebarNav,
+} from "../../../scripts/lib/desktop-cdp-session.mjs";
 import { createDesktopSmokeLaneProfile } from "../../../scripts/lib/desktop-smoke-lane.mjs";
 
 const productRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -119,49 +124,6 @@ export async function prepare() {
 const SEARCH = `[...document.querySelectorAll('input[name=hub-directory-search], input[type=search]')].find(i => i.offsetParent)`;
 const ROWS = `[...document.querySelectorAll('tr.hub-users-row')].filter(r => r.offsetParent)`;
 
-async function assertFullHeightMainAndHeader(session, rec, screenLabel) {
-  const layout = await session.evaluate(`(() => {
-    const vw = window.innerWidth || 0;
-    const vh = window.innerHeight || 0;
-    const main = document.querySelector('main.hub-main') || document.querySelector('main');
-    const directChildren = main
-      ? [...main.children].filter((el) => {
-          if (el.hasAttribute('data-hub-chrome-bar') || el.hasAttribute('hidden')) return false;
-          const st = getComputedStyle(el);
-          return st.display !== 'none' && el.getBoundingClientRect().height > 0;
-        })
-      : [];
-    const primary = directChildren[0] || null;
-    const primaryH = primary ? Math.round(primary.getBoundingClientRect().height) : 0;
-    const hdrButtons = [...document.querySelectorAll('header button, .app-tab-header button')]
-      .filter((el) => el.offsetParent)
-      .map((el) => ({
-        text: (el.textContent || '').trim().replace(/\\s+/g, ' '),
-        right: Math.round(el.getBoundingClientRect().right),
-      }));
-    const anyClipped = hdrButtons.some((b) => b.right > vw + 1);
-    return {
-      vw,
-      vh,
-      childCount: directChildren.length,
-      primaryH,
-      anyClipped,
-      clipped: hdrButtons.filter((b) => b.right > vw + 1),
-    };
-  })()`);
-  const minH = Math.max(400, (layout.vh || 720) - 80);
-  rec.check(
-    `${screenLabel} full-height layout (no 50% top split)`,
-    layout.childCount === 1 && layout.primaryH >= minH,
-    `children=${layout.childCount} height=${layout.primaryH}/${layout.vh}`,
-  );
-  rec.check(
-    `${screenLabel} header controls unclipped`,
-    !layout.anyClipped,
-    layout.anyClipped ? JSON.stringify(layout.clipped) : `vw=${layout.vw}`,
-  );
-}
-
 export default async function run({ session, rec, sleep }) {
   const { waitFor, evaluate, click, type } = session;
   fs.writeFileSync(path.join(rec.outDir, "reference.json"), JSON.stringify(reference, null, 2));
@@ -233,8 +195,8 @@ export default async function run({ session, rec, sleep }) {
         const scr = document.querySelector('[data-hub-screen="android:profiles"]');
         if (!scr) return false;
         const tiles = [...scr.querySelectorAll('.hub-kpi-tile')];
-        const firstText = (tiles[0]?.textContent || '').replace(/\\s+/g, ' ').trim();
-        const m = firstText.match(/PROFILES\\s+(\\d+)/i);
+        const firstText = (tiles[0]?.innerText || tiles[0]?.textContent || '').replace(/\\s+/g, ' ').trim();
+        const m = firstText.match(/PROFILES\\s*(\\d+)/i);
         return m ? Number(m[1]) > 0 : false;
       })()`,
       { timeoutMs: 15_000, label: "Android PROFILES > 0" },
@@ -243,8 +205,8 @@ export default async function run({ session, rec, sleep }) {
     const androidSnap = await evaluate(`(() => {
       const scr = document.querySelector('[data-hub-screen="android:profiles"]');
       const tiles = scr ? [...scr.querySelectorAll('.hub-kpi-tile')] : [];
-      const kpi0 = (tiles[0]?.textContent || '').replace(/\\s+/g, ' ').trim();
-      const m = kpi0.match(/PROFILES\\s+(\\d+)/i);
+      const kpi0 = (tiles[0]?.innerText || tiles[0]?.textContent || '').replace(/\\s+/g, ' ').trim();
+      const m = kpi0.match(/PROFILES\\s*(\\d+)/i);
       const profilesCount = m ? Number(m[1]) : 0;
       const rows = scr ? [...scr.querySelectorAll('tbody tr')].filter((r) => r.offsetParent).length : 0;
       return { hasScreen: Boolean(scr), kpi0, profilesCount, rows };

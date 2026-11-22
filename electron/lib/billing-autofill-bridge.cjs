@@ -1734,33 +1734,52 @@ async function mouseClickAndTypeLocator(page, loc, value) {
   await loc.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
   await page.waitForTimeout(100);
   const box = await loc.boundingBox().catch(() => null);
-  if (!box || box.width <= 0 || box.height <= 0) return false;
-  await page.mouse.click(box.x + Math.min(80, box.width / 2), box.y + box.height / 2);
-  await page.waitForTimeout(130);
-  await page.keyboard.type(String(value), { delay: 20 });
-  await page.waitForTimeout(130);
+  if (box && box.width > 0 && box.height > 0) {
+    await page.mouse.click(box.x + Math.min(80, box.width / 2), box.y + box.height / 2);
+    await page.waitForTimeout(120);
+    await page.keyboard.type(String(value), { delay: 18 });
+    await page.waitForTimeout(120);
+  }
+  const afterVal = await loc.inputValue().catch(() => "");
+  if (!afterVal) {
+    const filled = await loc.fill(String(value), { timeout: 2000 }).then(() => true).catch(() => false);
+    if (!filled) return false;
+  }
   return true;
 }
 
 /**
  * Fills Stripe's delayed Billing Address iframe (`addressLine1`, `locality`, `administrativeArea`, `postalCode`)
- * using real mouse/keyboard input without Escape-key dismissal side effects.
+ * matching the frame's active `country` (`US` tax-free Delaware `19801` vs `VN` `880000`).
  */
 async function fillDelayedStripeBillingAddressIfPresent(page, identity = {}) {
   if (!page) return { found: false, filledFields: [] };
+  await page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll("*")).find((e) => e.textContent?.trim() === "Billing address");
+    if (el) el.scrollIntoView({ behavior: "instant", block: "center" });
+  }).catch(() => {});
   await page.mouse.wheel(0, 450).catch(() => {});
-  await page.waitForTimeout(250);
-  const fullName = String(identity.fullName || identity.name || "Nguyen Van Minh").trim();
-  const line1 = String(identity.addressLine1 || identity.line1 || "128 Nguyen Trai").trim();
-  const city = String(identity.city || identity.locality || "Long Xuyen").trim();
-  const postalCode = String(identity.postalCode || "880000").trim();
+  await page.waitForTimeout(300);
+
   const filledFields = [];
   let found = false;
 
   for (const fr of page.frames().filter((f) => /js\.stripe\.com/.test(f.url() || ""))) {
-    const hasAddr = (await fr.locator('input[name="addressLine1"]').count().catch(() => 0)) > 0;
+    const hasAddr = (await fr.locator('input[name="addressLine1"], #Field-addressLine1Input').count().catch(() => 0)) > 0;
     if (!hasAddr) continue;
     found = true;
+
+    const countrySel = fr.locator('select[name="country"], #Field-countryInput').first();
+    const countryCode = (await countrySel.count().catch(() => 0)) > 0
+      ? String(await countrySel.inputValue().catch(() => "")).toUpperCase()
+      : "";
+    const isUs = countryCode === "US" && !identity.addressLine1 && !identity.line1;
+
+    const fullName = String(identity.fullName || identity.name || "Nguyen Van Minh").trim();
+    const line1 = String(identity.addressLine1 || identity.line1 || (isUs ? "1209 Orange St" : "128 Nguyen Trai")).trim();
+    const city = String(identity.city || identity.locality || (isUs ? "Wilmington" : "Long Xuyen")).trim();
+    const postalCode = String(identity.postalCode || (isUs ? "19801" : "880000")).trim();
+
     const textPairs = [
       ["name", 'input[name="name"], #Field-nameInput', fullName],
       ["addressLine1", 'input[name="addressLine1"], #Field-addressLine1Input', line1],
@@ -1780,7 +1799,10 @@ async function fillDelayedStripeBillingAddressIfPresent(page, identity = {}) {
       const curProv = await prov.inputValue().catch(() => "");
       if (!curProv) {
         await prov.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
-        const selected = await prov.selectOption({ index: 1 }).then(() => true).catch(() => false);
+        const optArg = isUs ? "DE" : { index: 1 };
+        const selected = await prov.selectOption(optArg).then(() => true).catch(() =>
+          prov.selectOption({ index: 1 }).then(() => true).catch(() => false)
+        );
         if (selected) filledFields.push("administrativeArea");
       }
     }

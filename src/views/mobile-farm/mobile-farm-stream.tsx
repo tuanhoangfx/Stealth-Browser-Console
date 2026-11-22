@@ -215,6 +215,58 @@ export type MobileFarmExperimentLane = {
   gates?: Record<string, number>;
 };
 
+export type MobileFarmOrchestratorAssignment = {
+  deviceKey: string;
+  probeKey?: string;
+  serial: string;
+  label: string;
+  platform?: string | null;
+  state: "dispatch" | "skipped" | "leased" | "paused";
+  assignedTask: string;
+  assignedTitle?: string;
+  taskSource?: string;
+  skipReason?: string | null;
+  batteryTempC?: number | null;
+  ramUsedPct?: number | null;
+  completedCount?: number;
+  lastOutcome?: string | null;
+  lastCompletedAt?: string | null;
+};
+
+export type MobileFarmOrchestratorGoal = {
+  id: string;
+  taskType: string;
+  title: string;
+  priority: number;
+  source: string;
+  executor?: string;
+  pendingCount?: number;
+};
+
+export type MobileFarmOrchestratorSummary = {
+  active: boolean;
+  status: string;
+  cycleNumber: number;
+  updatedAt: string | null;
+  nextCycleAt?: string | null;
+  teamAssist?: {
+    approvedCount?: number;
+    dueApprovedIds?: string[];
+    dueReplyChainIds?: string[];
+    sentThisSession?: number;
+    lastCommentOutcome?: string | null;
+  } | null;
+  goalBacklog: MobileFarmOrchestratorGoal[];
+  deviceAssignments: MobileFarmOrchestratorAssignment[];
+  totals?: {
+    cyclesRun?: number;
+    tasksDispatched?: number;
+    tasksSucceeded?: number;
+    selfGeneratedGoalsCreated?: number;
+    commentTasksExecuted?: number;
+  } | null;
+};
+
 export type MobileFarmExecutionBoardData = {
   ok: boolean;
   updatedAt: string;
@@ -235,6 +287,7 @@ export type MobileFarmExecutionBoardData = {
     lanes: MobileFarmExperimentLane[];
   } | null;
   carrierKaizen?: MobileFarmCarrierKaizenRow[];
+  orchestrator?: MobileFarmOrchestratorSummary | null;
 };
 
 export function deduplicateBoardDevices(devices: MobileFarmBoardDevice[]): MobileFarmBoardDevice[] {

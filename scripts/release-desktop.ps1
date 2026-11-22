@@ -3,6 +3,7 @@
   [ValidateSet("", "patch", "minor", "major")]
   [string]$Bump = "",
   [switch]$Publish,
+  [switch]$InstallProd,
   [switch]$SkipInstall,
   [switch]$ForceInstall,
   [switch]$SkipTests,
@@ -116,6 +117,9 @@ try {
   $pkgVersion = (Get-Content -Raw package.json | ConvertFrom-Json).version
   $env:STEALTH_RELEASE_VERSION = $pkgVersion
 
+  . (Join-Path $ToolScripts "lib\packaging-area-claim.ps1")
+  $packagingClaim = Enter-DesktopPackagingClaim -Code P0003 -ToolScripts $ToolScripts -Version $pkgVersion
+
   if (-not $SkipTests) {
     $testLabel = if ($FastTests) { "Quality gates (test:fast)" } else { "Quality gates (test:unit full)" }
     Invoke-Step $testLabel {
@@ -156,6 +160,7 @@ try {
   }
 
   if ($Publish) {
+    Assert-PackageVersionUnchanged -Expected $pkgVersion -Step "before gh/post-gh-release sync" -RepoRoot $RepoRoot
     $tag = "v$pkgVersion"
     Invoke-Step "Ensure git tag $tag for GitHub Release" {
       $existing = git tag -l $tag
@@ -200,6 +205,7 @@ try {
 
   $targetLabel = if ($WithPortable) { "NSIS + portable" } else { "NSIS installer only" }
   Invoke-Step "Build Windows $targetLabel (publish: $PublishMode)" {
+    Assert-PackageVersionUnchanged -Expected $pkgVersion -Step "before electron-package" -RepoRoot $RepoRoot
     $env:P0003_RELEASE_DESKTOP_PS1 = "1"
     if ($Fast -and -not $IncludeUnpacked -and -not $WithPortable) {
       $env:DESKTOP_RELEASE_INSTALLER_ONLY = "1"
@@ -221,6 +227,7 @@ try {
   }
 
   if ($Publish) {
+    Assert-PackageVersionUnchanged -Expected $pkgVersion -Step "before gh/post-gh-release sync" -RepoRoot $RepoRoot
     $tag = "v$pkgVersion"
     Invoke-Step "Snapshot known-good (installer backup)" {
       node scripts/snapshot-known-good.mjs --label "v$pkgVersion-stable"
@@ -247,8 +254,16 @@ try {
       node scripts/print-ship-smoke-checklist.mjs
     }
   }
+
+  if ($InstallProd -and -not $WithPortable) {
+    Invoke-Step "Silent install P0003 onto local Prod (install lock protected)" {
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ToolScripts "install-desktop-exe.ps1") -Code P0003 -LaunchAfter
+      if ($LASTEXITCODE -ne 0) { throw "install-desktop-exe.ps1 P0003 failed" }
+    }
+  }
 }
 finally {
+  Exit-DesktopPackagingClaim -Code P0003 -ClaimState $packagingClaim
   Pop-Location
   Remove-Item Env:DESKTOP_RELEASE_INSTALLER_ONLY -ErrorAction SilentlyContinue
   Remove-Item Env:STEALTH_RELEASE_VERSION -ErrorAction SilentlyContinue

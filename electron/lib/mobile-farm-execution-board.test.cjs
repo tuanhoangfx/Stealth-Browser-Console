@@ -190,3 +190,48 @@ test("collectMobileFarmExecutionBoard deduplicates Pixel 7 USB vs Wi-Fi, exposes
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test("collectMobileFarmExecutionBoard exposes 24/7 Master Orchestrator Dispatch Matrix and controllable daemon", () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-exec-orch-"));
+  const nowIso = "2026-11-22T06:22:00.000Z";
+  try {
+    fs.writeFileSync(
+      path.join(tmpDir, "mobile-farm-master-orchestrator-status.json"),
+      JSON.stringify({
+        ok: true,
+        pid: 44120,
+        status: "running",
+        cycleNumber: 7,
+        updatedAt: nowIso,
+        teamAssist: { approvedCount: 30, dueReplyChainIds: ["CM0126"], sentThisSession: 2 },
+        goalBacklog: [
+          { id: "g1", taskType: "team_group_comment_assist", title: "Team Group Feed Comment Assist (30 approved)", priority: 96, source: "team_comment_queue" },
+        ],
+        deviceAssignments: [
+          { deviceKey: "pixel6a", serial: "192.168.0.208:5555", label: "Pixel 6a (.208)", state: "dispatch", assignedTask: "multi_platform_instagram_probe", platform: "instagram", completedCount: 4 },
+          { deviceKey: "pixel7", serial: "192.168.0.253:5555", label: "Pixel 7 (.253)", state: "leased", assignedTask: "external:upgrade-g1-pro-android-frida", skipReason: "leased:frida_pid_999" },
+          { deviceKey: "s9plus", serial: "192.168.0.120:5555", label: "Samsung S9+ (.120)", state: "skipped", assignedTask: "thermal_passive_sim_only", skipReason: "thermal_guard_43.1C" },
+        ],
+        totals: { cyclesRun: 7, tasksDispatched: 19, tasksSucceeded: 8, commentTasksExecuted: 2 },
+      }),
+    );
+
+    const board = collectMobileFarmExecutionBoard({
+      dataDir: tmpDir,
+      nowMs: Date.parse(nowIso),
+      isPidAliveFn: (pid) => Number(pid) === 44120,
+    });
+
+    assert.ok(CONTROLLED_DAEMONS["mobile-farm-master-orchestrator"]);
+    assert.ok(board.orchestrator);
+    assert.equal(board.orchestrator.active, true);
+    assert.equal(board.orchestrator.cycleNumber, 7);
+    assert.equal(board.orchestrator.deviceAssignments.length, 3);
+    const orchTask = board.tasks.find((t) => t.id === "mobile-farm-master-orchestrator");
+    assert.ok(orchTask);
+    assert.equal(orchTask.status, "running");
+    assert.equal(orchTask.phaseLabel, "AUTONOMOUS 24/7");
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

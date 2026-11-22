@@ -1,6 +1,51 @@
 {
-  "generatedAt": "2026-11-22T01:19:08.477Z",
+  "generatedAt": "2026-11-22T06:48:29.143Z",
   "entries": [
+    {
+      "version": "9.2.535",
+      "date": "2026-11-22",
+      "at": "2026-11-22T13:39:00+07:00",
+      "title": "Fix delayed Stripe billing address country detection and scroll-into-view fallback",
+      "bullets": [
+        "Auto-detect US vs VN country in fillDelayedStripeBillingAddressIfPresent, scroll Billing address into center view, and add loc.fill fallback in mouseClickAndTypeLocator."
+      ],
+      "kind": "fix",
+      "userTitle": "Fix delayed Stripe billing address country detection and scroll-into-…",
+      "userSummary": "",
+      "userHighlights": [
+        "Auto-detect US vs VN country in fill Delayed Stripe Billing Address If Present, scroll Billing ad…"
+      ]
+    },
+    {
+      "version": "9.2.534",
+      "date": "2026-11-22",
+      "at": "2026-11-22T13:32:00+07:00",
+      "title": "Auto-evict non-interactive S4U background session and relaunch on interactive desktop",
+      "bullets": [
+        "Self-exit P0003 when trapped in S4U non-interactive Window Station on showWindow, relaunch on second-instance/desktop-open, and switch KeepAlive to Interactive desktop breakaway"
+      ],
+      "kind": "improve",
+      "userTitle": "Auto-evict non-interactive S4 U background session and relaunch on in…",
+      "userSummary": "",
+      "userHighlights": [
+        "Self-exit P0003 when trapped in S4 U non-interactive Window Station on show Window, relaunch on s…"
+      ]
+    },
+    {
+      "version": "9.2.533",
+      "date": "2026-11-22",
+      "at": "2026-11-22T13:30:00+07:00",
+      "title": "Expose 24/7 Master Orchestrator Dispatch Matrix in Mobile Farm V1 UI",
+      "bullets": [
+        "Show per-device dispatch/leased/thermal states, self-generated backlog goals, and Group comment progress"
+      ],
+      "kind": "improve",
+      "userTitle": "Expose 24 7 Master Orchestrator Dispatch Matrix in Mobile Farm V1 UI",
+      "userSummary": "",
+      "userHighlights": [
+        "Show per-device dispatch leased thermal states, self-generated backlog goals, and Group comment p…"
+      ]
+    },
     {
       "version": "9.2.532",
       "date": "2026-11-22",
@@ -134,51 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Track mb-bank-7320 and vib-3641 trial claims plus 21 newly verified Stripe generic decline cards…"
-      ]
-    },
-    {
-      "version": "9.2.522",
-      "date": "2026-11-21",
-      "at": "2026-11-21T22:04:00+07:00",
-      "title": "Disable DirectComposition on headless launches to stop DWM handle leak",
-      "bullets": [
-        "Pass --disable-direct-composition only for headless CloakBrowser sessions while preserving hardware D3D11 WebGL fingerprint"
-      ],
-      "kind": "improve",
-      "userTitle": "Disable Direct Composition on headless launches to stop DWM handle leak",
-      "userSummary": "",
-      "userHighlights": [
-        "Pass --disable-direct-composition only for headless Cloak Browser sessions while preserving hardw…"
-      ]
-    },
-    {
-      "version": "9.2.521",
-      "date": "2026-11-21",
-      "at": "2026-11-21T18:53:00+07:00",
-      "title": "Fix upleveling SMS/spinner CDP recovery & clear stale mail_checking",
-      "bullets": [
-        "Harden handleGoogleUplevelingSmsAppealViaCdp against /uplevelingstep/spinner waits and detached CDP sessions; clear stale mail_checking=❌ Skipped on active Gmail & non-Mail sync writes"
-      ],
-      "kind": "fix",
-      "userTitle": "Fix upleveling SMS spinner CDP recovery & clear stale mail checking",
-      "userSummary": "",
-      "userHighlights": [
-        "Harden handle Google Upleveling Sms Appeal Via Cdp against uplevelingstep spinner waits and detac…"
-      ]
-    },
-    {
-      "version": "9.2.520",
-      "date": "2026-11-21",
-      "at": "2026-11-21T18:02:00+07:00",
-      "title": "Fix live Gmail appeal probe for P0003->P0020 sync",
-      "bullets": [
-        "Probe mail.google.com/mail/u/0/ for appeal/disable Gmail rows even when prior evidence lost /restrictions/54 URL."
-      ],
-      "kind": "fix",
-      "userTitle": "Fix live Gmail appeal probe for P0003->P0020 sync",
-      "userSummary": "",
-      "userHighlights": [
-        "Probe mail.google.com mail u 0 for appeal disable Gmail rows even when prior evidence lost restri…"
       ]
     }
   ]

@@ -43,6 +43,9 @@ export type PhysicalWallDevice = {
   activeTaskTitle: string;
   dimModeLabel: string;
   lastOtp: string | null;
+  orchestratorState?: "dispatch" | "skipped" | "leased" | "paused" | null;
+  orchestratorLabel?: string | null;
+  orchestratorCompletedCount?: number;
   screenDataUrl: string | null;
   boardDevice: MobileFarmBoardDevice | null;
   interactiveCard: FarmPhoneCardItem;
@@ -298,6 +301,27 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
                     : powerBadge.label}
                 </span>
               </div>
+              {dev.orchestratorState ? (
+                <div className="flex items-center justify-between gap-1 rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px]">
+                  <span
+                    className={`truncate font-medium ${
+                      dev.orchestratorState === "dispatch"
+                        ? "text-emerald-300"
+                        : dev.orchestratorState === "leased"
+                          ? "text-sky-300"
+                          : "text-amber-300"
+                    }`}
+                    title={dev.orchestratorLabel || dev.orchestratorState}
+                  >
+                    {dev.orchestratorState.toUpperCase()} · {dev.orchestratorLabel || "Queued"}
+                  </span>
+                  {Number(dev.orchestratorCompletedCount || 0) > 0 ? (
+                    <span className="shrink-0 font-mono text-emerald-300 tabular-nums">
+                      +{dev.orchestratorCompletedCount}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex items-center gap-1 pt-0.5">
                 <button
                   type="button"

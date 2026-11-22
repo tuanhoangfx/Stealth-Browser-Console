@@ -1217,6 +1217,36 @@ function createDesktopHotReloadControlBridge(opts = {}) {
       }
     }
 
+    let displayDiagnostics = null;
+    let trappedInNonInteractiveS4u = false;
+    let selfExitingForInteractiveRelaunch = false;
+    try {
+      const { screen } = require("electron");
+      const cursorPt = screen?.getCursorScreenPoint ? screen.getCursorScreenPoint() : { x: 0, y: 0 };
+      const primaryDisp = screen?.getPrimaryDisplay ? screen.getPrimaryDisplay() : null;
+      displayDiagnostics = {
+        cursorPt,
+        primaryWorkArea: primaryDisp?.workArea || null,
+      };
+      if (Number(cursorPt?.x ?? 0) < -100000 && (body.showWindow || body.quitIfNonInteractive !== false)) {
+        trappedInNonInteractiveS4u = true;
+        selfExitingForInteractiveRelaunch = true;
+        removeControlRecord();
+        setTimeout(() => {
+          try {
+            app?.exit?.(0);
+          } catch {
+            /* ignore */
+          }
+          process.exit(0);
+        }, 120);
+      } else if (body.showWindow && typeof showWindow === "function") {
+        showWindow();
+      }
+    } catch {
+      /* ignore outside Electron main */
+    }
+
     return {
       ok: !hostReloadError,
       code: String(code || "").toUpperCase(),
@@ -1228,6 +1258,10 @@ function createDesktopHotReloadControlBridge(opts = {}) {
       hostReloaded,
       hostReloadError,
       uiReloaded,
+      displayDiagnostics,
+      ...(trappedInNonInteractiveS4u
+        ? { trappedInNonInteractiveS4u: true, selfExitingForInteractiveRelaunch: true }
+        : {}),
       reloadedAt: new Date().toISOString(),
     };
   }
@@ -1266,9 +1300,37 @@ function createDesktopHotReloadControlBridge(opts = {}) {
           }
           if (req.method === "POST" && reqPath === "/show-window") {
             try {
+              let cursorPt = { x: 0, y: 0 };
+              try {
+                const { screen } = require("electron");
+                if (screen?.getCursorScreenPoint) cursorPt = screen.getCursorScreenPoint();
+              } catch {
+                /* ignore */
+              }
+              if (Number(cursorPt?.x ?? 0) < -100000) {
+                removeControlRecord();
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(
+                  JSON.stringify({
+                    ok: true,
+                    displayDiagnostics: { cursorPt },
+                    trappedInNonInteractiveS4u: true,
+                    selfExitingForInteractiveRelaunch: true,
+                  }),
+                );
+                setTimeout(() => {
+                  try {
+                    app?.exit?.(0);
+                  } catch {
+                    /* ignore */
+                  }
+                  process.exit(0);
+                }, 120);
+                return;
+              }
               showWindow?.();
               res.writeHead(200, { "Content-Type": "application/json" });
-              res.end(JSON.stringify({ ok: true }));
+              res.end(JSON.stringify({ ok: true, displayDiagnostics: { cursorPt } }));
             } catch (err) {
               res.writeHead(500, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }));

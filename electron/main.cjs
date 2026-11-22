@@ -89,8 +89,26 @@ if (!gotSingleInstanceLock) {
           timeout: 800,
         },
         (res) => {
-          res.resume();
-          app.exit(0);
+          let raw = "";
+          res.on("data", (chunk) => {
+            raw += String(chunk);
+          });
+          res.on("end", () => {
+            try {
+              const body = JSON.parse(raw || "{}");
+              const cursorX = Number(body?.displayDiagnostics?.cursorPt?.x ?? 0);
+              if (body?.selfExitingForInteractiveRelaunch || cursorX < -100000) {
+                setTimeout(() => {
+                  app.relaunch();
+                  app.exit(0);
+                }, 650);
+                return;
+              }
+            } catch {
+              /* ignore */
+            }
+            app.exit(0);
+          });
         },
       );
       req.on("error", () => app.exit(0));

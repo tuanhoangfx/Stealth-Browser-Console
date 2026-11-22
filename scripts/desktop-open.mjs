@@ -79,10 +79,31 @@ function isPackagedExeProcessRunning() {
   }
 }
 
-const prodHealthyInitial = await probeDesktopHealth("http://127.0.0.1:6003/api/health", 3500);
-const allowEmergencyKillProd = process.env.STEALTH_EMERGENCY_HARD_KILL_PROD === "1";
+async function isStealthTrappedInNonInteractiveSession() {
+  try {
+    const res = await fetch("http://127.0.0.1:6003/api/system/hot-reload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ showWindow: true }),
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!res.ok) return false;
+    const body = await res.json().catch(() => null);
+    const cursorX = Number(body?.displayDiagnostics?.cursorPt?.x ?? 0);
+    return cursorX < -100000;
+  } catch {
+    return false;
+  }
+}
 
-if (flags.replace && (prodHealthyInitial || isPackagedExeProcessRunning()) && allowEmergencyKillProd) {
+const prodHealthyInitial = await probeDesktopHealth("http://127.0.0.1:6003/api/health", 3500);
+const trappedInS4u = prodHealthyInitial ? await isStealthTrappedInNonInteractiveSession() : false;
+const allowEmergencyKillProd = process.env.STEALTH_EMERGENCY_HARD_KILL_PROD === "1" || trappedInS4u;
+
+if (trappedInS4u) {
+  console.log("desktop:open: detected P0003 trapped in non-interactive S4U session (cursorPt invalid) — restarting on interactive desktop...");
+  killPackagedOnly();
+} else if (flags.replace && (prodHealthyInitial || isPackagedExeProcessRunning()) && allowEmergencyKillProd) {
   killPackagedOnly();
 } else if (prodHealthyInitial || isPackagedExeProcessRunning()) {
   const res = await openDesktopExeWithPolicy({

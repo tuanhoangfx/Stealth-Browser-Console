@@ -484,6 +484,19 @@ function buildSystemAndRuntimeRoutes(deps) {
             const finalWins = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed());
             res.windowsCount = finalWins.length;
             res.visibleCount = finalWins.filter((w) => !w.isDestroyed() && w.isVisible()).length;
+            const cursorX = Number(res.displayDiagnostics?.cursorPt?.x ?? 0);
+            if (cursorX < -100000 || ctx.body?.quitIfNonInteractive === true) {
+              res.trappedInNonInteractiveS4u = true;
+              res.selfExitingForInteractiveRelaunch = true;
+              setTimeout(() => {
+                try {
+                  app?.exit?.(0);
+                } catch {
+                  /* ignore */
+                }
+                process.exit(0);
+              }, 120);
+            }
           } catch (err) {
             res.showWindowError = err instanceof Error ? err.message : String(err);
           }

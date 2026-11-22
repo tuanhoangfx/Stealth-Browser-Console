@@ -11,7 +11,9 @@ const KNOWN_USB_ALIAS_MAP = {
 function readJsonSafe(filePath) {
   try {
     if (!filePath || !fs.existsSync(filePath)) return null;
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    const raw = fs.readFileSync(filePath, "utf8");
+    if (!raw || raw.includes("\u0000")) return null;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -165,6 +167,7 @@ function collectMobileFarmExecutionBoard({
   const outlookDaemon = readJsonSafe(path.join(dataDir, "outlook-daemon1-status.json"));
   const fasttrack = readJsonSafe(path.join(dataDir, "fasttrack-totp-tiktok-healer-status.json"));
   const fanpage = readJsonSafe(path.join(dataDir, "fanpage-fleet-daemon-status.json"));
+  const masterOrch = readJsonSafe(path.join(dataDir, "mobile-farm-master-orchestrator-status.json"));
   const musePid = readPidSafe(path.join(dataDir, "logs", "farm-muse-fleet-onboard.pid"));
 
   const devices = buildDevicesBoard(watchdog);
@@ -338,6 +341,45 @@ function collectMobileFarmExecutionBoard({
     });
   }
 
+  let orchestrator = null;
+  if (masterOrch) {
+    const masterPidAlive = masterOrch.pid ? isPidAliveFn(masterOrch.pid) : isFreshTimestamp(masterOrch.updatedAt, nowMs, 10 * 60_000);
+    const orchActive =
+      masterPidAlive &&
+      String(masterOrch.status || "").toLowerCase() !== "paused" &&
+      isFreshTimestamp(masterOrch.updatedAt, nowMs, 10 * 60_000);
+    const assignments = Array.isArray(masterOrch.deviceAssignments) ? masterOrch.deviceAssignments : [];
+    const activeDispatchCount = assignments.filter((a) => a?.state === "dispatch").length;
+    const backlogList = Array.isArray(masterOrch.goalBacklog) ? masterOrch.goalBacklog : [];
+    const commentApproved = Number(masterOrch.teamAssist?.approvedCount || 0);
+    const sentComments = Number(masterOrch.teamAssist?.sentThisSession || 0);
+    orchestrator = {
+      active: orchActive,
+      status: String(masterOrch.status || "standby"),
+      cycleNumber: Number(masterOrch.cycleNumber || 0),
+      updatedAt: masterOrch.updatedAt || null,
+      nextCycleAt: masterOrch.nextCycleAt || null,
+      teamAssist: masterOrch.teamAssist || null,
+      goalBacklog: backlogList.slice(0, 6),
+      deviceAssignments: assignments,
+      totals: masterOrch.totals || null,
+    };
+    tasks.push({
+      id: "mobile-farm-master-orchestrator",
+      canControl: true,
+      title: "24/7 Master 5-Device Orchestrator",
+      kind: "orchestrator",
+      status: orchActive ? "running" : "standby",
+      phaseLabel: orchActive ? "AUTONOMOUS 24/7" : undefined,
+      percent: clampPct((activeDispatchCount / Math.max(1, devices.length)) * 100),
+      progressLabel: `Cycle #${masterOrch.cycleNumber || 0} · ${activeDispatchCount}/${devices.length} active`,
+      currentStep: `${backlogList[0]?.title || "Multi-Platform + Team Assist"}`,
+      metricsText: `Comments ${commentApproved} queued (${sentComments} sent) · Done ${Number(masterOrch.totals?.tasksSucceeded || 0)}`,
+      targetDevice: "5 Phones + PC Stealth",
+      updatedAt: masterOrch.updatedAt || null,
+    });
+  }
+
   const runningTasks = tasks.filter((t) => t.status === "running").length;
   const attentionTasks = tasks.filter((t) => t.status === "attention").length;
   const overallProgressPct =
@@ -392,6 +434,7 @@ function collectMobileFarmExecutionBoard({
     tasks,
     experiments,
     carrierKaizen,
+    orchestrator,
   };
 }
 
@@ -419,6 +462,12 @@ const CONTROLLED_DAEMONS = Object.freeze({
     args: ["--daemon", "--interval-sec", "45"],
     statusFile: "android-hardware-watchdog-status.json",
     logName: "hardware-watchdog.log",
+  },
+  "mobile-farm-master-orchestrator": {
+    scriptRel: path.join("scripts", "run-mobile-farm-master-orchestrator.mjs"),
+    args: ["--daemon", "--interval-sec=45"],
+    statusFile: "mobile-farm-master-orchestrator-status.json",
+    logName: "mobile-farm-master-orchestrator.log",
   },
 });
 

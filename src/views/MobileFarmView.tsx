@@ -784,6 +784,9 @@ export const MobileFarmView = memo(function MobileFarmView({
     const recentByHost = (fbTask?.recentResults || []);
     const simS9 = simFleet?.devices?.find((d) => /s9/i.test(d.deviceId) || d.phone === "0973648075");
     const laneMap = new Map(carrierKaizenLanes.map((l) => [l.laneId, l]));
+    const orchAssignMap = new Map(
+      (executionBoard?.orchestrator?.deviceAssignments || []).map((a) => [a.deviceKey, a]),
+    );
 
     const specs = [
       {
@@ -895,6 +898,7 @@ export const MobileFarmView = memo(function MobileFarmView({
       const ramUsedPct = bDev?.ramUsedPct ?? snapHw?.ramUsedPct ?? null;
       const ramFreeMb = snapHw?.ramAvailableMb ?? null;
       const laneInfo = laneMap.get(sp.laneId);
+      const orchAssign = orchAssignMap.get(sp.id) || null;
       const lastAttemptForNode = [...recentByHost]
         .reverse()
         .find((r) => matchesKey(r.iosHost || r.serial, sp.matches));
@@ -902,17 +906,23 @@ export const MobileFarmView = memo(function MobileFarmView({
         sp.id === "s9plus"
           ? simS9?.latestOtp
             ? `SMS OTP + 4G Relay (${simS9.online ? "Online" : "Wait"})`
-            : "SMS OTP + 4G Relay Gateway"
-          : lastAttemptForNode?.outcome
-            ? `${waveLabel} · ${lastAttemptForNode.outcome.replace(/_/g, " ")}`
-            : sp.defaultTask;
+            : orchAssign?.skipReason
+              ? `SIM Gateway (${orchAssign.skipReason.replace(/_/g, " ")})`
+              : "SMS OTP + 4G Relay Gateway"
+          : orchAssign?.state === "dispatch" && orchAssign.assignedTask
+            ? `${orchAssign.assignedTask.replace(/_/g, " ")}`
+            : orchAssign?.skipReason
+              ? orchAssign.skipReason.replace(/_/g, " ")
+              : lastAttemptForNode?.outcome
+                ? `${waveLabel} · ${lastAttemptForNode.outcome.replace(/_/g, " ")}`
+                : sp.defaultTask;
       const taskPhase = !ok
         ? "OFFLINE"
         : sp.id === "s9plus"
           ? "24/7 GATEWAY"
           : isBurst
             ? "COOLDOWN BURST"
-            : fbTask?.status === "running"
+            : fbTask?.status === "running" || orchAssign?.state === "dispatch"
               ? "WAVE"
               : "RUNNING";
 
@@ -960,12 +970,16 @@ export const MobileFarmView = memo(function MobileFarmView({
         activeTaskTitle,
         dimModeLabel: sp.dimModeLabel,
         lastOtp: sp.id === "s9plus" && simS9?.latestOtp ? String(simS9.latestOtp) : null,
+        orchestratorState: orchAssign?.state ?? null,
+        orchestratorLabel:
+          orchAssign?.skipReason || orchAssign?.assignedTitle || orchAssign?.assignedTask || null,
+        orchestratorCompletedCount: Number(orchAssign?.completedCount || 0),
         screenDataUrl,
         boardDevice: bDev,
         interactiveCard,
       };
     });
-  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.tasks, liveState, simFleet]);
+  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.orchestrator, executionBoard?.tasks, liveState, simFleet]);
 
   const visiblePhysicalDevices = useMemo(() => {
     const q = searchQuery.trim();
@@ -1967,6 +1981,95 @@ export const MobileFarmView = memo(function MobileFarmView({
                 ))}
               </div>
             </div>
+
+            {/* 24/7 Master Orchestrator & Agent Dispatch Matrix */}
+            {executionBoard?.orchestrator ? (
+              <div className="mf-wall-surface p-3" data-testid="mobile-farm-dispatch-matrix">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-200">
+                    <ShieldCheck className="h-3.5 w-3.5 text-cyan-300" />
+                    <span>24/7 Master Orchestrator &amp; Agent Dispatch Matrix</span>
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                        executionBoard.orchestrator.active
+                          ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-200"
+                          : "border-slate-500/35 bg-slate-500/15 text-slate-300"
+                      }`}
+                    >
+                      {executionBoard.orchestrator.active ? "AUTONOMOUS 24/7" : "STANDBY"} · Cycle #{executionBoard.orchestrator.cycleNumber}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                    <span className="tabular-nums">
+                      Group Comments: {Number(executionBoard.orchestrator.teamAssist?.approvedCount || 0)} queued ·{" "}
+                      {Number(executionBoard.orchestrator.teamAssist?.sentThisSession || 0)} sent
+                    </span>
+                    <button
+                      type="button"
+                      disabled={controllingDaemonId === "mobile-farm-master-orchestrator"}
+                      onClick={() =>
+                        void handleControlDaemon(
+                          "mobile-farm-master-orchestrator",
+                          executionBoard.orchestrator?.active ? "restart" : "start",
+                        )
+                      }
+                      className="inline-flex items-center gap-1 rounded border border-cyan-400/35 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-200 hover:bg-cyan-500/25 disabled:opacity-50"
+                    >
+                      <Play className="h-2.5 w-2.5" />
+                      {controllingDaemonId === "mobile-farm-master-orchestrator"
+                        ? "Working..."
+                        : executionBoard.orchestrator.active
+                          ? "Restart Orchestrator"
+                          : "Start Orchestrator"}
+                    </button>
+                  </div>
+                </div>
+                {executionBoard.orchestrator.goalBacklog.length > 0 ? (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {executionBoard.orchestrator.goalBacklog.slice(0, 5).map((goal) => (
+                      <span
+                        key={goal.id}
+                        className="inline-flex items-center gap-1 rounded border border-white/10 bg-black/35 px-2 py-0.5 text-[10px] text-slate-200"
+                      >
+                        <span className="font-mono text-cyan-300">P{goal.priority}</span>
+                        <span className="truncate max-w-[260px]">{goal.title}</span>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
+                  {executionBoard.orchestrator.deviceAssignments.map((assign) => (
+                    <div
+                      key={assign.deviceKey}
+                      className="rounded border border-white/10 bg-black/35 px-2 py-1.5 text-[10px]"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="truncate font-medium text-white">{assign.label}</span>
+                        <span
+                          className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase ${
+                            assign.state === "dispatch"
+                              ? "bg-emerald-500/20 text-emerald-200"
+                              : assign.state === "leased"
+                                ? "bg-sky-500/20 text-sky-200"
+                                : "bg-amber-500/20 text-amber-200"
+                          }`}
+                        >
+                          {assign.state}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 truncate text-slate-300" title={assign.skipReason || assign.assignedTitle || assign.assignedTask}>
+                        {assign.skipReason || assign.assignedTitle || assign.assignedTask}
+                      </div>
+                      {assign.lastOutcome ? (
+                        <div className="mt-0.5 truncate font-mono text-[9px] text-slate-400">
+                          {assign.lastOutcome}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : (

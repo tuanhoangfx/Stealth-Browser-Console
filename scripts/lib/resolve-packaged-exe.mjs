@@ -1,7 +1,7 @@
 /** Resolve packaged Stealth exe — installed Prod first, never a repo win-unpacked build. */
 import fs from "node:fs";
 import path from "node:path";
-import { isDesktopInstallLocked } from "../../../scripts/lib/desktop-exe-products.mjs";
+import { cleanDesktopElectronEnv, isDesktopInstallLocked } from "../../../scripts/lib/desktop-exe-products.mjs";
 import { readPeProductVersion } from "../../../scripts/lib/win-native-utils.mjs";
 
 export const PACKAGED_EXE_NAME = "Stealth Browser Console.exe";
@@ -16,18 +16,13 @@ function versionKey(version) {
   return parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2];
 }
 
-/** Strip agent smoke env so packaged profiles launch headed (visible Chrome). */
+/** Strip agent smoke env and SxS sandbox home overrides so packaged profiles launch headed on real userData. */
 export function packagedStealthSpawnEnv(baseEnv = process.env) {
-  const env = { ...baseEnv };
-  delete env.STEALTH_AGENT_SMOKE;
-  delete env.STEALTH_HEADLESS_SMOKE;
-  delete env.CURSOR_AGENT;
-  delete env.ELECTRON_RUN_AS_NODE;
-  return env;
+  return cleanDesktopElectronEnv(baseEnv);
 }
 
 export function resolvePackagedStealthExe(root, { target = "auto" } = {}) {
-  const localAppData = process.env.LOCALAPPDATA || "";
+  const localAppData = cleanDesktopElectronEnv().LOCALAPPDATA || process.env.LOCALAPPDATA || "";
   const devRoot = path.resolve(root, "..", "..");
   const installed = localAppData
     ? path.join(localAppData, "Programs", "stealth-browser-console", PACKAGED_EXE_NAME)

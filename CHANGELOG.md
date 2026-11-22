@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-11-22 - Fix delayed Stripe billing address country detection and scroll-into-view fallback
+
+- Version: `9.2.535`
+- Timestamp: 2026-11-22 13:39 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Auto-detect US vs VN country in fillDelayedStripeBillingAddressIfPresent, scroll Billing address into center view, and add loc.fill fallback in mouseClickAndTypeLocator.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
+## 2026-11-22 - Auto-evict non-interactive S4U background session and relaunch on interactive desktop
+
+- Version: `9.2.534`
+- Timestamp: 2026-11-22 13:32 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Self-exit P0003 when trapped in S4U non-interactive Window Station on showWindow, relaunch on second-instance/desktop-open, and switch KeepAlive to Interactive desktop breakaway
+
+### Verification
+
+- desktop-exe-ssot.test.mjs 16/16 PASS + Default desktop window visible
+
+---
+## 2026-11-22 - Expose 24/7 Master Orchestrator Dispatch Matrix in Mobile Farm V1 UI
+
+- Version: `9.2.533`
+- Timestamp: 2026-11-22 13:30 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Show per-device dispatch/leased/thermal states, self-generated backlog goals, and Group comment progress
+
+### Verification
+
+- tsc, vitest (1/1), mobile-farm-execution-board (4/4), headless profile 9992 smoke (0 errors)
+
+---
 ## 2026-11-22 - Add ChatGPT Bearer entitlement, confirm-block abort, delayed Stripe billing address, and auto-renew cancel helpers
 
 - Version: `9.2.532`
