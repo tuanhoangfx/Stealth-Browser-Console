@@ -1,6 +1,7 @@
 /** Resolve packaged Stealth exe — installed Prod first, never a repo win-unpacked build. */
 import fs from "node:fs";
 import path from "node:path";
+import { isDesktopInstallLocked } from "../../../scripts/lib/desktop-exe-products.mjs";
 import { readPeProductVersion } from "../../../scripts/lib/win-native-utils.mjs";
 
 export const PACKAGED_EXE_NAME = "Stealth Browser Console.exe";
@@ -27,6 +28,7 @@ export function packagedStealthSpawnEnv(baseEnv = process.env) {
 
 export function resolvePackagedStealthExe(root, { target = "auto" } = {}) {
   const localAppData = process.env.LOCALAPPDATA || "";
+  const devRoot = path.resolve(root, "..", "..");
   const installed = localAppData
     ? path.join(localAppData, "Programs", "stealth-browser-console", PACKAGED_EXE_NAME)
     : "";
@@ -35,6 +37,10 @@ export function resolvePackagedStealthExe(root, { target = "auto" } = {}) {
   }
   if (target !== "unpacked" && installed && fs.existsSync(installed)) {
     return installed;
+  }
+  // Never fall back to repo win-unpacked while NSIS installer is replacing %LOCALAPPDATA%\Programs\stealth-browser-console
+  if (target !== "unpacked" && isDesktopInstallLocked(devRoot, "P0003")) {
+    return null;
   }
   const candidates = [
     path.join(root, "dist-desktop", "win-unpacked-pending", PACKAGED_EXE_NAME),

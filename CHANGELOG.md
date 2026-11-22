@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Harden Android smoke checks, worker asarUnpack gate, and NSIS install lock
+
+- Version: `9.2.531`
+- Timestamp: 2026-11-22 07:53 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Verify Android full-height + PROFILES > 0 in profiles-real smoke, enforce external worker asarUnpack gate in verify-desktop-exe-ssot, guard keepalive/resolvers with install lock, and declare P0003 work-board areas
+
+### Verification
+
+- node --test Tool/scripts/desktop-exe-ssot.test.mjs PASS (11/11)
+
+---
 ## 2026-11-22 - Unpack android-bridge-worker.mjs for packaged Android Profiles API
 
 - Version: `9.2.530`

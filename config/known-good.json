@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "label": "v9.2.529-stable",
-  "version": "9.2.529",
+  "label": "v9.2.530-stable",
+  "version": "9.2.530",
   "gitCommit": null,
-  "gitTag": "v9.2.529-stable",
+  "gitTag": "v9.2.530-stable",
   "packagedFrom": "996c19456e356f6ecd4cd4025688bcbfcdef5f9b",
   "notes": "v9.1.1: Release Major bump 8.1.4â†’9.1.1. Fast prepackaged rebuild seeded build/icons into app.asar.",
   "backup": {
     "dir": "D:/DevStore/known-good/P0003",
-    "installer": "Stealth-Browser-Console-Setup-9.2.529.exe",
+    "installer": "Stealth-Browser-Console-Setup-9.2.530.exe",
     "winUnpacked": "win-unpacked",
-    "sha512": "eBAz2Nah4JxBXL1TKFehtvjXaJHww+DCR939ZJhvbNMPySm0TMht3HHGyV6xP26bc4vg82WpEiOGbzCVJOYCow==",
-    "capturedAt": "2026-11-21T21:04:29.695Z"
+    "sha512": "eGjmI4yAGpUlHyEcA+LpbggC2GkmKzdCMx2dKwXb1k/OZOJEYrrinkfDG64kKAEA0E3UOkuO8c+u6OMWXr85bw==",
+    "capturedAt": "2026-11-21T21:28:07.273Z"
   },
   "restore": {
     "purgeSurfshark": "node scripts/purge-surfshark-runtime.mjs",

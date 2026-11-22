@@ -321,6 +321,7 @@ export type FarmPhoneCardItem = {
 const MOBILE_API_BASES = [
   "http://127.0.0.1:6003",
   "http://127.0.0.1:6004",
+  "http://127.0.0.1:6005",
   "http://127.0.0.1:3002",
   "http://127.0.0.1:8814",
   "",
@@ -332,7 +333,7 @@ function getOrderedApiBases(): string[] {
   const isApiOrigin =
     typeof window !== "undefined" &&
     (window.location?.protocol === "http:" || window.location?.protocol === "https:") &&
-    ["6003", "6004", "3002", "8814"].includes(window.location?.port || "");
+    ["6003", "6004", "6005", "3002", "8814"].includes(window.location?.port || "");
   const defaults = isApiOrigin
     ? ["", ...MOBILE_API_BASES.filter(Boolean)]
     : MOBILE_API_BASES.filter(Boolean);

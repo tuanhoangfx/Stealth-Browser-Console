@@ -119,6 +119,49 @@ export async function prepare() {
 const SEARCH = `[...document.querySelectorAll('input[name=hub-directory-search], input[type=search]')].find(i => i.offsetParent)`;
 const ROWS = `[...document.querySelectorAll('tr.hub-users-row')].filter(r => r.offsetParent)`;
 
+async function assertFullHeightMainAndHeader(session, rec, screenLabel) {
+  const layout = await session.evaluate(`(() => {
+    const vw = window.innerWidth || 0;
+    const vh = window.innerHeight || 0;
+    const main = document.querySelector('main.hub-main') || document.querySelector('main');
+    const directChildren = main
+      ? [...main.children].filter((el) => {
+          if (el.hasAttribute('data-hub-chrome-bar') || el.hasAttribute('hidden')) return false;
+          const st = getComputedStyle(el);
+          return st.display !== 'none' && el.getBoundingClientRect().height > 0;
+        })
+      : [];
+    const primary = directChildren[0] || null;
+    const primaryH = primary ? Math.round(primary.getBoundingClientRect().height) : 0;
+    const hdrButtons = [...document.querySelectorAll('header button, .app-tab-header button')]
+      .filter((el) => el.offsetParent)
+      .map((el) => ({
+        text: (el.textContent || '').trim().replace(/\\s+/g, ' '),
+        right: Math.round(el.getBoundingClientRect().right),
+      }));
+    const anyClipped = hdrButtons.some((b) => b.right > vw + 1);
+    return {
+      vw,
+      vh,
+      childCount: directChildren.length,
+      primaryH,
+      anyClipped,
+      clipped: hdrButtons.filter((b) => b.right > vw + 1),
+    };
+  })()`);
+  const minH = Math.max(400, (layout.vh || 720) - 80);
+  rec.check(
+    `${screenLabel} full-height layout (no 50% top split)`,
+    layout.childCount === 1 && layout.primaryH >= minH,
+    `children=${layout.childCount} height=${layout.primaryH}/${layout.vh}`,
+  );
+  rec.check(
+    `${screenLabel} header controls unclipped`,
+    !layout.anyClipped,
+    layout.anyClipped ? JSON.stringify(layout.clipped) : `vw=${layout.vw}`,
+  );
+}
+
 export default async function run({ session, rec, sleep }) {
   const { waitFor, evaluate, click, type } = session;
   fs.writeFileSync(path.join(rec.outDir, "reference.json"), JSON.stringify(reference, null, 2));
@@ -142,6 +185,7 @@ export default async function run({ session, rec, sleep }) {
     shownTotal === reference.total,
     `UI ${shownTotal} vs DB ${reference.total}`,
   );
+  await assertFullHeightMainAndHeader(session, rec, "Profiles");
   await rec.step("profiles-real-db", `${reference.total} profiles`);
 
   if (reference.sample) {
@@ -171,6 +215,49 @@ export default async function run({ session, rec, sleep }) {
 
   const visited = await walkSidebarNav(session, rec, { skip: /^Profiles$|Local console/i });
   rec.check("sidebar screens visited", visited.length >= 5, visited.join(" · "));
+
+  // Verify Android vault live data load (PROFILES > 0) + full-height layout (no app.asar worker 500 or 50% top banner)
+  const androidNavTarget = `[...document.querySelectorAll('aside.hub-sidebar-shell nav a, aside.hub-sidebar-shell nav button')].find(e => e.offsetParent && e.textContent.trim() === 'Android')`;
+  const clickedAndroid = await evaluate(`(() => {
+    const collapsed = [...document.querySelectorAll('aside.hub-sidebar-shell nav button[aria-expanded="false"]')];
+    collapsed.forEach((b) => b.click());
+    const el = ${androidNavTarget};
+    if (!el) return false;
+    el.click();
+    return true;
+  })()`);
+  rec.check("Android sidebar nav reachable", Boolean(clickedAndroid), clickedAndroid ? "clicked Android" : "Android nav missing");
+  if (clickedAndroid) {
+    await waitFor(
+      `(() => {
+        const scr = document.querySelector('[data-hub-screen="android:profiles"]');
+        if (!scr) return false;
+        const tiles = [...scr.querySelectorAll('.hub-kpi-tile')];
+        const firstText = (tiles[0]?.textContent || '').replace(/\\s+/g, ' ').trim();
+        const m = firstText.match(/PROFILES\\s+(\\d+)/i);
+        return m ? Number(m[1]) > 0 : false;
+      })()`,
+      { timeoutMs: 15_000, label: "Android PROFILES > 0" },
+    ).catch(() => null);
+    await sleep(300);
+    const androidSnap = await evaluate(`(() => {
+      const scr = document.querySelector('[data-hub-screen="android:profiles"]');
+      const tiles = scr ? [...scr.querySelectorAll('.hub-kpi-tile')] : [];
+      const kpi0 = (tiles[0]?.textContent || '').replace(/\\s+/g, ' ').trim();
+      const m = kpi0.match(/PROFILES\\s+(\\d+)/i);
+      const profilesCount = m ? Number(m[1]) : 0;
+      const rows = scr ? [...scr.querySelectorAll('tbody tr')].filter((r) => r.offsetParent).length : 0;
+      return { hasScreen: Boolean(scr), kpi0, profilesCount, rows };
+    })()`);
+    await assertFullHeightMainAndHeader(session, rec, "Android");
+    rec.check(
+      "Android vault loads PROFILES > 0 (unpacked bridge worker OK)",
+      androidSnap.hasScreen && androidSnap.profilesCount > 0 && androidSnap.rows > 0,
+      `kpi="${androidSnap.kpi0}" rows=${androidSnap.rows}`,
+    );
+    await rec.step("android-vault-loaded", `${androidSnap.profilesCount} android profiles`);
+  }
+
   const exceptions = rec.rendererErrors().filter((e) => e.kind === "exception");
   rec.check("no renderer exceptions", exceptions.length === 0, exceptions[0]?.text?.slice(0, 160) || "");
 }

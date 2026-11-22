@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-21T21:28:36.609Z",
+  "generatedAt": "2026-11-22T00:54:21.255Z",
   "entries": [
+    {
+      "version": "9.2.531",
+      "date": "2026-11-22",
+      "at": "2026-11-22T07:53:00+07:00",
+      "title": "Harden Android smoke checks, worker asarUnpack gate, and NSIS install lock",
+      "bullets": [
+        "Verify Android full-height + PROFILES > 0 in profiles-real smoke, enforce external worker asarUnpack gate in verify-desktop-exe-ssot, guard keepalive/resolvers with install lock, and declare P0003 work-board areas"
+      ],
+      "kind": "improve",
+      "userTitle": "Harden Android smoke checks, worker asar Unpack gate, and NSIS instal…",
+      "userSummary": "",
+      "userHighlights": [
+        "Verify Android full-height + PROFILES > 0 in profiles-real smoke, enforce external worker asar Un…"
+      ]
+    },
     {
       "version": "9.2.530",
       "date": "2026-11-22",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Keep restrictions 54 scoped to Gmail when myaccount.google.com is open, pass live Cdp values in m…"
-      ]
-    },
-    {
-      "version": "9.2.518",
-      "date": "2026-11-21",
-      "at": "2026-11-21T13:45:00+07:00",
-      "title": "Facebook /me/about birthday parser",
-      "bullets": [
-        "Added extractFacebookBirthdayFromAboutText supporting VI/EN Facebook About Basic Info formats with unit tests."
-      ],
-      "kind": "improve",
-      "userTitle": "Facebook me about birthday parser",
-      "userSummary": "",
-      "userHighlights": [
-        "Added extract Facebook Birthday From About Text supporting VI EN Facebook About Basic Info format…"
       ]
     }
   ]

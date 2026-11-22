@@ -177,9 +177,9 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-11-21T21:28:38.029Z",
+  "manifestUpdatedAt": "2026-11-22T00:53:55.949Z",
   "release": {
-    "version": "9.2.530",
+    "version": "9.2.531",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -219,8 +219,58 @@
     },
     "syncedAt": "2026-08-19T22:47:57.996Z"
   },
+  "areas": {
+    "packaging": {
+      "paths": [
+        "scripts/**",
+        "build/**",
+        "electron/after-pack.cjs",
+        "electron/desktop-updater*",
+        "electron/lib/electron-builder-pack-guard.cjs",
+        "electron/lib/android-bridge-loader.cjs",
+        "electron/lib/android-bridge-worker.mjs"
+      ],
+      "note": "Desktop packaging, NSIS/install-lock, desktop-open, and smoke scripts"
+    },
+    "mobile-farm": {
+      "paths": [
+        "src/views/mobile-farm/**",
+        "src/features/android/**",
+        "src/views/AndroidProfilesView.tsx"
+      ]
+    },
+    "ui-profiles": {
+      "paths": [
+        "src/features/profiles/**",
+        "src/components/**",
+        "src/theme/**"
+      ]
+    },
+    "workflow": {
+      "paths": [
+        "src/features/workflows/**",
+        "src/views/Workflow*",
+        "src/features/system/**"
+      ]
+    },
+    "electron-core": {
+      "paths": [
+        "electron/**"
+      ]
+    },
+    "shared": {
+      "paths": [
+        "package.json",
+        "tool.manifest.json",
+        "public/tool.manifest.json",
+        "CHANGELOG.md",
+        "src/App.tsx",
+        "src/lib/**"
+      ]
+    }
+  },
   "versions": {
-    "current": "9.2.530",
+    "current": "9.2.531",
     "latestPublished": "9.2.530"
   }
 }
