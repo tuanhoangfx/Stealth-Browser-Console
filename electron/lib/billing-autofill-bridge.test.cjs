@@ -182,3 +182,74 @@ test("syncChatGptPlusPlanByVerifiedEmail protects 8xxx/buyer/existing-plan rows 
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   }
 });
+
+test("classifyOpenAiCheckoutConfirmPayload detects blocked, replaced session, and setup_intent", () => {
+  const { classifyOpenAiCheckoutConfirmPayload } = require("./billing-autofill-bridge.cjs");
+
+  const blocked = classifyOpenAiCheckoutConfirmPayload(200, JSON.stringify({ status: "blocked" }));
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.abortRetries, true);
+  assert.equal(blocked.ok, false);
+
+  const replaced = classifyOpenAiCheckoutConfirmPayload(
+    200,
+    JSON.stringify({ replaced_checkout_session: { id: "oaics_new" } })
+  );
+  assert.equal(replaced.replacedSession, true);
+  assert.equal(replaced.abortRetries, false);
+
+  const si = classifyOpenAiCheckoutConfirmPayload(200, JSON.stringify({ type: "setup_intent", status: "success" }));
+  assert.equal(si.setupIntent, true);
+  assert.equal(si.ok, true);
+});
+
+test("fetchChatGptEntitlementWithBearer parses Bearer entitlement without cookie fallback false positives", async () => {
+  const { fetchChatGptEntitlementWithBearer } = require("./billing-autofill-bridge.cjs");
+
+  const mockPage = {
+    async evaluate(fn) {
+      const prevFetch = globalThis.fetch;
+      globalThis.fetch = async (url, opts) => {
+        if (String(url).includes("/api/auth/session")) {
+          return {
+            ok: true,
+            async json() {
+              return { user: { email: "test@example.com" }, accessToken: "tok_123" };
+            },
+          };
+        }
+        assert.equal(opts?.headers?.authorization, "Bearer tok_123");
+        return {
+          ok: true,
+          async json() {
+            return {
+              accounts: {
+                default: {
+                  entitlement: {
+                    subscription_plan: "chatgptplusplan",
+                    has_active_subscription: true,
+                    expires_at: "2026-12-22T02:28:52+00:00",
+                    renews_at: null,
+                    cancels_at: "2026-12-21T20:28:52+00:00",
+                  },
+                },
+              },
+            };
+          },
+        };
+      };
+      try {
+        return await fn();
+      } finally {
+        globalThis.fetch = prevFetch;
+      }
+    },
+  };
+
+  const res = await fetchChatGptEntitlementWithBearer(mockPage);
+  assert.equal(res.ok, true);
+  assert.equal(res.email, "test@example.com");
+  assert.equal(res.plan, "chatgptplusplan");
+  assert.equal(res.active, true);
+  assert.equal(res.cancelsAt, "2026-12-21T20:28:52+00:00");
+});

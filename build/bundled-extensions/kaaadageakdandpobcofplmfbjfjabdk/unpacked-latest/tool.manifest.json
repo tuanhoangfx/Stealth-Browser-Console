@@ -68,7 +68,7 @@
     "listingStatus": "in_review",
     "visibility": "public",
     "submittedAt": "2026-11-13",
-    "lastStatusAt": "2026-11-21T21:07:01.613Z",
+    "lastStatusAt": "2026-11-22T00:37:01.701Z",
     "shareHint": "While in review: team installs via GitHub ZIP. After approval: switch Distribution â†’ Unlisted for link-only sharing.",
     "submittedVersion": "1.2.64",
     "submittedState": "PENDING_REVIEW",
@@ -91,7 +91,7 @@
     "Optional: switch Distribution to Unlisted for link-only team sharing.",
     "Load unpacked / GitHub ZIP: v1.1.11 (hub-api + sb-api). CWS published v1.1.11 â€” Store installs auto-update."
   ],
-  "manifestUpdatedAt": "2026-11-21T21:07:01.613Z",
+  "manifestUpdatedAt": "2026-11-22T00:37:01.701Z",
   "ship": {
     "schemaVersion": 1,
     "fastPath": "Push",

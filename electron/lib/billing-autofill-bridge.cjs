@@ -1661,6 +1661,183 @@ async function syncChatGptPlusPlanByVerifiedEmail(payload = {}) {
   }
 }
 
+/**
+ * Fetches ChatGPT account entitlement using `Authorization: Bearer <accessToken>`
+ * from `/api/auth/session` (preventing false `chatgptguestplan` cookie-only responses).
+ */
+async function fetchChatGptEntitlementWithBearer(page) {
+  if (!page) return { ok: false, error: "missing_page" };
+  try {
+    const data = await page.evaluate(async () => {
+      const sess = await fetch("/api/auth/session", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      const tok = String(sess?.accessToken || "").trim();
+      const email = String(sess?.user?.email || "").trim();
+      if (!tok) {
+        return { ok: false, email, error: "missing_access_token" };
+      }
+      const check = await fetch("/backend-api/accounts/check/v4-2023-04-27", {
+        headers: { authorization: `Bearer ${tok}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      const ent = check?.accounts?.default?.entitlement || null;
+      return {
+        ok: Boolean(ent),
+        email,
+        plan: ent?.subscription_plan || "",
+        active: Boolean(ent?.has_active_subscription),
+        expiresAt: ent?.expires_at || null,
+        renewsAt: ent?.renews_at || null,
+        cancelsAt: ent?.cancels_at || null,
+        entitlement: ent,
+      };
+    });
+    return data || { ok: false, error: "evaluate_empty" };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+/**
+ * Classifies `POST /backend-api/payments/checkout/confirm` responses for early-abort & retry handling.
+ */
+function classifyOpenAiCheckoutConfirmPayload(status = 0, rawText = "") {
+  const txt = String(rawText || "").trim();
+  let parsed = null;
+  try {
+    parsed = JSON.parse(txt);
+  } catch {
+    /* non-JSON */
+  }
+  const st = String(parsed?.status || "").toLowerCase();
+  if (st === "blocked" || /"status"\s*:\s*"blocked"/i.test(txt)) {
+    return { ok: false, blocked: true, abortRetries: true, replacedSession: false, setupIntent: false, parsed };
+  }
+  if (parsed?.replaced_checkout_session || /replaced_checkout_session/i.test(txt)) {
+    return { ok: true, blocked: false, abortRetries: false, replacedSession: true, setupIntent: false, parsed };
+  }
+  const setupIntent = parsed?.type === "setup_intent" || /setup_intent/i.test(txt);
+  return {
+    ok: Number(status) >= 200 && Number(status) < 300 && st === "success",
+    blocked: false,
+    abortRetries: false,
+    replacedSession: false,
+    setupIntent,
+    parsed,
+  };
+}
+
+async function mouseClickAndTypeLocator(page, loc, value) {
+  if (!page || !loc || !String(value || "").trim()) return false;
+  await loc.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+  await page.waitForTimeout(100);
+  const box = await loc.boundingBox().catch(() => null);
+  if (!box || box.width <= 0 || box.height <= 0) return false;
+  await page.mouse.click(box.x + Math.min(80, box.width / 2), box.y + box.height / 2);
+  await page.waitForTimeout(130);
+  await page.keyboard.type(String(value), { delay: 20 });
+  await page.waitForTimeout(130);
+  return true;
+}
+
+/**
+ * Fills Stripe's delayed Billing Address iframe (`addressLine1`, `locality`, `administrativeArea`, `postalCode`)
+ * using real mouse/keyboard input without Escape-key dismissal side effects.
+ */
+async function fillDelayedStripeBillingAddressIfPresent(page, identity = {}) {
+  if (!page) return { found: false, filledFields: [] };
+  await page.mouse.wheel(0, 450).catch(() => {});
+  await page.waitForTimeout(250);
+  const fullName = String(identity.fullName || identity.name || "Nguyen Van Minh").trim();
+  const line1 = String(identity.addressLine1 || identity.line1 || "128 Nguyen Trai").trim();
+  const city = String(identity.city || identity.locality || "Long Xuyen").trim();
+  const postalCode = String(identity.postalCode || "880000").trim();
+  const filledFields = [];
+  let found = false;
+
+  for (const fr of page.frames().filter((f) => /js\.stripe\.com/.test(f.url() || ""))) {
+    const hasAddr = (await fr.locator('input[name="addressLine1"]').count().catch(() => 0)) > 0;
+    if (!hasAddr) continue;
+    found = true;
+    const textPairs = [
+      ["name", 'input[name="name"], #Field-nameInput', fullName],
+      ["addressLine1", 'input[name="addressLine1"], #Field-addressLine1Input', line1],
+      ["locality", 'input[name="locality"], #Field-localityInput', city],
+      ["postalCode", 'input[name="postalCode"], #Field-postalCodeInput', postalCode],
+    ];
+    for (const [key, sel, val] of textPairs) {
+      const loc = fr.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) === 0) continue;
+      const cur = await loc.inputValue().catch(() => "");
+      if (!cur && (await mouseClickAndTypeLocator(page, loc, val))) {
+        filledFields.push(key);
+      }
+    }
+    const prov = fr.locator('select[name="administrativeArea"], #Field-administrativeAreaInput').first();
+    if ((await prov.count().catch(() => 0)) > 0) {
+      const curProv = await prov.inputValue().catch(() => "");
+      if (!curProv) {
+        await prov.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+        const selected = await prov.selectOption({ index: 1 }).then(() => true).catch(() => false);
+        if (selected) filledFields.push("administrativeArea");
+      }
+    }
+  }
+  return { found, filledFields };
+}
+
+/**
+ * Cancels ChatGPT Plus auto-renew via Settings -> Billing -> Cancel plan -> No thanks -> Cancel subscription
+ * and verifies `cancels_at` with Bearer entitlement lookup.
+ */
+async function cancelChatGptPlusAutoRenew(page, opts = {}) {
+  if (!page) return { ok: false, error: "missing_page" };
+  const waitMs = Number(opts.timeoutMs) || 18000;
+  await page.goto("https://chatgpt.com/#settings/Account", { waitUntil: "domcontentloaded", timeout: 45000 });
+  const billingTab = page.locator('button:has-text("Billing"), [role="tab"]:has-text("Billing")').first();
+  const maxPolls = Math.max(5, Math.ceil(waitMs / 1000));
+  for (let w = 0; w < maxPolls && (await billingTab.count().catch(() => 0)) === 0; w += 1) {
+    await page.waitForTimeout(1000);
+  }
+  if ((await billingTab.count().catch(() => 0)) === 0) {
+    return { ok: false, error: "billing_tab_not_found" };
+  }
+  await billingTab.click().catch(() => {});
+  await page.waitForTimeout(2500);
+
+  const preEnt = await fetchChatGptEntitlementWithBearer(page);
+  if (preEnt.cancelsAt) {
+    return { ok: true, alreadyCancelled: true, ...preEnt };
+  }
+
+  const cancelBtn = page.locator('button:has-text("Cancel plan")').first();
+  if ((await cancelBtn.count().catch(() => 0)) === 0) {
+    return { ok: false, error: "cancel_plan_button_not_found", ...preEnt };
+  }
+  await cancelBtn.click().catch(() => {});
+  await page.waitForTimeout(2000);
+
+  const noThanks = page.locator('[role="dialog"] button:has-text("No thanks")').first();
+  if ((await noThanks.count().catch(() => 0)) > 0) {
+    await noThanks.click().catch(() => {});
+    await page.waitForTimeout(2200);
+  }
+  const confirmCancel = page.locator('[role="dialog"] button:has-text("Cancel subscription")').first();
+  if ((await confirmCancel.count().catch(() => 0)) > 0) {
+    await confirmCancel.click().catch(() => {});
+    await page.waitForTimeout(5500);
+  }
+
+  const postEnt = await fetchChatGptEntitlementWithBearer(page);
+  return {
+    ok: Boolean(postEnt.cancelsAt),
+    cancelledNow: Boolean(postEnt.cancelsAt && !preEnt.cancelsAt),
+    ...postEnt,
+  };
+}
+
 module.exports = {
   getPrimaryVaultFilePath,
   resolveProfileBiometricBillingIdentity,
@@ -1674,4 +1851,8 @@ module.exports = {
   listMaskedBillingCards,
   upsertBillingCardInVault,
   autofillProfileBillingViaCdp,
+  fetchChatGptEntitlementWithBearer,
+  classifyOpenAiCheckoutConfirmPayload,
+  fillDelayedStripeBillingAddressIfPresent,
+  cancelChatGptPlusAutoRenew,
 };

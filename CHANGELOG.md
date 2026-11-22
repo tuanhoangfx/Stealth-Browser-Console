@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 - Add ChatGPT Bearer entitlement, confirm-block abort, delayed Stripe billing address, and auto-renew cancel helpers
+
+- Version: `9.2.532`
+- Timestamp: 2026-11-22 07:59 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Export fetchChatGptEntitlementWithBearer, classifyOpenAiCheckoutConfirmPayload, fillDelayedStripeBillingAddressIfPresent, and cancelChatGptPlusAutoRenew in billing-autofill-bridge.cjs with unit tests and sweeper/bridge parity.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/billing-autofill-bridge.test.cjs
+
+---
 ## 2026-11-22 - Harden Android smoke checks, worker asarUnpack gate, and NSIS install lock
 
 - Version: `9.2.531`

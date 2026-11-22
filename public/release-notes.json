@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-22T00:54:21.255Z",
+  "generatedAt": "2026-11-22T01:06:55.263Z",
   "entries": [
+    {
+      "version": "9.2.532",
+      "date": "2026-11-22",
+      "at": "2026-11-22T07:59:00+07:00",
+      "title": "Add ChatGPT Bearer entitlement, confirm-block abort, delayed Stripe billing address, and auto-renew cancel helpers",
+      "bullets": [
+        "Export fetchChatGptEntitlementWithBearer, classifyOpenAiCheckoutConfirmPayload, fillDelayedStripeBillingAddressIfPresent, and cancelChatGptPlusAutoRenew in billing-autofill-bridge.cjs with unit tests and sweeper/bridge parity."
+      ],
+      "kind": "improve",
+      "userTitle": "Add Chat GPT Bearer entitlement, confirm-block abort, delayed Stripe…",
+      "userSummary": "",
+      "userHighlights": [
+        "Export fetch Chat Gpt Entitlement With Bearer, classify Open Ai Checkout Confirm Payload, fill De…"
+      ]
+    },
     {
       "version": "9.2.531",
       "date": "2026-11-22",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Probe mail.google.com mail u 0 for appeal disable Gmail rows even when prior evidence lost restri…"
-      ]
-    },
-    {
-      "version": "9.2.519",
-      "date": "2026-11-21",
-      "at": "2026-11-21T17:49:00+07:00",
-      "title": "Fix realtime P0003->P0020 Google checkpoint_qr & restrictions/54 sync",
-      "bullets": [
-        "Keep /restrictions/54 scoped to Gmail when myaccount.google.com is open, pass liveCdp/values in manual reconcile-p0020, and unblock sibling YouTube/Google One promotion."
-      ],
-      "kind": "fix",
-      "userTitle": "Fix realtime P0003->P0020 Google checkpoint qr & restrictions 54 sync",
-      "userSummary": "",
-      "userHighlights": [
-        "Keep restrictions 54 scoped to Gmail when myaccount.google.com is open, pass live Cdp values in m…"
       ]
     }
   ]
