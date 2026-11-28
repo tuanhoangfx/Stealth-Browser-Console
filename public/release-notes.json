@@ -1,6 +1,21 @@
 {
-  "generatedAt": "2026-11-28T11:20:31.996Z",
+  "generatedAt": "2026-11-28T11:26:03.297Z",
   "entries": [
+    {
+      "version": "9.2.589",
+      "date": "2026-11-28",
+      "at": "2026-11-28T18:21:00+07:00",
+      "title": "Sync compressed brand-icons (-5.8MB dist) & compact ASAR",
+      "bullets": [
+        "Mirror sharp-compressed 128x128 PNG brand-icons (autolike 4.99MB->9.9KB, shopmini-net 573KB->15.7KB, investing-calendar 423KB->10.6KB) and hot-patch compacted ASAR"
+      ],
+      "kind": "improve",
+      "userTitle": "Sync compressed brand-icons & compact ASAR",
+      "userSummary": "",
+      "userHighlights": [
+        "Mirror sharp-compressed 128x128 PNG brand-icons and hot-patch compacted ASAR"
+      ]
+    },
     {
       "version": "9.2.588",
       "date": "2026-11-28",
@@ -164,21 +179,6 @@
       "userSummary": "",
       "userHighlights": [
         "Apply locked V1 Panel Dock Frame to Hub Sidebar Collapse Glyph, remove temporary preview, and upg…"
-      ]
-    },
-    {
-      "version": "9.2.577",
-      "date": "2026-11-28",
-      "at": "2026-11-28T06:34:00+07:00",
-      "title": "Fix double readBody hang on POST mobile-stealth live-control",
-      "bullets": [
-        "Make readBody idempotent and bypass duplicate POST body consumption in api-server.cjs for live-control/wifi-adb routes"
-      ],
-      "kind": "fix",
-      "userTitle": "Fix double read Body hang on POST mobile-stealth live-control",
-      "userSummary": "",
-      "userHighlights": [
-        "Make read Body idempotent and bypass duplicate POST body consumption in for live-control wifi-adb…"
       ]
     }
   ]

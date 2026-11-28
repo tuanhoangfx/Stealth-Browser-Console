@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-28 - Sync compressed brand-icons (-5.8MB dist) & compact ASAR
+
+- Version: `9.2.589`
+- Timestamp: 2026-11-28 18:21 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Mirror sharp-compressed 128x128 PNG brand-icons (autolike 4.99MB->9.9KB, shopmini-net 573KB->15.7KB, investing-calendar 423KB->10.6KB) and hot-patch compacted ASAR
+
+### Verification
+
+- verify-hub-brand-registry-sync.mjs + live :6003
+
+---
 ## 2026-11-28 - S9+ dynamic slots 01-16 & P0020-synced slot identity tags
 
 - Version: `9.2.588`
