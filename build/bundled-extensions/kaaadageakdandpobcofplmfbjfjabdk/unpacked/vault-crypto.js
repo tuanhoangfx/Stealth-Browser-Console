@@ -44,7 +44,7 @@ function chromeSameSite(c) {
   return "unspecified";
 }
 
-function serializeVaultPayload(cookies) {
+function serializeVaultPayload(cookies, storage = null) {
   const list = cookies.map((c) => {
     const row = {
       name: c.name,
@@ -60,18 +60,30 @@ function serializeVaultPayload(cookies) {
     if (c.partitionKey && typeof c.partitionKey === "object") row.partitionKey = c.partitionKey;
     return row;
   });
-  return JSON.stringify({ v: VAULT_VERSION, cookies: list });
+  const payload = { v: VAULT_VERSION, cookies: list };
+  if (storage && typeof storage === "object") {
+    payload.storage = storage;
+  }
+  return JSON.stringify(payload);
 }
 
-export async function encryptVault(passphrase, noteId, domain, cookies) {
+export async function encryptVault(passphrase, noteId, domain, cookies, storage = null) {
   const key = await deriveAesKey(passphrase, noteId, domain);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const plain = enc(serializeVaultPayload(cookies));
+  const plain = enc(serializeVaultPayload(cookies, storage));
   const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plain);
+  const hasStorage = Boolean(
+    storage &&
+      typeof storage === "object" &&
+      (Object.keys(storage.localStorage ?? {}).length > 0 ||
+        Object.keys(storage.sessionStorage ?? {}).length > 0 ||
+        (Array.isArray(storage.indexedDB?.firebaseLocalStorage) &&
+          storage.indexedDB.firebaseLocalStorage.length > 0)),
+  );
   return {
     ciphertext: toB64(cipher),
     iv: toB64(iv.buffer),
-    cookieCount: cookies.length,
+    cookieCount: cookies.length || (hasStorage ? 1 : 0),
   };
 }
 

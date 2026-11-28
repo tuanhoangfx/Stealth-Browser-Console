@@ -43,6 +43,17 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
   sessionManager._deferredAgentTasksMap = deferredMap;
   const waitingHeadlessIds = sessionManager._waitingHeadlessIds || new Set();
   sessionManager._waitingHeadlessIds = waitingHeadlessIds;
+  const waitingHeadlessSince = sessionManager._waitingHeadlessSince || new Map();
+  sessionManager._waitingHeadlessSince = waitingHeadlessSince;
+  // Prune any leaked/stale `_waitingHeadlessIds` entries older than 25s on hot-reload
+  const nowInitWait = Date.now();
+  for (const wid of [...waitingHeadlessIds]) {
+    const since = Number(waitingHeadlessSince.get(wid) || 0);
+    if (!since || nowInitWait - since > 25_000) {
+      waitingHeadlessIds.delete(wid);
+      waitingHeadlessSince.delete(wid);
+    }
+  }
   const recentHeadlessMap = globalThis.__STEALTH_RECENT_HEADLESS_PROFILE_IDS__ || new Map();
   globalThis.__STEALTH_RECENT_HEADLESS_PROFILE_IDS__ = recentHeadlessMap;
 
@@ -130,6 +141,8 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
   if (prevSm && typeof unifiedSm.adoptLiveSessionsFrom === "function") {
     unifiedSm.adoptLiveSessionsFrom(prevSm);
   }
+  sessionManager._untrackedSweepSuperseded = true;
+  if (prevSm) prevSm._untrackedSweepSuperseded = true;
   sessionManager._unifiedSmV14 = unifiedSm;
   sessionManager._unifiedSmV12 = unifiedSm;
 
@@ -261,7 +274,21 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
 
   sessionManager.isRunning = function hotPatchedIsRunning(profileId) {
     const id = String(profileId || "");
-    return Boolean(hasLegacyHeadedSession(id) || unifiedSm.isRunning(id));
+    if (!id) return false;
+    if (hasLegacyHeadedSession(id) || unifiedSm.isRunning(id)) return true;
+    try {
+      for (const r of legacySm.listRunning() || []) {
+        const rid = String(r?.id || r?.profileId || "");
+        if (rid !== id) continue;
+        if (r.shadowLane === true || (r.headless === true && String(r.userDataDir || "").includes("p0003-agent-shadow"))) {
+          continue;
+        }
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
   };
 
   sessionManager.isAgentShadowRunning = function hotPatchedIsAgentShadowRunning(profileId) {
@@ -332,7 +359,53 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
       }
       return legacySm.getCdpInfo(id, opts);
     }
-    return unifiedSm.getCdpInfo(id, opts);
+    const primaryInfo = await unifiedSm.getCdpInfo(id, opts).catch(() => ({ ok: false, reason: "not-running" }));
+    if (primaryInfo?.ok || primaryInfo?.reason !== "not-running") {
+      return primaryInfo;
+    }
+    if (legacySm.isRunning?.(id)) {
+      const legInfo = await legacySm.getCdpInfo(id, opts).catch(() => null);
+      if (legInfo?.ok || (legInfo && legInfo.reason && legInfo.reason !== "not-running")) {
+        return legInfo;
+      }
+    }
+    try {
+      const running = (typeof sessionManager.listRunning === "function" ? sessionManager.listRunning() : []) || [];
+      const hit = running.find((r) => String(r?.id || r?.profileId || "") === id && Number(r?.debugPort) > 0);
+      if (hit) {
+        if (
+          isAgentCaller &&
+          hit.headless !== true &&
+          hit.shadowLane !== true &&
+          process.env.STEALTH_ALLOW_AGENT_ON_USER_HEADED !== "1"
+        ) {
+          sessionManager.enqueueDeferredAgentTask(id, { reason: "agent_cdp_while_user_headed" });
+          return {
+            ok: false,
+            reason: "user_interactive_session",
+            skipped: "user_interactive_session",
+            headless: false,
+          };
+        }
+        const port = Number(hit.debugPort);
+        const { waitForCdp } = require("../lib/net-port.cjs");
+        const cdpVer = await waitForCdp(port, { attempts: 3, intervalMs: 50 }).catch(() => null);
+        if (cdpVer?.webSocketDebuggerUrl) {
+          return {
+            ok: true,
+            port,
+            endpoint: `http://127.0.0.1:${port}`,
+            webSocketDebuggerUrl: cdpVer.webSocketDebuggerUrl,
+            browser: cdpVer.Browser,
+            shadowLane: Boolean(hit.shadowLane),
+            headless: Boolean(hit.headless),
+          };
+        }
+      }
+    } catch {
+      /* ignore listRunning fallback error */
+    }
+    return primaryInfo;
   };
 
   const enforceHotPatchHeadlessCap = async (keepId, callerIdInput = "") => {
@@ -514,7 +587,10 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
         callerId: callerId || normalizeAgentCallerId(prev?.callerId || "agent:inline"),
       });
     } else if (isAgentOrHeadless) {
-      if (id) waitingHeadlessIds.add(id);
+      if (id) {
+        waitingHeadlessIds.add(id);
+        waitingHeadlessSince.set(id, Date.now());
+      }
       try {
         const upSec = typeof os.uptime === "function" ? os.uptime() : 999;
         if (upSec < 90 && process.env.STEALTH_SKIP_BOOT_COOLDOWN !== "1") {
@@ -524,7 +600,10 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
         await waitHeadlessSlot();
         await enforceHotPatchHeadlessCap(id, callerId);
       } catch (err) {
-        if (id) waitingHeadlessIds.delete(id);
+        if (id) {
+          waitingHeadlessIds.delete(id);
+          waitingHeadlessSince.delete(id);
+        }
         throw err;
       }
     }
@@ -616,7 +695,10 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
         await enforceHotPatchHeadlessCap(id, callerId).catch(() => undefined);
       }
     } finally {
-      if (id) waitingHeadlessIds.delete(id);
+      if (id) {
+        waitingHeadlessIds.delete(id);
+        waitingHeadlessSince.delete(id);
+      }
     }
     if (!isAgentOrHeadless && targetWorkArea) {
       const wantMax = String(cleanedProfile.windowMode || "host-maximized").toLowerCase() === "host-maximized";
@@ -899,7 +981,7 @@ function installUnifiedSessionManagerRuntime({ sessionManager, profileService, u
         );
         const enrichedProf = prof && wasHeadless ? { ...prof, headless: true } : prof;
         for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
+          if (!win.isDestroyed() && win.isVisible() && !win.isMinimized()) {
             win.webContents.send("profile:session", { profile: enrichedProf, event: ev });
           }
         }

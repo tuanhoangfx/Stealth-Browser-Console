@@ -20,6 +20,11 @@ import {
   parseDesktopOpenFlags,
   probeDesktopHealth,
 } from "../../scripts/lib/desktop-exe-products.mjs";
+import {
+  HUNG_STEALTH_MIN_AGE_MS,
+  cleanupHungStealthProcessesAndLock,
+  inspectRunningStealthMainProcesses,
+} from "../../scripts/ensure-stealth-p0003-keepalive.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const devRoot = path.resolve(root, "..", "..");
@@ -63,7 +68,7 @@ if (!exePath) {
 
 const version = readExeProductVersion(exePath) || "unknown";
 
-function isPackagedExeProcessRunning() {
+function isAnyPackagedExeBinaryRunning() {
   if (process.platform !== "win32") return false;
   try {
     // Do NOT pass `/FI "IMAGENAME eq Stealth Browser Console.exe"` — Windows tasklist truncates
@@ -99,13 +104,34 @@ async function isStealthTrappedInNonInteractiveSession() {
 const prodHealthyInitial = await probeDesktopHealth("http://127.0.0.1:6003/api/health", 3500);
 const trappedInS4u = prodHealthyInitial ? await isStealthTrappedInNonInteractiveSession() : false;
 const allowEmergencyKillProd = process.env.STEALTH_EMERGENCY_HARD_KILL_PROD === "1" || trappedInS4u;
+let runningMainProcs = !prodHealthyInitial ? inspectRunningStealthMainProcesses() : [];
+
+if (!prodHealthyInitial && runningMainProcs.length > 0) {
+  const hungCleanup = cleanupHungStealthProcessesAndLock({
+    runningProcs: runningMainProcs,
+    minAgeMs: HUNG_STEALTH_MIN_AGE_MS,
+  });
+  if (hungCleanup.zombiePids.length > 0 && hungCleanup.killedPids.length === 0) {
+    console.error(
+      `desktop:open: P0003 (${processName}) blocked by unkillable kernel zombie PID(s) ${hungCleanup.zombiePids.join(",")} — Windows reboot required.`,
+    );
+    process.exit(1);
+  }
+  if (hungCleanup.killedPids.length > 0) {
+    console.log(
+      `desktop:open: cleaned hung unresponsive P0003 PID(s) ${hungCleanup.killedPids.join(",")} — relaunching...`,
+    );
+    await new Promise((r) => setTimeout(r, 600));
+    runningMainProcs = inspectRunningStealthMainProcesses();
+  }
+}
 
 if (trappedInS4u) {
   console.log("desktop:open: detected P0003 trapped in non-interactive S4U session (cursorPt invalid) — restarting on interactive desktop...");
   killPackagedOnly();
-} else if (flags.replace && (prodHealthyInitial || isPackagedExeProcessRunning()) && allowEmergencyKillProd) {
+} else if (flags.replace && (prodHealthyInitial || runningMainProcs.length > 0) && allowEmergencyKillProd) {
   killPackagedOnly();
-} else if (prodHealthyInitial || isPackagedExeProcessRunning()) {
+} else if (prodHealthyInitial || runningMainProcs.length > 0) {
   const res = await openDesktopExeWithPolicy({
     devRoot,
     code: "P0003",
@@ -125,9 +151,9 @@ if (trappedInS4u) {
   process.exit(res.ok ? 0 : 1);
 }
 
-// CRITICAL: Only promote staged/pending app.asar when Stealth Browser Console.exe is completely stopped
-// AND `--no-hot-patch` was NOT requested! Overwriting app.asar while running corrupts mmap offsets.
-if (!isPackagedExeProcessRunning() && !flags.noHotPatch) {
+// CRITICAL: Only promote staged/pending app.asar when ALL Stealth Browser Console.exe binaries (including :6004 worker)
+// are completely stopped AND `--no-hot-patch` was NOT requested! Overwriting app.asar while running corrupts mmap offsets.
+if (!isAnyPackagedExeBinaryRunning() && !flags.noHotPatch) {
   try {
     const asar = require("@electron/asar");
     const parseVer = (asarFile) => {

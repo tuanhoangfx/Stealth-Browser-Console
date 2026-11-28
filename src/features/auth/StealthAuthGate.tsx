@@ -5,8 +5,6 @@ import {
   createWorkspaceAuthGateHubForgotPasswordFromEnv,
 } from "@tool-workspace/hub-identity";
 import { STEALTH_BRAND_ICON } from "../../lib/stealth-product";
-import { hubAuthEnv } from "../../lib/hub-supabase-env";
-import { getIdentitySupabase, applyHubIdentitySession, persistHubSession } from "../../lib/supabase-identity";
 import { useStealthAuth } from "./AuthSessionProvider";
 
 type Props = {
@@ -14,7 +12,14 @@ type Props = {
 };
 
 export function StealthAuthGate({ onAuthed }: Props) {
-  const { refreshSession, prepareHubSignIn } = useStealthAuth();
+  const {
+    hubAuthEnv,
+    getHubClient,
+    prepareHubIdentityClient,
+    persistHubSession,
+    refreshSession,
+    prepareHubSignIn,
+  } = useStealthAuth();
 
   return (
     <WorkspaceAuthGate
@@ -28,15 +33,15 @@ export function StealthAuthGate({ onAuthed }: Props) {
         },
         ...createWorkspaceAuthGateHubEnvPartial({
           env: hubAuthEnv,
-          getHubClient: getIdentitySupabase,
-          prepareHubIdentitySession: applyHubIdentitySession,
+          getHubClient,
+          prepareHubIdentitySession: prepareHubIdentityClient,
         }),
         onSubmit: createHubOnlyAuthGateSubmit({
           toolCode: "P0003",
-          getHubClient: getIdentitySupabase,
+          getHubClient,
           persistSession: (session) => {
             prepareHubSignIn();
-            persistHubSession(session);
+            persistHubSession(session, "auth_gate");
           },
         }),
         forgotPassword: createWorkspaceAuthGateHubForgotPasswordFromEnv({ env: hubAuthEnv }),

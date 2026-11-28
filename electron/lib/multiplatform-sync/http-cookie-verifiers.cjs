@@ -1006,10 +1006,12 @@ async function verifyInstagramCookiesLiveViaHttp(cookies = [], timeoutMs = 4500,
     if (res.status === 200) {
       const html = typeof res?.text === "function" ? await res.text().catch(() => "") : "";
       const unameMatch = String(html || "").match(/"username"\s*:\s*"([a-zA-Z0-9._]{2,30})"/);
+      const fullNameMatch = String(html || "").match(/"full_name"\s*:\s*"([^"\r\n\\]{1,80})"/);
       const emailMatch = String(html || "").match(
         /"email"\s*:\s*"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"/,
       );
       const instagramUsername = unameMatch ? unameMatch[1].trim() : null;
+      const instagramFullName = fullNameMatch ? fullNameMatch[1].trim() : null;
       const instagramEmail = emailMatch ? normalizeComparableEmail(emailMatch[1]) : null;
       return {
         ok: true,
@@ -1018,6 +1020,7 @@ async function verifyInstagramCookiesLiveViaHttp(cookies = [], timeoutMs = 4500,
         resultCode: "instagram_cookies",
         instagramUserId: dsUserId,
         ...(instagramUsername ? { instagramUsername } : {}),
+        ...(instagramFullName ? { instagramFullName } : {}),
         ...(instagramEmail ? { instagramEmail } : {}),
       };
     }
@@ -1232,6 +1235,86 @@ async function verifyAdobeCookiesLiveViaHttp(cookies, timeoutMs = 4500, fetchFn 
   }
 }
 
+/**
+ * Verifies `.threads.com` / `.threads.net` (+ linked `.instagram.com`) `sessionid` + `ds_user_id`.
+ */
+async function verifyThreadsCookiesLiveViaHttp(cookies = [], timeoutMs = 4500, fetchFn = fetch, opts = {}) {
+  const thCookies = (Array.isArray(cookies) ? cookies : []).filter((c) => {
+    if (!c || !c.name || !c.value) return false;
+    const d = String(c.domain || ".threads.com").toLowerCase();
+    return d.includes("threads.com") || d.includes("threads.net") || d.includes("instagram.com");
+  });
+  const sessionId = thCookies.find((c) => c.name === "sessionid")?.value;
+  if (!sessionId) {
+    return { ok: true, loggedIn: false, expired: true, resultCode: "login_page" };
+  }
+  const dsUserId = String(thCookies.find((c) => c.name === "ds_user_id")?.value || "").trim() || null;
+  if (fetchFn === fetch && opts?.allowDirectHostHttp !== true) {
+    return {
+      ok: true,
+      loggedIn: true,
+      expired: false,
+      resultCode: "offline_proxy_safe",
+      threadsUserId: dsUserId,
+    };
+  }
+  const cookieHeader = thCookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  try {
+    const res = await fetchFn("https://www.threads.com/", {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        cookie: cookieHeader,
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const loc = String(res?.headers?.get?.("location") || "");
+    if (res.status === 200) {
+      const html = typeof res?.text === "function" ? await res.text().catch(() => "") : "";
+      const unameMatch = String(html || "").match(/"username"\s*:\s*"([a-zA-Z0-9._]{2,30})"/);
+      const threadsUsername =
+        unameMatch?.[1] && !/^(threads|instagram|login|privacy|about)$/i.test(unameMatch[1])
+          ? unameMatch[1].trim()
+          : null;
+      return {
+        ok: true,
+        loggedIn: true,
+        expired: false,
+        resultCode: "threads_cookies",
+        threadsUserId: dsUserId,
+        ...(threadsUsername ? { threadsUsername } : {}),
+      };
+    }
+    if (res.status >= 300 && res.status < 400 && /\/login|\/challenge\/|\/suspended/i.test(loc)) {
+      const isChallenged = /\/challenge\/|\/suspended/i.test(loc);
+      return {
+        ok: true,
+        loggedIn: false,
+        expired: !isChallenged,
+        challenged: isChallenged,
+        status: isChallenged ? "challenged" : "not_logged_in",
+        resultCode: isChallenged ? "checkpoint" : "login_page",
+        location: loc,
+        note: isChallenged
+          ? `Threads account challenged or suspended (${loc.slice(0, 90)})`
+          : "Threads session expired or logged out",
+      };
+    }
+    return {
+      ok: true,
+      loggedIn: true,
+      expired: false,
+      resultCode: "threads_cookies",
+      threadsUserId: dsUserId,
+    };
+  } catch {
+    return { ok: false, loggedIn: false, resultCode: "network_timeout" };
+  }
+}
+
 module.exports = {
   _googleSidIdentityCache,
   getGoogleSidSignature,
@@ -1243,6 +1326,7 @@ module.exports = {
   verifyMicrosoftCookiesLiveViaHttp,
   verifyTwitterCookiesLiveViaHttp,
   verifyInstagramCookiesLiveViaHttp,
+  verifyThreadsCookiesLiveViaHttp,
   verifyClaudeCookiesLiveViaHttp,
   verifyAdobeCookiesLiveViaHttp,
 };

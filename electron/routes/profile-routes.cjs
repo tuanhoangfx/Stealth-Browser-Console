@@ -10,6 +10,11 @@ const {
 const { extractProfileCode } = require("../lib/profile-code.cjs");
 const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
 const {
+  refreshWorkerSessionsSnapshot,
+  getCachedWorkerSessions,
+  mergeLocalAndWorkerSessions,
+} = require("../lib/worker-sessions-bridge.cjs");
+const {
   parseAgentSmokeFlag,
   parseAgentCallerId,
   runWithAgentSmokeRequest,
@@ -107,12 +112,13 @@ function buildProfileRoutes(deps) {
       id: "catalog.stats",
       method: "GET",
       pattern: /^\/api\/catalog\/stats$/,
-      handler(ctx) {
+      async handler(ctx) {
         try {
           sessionManager.reconcileActiveStatuses();
         } catch {
           /* ignore */
         }
+        await refreshWorkerSessionsSnapshot();
         const { collectWaitingAgentHeadlessState } = require("../lib/waiting-agent-profiles.cjs");
         return send.json(ctx.res, 200, {
           ok: true,
@@ -152,7 +158,7 @@ function buildProfileRoutes(deps) {
       id: "profiles.list",
       method: "GET",
       pattern: /^\/api\/profiles$/,
-      handler(ctx) {
+      async handler(ctx) {
         if (typeof sessionManager.reconcileActiveStatuses === "function") {
           sessionManager.reconcileActiveStatuses();
         } else if (typeof sessionManager.syncProfileStatuses === "function") {
@@ -162,8 +168,11 @@ function buildProfileRoutes(deps) {
         const includeUserHeadedPort =
           q.get("includeUserHeadedPort") === "1" ||
           process.env.STEALTH_ALLOW_AGENT_ON_USER_HEADED === "1";
+        const workerSessions =
+          q.get("localOnly") === "1" ? [] : await refreshWorkerSessionsSnapshot();
         // Build O(1) lookup map once per request instead of O(N) legacySm.listRunning() per profile!
-        const runningRows = (typeof sessionManager.listRunning === "function" ? sessionManager.listRunning() : []) || [];
+        const localRunningRows = (typeof sessionManager.listRunning === "function" ? sessionManager.listRunning() : []) || [];
+        const runningRows = mergeLocalAndWorkerSessions(localRunningRows, workerSessions);
         const runningById = new Map();
         for (const r of runningRows) {
           const rid = String(r.id || r.profileId || "");
@@ -189,6 +198,10 @@ function buildProfileRoutes(deps) {
                 : sess?.debugPort
                   ? Number(sess.debugPort)
                   : undefined,
+            ...(p.note ? { note: p.note } : {}),
+            ...(p.startupUrl ? { startupUrl: p.startupUrl } : {}),
+            ...(p.timezone ? { timezone: p.timezone } : {}),
+            ...(p.locale ? { locale: p.locale } : {}),
             ...(p.activityLog ? { activityLog: p.activityLog } : {}),
             ...(p.activityLogHistory ? { activityLogHistory: p.activityLogHistory } : {}),
           };
@@ -248,6 +261,18 @@ function buildProfileRoutes(deps) {
         // Dùng projection lite (id/name/status) → ~7x nhanh hơn ở 5k+ row.
         const profiles = profileService.listProfilesLite().map(enrich);
         return send.json(ctx.res, 200, { ok: true, profiles });
+      },
+    },
+    {
+      id: "profiles.detail",
+      method: "GET",
+      pattern: /^\/api\/profiles\/([^/]+)$/,
+      handler(ctx) {
+        const profile = profileService.getProfile(ctx.params[1]);
+        if (!profile) {
+          return send.json(ctx.res, 404, { ok: false, error: "Profile not found" });
+        }
+        return send.json(ctx.res, 200, { ok: true, profile });
       },
     },
     {
@@ -421,10 +446,13 @@ function buildProfileRoutes(deps) {
       id: "sessions.running",
       method: "GET",
       pattern: /^\/api\/sessions\/running$/,
-      handler(ctx) {
+      async handler(ctx) {
+        const localOnly = ctx.query?.get("localOnly") === "1";
+        const localSessions = sessionManager.listRunning();
+        const workerSessions = localOnly ? [] : await refreshWorkerSessionsSnapshot();
         return send.json(ctx.res, 200, {
           ok: true,
-          sessions: sessionManager.listRunning(),
+          sessions: mergeLocalAndWorkerSessions(localSessions, workerSessions),
           deferredAgentQueue: sessionManager.listDeferredAgentTasks?.() || [],
         });
       },
@@ -437,10 +465,14 @@ function buildProfileRoutes(deps) {
         const profileId = ctx.params[1];
         const profile = profileService.getProfile(profileId);
         const rawProxy = String(profile?.proxy || "").trim();
+        const workerSessions = getCachedWorkerSessions({ triggerRefresh: true });
+        const runningInWorker = Array.isArray(workerSessions)
+          ? workerSessions.some((s) => String(s?.id || s?.profileId || "") === String(profileId))
+          : false;
         return send.json(ctx.res, 200, {
           ok: true,
           profileId,
-          running: sessionManager.isRunning(profileId),
+          running: Boolean(sessionManager.isRunning(profileId) || runningInWorker),
           status: profile?.status ?? "unknown",
           isDirectProxy: !rawProxy || /^direct$/i.test(rawProxy),
         });

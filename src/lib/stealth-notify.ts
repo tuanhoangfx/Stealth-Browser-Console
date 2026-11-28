@@ -1,4 +1,4 @@
-import type { HubNotifyPanelProps } from "@tool-workspace/hub-ui";
+import { buildHubDesktopAuthNotifyAlert, type HubNotifyPanelProps } from "@tool-workspace/hub-ui";
 
 export function buildStealthNotifyPanelProps(input: {
   engineStatus: "checking" | "ready" | "offline";
@@ -59,6 +59,9 @@ export function buildStealthNotifyPanelProps(input: {
       detail: `${input.runHistoryFailed} recent automation run(s) failed.`
     });
   }
+
+  const authAlert = buildHubDesktopAuthNotifyAlert(null, "P0003");
+  if (authAlert) alerts.push(authAlert);
 
   return {
     scopeKey: "stealth-console-notify",

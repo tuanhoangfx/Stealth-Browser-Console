@@ -78,14 +78,15 @@ export function buildHeadlessKpiHintK1(
   };
 }
 
-/** K1 Lock — Group Waiting / Deferred profiles by Daemon / Blocking Reason for KPI tooltip. */
+/** K1 Lock — Group Waiting / Deferred profiles into 2 distinct tiers: (1) Waiting for User Headed Close, (2) Launching Headless Queue. */
 export function buildWaitingKpiHintK1(
   catalogStats: ProfileCatalogStats | null | undefined,
   waitingCount: number,
 ): HubDirectoryColumnHintContent {
   const waitingCodes = catalogStats?.waitingCodes ?? [];
   const waitingReasons = catalogStats?.waitingReasons ?? {};
-  const groups = new Map<string, { items: string[]; codes: string[] }>();
+  const headedGroups = new Map<string, { items: string[]; codes: string[] }>();
+  const headlessQueueGroups = new Map<string, { items: string[]; codes: string[] }>();
   const codesToScan =
     waitingCodes.length > 0
       ? waitingCodes.filter((c) => /^\d{4}$/.test(c))
@@ -93,31 +94,49 @@ export function buildWaitingKpiHintK1(
           .filter((k) => /^\d{4}$/.test(k))
           .sort((a, b) => a.localeCompare(b));
 
+  let userHeadedWaitingCount = 0;
+  let headlessQueueCount = 0;
+
   for (const code of codesToScan) {
     const reason = String(waitingReasons[code] || "AI Agent Headless Queue").trim();
-    const entry = groups.get(reason) ?? { items: [], codes: [] };
+    const isUserHeadedWait = /user window|user headed|deferred:/i.test(reason);
+    const targetMap = isUserHeadedWait ? headedGroups : headlessQueueGroups;
+    if (isUserHeadedWait) userHeadedWaitingCount++;
+    else headlessQueueCount++;
+    const entry = targetMap.get(reason) ?? { items: [], codes: [] };
     entry.items.push(`#${code}`);
     entry.codes.push(code);
-    groups.set(reason, entry);
+    targetMap.set(reason, entry);
   }
 
-  if (groups.size > 0) {
-    const lines = [...groups.entries()].map(([reason, entry]) => {
+  const formatGroupLines = (
+    groupsMap: Map<string, { items: string[]; codes: string[] }>,
+    tierPrefix: string,
+    emoji: string,
+  ) =>
+    [...groupsMap.entries()].map(([reason, entry]) => {
       const shown = entry.items.slice(0, 12).join(", ");
       const more = entry.items.length > 12 ? ` (+${entry.items.length - 12} more)` : "";
       return {
-        emoji: /user window|headed/i.test(reason) ? "🔒" : "⏳",
-        label: `${reason} (${entry.items.length})`,
+        emoji,
+        label: `${tierPrefix}${reason} (${entry.items.length})`,
         detail: `${shown}${more}`,
         actionKey: entry.codes.join(" "),
         actionLabel: `Filter directory to ${reason} (${entry.codes.length} profiles)`,
       };
     });
+
+  const lines = [
+    ...formatGroupLines(headedGroups, "[Waiting for User Headed Close] ", "🔒"),
+    ...formatGroupLines(headlessQueueGroups, "[Launching Headless Queue] ", "⏳"),
+  ];
+
+  if (lines.length > 0) {
     return {
       title: `Deferred & Queued Tasks (${waitingCount} Waiting)`,
       titleGlyph: { emoji: "⏳" },
-      description: `${groups.size} queue group(s) holding ${waitingCount} profile(s) under Zero-Hijack Guard. Click a queue row below to filter directory to its profiles.`,
-      optionsLabel: "Waiting Queue by Daemon / Reason (Click to filter)",
+      description: `${userHeadedWaitingCount} waiting for User Headed close (<3s auto-run on close) · ${headlessQueueCount} in Launching Headless Queue. Click a row below to filter directory.`,
+      optionsLabel: "Waiting Queue by Tier / Daemon (Click to filter)",
       lines,
     };
   }
@@ -128,18 +147,18 @@ export function buildWaitingKpiHintK1(
     description:
       waitingCount > 0
         ? `${waitingCount} profile(s) queued by AI Daemons. Click tile to filter directory.`
-        : "0 profiles waiting in queue. Profiles appear here when an AI Daemon defers execution while a User window is open or when pacing headless slots.",
-    optionsLabel: "Queue Guard Reasons",
+        : "0 profiles waiting in queue. Profiles appear here only when an AI Daemon defers execution while a User Headed window is open or while waiting for a headless launch slot.",
+    optionsLabel: "Queue Guard Tiers",
     lines: [
       {
         emoji: "🔒",
-        label: "Waiting for User Window to Close",
-        detail: "Deferred under Zero-Hijack Guard while user is working in Chrome; auto-drains 5s after close.",
+        label: "[Waiting for User Headed Close]",
+        detail: "Deferred under Zero-Hijack Guard while user is working in Chrome; auto-drains within <3s after window close.",
       },
       {
         emoji: "⏳",
-        label: "Caller Cap Queue",
-        detail: "Paced at 350ms launch stagger (max 3 concurrent headless sessions per caller).",
+        label: "[Launching Headless Queue]",
+        detail: "In-flight headless launches paced at 350ms stagger (max 3 concurrent headless sessions per caller).",
       },
     ],
   };
@@ -165,7 +184,12 @@ export function buildProfileKpiNumbersFromStats(
   stats: ProfileCatalogStats,
   runningHeadlessCount = 0,
 ): ProfileKpiNumbers {
-  const headedRunning = Math.max(0, stats.running - runningHeadlessCount);
+  const effectiveHeadless =
+    stats.headlessRunning !== undefined ? Math.max(0, stats.headlessRunning) : Math.max(0, runningHeadlessCount);
+  const headedRunning =
+    stats.headedRunning !== undefined
+      ? Math.max(0, stats.headedRunning)
+      : Math.max(0, stats.running - effectiveHeadless);
   return {
     total: stats.total,
     createToday: stats.createdToday ?? 0,
@@ -173,7 +197,7 @@ export function buildProfileKpiNumbersFromStats(
     updateToday: stats.updatedToday ?? 0,
     ready: stats.deferred ?? 0,
     running: headedRunning,
-    headless: runningHeadlessCount,
+    headless: effectiveHeadless,
     failed: stats.failed,
   };
 }

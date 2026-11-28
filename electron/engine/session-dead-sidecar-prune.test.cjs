@@ -35,6 +35,7 @@ function loadWithMocks(rootDir) {
     nativeHeadedPids: new Map(),
     removedSidecars: [],
     statusChanges: [],
+    reapCalls: [],
   };
 
   const installMock = (rel, exportsObj) => {
@@ -85,7 +86,10 @@ function loadWithMocks(rootDir) {
     readDevToolsActivePort: () => 0,
     resolveBrowserPidByDebugPort: async () => 0,
     findLiveHeadedBrowserPidNative: (dir) => state.nativeHeadedPids.get(dir) || 0,
-    reapUntrackedHeadlessBrowsersNative: () => ({ scanned: 0, killed: 0, rootTrees: 0 }),
+    reapUntrackedHeadlessBrowsersNative: (opts) => {
+      state.reapCalls.push(opts);
+      return { scanned: 0, killed: 0, rootTrees: 0 };
+    },
   });
 
   installMock("../lib/profile-user-data-repair.cjs", {
@@ -214,6 +218,50 @@ describe("SessionManager dead stealth-pid.json auto-pruning", () => {
       if (sm) await sm.closeAll().catch(() => {});
       if (prevSmoke === undefined) delete process.env.STEALTH_AGENT_SMOKE;
       else process.env.STEALTH_AGENT_SMOKE = prevSmoke;
+      clearCaches();
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("superseded legacy SessionManager skips untracked headless reap while active manager aggregates tracked targets", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-sweep-agg-"));
+    const prevIso = process.env.STEALTH_DEV_ISOLATED;
+    process.env.STEALTH_DEV_ISOLATED = "0";
+    delete globalThis.__STEALTH_SESSION_MANAGERS__;
+    let legacySm = null;
+    let unifiedSm = null;
+    try {
+      const { SessionManager, state } = loadWithMocks(tmp);
+      legacySm = new SessionManager();
+      legacySm.setUserDataRoot(tmp);
+      legacySm._untrackedSweepSuperseded = true;
+
+      unifiedSm = new SessionManager();
+      unifiedSm.setUserDataRoot(tmp);
+      const launchRes = await unifiedSm.launch({
+        id: "0134-headless",
+        name: "0134",
+        proxy: "",
+        humanize: false,
+        headless: false,
+      });
+      assert.equal(launchRes.ok, true);
+
+      // Legacy manager must NOT invoke reapUntrackedHeadlessBrowsersNative once superseded
+      legacySm.reconcileActiveStatuses({ force: true });
+      assert.equal(state.reapCalls.length, 0);
+
+      // Active manager sweeps while aggregating tracked targets across all registered managers
+      unifiedSm.reconcileActiveStatuses({ force: true });
+      assert.equal(state.reapCalls.length, 1);
+      assert.ok(state.reapCalls[0].trackedIds.includes("0134-headless"));
+      assert.ok(state.reapCalls[0].trackedDirs.includes(launchRes.userDataDir));
+    } finally {
+      if (legacySm) await legacySm.closeAll().catch(() => {});
+      if (unifiedSm) await unifiedSm.closeAll().catch(() => {});
+      delete globalThis.__STEALTH_SESSION_MANAGERS__;
+      if (prevIso === undefined) delete process.env.STEALTH_DEV_ISOLATED;
+      else process.env.STEALTH_DEV_ISOLATED = prevIso;
       clearCaches();
       fs.rmSync(tmp, { recursive: true, force: true });
     }

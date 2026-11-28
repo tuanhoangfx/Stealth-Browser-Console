@@ -134,6 +134,20 @@ const DOMAIN_DISPATCH_TABLE = {
     callerId: "agent:deferred-daemon4-drain",
     cooldownMs: 90_000,
   },
+  g1_family_12m_appeal: {
+    taskTypes: new Set([
+      "g1_family_12m_appeal",
+      "g1_probe_12m",
+      "approve_gco_verify",
+      "join_latest_family_invite",
+    ]),
+    scriptPath: "E:\\Dev\\Tool\\P0020-Data-Box\\scripts\\appeal-g1-family-12m-limit.mjs",
+    buildArgs: (codes) => ["--drain-deferred", ...(codes.length ? [`--codes=${codes.join(",")}`] : [])],
+    pidFile: path.join(SHIP_DIR, "deferred-g1-12m-appeal-drain.pid"),
+    logFile: path.join(SHIP_DIR, "deferred-g1-12m-appeal-drain.log"),
+    callerId: "agent:deferred-g1-12m-drain",
+    cooldownMs: 30_000,
+  },
 };
 
 const lastDomainDispatchAt = globalThis.__STEALTH_DEFERRED_DOMAIN_DISPATCH__ || new Map();

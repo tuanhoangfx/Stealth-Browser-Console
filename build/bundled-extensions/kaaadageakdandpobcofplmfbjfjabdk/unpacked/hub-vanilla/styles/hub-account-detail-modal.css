@@ -57,6 +57,19 @@
   max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
 }
 
+/* Layout 3 + XL Workspace (`size="xl"`): ~+20% viewport height + balanced TOC/rail proportions. */
+.modal-shell.hub-tool-detail-modal.hub-account-detail-modal.hub-tool-detail-modal--xl {
+  --hub-modal-max-h: 922px;
+  --hub-modal-max-vh: 88.3vh;
+  --hub-adm-toc-w: 9.75rem;
+  --overview-toc-w: var(--hub-adm-toc-w);
+  --hub-tool-detail-rail-w: min(21rem, 26%);
+
+  height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+  min-height: min(614px, var(--hub-modal-max-vh));
+  max-height: min(var(--hub-modal-max-h), var(--hub-modal-max-vh));
+}
+
 /* ADM glow + typography — detail modal + add modal (SSOT). */
 .hub-account-detail-modal,
 .hub-add-modal {
@@ -605,6 +618,20 @@
   display: contents;
 }
 
+/* 2/3-row field span inside 3-col aligned grid: label occupies 1 label track, value spans 3 tracks
+ * (slot 1 value + slot 2 label + slot 2 value), leaving slot 3 aligned in cols 5–6. */
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .hub-adm-form-row--aligned:not(.hub-adm-form-row--single)
+  .hub-adm-inline-field--span-2
+  > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing),
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .twofa-adm-form-row--aligned:not(.hub-adm-form-row--single)
+  .hub-adm-inline-field--span-2
+  > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing) {
+  grid-column: span 3;
+  min-width: 0;
+}
+
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .hub-adm-inline-field__label,
 :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned .hub-adm-inline-field__label,
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned .twofa-adm-inline-field__label,
@@ -668,6 +695,9 @@
   grid-template-columns:
     var(--hub-adm-label-w) minmax(0, 1fr)
     var(--hub-adm-label-w) minmax(0, 1fr);
+  column-gap: var(--hub-adm-field-gap);
+  row-gap: 0.35rem;
+  align-items: center;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .hub-adm-inline-field,
@@ -675,6 +705,18 @@
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .twofa-adm-inline-field,
 :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .twofa-adm-inline-field {
   display: contents;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .hub-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .hub-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .twofa-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .twofa-adm-inline-field__label,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .hub-adm-inline-field__label .hub-directory-popover-anchor,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .hub-adm-inline-field__label .hub-directory-popover-anchor,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-form-row--aligned-2 .twofa-adm-inline-field__label .hub-directory-popover-anchor,
+:is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-form-row--aligned-2 .twofa-adm-inline-field__label .hub-directory-popover-anchor {
+  min-width: var(--hub-adm-label-w);
+  max-width: var(--hub-adm-label-w);
 }
 
 /* TOTP code + period — standard 3-col slots (code · time · empty).
@@ -774,15 +816,21 @@
   box-shadow: var(--hub-adm-glow-hover-ring);
 }
 
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--disabled .hub-adm-click-edit--disabled,
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--disabled .hub-adm-click-edit--disabled:not(.hub-adm-click-edit--copyable),
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--disabled .hub-adm-click-filter__trigger:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--disabled .hub-adm-click-edit--disabled:hover {
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--disabled .hub-adm-click-edit--disabled:not(.hub-adm-click-edit--copyable):hover {
   background: transparent;
   box-shadow: none;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field--disabled .hub-adm-click-edit--copyable {
+  cursor: pointer;
+  opacity: 1;
+  user-select: text;
 }
 
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--editing .hub-adm-click-edit--editing {
@@ -1090,15 +1138,30 @@
   flex: 1 1 auto;
 }
 
-/* Click-filter value with a trailing control (e.g. copy icon) — reserve space, keep dropdown flexible. */
+/* Click-filter / readonly value with a trailing control (copy icon, schedule chip, Run button) —
+ * reserve space, prevent overflow into adjacent grid columns, keep main value flexible. */
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--has-trailing {
-  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+  gap: 0.35rem;
 }
 
-/* Click-edit is width:100%. Without this it consumes the whole slot and clips the trailing icon. */
-:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-field__value--has-trailing > .hub-adm-click-edit {
+/* Click-edit, readonly-value & click-filter default to width:100%. Inside --has-trailing they must flex-shrink
+ * and clip cleanly instead of colliding with trailing controls or bleeding into the next slot. */
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .hub-adm-inline-field__value--has-trailing
+  > :is(.hub-adm-click-edit, .hub-adm-readonly-value) {
   width: auto;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .hub-adm-inline-field__value--has-trailing
+  > .hub-adm-click-filter {
+  width: auto;
+  flex: 1 1 0%;
   min-width: 0;
 }
 
@@ -1112,6 +1175,64 @@
 :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-click-filter__trailing {
   align-self: center;
   color: var(--muted);
+}
+
+/* Compact Hub Filter chip inside ADM Action rows (⏳ Auto schedule selector & clear chip) —
+ * matches 📋 Log rail Actor/Field chip height (1.35rem) with zero native <select>. */
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-action-schedule__trigger.hub-filter-trigger {
+  height: 1.35rem !important;
+  min-height: 1.35rem !important;
+  max-height: 1.35rem !important;
+  padding: 0 0.42rem !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  border-radius: 0.375rem !important;
+  gap: 0.25rem !important;
+  flex-shrink: 0;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-schedule-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  height: 1.35rem;
+  max-width: 7.75rem;
+  padding: 0 0.42rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-inline-schedule-clear:hover {
+  background: rgba(244, 63, 94, 0.14);
+  border-color: rgba(251, 113, 133, 0.38);
+}
+
+/* Inside ADM trailing clusters (e.g. [⏳ Auto ▾] + [▶ Run]), tighten Run button padding
+ * and disable -10px hit-expand bleed so it never steals clicks from adjacent controls. */
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .hub-adm-click-filter__trailing
+  .hub-directory-icon-cell--hit-expand {
+  min-width: 0;
+  height: 1.35rem;
+  padding: 0 0.45rem;
+}
+
+:is(.hub-account-detail-modal, .hub-add-modal)
+  .hub-adm-click-filter__trailing
+  .hub-directory-icon-cell--hit-expand::before {
+  inset: 0;
 }
 
 /* Strip FilterBar chip chrome — Mail Modal / Layout 3 HubAdm value SSOT. */
@@ -1395,6 +1516,17 @@
     grid-template-columns: var(--hub-adm-label-w) minmax(0, 1fr);
   }
 
+  :is(.hub-account-detail-modal, .hub-add-modal)
+    .hub-adm-form-row--aligned:not(.hub-adm-form-row--single)
+    .hub-adm-inline-field--span-2
+    > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing),
+  :is(.hub-account-detail-modal, .hub-add-modal)
+    .twofa-adm-form-row--aligned:not(.hub-adm-form-row--single)
+    .hub-adm-inline-field--span-2
+    > :is(.hub-adm-inline-field__value, .hub-adm-inline-field__value--editing) {
+    grid-column: auto;
+  }
+
   :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.hub-adm-form-row--aligned,
   :is(.hub-account-detail-modal, .hub-add-modal) .hub-adm-meta-row.twofa-adm-form-row--aligned,
   :is(.hub-account-detail-modal, .hub-add-modal) .twofa-adm-meta-row.hub-adm-form-row--aligned,
@@ -1454,7 +1586,8 @@
 }
 
 .hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--log .hub-tool-detail-rail__body--scroll {
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .hub-account-detail-modal .hub-adm-rail--log .hub-runtime-term {
@@ -1467,13 +1600,15 @@
 .hub-account-detail-modal .hub-adm-rail--log .hub-runtime-term__body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .hub-account-detail-modal .hub-adm-rail--log .twofa-adm-log-list {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Note rail — plain editor fills rail; scroll inside textarea. */
@@ -1576,6 +1711,107 @@
   font-weight: var(--hub-adm-type-value-weight, 400);
   line-height: var(--hub-adm-type-line, 1.45);
   color: var(--hub-adm-type-value-color, rgb(203, 213, 225));
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link {
+  color: rgb(125, 211, 252);
+  text-decoration: underline;
+  text-decoration-color: rgba(125, 211, 252, 0.45);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    text-decoration-color 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link:hover {
+  color: rgb(186, 230, 253);
+  text-decoration: underline;
+  text-decoration-color: rgba(186, 230, 253, 0.85);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.05rem 0.42rem;
+  margin: 0.05rem 0.08rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.35;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  background: rgba(14, 165, 233, 0.14);
+  color: rgb(186, 230, 253);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--action:hover {
+  text-decoration: none;
+  border-color: rgba(56, 189, 248, 0.68);
+  background: rgba(14, 165, 233, 0.25);
+  color: rgb(224, 242, 254);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--guide {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(245, 158, 11, 0.14);
+  color: rgb(253, 230, 138);
+}
+
+.hub-adm-note-readonly-body .hub-adm-note-link--guide:hover {
+  border-color: rgba(251, 191, 36, 0.72);
+  background: rgba(245, 158, 11, 0.26);
+  color: rgb(254, 243, 199);
+}
+
+.hub-adm-note-action-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding-top: 0.38rem;
+  flex-shrink: 0;
+}
+
+.hub-adm-note-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.45rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  background: rgba(14, 165, 233, 0.13);
+  color: rgb(186, 230, 253);
+  text-decoration: none;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.hub-adm-note-action-btn:hover {
+  border-color: rgba(56, 189, 248, 0.68);
+  background: rgba(14, 165, 233, 0.24);
+  color: rgb(240, 249, 255);
+}
+
+.hub-adm-note-action-btn--guide {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(245, 158, 11, 0.14);
+  color: rgb(253, 230, 138);
+}
+
+.hub-adm-note-action-btn--guide:hover {
+  border-color: rgba(251, 191, 36, 0.72);
+  background: rgba(245, 158, 11, 0.26);
+  color: rgb(254, 249, 195);
 }
 
 .hub-account-detail-modal .hub-tool-detail-rail.hub-adm-rail--note .hub-adm-note-editor-field,

@@ -1469,6 +1469,45 @@ test("classifyGoogleLiveCdpTargets and shouldPreserveChallengedState keep /restr
   );
 });
 
+test("shouldSuppressStaleGoogleLoggedOutTarget ignores stale ServiceLogin tabs when Google HTTP session & SID/LSID are verified while keeping confirmidentifier strict", () => {
+  const { shouldSuppressStaleGoogleLoggedOutTarget } = require("./stealth-multiplatform-sync.cjs");
+  const coherentCookies = [
+    { domain: ".google.com", name: "SID", value: "g.a000REAL_SID_VALUE_12345" },
+    { domain: "accounts.google.com", name: "LSID", value: "LSID_REAL_TOKEN_123456" },
+  ];
+  const verifiedHttp = {
+    ok: true,
+    loggedIn: true,
+    mode: "http_verified",
+    verifiedEmails: ["tuanhoangfx@gmail.com"],
+  };
+
+  assert.equal(
+    shouldSuppressStaleGoogleLoggedOutTarget(
+      { restricted: true, resultCode: "google_one_logged_out", evidence: "Google:not_logged_in url=https://accounts.google.com/ServiceLogin" },
+      verifiedHttp,
+      coherentCookies,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldSuppressStaleGoogleLoggedOutTarget(
+      { restricted: true, resultCode: "google_one_logged_out", evidence: "Google:not_logged_in url=https://accounts.google.com/v3/signin/confirmidentifier" },
+      verifiedHttp,
+      coherentCookies,
+    ),
+    false,
+  );
+  assert.equal(
+    shouldSuppressStaleGoogleLoggedOutTarget(
+      { restricted: true, resultCode: "google_one_logged_out", evidence: "Google:not_logged_in url=https://accounts.google.com/ServiceLogin" },
+      { ok: true, loggedIn: true, mode: "offline_proxy_safe", verifiedEmails: [] },
+      coherentCookies,
+    ),
+    false,
+  );
+});
+
 
 
 

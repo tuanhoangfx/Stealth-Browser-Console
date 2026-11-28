@@ -103,7 +103,7 @@ function bindOmniboxSearchGuard(context) {
   if (!context || !omniboxSearchGuardEnabled() || context.__stealthOmniboxGuardBound) return;
   context.__stealthOmniboxGuardBound = true;
 
-  void context.route((url) => parseOmniboxSingleLabelNav(url) !== null, redirectSingleLabelNavRoute);
+  void context.route((url) => parseOmniboxSingleLabelNav(url) !== null, redirectSingleLabelNavRoute).catch(() => undefined);
 
   for (const page of context.pages()) bindPageOmniboxSearchGuard(page);
   context.on("page", (page) => bindPageOmniboxSearchGuard(page));

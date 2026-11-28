@@ -16,6 +16,7 @@ runStep("sync-stealth-api-surface", "node", ["scripts/sync-stealth-api-surface.m
 runStep("agent-smoke-mode", "node", ["--test", "electron/lib/agent-smoke-mode.test.cjs"]);
 runStep("verify-no-implicit-packaged-kill", "node", ["scripts/verify-no-implicit-packaged-kill.mjs"]);
 runStep("agent-smoke-context", "node", ["--test", "electron/lib/agent-smoke-context.test.cjs"]);
+runStep("agent-worker-proxy", "node", ["--test", "electron/lib/agent-worker-proxy.test.cjs"]);
 runStep("catalog-backup-recovery", "node", ["--test", "electron/lib/catalog-backup-recovery.test.cjs"]);
 runStep("catalog-persist-guard", "node", ["--test", "electron/lib/catalog-persist-guard.test.cjs"]);
 runStep("verify-agent-smoke-headless", "node", ["scripts/verify-agent-smoke-headless.mjs", "9990"]);
@@ -103,6 +104,7 @@ runStep("cloak-browser-engine", "node", ["--test", "electron/engine/cloak-browse
 runStep("session-fast-spawn-cdp", "node", ["--test", "electron/engine/session-fast-spawn-cdp.test.cjs"]);
 runStep("launch-purity-gate", "node", ["--experimental-sqlite", "--test", "electron/engine/launch-purity-gate.test.cjs"]);
 runStep("profile-cookie-guard", "node", ["--experimental-sqlite", "--test", "electron/lib/profile-cookie-guard.test.cjs"]);
+runStep("hot-patch-loader", "node", ["--test", "electron/lib/hot-patch-loader.test.cjs"]);
 runStep("prepare-profile-launch", "node", ["--test", "electron/engine/prepare-profile-launch.test.cjs"]);
 runStep("check-launch-speed", "node", ["scripts/check-launch-speed.mjs"]);
 runStep("profile-ops", "electron-node", ["electron/services/profile-ops.test.cjs"]);

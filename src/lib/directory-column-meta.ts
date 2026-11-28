@@ -227,7 +227,7 @@ export const STEALTH_BACKUP_COLUMN_META = withDirectoryColumnStickers(
   {
   createdAt: col("Created", "hub-users-col--activity", "created", "col.directory.created", "7.25rem"),
   updated: col("Update", "hub-users-col--created", "updated", "col.directory.lastActive", "7.25rem"),
-  profile: col("Profile", "hub-users-col--name", "browser", "col.directory.browser", "7.25rem", {
+  profile: col("Profile", "hub-users-col--name", "browser", "col.directory.browser", HUB_DIRECTORY_PROFILE_COL_WIDTH, {
     columnKind: "compact",
     headerAlign: "center",
     enableFit: false,

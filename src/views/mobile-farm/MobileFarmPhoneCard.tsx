@@ -137,6 +137,7 @@ export const MobileFarmPhoneCard = memo(function MobileFarmPhoneCard({
           >
             <H264PhoneStreamCanvas
               displayId={card.displayId}
+              serial={card.deviceSerial}
               enabled={autoStream && adbOnline && card.isLiveForeground}
               fallbackImgUrl={card.screenDataUrl}
             />

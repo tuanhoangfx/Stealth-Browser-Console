@@ -101,7 +101,10 @@ const GOOGLE_AUTH_SAVE_COOKIE_NAMES = new Set([
 
 function isGoogleAuthSaveCookie(d, n, allowYoutube = false) {
   if (!GOOGLE_AUTH_SAVE_COOKIE_NAMES.has(n)) return false;
-  return d.includes("google.") || (allowYoutube && d.includes("youtube.com"));
+  const dom = String(d || "").trim().toLowerCase().replace(/^\./, "");
+  const isCanonicalGoogle = dom === "google.com" || dom.endsWith(".google.com");
+  const isCanonicalYoutube = allowYoutube && (dom === "youtube.com" || dom.endsWith(".youtube.com"));
+  return isCanonicalGoogle || isCanonicalYoutube;
 }
 
 const SERVICE_COOKIE_MATCHERS = {
@@ -490,6 +493,13 @@ const SERVICE_COOKIE_MATCHERS = {
     family: "instagram",
     resultCode: "instagram_cookies",
     match: (d, n) => d.includes("instagram.com") && n === "sessionid",
+  },
+  threads: {
+    family: "threads",
+    resultCode: "threads_cookies",
+    match: (d, n) =>
+      (d.includes("threads.com") || d.includes("threads.net") || d.includes("instagram.com")) &&
+      n === "sessionid",
   },
   topview: {
     family: "topview",

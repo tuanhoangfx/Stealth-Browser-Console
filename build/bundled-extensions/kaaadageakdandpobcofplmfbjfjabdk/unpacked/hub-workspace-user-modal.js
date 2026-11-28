@@ -126,6 +126,13 @@ export function populateHubWorkspaceUserModal(data) {
   setClickText("user-field-username", loginId, EMPTY_PLACEHOLDERS.username);
   setClickText("user-field-email", email, EMPTY_PLACEHOLDERS.email);
   setClickText("user-field-password", "", EMPTY_PLACEHOLDERS.password);
+  const modalRoot = document.getElementById("user-modal");
+  if (modalRoot) delete modalRoot.dataset.pendingPassword;
+  const saveBtn = document.getElementById("user-modal-save");
+  if (saveBtn) {
+    saveBtn.setAttribute("disabled", "");
+    saveBtn.classList.add("hub-tool-detail-modal__confirm--disabled");
+  }
   setClickText("user-field-display-name", fullName || (looksLikeEmail(displayLabel) ? "" : displayLabel), EMPTY_PLACEHOLDERS["display-name"]);
   setClickText("user-field-phone", data?.userPhone, EMPTY_PLACEHOLDERS.phone);
   setClickText("user-field-zalo", data?.userZalo, EMPTY_PLACEHOLDERS.zalo);
@@ -202,8 +209,14 @@ function startClickEdit(btn) {
   const field = btn.getAttribute("data-adm-field");
   const text = btn.querySelector(".hub-adm-click-edit__text");
   if (!field || !text || btn.querySelector("input")) return;
+  const modalRoot = btn.closest("#user-modal");
   const empty = text.classList.contains("hub-adm-click-edit__text--empty");
-  const current = empty ? "" : text.textContent || "";
+  const current =
+    field === "password"
+      ? modalRoot?.dataset?.pendingPassword || ""
+      : empty
+        ? ""
+        : text.textContent || "";
   const input = document.createElement("input");
   input.className = "field auth-gate-field hub-adm-click-edit__input";
   input.value = current;
@@ -229,7 +242,14 @@ function startClickEdit(btn) {
     span.id = textId;
     span.className = "hub-adm-click-edit__text hub-adm-detail-value-text";
     const shown = next.trim();
-    span.textContent = shown || EMPTY_PLACEHOLDERS[field] || "—";
+    if (field === "password" && modalRoot) {
+      if (shown) modalRoot.dataset.pendingPassword = shown;
+      else delete modalRoot.dataset.pendingPassword;
+    }
+    span.textContent =
+      field === "password" && shown
+        ? "••••••••"
+        : shown || EMPTY_PLACEHOLDERS[field] || "—";
     span.classList.toggle("hub-adm-click-edit__text--empty", !shown);
     nextBtn.appendChild(span);
     input.replaceWith(nextBtn);
@@ -271,7 +291,7 @@ function bindVaultCopy(modalEl) {
   });
 }
 
-export function bindHubWorkspaceUserModal({ modalEl, onClose, onSignOut, onRefresh }) {
+export function bindHubWorkspaceUserModal({ modalEl, onClose, onSignOut, onRefresh, onSave }) {
   if (!modalEl) return;
   bindTocNav(modalEl);
   bindClickEdit(modalEl);
@@ -280,6 +300,11 @@ export function bindHubWorkspaceUserModal({ modalEl, onClose, onSignOut, onRefre
   modalEl.querySelector("#user-modal-footer-close")?.addEventListener("click", () => onClose?.());
   modalEl.querySelector("#user-modal-refresh")?.addEventListener("click", () => onRefresh?.());
   modalEl.querySelector("#user-modal-logout")?.addEventListener("click", () => onSignOut?.());
+  modalEl.querySelector("#user-modal-save")?.addEventListener("click", () => {
+    onSave?.({
+      pendingPassword: modalEl.dataset.pendingPassword || "",
+    });
+  });
   modalEl.addEventListener("click", (e) => {
     if (e.target === modalEl) onClose?.();
   });

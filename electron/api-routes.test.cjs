@@ -331,10 +331,92 @@ function test(name, fn) {
     assert.strictEqual(degradedPayload.packagedRuntime.cloakbrowserUnpacked, false);
   });
 
+  await test("profiles.cdp falls back to listRunning headless debugPort on isRunning/getCdpInfo desync and shields user-headed sessions", async () => {
+    const http = require("node:http");
+    const { buildCdpProxyAndJobRoutes } = require("./routes/session-and-cdp-routes.cjs");
+    const srv = http.createServer((req, res) => {
+      if (req.url === "/json/version") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ Browser: "Chrome/146", webSocketDebuggerUrl: `ws://127.0.0.1:${srv.address().port}/devtools/browser/test` }));
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    await new Promise((resolve) => srv.listen(0, "127.0.0.1", resolve));
+    const port = srv.address().port;
+    try {
+      const makeRoutes = (runningRows) => {
+        let out = null;
+        const routes = buildCdpProxyAndJobRoutes({
+          sessionManager: {
+            isRunning: () => false,
+            isUserInteractiveSession: () => false,
+            getCdpInfo: async () => ({ ok: false, reason: "not-running" }),
+            listRunning: () => runningRows,
+            enqueueDeferredAgentTask: () => {},
+          },
+          profileService: { getProfile: () => null },
+          jobQueue: new JobQueue(),
+          send: { json: (_res, code, body) => { out = { code, body }; } },
+          runtimeHelpers: { resolveProfileId: (id) => id, performOpenUrl: async () => {}, jobRunners: {} },
+        });
+        return { cdp: routes.find((r) => r.id === "profiles.cdp"), getOut: () => out };
+      };
+
+      const headlessCase = makeRoutes([{ id: "prof-headless", name: "9995", debugPort: port, headless: true, shadowLane: false }]);
+      await headlessCase.cdp.handler({ params: ["/api/profiles/prof-headless/cdp", "prof-headless"], query: new URLSearchParams("agent=1&headless=1"), res: {} });
+      assert.strictEqual(headlessCase.getOut().code, 200);
+      assert.strictEqual(headlessCase.getOut().body.ok, true);
+      assert.strictEqual(headlessCase.getOut().body.port, port);
+
+      const headedCase = makeRoutes([{ id: "prof-headed", name: "0010", debugPort: port, headless: false, shadowLane: false }]);
+      await headedCase.cdp.handler({ params: ["/api/profiles/prof-headed/cdp", "prof-headed"], query: new URLSearchParams("agent=1&headless=1"), res: {} });
+      assert.strictEqual(headedCase.getOut().code, 409);
+      assert.strictEqual(headedCase.getOut().body.error, "user_interactive_session_active");
+    } finally {
+      await new Promise((resolve) => srv.close(resolve));
+    }
+  });
+
+  await test("startApiServer does not hang on double readBody for POST /api/mobile-stealth/live-control", async () => {
+    const net = require("node:net");
+    const { once } = require("node:events");
+    const { startApiServer } = require("./api-server.cjs");
+    process.env.STEALTH_DISABLE_ANDROID_WATCHDOG = "1";
+    process.env.STEALTH_DISABLE_PEER_PROXY = "1";
+    const probe = net.createServer();
+    await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
+    const freePort = probe.address().port;
+    await new Promise((resolve) => probe.close(resolve));
+    const srv = startApiServer({
+      port: freePort,
+      sessionManager: { listRunning: () => [], getStatus: () => ({ status: "closed" }) },
+      profileService: { listProfiles: () => [], getStats: () => ({}) },
+    });
+    if (!srv.listening) await once(srv, "listening");
+    const port = srv.address().port;
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/api/mobile-stealth/live-control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serial: "192.168.0.120:5555", action: "unknown-ping" }),
+        signal: AbortSignal.timeout(8000),
+      });
+      assert.strictEqual(r.status, 200);
+      const body = await r.json();
+      assert.strictEqual(body.ok, false);
+      assert.strictEqual(body.reason, "unknown_live_control_action:unknown-ping");
+    } finally {
+      await new Promise((resolve) => srv.close(resolve));
+      try { require("./lib/android-bridge-loader.cjs").invalidateAndroidStealthBridgeWorker(); } catch {}
+    }
+  });
+
   if (failures) {
     console.error(`\nâœ— api-routes: ${failures} test tháº¥t báº¡i`);
     process.exit(1);
   }
   console.log("\nâœ“ api-routes: all passed");
+  process.exit(0);
 })();
 

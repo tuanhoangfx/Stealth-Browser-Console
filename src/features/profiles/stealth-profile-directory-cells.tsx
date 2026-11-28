@@ -115,13 +115,12 @@ export function renderStealthProfileDirectoryBodyCell(
       );
     }
     case "status": {
-      const running = profile.status === "running" || profile.status === "opening";
-      const isHeadlessShadowOnly =
-        running && !profile.headless && Boolean(handlers?.runningHeadlessIds?.has(profile.id));
+      const isHeadlessActive = Boolean(handlers?.runningHeadlessIds?.has(profile.id));
+      const running = profile.status === "running" || profile.status === "opening" || isHeadlessActive;
+      const isHeadlessShadowOnly = isHeadlessActive && !profile.headless;
       const opening = profile.status === "opening" && !isHeadlessShadowOnly;
       const userRunning = running && !isHeadlessShadowOnly;
-      const showHeadlessBadge =
-        running && (profile.headless || Boolean(handlers?.runningHeadlessIds?.has(profile.id)));
+      const showHeadlessBadge = running && (profile.headless || isHeadlessActive);
       const headlessReason =
         running && showHeadlessBadge
           ? handlers?.headlessReasons?.[profile.id] ||

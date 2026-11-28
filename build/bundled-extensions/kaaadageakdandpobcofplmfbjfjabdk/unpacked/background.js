@@ -2,9 +2,7 @@ import {
   formatSyncError,
   isJwtExpired,
   parseApiErrorBody,
-  parseJwtPayload,
   refreshAuthIfNeeded,
-  rpcHeaders,
   signInWorkspaceDual,
   userHeaders,
 } from "./auth-session.js";
@@ -12,40 +10,66 @@ import {
   applyCookieEditorJson,
   bindingRouteKey,
   exportVaultCookiesJson,
-  fetchExistingVaultSummary,
   formatCookiesJson,
   getBrowserId,
-  fetchExistingVaultCount,
   loadVaultIntoBrowser,
   pollVaultsAndApply,
   fetchNoteSyncedAtMap,
   fetchRouteUserActivityByKey,
   mergeNoteSyncedAtIntoBindingStatus,
   probeVaultOnServer,
-  summarizeCookieNames,
-  uploadVaultForBinding,
 } from "./vault-api.js";
 import { startVaultRealtime, stopVaultRealtime } from "./vault-realtime.js";
 import { canUseVault } from "./vault-crypto.js";
-import { isSchemaRelatedVaultError, probeCookieSchemaOk } from "./schema-probe.js";
+import { probeCookieSchemaOk } from "./schema-probe.js";
 import { resolveHubUserModalProfile } from "./hub-workspace-profile-role.js";
-import { E0001_SUPABASE_ANON_KEY, E0001_SUPABASE_URL } from "./supabase-config.js";
 import {
   effectiveCookieDomain,
-  extraCookieQueryUrls,
-  googleMailInboxUrl,
+  extractHostnameFromUrlOrDomain,
   isFacebookDomain,
   isGoogleDomain,
-  isGoogleAuthContextUrl,
-  isGoogleMarketingUrl,
-  shouldForceNavigateGoogleTab,
+  isGoogleOsidAppDomain,
   openSiteHintHost,
-  relatedCookieDomains,
+  resolveGoogleOsidApp,
   siteUrlForDomain,
   tabMatchesRoute,
-  urlMatchesCookieDomain,
 } from "./domain-routes.js";
-import { routeSourceLockState } from "./route-access.js";
+import {
+  applySiteAuthStorageForDomain,
+  captureSiteAuthStorageForDomain,
+  extractAuthStorageIdentity,
+  hasNonEmptyAuthStorage,
+} from "./site-auth-storage.js";
+import {
+  clearSiteCookiesComplete as runClearSiteCookiesComplete,
+  getCurrentSiteCookieInfo,
+} from "./site-cookie-cleaner.js";
+import {
+  e0001TotpSecondsRemaining,
+  generateE0001TotpCode,
+  setE0001TotpClockOffsetMs,
+  syncE0001TotpClock,
+  totpClockOffsetMsValue,
+  totpNowMs,
+} from "./totp-clock.js";
+import {
+  GOOGLE_TAB_WAIT_MS,
+  authUserId,
+  clearCookiesForDomain,
+  clearOsidAppHostCookies,
+  confirmGoogleInboxTab,
+  ensureSiteTabForDomain,
+  getCookiesForDomain,
+  jwtEmailFromAuth,
+  jwtPayload,
+  parkGoogleTabsBeforeCookieSwap,
+  patchNote,
+  recordRouteActivityOnCloud,
+  refreshTabsForDomain,
+  sourceLockStateForBinding,
+  syncSingleRouteWithVault,
+  toSnapshotLines,
+} from "./sync-engine-core.js";
 
 const STORAGE_AUTH = "e0001-bridge-auth-v1";
 const STORAGE_IDENTITY = "e0001-hub-identity-v1";
@@ -63,15 +87,24 @@ let routePullLastResult = null;
 const STORAGE_UI_TICK = "e0001-ui-tick-v1";
 const LEGACY_ALARM_NAMES = ["e0001-hourly-sync", "p0020-hourly-sync"];
 const TOOL_COOKIE_URL_LOCAL = "http://127.0.0.1:5177/cookie";
-const TOOL_COOKIE_URL_PROD = "https://databox.infi.io.vn/cookie";
+const TOOL_COOKIE_URL_PROD = "https://databox.infi28.com/cookie";
 const TOOL_COOKIE_URL_PROD_LEGACY = "https://tool-manager-zeta.vercel.app/?screen=cookie";
 const POPUP_APPLY_TIMEOUT_MS = 60000;
-const GOOGLE_TAB_WAIT_MS = 6000;
 const TAB_OVERLAY_MS = 12000;
 
 let vaultPollTimer = null;
 let suppressVaultUploadUntil = 0;
 const activeLoadCookieLocks = new Map();
+let activeRuntimeOpsCount = 0;
+
+async function withActiveRuntimeOp(fn) {
+  activeRuntimeOpsCount += 1;
+  try {
+    return await fn();
+  } finally {
+    activeRuntimeOpsCount = Math.max(0, activeRuntimeOpsCount - 1);
+  }
+}
 
 function withTimeout(promise, ms, message) {
   let timer = null;
@@ -173,97 +206,25 @@ async function pruneBindingStatusOnStore(nextBindings, prevBindings) {
   await chrome.storage.local.set({ [STORAGE_BINDING_STATUS]: status });
 }
 
-function domainNeedsForceNavigate(url, domain, forceNavigate) {
-  if (forceNavigate) return true;
-  return shouldForceNavigateGoogleTab(url, domain);
-}
-
-/** Open/navigate the site before applying cookies; Chrome rejects some writes without context. */
-async function ensureSiteTabForDomain(domain, opts = {}) {
-  const activate = opts.activate !== false;
-  const forceNavigate = opts.forceNavigate === true;
-  const waitMs = Math.max(0, Number(opts.waitMs) || 350);
-  const createdDelayMs = Math.max(0, Number(opts.createdDelayMs) || waitMs);
-  const tabWaitMs = Math.max(0, Number(opts.tabWaitMs) || 12000);
-  const tabs = await chrome.tabs.query({});
-  const matching = tabs.filter((t) => t.url && tabMatchesRoute(t.url, domain));
-  const open = matching[0] ?? null;
-  const mustNavigate = open?.url ? domainNeedsForceNavigate(open.url, domain, forceNavigate) : forceNavigate;
-  if (open?.id) {
-    if (mustNavigate) {
-      await chrome.tabs.update(open.id, { url: siteUrlForDomain(domain), active: activate });
-      await waitForTabComplete(open.id, tabWaitMs);
-      if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
-    } else if (activate) {
-      await chrome.tabs.update(open.id, { active: true });
-    }
-    return { tabId: open.id, created: false, navigated: mustNavigate };
-  }
-  const tab = await chrome.tabs.create({ url: siteUrlForDomain(domain), active: activate });
-  await waitForTabComplete(tab.id, tabWaitMs);
-  if (createdDelayMs > 0) await new Promise((r) => setTimeout(r, createdDelayMs));
-  return { tabId: tab.id, created: true, navigated: true };
-}
-
-async function waitForTabComplete(tabId, timeoutMs = 12000) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (tab.status === "complete") return;
-  } catch {
-    return;
-  }
-  await new Promise((resolve) => {
-    const timer = setTimeout(resolve, timeoutMs);
-    const onUpdated = (id, info) => {
-      if (id === tabId && info.status === "complete") {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(onUpdated);
-        resolve();
-      }
-    };
-    chrome.tabs.onUpdated.addListener(onUpdated);
-  });
-  await new Promise((r) => setTimeout(r, 350));
-}
-
-/** Reload open tabs for domain (no new tab). Google: navigate to inbox instead of reload marketing URL. */
-async function refreshTabsForDomain(domain) {
-  const tabs = await chrome.tabs.query({});
-  let refreshed = 0;
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url || !tabMatchesRoute(tab.url, domain)) continue;
-    if (isGoogleDomain(domain) && shouldForceNavigateGoogleTab(tab.url, domain)) {
-      await chrome.tabs.update(tab.id, { url: googleMailInboxUrl() });
-      await waitForTabComplete(tab.id);
-      refreshed += 1;
-      continue;
-    }
-    await chrome.tabs.reload(tab.id);
-    await waitForTabComplete(tab.id);
-    refreshed += 1;
-  }
-  return refreshed;
-}
-
 const VAULT_OK_STATES = new Set(["uploaded", "disabled", "skipped", "retry", "source_unset", "read_only"]);
 
 function vaultWarningText(firstVault, schemaOk) {
   if (!firstVault) return null;
   if (firstVault.vault === "pass_mismatch") {
-    return "Note có sync pass — xóa pass ở Note hoặc thêm pass vào binding.";
+    return "Note has a sync passphrase — clear passphrase on Note or set passphrase on binding.";
   }
   if (firstVault.vault === "rpc_missing") {
     return schemaOk
-      ? "Vault chưa upload — mở site (↗), đăng nhập, chọn route, bấm Sync now."
-      : "Vault/schema lỗi — chạy Tool/P0020-Data-Box/supabase/APPLY_ALL_P0020_COOKIE_BRIDGE.sql trong Supabase SQL Editor, reload extension.";
+      ? "Vault not uploaded yet — open site (↗), sign in, select route, and click Sync."
+      : "Vault schema missing — apply P0020 Cookie Bridge SQL migrations on Supabase and reload extension.";
   }
   if (/sync_pass_hash|record\s+"v_note"/i.test(firstVault.vaultError ?? "")) {
-    return "DB function cũ — chạy Tool/P0020-Data-Box/supabase/APPLY_FIX_V_NOTE_DROP.sql trên Supabase, reload extension.";
+    return "Outdated DB function — run APPLY_FIX_V_NOTE_DROP.sql on Supabase and reload extension.";
   }
   if (firstVault.vaultError) {
-    return `Vault: ${firstVault.vaultError.slice(0, 120)}`;
+    return `Vault: ${firstVault.vaultError.slice(0, 160)}`;
   }
-  return "Vault upload failed — thử Sync now lại.";
+  return "Vault upload failed — please click Sync again.";
 }
 
 function computeDisplayWarning(bindingStatus, schemaOk) {
@@ -295,11 +256,6 @@ async function clearStaleVaultErrors(schemaOk) {
   }
 }
 
-function maskValue(value) {
-  if (!value || value.length <= 8) return "••••••••";
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
-}
-
 async function getAuth() {
   return getLocal(STORAGE_AUTH, null);
 }
@@ -316,6 +272,8 @@ async function getBindings() {
 
 const TOOL_TAB_URL_PATTERNS = [
   "http://127.0.0.1:5177/*",
+  "https://databox.infi28.com/*",
+  "https://*.infi28.com/*",
   "https://databox.infi.io.vn/*",
   "https://*.infi.io.vn/*",
   "https://tool-manager-zeta.vercel.app/*",
@@ -375,11 +333,7 @@ function bindingsFingerprint(list) {
 }
 
 function sourceLockState(binding, browserId, overrideSourceId = null, auth = null) {
-  return routeSourceLockState(binding, browserId, {
-    dataUserId: authUserId(auth),
-    hubIdentityUserId: auth?.hubIdentityUserId ?? null,
-    userEmail: jwtEmailFromAuth(auth) || auth?.user_email || null,
-  }, overrideSourceId);
+  return sourceLockStateForBinding(binding, browserId, auth, null, overrideSourceId);
 }
 
 async function pullCloudRoutes(auth, opts = {}) {
@@ -609,26 +563,41 @@ function mergeBindingStatusFromVaultMap(bindingStatus, vaultOnServer) {
   return { status: next, changed };
 }
 
-async function clearCookiesForDomain(domain = "") {
-  const cookies = await getCookiesForDomain(domain);
-  let removed = 0;
-  for (const cookie of cookies) {
-    const host = (cookie.domain ?? domain).replace(/^\./, "") || openSiteHintHost(domain);
-    const scheme = cookie.secure ? "https" : "http";
-    const path = cookie.path?.startsWith("/") ? cookie.path : `/${cookie.path ?? ""}`;
-    const url = `${scheme}://${host}${path}`;
+function tabUrlMatchesAnyScope(url, scopes) {
+  const host = extractHostnameFromUrlOrDomain(url);
+  if (!host) return false;
+  for (const scope of scopes ?? []) {
+    const base = String(scope ?? "").replace(/^\./, "").toLowerCase();
+    if (base && (host === base || host.endsWith(`.${base}`))) return true;
+  }
+  return false;
+}
+
+/**
+ * Clear 100% of cookies + web storage for the current site (e.g. Adobe.com, Outlook.com, etc.)
+ * Works offline/locally without requiring Login.
+ */
+async function clearSiteCookiesComplete(opts = {}) {
+  suppressVaultUploadUntil = Date.now() + 45_000;
+  const res = await runClearSiteCookiesComplete(opts.domain ?? "", {
+    clearStorage: opts.clearStorage !== false,
+    reloadTabs: opts.reloadTab !== false && opts.reloadTabs !== false,
+  });
+  if (res?.ok && Array.isArray(res.scopes) && res.scopes.length) {
     try {
-      await chrome.cookies.remove({
-        url,
-        name: cookie.name,
-        storeId: cookie.storeId,
-      });
-      removed += 1;
-    } catch (err) {
-      console.warn("[E0001] cookie remove", cookie.name, url, err);
+      const bindings = await getBindings();
+      const matchingBindings = bindings.filter((b) =>
+        tabUrlMatchesAnyScope(`https://${String(b.domain ?? "").replace(/^\./, "")}/`, res.scopes),
+      );
+      if (matchingBindings.length) {
+        await recordJarCountsForBindings(matchingBindings);
+        await bumpUiTick();
+      }
+    } catch {
+      /* ignore */
     }
   }
-  return { ok: true, removed, domain };
+  return res;
 }
 
 function normalizeBridgeRole(role) {
@@ -646,8 +615,29 @@ async function getPrefs() {
   };
 }
 
+const UI_TICK_MIN_INTERVAL_MS = 2_500;
+let lastUiTickAt = 0;
+let pendingUiTickTimer = null;
+
 async function bumpUiTick() {
-  await chrome.storage.local.set({ [STORAGE_UI_TICK]: Date.now() });
+  const now = Date.now();
+  const elapsed = now - lastUiTickAt;
+  if (elapsed >= UI_TICK_MIN_INTERVAL_MS) {
+    if (pendingUiTickTimer) {
+      clearTimeout(pendingUiTickTimer);
+      pendingUiTickTimer = null;
+    }
+    lastUiTickAt = now;
+    await chrome.storage.local.set({ [STORAGE_UI_TICK]: now });
+    return;
+  }
+  if (!pendingUiTickTimer) {
+    pendingUiTickTimer = setTimeout(() => {
+      pendingUiTickTimer = null;
+      lastUiTickAt = Date.now();
+      void chrome.storage.local.set({ [STORAGE_UI_TICK]: lastUiTickAt });
+    }, UI_TICK_MIN_INTERVAL_MS - elapsed);
+  }
 }
 
 function resetVaultPollLoop() {
@@ -715,86 +705,6 @@ async function ensureAuthForRoutePull({ waitMs = 0 } = {}) {
   return ensureAuth();
 }
 
-/** Read cookies for a site — needs <all_urls> host permission in manifest. */
-async function collectCookiesForSingleScope(rawDomain) {
-  const raw = effectiveCookieDomain(String(rawDomain ?? "").trim());
-  if (!raw) return [];
-
-  const base = raw.replace(/^\./, "").toLowerCase();
-  const hostVariants = [raw, `.${base}`, base, `www.${base}`];
-
-  const byKey = new Map();
-  const add = (list) => {
-    for (const c of list ?? []) {
-      byKey.set(`${c.name}\0${c.domain}\0${c.path}`, c);
-    }
-  };
-
-  for (const host of hostVariants) {
-    try {
-      add(await chrome.cookies.getAll({ domain: host }));
-      if (!host.startsWith(".")) {
-        add(await chrome.cookies.getAll({ domain: `.${host.replace(/^\./, "")}` }));
-      }
-    } catch (err) {
-      console.warn("[E0001] cookies.getAll", host, err);
-    }
-  }
-
-  const urlVariants = [
-    `https://${base}/`,
-    `https://www.${base}/`,
-    `https://m.${base}/`,
-    ...extraCookieQueryUrls(base),
-  ];
-  for (const url of urlVariants) {
-    try {
-      add(await chrome.cookies.getAll({ url }));
-    } catch (err) {
-      console.warn("[E0001] cookies.getAll url", url, err);
-    }
-  }
-
-  try {
-    const all = await chrome.cookies.getAll({});
-    for (const c of all) {
-      const cd = (c.domain ?? "").replace(/^\./, "").toLowerCase();
-      if (cd === base || cd.endsWith(`.${base}`) || base.endsWith(`.${cd}`)) {
-        byKey.set(`${c.name}\0${c.domain}\0${c.path}`, c);
-      }
-    }
-  } catch (err) {
-    console.warn("[E0001] cookies.getAll all", err);
-  }
-
-  return [...byKey.values()];
-}
-
-/** Jar for a route — unions related hosts (e.g. .claude.com ↔ .claude.ai ↔ .anthropic.com). */
-async function getCookiesForDomain(domain) {
-  const scopes = relatedCookieDomains(domain);
-  if (!scopes.length) return collectCookiesForSingleScope(domain);
-
-  const byKey = new Map();
-  for (const scope of scopes) {
-    for (const c of await collectCookiesForSingleScope(scope)) {
-      byKey.set(`${c.name}\0${c.domain}\0${c.path}`, c);
-    }
-  }
-  return [...byKey.values()];
-}
-
-function jwtEmailFromAuth(auth) {
-  if (auth?.user_email) return String(auth.user_email);
-  if (!auth?.access_token) return null;
-  try {
-    const payload = jwtPayload(auth);
-    return payload.email ?? payload.user_metadata?.email ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /** HubWorkspaceUserModal profile claims — parity buildWorkspaceUserProfileRows (hub-ui). */
 function jwtUserProfileFromAuth(auth) {
   const payload = jwtPayload(auth);
@@ -817,198 +727,12 @@ function jwtUserProfileFromAuth(auth) {
   };
 }
 
-function jwtPayload(auth) {
-  return parseJwtPayload(auth?.access_token) || {};
-}
-
-function authUserId(auth) {
-  return auth?.user_id ?? auth?.user?.id ?? jwtPayload(auth).sub ?? null;
-}
-
-function vaultUpdaterLabel(auth, browserId) {
-  const email = jwtEmailFromAuth(auth);
-  const short = String(browserId ?? "").slice(0, 8);
-  return email ? `${email} · ${short}` : short || "unknown";
-}
-
-function toSnapshotLines(cookies) {
-  return cookies.map((c) => `${c.name} = ${maskValue(c.value)}`);
-}
-
-function domainMatchesBinding(cookieDomain, bindingDomain) {
-  const b = bindingDomain.replace(/^\./, "").toLowerCase();
-  const c = (cookieDomain || "").replace(/^\./, "").toLowerCase();
-  return c === b || c.endsWith(`.${b}`) || b.endsWith(`.${c}`);
-}
-
-async function rpcSyncCookies(auth, { syncId, pass, domain }, cookies, lines, opts = {}) {
-  const url = `${auth.supabase_url}/rest/v1/rpc/note_sync_cookies`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: rpcHeaders(auth, { "Content-Type": "application/json" }),
-    body: JSON.stringify({
-      p_sync_id: syncId,
-      p_pass: pass || null,
-      p_snapshot: lines,
-      p_domain: domain,
-      p_touch_synced_at: opts.manual === true,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`RPC ${syncId} ${res.status}: ${parseApiErrorBody(text)}`);
-  }
-  return { lines: lines.length, cookies: cookies.length };
-}
-
-function normalizeRouteDomain(domain = "") {
-  const raw = String(domain).trim();
-  if (!raw) return "";
-  let host = raw.replace(/^\.+/, "").toLowerCase();
-  if (/^https?:\/\//i.test(host)) {
-    try {
-      host = new URL(host).hostname.replace(/^\.+/, "").toLowerCase();
-    } catch {
-      return "";
-    }
-  } else {
-    host = host.split("/")[0] ?? host;
-  }
-  host = host.replace(/^www\./, "");
-  return host && host.includes(".") ? `.${host}` : "";
-}
-
-async function recordRouteActivityOnCloud(auth, binding, kind) {
-  const noteId = binding?.noteId?.trim();
-  const domain = normalizeRouteDomain(binding?.domain);
-  if (!auth?.supabase_url || !auth?.access_token || isJwtExpired(auth) || !noteId || !domain) {
-    return { ok: false, error: "session_required" };
-  }
-  const rpc = kind === "sync" ? "cookie_route_record_sync" : "cookie_route_record_load";
-  const url = `${auth.supabase_url}/rest/v1/rpc/${rpc}`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: userHeaders(auth, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ p_note_id: noteId, p_domain: domain }),
-    });
-    const text = await res.text();
-    let data = null;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = null;
-    }
-    if (!res.ok || data?.ok === false) {
-      const err = data?.error ?? parseApiErrorBody(text);
-      console.warn(`[E0001] record route ${kind}`, res.status, err);
-      return { ok: false, error: String(err) };
-    }
-    await bumpUiTick();
-    const at =
-      kind === "sync" ? data?.activity?.last_sync_at : data?.activity?.last_load_at;
-    if (at) {
-      const key = bindingStatusKey(binding);
-      if (key) {
-        const stored = await chrome.storage.local.get(STORAGE_BINDING_STATUS);
-        const status = stored[STORAGE_BINDING_STATUS] ?? {};
-        const prev = status[key] ?? {};
-        status[key] = {
-          ...prev,
-          ...(kind === "sync" ? { userSyncedAt: at } : { userLoadedAt: at, loadedAt: at }),
-        };
-        await chrome.storage.local.set({ [STORAGE_BINDING_STATUS]: status });
-      }
-    }
-    return { ok: true, at: at ?? null };
-  } catch (err) {
-    console.warn(`[E0001] record route ${kind}`, err);
-    return { ok: false, error: String(err) };
-  }
-}
-
 function recordRouteLoadOnCloud(auth, binding) {
-  return recordRouteActivityOnCloud(auth, binding, "load");
+  return recordRouteActivityOnCloud(auth, binding, "load", { onBumpUiTick: bumpUiTick });
 }
 
 function recordRouteSyncOnCloud(auth, binding) {
-  return recordRouteActivityOnCloud(auth, binding, "sync");
-}
-
-async function rpcSyncCookiesByNoteId(auth, { noteId, pass, domain }, cookies, lines, opts = {}) {
-  const url = `${auth.supabase_url}/rest/v1/rpc/note_sync_cookies_by_note_id`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: rpcHeaders(auth, { "Content-Type": "application/json" }),
-    body: JSON.stringify({
-      p_note_id: noteId,
-      p_pass: pass || null,
-      p_snapshot: lines,
-      p_domain: domain,
-      p_touch_synced_at: opts.manual === true,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`RPC note ${noteId} ${res.status}: ${parseApiErrorBody(text)}`);
-  }
-  return { lines: lines.length, cookies: cookies.length };
-}
-
-function isMissingRpcError(msg) {
-  const s = String(msg);
-  return (
-    s.includes("note_sync_cookies") ||
-    s.includes("42883") ||
-    s.includes("PGRST202") ||
-    s.includes("does not exist")
-  );
-}
-
-function isJwtPatchable(auth) {
-  return Boolean(auth?.access_token && !isJwtExpired(auth));
-}
-
-/** RPC by note UUID, else sync_id; fallback JWT PATCH only when RPC missing + fresh session. */
-async function rpcSyncBinding(auth, binding, preloadedCookies = null, opts = {}) {
-  const domain = binding.domain?.trim();
-  const noteId = binding.noteId?.trim();
-  const syncId = binding.syncId?.trim();
-  const manual = opts.manual === true;
-  const cookies = preloadedCookies ?? (await getCookiesForDomain(domain));
-  const lines = toSnapshotLines(cookies);
-  const payload = {
-    cookie_snapshot: lines,
-    sync_status: lines.length ? "synced" : "pending",
-    domain,
-    ...(manual ? { synced_at: new Date().toISOString() } : {}),
-  };
-
-  if (noteId) {
-    try {
-      return await rpcSyncCookiesByNoteId(auth, { ...binding, domain }, cookies, lines, { manual });
-    } catch (err) {
-      if (isMissingRpcError(err) && isJwtPatchable(auth)) {
-        await patchNote(auth, noteId, payload);
-        return { lines: lines.length, cookies: cookies.length, mode: "jwt_patch" };
-      }
-      throw new Error(formatSyncError(err));
-    }
-  }
-
-  if (syncId) {
-    try {
-      return await rpcSyncCookies(auth, { ...binding, domain }, cookies, lines, { manual });
-    } catch (err) {
-      if (isMissingRpcError(err) && noteId && isJwtPatchable(auth)) {
-        await patchNote(auth, noteId, payload);
-        return { lines: lines.length, cookies: cookies.length, mode: "jwt_patch" };
-      }
-      throw new Error(formatSyncError(err));
-    }
-  }
-
-  throw new Error("Binding needs noteId or syncId");
+  return recordRouteActivityOnCloud(auth, binding, "sync", { onBumpUiTick: bumpUiTick });
 }
 
 async function fetchNotes(auth) {
@@ -1021,27 +745,6 @@ async function fetchNotes(auth) {
     throw new Error(`Notes fetch ${res.status}: ${parseApiErrorBody(text)}`);
   }
   return res.json();
-}
-
-async function patchNote(auth, noteId, payload) {
-  const url = `${auth.supabase_url}/rest/v1/notes?id=eq.${noteId}`;
-  if (!isJwtPatchable(auth)) {
-    throw new Error(
-      "Session expired — open Cookie sync in Tool and click Link extension again.",
-    );
-  }
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: userHeaders(auth, {
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    }),
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(formatSyncError(`Patch ${noteId} ${res.status}: ${parseApiErrorBody(text)}`));
-  }
 }
 
 async function syncLegacyJwt(auth) {
@@ -1067,99 +770,31 @@ async function syncLegacyJwt(auth) {
   return { mode: "jwt", ok, fail, total: withDomain.length };
 }
 
-async function syncBindingWithVault(auth, b, browserId, prefs, opts = {}) {
-  const sourceLock = sourceLockState(b, browserId, opts.sourceBrowserId, auth);
-  if (!sourceLock.canWrite) {
-    return {
-      ok: true,
-      lines: 0,
-      cookies: 0,
-      vault: sourceLock.state,
-      vaultError: sourceLock.message,
-      sourceLock,
-      skippedSync: true,
-    };
-  }
-  const cookies = await getCookiesForDomain(b.domain.trim());
-  const r = await rpcSyncBinding(auth, b, cookies, { manual: opts.manual === true });
-  const count = cookies.length;
-  const currentVaultNames = summarizeCookieNames(cookies);
-  const base = { ...r, lines: count, cookies: count, vaultNames: currentVaultNames };
-  if (!canUseVault(b)) {
-    return { ...base, vault: "skipped" };
-  }
-  if (opts.uploadVault === false || Date.now() < suppressVaultUploadUntil) {
-    return { ...base, vault: "skipped" };
-  }
-  if (
-    isFacebookDomain(b.domain) &&
-    currentVaultNames.hasFacebookLogin !== true &&
-    opts.allowIncompleteFacebookVault !== true
-  ) {
-    const existing = await fetchExistingVaultSummary(auth, b, {
-      ...(Object.prototype.hasOwnProperty.call(opts, "vaultPassOverride")
-        ? { passphrase: opts.vaultPassOverride }
-        : {}),
-    });
-    return {
-      ...base,
-      vault: "skipped",
-      existingVault: existing.exists ? existing.vaultNames : null,
-      vaultError: `Guard: Facebook jar missing login cookies (${currentVaultNames.count} cookies: ${currentVaultNames.keyNames.join(", ") || "none"}); skipped vault upload.`,
-    };
-  }
-  if (opts.guardVaultDowngrade) {
-    const existing = await fetchExistingVaultCount(auth, b);
-    if (existing.exists && count < existing.count) {
-      return {
-        ...base,
-        vault: "skipped",
-        vaultError: `Guard: jar ${count} < vault cloud ${existing.count}; skipped auto-upload.`,
-      };
-    }
-  }
-  try {
-    const updater = vaultUpdaterLabel(auth, browserId);
-    const uploadOpts = {};
-    if (Object.prototype.hasOwnProperty.call(opts, "vaultPassOverride")) {
-      uploadOpts.passphrase = opts.vaultPassOverride;
-    }
-    const vault = await uploadVaultForBinding(auth, b, cookies, browserId, updater, uploadOpts);
-    return {
-      ...base,
-      vault: vault.promoted === false ? "skipped" : vault.ok ? "uploaded" : vault.reason ?? "skipped",
-      vaultCount: vault.storedCount ?? count,
-      vaultVersion: vault.vault_version ?? null,
-      vaultUpdatedBy: vault.updated_by ?? updater,
-      vaultError: vault.promoted === false ? vault.reason : undefined,
-    };
-  } catch (vaultErr) {
-    const vaultError = formatSyncError(vaultErr);
-    console.warn("[E0001] vault upload", b.noteId, vaultError);
-    let vault = "failed";
-    if (/invalid pass/i.test(vaultError)) vault = "pass_mismatch";
-    else if (isSchemaRelatedVaultError(vaultError)) {
-      const schemaOk = await probeCookieSchemaOk(auth, [b]);
-      vault = schemaOk ? "failed" : "rpc_missing";
-    }
-    return { ...base, vault, vaultError };
-  }
+async function syncBindingWithVault(auth, b, browserId, _prefs, opts = {}) {
+  return syncSingleRouteWithVault(auth, b, browserId, {
+    ...opts,
+    suppressUpload: Date.now() < suppressVaultUploadUntil,
+  });
 }
 
 /** Update Lines column after Load / manual apply — count cookies now in this browser. */
-async function recordJarCountsForBindings(bindings) {
+async function recordJarCountsForBindings(bindings, extraByKey = {}) {
   const status = { ...(await getBindingStatus()) };
   for (const b of bindings) {
     const key = bindingStatusKey(b);
     if (!key) continue;
     const jar = await getCookiesForDomain(b.domain);
     const now = new Date().toISOString();
+    const extra = extraByKey[key] ?? {};
     status[key] = {
       ...(status[key] ?? {}),
       ok: true,
-      empty: jar.length === 0,
+      empty: jar.length === 0 && !extra.storageCount,
       lines: jar.length,
       cookies: jar.length,
+      ...(extra.storageEmail !== undefined ? { storageEmail: extra.storageEmail } : {}),
+      ...(extra.storageUid !== undefined ? { storageUid: extra.storageUid } : {}),
+      ...(extra.storageCount !== undefined ? { storageCount: extra.storageCount } : {}),
       jarAt: now,
       loadedAt: now,
     };
@@ -1220,6 +855,9 @@ async function syncBindings(auth, bindings, opts = {}) {
           vaultVersion: r.vaultVersion,
           vaultUpdatedBy: r.vaultUpdatedBy,
           sourceLock: r.sourceLock,
+          storageEmail: r.storageEmail ?? prev.storageEmail ?? null,
+          storageUid: r.storageUid ?? prev.storageUid ?? null,
+          storageCount: r.storageCount ?? prev.storageCount ?? 0,
           skippedSync: false,
           pushedAt,
           cloudSyncedAt: pushedAt,
@@ -1245,15 +883,20 @@ async function syncBindings(auth, bindings, opts = {}) {
     }
   }
   await chrome.storage.local.set({ [STORAGE_BINDING_STATUS]: bindingStatus });
-  const firstErr = Object.values(bindingStatus).find((s) => s.ok === false)?.error;
+  const syncedStatuses = valid.map((b) => bindingStatus[bindingStatusKey(b)]).filter(Boolean);
+  const firstErr = syncedStatuses.find((s) => s.ok === false)?.error;
   const schemaOk = await probeCookieSchemaOk(auth, valid);
-  const vaultIssues = Object.values(bindingStatus).filter(
+  const vaultIssues = syncedStatuses.filter(
     (s) => s.ok && s.vault && !VAULT_OK_STATES.has(s.vault),
   );
+  const skippedGuard = syncedStatuses.find((s) => s?.skippedSync && s?.vaultError);
   let warning =
     zeroCookieRoutes > 0
       ? `${zeroCookieRoutes} route(s): 0 cookies — open site (↗), log in, then Sync again.`
       : null;
+  if (skippedGuard?.vaultError) {
+    warning = warning ? `${warning} ${skippedGuard.vaultError}` : skippedGuard.vaultError;
+  }
   const vaultHint = vaultWarningText(vaultIssues[0], schemaOk);
   if (vaultHint) {
     warning = warning ? `${warning} ${vaultHint}` : vaultHint;
@@ -1267,6 +910,7 @@ async function syncBindings(auth, bindings, opts = {}) {
     error: firstErr,
     zeroCookieRoutes,
     vaultIssues: vaultIssues.length,
+    skippedSync: Boolean(skippedGuard),
     warning,
     partial,
   };
@@ -1291,31 +935,6 @@ function normalizeExtensionBindings(list) {
       canManage: b.canManage === true,
     }))
     .filter((b) => b.domain && (b.noteId || b.syncId));
-}
-
-async function confirmGoogleInboxTab(domain, opts = {}) {
-  const ensured = await ensureSiteTabForDomain(domain, {
-    activate: opts.activate !== false,
-    forceNavigate: true,
-    waitMs: 900,
-    createdDelayMs: 0,
-    tabWaitMs: GOOGLE_TAB_WAIT_MS,
-  });
-  if (!ensured.tabId) return { ok: false, tabId: null, reason: "no_tab" };
-  let tabUrl = "";
-  try {
-    const tab = await chrome.tabs.get(ensured.tabId);
-    tabUrl = tab.url ?? "";
-  } catch {
-    return { ok: false, tabId: ensured.tabId, reason: "tab_gone" };
-  }
-  if (isGoogleMarketingUrl(tabUrl)) {
-    return { ok: false, tabId: ensured.tabId, reason: "marketing_redirect", url: tabUrl };
-  }
-  if (!isGoogleAuthContextUrl(tabUrl)) {
-    return { ok: false, tabId: ensured.tabId, reason: "unexpected_url", url: tabUrl };
-  }
-  return { ok: true, tabId: ensured.tabId, url: tabUrl };
 }
 
 async function showLoadCookieTabOverlay(tabId, binding, durationMs = TAB_OVERLAY_MS) {
@@ -1515,17 +1134,10 @@ async function lockLoadCookieTabsForDomain(domain, binding = {}) {
   const cleanDomain = String(domain ?? "").trim();
   if (!cleanDomain) return { ok: false, error: "No domain" };
 
-  if (isGoogleDomain(cleanDomain)) {
-    const ensured = await ensureSiteTabForDomain(cleanDomain, {
-      activate: true,
-      forceNavigate: true,
-      waitMs: 0,
-      createdDelayMs: 0,
-      tabWaitMs: GOOGLE_TAB_WAIT_MS,
-    });
-    return ensured.tabId
-      ? { ok: true, tabs: 1, created: ensured.created, navigated: ensured.navigated, skipOverlay: true }
-      : { ok: false, error: "No tab" };
+  if (isGoogleDomain(cleanDomain) || isGoogleOsidAppDomain(cleanDomain)) {
+    // Do NOT pre-navigate Google / Google OSID tabs before vault cookies are written;
+    // unauthenticated pre-navigation triggers redirects to /about or accounts.google.com and races cookie writes.
+    return { ok: true, tabs: 0, deferredUntilAfterApply: true, skipOverlay: true };
   }
 
   const tabs = await chrome.tabs.query({});
@@ -1562,6 +1174,9 @@ async function applyVaultAll(filter = {}) {
     return { ok: false, error: "Open Cookie sync → Link extension first." };
   }
   let bindings = filterBindings(await getBindings(), filter);
+  if (!bindings.length && filter.binding && typeof filter.binding === "object") {
+    bindings = normalizeExtensionBindings([filter.binding]);
+  }
   if (!bindings.length) {
     return { ok: false, error: "No routes — create a cloud route in Tool, then Link extension." };
   }
@@ -1572,8 +1187,9 @@ async function applyVaultAll(filter = {}) {
       lockedTabIds.add(tabId);
     }
   }
+  const isGoogleOrOsidDomain = (d) => isGoogleDomain(d) || isGoogleOsidAppDomain(d);
   const lockTab = async (tabId, binding) => {
-    if (!tabId || isGoogleDomain(binding?.domain)) return;
+    if (!tabId || isGoogleOrOsidDomain(binding?.domain)) return;
     await showLoadCookieTabOverlay(tabId, binding);
     lockedTabIds.add(tabId);
   };
@@ -1582,12 +1198,14 @@ async function applyVaultAll(filter = {}) {
   const confirmSession = filter.confirmSession !== false;
   const openSite = filter.openSite !== false;
   const activateSite = filter.activateSite !== false;
-  const googleBindings = bindings.filter((b) => isGoogleDomain(b.domain));
-  const nonGoogleBindings = bindings.filter((b) => !isGoogleDomain(b.domain));
+  const googleBindings = bindings.filter((b) => isGoogleOrOsidDomain(b.domain));
+  const nonGoogleBindings = bindings.filter((b) => !isGoogleOrOsidDomain(b.domain));
+
+  const googlePreferredTabByKey = new Map();
 
   try {
     if (filter.clearBeforeLoad === true) {
-      for (const b of bindings) {
+      for (const b of nonGoogleBindings) {
         if (!b.domain?.trim()) continue;
         await clearCookiesForDomain(b.domain.trim());
       }
@@ -1620,26 +1238,64 @@ async function applyVaultAll(filter = {}) {
       }
       const jarScope = effectiveCookieDomain(b.domain);
       const jarBefore = (await getCookiesForDomain(jarScope)).length;
+      const isGoogleRoute = isGoogleOrOsidDomain(b.domain);
       try {
         const r = await loadVaultIntoBrowser(auth, b, {
           clearWatermark: true,
           rounds: 4,
           retryDelayMs: 600,
           requireFacebookLogin: isFacebookDomain(b.domain),
+          beforeWrite: isGoogleRoute
+            ? async () => {
+                if (confirmSession) {
+                  const parked = await parkGoogleTabsBeforeCookieSwap(b.domain.trim());
+                  if (parked.preferredTabId) {
+                    googlePreferredTabByKey.set(bindingStatusKey(b) || b.domain.trim(), parked.preferredTabId);
+                  }
+                }
+                if (filter.clearBeforeLoad === true) {
+                  await clearCookiesForDomain(b.domain.trim());
+                } else if (resolveGoogleOsidApp(b.domain)) {
+                  await clearOsidAppHostCookies(b.domain.trim());
+                }
+              }
+            : undefined,
           ...(Object.prototype.hasOwnProperty.call(filter, "vaultPassOverride")
             ? { passphrase: filter.vaultPassOverride }
             : {}),
         });
+        let storageApplied = 0;
+        if (!isGoogleRoute && hasNonEmptyAuthStorage(r.storage) && b.domain?.trim()) {
+          try {
+            const ensured = await ensureSiteTabForDomain(b.domain.trim(), {
+              activate: activateSite,
+              forceNavigate: false,
+              waitMs: 500,
+              createdDelayMs: 1200,
+            });
+            if (ensured.tabId) await lockTab(ensured.tabId, b);
+            const storageRes = await applySiteAuthStorageForDomain(b.domain.trim(), r.storage);
+            storageApplied = storageRes?.applied ?? 0;
+          } catch (storageErr) {
+            console.warn("[E0001] apply site auth storage", b.domain, storageErr);
+          }
+        }
         const jarAfter = (await getCookiesForDomain(jarScope)).length;
         const target = r.serverCount ?? r.decrypted ?? 0;
         const jarOk = target > 0 && jarAfter >= target;
         const jarGained = jarAfter > jarBefore;
-        const loadOk = (r.applied ?? 0) > 0 || jarOk || jarGained;
+        const loadOk =
+          (r.applied ?? 0) > 0 ||
+          storageApplied > 0 ||
+          r.hasStorage === true ||
+          jarOk ||
+          jarGained;
         if (loadOk) await recordRouteLoadOnCloud(auth, b);
         results.push({
           domain: b.domain,
           noteId: b.noteId,
           ...r,
+          storageApplied,
           ok: loadOk,
           jarBefore,
           jarAfter,
@@ -1652,7 +1308,21 @@ async function applyVaultAll(filter = {}) {
     const applied = results.filter((r) => r.ok);
     if (applied.length) {
       await new Promise((r) => setTimeout(r, 400));
-      await recordJarCountsForBindings(bindings);
+      const extraStatusByKey = {};
+      for (const r of applied) {
+        const bMatch = bindings.find((b) => b.noteId === r.noteId && b.domain === r.domain) ?? bindings.find((b) => b.domain === r.domain);
+        if (!bMatch) continue;
+        const k = bindingStatusKey(bMatch);
+        const stId = extractAuthStorageIdentity(r.storage);
+        if (k) {
+          extraStatusByKey[k] = {
+            storageEmail: stId.email || null,
+            storageUid: stId.uid || null,
+            storageCount: stId.storageCount || 0,
+          };
+        }
+      }
+      await recordJarCountsForBindings(bindings, extraStatusByKey);
       const n = applied.reduce((s, r) => s + (r.applied ?? 0), 0);
       const failedNames = applied.flatMap((r) => r.failedNames ?? []);
       const total = applied.reduce((s, r) => s + (r.total ?? r.decrypted ?? 0), 0);
@@ -1663,17 +1333,43 @@ async function applyVaultAll(filter = {}) {
       let googleSession = null;
       if (googleBindings.length) {
         for (const b of googleBindings) {
-          googleSession = await confirmGoogleInboxTab(b.domain.trim(), { activate: activateSite });
+          const prefTabId =
+            googlePreferredTabByKey.get(bindingStatusKey(b) || b.domain.trim()) ?? null;
+          googleSession = await confirmGoogleInboxTab(b.domain.trim(), {
+            activate: activateSite,
+            preferredTabId: prefTabId,
+          });
           if (googleSession.tabId) tabsRefreshed += 1;
+          const matchingApplied = applied.find(
+            (r) => (r.noteId && r.noteId === b.noteId) || r.domain === b.domain,
+          );
+          if (googleSession.ok && matchingApplied && hasNonEmptyAuthStorage(matchingApplied.storage)) {
+            try {
+              const storageRes = await applySiteAuthStorageForDomain(
+                b.domain.trim(),
+                matchingApplied.storage,
+              );
+              matchingApplied.storageApplied = storageRes?.applied ?? 0;
+            } catch (storageErr) {
+              console.warn("[E0001] apply google site auth storage", b.domain, storageErr);
+            }
+          }
         }
       }
       const shouldRefreshNonGoogle =
         (refreshTab || confirmSession) &&
         nonGoogleBindings.length &&
-        applied.some((r) => !isGoogleDomain(r.domain) && (r.jarGained || ((r.jarAfter ?? 0) > 0 && (r.decrypted ?? 0) > 0)));
+        applied.some(
+          (r) =>
+            !isGoogleOrOsidDomain(r.domain) &&
+            (r.jarGained ||
+              r.hasStorage ||
+              (r.storageApplied ?? 0) > 0 ||
+              ((r.jarAfter ?? 0) > 0 && (r.decrypted ?? 0) > 0)),
+        );
       if (shouldRefreshNonGoogle) {
         await new Promise((r) => setTimeout(r, 400));
-        const domains = [...new Set(applied.filter((r) => !isGoogleDomain(r.domain)).map((r) => r.domain).filter(Boolean))];
+        const domains = [...new Set(applied.filter((r) => !isGoogleOrOsidDomain(r.domain)).map((r) => r.domain).filter(Boolean))];
         for (const d of domains) {
           tabsRefreshed += await refreshTabsForDomain(d);
           const routeBinding = bindings.find((b) => b.domain === d) ?? bindings[0];
@@ -1690,19 +1386,27 @@ async function applyVaultAll(filter = {}) {
       if (effective < decryptedMax) {
         const miss = decryptedMax - effective;
         const names = failedNames.slice(0, 5).join(", ");
-        warning = `Ghi ${n}/${decryptedMax} cookie · jar ${jarAfter}${names ? ` — lỗi: ${names}` : ""}${miss > 0 ? ` (thiếu ${miss})` : ""}`;
+        warning = `Wrote ${n}/${decryptedMax} cookies · jar ${jarAfter}${names ? ` — failed: ${names}` : ""}${miss > 0 ? ` (missing ${miss})` : ""}`;
       }
-      const googleApplied = applied.find((r) => isGoogleDomain(r.domain));
+      const googleApplied = applied.find((r) => isGoogleOrOsidDomain(r.domain));
+      const osidAppRoute = googleBindings.map((b) => resolveGoogleOsidApp(b.domain)).find(Boolean) ?? null;
       if (googleApplied?.googleVaultNames && googleApplied.googleVaultNames.hasGoogleLogin !== true) {
-        const googleHint =
-          "Vault thiếu cookie đăng nhập Google (SID/HSID). Sync lại từ browser đã mở Gmail inbox.";
+        const googleHint = osidAppRoute
+          ? `Vault is missing Google login cookies (SID/HSID) — sign in on ${osidAppRoute.primaryHost} and Sync again.`
+          : "Vault is missing Google login cookies (SID/HSID) — Sync again from an authenticated Gmail inbox.";
         warning = warning ? `${warning} ${googleHint}` : googleHint;
       }
       if (googleBindings.length && googleSession && googleSession.ok !== true) {
         const sessionHint =
-          googleSession.reason === "marketing_redirect"
-            ? "Cookie đã ghi nhưng Gmail vẫn redirect workspace — Sync lại từ browser inbox hoặc dùng cùng Chrome profile."
-            : "Không mở được Gmail inbox sau Load — thử Sync lại route `.google.com`.";
+          googleSession.reason === "google_session_revoked"
+            ? `Google session in vault was signed out on Google servers — sign in on ${osidAppRoute ? osidAppRoute.primaryHost : "Gmail"} and Sync again (use Clear Active instead of Google Sign out when testing).`
+            : osidAppRoute
+              ? googleSession.reason === "marketing_redirect"
+                ? `Cookies applied, but ${osidAppRoute.primaryHost} redirected to landing page — sign in on the source browser and Sync again.`
+                : `Could not confirm ${osidAppRoute.label} session on ${osidAppRoute.primaryHost} after Load — try syncing \`${osidAppRoute.canonicalDomain}\` again.`
+              : googleSession.reason === "marketing_redirect"
+                ? "Cookies applied, but Gmail redirected to workspace landing — Sync again from Gmail inbox."
+                : "Could not confirm Gmail inbox after Load — try syncing `.google.com` again.";
         warning = warning ? `${warning} ${sessionHint}` : sessionHint;
       }
       const partial = effective < decryptedMax || (googleBindings.length > 0 && googleSession?.ok !== true);
@@ -1731,7 +1435,7 @@ async function applyVaultAll(filter = {}) {
       const hintHost = openSiteHintHost(emptyVault.domain || bindings[0]?.domain);
       return {
         ok: false,
-        error: `Vault rỗng (0 cookie) cho ${emptyVault.domain || "route"} — mở ${hintHost}, đăng nhập, Sync lại rồi Load.`,
+        error: `Empty vault (0 cookies) for ${emptyVault.domain || "route"} — open ${hintHost}, sign in, click Sync, then Load.`,
         results,
       };
     }
@@ -1746,7 +1450,7 @@ async function applyVaultAll(filter = {}) {
       const names = (zero.failedNames ?? []).slice(0, 6).join(", ");
       return {
         ok: false,
-        error: `Không ghi được cookie (${failed}/${total} lỗi${names ? `: ${names}` : ""}). Dùng Test thủ công → Apply paste.`,
+        error: `Could not write cookies (${failed}/${total} failed${names ? `: ${names}` : ""}).`,
         failedNames: zero.failedNames,
         failedDetails: zero.failedDetails,
         results,
@@ -1759,10 +1463,10 @@ async function applyVaultAll(filter = {}) {
       ok: false,
       error:
         notFound.length === results.length
-          ? "Chưa có vault — browser khác bấm Sync now (Vault sync bật)."
+          ? "No cloud vault yet — click Sync on the source browser first."
           : already.length === results.length
-            ? `Vault đã apply — bấm Load lại (sẽ mở ${hintHost}).`
-            : `Load thất bại — mở ${hintHost}, bấm Load lại. Nếu vault > jar: xem toast tên cookie lỗi.`,
+            ? `Vault already applied — click Load again to open ${hintHost}.`
+            : `Load failed — open ${hintHost} and click Load again.`,
       results,
     };
   } finally {
@@ -1790,12 +1494,15 @@ async function syncAll(filter = {}) {
   }
 
   let bindings = filterBindings(await getBindings(), filter);
+  if (!bindings.length && filter.binding && typeof filter.binding === "object") {
+    bindings = normalizeExtensionBindings([filter.binding]);
+  }
   if (!bindings.length) {
     return {
       ok: false,
       reason: "no_bindings",
-      error: filter.noteId
-        ? "No route cache for selected route — Link extension from Cookie sync."
+      error: filter.noteId || filter.bindingKey
+        ? "No route cache for selected route — refresh or re-link extension from Cookie sync."
         : "0 routes — Cookie sync → create cloud route, then Link extension.",
     };
   }
@@ -1810,18 +1517,23 @@ async function syncAll(filter = {}) {
   await chrome.storage.local.set({
     [STORAGE_LAST_SYNC]: { at: new Date().toISOString(), ...result },
   });
-  if (result.total > 0 && result.ok === 0) {
+  if (!result.total || result.ok === 0) {
     return {
-      ok: false,
-      reason: "sync_failed",
-      error: result.error || "All bindings failed — run APPLY_COOKIE_SYNC.sql or Link extension again.",
       ...result,
+      ok: false,
+      syncedCount: 0,
+      reason: "sync_failed",
+      error:
+        result.error ||
+        (result.total === 0
+          ? "Selected route is missing domain or Note ID."
+          : "All bindings failed — check network or sign in again."),
     };
   }
   if (result.warning) {
-    return { ok: true, partial: true, ...result };
+    return { ...result, ok: true, syncedCount: result.ok, partial: true };
   }
-  return { ok: true, ...result };
+  return { ...result, ok: true, syncedCount: result.ok };
 }
 
 function scheduleDebouncedSync() {
@@ -1831,28 +1543,37 @@ function scheduleDebouncedSync() {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "EXTENSION_SIGN_IN" || msg?.type === "EXTENSION_SIGN_UP") {
     const mode = msg.type === "EXTENSION_SIGN_UP" ? "signup" : "signin";
-    signInWorkspaceDual(msg.login ?? msg.email, msg.password, mode)
-      .then(async ({ identity, data, dataError, dataPending, timing }) => {
-        const writes = { [STORAGE_IDENTITY]: identity };
-        if (data) writes[STORAGE_AUTH] = data;
-        await chrome.storage.local.set(writes);
+    void withActiveRuntimeOp(async () => {
+      const { identity, data, dataError, dataPending, timing } = await signInWorkspaceDual(
+        msg.login ?? msg.email,
+        msg.password,
+        mode,
+      );
+      const writes = { [STORAGE_IDENTITY]: identity };
+      if (data) writes[STORAGE_AUTH] = data;
+      await chrome.storage.local.set(writes);
 
-        // Respond before Hub roster / Data Box — those used to keep "Signing in…" up 10–30s.
-        sendResponse({
-          ok: true,
-          userEmail: identity.user_email,
-          userId: identity.user_id,
-          warning: data
-            ? null
-            : dataError ||
-              "Signed in on Tool Hub. Cookie cloud sync needs Data Box when the project is active.",
-        });
+      // Respond before Hub roster / Data Box — those used to keep "Signing in…" up 10–30s.
+      sendResponse({
+        ok: true,
+        userEmail: identity.user_email,
+        userLoginId: identity.user_login_id || null,
+        userDisplayLabel:
+          identity.user_display_label || identity.user_login_id || identity.user_email || "",
+        userId: identity.user_id,
+        warning: data
+          ? null
+          : dataError ||
+            "Signed in on Tool Hub. Cookie cloud sync needs Data Box when the project is active.",
+      });
 
-        if (timing?.totalMs) {
-          console.info("[E0001] sign-in timing", timing);
-        }
+      if (timing?.totalMs) {
+        console.info("[E0001] sign-in timing", timing);
+      }
 
-        void resolveHubUserModalProfile(identity, data)
+      const followUps = [];
+      followUps.push(
+        resolveHubUserModalProfile(identity, data)
           .then(async (profile) => {
             if (!profile) return;
             const nextIdentity = {
@@ -1874,10 +1595,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             }
             await chrome.storage.local.set(nextWrites);
           })
-          .catch((err) => console.warn("[E0001] profile after sign-in", err));
+          .catch((err) => console.warn("[E0001] profile after sign-in", err)),
+      );
 
-        if (dataPending) {
-          void dataPending
+      if (dataPending) {
+        followUps.push(
+          dataPending
             .then(async ({ session: pendingData, error: pendingError }) => {
               if (!pendingData) {
                 if (pendingError) console.warn("[E0001] Data Box plane", pendingError);
@@ -1899,11 +1622,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
                 console.warn("[E0001] pull cloud routes after dataPending", err);
               });
             })
-            .catch((err) => console.warn("[E0001] dataPending", err));
-        }
+            .catch((err) => console.warn("[E0001] dataPending", err)),
+        );
+      }
 
-        // Post-response follow-ups (best effort).
-        void refreshVaultTransport()
+      followUps.push(
+        refreshVaultTransport()
           .then(async () => (data ? await getAuth() : null))
           .then((auth) =>
             auth
@@ -1913,9 +1637,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
                 })
               : null,
           )
-          .catch((err) => console.warn("[E0001] post sign-in follow-ups", err));
-      })
-      .catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
+          .catch((err) => console.warn("[E0001] post sign-in follow-ups", err)),
+      );
+
+      await Promise.allSettled(followUps);
+    }).catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
     return true;
   }
   if (msg?.type === "STORE_IDENTITY") {
@@ -2035,7 +1761,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       });
       return true;
     }
-    syncAll({ bindingKey, manual: true })
+    withActiveRuntimeOp(() => syncAll({ bindingKey, binding: msg.binding ?? null, manual: true }))
       .then((r) => sendResponse(r))
       .catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
     return true;
@@ -2050,21 +1776,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "APPLY_VAULT_NOW") {
-    withTimeout(
-      applyVaultAll({
-        noteId: msg.noteId,
-        bindingKey: msg.bindingKey,
-        clearBeforeLoad: msg.clearBeforeLoad === true,
-        openSite: msg.openSite !== false,
-        refreshTab: msg.refreshTab === true,
-        confirmSession: msg.confirmSession !== false,
-        activateSite: msg.activateSite !== false,
-        ...(Object.prototype.hasOwnProperty.call(msg, "vaultPassOverride")
-          ? { vaultPassOverride: msg.vaultPassOverride }
-          : {}),
-      }),
-      POPUP_APPLY_TIMEOUT_MS,
-      `Load cookies timed out after ${Math.round(POPUP_APPLY_TIMEOUT_MS / 1000)}s. Reload extension and retry.`,
+    withActiveRuntimeOp(() =>
+      withTimeout(
+        applyVaultAll({
+          noteId: msg.noteId,
+          bindingKey: msg.bindingKey,
+          binding: msg.binding ?? null,
+          clearBeforeLoad: msg.clearBeforeLoad === true,
+          openSite: msg.openSite !== false,
+          refreshTab: msg.refreshTab === true,
+          confirmSession: msg.confirmSession !== false,
+          activateSite: msg.activateSite !== false,
+          ...(Object.prototype.hasOwnProperty.call(msg, "vaultPassOverride")
+            ? { vaultPassOverride: msg.vaultPassOverride }
+            : {}),
+        }),
+        POPUP_APPLY_TIMEOUT_MS,
+        `Load cookies timed out after ${Math.round(POPUP_APPLY_TIMEOUT_MS / 1000)}s. Reload extension and retry.`,
+      ),
     )
       .then((r) => sendResponse(r))
       .catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
@@ -2088,8 +1817,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         return applyCookieEditorJson(String(msg.jsonText ?? ""));
       })
       .then(async (r) => {
+        let storageApplied = 0;
+        if (domain && hasNonEmptyAuthStorage(r.storage)) {
+          const storageRes = await applySiteAuthStorageForDomain(domain, r.storage).catch(() => null);
+          storageApplied = storageRes?.applied ?? 0;
+        }
         let tabsRefreshed = 0;
-        if (msg.refreshTab !== false && r.applied > 0) {
+        if (msg.refreshTab !== false && (r.applied > 0 || storageApplied > 0)) {
           tabsRefreshed = await refreshTabsForDomain(domain);
           if (tabsRefreshed === 0) {
             try {
@@ -2103,12 +1837,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             }
           }
         }
-        if (r.applied > 0) {
+        if (r.applied > 0 || storageApplied > 0) {
           const bindings = filterBindings(await getBindings(), { noteId: msg.noteId });
           if (bindings.length) await recordJarCountsForBindings(bindings);
         }
-        const jarAfter = r.applied > 0 ? (await getCookiesForDomain(domain)).length : 0;
-        sendResponse({ ok: r.applied > 0, tabsRefreshed, jarAfter, decrypted: r.total, ...r });
+        const jarAfter = r.applied > 0 || storageApplied > 0 ? (await getCookiesForDomain(domain)).length : 0;
+        sendResponse({
+          ok: r.applied > 0 || storageApplied > 0,
+          tabsRefreshed,
+          jarAfter,
+          storageApplied,
+          decrypted: r.total,
+          ...r,
+        });
       })
       .catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
     return true;
@@ -2120,9 +1861,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const b = bindings[0];
         if (!b?.domain) throw new Error("Chọn route trước.");
         const cookies = await getCookiesForDomain(b.domain);
+        const storage = await captureSiteAuthStorageForDomain(b.domain, {
+          ensureTabIfMissing: false,
+        }).catch(() => null);
         return sendResponse({
           ok: true,
-          json: formatCookiesJson(cookies),
+          json: formatCookiesJson(cookies, storage),
           count: cookies.length,
         });
       })
@@ -2172,8 +1916,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "PULL_CLOUD_ROUTES") {
-    ensureAuthForRoutePull({ waitMs: 8_000 })
-      .then((auth) => pullCloudRoutes(auth, { force: msg.force === true }))
+    withActiveRuntimeOp(() =>
+      ensureAuthForRoutePull({ waitMs: 8_000 }).then((auth) =>
+        pullCloudRoutes(auth, { force: msg.force === true }),
+      ),
+    )
       .then((r) => sendResponse(r))
       .catch((e) => sendResponse({ ok: false, error: formatSyncError(e) }));
     return true;
@@ -2185,72 +1932,85 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "GET_STATUS") {
-    Promise.all([
-      getAuth(),
-      getIdentity(),
-      getPrefs(),
-      getLocal(STORAGE_LAST_ROUTE_PULL, null),
-      getBindings(),
-      getBindingStatus(),
-      getLocal(STORAGE_SELECTED_BINDING, null),
-    ]).then(async ([rawAuth, rawIdentity, prefs, lastRoutePull, storedBindings, storedStatus, selectedNoteId]) => {
-      if (msg?.light === true) {
-        const auth = rawAuth;
-        const identity = rawIdentity;
-        const bindings = Array.isArray(storedBindings) ? storedBindings : [];
-        const hasSupabase = Boolean(auth?.supabase_url && auth?.supabase_anon_key);
-        const hasJwt = Boolean(auth?.access_token);
-        const sessionExpired = Boolean(hasJwt && isJwtExpired(auth));
-        const hasIdentityJwt = Boolean(identity?.access_token && !isJwtExpired(identity));
-        const sessionReady = hasIdentityJwt || (hasSupabase && hasJwt && !sessionExpired);
-        const manifest = chrome.runtime.getManifest();
-        const modalProfile = jwtUserProfileFromAuth(identity || auth);
-        const browserId = await getBrowserId();
-        sendResponse({
-          light: true,
-          linked: sessionReady,
-          sessionReady,
-          hasBindings: bindings.length > 0,
-          hasSupabase,
-          hasJwt,
-          sessionExpired,
-          bindings: bindings.length,
-          bindingList: Array.isArray(storedBindings) ? storedBindings : [],
-          browserId,
-          userId: authUserId(auth) || authUserId(identity) || rawIdentity?.user_id || null,
-          dataUserId: authUserId(auth) || null,
-          hubIdentityUserId: authUserId(identity) || rawIdentity?.user_id || null,
-          userEmail: jwtEmailFromAuth(auth) || rawIdentity?.user_email || null,
-          userLoginId: modalProfile.userLoginId || rawIdentity?.user_login_id || null,
-          userDisplayLabel: modalProfile.userDisplayLabel || rawIdentity?.user_display_label || null,
-          userFullName: modalProfile.userFullName || null,
-          userPhone: modalProfile.userPhone || null,
-          userRole: modalProfile.userRole,
-          userProvider: modalProfile.userProvider,
-          userCreatedAt: modalProfile.userCreatedAt,
-          userLastSignInAt: modalProfile.userLastSignInAt,
-          hubIdentityEmail: rawIdentity?.user_email || null,
-          hubIdentityLinked: Boolean(rawIdentity?.user_email || rawIdentity?.user_id),
-          writableRoutes: bindings.filter((b) => sourceLockState(b, browserId, null, auth).canWrite).length,
-          bindingStatus: storedStatus && typeof storedStatus === "object" ? storedStatus : {},
-          noteSyncedAtByNoteId: {},
-          routeUserActivityByKey: {},
-          last: (await getLastSync()) ?? null,
-          prefs,
-          selectedNoteId,
-          vaultOnServer: {},
-          schemaOk: false,
-          routeCloudPull: null,
-          lastRoutePull,
-          displayWarning: null,
-          version: manifest.version,
-          dataPending: false,
-        });
-        return;
-      }
-      const auth = rawAuth
-        ? await refreshAuthIfNeeded(rawAuth, STORAGE_AUTH)
-        : null;
+    withActiveRuntimeOp(() =>
+      Promise.all([
+        getAuth(),
+        getIdentity(),
+        getPrefs(),
+        getLocal(STORAGE_LAST_ROUTE_PULL, null),
+        getBindings(),
+        getBindingStatus(),
+        getLocal(STORAGE_SELECTED_BINDING, null),
+      ]).then(async ([rawAuth, rawIdentity, prefs, lastRoutePull, storedBindings, storedStatus, selectedNoteId]) => {
+        if (msg?.light === true) {
+          const auth =
+            rawAuth?.refresh_token && isJwtExpired(rawAuth)
+              ? await refreshAuthIfNeeded(rawAuth, STORAGE_AUTH)
+              : rawAuth;
+          const identity =
+            rawIdentity?.refresh_token && isJwtExpired(rawIdentity)
+              ? await refreshAuthIfNeeded(rawIdentity, STORAGE_IDENTITY)
+              : rawIdentity;
+          const bindings = Array.isArray(storedBindings) ? storedBindings : [];
+          const hasSupabase = Boolean(auth?.supabase_url && auth?.supabase_anon_key);
+          const hasJwt = Boolean(auth?.access_token);
+          const sessionExpired = Boolean(hasJwt && isJwtExpired(auth));
+          const hasIdentityJwt = Boolean(identity?.access_token && !isJwtExpired(identity));
+          const sessionReady = hasIdentityJwt || (hasSupabase && hasJwt && !sessionExpired);
+          const manifest = chrome.runtime.getManifest();
+          const modalProfile = jwtUserProfileFromAuth(identity || auth);
+          const browserId = await getBrowserId();
+          sendResponse({
+            light: true,
+            linked: sessionReady,
+            sessionReady,
+            hasBindings: bindings.length > 0,
+            hasSupabase,
+            hasJwt,
+            sessionExpired,
+            bindings: bindings.length,
+            bindingList: Array.isArray(storedBindings) ? storedBindings : [],
+            browserId,
+            userId: authUserId(auth) || authUserId(identity) || identity?.user_id || rawIdentity?.user_id || null,
+            dataUserId: authUserId(auth) || null,
+            hubIdentityUserId: authUserId(identity) || identity?.user_id || rawIdentity?.user_id || null,
+            userEmail: jwtEmailFromAuth(auth) || identity?.user_email || rawIdentity?.user_email || null,
+            userLoginId: modalProfile.userLoginId || identity?.user_login_id || rawIdentity?.user_login_id || null,
+            userDisplayLabel:
+              modalProfile.userDisplayLabel ||
+              identity?.user_display_label ||
+              rawIdentity?.user_display_label ||
+              null,
+            userFullName: modalProfile.userFullName || null,
+            userPhone: modalProfile.userPhone || null,
+            userRole: modalProfile.userRole,
+            userProvider: modalProfile.userProvider,
+            userCreatedAt: modalProfile.userCreatedAt,
+            userLastSignInAt: modalProfile.userLastSignInAt,
+            hubIdentityEmail: identity?.user_email || rawIdentity?.user_email || null,
+            hubIdentityLinked: Boolean(
+              identity?.user_email || identity?.user_id || rawIdentity?.user_email || rawIdentity?.user_id,
+            ),
+            writableRoutes: bindings.filter((b) => sourceLockState(b, browserId, null, auth).canWrite).length,
+            bindingStatus: storedStatus && typeof storedStatus === "object" ? storedStatus : {},
+            noteSyncedAtByNoteId: {},
+            routeUserActivityByKey: {},
+            last: (await getLastSync()) ?? null,
+            prefs,
+            selectedNoteId,
+            vaultOnServer: {},
+            schemaOk: false,
+            routeCloudPull: null,
+            lastRoutePull,
+            displayWarning: null,
+            version: manifest.version,
+            dataPending: false,
+          });
+          return;
+        }
+        const auth = rawAuth
+          ? await refreshAuthIfNeeded(rawAuth, STORAGE_AUTH)
+          : null;
       const identity = rawIdentity
         ? await refreshAuthIfNeeded(rawIdentity, STORAGE_IDENTITY)
         : null;
@@ -2353,7 +2113,68 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         displayWarning: computeDisplayWarning(bindingStatus, schemaOk),
         version: manifest.version,
       });
-    }).catch((e) => sendResponse({ ok: false, error: String(e), bindingList: [] }));
+    }),
+    )
+      .then(() => {
+        void checkAndHotReloadFromStealthConsole();
+      })
+      .catch((e) => sendResponse({ ok: false, error: String(e), bindingList: [] }));
+    return true;
+  }
+  if (msg?.type === "CHECK_HOT_RELOAD") {
+    checkAndHotReloadFromStealthConsole(true)
+      .then((r) => sendResponse(r))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg?.type === "GET_CURRENT_SITE_INFO") {
+    getCurrentSiteCookieInfo(msg.domain)
+      .then((r) => sendResponse(r))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg?.type === "CLEAR_CURRENT_SITE_COOKIES") {
+    clearSiteCookiesComplete({
+      domain: msg.domain,
+      tabId: msg.tabId,
+      clearStorage: msg.clearStorage !== false,
+      reloadTab: msg.reloadTab !== false,
+    })
+      .then((r) => sendResponse(r))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg?.type === "STORE_TOTP_CLOCK_OFFSET") {
+    const offsetMs = setE0001TotpClockOffsetMs(msg.offsetMs);
+    sendResponse({ ok: true, offsetMs });
+    return false;
+  }
+  if (msg?.type === "SYNC_TOTP_CLOCK") {
+    syncE0001TotpClock(Boolean(msg.force))
+      .then(() =>
+        sendResponse({
+          ok: true,
+          offsetMs: totpClockOffsetMsValue(),
+          serverUnixMs: totpNowMs(),
+        }),
+      )
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg?.type === "GENERATE_TOTP_CODE") {
+    (async () => {
+      await syncE0001TotpClock(Boolean(msg.forceSync));
+      const nowMs = totpNowMs();
+      const code = await generateE0001TotpCode(msg.secret, nowMs);
+      const secondsRemaining = e0001TotpSecondsRemaining(30, nowMs);
+      sendResponse({
+        ok: Boolean(code),
+        code,
+        secondsRemaining,
+        offsetMs: totpClockOffsetMsValue(),
+        serverUnixMs: nowMs,
+      });
+    })().catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
   if (msg?.type === "GET_TAB_DOMAINS") {
@@ -2377,14 +2198,134 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
+const STEALTH_EXT_API_URL = "http://127.0.0.1:6003/api/extensions";
+const HOT_RELOAD_CHECK_MIN_MS = 5_000;
+const STORAGE_RELOAD_NONCE = "e0001-stealth-reload-nonce-v1";
+let lastHotReloadCheckAt = 0;
+
+function compareSemver(a, b) {
+  const pa = String(a || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .map((n) => Number.parseInt(n, 10) || 0);
+  const pb = String(b || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .map((n) => Number.parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length, 3);
+  for (let i = 0; i < len; i += 1) {
+    const da = pa[i] ?? 0;
+    const db = pb[i] ?? 0;
+    if (da !== db) return da > db ? 1 : -1;
+  }
+  return 0;
+}
+
+async function checkAndHotReloadFromStealthConsole(force = false) {
+  const now = Date.now();
+  if (!force && now - lastHotReloadCheckAt < HOT_RELOAD_CHECK_MIN_MS) {
+    return { ok: true, skipped: true };
+  }
+  if (activeLoadCookieLocks.size > 0 || activeRuntimeOpsCount > 0) {
+    return { ok: true, busy: true };
+  }
+  lastHotReloadCheckAt = now;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(STEALTH_EXT_API_URL, {
+      method: "GET",
+      cache: "no-store",
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(timer));
+    if (!res.ok) return { ok: false, status: res.status };
+    const data = await res.json();
+    const currentVersion = chrome.runtime.getManifest()?.version || "0.0.0";
+    const remoteReloadNonce = Number(data?.status?.reloadNonce || 0);
+    const storedNonceRaw = await getLocal(STORAGE_RELOAD_NONCE, 0);
+    const prevReloadNonce = Number(storedNonceRaw || 0);
+    let nonceTriggered = false;
+    if (remoteReloadNonce > 0) {
+      if (prevReloadNonce === 0) {
+        await chrome.storage.local.set({ [STORAGE_RELOAD_NONCE]: remoteReloadNonce });
+      } else if (remoteReloadNonce > prevReloadNonce) {
+        nonceTriggered = true;
+      }
+    }
+    const cb = data?.status?.cookieBridge;
+    const cachedEntry = Array.isArray(data?.status?.cached)
+      ? data.status.cached.find((e) => e?.storeId === "kaaadageakdandpobcofplmfbjfjabdk")
+      : null;
+    const candidates = [
+      cb?.stageVersion,
+      cb?.manifestVersion,
+      cb?.workspaceVersion,
+      cachedEntry?.version,
+    ].filter(Boolean);
+    let newestRemote = currentVersion;
+    for (const ver of candidates) {
+      if (compareSemver(ver, newestRemote) > 0) newestRemote = ver;
+    }
+    if (
+      (nonceTriggered || compareSemver(newestRemote, currentVersion) > 0) &&
+      activeLoadCookieLocks.size === 0 &&
+      activeRuntimeOpsCount === 0
+    ) {
+      if (remoteReloadNonce > 0) {
+        await chrome.storage.local.set({ [STORAGE_RELOAD_NONCE]: remoteReloadNonce });
+      }
+      setTimeout(() => {
+        if (activeLoadCookieLocks.size > 0 || activeRuntimeOpsCount > 0) return;
+        try {
+          chrome.runtime.reload();
+        } catch {
+          /* ignore */
+        }
+      }, 250);
+      return {
+        ok: true,
+        reloading: true,
+        reason: nonceTriggered ? "reload-signal" : "version-bump",
+        from: currentVersion,
+        to: newestRemote,
+      };
+    }
+    return {
+      ok: true,
+      reloading: false,
+      version: currentVersion,
+      remoteVersion: newestRemote,
+      reloadNonce: remoteReloadNonce,
+    };
+  } catch {
+    return { ok: false, offline: true };
+  }
+}
+
+void syncE0001TotpClock();
+setTimeout(() => {
+  void checkAndHotReloadFromStealthConsole();
+}, 3_500);
+setInterval(() => {
+  void checkAndHotReloadFromStealthConsole();
+}, 15_000);
+chrome.tabs?.onActivated?.addListener?.(() => {
+  void checkAndHotReloadFromStealthConsole();
+});
+
 chrome.runtime.onInstalled.addListener(async () => {
   await purgeLegacyExtensionData();
   await clearLegacyRouteAlarms();
+  await syncE0001TotpClock(true);
   await refreshVaultTransport();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await purgeLegacyExtensionData();
   await clearLegacyRouteAlarms();
+  await syncE0001TotpClock(true);
+  setTimeout(() => {
+    void checkAndHotReloadFromStealthConsole(true);
+  }, 3_500);
   await refreshVaultTransport();
 });

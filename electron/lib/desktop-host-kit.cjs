@@ -60,7 +60,9 @@ function hasPackagedAppUpdateYml(app) {
 function readVersionFromPackageJson(pkgPath) {
   try {
     if (!pkgPath || !fs.existsSync(pkgPath)) return "";
-    return String(JSON.parse(fs.readFileSync(pkgPath, "utf8"))?.version || "").trim();
+    const raw = fs.readFileSync(pkgPath, "utf8");
+    if (!raw || raw.includes("\u0000")) return "";
+    return String(JSON.parse(raw)?.version || "").trim();
   } catch {
     return "";
   }
@@ -71,8 +73,9 @@ function isHotPatchFreshForResources(resourcesDir) {
   const hotDir = path.join(resourcesDir, "hot-patch");
   if (!fs.existsSync(hotDir)) return false;
   const hotVer = readVersionFromPackageJson(path.join(hotDir, "package.json"));
+  if (!hotVer) return false;
   const baseVer = readVersionFromPackageJson(path.join(resourcesDir, "app.asar", "package.json"));
-  if (baseVer && hotVer && compareSemver(baseVer, hotVer) > 0) {
+  if (baseVer && compareSemver(baseVer, hotVer) > 0) {
     return false;
   }
   return true;
@@ -109,7 +112,7 @@ function resolveDesktopProductVersion(app, opts = {}) {
       : [hotPatchPkg, asarPkg, altPkg, localParentPkg, localGrandParentPkg];
     for (const candidate of candidates) {
       if (!candidate || !fs.existsSync(candidate)) continue;
-      const ver = String(JSON.parse(fs.readFileSync(candidate, "utf8")).version || "").trim();
+      const ver = readVersionFromPackageJson(candidate);
       if (ver) return ver;
     }
   } catch {
@@ -1159,6 +1162,25 @@ function createDesktopHotReloadControlBridge(opts = {}) {
       /* ignore */
     }
 
+    try {
+      const menuPath = fs.existsSync(path.join(electronDir, "lib", "desktop-app-menu.cjs"))
+        ? path.join(electronDir, "lib", "desktop-app-menu.cjs")
+        : path.join(__dirname, "desktop-app-menu.cjs");
+      if (fs.existsSync(menuPath)) {
+        try {
+          delete require.cache[require.resolve(menuPath)];
+        } catch {
+          /* ignore */
+        }
+        const { installDesktopAppMenu } = require(menuPath);
+        if (typeof installDesktopAppMenu === "function") {
+          installDesktopAppMenu();
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
     let hostReloaded = false;
     let hostReloadError = null;
     if (body.reloadHost !== false && typeof onReloadHost === "function") {
@@ -1219,7 +1241,6 @@ function createDesktopHotReloadControlBridge(opts = {}) {
 
     let displayDiagnostics = null;
     let trappedInNonInteractiveS4u = false;
-    let selfExitingForInteractiveRelaunch = false;
     try {
       const { screen } = require("electron");
       const cursorPt = screen?.getCursorScreenPoint ? screen.getCursorScreenPoint() : { x: 0, y: 0 };
@@ -1230,7 +1251,6 @@ function createDesktopHotReloadControlBridge(opts = {}) {
       };
       if (Number(cursorPt?.x ?? 0) < -100000 && (body.showWindow || body.quitIfNonInteractive !== false)) {
         trappedInNonInteractiveS4u = true;
-        selfExitingForInteractiveRelaunch = true;
         removeControlRecord();
         setTimeout(() => {
           try {

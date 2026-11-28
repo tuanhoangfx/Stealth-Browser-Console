@@ -14,6 +14,87 @@ const {
 } = require("../lib/proxy-pool.cjs");
 const { extractProfileCode } = require("../lib/profile-code.cjs");
 const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
+const { waitForCdp } = require("../lib/net-port.cjs");
+const { refreshWorkerSessionsSnapshot } = require("../lib/worker-sessions-bridge.cjs");
+
+/**
+ * Resolves live CDP info across local SessionManager (`isRunning`/`getCdpInfo`/`listRunning`)
+ * and headless worker daemon sessions (`:6004`), enforcing the user-headed guard.
+ */
+async function resolveProfileCdpWithFallbacks({
+  sessionManager,
+  profileId,
+  preferAgent = false,
+  allowUserHeaded = false,
+}) {
+  if (!allowUserHeaded && sessionManager.isUserInteractiveSession?.(profileId) === true) {
+    sessionManager.enqueueDeferredAgentTask?.(profileId, { reason: "agent_cdp_route_while_user_headed" });
+    return {
+      status: 409,
+      payload: {
+        ok: false,
+        skipped: "user_interactive_session",
+        error: "user_interactive_session_active",
+        headless: false,
+      },
+    };
+  }
+  const localRunning = Boolean(sessionManager.isRunning?.(profileId));
+  let info = localRunning
+    ? await sessionManager.getCdpInfo(profileId, { preferAgent }).catch(() => ({ ok: false, reason: "not-running" }))
+    : { ok: false, reason: "not-running" };
+  if (info?.ok) {
+    return { status: 200, info };
+  }
+  if (!info?.ok && (!localRunning || info?.reason === "not-running")) {
+    const localRows = (typeof sessionManager.listRunning === "function" ? sessionManager.listRunning() : []) || [];
+    const workerRows = await refreshWorkerSessionsSnapshot().catch(() => []);
+    const candidates = [...localRows, ...(Array.isArray(workerRows) ? workerRows : [])];
+    const hit = candidates.find(
+      (r) =>
+        r &&
+        (String(r.id || "") === String(profileId) || String(r.profileId || "") === String(profileId)) &&
+        Number(r.debugPort) > 0,
+    );
+    if (hit) {
+      if (!allowUserHeaded && hit.headless !== true && hit.shadowLane !== true) {
+        sessionManager.enqueueDeferredAgentTask?.(profileId, { reason: "agent_cdp_route_while_user_headed" });
+        return {
+          status: 409,
+          payload: {
+            ok: false,
+            skipped: "user_interactive_session",
+            error: "user_interactive_session_active",
+            headless: false,
+          },
+        };
+      }
+      const port = Number(hit.debugPort);
+      const cdpVer = await waitForCdp(port, { attempts: 3, intervalMs: 50 }).catch(() => null);
+      if (cdpVer?.webSocketDebuggerUrl) {
+        return {
+          status: 200,
+          info: {
+            ok: true,
+            port,
+            endpoint: `http://127.0.0.1:${port}`,
+            webSocketDebuggerUrl: cdpVer.webSocketDebuggerUrl,
+            browser: cdpVer.Browser,
+            shadowLane: Boolean(hit.shadowLane),
+            headless: Boolean(hit.headless),
+            ...(hit.remoteWorker ? { remoteWorker: true, workerPort: hit.workerPort } : {}),
+          },
+        };
+      }
+      return { status: 503, payload: { ok: false, error: "CDP không sẵn sàng" } };
+    }
+  }
+  if (!localRunning) {
+    return { status: 409, payload: { ok: false, error: "Profile chưa launch — không có CDP endpoint" } };
+  }
+  const status = info?.reason === "not-running" ? 409 : 503;
+  return { status, payload: { ok: false, error: info?.reason || "CDP không sẵn sàng" } };
+}
 
 function collectRunningProfileModeMap(sessionManager) {
   const runningProfiles = {};
@@ -104,9 +185,6 @@ function buildCdpProxyAndJobRoutes(deps) {
       pattern: /^\/api\/profiles\/([^/]+)\/cdp$/,
       async handler(ctx) {
         const profileId = ctx.params[1];
-        if (!sessionManager.isRunning(profileId)) {
-          return send.json(ctx.res, 409, { ok: false, error: "Profile chưa launch — không có CDP endpoint" });
-        }
         const q = ctx.query;
         const allowUserHeaded =
           q?.get?.("allowUserHeaded") === "1" ||
@@ -118,21 +196,16 @@ function buildCdpProxyAndJobRoutes(deps) {
             q?.get?.("headless") === "1" ||
             q?.get?.("shadowLane") === "1",
         );
-        if (!allowUserHeaded && sessionManager.isUserInteractiveSession?.(profileId) === true) {
-          sessionManager.enqueueDeferredAgentTask?.(profileId, { reason: "agent_cdp_route_while_user_headed" });
-          return send.json(ctx.res, 409, {
-            ok: false,
-            skipped: "user_interactive_session",
-            error: "user_interactive_session_active",
-            headless: false,
-          });
+        const resolved = await resolveProfileCdpWithFallbacks({
+          sessionManager,
+          profileId,
+          preferAgent,
+          allowUserHeaded,
+        });
+        if (resolved.info?.ok) {
+          return send.json(ctx.res, 200, { ok: true, ...resolved.info });
         }
-        const info = await sessionManager.getCdpInfo(profileId, { preferAgent });
-        if (!info.ok) {
-          const status = info.reason === "not-running" ? 409 : 503;
-          return send.json(ctx.res, status, { ok: false, error: info.reason || "CDP không sẵn sàng" });
-        }
-        return send.json(ctx.res, 200, { ok: true, ...info });
+        return send.json(ctx.res, resolved.status || 409, resolved.payload);
       },
     },
     {
@@ -148,12 +221,15 @@ function buildCdpProxyAndJobRoutes(deps) {
           const profileCode = profile
             ? extractProfileCode(profile.name, profile.id)
             : rawIdOrName.replace(/\D/g, "").padStart(4, "0");
-          if (!sessionManager.isRunning(profileId)) {
-            return send.json(ctx.res, 409, { ok: false, error: "Profile chưa launch — không có CDP endpoint" });
-          }
-          const info = await sessionManager.getCdpInfo(profileId, { preferAgent: true });
+          const resolved = await resolveProfileCdpWithFallbacks({
+            sessionManager,
+            profileId,
+            preferAgent: true,
+            allowUserHeaded: process.env.STEALTH_ALLOW_AGENT_ON_USER_HEADED === "1",
+          });
+          const info = resolved.info;
           if (!info?.ok || !info.wsEndpoint) {
-            return send.json(ctx.res, 503, { ok: false, error: info?.reason || "CDP không sẵn sàng" });
+            return send.json(ctx.res, resolved.status || 503, resolved.payload || { ok: false, error: "CDP không sẵn sàng" });
           }
           const result = await autofillProfileBillingViaCdp({
             wsEndpoint: info.wsEndpoint,
@@ -483,29 +559,88 @@ function buildCdpProxyAndJobRoutes(deps) {
         }
         const boardMod = require(boardPath);
         const includeScreenshot = ctx.query.get("screenshot") !== "0";
-        const { loadAndroidStealthBridge } = require(nodePath.join(__dirname, "..", "lib", "android-bridge-loader.cjs"));
-        const iosBridge = require(nodePath.join(__dirname, "..", "lib", "ios-stealth-bridge.cjs"));
-        const bridge = await loadAndroidStealthBridge(nodePath.join(__dirname, "..")).catch(() => null);
-        const [board, rawLive, simFleet] = await Promise.all([
-          Promise.resolve(boardMod.collectMobileFarmExecutionBoard()),
-          bridge
-            ? bridge
-                .getAndroidLiveScreenAndFarmState({ displayId: "all", includeScreenshot, allDevices: true })
-                .then((out) =>
-                  iosBridge.augmentLiveScreenResponse(out, { includeScreenshot, allDevices: true }).catch(() => out),
-                )
-                .catch(() => null)
-            : Promise.resolve(null),
-          fetch("http://127.0.0.1:6016/api/mobile-sim/fleet", { signal: AbortSignal.timeout(1200) })
-            .then((r) => (r.ok ? r.json() : null))
-            .catch(() => null),
-        ]);
+        const forceFresh = ctx.query.get("fresh") === "1";
+        const cacheKey = includeScreenshot ? "shot1" : "shot0";
+        if (!globalThis.__p0003LiveFleetSwrCache) {
+          globalThis.__p0003LiveFleetSwrCache = { shot0: null, shot1: null, inFlight: {} };
+        }
+        const swr = globalThis.__p0003LiveFleetSwrCache;
+        const nowMs = Date.now();
+        const ttlMs = includeScreenshot ? 5500 : 3500;
+        const staleMaxMs = 30_000;
+
+        const refreshLiveScreenAndSim = async () => {
+          if (swr.inFlight[cacheKey]) return swr.inFlight[cacheKey];
+          const probeTimeoutMs = includeScreenshot ? 8500 : 5500;
+          const p = (async () => {
+            try {
+              const { loadAndroidStealthBridge } = require(nodePath.join(__dirname, "..", "lib", "android-bridge-loader.cjs"));
+              const iosBridge = require(nodePath.join(__dirname, "..", "lib", "ios-stealth-bridge.cjs"));
+              const bridge = await loadAndroidStealthBridge(nodePath.join(__dirname, "..")).catch(() => null);
+              const livePromise = bridge
+                ? bridge
+                    .getAndroidLiveScreenAndFarmState({ displayId: "all", includeScreenshot, allDevices: true })
+                    .then((out) =>
+                      iosBridge.augmentLiveScreenResponse(out, { includeScreenshot, allDevices: true }).catch(() => out),
+                    )
+                    .catch(() => null)
+                : Promise.resolve(null);
+              const simPromise = fetch("http://127.0.0.1:6016/api/mobile-sim/fleet", { signal: AbortSignal.timeout(1800) })
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => swr[cacheKey]?.simFleet || swr.shot0?.simFleet || swr.shot1?.simFleet || null);
+              const [rawLive, simFleet] = await Promise.race([
+                Promise.all([livePromise, simPromise]),
+                new Promise((resolve) =>
+                  setTimeout(
+                    () =>
+                      resolve([
+                        swr[cacheKey]?.rawLive || swr.shot0?.rawLive || swr.shot1?.rawLive || null,
+                        swr[cacheKey]?.simFleet || swr.shot0?.simFleet || swr.shot1?.simFleet || null,
+                      ]),
+                    probeTimeoutMs,
+                  ),
+                ),
+              ]);
+              const entry = { ts: Date.now(), rawLive, simFleet };
+              swr[cacheKey] = entry;
+              if (includeScreenshot && rawLive) {
+                swr.shot0 = { ts: entry.ts, rawLive, simFleet };
+              }
+              return entry;
+            } finally {
+              delete swr.inFlight[cacheKey];
+            }
+          })();
+          swr.inFlight[cacheKey] = p;
+          return p;
+        };
+
+        const board = boardMod.collectMobileFarmExecutionBoard();
+        const cached = swr[cacheKey] || (!includeScreenshot ? swr.shot1 : null);
+        if (!forceFresh && cached && nowMs - cached.ts <= staleMaxMs) {
+          if (nowMs - cached.ts > ttlMs) {
+            void refreshLiveScreenAndSim().catch(() => null);
+          }
+          return send.json(ctx.res, 200, {
+            ok: true,
+            cached: true,
+            cacheAgeMs: nowMs - cached.ts,
+            updatedAt: new Date().toISOString(),
+            board,
+            liveScreen: cached.rawLive,
+            simFleet: cached.simFleet,
+          });
+        }
+
+        const fresh = await refreshLiveScreenAndSim();
         return send.json(ctx.res, 200, {
           ok: true,
+          cached: false,
+          cacheAgeMs: 0,
           updatedAt: new Date().toISOString(),
           board,
-          liveScreen: rawLive,
-          simFleet,
+          liveScreen: fresh?.rawLive || null,
+          simFleet: fresh?.simFleet || null,
         });
       },
     },

@@ -154,13 +154,15 @@ export function ProfilesRuntimeProvider({
           `Catalog ready — ${data.stats.total.toLocaleString()} profiles (${data.stats.headedRunning ?? 0} running, ${data.stats.headlessRunning ?? 0} headless, ${data.stats.deferred ?? 0} waiting)`,
         );
       }
-      void refreshHistory();
+      if (view === "workflow") {
+        void refreshHistory();
+      }
     } catch (error) {
       addLog("error", "System", error instanceof Error ? error.message : "Unable to refresh profiles.");
     } finally {
       setSyncBusy(false);
     }
-  }, [addLog, refreshHistory]);
+  }, [addLog, refreshHistory, view]);
 
   const refreshCatalogStats = useCallback(async () => {
     try {
@@ -304,7 +306,7 @@ export function ProfilesRuntimeProvider({
       }
       void refreshRunningHeadless();
       void refreshCatalogStats();
-    }, 4000);
+    }, 15_000);
     const onVisChange = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
         void refreshRunningHeadless();
@@ -323,7 +325,7 @@ export function ProfilesRuntimeProvider({
   }, [refreshRunningHeadless, refreshCatalogStats]);
 
   useEffect(() => {
-    if (view === "profiles" || view === "workflow") {
+    if (view === "workflow") {
       void refreshHistory();
     }
   }, [view, refreshHistory]);

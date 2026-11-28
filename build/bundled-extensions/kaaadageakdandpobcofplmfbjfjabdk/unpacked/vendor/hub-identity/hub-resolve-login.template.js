@@ -3,7 +3,7 @@
 import { classifyHubLoginIdentifier, sanitizeHubLoginInput } from "./hub-login.js";
 
 /** CF Worker gateway - extensions have no same-origin /api. */
-export const HUB_RESOLVE_LOGIN_API_URL = "https://api.infi.io.vn/hub/auth/resolve-login";
+export const HUB_RESOLVE_LOGIN_API_URL = "https://api.infi28.com/hub/auth/resolve-login";
 
 const RESOLVE_TIMEOUT_MS = 8000;
 const RESOLVE_CACHE_TTL_MS = 10 * 60 * 1000;

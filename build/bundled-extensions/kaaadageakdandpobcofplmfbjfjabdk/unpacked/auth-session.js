@@ -13,6 +13,7 @@ import {
 } from "./vendor/hub-identity/hub-login.js";
 import { signInWithHubPassword } from "./vendor/hub-identity/hub-auth-submit.js";
 import { resolveHubLoginEmails } from "./vendor/hub-identity/hub-resolve-login.js";
+import { totpNowMs } from "./totp-clock.js";
 
 const INVALID_LOGIN = /invalid login credentials/i;
 const AUTH_FETCH_TIMEOUT_MS = 16_000;
@@ -21,8 +22,9 @@ const HUB_SIGNIN_FAILED_MESSAGE = "Sign-in failed. Please try again.";
 const HUB_SIGNUP_FAILED_MESSAGE =
   "Sign-up failed. Try a different User ID, or Sign In if this account already exists.";
 const HUB_SIGNUP_ALREADY_REGISTERED_MESSAGE = "This User ID is already registered. Use Sign In.";
-const HUB_PASSWORD_RESET_REDIRECT = "https://infi.io.vn/";
-const HUB_AUTH_GATEWAY_SIGN_IN_URL = "https://api.infi.io.vn/hub/auth/sign-in";
+const HUB_PASSWORD_RESET_REDIRECT = "https://infi28.com/";
+const HUB_AUTH_GATEWAY_SIGN_IN_URL = "https://api.infi28.com/hub/auth/sign-in";
+const HUB_AUTH_GATEWAY_SYNC_MIRROR_URL = "https://api.infi28.com/hub/auth/sync-mirror-password";
 const GATEWAY_AUTH_STATUSES = new Set([502, 503, 504, 530]);
 const AUTH_TRANSPORT_ERROR =
   /message port closed|receiving end does not exist|could not establish connection|asynchronous response by returning true|message channel closed|extension context invalidated/i;
@@ -46,7 +48,7 @@ export function isJwtExpired(auth, bufferSec = 60) {
   if (!auth?.access_token) return true;
   const exp = Number(auth.expires_at);
   if (!exp) return false;
-  return exp <= Math.floor(Date.now() / 1000) + bufferSec;
+  return exp <= Math.floor(totpNowMs() / 1000) + bufferSec;
 }
 
 /** RPC note_sync_* — always anon JWT + pass (security definer). */
@@ -388,10 +390,104 @@ function dataMirrorEmail(_login, extraAuthEmails = []) {
   return extraAuthEmails.find(Boolean) || "";
 }
 
+export async function syncMirrorPasswordOnGateway({ mirrorEmail, password, loginInput }) {
+  const email = String(mirrorEmail ?? "").trim().toLowerCase();
+  if (!email || !password || String(password).length < 6) {
+    return { ok: false, error: "Invalid mirror email or password." };
+  }
+  try {
+    const res = await fetchWithTimeout(
+      HUB_AUTH_GATEWAY_SYNC_MIRROR_URL,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mirrorEmail: email,
+          password,
+          ...(loginInput ? { login: String(loginInput).trim() } : {}),
+        }),
+      },
+      10_000,
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      return { ok: false, error: data?.error || `HTTP ${res.status}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
+}
+
+export async function updateExtensionUserPassword(
+  newPassword,
+  { identity, auth, loginId, identityStorageKey = "e0001-hub-identity-v1", authStorageKey = "e0001-bridge-auth-v1" } = {},
+) {
+  const pwd = String(newPassword ?? "").trim();
+  if (pwd.length < 6) {
+    return { ok: false, message: "Password must be at least 6 characters." };
+  }
+  const liveIdentity = await refreshAuthIfNeeded(identity, identityStorageKey);
+  if (!liveIdentity?.access_token) {
+    return { ok: false, message: "Hub session expired. Sign out and sign in again." };
+  }
+  const hubUrl = `${String(liveIdentity.supabase_url || E0001_IDENTITY_SUPABASE_URL).replace(/\/$/, "")}/auth/v1/user`;
+  const hubKey = liveIdentity.supabase_anon_key || E0001_IDENTITY_SUPABASE_ANON_KEY;
+  const hubRes = await fetchWithTimeout(hubUrl, {
+    method: "PUT",
+    headers: {
+      apikey: hubKey,
+      Authorization: `Bearer ${liveIdentity.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ password: pwd }),
+  });
+  const hubText = await hubRes.text();
+  if (!hubRes.ok) {
+    return {
+      ok: false,
+      message: formatAuthGateError(parseApiErrorBody(hubText) || `Unable to update password (${hubRes.status})`),
+    };
+  }
+  const liveAuth = await refreshAuthIfNeeded(auth, authStorageKey);
+  let dataUpdated = false;
+  if (liveAuth?.access_token) {
+    const dataUrl = `${String(liveAuth.supabase_url || E0001_DATA_SUPABASE_URL).replace(/\/$/, "")}/auth/v1/user`;
+    const dataKey = liveAuth.supabase_anon_key || E0001_DATA_SUPABASE_ANON_KEY;
+    const dataRes = await fetchWithTimeout(dataUrl, {
+      method: "PUT",
+      headers: {
+        apikey: dataKey,
+        Authorization: `Bearer ${liveAuth.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password: pwd }),
+    }).catch(() => null);
+    dataUpdated = Boolean(dataRes?.ok);
+  }
+  if (!dataUpdated) {
+    const mirrorEmail = liveAuth?.user_email || liveIdentity?.user_email || "";
+    const loginInput = loginId || liveIdentity?.user_login_id || mirrorEmail;
+    if (mirrorEmail) {
+      await syncMirrorPasswordOnGateway({ mirrorEmail, password: pwd, loginInput });
+    }
+  }
+  return { ok: true, message: "Password updated." };
+}
+
 async function mirrorDataBoxSignUp(login, password, dataConfig, resolved, extraAuthEmails) {
   const primaryEmail = dataMirrorEmail(login, extraAuthEmails);
   if (!primaryEmail) {
     return { session: null, error: "Username sign-in requires resolve-login." };
+  }
+  const synced = await syncMirrorPasswordOnGateway({
+    mirrorEmail: primaryEmail,
+    password,
+    loginInput: login,
+  });
+  if (synced.ok) {
+    const retried = await trySignInWithPassword(primaryEmail, password, dataConfig);
+    if (retried.session) return retried;
   }
   try {
     const mirrored = await signUpWithPassword(

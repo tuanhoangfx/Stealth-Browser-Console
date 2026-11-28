@@ -276,6 +276,19 @@
   flex-shrink: 0;
 }
 
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+[data-icon] svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 .app-tab-header [data-icon],
 .hub-header-panel-btn [data-icon] {
   display: inline-flex;
@@ -304,17 +317,26 @@
   color: var(--muted);
   font-size: var(--hub-header-chrome-font-size, 12px);
   font-weight: var(--hub-header-chrome-font-weight, 500);
+  line-height: 1;
   white-space: nowrap;
 }
 
 .app-tab-header-stat-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", system-ui, sans-serif;
+  font-variant-emoji: emoji;
   font-size: 0.8125rem;
   line-height: 1;
+  transform: translateY(-1px);
 }
 
 .app-tab-header-stat-value {
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .hub-header-panel-btn--icon {
@@ -481,6 +503,50 @@
   gap: 0.45rem;
 }
 
+.hub-header-direct-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.625rem;
+  padding: 0 0.5rem;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  border-radius: 0.5rem;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.hub-header-direct-mode-btn[hidden] {
+  display: none !important;
+}
+
+.hub-header-direct-mode-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(251, 191, 36, 0.52);
+  color: #fef3c7;
+}
+
+.hub-header-direct-mode-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.hub-header-direct-mode-btn__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.24);
+  flex-shrink: 0;
+}
+
 .hub-main__body.body-scroll {
   display: flex;
   flex: 1;
@@ -606,6 +672,7 @@ table.hub-users-table[data-hub-directory-select] .hub-users-select-row {
 .hub-main__body .hub-directory-header-label {
   font-size: var(--hub-table-header-size, 12px);
   font-weight: 600;
+  line-height: 1;
 }
 
 .hub-main__body .th-label .ui-icon,
@@ -616,8 +683,15 @@ table.hub-users-table[data-hub-directory-select] .hub-users-select-row {
 
 .hub-main__body .hub-filter-option-emoji,
 .hub-main__body .route-cookie-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", system-ui, sans-serif;
+  font-variant-emoji: emoji;
   font-size: var(--hub-inline-emoji-size, 13px);
   line-height: 1;
+  transform: translateY(-1px);
 }
 
 .hub-main__body .table-wrap--max-five {
@@ -668,9 +742,15 @@ table.hub-users-table[data-hub-directory-select] .hub-users-select-row {
 }
 
 .hub-filter-option-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", system-ui, sans-serif;
+  font-variant-emoji: emoji;
   font-size: var(--hub-inline-emoji-size, 13px);
   line-height: 1;
   flex-shrink: 0;
+  transform: translateY(-1px);
 }
 
 .hub-ui-zoom-row {

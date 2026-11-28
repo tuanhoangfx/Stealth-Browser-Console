@@ -235,8 +235,11 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  --twofa-log-time-w: 4.65rem;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+  --twofa-log-time-w: 3.6rem;
   --twofa-log-meta-w: calc(6px + 0.4rem + var(--twofa-log-time-w));
 }
 
@@ -244,24 +247,31 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
+  flex-shrink: 0;
   gap: 0.35rem;
   min-width: 0;
+  max-width: 100%;
   font-size: var(--hub-adm-type-size, 12px);
   font-weight: var(--hub-adm-type-value-weight, 400);
-  line-height: var(--hub-adm-type-line, 1.45);
+  line-height: var(--hub-adm-type-line, 1.35);
 }
 
 .twofa-adm-log-row--detail {
   flex-direction: column;
   align-items: stretch;
-  gap: 0.2rem;
+  flex-shrink: 0;
+  gap: 0.1rem;
+  overflow: hidden;
 }
 
 .twofa-adm-log-row__head {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: var(--hub-inline-gap-name, 8px);
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .twofa-adm-log-row__action {
@@ -269,7 +279,7 @@
   align-items: center;
   gap: var(--hub-inline-gap-name, 8px);
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   font-weight: 400;
   color: var(--muted);
 }
@@ -281,11 +291,13 @@
 
 .twofa-adm-log-row__values {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.2rem;
   min-width: 0;
-  padding-left: var(--twofa-log-meta-w, calc(6px + 0.4rem + 4.65rem));
+  max-width: 100%;
+  overflow: hidden;
+  padding-left: var(--twofa-log-meta-w, calc(6px + 0.4rem + 3.6rem));
 }
 
 .twofa-adm-log-row--cell {
@@ -327,8 +339,8 @@
   gap: 0.4rem;
   flex-shrink: 0;
   min-height: 1.125rem;
-  width: var(--twofa-log-meta-w, calc(6px + 0.4rem + 4.65rem));
-  min-width: var(--twofa-log-meta-w, calc(6px + 0.4rem + 4.65rem));
+  width: var(--twofa-log-meta-w, calc(6px + 0.4rem + 3.6rem));
+  min-width: var(--twofa-log-meta-w, calc(6px + 0.4rem + 3.6rem));
 }
 
 .twofa-adm-log-row__time {
@@ -337,22 +349,54 @@
   font-family: inherit;
   font-style: normal;
   color: rgb(148, 163, 184);
-  width: var(--twofa-log-time-w, 4.65rem);
-  min-width: var(--twofa-log-time-w, 4.65rem);
+  width: var(--twofa-log-time-w, 3.6rem);
+  min-width: var(--twofa-log-time-w, 3.6rem);
   display: inline-block;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .twofa-adm-log-row__actor {
-  flex-shrink: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: 10rem;
+  max-width: 9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
-  line-height: 1.125rem;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.twofa-adm-log-row__actor[data-actor-category="agent"] {
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(56, 189, 248, 0.08);
+  color: rgb(186, 230, 253);
+}
+
+.twofa-adm-log-row__actor[data-actor-category="system"] {
+  border-color: rgba(251, 191, 36, 0.22);
+  background: rgba(251, 191, 36, 0.08);
+  color: rgb(253, 230, 138);
+}
+
+.twofa-adm-log-row__actor-emoji {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.twofa-adm-log-row__actor-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .twofa-adm-log-row__field {
@@ -482,10 +526,29 @@
   color: rgb(203, 213, 225);
 }
 
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.twofa-adm-log-row--detail .twofa-adm-log-inline-val__wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
 .twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn {
-  align-items: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   height: auto;
-  white-space: normal;
+  white-space: nowrap;
   text-align: left;
   border: 0;
   border-radius: 0.28rem;
@@ -507,20 +570,31 @@
 }
 
 .twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn.hub-adm-detail-value-text {
-  flex: unset;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .twofa-adm-log-row--detail .twofa-adm-log-inline-val__btn .twofa-copy-control__value {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font: inherit;
   color: inherit;
   letter-spacing: inherit;
 }
 
 .twofa-adm-log-row--detail .twofa-adm-log-row__arrow {
+  flex-shrink: 0;
   font: inherit;
 }
 
 .twofa-adm-log-inline-val__btn .twofa-copy-control__value {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -600,19 +674,25 @@
 }
 
 .twofa-account-detail-modal .twofa-adm-password-reveal {
-  position: absolute;
-  top: 50%;
-  right: 0.35rem;
+  position: static;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   padding: 0.15rem;
   border: 0;
   border-radius: 0.25rem;
   background: transparent;
   color: var(--muted);
-  transform: translateY(-50%);
+  transform: none;
   cursor: pointer;
+}
+
+.twofa-account-detail-modal .twofa-adm-password-field .twofa-adm-password-reveal {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
 }
 
 .twofa-account-detail-modal .twofa-adm-password-reveal:hover {

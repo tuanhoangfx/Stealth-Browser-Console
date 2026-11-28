@@ -387,12 +387,13 @@ function snapshotProfileCookiesIfHealthy(userDataDir, { profileCode = "", force 
           hasV2Slot = false;
         }
       }
-      // Only skip when Cookies has NOT been modified since the last backup, matches size, AND v2 slot-latest exists.
+      // Only skip when Cookies has NOT been modified since the last backup, matches size, v2 slot-latest exists, AND native slot is fresh.
       if (
         hasV2Slot &&
         bakStat.size > 20480 &&
         ckStat.size === bakStat.size &&
-        ckStat.mtimeMs <= bakStat.mtimeMs + 500
+        ckStat.mtimeMs <= bakStat.mtimeMs + 500 &&
+        !shouldRefreshNativeBackupSlot(userDataDir, ckPath, profileCode)
       ) {
         return { snapshotted: false, reason: "recent_backup_fresh" };
       }
@@ -466,20 +467,22 @@ function snapshotProfileCookiesIfHealthy(userDataDir, { profileCode = "", force 
     }
     writeGuardMeta(userDataDir, current);
     const lsSnap = snapshotLocalStorageIfHealthy(userDataDir, { force });
-    if (force) {
+    let nativeSlotSnapshotted = false;
+    if (force || shouldRefreshNativeBackupSlot(userDataDir, ckPath, profileCode)) {
       try {
         const { snapshotProfileNativeSession } = require("./native-session-backup.cjs");
-        snapshotProfileNativeSession(userDataDir, {
+        const nativeRes = snapshotProfileNativeSession(userDataDir, {
           profileCode,
           force,
           inspectSqliteCookiesFile,
           unprotectDpapiKey,
         });
+        nativeSlotSnapshotted = Boolean(nativeRes?.snapshotted);
       } catch {
         /* best-effort */
       }
     }
-    return { snapshotted: true, localStorageSnapshotted: lsSnap.snapshotted, current };
+    return { snapshotted: true, localStorageSnapshotted: lsSnap.snapshotted, nativeSlotSnapshotted, current };
   } catch (err) {
     return { snapshotted: false, reason: err?.message || "copy_failed" };
   }
@@ -515,6 +518,152 @@ function normalizeUnpartitionedCrossSiteAncestorRows(sqlitePath) {
     }
     return 0;
   }
+}
+
+function shouldRefreshNativeBackupSlot(userDataDir, ckPath, profileCode) {
+  try {
+    const cleanCode = String(profileCode || "").trim();
+    if (/^[89]\d{3}$/.test(cleanCode)) return false;
+    const { resolveProfileBackupRoot } = require("./native-session-backup.cjs");
+    const backupRoot = resolveProfileBackupRoot(userDataDir);
+    const manifestPath = path.join(backupRoot, "slot-latest", "manifest.json");
+    const ckStat = fs.existsSync(ckPath) ? fs.statSync(ckPath) : null;
+    if (!ckStat || ckStat.size <= 20480) return false;
+    const isPriorityRange = /^(?:0\d{3}|\d{5,})$/.test(cleanCode);
+    if (!fs.existsSync(manifestPath)) {
+      return isPriorityRange;
+    }
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    if (manifest?.seededFromBakWhileLocked) return true;
+    const createdMs = Date.parse(String(manifest?.createdAt || "")) || 0;
+    if (!createdMs) return true;
+    const ttlMs = isPriorityRange ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+    return ckStat.mtimeMs - createdMs > ttlMs;
+  } catch {
+    return false;
+  }
+}
+
+function refreshNativeBackupSlotIfStale(userDataDir, profileCode = "") {
+  if (!userDataDir || !fs.existsSync(userDataDir)) return { refreshed: false, reason: "no_dir" };
+  const ckPath = path.join(userDataDir, COOKIES_REL_PATH);
+  if (!shouldRefreshNativeBackupSlot(userDataDir, ckPath, profileCode)) {
+    return { refreshed: false, reason: "fresh_or_excluded" };
+  }
+  try {
+    const { snapshotProfileNativeSession } = require("./native-session-backup.cjs");
+    const res = snapshotProfileNativeSession(userDataDir, {
+      profileCode,
+      force: false,
+      inspectSqliteCookiesFile,
+      unprotectDpapiKey,
+    });
+    return { refreshed: Boolean(res?.snapshotted), reason: res?.reason || null };
+  } catch (err) {
+    return { refreshed: false, reason: err?.message || "native_snapshot_failed" };
+  }
+}
+
+function hasDirtySqliteCookieHygieneIssue(sqlitePath) {
+  if (!sqlitePath || !fs.existsSync(sqlitePath)) return false;
+  let db = null;
+  try {
+    const st = fs.statSync(sqlitePath);
+    if (!st.isFile() || st.size <= 0) return false;
+    db = openGuardSqlite(sqlitePath, { readOnly: true, busyTimeoutMs: 1000 });
+    const cols = new Set(
+      db
+        .prepare("PRAGMA table_info(cookies)")
+        .all()
+        .map((c) => String(c.name || "")),
+    );
+    if (!cols.has("path") || !cols.has("creation_utc")) {
+      db.close();
+      return false;
+    }
+    const hasTopFrameCol = cols.has("top_frame_site_key");
+    const hasXsiteCol = cols.has("has_cross_site_ancestor");
+    const dupCount = Number(
+      db
+        .prepare(
+          hasTopFrameCol
+            ? "SELECT COUNT(*) AS c FROM (SELECT 1 FROM cookies GROUP BY LOWER(host_key), top_frame_site_key, name, path HAVING COUNT(*) > 1)"
+            : "SELECT COUNT(*) AS c FROM (SELECT 1 FROM cookies GROUP BY LOWER(host_key), name, path HAVING COUNT(*) > 1)",
+        )
+        .get()?.c || 0,
+    );
+    if (dupCount > 0) {
+      db.close();
+      return true;
+    }
+    if (hasTopFrameCol && hasXsiteCol) {
+      const badXsite = Number(
+        db
+          .prepare("SELECT COUNT(*) AS c FROM cookies WHERE top_frame_site_key = '' AND has_cross_site_ancestor != 1")
+          .get()?.c || 0,
+      );
+      if (badXsite > 0) {
+        db.close();
+        return true;
+      }
+    }
+    const bad3p = Number(
+      db
+        .prepare("SELECT COUNT(*) AS c FROM cookies WHERE name LIKE '__Secure-3P%' AND (samesite != 0 OR is_secure != 1)")
+        .get()?.c || 0,
+    );
+    if (bad3p > 0) {
+      db.close();
+      return true;
+    }
+    const dupCr = Number(
+      db.prepare("SELECT COUNT(*) AS c FROM (SELECT 1 FROM cookies GROUP BY creation_utc HAVING COUNT(*) > 1)").get()?.c || 0,
+    );
+    if (dupCr > 0) {
+      db.close();
+      return true;
+    }
+    const topFrameFilter = hasTopFrameCol ? "AND COALESCE(top_frame_site_key, '') = ''" : "";
+    const splitGoogleSid = Number(
+      db
+        .prepare(
+          `SELECT COUNT(DISTINCT LOWER(host_key)) AS c FROM cookies WHERE LOWER(host_key) LIKE '.google.%' AND name = 'SID' ${topFrameFilter}`,
+        )
+        .get()?.c || 0,
+    );
+    db.close();
+    return splitGoogleSid > 1;
+  } catch {
+    try {
+      db?.close();
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+}
+
+function healDirtySqliteAfterCloseIfNeeded(userDataDir, { cleanBackupToo = true } = {}) {
+  if (!userDataDir) return { checked: false, mutated: false };
+  const ckPath = path.join(userDataDir, COOKIES_REL_PATH);
+  const bakPath = path.join(userDataDir, COOKIES_BAK_REL_PATH);
+  let liveRes = null;
+  let bakRes = null;
+  if (hasDirtySqliteCookieHygieneIssue(ckPath)) {
+    liveRes = sanitizeProfileSqliteCookiesInPlace(userDataDir);
+  }
+  if (cleanBackupToo && hasDirtySqliteCookieHygieneIssue(bakPath)) {
+    bakRes = sanitizeProfileSqliteCookiesInPlace(userDataDir, {
+      targetRelPath: COOKIES_BAK_REL_PATH,
+      ignoreProfileLock: true,
+    });
+  }
+  return {
+    checked: true,
+    mutated: Boolean(liveRes?.mutated || bakRes?.mutated),
+    liveMutated: Boolean(liveRes?.mutated),
+    bakMutated: Boolean(bakRes?.mutated),
+  };
 }
 
 function isHealthyProfileCookiesFileFast(ckPath, lsPath) {
@@ -600,12 +749,16 @@ function autoHealWipedProfileCookies(userDataDir, { forceCheck = false } = {}) {
       (bakSummary.hasOutlookAuth && !current.hasOutlookAuth) ||
       (bakSummary.hasTikTokAuth && !current.hasTikTokAuth));
 
-  // Fast-path (<0.5ms, Strict Zero-Write): When the profile's native Chromium Default/Network/Cookies
+  // Fast-path (<0.5ms, Strict Zero-Write on clean DBs): When the profile's native Chromium Default/Network/Cookies
   // and Local State already exist, are non-empty (>20KB), and have not lost core .google.com / Outlook / FB / TikTok auth,
-  // let CloakBrowser open its native SQLite database untouched.
+  // only intervene if structural SQLite corruption (`bad_ancestor`, colliding `creation_utc`, duplicate Google auth) is detected.
   if (!forceCheck && !lostCoreAuthInCurrent && isHealthyProfileCookiesFileFast(ckPath, lsPath)) {
+    const hygiene = hasDirtySqliteCookieHygieneIssue(ckPath)
+      ? healDirtySqliteAfterCloseIfNeeded(userDataDir, { cleanBackupToo: true })
+      : null;
     return {
-      healed: false,
+      healed: Boolean(hygiene?.mutated),
+      sqliteSanitized: Boolean(hygiene?.mutated),
       localStateRestored: false,
       localStorageRestored: false,
       cookiesRestored: false,
@@ -3994,6 +4147,9 @@ module.exports = {
   injectVaultCookiesIntoClosedSqlite,
   reconcileSplitGoogleAuthCookies,
   sanitizeProfileSqliteCookiesInPlace,
+  hasDirtySqliteCookieHygieneIssue,
+  healDirtySqliteAfterCloseIfNeeded,
+  refreshNativeBackupSlotIfStale,
   extractProfileSpaAuthSessions,
   inspectSqliteCookiesFile,
   inspectProfileSqliteCookiesSummary,

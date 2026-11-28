@@ -206,22 +206,73 @@ async function main() {
 
     fs.mkdirSync(hotPatchRoot, { recursive: true });
 
+function copyFileAtomicIfChanged(srcFile, dstFile) {
+  const srcBuf = fs.readFileSync(srcFile);
+  if (fs.existsSync(dstFile)) {
+    try {
+      const dstBuf = fs.readFileSync(dstFile);
+      if (srcBuf.equals(dstBuf)) return false;
+    } catch {
+      /* re-write on read error */
+    }
+  }
+  fs.mkdirSync(path.dirname(dstFile), { recursive: true });
+  const tmpFile = `${dstFile}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    const fd = fs.openSync(tmpFile, "w");
+    try {
+      fs.writeSync(fd, srcBuf, 0, srcBuf.length, 0);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(tmpFile, dstFile);
+  } catch (err) {
+    try {
+      if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+    } catch {
+      /* ignore */
+    }
+    throw err;
+  }
+  return true;
+}
+
+function syncTargetAtomicIfChanged(from, to, filter) {
+  if (typeof filter === "function" && !filter(from)) return 0;
+  const st = fs.statSync(from);
+  if (st.isFile()) {
+    return copyFileAtomicIfChanged(from, to) ? 1 : 0;
+  }
+  if (!st.isDirectory()) return 0;
+  fs.mkdirSync(to, { recursive: true });
+  let updated = 0;
+  for (const ent of fs.readdirSync(from, { withFileTypes: true })) {
+    const childFrom = path.join(from, ent.name);
+    const childTo = path.join(to, ent.name);
+    if (ent.isDirectory()) {
+      updated += syncTargetAtomicIfChanged(childFrom, childTo, filter);
+    } else if (ent.isFile()) {
+      if (typeof filter === "function" && !filter(childFrom)) continue;
+      if (copyFileAtomicIfChanged(childFrom, childTo)) updated += 1;
+    }
+  }
+  return updated;
+}
+
     const targets = ["electron", "dist", "package.json", "tool.manifest.json", "CHANGELOG.md"];
     const synced = [];
+    const syncFilter = (src) => {
+      const norm = src.replace(/\\/g, "/");
+      if (norm.includes("/packaged-node_modules")) return false;
+      if (/\/(?:__tests__|e2e)\//i.test(norm) || /\.test\.(?:[cm]?js|tsx?)$/i.test(norm)) return false;
+      return true;
+    };
     for (const rel of targets) {
       const from = path.join(srcRoot, rel);
       const to = path.join(hotPatchRoot, rel);
       if (!fs.existsSync(from)) continue;
-      fs.cpSync(from, to, {
-        recursive: true,
-        force: true,
-        filter: (src) => {
-          const norm = src.replace(/\\/g, "/");
-          if (norm.includes("/packaged-node_modules")) return false;
-          if (/\/(?:__tests__|e2e)\//i.test(norm) || /\.test\.(?:[cm]?js|tsx?)$/i.test(norm)) return false;
-          return true;
-        },
-      });
+      syncTargetAtomicIfChanged(from, to, syncFilter);
       synced.push(rel);
     }
     const staleHotPatchPackagedNm = path.join(hotPatchRoot, "electron", "packaged-node_modules");

@@ -5,10 +5,10 @@
   min-width: 1180px;
 }
 
-/* Header bleed (1.5rem) vs content frame (0.75rem) — decoupled Stealth gutters. */
+/* Header bleed & content frame (1.5rem) — aligned with hub-ui .hub-main / P0010 SSOT. */
 .stealth-hub-app {
   --stealth-chrome-bleed: var(--app-tab-header-px, 1.5rem);
-  --stealth-frame-gutter: var(--stealth-frame-px, 0.75rem);
+  --stealth-frame-gutter: var(--stealth-frame-px, var(--app-tab-header-px, 1.5rem));
 }
 
 .stealth-hub-app .app-tab-header {
@@ -83,15 +83,15 @@
   line-height: 1.25;
 }
 
-/* Search stays in the split pane, so it never sits in .hub-chrome-sticky.
-   Flush the title the same way Orders does, or the pane frame sits a header pad lower. */
+/* Align split tab headers with .hub-chrome-sticky > .app-tab-header in P0001/P0020
+   so the gap between topbar and searchbar/panes stays consistent (0.4375rem bottom). */
 .stealth-hub-app .hub-main--split .app-tab-header,
 .stealth-hub-app .hub-main--profiles .app-tab-header,
 .stealth-hub-app .hub-main--android .app-tab-header,
 .stealth-hub-app .hub-main--workflow .app-tab-header,
 .stealth-hub-app .hub-main--system .app-tab-header {
-  padding-bottom: 0;
-  min-height: calc(var(--app-tab-header-min-h) - var(--app-tab-header-py));
+  padding-bottom: 0.4375rem;
+  min-height: 2.375rem;
 }
 
 /* Directory table header — icon + label on one baseline */

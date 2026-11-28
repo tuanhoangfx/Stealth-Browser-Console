@@ -6,7 +6,29 @@
  * Dispatcher mỏng: auth → match route registry (api-routes.cjs) → handler.
  * Thêm endpoint = thêm descriptor trong api-routes.cjs / automation/plugins.cjs.
  */
+const fs = require("node:fs");
 const http = require("node:http");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
+
+let _stealthBridgePromise = null;
+let _cachedStealthBridge = null;
+function getStealthBridge() {
+  if (_cachedStealthBridge) return Promise.resolve(_cachedStealthBridge);
+  if (!_stealthBridgePromise) {
+    const bridgePath = pathToFileURL(path.join(__dirname, "lib", "desktop-runtime-bridge.mjs")).href;
+    _stealthBridgePromise = import(bridgePath)
+      .then((mod) => {
+        _cachedStealthBridge = mod.createSovereignRuntimeBridge({
+          productRoot: path.resolve(__dirname, ".."),
+          homeDirName: ".stealth_console",
+        });
+        return _cachedStealthBridge;
+      })
+      .catch(() => null);
+  }
+  return _stealthBridgePromise;
+}
 
 const { checkAuth, getConfiguredToken } = require("./lib/api-auth.cjs");
 const { JobQueue } = require("./lib/job-queue.cjs");
@@ -24,29 +46,41 @@ const {
 } = require("./lib/agent-worker-proxy.cjs");
 const { verifyPackagedRuntime } = require("./lib/packaged-runtime-check.cjs");
 
+const HEALTH_RUNTIME_CACHE_TTL_MS = 15_000;
+let cachedRuntimeVerify = { value: null, at: 0 };
+
 function buildHealthPayload({
   apiPort = DEFAULT_API_PORT,
   authRequired = false,
-  verifyRuntime = verifyPackagedRuntime,
+  verifyRuntime,
 } = {}) {
-  let packagedRuntime;
-  try {
-    packagedRuntime = verifyRuntime();
-  } catch (err) {
-    packagedRuntime = {
-      ok: false,
-      isPackaged: false,
-      missing: [],
-      root: "",
-      cloakbrowserUnpacked: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
+  const customVerify = typeof verifyRuntime === "function";
+  const verifier = customVerify ? verifyRuntime : verifyPackagedRuntime;
+  const now = Date.now();
+  let packagedRuntime = !customVerify && cachedRuntimeVerify.value && now - cachedRuntimeVerify.at < HEALTH_RUNTIME_CACHE_TTL_MS
+    ? cachedRuntimeVerify.value
+    : null;
+  if (!packagedRuntime) {
+    try {
+      packagedRuntime = verifier();
+      if (!customVerify) cachedRuntimeVerify = { value: packagedRuntime, at: now };
+    } catch (err) {
+      packagedRuntime = {
+        ok: false,
+        isPackaged: false,
+        missing: [],
+        root: "",
+        cloakbrowserUnpacked: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
   return {
     ok: true,
     product: "P0003",
     apiPort,
     authRequired: Boolean(authRequired),
+    authTelemetry: _cachedStealthBridge?.readHubAuthTelemetry ? _cachedStealthBridge.readHubAuthTelemetry() : null,
     features: ["cdp", "jobs", "plugins", "live-events"],
     packagedRuntime,
   };
@@ -81,7 +115,10 @@ function abortRequestStreamAfterReply(req) {
 }
 
 function readBody(req, { maxBytes = MAX_BODY_BYTES, timeoutMs = BODY_READ_TIMEOUT_MS } = {}) {
-  return new Promise((resolve, reject) => {
+  if (req && req.__stealthReadBodyPromise) {
+    return req.__stealthReadBodyPromise;
+  }
+  const promise = new Promise((resolve, reject) => {
     const contentLength = Number(req?.headers?.["content-length"]);
     if (Number.isFinite(contentLength) && contentLength > maxBytes) {
       abortRequestStreamAfterReply(req);
@@ -143,6 +180,8 @@ function readBody(req, { maxBytes = MAX_BODY_BYTES, timeoutMs = BODY_READ_TIMEOU
       resolve({});
     });
   });
+  if (req) req.__stealthReadBodyPromise = promise;
+  return promise;
 }
 
 function sendJson(res, statusCode, data) {
@@ -196,6 +235,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
     },
   };
   services.rebuildRoutes();
+  void getStealthBridge();
 
   // Auto-Sync Cookie on PC Close (`ok 3`): push updated PC cookies to Mobile Vault when a browser session closes
   try {
@@ -252,6 +292,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
 
     // GET /api/health — luôn mở (probe + báo có cần auth không).
     if (req.method === "GET" && urlPath === "/api/health") {
+      await getStealthBridge();
       return sendJson(
         res,
         200,
@@ -260,6 +301,19 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
           authRequired: Boolean(getConfiguredToken()),
         }),
       );
+    }
+
+    if (urlPath === "/api/hub-auth/telemetry" && (req.method === "GET" || req.method === "POST")) {
+      const bridge = await getStealthBridge();
+      if (req.method === "GET") {
+        return sendJson(res, 200, {
+          ok: true,
+          telemetry: bridge?.readHubAuthTelemetry ? bridge.readHubAuthTelemetry() : null,
+        });
+      }
+      const body = await readBody(req).catch(() => ({}));
+      const saved = bridge?.saveHubAuthTelemetry ? bridge.saveHubAuthTelemetry(body) : null;
+      return sendJson(res, 200, { ok: true, telemetry: saved });
     }
 
     // GET /api/stealth/live-events — Real-time SSE stream (`ok 3`) for P0020 2FA Manager (<100ms sync).
@@ -321,7 +375,23 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
             if (aug?.device && status) status.device = aug.device;
             return sendJson(res, 200, { ok: true, status });
           }
-          if (req.method === "POST") {
+          const inlineMobilePostPaths = new Set([
+            "/api/mobile-stealth/create",
+            "/api/mobile-stealth/delete",
+            "/api/mobile-stealth/switch",
+            "/api/mobile-stealth/push-cookies",
+            "/api/mobile-stealth/pull-cookies",
+            "/api/mobile-stealth/snapshot",
+            "/api/mobile-stealth/crane-offload",
+            "/api/mobile-stealth/crane-restore",
+            "/api/mobile-stealth/restore",
+            "/api/mobile-stealth/crane-mount",
+            "/api/mobile-stealth/mirror",
+            "/api/mobile-stealth/auto-sync",
+            "/api/mobile-stealth/update-profile",
+            "/api/mobile-stealth/sync-p0020",
+          ]);
+          if (req.method === "POST" && inlineMobilePostPaths.has(urlPath)) {
             const body = await readBody(req);
             const profileCode = String(body.profileCode || body.profile || body.code || "0001");
             if (urlPath === "/api/mobile-stealth/create") {
@@ -553,6 +623,7 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
 
   let androidWatchdogTimer = null;
   let androidWatchdogStarted = false;
+  let peerProxyTimer = null;
   const ensureLocalAndroidWatchdog = async () => {
     if (androidWatchdogStarted) return true;
     try {
@@ -581,14 +652,133 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
     return false;
   };
 
+  const resolveWorkspaceScript = (relPath) => {
+    const candidates = [
+      path.resolve(__dirname, "..", "..", relPath),
+      path.join("E:\\Dev\\Tool", relPath),
+    ];
+    return candidates.find((p) => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    }) || "";
+  };
+
+  const EXPECTED_PEER_PROXY_VERSION = 2;
+
+  const probePeerProxyHealth = (host, port) =>
+    new Promise((resolve) => {
+      const req = http.request(
+        { hostname: host, port, path: "/api/health", method: "GET", timeout: 1_200 },
+        (r) => {
+          let raw = "";
+          r.on("data", (c) => (raw += c));
+          r.on("end", () => {
+            try {
+              const parsed = JSON.parse(raw);
+              resolve({
+                ok: r.statusCode === 200 && Boolean(parsed?.ok),
+                proxyVersion: Number(parsed?.proxyVersion || 0),
+              });
+            } catch {
+              resolve({ ok: r.statusCode === 200 && raw.includes('"ok":true'), proxyVersion: 0 });
+            }
+          });
+        },
+      );
+      req.on("timeout", () => {
+        req.destroy();
+        resolve({ ok: false, proxyVersion: 0 });
+      });
+      req.on("error", () => resolve({ ok: false, proxyVersion: 0 }));
+      req.end();
+    });
+
+  const triggerPeerProxyReload = (host, port, peerToken) =>
+    new Promise((resolve) => {
+      const req = http.request(
+        {
+          hostname: host,
+          port,
+          path: "/_proxy/reload",
+          method: "POST",
+          timeout: 1_500,
+          headers: peerToken
+            ? { "X-Stealth-Peer-Token": peerToken, Authorization: `Bearer ${peerToken}` }
+            : {},
+        },
+        (r) => {
+          r.resume();
+          r.on("end", () => resolve(r.statusCode === 200));
+        },
+      );
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(false);
+      });
+      req.on("error", () => resolve(false));
+      req.end();
+    });
+
+  const ensureLocalTailscalePeerProxy = async () => {
+    try {
+      const proxyHost = String(process.env.P0003_STEALTH_PROXY_HOST || "100.64.234.45").trim();
+      const proxyPort = Number(process.env.P0003_STEALTH_PROXY_PORT || DEFAULT_API_PORT) || DEFAULT_API_PORT;
+      const readEnvLib = resolveWorkspaceScript("scripts\\lib\\read-env-file.cjs");
+      const proxyScript = resolveWorkspaceScript("scripts\\p0003-stealth-tailscale-proxy.mjs");
+      const winShellLib = resolveWorkspaceScript("scripts\\lib\\win-shell-env.cjs");
+      if (!proxyScript || !winShellLib) return false;
+
+      const devRoot = path.resolve(proxyScript, "..", "..", "..");
+      let peerTok = String(process.env.P0003_STEALTH_PEER_TOKEN || process.env.STEALTH_API_TOKEN || "").trim();
+      if (!peerTok && readEnvLib) {
+        try {
+          const { readSharedEnv } = require(readEnvLib);
+          const sharedEnv = readSharedEnv(devRoot);
+          peerTok = String(sharedEnv.P0003_STEALTH_PEER_TOKEN || sharedEnv.STEALTH_API_TOKEN || "").trim();
+        } catch {}
+      }
+
+      const health = await probePeerProxyHealth(proxyHost, proxyPort);
+      if (health.ok) {
+        if (health.proxyVersion > 0 && health.proxyVersion < EXPECTED_PEER_PROXY_VERSION && peerTok) {
+          await triggerPeerProxyReload(proxyHost, proxyPort, peerTok).catch(() => {});
+        }
+        return true;
+      }
+
+      if (!peerTok && process.env.P0003_STEALTH_PROXY_ALLOW_OPEN !== "1") return false;
+
+      const { ensureHiddenNodew, startHiddenDetachedProcess } = require(winShellLib);
+      const nodew = ensureHiddenNodew();
+      startHiddenDetachedProcess(nodew, [proxyScript], {
+        cwd: devRoot,
+        logFile: path.join(devRoot, ".cache", "p0003-stealth-tailscale-proxy.log"),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   server.listen(API_PORT, API_HOST, () => {
     const mode = getConfiguredToken() ? "auth=token" : "auth=open";
     console.log(`[BrowserHub] API running → http://${API_HOST}:${API_PORT} (${mode}, concurrency=${concurrency})`);
-    if (API_PORT === DEFAULT_API_PORT && process.env.STEALTH_DISABLE_ANDROID_WATCHDOG !== "1" && !process.env.NODE_TEST_CONTEXT) {
-      const bootDelay = setTimeout(() => void ensureLocalAndroidWatchdog(), 15_000);
-      if (typeof bootDelay.unref === "function") bootDelay.unref();
-      androidWatchdogTimer = setInterval(() => void ensureLocalAndroidWatchdog(), 5 * 60_000);
-      if (typeof androidWatchdogTimer.unref === "function") androidWatchdogTimer.unref();
+    if (API_PORT === DEFAULT_API_PORT && !process.env.NODE_TEST_CONTEXT) {
+      if (process.env.STEALTH_DISABLE_ANDROID_WATCHDOG !== "1") {
+        const bootDelay = setTimeout(() => void ensureLocalAndroidWatchdog(), 15_000);
+        if (typeof bootDelay.unref === "function") bootDelay.unref();
+        androidWatchdogTimer = setInterval(() => void ensureLocalAndroidWatchdog(), 5 * 60_000);
+        if (typeof androidWatchdogTimer.unref === "function") androidWatchdogTimer.unref();
+      }
+      if (process.env.STEALTH_DISABLE_PEER_PROXY !== "1") {
+        const peerBoot = setTimeout(() => void ensureLocalTailscalePeerProxy(), 3_000);
+        if (typeof peerBoot.unref === "function") peerBoot.unref();
+        peerProxyTimer = setInterval(() => void ensureLocalTailscalePeerProxy(), 5 * 60_000);
+        if (typeof peerProxyTimer.unref === "function") peerProxyTimer.unref();
+      }
     }
   });
 
@@ -597,10 +787,17 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
       clearInterval(androidWatchdogTimer);
       androidWatchdogTimer = null;
     }
+    if (peerProxyTimer) {
+      clearInterval(peerProxyTimer);
+      peerProxyTimer = null;
+    }
   });
 
   server.on("error", (err) => {
     console.error("[BrowserHub] Server error:", err.message);
+    if (process.env.STEALTH_AGENT_WORKER === "1" && err?.code === "EADDRINUSE") {
+      process.exit(1);
+    }
   });
 
   return server;

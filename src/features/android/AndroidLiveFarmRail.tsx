@@ -126,10 +126,19 @@ export const AndroidLiveFarmRail = memo(function AndroidLiveFarmRail({
 
   useEffect(() => {
     if (!autoStream || activeTab !== "screen") return;
-    const timer = window.setInterval(() => {
+    const pollIfVisible = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       void pullLiveScreen(selectedDisplayId, true);
-    }, 1800);
-    return () => window.clearInterval(timer);
+    };
+    const timer = window.setInterval(pollIfVisible, 1800);
+    const onVisibilityChange = () => {
+      if (!document.hidden) void pullLiveScreen(selectedDisplayId, true);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [activeTab, autoStream, pullLiveScreen, selectedDisplayId]);
 
   const dispatchControl = useCallback(

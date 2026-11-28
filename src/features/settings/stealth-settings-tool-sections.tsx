@@ -219,12 +219,18 @@ function useStealthRuntimePrefs() {
   useEffect(() => {
     void reloadRuntime();
     const timer = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
       void reloadRuntime();
     }, 4000);
+    const onVisibilityChange = () => {
+      if (!document.hidden) void reloadRuntime();
+    };
     const onSync = () => setDefaults(readBrowserDefaults());
+    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("stealth:browser-defaults-sync", onSync);
     return () => {
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("stealth:browser-defaults-sync", onSync);
     };
   }, [reloadRuntime]);

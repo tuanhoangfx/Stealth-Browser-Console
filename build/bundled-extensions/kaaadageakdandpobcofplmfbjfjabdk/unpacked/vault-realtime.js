@@ -100,6 +100,11 @@ export function startVaultRealtime(auth, bindings, prefs, getBindings, onRoutesC
         if (sock.readyState === WebSocket.OPEN) {
           send(sock, "phoenix", "heartbeat", {}, nextRef());
         }
+        for (const vs of vaultSockets) {
+          if (vs.readyState === WebSocket.OPEN) {
+            send(vs, "phoenix", "heartbeat", {}, nextRef());
+          }
+        }
       }, 25_000);
 
       const routeJoinRef = nextRef();

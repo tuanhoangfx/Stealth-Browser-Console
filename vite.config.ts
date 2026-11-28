@@ -69,11 +69,25 @@ export default defineConfig(async ({ command }) => {
     }
   }
 
+  const optimizeDepsPath = path.resolve(rootDir, "../scripts/lib/hub-vite-optimize-deps.mjs");
+  let optimizeDeps: Record<string, unknown> | undefined;
+  if (fs.existsSync(optimizeDepsPath)) {
+    try {
+      const mod = await import(pathToFileURL(optimizeDepsPath).href);
+      if (typeof mod?.createHubViteOptimizeDeps === "function") {
+        optimizeDeps = mod.createHubViteOptimizeDeps({ toolRoot: rootDir, devRoot });
+      }
+    } catch {
+      /* optional in standalone build */
+    }
+  }
+
   return {
     // Serve: absolute base so `/profiles` hard-refresh works. Build: `./` for Electron file://.
     base: command === "serve" ? "/" : "./",
     appType: "spa" as const,
     plugins,
+    ...(optimizeDeps ? { optimizeDeps } : {}),
     resolve: {
       dedupe: ["react", "react-dom"],
       alias: [

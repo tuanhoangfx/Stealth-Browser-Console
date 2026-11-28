@@ -134,6 +134,13 @@
       "notes": "HubDirectoryScreen + Open URL rail"
     },
     {
+      "screen": "android",
+      "template": "inbox-split",
+      "layout": "split-workspace",
+      "golden": "P0020/notes",
+      "notes": "Android mobile farm & profiles directory + Live Farm rail"
+    },
+    {
       "screen": "workflow",
       "template": "inbox-split",
       "layout": "split-workspace",
@@ -177,9 +184,9 @@
     "visibilityUpdatedAt": "2026-07-08T00:13:51.000Z",
     "toggleVisibility": "node scripts/toggle-stealth-repo-visibility.mjs"
   },
-  "manifestUpdatedAt": "2026-11-22T06:59:24.861Z",
+  "manifestUpdatedAt": "2026-11-28T11:05:16.377Z",
   "release": {
-    "version": "9.2.535",
+    "version": "9.2.586",
     "updatedAt": "2026-07-17",
     "desktopAutoUpdate": "GitHub Releases. Public repo: /releases/latest/download/latest.yml. Private repo: STEALTH_UPDATER_GH_TOKEN baked at build (write-updater-auth.mjs). NSIS auto-download + install on quit.",
     "latestPublished": {
@@ -270,7 +277,7 @@
     }
   },
   "versions": {
-    "current": "9.2.535",
+    "current": "9.2.586",
     "latestPublished": "9.2.535"
   }
 }

@@ -98,6 +98,9 @@ export const COOKIE_BRIDGE_ROUTE_TABLE_COLUMN_HINTS = {
   },
 };
 
+const BORLABS_BADGE_INLINE_SVG_12 =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="12" height="12" class="hub-directory-popover__image hub-brand-fallback-badge shrink-0" data-hub-brand-fallback="borlabs-badge" aria-hidden="true"><circle cx="512" cy="512" r="512" fill="#05c9e3"/><path d="M576.04 769.13c-7.73 0-15.52-2.54-22.01-7.78-15.08-12.17-17.44-34.25-5.27-49.33l107.13-132.78L548.7 445.69c-12.13-15.11-9.71-37.19 5.4-49.32 15.11-12.13 37.19-9.71 49.32 5.4l124.86 155.57c10.32 12.85 10.29 31.16-.06 43.99L603.36 756.09c-6.93 8.59-17.08 13.05-27.33 13.05ZM469.9 627.64c15.11-12.13 17.53-34.21 5.4-49.32L368.11 444.77l107.13-132.78c12.17-15.08 9.8-37.17-5.27-49.33-15.08-12.17-37.17-9.81-49.33 5.27L295.78 422.69c-10.35 12.83-10.37 31.13-.06 43.99l124.86 155.57c6.93 8.64 17.11 13.12 27.38 13.12 7.7 0 15.46-2.53 21.94-7.72Z" fill="#fff"/></svg>';
+
 /**
  * @param {HubDirectoryColumnHintLine} line
  * @param {(name: string, className?: string) => string} [renderIcon]
@@ -119,10 +122,10 @@ function renderHintLineGlyphHtml(line, renderIcon) {
   if (line.icon && typeof renderIcon === "function") {
     return renderIcon(line.icon, `hub-directory-popover__glyph ui-icon ${line.toneClass ?? ""}`.trim());
   }
-  if (line.emoji) {
+  if (line.emoji && line.emoji.trim() !== "⭕") {
     return `<span class="hub-directory-popover__emoji">${escapeHtml(line.emoji)}</span>`;
   }
-  return `<span class="hub-directory-popover__emoji" aria-hidden="true">⭕</span>`;
+  return BORLABS_BADGE_INLINE_SVG_12;
 }
 
 /**

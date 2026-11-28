@@ -1,0 +1,76 @@
+/* Scoped preview styles for Mobile Farm Realtime V2 mockups (P0003 Design Preview) */
+
+.mf-p2-shell {
+  background: radial-gradient(circle at 12% 0%, rgba(16, 185, 129, 0.08), transparent 36%),
+    radial-gradient(circle at 88% 0%, rgba(56, 189, 248, 0.08), transparent 38%),
+    rgba(6, 10, 19, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+}
+
+.mf-p2-panel {
+  background: rgba(11, 17, 29, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 11px;
+}
+
+.mf-p2-card {
+  background: linear-gradient(180deg, rgba(16, 24, 41, 0.94) 0%, rgba(9, 14, 25, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 12px;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.mf-p2-card:hover {
+  border-color: rgba(56, 189, 248, 0.42);
+}
+
+.mf-p2-card--alert {
+  border-color: rgba(245, 158, 11, 0.48);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.14) inset;
+}
+
+.mf-p2-screen {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: #070b14;
+}
+
+.mf-p2-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+  animation: mf-p2-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes mf-p2-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+.mf-p2-ripple {
+  animation: mf-p2-tap 550ms ease-out forwards;
+}
+
+@keyframes mf-p2-tap {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.9);
+  }
+}

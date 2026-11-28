@@ -2,18 +2,17 @@ import {
   HubLoaderRoot,
   HubVisitedTabPanel,
   hubMainShellClassFromManifest,
+  useHubVisitedTabsLru,
   type ToolManifestUiShell,
 } from "@tool-workspace/hub-ui";
-import { lazy, memo, Suspense, useLayoutEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
+import { lazy, memo, Suspense, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { StealthHubShellSidebar } from "./StealthHubShellSidebar";
 import { StealthScreenLoadingView } from "./StealthScreenLoadingView";
 import { StealthTabHeaderActions } from "./StealthTabHeaderActions";
-import { resolveWorkspaceAuthPaint } from "@tool-workspace/hub-identity";
 import { StealthAuthGate } from "../features/auth/StealthAuthGate";
 import { StealthAccessDeniedScreen, StealthAuthBootScreen } from "../features/auth/StealthAuthScreens";
 import { useStealthAuth } from "../features/auth/AuthSessionProvider";
 import { isStealthHubAuthEnabled } from "../lib/stealth-auth-policy";
-import { isOfflineWorkspaceSession } from "../lib/offlineMode";
 import { useStealthShell } from "../context/stealth-shell-context";
 import type { StealthAndroidTab } from "../lib/stealth-android-tab";
 import type { StealthScreen } from "../lib/stealth-screen";
@@ -53,7 +52,7 @@ function resolveStealthPanelId(
 }
 
 function StealthConsoleScreens({
-  visited,
+  visited: _visited,
   view,
   androidTab,
   systemTab,
@@ -70,27 +69,9 @@ function StealthConsoleScreens({
   engineStatus: StealthEngineStatus;
 }) {
   const activePanelId = resolveStealthPanelId(view, androidTab, workflowTab);
-  const [visitedPanels, setVisitedPanels] = useState<Set<StealthVisitedPanelId>>(() => {
-    const seed = new Set<StealthVisitedPanelId>([activePanelId]);
-    if (visited.has("profiles")) seed.add("profiles");
-    if (visited.has("workflow")) seed.add("workflow:editor");
-    return seed;
+  const effectiveVisitedPanels = useHubVisitedTabsLru(activePanelId, {
+    maxMounted: 4,
   });
-
-  useLayoutEffect(() => {
-    setVisitedPanels((prev) => {
-      if (prev.has(activePanelId)) return prev;
-      return new Set(prev).add(activePanelId);
-    });
-  }, [activePanelId]);
-
-  const effectiveVisitedPanels = useMemo(() => {
-    const next = new Set(visitedPanels);
-    next.add(activePanelId);
-    if (visited.has("profiles")) next.add("profiles");
-    if (visited.has("workflow")) next.add("workflow:editor");
-    return next;
-  }, [activePanelId, visited, visitedPanels]);
 
   return (
     <div className="stealth-console-screens flex min-h-0 flex-1 flex-col">
@@ -194,22 +175,14 @@ export const StealthAppShell = memo(function StealthAppShell({
   onWorkflowTabChange: (tab: StealthWorkflowTab) => void;
 }) {
   const hubAuthEnabled = isStealthHubAuthEnabled();
-  const { session, offline, authRequired, policyReady, loading, toolAccess, hubConfigured, prepareHubSignIn } =
-    useStealthAuth();
+  const { authRequired, authPaint: baseAuthPaint, hubConfigured, prepareHubSignIn } = useStealthAuth();
   const [hubSignInRequested, setHubSignInRequested] = useState(false);
   const { view, setView, engineStatus } = useStealthShell();
 
-  const hasRealHubSession = !isOfflineWorkspaceSession(session, offline);
-
-  const authPaint = resolveWorkspaceAuthPaint({
-    configured: hubAuthEnabled && hubConfigured,
-    unconfigured: "app",
-    authRequired: authRequired || hubSignInRequested,
-    policyReady,
-    hasSession: hasRealHubSession,
-    sessionLoading: loading,
-    toolAccess,
-  });
+  const authPaint =
+    hubAuthEnabled && hubConfigured && hubSignInRequested && baseAuthPaint === "app" && !authRequired
+      ? "gate"
+      : baseAuthPaint;
 
   const showFarmHeaderTicker = authPaint === "app" && !(view === "android" && androidTab === "farm");
   const headerActions = useMemo(

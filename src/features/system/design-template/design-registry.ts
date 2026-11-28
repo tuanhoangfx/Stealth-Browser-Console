@@ -5,13 +5,23 @@ export type ActiveDesignFeature = {
   project: string;
 };
 
-export const ACTIVE_DESIGN_FEATURES: ActiveDesignFeature[] = [];
+export const ACTIVE_DESIGN_FEATURES: ActiveDesignFeature[] = [
+  {
+    id: "mobile-farm-realtime-v2",
+    title: "Mobile Farm Realtime Wall",
+    subtitle: "5 layout directions (V1–V5) · clean live screens, realtime telemetry & zero-scroll ops",
+    project: "P0003-Stealth-Browser-Console",
+  },
+];
 
 /**
  * Active design reviews in System → Design.
  * Design nav/route mounts only while this count is > 0 (SSOT design-preview-5).
  */
 export const ACTIVE_DESIGN_COUNT = ACTIVE_DESIGN_FEATURES.length;
+
+/** Locked 2026-11-28 — Sidebar Collapse Icon Design V1 Panel Dock Frame + HubTooltip SSOT (packages/hub-ui HubSidebarCollapseGlyph). */
+export const SIDEBAR_COLLAPSE_ICON_DESIGN_LOCK = "V1" as const;
 
 /** Locked 2026-11-22 — Mobile Farm 5-Device Split-Dock Console (V1 · All 5 live Wi-Fi phones + Cooldown Burst + Carrier Kaizen). */
 export const MOBILE_FARM_FIVE_DEVICE_DESIGN_LOCK = "V1" as const;

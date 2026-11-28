@@ -31,6 +31,23 @@ const PATCH_ALLOWED_FIELDS = [
   "lastChangeSummary",
 ];
 
+const pendingAgentEphemeralProxies = new Map();
+const PENDING_AGENT_PROXY_TTL_MS = 90_000;
+
+function takePendingAgentEphemeralProxy(profileId) {
+  const entry = pendingAgentEphemeralProxies.get(profileId);
+  pendingAgentEphemeralProxies.delete(profileId);
+  if (!entry || entry.expiresAt < Date.now()) return null;
+  return entry;
+}
+
+function isProtectedAgentProxyCode(nameOrId) {
+  const s = String(nameOrId || "").trim();
+  if (!/^\d{4}$/.test(s)) return false;
+  const num = Number.parseInt(s, 10);
+  return num < 20 || (num >= 8000 && num <= 8999) || s === "0059" || s === "0069";
+}
+
 function pickPatch(body) {
   const patch = {};
   if (!body || typeof body !== "object") return patch;
@@ -99,7 +116,10 @@ async function launchProfileOnce(
   }
   const profile = deps.profileService.resolveProfileForLaunch({ id, name });
   if (!profile) throw new Error("Profile not found.");
-  const turnProxyInput = String(ephemeralProxy || proxy || "").trim();
+  const stagedAgentProxy = takePendingAgentEphemeralProxy(profile.id);
+  const turnProxyInput = String(ephemeralProxy || proxy || stagedAgentProxy?.proxy || "").trim();
+  const effectiveTzInput = String(timezone || stagedAgentProxy?.timezone || "").trim();
+  const effectiveLocaleInput = String(locale || stagedAgentProxy?.locale || "").trim();
   const profileForProxy = turnProxyInput ? { ...profile, proxy: turnProxyInput } : profile;
   const countryProxy = await resolveProfileCountryProxy(profileForProxy, { country }).catch(() => null);
   let geoSync = null;
@@ -115,20 +135,20 @@ async function launchProfileOnce(
         ...profile,
         proxy: countryProxy.resolvedProxy,
         activeVpnCountry: countryProxy.countryCode || "",
-        timezone: String(timezone || "").trim() || countryProxy.timezone || profile.timezone,
-        locale: String(locale || "").trim() || countryProxy.locale || profile.locale,
+        timezone: effectiveTzInput || countryProxy.timezone || profile.timezone,
+        locale: effectiveLocaleInput || countryProxy.locale || profile.locale,
       }
     : turnProxyInput
       ? {
           ...profile,
           proxy: turnProxyInput,
-          timezone: String(timezone || "").trim() || profile.timezone,
-          locale: String(locale || "").trim() || profile.locale,
+          timezone: effectiveTzInput || profile.timezone,
+          locale: effectiveLocaleInput || profile.locale,
         }
       : {
           ...profile,
-          ...(String(timezone || "").trim() ? { timezone: String(timezone).trim() } : {}),
-          ...(String(locale || "").trim() ? { locale: String(locale).trim() } : {}),
+          ...(effectiveTzInput ? { timezone: effectiveTzInput } : {}),
+          ...(effectiveLocaleInput ? { locale: effectiveLocaleInput } : {}),
         };
   const effectiveShadowLane =
     process.env.STEALTH_FORCE_TEMP_SHADOW_DIR === "1" && typeof shadowLane === "boolean"
@@ -400,7 +420,38 @@ async function closeProfile(deps, { id, name, forcePriority } = {}) {
       /* ignore */
     }
   }
-  const res = await deps.sessionManager.close(profile.id);
+  let res = await deps.sessionManager.close(profile.id);
+  if (
+    res?.status === "closed" &&
+    !deps.sessionManager.isRunning?.(profile.id) &&
+    process.env.STEALTH_AGENT_WORKER !== "1" &&
+    !process.env.NODE_TEST_CONTEXT
+  ) {
+    try {
+      const { DEFAULT_WORKER_PORT, getCachedWorkerSessions } = require("../lib/worker-sessions-bridge.cjs");
+      const remoteHit = getCachedWorkerSessions({ triggerRefresh: false }).find(
+        (s) => String(s?.id || s?.profileId || "") === String(profile.id),
+      );
+      if (remoteHit) {
+        const resp = await fetch(
+          `http://127.0.0.1:${DEFAULT_WORKER_PORT}/api/profiles/${encodeURIComponent(profile.id)}/close`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Stealth-Agent-Smoke": "1" },
+            body: JSON.stringify({ forcePriority: Boolean(forcePriority), agentOnly: true }),
+            signal: AbortSignal.timeout(3000),
+          },
+        ).catch(() => null);
+        if (resp?.ok) {
+          const remoteRes = await resp.json().catch(() => null);
+          if (remoteRes) res = remoteRes;
+        }
+      }
+    } catch {
+      /* ignore remote close error */
+    }
+  }
+  pendingAgentEphemeralProxies.delete(profile.id);
   resetProfileToLocalIpIfUnpinned(deps.profileService, profile.id);
   return res;
 }
@@ -415,33 +466,68 @@ function sanitizeAgentPinNote(note) {
     .trim();
 }
 
-async function patchProfile(deps, profileId, body, { userDataRoot, isAgentRequest } = {}) {
+async function patchProfile(deps, profileId, body, { userDataRoot, isAgentRequest, forceAgentHeader } = {}) {
   const existing = deps.profileService.getProfile(profileId);
   if (!existing) throw new Error("Profile not found.");
   const patch = pickPatch(body);
   const { isAgentSmokeLaunch } = require("../lib/agent-smoke-mode.cjs");
-  const isAgent = Boolean(
-    isAgentRequest ||
+  const hasAgentMarker = Boolean(
+    forceAgentHeader ||
       isAgentSmokeLaunch() ||
       body?.agent_smoke ||
       body?.agentSmoke ||
       body?.agent_task ||
       body?.agentTask,
   );
-  if (isAgent && body?.allowStaticIpPin !== true) {
+  const isAgent = Boolean(isAgentRequest || hasAgentMarker);
+  let skippedProxyPersist = false;
+  if (isAgent && (hasAgentMarker || body?.allowStaticIpPin !== true)) {
+    delete patch.allowStaticIpPin;
     if (patch.staticIp === true || patch.staticIp === 1 || patch.proxy !== undefined) {
       patch.staticIp = false;
     }
     if (typeof patch.note === "string") {
       patch.note = sanitizeAgentPinNote(patch.note);
     }
+    if (patch.proxy !== undefined) {
+      const trimmedProxy = String(patch.proxy || "").trim();
+      if (trimmedProxy === "") {
+        pendingAgentEphemeralProxies.delete(profileId);
+      } else if (hasAgentMarker || String(existing.status || "closed") === "closed") {
+        // Never persist non-empty proxy to DB on agent PATCH (pass ephemeralProxy on /launch instead).
+        // Stage a short-lived one-shot ephemeral proxy for non-protected profiles so legacy callers
+        // that PATCH immediately before /launch keep working without polluting stealth-console.db.
+        if (!isProtectedAgentProxyCode(existing.name)) {
+          pendingAgentEphemeralProxies.set(profileId, {
+            proxy: trimmedProxy,
+            timezone: typeof patch.timezone === "string" ? patch.timezone.trim() : "",
+            locale: typeof patch.locale === "string" ? patch.locale.trim() : "",
+            expiresAt: Date.now() + PENDING_AGENT_PROXY_TTL_MS,
+          });
+        }
+        delete patch.proxy;
+        if (patch.timezone !== undefined && !String(existing.proxy || "").trim()) delete patch.timezone;
+        if (patch.locale !== undefined && !String(existing.proxy || "").trim()) delete patch.locale;
+        if (patch.staticIp === false && !existing.staticIp) delete patch.staticIp;
+        skippedProxyPersist = true;
+      }
+    }
   }
-  if (!Object.keys(patch).length) throw new Error("Empty patch body.");
+  const meaningfulKeys = Object.keys(patch).filter((k) => k !== "lastChangeSummary" && k !== "allowStaticIpPin");
+  if (!meaningfulKeys.length) {
+    if (skippedProxyPersist) {
+      return { ...existing, skippedProxyPersist: true };
+    }
+    throw new Error("Empty patch body.");
+  }
   const profile = deps.profileService.updateProfile(profileId, patch);
   if (userDataRoot) await ensureProfileExtensionPins(profile, userDataRoot);
   const refreshed = deps.profileService.getProfile(profileId) || profile;
   if (profile?.lastChangeSummary && refreshed) {
     refreshed.lastChangeSummary = profile.lastChangeSummary;
+  }
+  if (skippedProxyPersist && refreshed) {
+    refreshed.skippedProxyPersist = true;
   }
   return refreshed;
 }

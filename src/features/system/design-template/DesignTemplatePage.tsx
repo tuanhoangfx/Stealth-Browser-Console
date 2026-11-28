@@ -3,12 +3,14 @@ import { Glass } from "../../../theme/p0008";
 import { resolveAndroidPowerBadgeState } from "../../../views/mobile-farm/mobile-farm-stream";
 import {
   ACTIVE_DESIGN_COUNT,
+  ACTIVE_DESIGN_FEATURES,
   PROFILE_KPI_TOOLTIP_DESIGN_LOCK,
   RUN_HISTORY_DESIGN_LOCK,
   RUNTIME_CONSOLE_LOG_DESIGN_LOCK,
   TASKBAR_PROFILE_BADGE_DESIGN_LOCK,
   WORKFLOW_CANVAS_LAYOUT_DESIGN_LOCK,
 } from "./design-registry";
+import { MobileFarmRealtimePreview } from "./design-preview/mobile-farm-realtime-v2";
 
 type AndroidTelemetryPoint = {
   ts: number;
@@ -50,6 +52,13 @@ type NeverPowerOffState = {
 export function DesignTemplatePage() {
   const [androidNode, setAndroidNode] = useState<NeverPowerOffState | null>(null);
   const [provisioning, setProvisioning] = useState(false);
+  const [activeFeatureId, setActiveFeatureId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const param = new URLSearchParams(window.location.search).get("dtpl");
+      if (param && ACTIVE_DESIGN_FEATURES.some((f) => f.id === param)) return param;
+    }
+    return ACTIVE_DESIGN_FEATURES[0]?.id || "";
+  });
 
   const loadAndroidNode = async (provision = false) => {
     setProvisioning(true);
@@ -146,7 +155,41 @@ export function DesignTemplatePage() {
           </button>
         </div>
 
-        <div className="mt-3 rounded-lg border border-emerald-500/25 bg-black/35 p-3 text-xs">
+        {ACTIVE_DESIGN_FEATURES.length > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+            {ACTIVE_DESIGN_FEATURES.map((feat) => {
+              const selected = feat.id === activeFeatureId;
+              return (
+                <button
+                  key={feat.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveFeatureId(feat.id);
+                    if (typeof window !== "undefined") {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set("dtpl", feat.id);
+                      window.history.replaceState(null, "", url.toString());
+                    }
+                  }}
+                  className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                    selected
+                      ? "border-cyan-400/60 bg-cyan-500/20 text-white"
+                      : "border-white/10 bg-black/30 text-slate-300 hover:border-white/25"
+                  }`}
+                >
+                  <div className="font-semibold text-cyan-200">{feat.title}</div>
+                  <div className="text-[10.5px] text-slate-400">{feat.subtitle}</div>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </Glass>
+
+      {activeFeatureId === "mobile-farm-realtime-v2" ? <MobileFarmRealtimePreview /> : null}
+
+      <Glass tone="slate">
+        <div className="rounded-lg border border-emerald-500/25 bg-black/35 p-3 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-semibold text-emerald-300">
               Android Antidetect Never-Power-Off Node (Pixel 6a · {androidNode?.serial || "192.168.0.208:41271"})

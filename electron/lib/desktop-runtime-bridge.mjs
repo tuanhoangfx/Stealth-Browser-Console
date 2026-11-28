@@ -354,6 +354,41 @@ export function createSovereignRuntimeBridge(config) {
     }
   }
 
+  const hubAuthTelemetryFile = path.join(appHomeDir, "hub-auth-telemetry.json");
+
+  function readHubAuthTelemetry() {
+    const raw = readValidJsonState(
+      hubAuthTelemetryFile,
+      (d) => Boolean(d && typeof d === "object" && typeof d.code === "string" && typeof d.totalMs === "number"),
+    );
+    return raw || null;
+  }
+
+  function saveHubAuthTelemetry(payload) {
+    if (!payload || typeof payload !== "object" || !String(payload.code || "").trim()) {
+      return null;
+    }
+    const numOrNull = (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+    const next = {
+      code: String(payload.code).trim().toUpperCase(),
+      outcome: String(payload.outcome || "app").trim(),
+      initialCached: Boolean(payload.initialCached),
+      initialExpired: Boolean(payload.initialExpired),
+      policyMs: numOrNull(payload.policyMs),
+      sessionMs: numOrNull(payload.sessionMs),
+      accessCheckMs: numOrNull(payload.accessCheckMs),
+      totalMs: numOrNull(payload.totalMs) ?? 0,
+      timedOut: Boolean(payload.timedOut),
+      expiredCleared: Boolean(payload.expiredCleared),
+      startedAtIso: payload.startedAtIso ? String(payload.startedAtIso) : null,
+      settledAtIso: payload.settledAtIso ? String(payload.settledAtIso) : null,
+      ...(payload.errorMessage ? { errorMessage: String(payload.errorMessage).slice(0, 400) } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+    writeJsonStateAtomic(hubAuthTelemetryFile, next);
+    return next;
+  }
+
   /** Decode and validate Hub Supabase JWT structure + expiry without external deps. */
   function decodeHubJwtClaims(rawToken, { nowSec = Math.floor(Date.now() / 1000), skewSec = 60 } = {}) {
     const token = String(rawToken || "").trim();
@@ -617,6 +652,8 @@ export function createSovereignRuntimeBridge(config) {
     readHubUserSession,
     saveHubUserSession,
     clearHubUserSession,
+    readHubAuthTelemetry,
+    saveHubAuthTelemetry,
     decodeHubJwtClaims,
     verifyHubRequestAuth,
     verifyHubTokenOnline,

@@ -65,9 +65,112 @@ export async function updateEngineBinary() {
   return api().updateBinary();
 }
 
+type RunningProfileSessionRow = {
+  id: string;
+  name?: string;
+  debugPort?: number;
+  headless?: boolean;
+  shadowLane?: boolean;
+  callerId?: string;
+  launchedAt?: number;
+  startedAt?: string;
+};
+
+async function fetchWorkerRunningSessionsSafe(): Promise<RunningProfileSessionRow[]> {
+  if (typeof window === "undefined" || typeof fetch !== "function") return [];
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 700);
+    const res = await fetch("http://127.0.0.1:6004/api/sessions/running?localOnly=1", {
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+    if (!res.ok) return [];
+    const data = (await res.json()) as { sessions?: RunningProfileSessionRow[] };
+    return Array.isArray(data?.sessions) ? data.sessions : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeRunningProfileSessions(
+  localSessions: RunningProfileSessionRow[],
+  workerSessions: RunningProfileSessionRow[],
+): RunningProfileSessionRow[] {
+  const byId = new Map<string, RunningProfileSessionRow>();
+  for (const row of localSessions) {
+    if (row?.id) byId.set(row.id, row);
+  }
+  for (const row of workerSessions) {
+    if (!row?.id || byId.has(row.id)) continue;
+    if (row.headless !== true && row.shadowLane !== true) continue;
+    byId.set(row.id, { ...row, headless: true });
+  }
+  return [...byId.values()];
+}
+
+function formatWorkerElapsed(launchedAt?: number): string {
+  if (!launchedAt || launchedAt <= 0) return "";
+  const sec = Math.max(1, Math.floor((Date.now() - launchedAt) / 1000));
+  if (sec < 60) return ` · Elapsed: ${sec}s`;
+  const min = Math.floor(sec / 60);
+  const rem = sec % 60;
+  return rem > 0 ? ` · Elapsed: ${min}m ${rem}s` : ` · Elapsed: ${min}m`;
+}
+
+function mergeWorkerSessionsIntoStats(
+  stats: ProfileCatalogStats,
+  workerSessions: RunningProfileSessionRow[],
+): ProfileCatalogStats {
+  const remoteHeadless = workerSessions.filter((s) => s?.id && (s.headless === true || s.shadowLane === true));
+  if (!remoteHeadless.length) return stats;
+  const headlessReasons = { ...(stats.headlessReasons ?? {}) };
+  const waitingReasons = { ...(stats.waitingReasons ?? {}) };
+  const activeRemoteCodes = new Set<string>();
+  const activeRemoteIds = new Set<string>();
+
+  for (const s of remoteHeadless) {
+    activeRemoteIds.add(s.id);
+    const code = String(s.name || "").trim();
+    if (/^\d{4}$/.test(code)) activeRemoteCodes.add(code);
+    const rawCaller = String(s.callerId || "").trim().replace(/^agent:/, "");
+    const baseLabel =
+      rawCaller && rawCaller !== "inline" && rawCaller !== "smoke-client"
+        ? `Worker (${rawCaller})`
+        : "AI Agent Headless Session";
+    const desc = `${baseLabel}${formatWorkerElapsed(s.launchedAt)}`;
+    if (!headlessReasons[s.id]) headlessReasons[s.id] = desc;
+    if (code && !headlessReasons[code]) headlessReasons[code] = desc;
+    delete waitingReasons[s.id];
+    if (code) delete waitingReasons[code];
+  }
+
+  const waitingCodes = (stats.waitingCodes ?? []).filter(
+    (c) => !activeRemoteCodes.has(c) && !activeRemoteIds.has(c),
+  );
+  const deferred =
+    stats.waitingCodes !== undefined
+      ? waitingCodes.length
+      : Math.max(0, (stats.deferred ?? 0) - activeRemoteIds.size);
+
+  return {
+    ...stats,
+    headlessRunning: Math.max(stats.headlessRunning ?? 0, activeRemoteIds.size),
+    headlessReasons,
+    waitingReasons,
+    waitingCodes,
+    deferred,
+  };
+}
+
 export async function fetchProfileBootstrap(): Promise<{ groups: StealthGroup[]; stats: ProfileCatalogStats }> {
-  const data = await api().profileBootstrap();
-  return { groups: data.groups, stats: data.stats };
+  const [data, workerSessions] = await Promise.all([
+    api().profileBootstrap(),
+    fetchWorkerRunningSessionsSafe(),
+  ]);
+  return {
+    groups: data.groups,
+    stats: mergeWorkerSessionsIntoStats(data.stats, workerSessions),
+  };
 }
 
 export async function fetchProfilesAndGroups(): Promise<{ profiles: StealthProfile[]; groups: StealthGroup[] }> {
@@ -81,8 +184,11 @@ export async function listProfiles(): Promise<StealthProfile[]> {
 }
 
 export async function fetchProfileCatalogStats(): Promise<ProfileCatalogStats> {
-  const data = await api().catalogStats();
-  return data.stats;
+  const [data, workerSessions] = await Promise.all([
+    api().catalogStats(),
+    fetchWorkerRunningSessionsSafe(),
+  ]);
+  return mergeWorkerSessionsIntoStats(data.stats, workerSessions);
 }
 
 export async function fetchProfileDirectoryPage(input: {
@@ -422,11 +528,11 @@ async function closeAllRunningViaHttp(): Promise<{ count: number; ids: string[] 
 
 export async function fetchRunningProfileSessions() {
   const bridge = api();
-  if (typeof bridge.listRunningProfiles === "function") {
-    const data = await bridge.listRunningProfiles();
-    return data.sessions ?? [];
-  }
-  return [];
+  const [localRes, workerSessions] = await Promise.all([
+    typeof bridge.listRunningProfiles === "function" ? bridge.listRunningProfiles() : Promise.resolve({ sessions: [] }),
+    fetchWorkerRunningSessionsSafe(),
+  ]);
+  return mergeRunningProfileSessions(localRes.sessions ?? [], workerSessions);
 }
 
 export async function runOpenUrl(input: {

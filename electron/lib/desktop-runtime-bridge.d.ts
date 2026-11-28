@@ -120,6 +120,23 @@ export interface SovereignRuntimeBridge {
     updatedAt: string;
   } | null;
   clearHubUserSession: () => void;
+  readHubAuthTelemetry: () => {
+    code: string;
+    outcome: string;
+    initialCached: boolean;
+    initialExpired: boolean;
+    policyMs: number | null;
+    sessionMs: number | null;
+    accessCheckMs: number | null;
+    totalMs: number;
+    timedOut: boolean;
+    expiredCleared: boolean;
+    startedAtIso: string | null;
+    settledAtIso: string | null;
+    errorMessage?: string;
+    updatedAt: string;
+  } | null;
+  saveHubAuthTelemetry: (payload: Record<string, unknown> | null) => Record<string, unknown> | null;
   decodeHubJwtClaims: (
     rawToken: string,
     opts?: { nowSec?: number; skewSec?: number },

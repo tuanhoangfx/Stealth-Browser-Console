@@ -99,6 +99,21 @@ export const MobileFarmView = memo(function MobileFarmView({
     }>;
   } | null>(null);
   const [selectedPhysicalId, setSelectedPhysicalId] = useState<string | null>(null);
+  const [manualS9UserId, setManualS9UserId] = useState<number>(0);
+  const [switchingManualUser, setSwitchingManualUser] = useState<{
+    deviceId: string;
+    userId: number;
+    label: string;
+  } | null>(null);
+  const switchVeilTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerUserSwitchVeil = useCallback((deviceId: string, userId: number, label: string) => {
+    if (switchVeilTimerRef.current) clearTimeout(switchVeilTimerRef.current);
+    setSwitchingManualUser({ deviceId, userId, label });
+    switchVeilTimerRef.current = setTimeout(() => {
+      setSwitchingManualUser(null);
+      switchVeilTimerRef.current = null;
+    }, 1550);
+  }, []);
   const [showDetailedBoard, setShowDetailedBoard] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [actionBusy, setActionBusy] = useState<string>("");
@@ -107,6 +122,8 @@ export const MobileFarmView = memo(function MobileFarmView({
   const [dualWall, setDualWall] = useState<boolean>(initialFarmPrefs.dualWall);
   const dualWallRef = useRef<boolean>(dualWall);
   dualWallRef.current = dualWall;
+  const wallSegmentRef = useRef<FarmWallSegment>(wallSegment);
+  wallSegmentRef.current = wallSegment;
 
   const pcProfileByCode = useMemo(() => {
     const map = new Map<string, (typeof pcProfiles)[number]>();
@@ -227,7 +244,7 @@ export const MobileFarmView = memo(function MobileFarmView({
     pullInFlightRef.current = true;
     setLoading(true);
     try {
-      const wantAll = wallSegment !== "virtual_pc" || dualWallRef.current;
+      const wantAll = wallSegmentRef.current !== "virtual_pc" || dualWallRef.current;
       const data = (await fetchFarmApi(
         `/api/mobile-stealth/live-screen?displayId=all&screenshot=${includeShot ? "1" : "0"}&allDevices=${wantAll ? "1" : "0"}`,
       )) as ExtendedLiveScreenState;
@@ -242,19 +259,21 @@ export const MobileFarmView = memo(function MobileFarmView({
               changed = true;
             }
           };
+          const primSerial = String(data.serial || "").trim();
+          const minPrimLen = primSerial.startsWith("ios:") ? 2000 : 7800;
           if (data.displayScreenshots) {
             for (const [dispId, url] of Object.entries(data.displayScreenshots)) {
-              assignIfChanged(`disp:${dispId}`, url);
+              if (primSerial) assignIfChanged(`peer:${primSerial}:disp:${dispId}`, url, minPrimLen);
             }
           }
           if (data.screenDataUrl) {
-            assignIfChanged("disp:0", data.screenDataUrl);
+            if (primSerial) assignIfChanged(`peer:${primSerial}:disp:0`, data.screenDataUrl, minPrimLen);
             const fgUser = data.currentUserId ?? 0;
-            assignIfChanged(`user:${fgUser}`, data.screenDataUrl);
+            if (primSerial) assignIfChanged(`peer:${primSerial}:user:${fgUser}`, data.screenDataUrl, minPrimLen);
           }
           for (const slot of data.multiUserSlots || []) {
             if (slot.lastScreenDataUrl) {
-              assignIfChanged(`user:${slot.userId}`, slot.lastScreenDataUrl);
+              if (primSerial) assignIfChanged(`peer:${primSerial}:user:${slot.userId}`, slot.lastScreenDataUrl, minPrimLen);
               if (slot.profileCode) assignIfChanged(`prof:${slot.profileCode}`, slot.lastScreenDataUrl);
             }
           }
@@ -302,8 +321,12 @@ export const MobileFarmView = memo(function MobileFarmView({
     const timer = window.setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
       pollTickRef.current += 1;
-      const h264HasLiveFrame = hasLiveMirrorFrame(0);
-      const shouldIncludeShot = wallSegment !== "virtual_pc" || !h264HasLiveFrame || pollTickRef.current % 5 === 0;
+      const bothPixelsLiveH264 =
+        hasLiveMirrorFrame(0, "192.168.0.208:5555") && hasLiveMirrorFrame(0, "192.168.0.253:5555");
+      const shouldIncludeShot =
+        (wallSegment !== "virtual_pc" && wallSegment !== "physical_android") ||
+        !bothPixelsLiveH264 ||
+        pollTickRef.current % 5 === 0;
       void pullFarmLiveState(shouldIncludeShot);
     }, Math.max(1200, refreshIntervalMs));
     return () => window.clearInterval(timer);
@@ -483,7 +506,7 @@ export const MobileFarmView = memo(function MobileFarmView({
           const is720p = disp.resolution === "720x1600";
           const rawDispScreen =
             liveState?.displayScreenshots?.[String(disp.logicalId)] ||
-            cachedSlotScreens[`disp:${disp.logicalId}`] ||
+            cachedSlotScreens[`peer:${primarySerial}:disp:${disp.logicalId}`] ||
             (disp.logicalId === 0 ? liveState?.screenDataUrl || null : null);
           const screenUrl = isNonBlackScreenUrl(rawDispScreen) ? rawDispScreen : null;
           if (isVirtual && !screenUrl) continue;
@@ -549,7 +572,9 @@ export const MobileFarmView = memo(function MobileFarmView({
           fbAccountLabel: resolvedFbLabel,
           manufacturer: activeDevBrand,
           deviceSerial: primarySerial,
-          screenDataUrl: isNonBlackScreenUrl(cachedSlotScreens["disp:0"]) ? cachedSlotScreens["disp:0"] : null,
+          screenDataUrl: isNonBlackScreenUrl(cachedSlotScreens[`peer:${primarySerial}:disp:0`])
+            ? cachedSlotScreens[`peer:${primarySerial}:disp:0`]
+            : null,
         });
       }
 
@@ -624,9 +649,11 @@ export const MobileFarmView = memo(function MobileFarmView({
         const boundVirt = displays.find((d) => d.kind === "virtual" && d.assignedUserId === slot.userId);
         const rawSlotScreen =
           (boundVirt ? liveState?.displayScreenshots?.[String(boundVirt.logicalId)] : null) ||
-          (adbOnline && slot.userId === fgUserId ? liveState?.screenDataUrl || cachedSlotScreens["disp:0"] : null) ||
+          (adbOnline && slot.userId === fgUserId
+            ? liveState?.screenDataUrl || cachedSlotScreens[`peer:${primarySerial}:disp:0`]
+            : null) ||
           slot.lastScreenDataUrl ||
-          cachedSlotScreens[`user:${slot.userId}`] ||
+          cachedSlotScreens[`peer:${primarySerial}:user:${slot.userId}`] ||
           (slot.profileCode ? cachedSlotScreens[`prof:${slot.profileCode}`] : null) ||
           null;
         const screenUrl = isNonBlackScreenUrl(rawSlotScreen) ? rawSlotScreen : null;
@@ -684,7 +711,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         );
         const isMounted = engineMode !== "pc_emulation" && adbOnline && Boolean(prof.activeOnPhone);
         const rawProfScreen =
-          (isMounted ? liveState?.screenDataUrl || cachedSlotScreens["disp:0"] : null) ||
+          (isMounted ? liveState?.screenDataUrl || cachedSlotScreens[`peer:${primarySerial}:disp:0`] : null) ||
           cachedSlotScreens[`prof:${prof.code}`] ||
           null;
         const screenUrl = isNonBlackScreenUrl(rawProfScreen) ? rawProfScreen : null;
@@ -757,25 +784,30 @@ export const MobileFarmView = memo(function MobileFarmView({
   );
 
   const carrierKaizenLanes = useMemo<CarrierKaizenItem[]>(() => {
-    const liveLanes = executionBoard?.carrierKaizen;
-    if (Array.isArray(liveLanes) && liveLanes.length > 0) {
-      return liveLanes.map((l) => ({
-        laneId: l.laneId,
-        label: l.label,
-        attempts: l.attempts,
-        live: l.live,
-        convPct: l.conversionPct,
-        latencyMs: l.latencyMs || null,
-        lastOutcome: l.lastOutcome || "",
-      }));
+    const raw = executionBoard?.carrierKaizen || [];
+    const s9ActiveOnBoard = (executionBoard?.devices || []).some((d) => String(d.serial || "").includes("192.168.0.120"));
+    if (raw.length > 0) {
+      return raw
+        .filter((l) => s9ActiveOnBoard || l.laneId !== "s9_viettel_4g")
+        .map((l) => ({
+          laneId: l.laneId,
+          label: l.label,
+          attempts: l.attempts,
+          live: l.live,
+          convPct: l.conversionPct,
+          latencyMs: l.latencyMs || null,
+          lastOutcome: l.lastOutcome || "",
+        }));
     }
     return [
       { laneId: "pixel6a_fpt_4g", label: "Pixel 6a FPT 4G (:31080)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
       { laneId: "pixel7_viettel_4g", label: "Pixel 7 Viettel 4G (:31082)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
-      { laneId: "s9_viettel_4g", label: "S9+ Viettel 4G (:31081)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
+      ...(s9ActiveOnBoard
+        ? [{ laneId: "s9_viettel_4g", label: "S9+ Viettel 4G (:31081)", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" }]
+        : []),
       { laneId: "static_vn_proxy", label: "Static VN Proxy Pool", attempts: 0, live: 0, convPct: 0, latencyMs: null, lastOutcome: "waiting" },
     ];
-  }, [executionBoard?.carrierKaizen]);
+  }, [executionBoard?.carrierKaizen, executionBoard?.devices]);
 
   const fivePhysicalDevices = useMemo<PhysicalWallDevice[]>(() => {
     const fbTask = executionBoard?.tasks?.find((t) => t.id === "fb-multi-method-100");
@@ -786,6 +818,11 @@ export const MobileFarmView = memo(function MobileFarmView({
     const laneMap = new Map(carrierKaizenLanes.map((l) => [l.laneId, l]));
     const orchAssignMap = new Map(
       (executionBoard?.orchestrator?.deviceAssignments || []).map((a) => [a.deviceKey, a]),
+    );
+    const fleetEvalMap = new Map(
+      (executionBoard?.fleetEvaluation?.devices || executionBoard?.orchestrator?.evaluation?.devices || []).map(
+        (ev) => [ev.deviceKey || ev.serial, ev],
+      ),
     );
 
     const specs = [
@@ -827,15 +864,15 @@ export const MobileFarmView = memo(function MobileFarmView({
         name: "Galaxy S9+",
         ip: "192.168.0.120",
         defaultSerial: "192.168.0.120:5555",
-        matches: ["192.168.0.120"],
+        matches: ["192.168.0.120", "1a60ec340b027ece"],
         os: "android" as const,
-        transportLabel: "ADB :5555",
+        transportLabel: "Wi-Fi ADB :5555",
         coordW: 1080,
         coordH: 2220,
-        proxyLabel: simS9?.phone ? `SIM ${simS9.phone} (:31081)` : "Viettel 4G :31081",
+        proxyLabel: "Wi-Fi ADB :5555 · Manual Control",
         laneId: "s9_viettel_4g",
-        dimModeLabel: "Background Service · Cool",
-        defaultTask: "SMS OTP + 4G Relay Gateway",
+        dimModeLabel: "1.0x Smooth · Dual + Multi-User",
+        defaultTask: "Personal Manual · Zalo & FB (5 Isolated Slots)",
       },
       {
         id: "ios6s",
@@ -876,39 +913,58 @@ export const MobileFarmView = memo(function MobileFarmView({
       return Boolean(low) && needles.some((n) => low.includes(n));
     };
 
-    return specs.map((sp) => {
+    const activeSpecs = specs;
+
+    return activeSpecs.map((sp) => {
       const bDev = dedupBoardDevices.find((d) => matchesKey(d.serial, sp.matches)) || null;
+      const availDev = (liveState?.availableDevices || []).find((d) => matchesKey(d.serial, sp.matches)) || null;
       const isPrimary = matchesKey(liveState?.serial, sp.matches);
       const stateEntry = Object.entries(liveState?.deviceStates || {}).find(([k]) => matchesKey(k, sp.matches));
       const snap = isPrimary ? liveState : stateEntry?.[1] || null;
-      const resolvedSerial = stateEntry?.[0] || (isPrimary ? liveState?.serial : null) || bDev?.serial || sp.defaultSerial;
+      const resolvedSerial =
+        stateEntry?.[0] ||
+        (isPrimary ? liveState?.serial : null) ||
+        availDev?.serial ||
+        bDev?.serial ||
+        sp.defaultSerial;
+      const cachedDeviceScreen =
+        (stateEntry ? cachedSlotScreens[`peer:${stateEntry[0]}:disp:0`] : null) ||
+        (resolvedSerial ? cachedSlotScreens[`peer:${resolvedSerial}:disp:0`] : null) ||
+        Object.entries(cachedSlotScreens).find(
+          ([k]) => k.startsWith("peer:") && k.endsWith(":disp:0") && matchesKey(k, sp.matches),
+        )?.[1] ||
+        null;
       const rawScreen =
         (isPrimary
-          ? liveState?.displayScreenshots?.["0"] || liveState?.screenDataUrl || cachedSlotScreens["disp:0"]
+          ? liveState?.displayScreenshots?.["0"] || liveState?.screenDataUrl || cachedDeviceScreen
           : null) ||
         snap?.displayScreenshots?.["0"] ||
         snap?.screenDataUrl ||
-        (stateEntry ? cachedSlotScreens[`peer:${stateEntry[0]}:disp:0`] : null) ||
+        cachedDeviceScreen ||
         null;
       const screenDataUrl = isNonBlackScreenUrl(rawScreen, sp.os === "ios" ? 2000 : 7800) ? rawScreen : null;
       const snapHw = (snap as ExtendedLiveScreenState | null)?.hardwareHealth;
-      const ok = Boolean(bDev ? bDev.ok : snap?.ok ?? isPrimary);
+      const ok = Boolean(bDev ? bDev.ok : snap?.ok ?? (isPrimary || Boolean(availDev)));
       const batteryPct = bDev?.batteryLevel ?? snapHw?.batteryLevel ?? null;
       const tempC = bDev?.batteryTempC ?? snapHw?.batteryTempC ?? null;
       const ramUsedPct = bDev?.ramUsedPct ?? snapHw?.ramUsedPct ?? null;
       const ramFreeMb = snapHw?.ramAvailableMb ?? null;
       const laneInfo = laneMap.get(sp.laneId);
       const orchAssign = orchAssignMap.get(sp.id) || null;
+      const evalInfo = fleetEvalMap.get(sp.id) || fleetEvalMap.get(resolvedSerial) || null;
       const lastAttemptForNode = [...recentByHost]
         .reverse()
         .find((r) => matchesKey(r.iosHost || r.serial, sp.matches));
+      const isS9Manual = sp.id === "s9plus" && !bDev;
       const activeTaskTitle =
         sp.id === "s9plus"
-          ? simS9?.latestOtp
-            ? `SMS OTP + 4G Relay (${simS9.online ? "Online" : "Wait"})`
-            : orchAssign?.skipReason
-              ? `SIM Gateway (${orchAssign.skipReason.replace(/_/g, " ")})`
-              : "SMS OTP + 4G Relay Gateway"
+          ? isS9Manual
+            ? sp.defaultTask
+            : simS9?.latestOtp
+              ? `SMS OTP + 4G Relay (${simS9.online ? "Online" : "Wait"})`
+              : orchAssign?.skipReason
+                ? `SIM Gateway (${orchAssign.skipReason.replace(/_/g, " ")})`
+                : "SMS OTP + 4G Relay Gateway"
           : orchAssign?.state === "dispatch" && orchAssign.assignedTask
             ? `${orchAssign.assignedTask.replace(/_/g, " ")}`
             : orchAssign?.skipReason
@@ -918,13 +974,15 @@ export const MobileFarmView = memo(function MobileFarmView({
                 : sp.defaultTask;
       const taskPhase = !ok
         ? "OFFLINE"
-        : sp.id === "s9plus"
-          ? "24/7 GATEWAY"
-          : isBurst
-            ? "COOLDOWN BURST"
-            : fbTask?.status === "running" || orchAssign?.state === "dispatch"
-              ? "WAVE"
-              : "RUNNING";
+        : isS9Manual
+          ? "MANUAL SCRCPY"
+          : sp.id === "s9plus"
+            ? "24/7 GATEWAY"
+            : isBurst
+              ? "COOLDOWN BURST"
+              : fbTask?.status === "running" || orchAssign?.state === "dispatch"
+                ? "WAVE"
+                : "RUNNING";
 
       const interactiveCard: FarmPhoneCardItem = {
         id: `phys-${sp.id}`,
@@ -974,12 +1032,65 @@ export const MobileFarmView = memo(function MobileFarmView({
         orchestratorLabel:
           orchAssign?.skipReason || orchAssign?.assignedTitle || orchAssign?.assignedTask || null,
         orchestratorCompletedCount: Number(orchAssign?.completedCount || 0),
+        efficiencyScore: evalInfo?.efficiencyScore ?? null,
+        efficiencyGrade: evalInfo?.grade ?? null,
+        autoAction: evalInfo?.autoAction ?? null,
         screenDataUrl,
-        boardDevice: bDev,
+        isManualNode: isS9Manual,
+        activeManualUserId:
+          sp.id === "s9plus"
+            ? (typeof snap?.currentUserId === "number" ? snap.currentUserId : manualS9UserId)
+            : undefined,
+        manualUserSlots: isS9Manual
+          ? (
+              [
+                { userId: 0, fallback: "01 · U0" },
+                { userId: 10, fallback: "02 · U10" },
+                { userId: 11, fallback: "03 · U11" },
+                { userId: 12, fallback: "04 · U12" },
+                { userId: 13, fallback: "05 · U13" },
+              ] as const
+            ).map(({ userId, fallback }) => {
+              const liveSlot = (snap?.multiUserSlots || []).find((s) => s.userId === userId);
+              const liveName = String(liveSlot?.name || "").trim();
+              return {
+                userId,
+                label: liveName && liveName !== `U${userId}` ? `${liveName} · U${userId}` : fallback,
+              };
+            })
+          : undefined,
+        boardDevice:
+          bDev || snapHw
+            ? {
+                ...(bDev || {
+                  serial: resolvedSerial,
+                  label: sp.name,
+                  platform: sp.os,
+                  ok,
+                  batteryLevel: batteryPct,
+                  batteryTempC: tempC,
+                  acPowered: snapHw?.acPowered ?? null,
+                  cableAttached: snapHw?.cableAttached ?? null,
+                  attachedDev: snapHw?.attachedDev ?? null,
+                  chargeMode: snapHw?.chargeMode || (ok ? "charging" : "offline"),
+                  storeMode: snapHw?.storeMode ?? null,
+                  slateMode: snapHw?.slateMode ?? null,
+                  chargeDisable: snapHw?.chargeDisable ?? null,
+                  chargeLimiterEnabled: null,
+                  storeModeRecoveryTriggered: false,
+                  unreachableReason: null,
+                  ramUsedPct,
+                }),
+                batteryCurrentMa: bDev?.batteryCurrentMa ?? snapHw?.batteryCurrentMa ?? null,
+                usbInputCurrentLimit: bDev?.usbInputCurrentLimit ?? snapHw?.usbInputCurrentLimit ?? null,
+                usbVoltageMv: bDev?.usbVoltageMv ?? snapHw?.usbVoltageMv ?? null,
+                tcpmOnline: bDev?.tcpmOnline ?? snapHw?.tcpmOnline ?? null,
+              }
+            : null,
         interactiveCard,
       };
     });
-  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.orchestrator, executionBoard?.tasks, liveState, simFleet]);
+  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.fleetEvaluation, executionBoard?.orchestrator, executionBoard?.tasks, liveState, simFleet]);
 
   const visiblePhysicalDevices = useMemo(() => {
     const q = searchQuery.trim();
@@ -1348,7 +1459,7 @@ export const MobileFarmView = memo(function MobileFarmView({
   const handleCopyCardScreenshot = useCallback(
     async (card: FarmPhoneCardItem) => {
       try {
-        let sourceCanvas: HTMLCanvasElement | null = getMirrorCanvasForDisplay(card.displayId);
+        let sourceCanvas: HTMLCanvasElement | null = getMirrorCanvasForDisplay(card.displayId, card.deviceSerial);
         if (!sourceCanvas && card.screenDataUrl) {
           const img = new Image();
           img.crossOrigin = "anonymous";
@@ -1910,6 +2021,57 @@ export const MobileFarmView = memo(function MobileFarmView({
               onPointerDown={handleScreenPointerDown}
               onPointerUp={handleScreenPointerUp}
               onOpenTheater={(card) => setTheaterCardId(card.id)}
+              onOpenScrcpy={(dev) =>
+                void dispatchControl(
+                  { action: "open-scrcpy", serial: dev.serial, displayId: 0 },
+                  `Opened 60fps Scrcpy for ${dev.name}`,
+                )
+              }
+              switchingUserState={switchingManualUser}
+              onSwitchUser={(dev, userId) => {
+                const slotLabel =
+                  dev.manualUserSlots?.find((s) => s.userId === userId)?.label || `U${userId}`;
+                const prevUid = dev.activeManualUserId ?? manualS9UserId;
+                triggerUserSwitchVeil(dev.id, userId, slotLabel);
+                setManualS9UserId(userId);
+                void dispatchControl(
+                  { action: "switch-user", userId, serial: dev.serial },
+                  `Switched ${dev.name} to ${slotLabel}`,
+                ).then((res) => {
+                  // Keep 1 recent secondary user warm in RAM for sub-second switches; only stop extras if >1 running
+                  const runningSecondaries = (liveState?.multiUserSlots || [])
+                    .filter((s) => s.running && s.userId >= 10 && s.userId !== 95 && s.userId !== userId && s.userId !== prevUid)
+                    .map((s) => s.userId);
+                  for (const extraUid of runningSecondaries) {
+                    if (res?.ok) {
+                      void dispatchControl({ action: "stop-user", userId: extraUid, serial: dev.serial });
+                    }
+                  }
+                });
+              }}
+              onLaunchManualApp={(dev, packageName, appLabel, userIdOverride) => {
+                const effectiveUid = dev.activeManualUserId ?? manualS9UserId;
+                const targetUid = typeof userIdOverride === "number" ? userIdOverride : effectiveUid;
+                const slotLabel =
+                  targetUid === 95
+                    ? "Dual · U95"
+                    : dev.manualUserSlots?.find((s) => s.userId === targetUid)?.label || `U${targetUid}`;
+                const runLaunch = async () => {
+                  // Dual Messenger (U95) renders over Owner User 0 (01); switch foreground cleanly if on U10-U13
+                  if (targetUid === 95) {
+                    triggerUserSwitchVeil(dev.id, 95, `${appLabel} · U95`);
+                    if (effectiveUid !== 0 || manualS9UserId !== 0) {
+                      setManualS9UserId(0);
+                      await dispatchControl({ action: "switch-user", userId: 0, serial: dev.serial });
+                    }
+                  }
+                  await dispatchControl(
+                    { action: "launch-app", packageName, userId: targetUid, serial: dev.serial, displayId: 0 },
+                    `Launched ${appLabel} on ${dev.name} (${slotLabel})`,
+                  );
+                };
+                void runLaunch();
+              }}
               onPressHome={(dev) =>
                 void dispatchControl(
                   { action: "keyevent", keyCode: "KEYCODE_HOME", serial: dev.serial },
@@ -1942,7 +2104,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                   <span>4G Carrier Kaizen &amp; Conversion Lanes</span>
                 </div>
                 <span className="text-[11px] text-slate-400">
-                  Deduplicated 5-device fleet · S9+ 0% auto-capped · FPT &amp; Pixel 7 prioritized
+                  Deduplicated {fivePhysicalDevices.length}-device fleet · FPT (:31080) &amp; Pixel 7 (:31082) prioritized
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -2540,6 +2702,11 @@ export const MobileFarmView = memo(function MobileFarmView({
         theaterCard={theaterCard}
         adbOnline={adbOnline}
         localGesture={theaterCard ? lastGestureByCard[theaterCard.id] : undefined}
+        switchingUserState={
+          switchingManualUser && theaterCard?.deviceSerial && theaterCard.deviceSerial.includes("192.168.0.120")
+            ? { userId: switchingManualUser.userId, label: switchingManualUser.label }
+            : null
+        }
         onClose={handleCloseTheater}
         handleScreenPointerDown={handleScreenPointerDown}
         handleScreenPointerUp={handleScreenPointerUp}

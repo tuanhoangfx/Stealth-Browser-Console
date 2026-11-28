@@ -70,6 +70,20 @@ function buildSystemAndRuntimeRoutes(deps) {
           /* ignore */
         }
         const res = reloadHotPatchedModules({ force: Boolean(ctx.body?.force) });
+        try {
+          for (const ck of Object.keys(require.cache || {})) {
+            if (path.basename(ck) === "desktop-app-menu.cjs") {
+              delete require.cache[ck];
+            }
+          }
+          const { installDesktopAppMenu } = require("../lib/desktop-app-menu.cjs");
+          if (typeof installDesktopAppMenu === "function") {
+            installDesktopAppMenu();
+            res.desktopMenuSynced = true;
+          }
+        } catch {
+          /* ignore */
+        }
         if (androidBridgeWorkerInvalidated) {
           res.androidBridgeWorkerInvalidated = true;
         }
@@ -397,7 +411,17 @@ function buildSystemAndRuntimeRoutes(deps) {
               ? resolveHotPatchedPreloadPath(defaultPreload)
               : defaultPreload;
           const iconPath = resolveConsoleIconPath();
+          let chromeOpts = { autoHideMenuBar: true, backgroundColor: "#0b1020" };
+          try {
+            const { getDesktopWindowChromeOptions } = require("../lib/desktop-app-menu.cjs");
+            if (typeof getDesktopWindowChromeOptions === "function") {
+              chromeOpts = getDesktopWindowChromeOptions();
+            }
+          } catch {
+            /* fallback */
+          }
           const newWin = new BrowserWindow({
+            ...chromeOpts,
             width: 1380,
             height: 880,
             minWidth: 1100,

@@ -255,6 +255,7 @@ async function syncProfilePlatformsToP0020IfChanged({
   }
   const isCloseSource = !liveCdp && Boolean(userDataDir) && /(_close|_close_sync|_post_close)$/.test(String(source || ""));
   if (isCloseSource) {
+    const closeProfileCode = String(profileCode || "").trim().padStart(4, "0");
     const t = setTimeout(() => {
       try {
         const { trimClosedProfileDisposableCacheAsync } = require("./profile-chrome-cleanup.cjs");
@@ -262,14 +263,38 @@ async function syncProfilePlatformsToP0020IfChanged({
       } catch {
         /* ignore */
       }
-      // Manual Backup/Restore Only policy:
-      // Only create an initial read-only backup if Cookies.last-good.bak does NOT exist yet.
-      // Never continuously overwrite an existing healthy backup on every close.
+      // On close for non-ephemeral/non-customer profiles: repair structural SQLite hygiene issues if present,
+      // refresh Cookies.last-good.bak whenever Cookies advanced (>60s) or backup/meta/Local State backup is missing,
+      // and rotate native slot-latest when stale. Existing healthy backups remain protected against wiped DBs.
       try {
-        const bakFile = path.join(userDataDir, "Default", "Network", "Cookies.last-good.bak");
-        if (!fs.existsSync(bakFile)) {
-          const { snapshotProfileCookiesIfHealthy } = require("./profile-cookie-guard.cjs");
-          snapshotProfileCookiesIfHealthy(userDataDir);
+        if (!/^[89]\d{3}$/.test(closeProfileCode)) {
+          const {
+            healDirtySqliteAfterCloseIfNeeded,
+            snapshotProfileCookiesIfHealthy,
+            refreshNativeBackupSlotIfStale,
+          } = require("./profile-cookie-guard.cjs");
+          const { isProfileDirectoryLocked } = require("./native-session-backup.cjs");
+          if (!isProfileDirectoryLocked(userDataDir)) {
+            healDirtySqliteAfterCloseIfNeeded(userDataDir, { cleanBackupToo: true });
+          }
+          const ckFile = path.join(userDataDir, "Default", "Network", "Cookies");
+          const bakFile = path.join(userDataDir, "Default", "Network", "Cookies.last-good.bak");
+          const metaFile = path.join(userDataDir, "Default", "Network", "Cookies.guard-meta.json");
+          const lsBakFile = path.join(userDataDir, "Local State.last-good.bak");
+          const ckExists = fs.existsSync(ckFile);
+          const bakExists = fs.existsSync(bakFile);
+          const needsRefresh =
+            ckExists &&
+            (!bakExists ||
+              !fs.existsSync(metaFile) ||
+              !fs.existsSync(lsBakFile) ||
+              fs.statSync(ckFile).mtimeMs > fs.statSync(bakFile).mtimeMs + 60_000);
+          if (needsRefresh) {
+            snapshotProfileCookiesIfHealthy(userDataDir);
+          }
+          if (/^\d{4,}$/.test(closeProfileCode)) {
+            refreshNativeBackupSlotIfStale(userDataDir, closeProfileCode);
+          }
         }
       } catch {
         /* ignore */
@@ -397,7 +422,7 @@ async function syncProfilePlatformsToP0020IfChanged({
   const variants = [...new Set([code, String(Number(code))])];
   const inClause = variants.map((v) => `"${v}"`).join(",");
   const selectCols =
-    "id,service,account,browser,status,stealth_status,password,mail_youtube_api_v3,mail_cloud,note,log_tip_message,plan_package,quota_status,quota_enrolled_at,quota_snapshot,stealth_snapshot,stealth_cookies";
+    "id,service,account,browser,status,stealth_status,password,mail_youtube_api_v3,mail_cloud,note,log_tip_message,plan_package,quota_status,quota_enrolled_at,quota_snapshot,stealth_snapshot,stealth_cookies,created_at,service_uid,fb_display_name,fb_country,mail_state,mail_create_date,tt_username,tt_country";
   const queryUrl = `${cfg.url}/rest/v1/twofa_accounts?select=${selectCols}&user_id=eq.${encodeURIComponent(userId)}&deleted_at=is.null&browser=in.(${encodeURIComponent(inClause)})&limit=100`;
 
   let rows = [];
@@ -762,34 +787,6 @@ async function syncProfilePlatformsToP0020IfChanged({
   const profileOutlookVaultCookies = null;
 
   let cachedGoogleHttpVerify = null;
-  const hasCoherentGoogleLsidAndSid = (list) =>
-    Array.isArray(list) &&
-    list.some((c) => {
-      if (!c) return false;
-      const dom = String(c.domain || c.host_key || "").trim().toLowerCase();
-      if (dom && dom !== ".google.com" && dom !== "google.com") return false;
-      return (
-        (c.name === "SID" ||
-          c.name === "__Secure-1PSID" ||
-          c.name === "__Secure-3PSID") &&
-        String(c.value || "").startsWith("g.") &&
-        String(c.value || "").trim().length >= 20
-      );
-    }) &&
-    list.some((c) => {
-      if (!c) return false;
-      const dom = String(c.domain || c.host_key || "").trim().toLowerCase();
-      if (dom && dom !== ".google.com" && dom !== "google.com" && dom !== "accounts.google.com") return false;
-      return (
-        (c.name === "SAPISID" ||
-          c.name === "__Secure-1PAPISID" ||
-          c.name === "__Secure-3PAPISID" ||
-          c.name === "LSID" ||
-          c.name === "__Host-1PLSID" ||
-          c.name === "__Host-3PLSID") &&
-        String(c.value || "").trim().length >= 16
-      );
-    });
   const hasChallengedOrBlockedGoogleRow = rows.some((r) => {
     if (!isGoogleFamilyService(r?.service)) return false;
     const rs = String(r?.status || "").trim().toLowerCase();
@@ -893,11 +890,18 @@ async function syncProfilePlatformsToP0020IfChanged({
       }
     }
   }
+  const effectiveGoogleLiveTargetState = shouldSuppressStaleGoogleLoggedOutTarget(
+    googleLiveTargetState,
+    cachedGoogleHttpVerify,
+    candidateGoogleCookies,
+  )
+    ? null
+    : googleLiveTargetState;
   if (
     !hasVerifiedGoogleLiveTab &&
-    googleLiveTargetState?.restricted &&
+    effectiveGoogleLiveTargetState?.restricted &&
     ["google_one_logged_out", "mail_challenge", "account_locked_rejected", "selfie_verification_required"].includes(
-      String(googleLiveTargetState.resultCode || ""),
+      String(effectiveGoogleLiveTargetState.resultCode || ""),
     )
   ) {
     hasVerifiedGoogleAuth = false;
@@ -1101,6 +1105,8 @@ async function syncProfilePlatformsToP0020IfChanged({
     hasVerifiedTwitterAuth,
     cachedInstagramHttpVerify,
     hasVerifiedInstagramAuth,
+    cachedThreadsHttpVerify,
+    hasVerifiedThreadsAuth,
   } = probeState;
 
   if (rows.length === 0) {
@@ -1313,7 +1319,7 @@ async function syncProfilePlatformsToP0020IfChanged({
       isPassiveUserLiveSync,
       liveCdpTargets,
       fbLiveTargetState,
-      googleLiveTargetState,
+      googleLiveTargetState: effectiveGoogleLiveTargetState,
       msLiveTargetState,
       claudeLiveTargetState,
       hasVerifiedGoogleLiveTab,
@@ -1336,6 +1342,8 @@ async function syncProfilePlatformsToP0020IfChanged({
       hasVerifiedTwitterAuth,
       cachedInstagramHttpVerify,
       hasVerifiedInstagramAuth,
+      cachedThreadsHttpVerify,
+      hasVerifiedThreadsAuth,
     } = probeState);
 
     if (
@@ -1418,6 +1426,7 @@ async function syncProfilePlatformsToP0020IfChanged({
         (svcLower === "tiktok" && hasVerifiedTikTokAuth) ||
         (isTwitterFamilyService(svcLower) && hasVerifiedTwitterAuth) ||
         (svcLower === "instagram" && hasVerifiedInstagramAuth) ||
+        (svcLower === "threads" && hasVerifiedThreadsAuth) ||
         (Boolean(aiUidSpec) &&
           Boolean(verifiedAiServerUid) &&
           verifiedAiServerUid !== "nextauth_jwe_verified"));
@@ -1444,9 +1453,16 @@ async function syncProfilePlatformsToP0020IfChanged({
       targetStatus === "logged_in" &&
       Boolean(aiUidSpec && !curSnap?.login_verified_at);
 
+    const isProtectedCheckPhoneVsAbuseError =
+      rowStatus === "check_phone" &&
+      fbForcedOverride?.rowStatus === "error" &&
+      (isMicrosoftFamilyService(svcLower) ||
+        curResCode === "phone_sms_required" ||
+        String(curSnap?.auto_unlock_exhausted_reason || "").toLowerCase() === "phone_sms_required");
     const needsForcedRowStatusDemotion =
       Boolean(fbForcedOverride?.rowStatus) &&
       rowStatus !== fbForcedOverride.rowStatus &&
+      !isProtectedCheckPhoneVsAbuseError &&
       rowStatus !== "disable" &&
       rowStatus !== "banned" &&
       rowStatus !== "appeal";
@@ -1486,6 +1502,19 @@ async function syncProfilePlatformsToP0020IfChanged({
       match.loggedIn && curSnap?.password_reverify_needed && pwVerTsForClear > 0 && pwVerTsForClear >= pwFlaggedTsForClear,
     );
 
+    const needsDetailColumnBackfill = Boolean(
+      match.loggedIn &&
+        ((!String(row.mail_create_date || "").trim() && row.created_at) ||
+          (!String(row.service_uid || "").trim() &&
+            ((svcLower === "facebook" && (/^\d{6,25}$/.test(String(row.account || "").trim()) || (Array.isArray(pairs) && pairs.some((c) => c?.name === "c_user" && c?.value)))) ||
+              (svcLower === "instagram" && (cachedInstagramHttpVerify?.instagramUserId || curSnap?.instagram_user_id || curSnap?.ds_user_id)) ||
+              (svcLower === "threads" && (cachedThreadsHttpVerify?.threadsUserId || curSnap?.threads_user_id || curSnap?.ds_user_id)) ||
+              (svcLower === "tiktok" && (cachedTikTokHttpVerify?.tiktokUserId || curSnap?.tiktok_user_id)) ||
+              (verifiedAiServerUid && !/^(nextauth_jwe_verified|claude_api_organizations_verified)$/i.test(String(verifiedAiServerUid))))) ||
+          (svcLower === "instagram" && !String(row.fb_display_name || "").trim() && (cachedInstagramHttpVerify?.instagramFullName || curSnap?.instagram_full_name || curSnap?.full_name)) ||
+          (svcLower === "tiktok" && !String(row.tt_username || "").trim() && (cachedTikTokHttpVerify?.tiktokUsername || curSnap?.tiktok_username))),
+    );
+
     // Change-only check: skip PATCH if P0020 already has the exact clean status & liveCdp state (unless closing with fresh decrypted cookies)!
     if (
       curStatus === targetStatus &&
@@ -1500,6 +1529,7 @@ async function syncProfilePlatformsToP0020IfChanged({
       !needsLoggedInSessionKeyQuotaBackfill &&
       !needsAccountMismatchSnapshotUpdate &&
       !needsMailCloudUpdate &&
+      !needsDetailColumnBackfill &&
       !(isExplicitClose && match.loggedIn && hasFreshDecryptedPairs)
     ) {
       resolvedRows.push(row);
@@ -1543,6 +1573,8 @@ async function syncProfilePlatformsToP0020IfChanged({
       cachedTwitterHttpVerify,
       hasVerifiedInstagramAuth,
       cachedInstagramHttpVerify,
+      hasVerifiedThreadsAuth,
+      cachedThreadsHttpVerify,
       needsRowStatusPromotion,
       hasStaleChallengeNoteWhenLoggedIn,
       existingRowNote,
@@ -1710,6 +1742,61 @@ async function syncProfilePlatformsToP0020IfChanged({
   };
 }
 
+function hasCoherentGoogleLsidAndSid(list) {
+  return (
+    Array.isArray(list) &&
+    list.some((c) => {
+      if (!c) return false;
+      const dom = String(c.domain || c.host_key || "").trim().toLowerCase();
+      if (dom && dom !== ".google.com" && dom !== "google.com") return false;
+      return (
+        (c.name === "SID" ||
+          c.name === "__Secure-1PSID" ||
+          c.name === "__Secure-3PSID") &&
+        String(c.value || "").startsWith("g.") &&
+        String(c.value || "").trim().length >= 20
+      );
+    }) &&
+    list.some((c) => {
+      if (!c) return false;
+      const dom = String(c.domain || c.host_key || "").trim().toLowerCase();
+      if (dom && dom !== ".google.com" && dom !== "google.com" && dom !== "accounts.google.com") return false;
+      return (
+        (c.name === "SAPISID" ||
+          c.name === "__Secure-1PAPISID" ||
+          c.name === "__Secure-3PAPISID" ||
+          c.name === "LSID" ||
+          c.name === "__Host-1PLSID" ||
+          c.name === "__Host-3PLSID") &&
+        String(c.value || "").trim().length >= 16
+      );
+    })
+  );
+}
+
+function shouldSuppressStaleGoogleLoggedOutTarget(
+  googleLiveTargetState,
+  cachedGoogleHttpVerify,
+  candidateGoogleCookies,
+) {
+  if (!googleLiveTargetState || String(googleLiveTargetState.resultCode || "") !== "google_one_logged_out") {
+    return false;
+  }
+  if (/CookieMismatch|confirmidentifier|challenge\/pwd/i.test(String(googleLiveTargetState.evidence || ""))) {
+    return false;
+  }
+  if (
+    !cachedGoogleHttpVerify?.ok ||
+    !cachedGoogleHttpVerify?.loggedIn ||
+    cachedGoogleHttpVerify?.mode === "offline_proxy_safe" ||
+    !Array.isArray(cachedGoogleHttpVerify?.verifiedEmails) ||
+    cachedGoogleHttpVerify.verifiedEmails.length === 0
+  ) {
+    return false;
+  }
+  return hasCoherentGoogleLsidAndSid(candidateGoogleCookies);
+}
+
 module.exports = {
   buildMailCookieTelemetryMetadata,
   normalizeComparableEmail,
@@ -1735,6 +1822,7 @@ module.exports = {
   isAuthenticatedTikTokAppUrl,
   classifyFacebookLiveCdpTargets,
   classifyGoogleLiveCdpTargets,
+  shouldSuppressStaleGoogleLoggedOutTarget,
   GOOGLE_RESTRICTION_ID_MAP,
   resolveGoogleRestrictionInfo,
   resolveGoogleRestrictionTargetServices,

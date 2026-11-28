@@ -53,6 +53,30 @@ function installGlobalCrashGuard() {
 
   process.on("uncaughtException", (err) => {
     logCrash("uncaughtException", err);
+    if (err && (err.code === "EPIPE" || err.code === "ERR_STREAM_DESTROYED" || String(err.message || "").includes("write EPIPE"))) {
+      return;
+    }
+    // Never hold SingleInstanceLock as a headless zombie if synchronous module boot crashes before IPC + API (:6003) are ready.
+    if (!globalThis.__STEALTH_MAIN_BOOT_READY__) {
+      const stackOrMsg = err instanceof Error ? `${err.message}\n${err.stack || ""}` : String(err);
+      if (/resources[\\/]hot-patch[\\/]/i.test(stackOrMsg)) {
+        try {
+          const { removeStaleHotPatchSafely } = require("./lib/hot-patch-loader.cjs");
+          if (typeof removeStaleHotPatchSafely === "function" && process.resourcesPath) {
+            removeStaleHotPatchSafely(path.join(process.resourcesPath, "hot-patch"));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        setShutdownReason("pre-boot-uncaught-exception");
+        app.releaseSingleInstanceLock();
+      } catch {
+        /* ignore */
+      }
+      app.exit(1);
+    }
   });
   process.on("unhandledRejection", (reason) => {
     logCrash("unhandledRejection", reason);
@@ -61,8 +85,16 @@ function installGlobalCrashGuard() {
 
 installGlobalCrashGuard();
 
-/** Interactive UI must not inherit Cursor/agent smoke env (headless profiles with no window). API smokes use X-Stealth-Agent-Smoke per request. */
-for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGENT"]) {
+/** Interactive UI must not inherit Cursor/agent smoke or IDE-shell env (headless profiles / unnecessary PowerShell fallback). API smokes use X-Stealth-Agent-Smoke per request. */
+for (const key of [
+  "STEALTH_AGENT_SMOKE",
+  "STEALTH_HEADLESS_SMOKE",
+  "CURSOR_AGENT",
+  "CURSOR_TRACE_ID",
+  "ANTIGRAVITY_CLI_ALIAS",
+  "CLAUDECODE",
+  "CODEX_SANDBOX",
+]) {
   delete process.env[key];
 }
 
@@ -70,6 +102,20 @@ for (const key of ["STEALTH_AGENT_SMOKE", "STEALTH_HEADLESS_SMOKE", "CURSOR_AGEN
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   setShutdownReason("second-instance-blocked");
+  const logSecondInstanceBlocked = (status, detail = "") => {
+    try {
+      const root = app.getPath("userData");
+      if (root) {
+        appendLifecycleLog(root, {
+          kind: "second-instance-blocked",
+          status,
+          ...(detail ? { detail } : {}),
+        });
+      }
+    } catch {
+      /* never block exit */
+    }
+  };
   const noFocus = Array.isArray(process.argv) && process.argv.some((a) => a === "--no-focus" || a === "--background");
   if (!noFocus) {
     try {
@@ -111,21 +157,26 @@ if (!gotSingleInstanceLock) {
           });
         },
       );
-      req.on("error", () => app.exit(0));
+      req.on("error", (err) => {
+        logSecondInstanceBlocked("api-error", err instanceof Error ? err.message : String(err));
+        app.exit(0);
+      });
       req.on("timeout", () => {
         req.destroy();
+        logSecondInstanceBlocked("api-timeout", `port=${port}`);
         app.exit(0);
       });
       req.write(payload);
       req.end();
       setTimeout(() => app.exit(0), 900).unref();
     } catch {
-      app.quit();
+      app.exit(0);
     }
   } else {
-    app.quit();
+    logSecondInstanceBlocked("background-blocked", `argv=${process.argv.slice(1, 5).join(" ")}`);
+    app.exit(0);
   }
-}
+} else {
 
 const {
   configureAutoUpdater,
@@ -287,12 +338,20 @@ function bindIpc() {
     return { ok: true, info };
   });
 
+  function scheduleSessionStatusReconcile() {
+    setImmediate(() => {
+      try {
+        sessionManager.reconcileActiveStatuses();
+      } catch {
+        /* ignore background reconcile errors */
+      }
+    });
+  }
+
   ipcMain.handle("profile:listPage", (_event, payload = {}) => {
-    try {
-      sessionManager.reconcileActiveStatuses();
-    } catch {
-      /* ignore reconcile errors on page fetch */
-    }
+    scheduleSessionStatusReconcile();
+    const { getCachedWorkerSessions } = require("./lib/worker-sessions-bridge.cjs");
+    getCachedWorkerSessions({ triggerRefresh: true });
     const page = profileService.listProfilesPage(payload);
     const profiles = Array.isArray(page.profiles)
       ? page.profiles.map((p) => {
@@ -304,20 +363,16 @@ function bindIpc() {
   });
 
   ipcMain.handle("profile:catalogStats", () => {
-    try {
-      sessionManager.reconcileActiveStatuses();
-    } catch {
-      /* ignore */
-    }
+    scheduleSessionStatusReconcile();
+    const { getCachedWorkerSessions } = require("./lib/worker-sessions-bridge.cjs");
+    getCachedWorkerSessions({ triggerRefresh: true });
     return { ok: true, stats: profileService.getCatalogStats() };
   });
 
   ipcMain.handle("profile:bootstrap", () => {
-    try {
-      sessionManager.reconcileActiveStatuses();
-    } catch {
-      /* ignore */
-    }
+    scheduleSessionStatusReconcile();
+    const { getCachedWorkerSessions } = require("./lib/worker-sessions-bridge.cjs");
+    getCachedWorkerSessions({ triggerRefresh: true });
     return {
       ok: true,
       groups: profileService.listGroups(),
@@ -487,10 +542,17 @@ function bindIpc() {
     return sessionManager.focusProfile(profile.id);
   });
 
-  ipcMain.handle("profile:listRunning", () => ({
-    ok: true,
-    sessions: sessionManager.listRunning()
-  }));
+  ipcMain.handle("profile:listRunning", () => {
+    const {
+      getCachedWorkerSessions,
+      mergeLocalAndWorkerSessions,
+    } = require("./lib/worker-sessions-bridge.cjs");
+    const workerSessions = getCachedWorkerSessions({ triggerRefresh: true });
+    return {
+      ok: true,
+      sessions: mergeLocalAndWorkerSessions(sessionManager.listRunning(), workerSessions),
+    };
+  });
 
   ipcMain.handle("group:create", (_event, payload = {}) => {
     const group = profileService.createGroup(validateGroupName(payload.name));
@@ -1617,11 +1679,14 @@ function preloadPath() {
 
 async function createWindow() {
   const iconPath = resolveAppIconPathIfExists(path.join(__dirname, ".."));
+  const { getDesktopWindowChromeOptions } = requireDesktopAppMenu();
   const win = new BrowserWindow({
+    ...getDesktopWindowChromeOptions(),
     width: 1380,
     height: 880,
     minWidth: 1100,
     minHeight: 720,
+    autoHideMenuBar: true,
     backgroundColor: "#0b1020",
     title: windowTitle(),
     show: false,
@@ -1793,6 +1858,7 @@ app.whenReady().then(async () => {
     phase: "after-ipc",
   });
   mainBootReady = true;
+  globalThis.__STEALTH_MAIN_BOOT_READY__ = true;
   const FAST_PREP = String(process.env.STEALTH_FAST_LAUNCH ?? "1").toLowerCase() !== "0";
   const { startApiServer } = require("./api-server.cjs");
   const apiPort = resolveStealthApiPort({ packaged: app.isPackaged });
@@ -1824,8 +1890,8 @@ app.whenReady().then(async () => {
     packaged: app.isPackaged,
     phase: "before-window",
   });
+  installDesktopMenu();
   await createWindow();
-  setImmediate(() => installDesktopMenu());
   if (pendingBootWindow && BrowserWindow.getAllWindows().every((win) => win.isDestroyed())) {
     pendingBootWindow = false;
     await createWindow();
@@ -2105,7 +2171,7 @@ app.whenReady().then(async () => {
             const child = spawn(nodeBin, [pruneScript], {
               stdio: "ignore",
               windowsHide: true,
-              detached: true,
+              detached: false,
               env,
             });
             child.unref();
@@ -2226,3 +2292,4 @@ app.on("window-all-closed", () => {
   // Tray app — hiding the Console must not quit API / running profiles on Windows.
   if (!isAppQuitting()) return;
 });
+}

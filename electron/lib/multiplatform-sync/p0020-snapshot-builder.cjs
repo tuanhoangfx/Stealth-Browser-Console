@@ -355,6 +355,8 @@ function buildP0020RowSnapshotAndPatch({
   cachedTwitterHttpVerify,
   hasVerifiedInstagramAuth,
   cachedInstagramHttpVerify,
+  hasVerifiedThreadsAuth,
+  cachedThreadsHttpVerify,
   needsRowStatusPromotion,
   hasStaleChallengeNoteWhenLoggedIn,
   existingRowNote,
@@ -588,6 +590,19 @@ function buildP0020RowSnapshotAndPatch({
         if (cachedInstagramHttpVerify?.instagramUsername) {
           nextSnap.instagram_username = cachedInstagramHttpVerify.instagramUsername;
         }
+        if (cachedInstagramHttpVerify?.instagramFullName) {
+          nextSnap.instagram_full_name = cachedInstagramHttpVerify.instagramFullName;
+        }
+      } else if (svcLower === "threads" && hasVerifiedThreadsAuth) {
+        nextSnap.login_verified_at = curSnap?.login_verified_at || nowIso;
+        nextSnap.login_verified_method = "threads_session_http";
+        delete nextSnap.actual_session_account;
+        if (cachedThreadsHttpVerify?.threadsUserId) {
+          nextSnap.threads_user_id = cachedThreadsHttpVerify.threadsUserId;
+        }
+        if (cachedThreadsHttpVerify?.threadsUsername) {
+          nextSnap.threads_username = cachedThreadsHttpVerify.threadsUsername;
+        }
       }
       nextSnap.auth_state = "authenticated";
       nextSnap.logged_in = true;
@@ -714,6 +729,13 @@ function buildP0020RowSnapshotAndPatch({
       patchBody.status = "wrong_2fa";
     } else if (
       fbForcedOverride?.rowStatus &&
+      !(
+        row.status === "check_phone" &&
+        fbForcedOverride.rowStatus === "error" &&
+        (isMicrosoftFamilyService(svcLower) ||
+          String(curSnap?.result_code || "").toLowerCase() === "phone_sms_required" ||
+          String(curSnap?.auto_unlock_exhausted_reason || "").toLowerCase() === "phone_sms_required")
+      ) &&
       row.status !== "disable" &&
       row.status !== "banned" &&
       row.status !== "appeal"
@@ -798,21 +820,30 @@ function buildP0020RowSnapshotAndPatch({
       patchBody.note = keptLines.join("\n");
     }
 
-    const isMailNativeCloakRow = isGoogleFamilyService(svc) || isMicrosoftFamilyService(svc);
-    if (isMailNativeCloakRow && Array.isArray(row.stealth_cookies) && row.stealth_cookies.length > 0) {
-      // Read-Only Telemetry Metadata (`ok 1`): CloakBrowser SQLite is the sole SSOT for Gmail/Outlook/YouTube/Google One cookies.
+    const isGoogleCloakRow = isGoogleFamilyService(svc);
+    const isTelemetryOnlyMailRow = isMicrosoftFamilyService(svc);
+    if (isTelemetryOnlyMailRow && Array.isArray(row.stealth_cookies) && row.stealth_cookies.length > 0) {
+      // Read-Only Telemetry Metadata: CloakBrowser SQLite / MS Graph is SSOT for Outlook/Hotmail cookies.
       patchBody.stealth_cookies = null;
     }
     const rowHasPlaceholderCookies =
       Array.isArray(row.stealth_cookies) &&
       row.stealth_cookies.some((c) => !c?.value || c.value === "disk_verified_sqlite");
+    const rowHasGoogleCcTld =
+      isGoogleCloakRow &&
+      Array.isArray(row.stealth_cookies) &&
+      row.stealth_cookies.some((c) => {
+        const d = String(c?.domain || "").trim().toLowerCase().replace(/^\./, "");
+        return d.includes("google.") && d !== "google.com" && !d.endsWith(".google.com");
+      });
     if (
       match.loggedIn &&
       (!Array.isArray(row.stealth_cookies) ||
         row.stealth_cookies.length === 0 ||
         rowHasPlaceholderCookies ||
+        rowHasGoogleCcTld ||
         hasFreshDecryptedPairs ||
-        isMailNativeCloakRow)
+        isTelemetryOnlyMailRow)
     ) {
       const matcher = resolveServiceMatcher(svc);
       const candidateCookies =
@@ -835,11 +866,16 @@ function buildP0020RowSnapshotAndPatch({
           return false;
         });
         if (domainCookies.length > 0) {
-          if (isMailNativeCloakRow) {
+          if (isTelemetryOnlyMailRow) {
             nextSnap.cookie_telemetry = buildMailCookieTelemetryMetadata(domainCookies, svc);
             delete nextSnap.mail_cookies;
             delete nextSnap.service_cookies;
           } else {
+            if (isGoogleCloakRow) {
+              nextSnap.cookie_telemetry = buildMailCookieTelemetryMetadata(domainCookies, svc);
+              delete nextSnap.mail_cookies;
+              delete nextSnap.service_cookies;
+            }
             patchBody.stealth_cookies = domainCookies.map(sanitizePlaywrightCookieForVault);
           }
         }
@@ -858,6 +894,72 @@ function buildP0020RowSnapshotAndPatch({
       const normDob = normalizeFacebookDobToDdMmYyyy(rawDob);
       if (normDob && normDob !== rawDob) {
         patchBody.fb_dob = normDob;
+      }
+    }
+
+    if (match.loggedIn) {
+      if (!String(row?.service_uid || "").trim()) {
+        const fbCUser =
+          svcLower === "facebook"
+            ? String(
+                (Array.isArray(pairs) ? pairs : row?.stealth_cookies || []).find((c) => c?.name === "c_user" && c?.value)
+                  ?.value || (/^\d{6,25}$/.test(String(row?.account || "").trim()) ? String(row.account).trim() : ""),
+              ).trim()
+            : "";
+        const igUidVal =
+          svcLower === "instagram"
+            ? String(
+                cachedInstagramHttpVerify?.instagramUserId ||
+                  nextSnap?.instagram_user_id ||
+                  nextSnap?.ds_user_id ||
+                  "",
+              ).trim()
+            : "";
+        const thUidVal =
+          svcLower === "threads"
+            ? String(
+                cachedThreadsHttpVerify?.threadsUserId ||
+                  nextSnap?.threads_user_id ||
+                  nextSnap?.ds_user_id ||
+                  "",
+              ).trim()
+            : "";
+        const ttUidVal =
+          svcLower === "tiktok"
+            ? String(cachedTikTokHttpVerify?.tiktokUserId || nextSnap?.tiktok_user_id || "").trim()
+            : "";
+        const aiUidVal =
+          verifiedAiServerUid &&
+          !/^(nextauth_jwe_verified|claude_api_organizations_verified)$/i.test(String(verifiedAiServerUid))
+            ? String(verifiedAiServerUid).trim()
+            : "";
+        const inferredUid = fbCUser || igUidVal || thUidVal || ttUidVal || aiUidVal;
+        if (inferredUid) patchBody.service_uid = inferredUid;
+      }
+      if (!String(row?.fb_display_name || "").trim()) {
+        const inferredName = String(
+          cachedInstagramHttpVerify?.instagramFullName ||
+            nextSnap?.instagram_full_name ||
+            nextSnap?.full_name ||
+            "",
+        ).trim();
+        if (inferredName) patchBody.fb_display_name = inferredName;
+      }
+      if (svcLower === "tiktok" && !String(row?.tt_username || "").trim()) {
+        const inferredTtUser = String(
+          cachedTikTokHttpVerify?.tiktokUsername || nextSnap?.tiktok_username || "",
+        ).trim();
+        if (inferredTtUser) patchBody.tt_username = inferredTtUser;
+      }
+      if (!String(row?.mail_create_date || "").trim() && row?.created_at) {
+        const ts = Date.parse(String(row.created_at));
+        if (Number.isFinite(ts)) {
+          const vn = new Date(ts + 7 * 3600_000);
+          const dd = String(vn.getUTCDate()).padStart(2, "0");
+          const mm = String(vn.getUTCMonth() + 1).padStart(2, "0");
+          const yy = String(vn.getUTCFullYear()).slice(-2);
+          patchBody.mail_create_date = `${dd}/${mm}/${yy}`;
+        }
       }
     }
 

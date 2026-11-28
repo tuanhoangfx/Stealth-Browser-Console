@@ -74,6 +74,14 @@ const _iosCache = {
   devices: [],
   batteryByUdid: new Map(),
   screenByUdid: new Map(),
+  healthByUdid: new Map(),
+  frontAppByUdid: new Map(),
+  bgStateBySerial: new Map(),
+  bgPoller: {
+    timer: null,
+    lastDemandAt: 0,
+    devices: [],
+  },
   containerByUdid: new Map(),
   craneMapAt: 0,
   craneMap: null,
@@ -191,6 +199,27 @@ async function discoverWifiHostsFromArp({ execFileFn = execFileAsync, vaultRoot 
   }
 }
 
+function resolvePymobiledevice3BinaryPath() {
+  const envBin = String(process.env.PYMOBILEDEVICE3_BIN || "").trim();
+  if (envBin && fs.existsSync(envBin)) return envBin;
+  const bases = [
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "Programs", "Python") : "",
+    "C:\\Users\\CzP\\AppData\\Local\\Programs\\Python",
+  ].filter(Boolean);
+  for (const base of bases) {
+    try {
+      if (!fs.existsSync(base)) continue;
+      for (const dir of fs.readdirSync(base).sort().reverse()) {
+        const candidate = path.join(base, dir, "Scripts", "pymobiledevice3.exe");
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return "pymobiledevice3";
+}
+
 function readConfiguredWifiHosts(vaultRoot = resolveMobileVaultRoot(), arpEntries = []) {
   const hosts = new Map();
   const addHost = (host, meta = {}) => {
@@ -224,6 +253,7 @@ function readConfiguredWifiHosts(vaultRoot = resolveMobileVaultRoot(), arpEntrie
   if (DEFAULT_IOS_WIFI_HOST) {
     addHost(DEFAULT_IOS_WIFI_HOST, { udid: "d2d95212a2dee88a25c1b58877f6f9ade5472802" });
   }
+  addHost("192.168.0.183", { udid: "553e7c44ca0d03eb12986fdef4229eb43ac12026" });
   return Array.from(hosts.values());
 }
 
@@ -302,7 +332,7 @@ function parseMcpTextJson(result) {
   }
 }
 
-async function probeWifiIosMcpHost(entry, { fetchFn = fetch, timeoutMs = 2500 } = {}) {
+async function probeWifiIosMcpHost(entry, { fetchFn = fetch, timeoutMs = 1200 } = {}) {
   const host = typeof entry === "string" ? entry : entry?.host;
   const port = typeof entry === "object" && entry?.port ? Number(entry.port) : DEFAULT_IOS_MCP_PORT;
   if (!host) return null;
@@ -349,21 +379,40 @@ async function probeWifiIosMcpHost(entry, { fetchFn = fetch, timeoutMs = 2500 } 
   };
 }
 
-async function listConnectedIosDevices({
-  execFileFn = execFileAsync,
-  fetchFn = fetch,
-  vaultRoot = resolveMobileVaultRoot(),
-  wifiHosts,
-  cacheMs = 4000,
-} = {}) {
+async function listConnectedIosDevices(opts = {}) {
+  const {
+    execFileFn = execFileAsync,
+    fetchFn = fetch,
+    vaultRoot = resolveMobileVaultRoot(),
+    wifiHosts,
+    cacheMs = 12_000,
+    swrMs = 45_000,
+    _forceSync = false,
+  } = opts;
+  const isProdScan = execFileFn === execFileAsync && fetchFn === fetch && !Array.isArray(wifiHosts);
   const now = Date.now();
-  if (cacheMs > 0 && now - _iosCache.devicesAt < cacheMs) {
+  const ageMs = now - _iosCache.devicesAt;
+  if (!_forceSync && cacheMs > 0 && ageMs < cacheMs && _iosCache.devicesAt > 0) {
     return _iosCache.devices;
+  }
+  if (!_forceSync && isProdScan && swrMs > 0 && ageMs < swrMs && _iosCache.devicesAt > 0) {
+    if (!_iosCache.devicesInFlight) {
+      _iosCache.devicesInFlight = listConnectedIosDevices({ ...opts, _forceSync: true })
+        .catch(() => _iosCache.devices)
+        .finally(() => {
+          _iosCache.devicesInFlight = null;
+        });
+    }
+    return _iosCache.devices;
+  }
+  if (!_forceSync && isProdScan && _iosCache.devicesInFlight) {
+    return _iosCache.devicesInFlight;
   }
 
   let usbDevices = [];
+  const pymobileBin = execFileFn === execFileAsync ? resolvePymobiledevice3BinaryPath() : "pymobiledevice3";
   try {
-    const { stdout } = await execFileFn("pymobiledevice3", ["usbmux", "list"], { timeout: 3500 });
+    const { stdout } = await execFileFn(pymobileBin, ["usbmux", "list"], { timeout: 3500 });
     const raw = JSON.parse(String(stdout || "[]"));
     const arr = Array.isArray(raw) ? raw : [];
     usbDevices = arr
@@ -536,6 +585,7 @@ async function ensureIosUsbmuxTunnels({
     { local: mjpegPort, remote: 9100, key: "mjpeg" },
   ];
   const started = [];
+  const pymobileBin = spawnFn === spawn ? resolvePymobiledevice3BinaryPath() : "pymobiledevice3";
   for (const fw of forwards) {
     const alreadyOpen = await portProbeFn(fw.local).catch(() => false);
     if (alreadyOpen) continue;
@@ -543,7 +593,7 @@ async function ensureIosUsbmuxTunnels({
     if (cleanUdid) args.push("--udid", cleanUdid);
     args.push(String(fw.local), String(fw.remote));
     try {
-      const child = spawnFn("pymobiledevice3", args, {
+      const child = spawnFn(pymobileBin, args, {
         windowsHide: true,
         stdio: "ignore",
         detached: true,
@@ -608,11 +658,30 @@ async function getIosBatteryDiagnostics(
   }
 
   try {
+    const pymobileBin = execFileFn === execFileAsync ? resolvePymobiledevice3BinaryPath() : "pymobiledevice3";
     const args = ["lockdown", "get"];
     if (cleanUdid) args.push("--udid", cleanUdid);
     args.push("com.apple.mobile.battery");
-    const { stdout } = await execFileFn("pymobiledevice3", args, { timeout: 3500 });
-    const parsed = JSON.parse(String(stdout || "{}"));
+    const { stdout } = await execFileFn(pymobileBin, args, { timeout: 3500 });
+    let parsed = JSON.parse(String(stdout || "{}"));
+    if (parsed.Temperature == null) {
+      try {
+        const diagArgs = ["diagnostics", "battery", "single"];
+        if (cleanUdid) diagArgs.push("--udid", cleanUdid);
+        const { stdout: diagOut } = await execFileFn(pymobileBin, diagArgs, { timeout: 4500 });
+        const diagParsed = JSON.parse(String(diagOut || "{}"));
+        if (diagParsed && (diagParsed.Temperature != null || diagParsed.CurrentCapacity != null)) {
+          parsed = {
+            ...parsed,
+            BatteryCurrentCapacity: parsed.BatteryCurrentCapacity ?? diagParsed.CurrentCapacity,
+            Temperature: parsed.Temperature ?? diagParsed.Temperature,
+            ExternalConnected: parsed.ExternalConnected ?? diagParsed.ExternalConnected,
+          };
+        }
+      } catch {
+        /* fallback optional diagnostics battery */
+      }
+    }
     const level = Number(parsed.BatteryCurrentCapacity);
     const rawTemp = Number(parsed.Temperature);
     const tempC = Number.isFinite(rawTemp) && rawTemp > 100 ? Number((rawTemp / 100).toFixed(1)) : Number.isFinite(rawTemp) ? rawTemp : null;
@@ -648,14 +717,20 @@ async function captureIosScreenDataUrl({
 
   // 1) Fastest path: wireless/SSH-tunneled ios-mcp :8090 screenshot (~150ms)
   const tx = resolveTransportConfig({ serial: cleanUdid ? makeIosSerial(cleanUdid) : "", deviceInfo, mcpUrl, wdaUrl });
+  const isProdTransport = fetchFn === fetch && execFileFn === execFileAsync;
+  const isWifiMcpOnlyDevice = Boolean(isProdTransport && deviceInfo?.isWireless && deviceInfo?.device === "wifi" && tx.mcpUrl);
   if (tx.mcpUrl) {
-    const mcpRes = await callIosMcpTool(tx.mcpUrl, "screenshot", {}, { fetchFn, timeoutMs: 2500 });
+    const mcpRes = await callIosMcpTool(tx.mcpUrl, "screenshot", {}, { fetchFn, timeoutMs: 3200 });
     const imgItem = mcpRes?.content?.find?.((c) => c?.type === "image" && c?.data);
     if (imgItem?.data) {
       const mime = String(imgItem.mimeType || "image/jpeg").trim();
       const dataUrl = `data:${mime};base64,${imgItem.data}`;
-      _iosCache.screenByUdid.set(cleanUdid, { ts: now, dataUrl });
+      _iosCache.screenByUdid.set(cleanUdid, { ts: Date.now(), dataUrl });
       return dataUrl;
+    }
+    // Wi-Fi-only MCP nodes have no local USB WDA (:8100) or USB DVT tunnel — skip 5s of dead fallbacks
+    if (isWifiMcpOnlyDevice) {
+      return cached?.dataUrl || null;
     }
   }
 
@@ -679,10 +754,11 @@ async function captureIosScreenDataUrl({
   // 3) Fallback: pymobiledevice3 developer dvt screenshot (requires mounted DDI + USB)
   const tmpPng = path.join(os.tmpdir(), `p0003-ios-${cleanUdid || "dev"}-${crypto.randomUUID().slice(0, 8)}.png`);
   try {
+    const pymobileBin = execFileFn === execFileAsync ? resolvePymobiledevice3BinaryPath() : "pymobiledevice3";
     const args = ["developer", "dvt", "screenshot"];
     if (cleanUdid) args.push("--udid", cleanUdid);
     args.push(tmpPng);
-    await execFileFn("pymobiledevice3", args, { timeout: 3500 });
+    await execFileFn(pymobileBin, args, { timeout: 3500 });
     if (fs.existsSync(tmpPng)) {
       const buf = fs.readFileSync(tmpPng);
       if (buf.length > 0) {
@@ -720,14 +796,29 @@ async function getIosLiveScreenState(
   const udid = stripIosSerialPrefix(deviceInfo?.udid || deviceInfo?.serial || "");
   const spec = resolveIosDeviceSpec(deviceInfo?.product || "iPhone8,2");
   const serial = makeIosSerial(udid);
+  const nowMs = Date.now();
+  const isProdProbes = fetchFn === fetch && execFileFn === execFileAsync && portProbeFn === checkTcpPortOpen;
+  const cachedHealth = isProdProbes && cacheMs !== 0 ? _iosCache.healthByUdid.get(udid) : null;
+  const cachedFront = isProdProbes && cacheMs !== 0 ? _iosCache.frontAppByUdid.get(udid) : null;
+
   const [health, battery, screenDataUrl, frontRes] = await Promise.all([
-    probeIosEndpointHealth({ deviceInfo, mcpUrl, wdaUrl, sshPort, fetchFn, portProbeFn }),
+    cachedHealth && nowMs - cachedHealth.ts < 8_000
+      ? Promise.resolve(cachedHealth.data)
+      : probeIosEndpointHealth({ deviceInfo, mcpUrl, wdaUrl, sshPort, fetchFn, portProbeFn }).then((h) => {
+          if (isProdProbes) _iosCache.healthByUdid.set(udid, { ts: Date.now(), data: h });
+          return h;
+        }),
     getIosBatteryDiagnostics(udid, { deviceInfo, mcpUrl, fetchFn, execFileFn, ...(cacheMs !== undefined ? { cacheMs } : {}) }),
     includeScreenshot
       ? captureIosScreenDataUrl({ udid, deviceInfo, mcpUrl, wdaUrl, fetchFn, execFileFn, ...(cacheMs !== undefined ? { cacheMs } : {}) })
-      : Promise.resolve(null),
+      : Promise.resolve(_iosCache.screenByUdid.get(udid)?.dataUrl || null),
     deviceInfo?.mcpUrl || mcpUrl
-      ? callIosMcpTool(deviceInfo?.mcpUrl || mcpUrl, "get_frontmost_app", {}, { fetchFn, timeoutMs: 900 })
+      ? cachedFront && nowMs - cachedFront.ts < 8_000
+        ? Promise.resolve(cachedFront.data)
+        : callIosMcpTool(deviceInfo?.mcpUrl || mcpUrl, "get_frontmost_app", {}, { fetchFn, timeoutMs: 900 }).then((fr) => {
+            if (isProdProbes && fr) _iosCache.frontAppByUdid.set(udid, { ts: Date.now(), data: fr });
+            return fr;
+          })
       : Promise.resolve(null),
   ]);
   const frontInfo = parseMcpTextJson(frontRes);
@@ -1093,6 +1184,69 @@ async function augmentMobileProfilesResponse(payload, opts = {}) {
   };
 }
 
+function refreshSingleIosBgState(dev, opts = {}) {
+  if (!dev?.serial) return Promise.resolve(null);
+  let entry = _iosCache.bgStateBySerial.get(dev.serial);
+  if (entry?.inFlight) return entry.inFlight;
+  const prevState = entry?.state || null;
+  const p = getIosLiveScreenState(dev, {
+    ...opts,
+    includeScreenshot: true,
+    cacheMs: opts.cacheMs ?? 900,
+  })
+    .then((snap) => {
+      if (snap) {
+        const mergedSnap =
+          !snap.screenDataUrl && prevState?.screenDataUrl
+            ? {
+                ...snap,
+                screenDataUrl: prevState.screenDataUrl,
+                displayScreenshots: { "0": prevState.screenDataUrl },
+              }
+            : snap;
+        _iosCache.bgStateBySerial.set(dev.serial, {
+          state: mergedSnap,
+          ts: Date.now(),
+          inFlight: null,
+        });
+        return mergedSnap;
+      }
+      if (entry) entry.inFlight = null;
+      return prevState;
+    })
+    .catch(() => {
+      if (entry) entry.inFlight = null;
+      return prevState;
+    });
+  entry = { state: prevState, ts: entry?.ts || 0, inFlight: p };
+  _iosCache.bgStateBySerial.set(dev.serial, entry);
+  return p;
+}
+
+function stopIosBackgroundPoller() {
+  if (_iosCache.bgPoller.timer) {
+    clearInterval(_iosCache.bgPoller.timer);
+    _iosCache.bgPoller.timer = null;
+  }
+}
+
+function ensureIosBackgroundPoller(opts = {}) {
+  if (_iosCache.bgPoller.timer) return;
+  const intervalMs = Math.max(400, Number(opts.bgIntervalMs) || 1450);
+  const timer = setInterval(() => {
+    if (Date.now() - _iosCache.bgPoller.lastDemandAt > 30_000) {
+      stopIosBackgroundPoller();
+      return;
+    }
+    const devs = _iosCache.bgPoller.devices || [];
+    for (const dev of devs) {
+      void refreshSingleIosBgState(dev, opts);
+    }
+  }, intervalMs);
+  if (typeof timer.unref === "function") timer.unref();
+  _iosCache.bgPoller.timer = timer;
+}
+
 async function augmentLiveScreenResponse(payload, queryParams = {}, opts = {}) {
   const iosDevices = await listConnectedIosDevices(opts);
   if (iosDevices.length === 0) return payload;
@@ -1120,11 +1274,80 @@ async function augmentLiveScreenResponse(payload, queryParams = {}, opts = {}) {
 
   const iosStates = {};
   if (allDevices || activeSerial) {
-    for (const dev of iosDevices) {
-      if (!allDevices && activeSerial && dev.serial !== activeSerial) continue;
-      iosStates[dev.serial] = await getIosLiveScreenState(dev, {
-        ...opts,
-        includeScreenshot,
+    const targetDevs = iosDevices.filter((dev) => allDevices || !activeSerial || dev.serial === activeSerial);
+    const useAsyncPoller =
+      opts.useBackgroundPoller === true ||
+      (includeScreenshot &&
+        opts.useBackgroundPoller !== false &&
+        opts.fetchFn === undefined &&
+        opts.execFileFn === undefined &&
+        opts.portProbeFn === undefined);
+
+    if (useAsyncPoller) {
+      const now = Date.now();
+      _iosCache.bgPoller.lastDemandAt = now;
+      _iosCache.bgPoller.devices = targetDevs;
+      ensureIosBackgroundPoller(opts);
+
+      const coldPromises = [];
+      for (const dev of targetDevs) {
+        const entry = _iosCache.bgStateBySerial.get(dev.serial);
+        if (!entry?.state || now - entry.ts >= 1200) {
+          const p = refreshSingleIosBgState(dev, opts);
+          if (!entry?.state) coldPromises.push(p);
+        }
+      }
+      if (coldPromises.length > 0) {
+        const coldWaitMs = Math.max(50, Number(opts.coldWaitBudgetMs) || 850);
+        await Promise.race([
+          Promise.all(coldPromises),
+          new Promise((resolve) => setTimeout(resolve, coldWaitMs)),
+        ]);
+      }
+      for (const dev of targetDevs) {
+        const entry = _iosCache.bgStateBySerial.get(dev.serial);
+        if (entry?.state) {
+          iosStates[dev.serial] = entry.state;
+        } else {
+          const spec = resolveIosDeviceSpec(dev.product || "iPhone8,2");
+          iosStates[dev.serial] = {
+            ok: true,
+            platform: "ios",
+            adbOnline: true,
+            iosOnline: true,
+            isWireless: Boolean(dev.isWireless),
+            serial: dev.serial,
+            udid: stripIosSerialPrefix(dev.serial),
+            liveDeviceModel: dev.model || spec.model,
+            currentUserId: 0,
+            screenDataUrl: null,
+            displayScreenshots: {},
+            displays: [
+              {
+                logicalId: 0,
+                sfId: "ios-0",
+                name: `iOS · ${dev.model || spec.model}`,
+                kind: "physical",
+                resolution: `${dev.width || spec.width}x${dev.height || spec.height}`,
+                assignedUserId: 0,
+                active: true,
+              },
+            ],
+            multiUserSlots: [],
+          };
+        }
+      }
+    } else {
+      const snaps = await Promise.all(
+        targetDevs.map((dev) =>
+          getIosLiveScreenState(dev, {
+            ...opts,
+            includeScreenshot,
+          }),
+        ),
+      );
+      targetDevs.forEach((dev, idx) => {
+        if (snaps[idx]) iosStates[dev.serial] = snaps[idx];
       });
     }
   }
@@ -1160,6 +1383,7 @@ function resolveIosSshKeyPath(vaultRoot = resolveMobileVaultRoot()) {
   const candidates = [
     path.join(os.homedir(), ".ssh", "id_ed25519_p0003"),
     process.env.USERPROFILE ? path.join(process.env.USERPROFILE, ".ssh", "id_ed25519_p0003") : "",
+    "C:\\Users\\CzP\\.ssh\\id_ed25519_p0003",
     path.join(vaultRoot, "ios", "id_ed25519_p0003"),
   ].filter(Boolean);
   for (const p of candidates) {
@@ -1321,8 +1545,14 @@ function parseBinaryCookies(buf) {
 /** Serialize P0003 JSON cookie records into Apple `Cookies.binarycookies` format. */
 function serializeBinaryCookies(cookies = []) {
   const valid = (Array.isArray(cookies) ? cookies : []).filter((c) => c && c.domain && c.name);
+  // Deduplicate by domain + name + path (keeping the last entry) so Apple BinaryCookieStorage
+  // never stores conflicting duplicate keys in a domain page.
+  const dedupedMap = new Map();
+  for (const c of valid) {
+    dedupedMap.set(`${c.domain}\0${c.name}\0${c.path || "/"}`, c);
+  }
   const nowCocoa = Date.now() / 1000 - COCOA_EPOCH_OFFSET_SEC;
-  const records = valid.map((c) => {
+  const encodeRecord = (c) => {
     const uBuf = Buffer.from(String(c.domain), "utf8");
     const nBuf = Buffer.from(String(c.name), "utf8");
     const pBuf = Buffer.from(String(c.path || "/"), "utf8");
@@ -1355,14 +1585,22 @@ function serializeBinaryCookies(cookies = []) {
     pBuf.copy(rec, pathOff);
     vBuf.copy(rec, valOff);
     return rec;
-  });
+  };
 
-  // Pack all cookies cleanly into a single page when <= 250 records, or 100 per page
-  const pageChunks = [];
-  for (let i = 0; i < records.length; i += 100) {
-    pageChunks.push(records.slice(i, i + 100));
+  // Group into one page per unique domain sorted in ascending ASCII order; CFNetwork indexes
+  // each page solely under its first cookie's domain on iOS 15+.
+  const byDomain = new Map();
+  for (const c of dedupedMap.values()) {
+    const dom = String(c.domain);
+    let bucket = byDomain.get(dom);
+    if (!bucket) {
+      bucket = [];
+      byDomain.set(dom, bucket);
+    }
+    bucket.push(encodeRecord(c));
   }
-  if (pageChunks.length === 0) pageChunks.push([]);
+  const sortedDomains = Array.from(byDomain.keys()).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const pageChunks = sortedDomains.length > 0 ? sortedDomains.map((dom) => byDomain.get(dom)) : [[]];
 
   const pages = pageChunks.map((chunk) => {
     const tblHeaderSize = 8 + chunk.length * 4 + 4;
@@ -1385,7 +1623,16 @@ function serializeBinaryCookies(cookies = []) {
   fileHdr.writeUInt32BE(pages.length, 4);
   pages.forEach((pg, idx) => fileHdr.writeUInt32BE(pg.length, 8 + idx * 4));
 
+  // iOS 15+ NSHTTPCookieStorage validates the 4-byte UInt32BE sum of page[0, 4, 8, ...]
+  // and renames files with a mismatch/zero checksum to `Cookies.binarycookies - corrupt`.
+  let checksumSum = 0;
+  for (const pg of pages) {
+    for (let i = 0; i < pg.length; i += 4) {
+      checksumSum = (checksumSum + pg[i]) >>> 0;
+    }
+  }
   const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(checksumSum, 0);
   return Buffer.concat([fileHdr, ...pages, checksum, BINARY_COOKIES_BPLIST_TRAILER]);
 }
 
@@ -2817,6 +3064,7 @@ module.exports = {
   dispatchIosLiveControlAction,
   augmentMobileProfilesResponse,
   augmentLiveScreenResponse,
+  stopIosBackgroundPoller,
   runIosSshCommand,
   switchIosDeviceProfile,
   backupIosProfileSnapshot,

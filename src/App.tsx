@@ -51,14 +51,20 @@ function StealthAppRoot() {
   const [systemTab, setSystemTab] = useState<StealthSystemTab>(() => bootUrl.systemTab);
   const [workflowTab, setWorkflowTab] = useState<StealthWorkflowTab>(() => bootUrl.workflowTab);
   const [visited, setVisited] = useState<Set<StealthScreen>>(
-    () => new Set<StealthScreen>(["profiles", "workflow", bootUrl.screen]),
+    () => new Set<StealthScreen>([bootUrl.screen]),
   );
   const mainRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
     hideBootLoader();
-    prefetchWorkflowChunks();
-    prefetchSystemChunks();
+  }, []);
+
+  useEffect(() => {
+    const idleId = window.setTimeout(() => {
+      prefetchWorkflowChunks();
+      prefetchSystemChunks();
+    }, 2500);
+    return () => window.clearTimeout(idleId);
   }, []);
 
   useEffect(() => {

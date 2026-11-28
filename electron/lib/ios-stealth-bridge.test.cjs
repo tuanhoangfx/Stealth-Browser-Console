@@ -17,6 +17,7 @@ const {
   dispatchIosLiveControlAction,
   augmentMobileProfilesResponse,
   augmentLiveScreenResponse,
+  stopIosBackgroundPoller,
   switchIosDeviceProfile,
   backupIosProfileSnapshot,
   launchIosScreenMirror,
@@ -365,6 +366,37 @@ describe("ios-stealth-bridge", () => {
     assert.equal(parsed[0].secure, true);
     assert.equal(parsed[0].httpOnly, true);
 
+    const multiDomainCookies = [
+      { domain: "accounts.google.com", name: "GAPS", value: "g1", path: "/", secure: true, httpOnly: true, expires: 1850000000 },
+      { domain: ".google.com", name: "SID", value: "old_sid", path: "/", secure: false, httpOnly: false, expires: 1850000000 },
+      { domain: ".one.google.com", name: "OTZ", value: "o1", path: "/", secure: true, httpOnly: false, expires: 1850000000 },
+      { domain: ".google.com", name: "SID", value: "new_sid", path: "/", secure: false, httpOnly: false, expires: 1850000000 },
+    ];
+    const multiBin = serializeBinaryCookies(multiDomainCookies);
+    assert.equal(multiBin.subarray(0, 4).toString("ascii"), "cook");
+    const pageCount = multiBin.readUInt32BE(4);
+    assert.equal(pageCount, 3);
+    let pageOffset = 8 + pageCount * 4;
+    let expectedChecksum = 0;
+    for (let p = 0; p < pageCount; p += 1) {
+      const pageLen = multiBin.readUInt32BE(8 + p * 4);
+      const pg = multiBin.subarray(pageOffset, pageOffset + pageLen);
+      for (let i = 0; i < pg.length; i += 4) {
+        expectedChecksum = (expectedChecksum + pg[i]) >>> 0;
+      }
+      pageOffset += pageLen;
+    }
+    const actualChecksum = multiBin.readUInt32BE(pageOffset);
+    assert.ok(actualChecksum > 0);
+    assert.equal(actualChecksum, expectedChecksum);
+    const parsedMulti = parseBinaryCookies(multiBin);
+    assert.equal(parsedMulti.length, 3);
+    assert.deepEqual(
+      parsedMulti.map((c) => c.domain),
+      [".google.com", ".one.google.com", "accounts.google.com"],
+    );
+    assert.equal(parsedMulti[0].value, "new_sid");
+
     const srUrl = buildShadowrocketProxyUrl("socks5://user1:pass1@1.2.3.4:1080", "P0003-0001");
     assert.ok(srUrl.startsWith("shadowrocket://add/socks://"));
 
@@ -608,5 +640,69 @@ describe("ios-stealth-bridge", () => {
     });
     assert.equal(srRes.ok, true);
     assert.ok(srRes.deleted >= 1);
+  });
+
+  it("serves cached iOS frames in <50ms via non-blocking background poller without stalling Android live-screen", async () => {
+    stopIosBackgroundPoller();
+    try {
+      const mockExec = async (_bin, args) => {
+        if (args[0] === "usbmux" && args[1] === "list") {
+          return {
+            stdout: JSON.stringify([
+              { UniqueDeviceID: "bg183", ProductType: "iPhone8,1", ProductVersion: "14.8", ConnectionType: "USB" },
+              { UniqueDeviceID: "bg222", ProductType: "iPhone8,2", ProductVersion: "15.8.2", ConnectionType: "USB" },
+            ]),
+          };
+        }
+        return { stdout: "{}" };
+      };
+      let shotSeq = 0;
+      const slowFetch = async (url) => {
+        if (url.endsWith("/screenshot")) {
+          shotSeq += 1;
+          await new Promise((r) => setTimeout(r, 320));
+          return { ok: true, json: async () => ({ value: `FRAME_${shotSeq}_${"A".repeat(2200)}` }) };
+        }
+        return { ok: true, json: async () => ({ value: { ready: true }, sessionId: "sid-bg" }) };
+      };
+
+      // Warm initial cache
+      const warm = await augmentLiveScreenResponse(
+        { ok: true, serial: "192.168.0.208:5555", availableDevices: [] },
+        { allDevices: true, includeScreenshot: true },
+        {
+          useBackgroundPoller: true,
+          coldWaitBudgetMs: 600,
+          bgIntervalMs: 5000,
+          execFileFn: mockExec,
+          fetchFn: slowFetch,
+          portProbeFn: async () => true,
+          cacheMs: 0,
+        },
+      );
+      assert.ok(warm.deviceStates["ios:bg183"]?.screenDataUrl?.includes("FRAME_"));
+      assert.ok(warm.deviceStates["ios:bg222"]?.screenDataUrl?.includes("FRAME_"));
+
+      // Subsequent poll must return cached frames immediately (<50ms) even while slowFetch takes 320ms
+      const t0 = Date.now();
+      const fast = await augmentLiveScreenResponse(
+        { ok: true, serial: "192.168.0.208:5555", availableDevices: [] },
+        { allDevices: true, includeScreenshot: true },
+        {
+          useBackgroundPoller: true,
+          bgIntervalMs: 5000,
+          execFileFn: mockExec,
+          fetchFn: slowFetch,
+          portProbeFn: async () => true,
+          cacheMs: 0,
+        },
+      );
+      const elapsed = Date.now() - t0;
+      assert.ok(elapsed < 80, `Expected non-blocking <80ms response, got ${elapsed}ms`);
+      assert.ok(fast.deviceStates["ios:bg183"]?.screenDataUrl?.includes("FRAME_"));
+      assert.ok(fast.deviceStates["ios:bg222"]?.screenDataUrl?.includes("FRAME_"));
+    } finally {
+      stopIosBackgroundPoller();
+    }
   });
 });

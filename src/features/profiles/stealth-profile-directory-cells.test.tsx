@@ -70,6 +70,20 @@ describe("renderStealthProfileDirectoryBodyCell action", () => {
     expect(html).toContain("agent headless active");
   });
 
+  it("renders Run with 👻 emoji when local DB status is closed but :6004 worker runs it headless", () => {
+    const workerOnly = { id: "0076", name: "0076", status: "closed", headless: false } as ProfileRow;
+    const html = renderToStaticMarkup(
+      renderStealthProfileDirectoryBodyCell(statusCol, workerOnly, "", {
+        runningHeadlessIds: new Set(["0076"]),
+        headlessReasons: { "0076": "Worker (agent-flow-live-test) · Elapsed: 12s" },
+      })!,
+    );
+    const label = html.match(/hub-directory-icon-cell__label[^>]*>(.*?)<\/span>/)?.[1] ?? "";
+    expect(label).toContain("Run");
+    expect(html).toContain("👻");
+    expect(html).toContain("agent headless active");
+  });
+
   it("renders Run with ⏳ emoji and Waiting popover when profile is in waitingReasons", () => {
     const waitingProf = { id: "0457", name: "0457", status: "closed", headless: false } as ProfileRow;
     const html = renderToStaticMarkup(

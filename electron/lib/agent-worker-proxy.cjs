@@ -17,6 +17,7 @@ const WORKER_HOST = "127.0.0.1";
 
 let lastSpawnAttemptAt = 0;
 const workerHealthyCacheByPort = new Map();
+const inFlightStartByPort = new Map();
 
 function resolveWorkerDaemonScriptPath() {
   const candidates = [
@@ -63,7 +64,7 @@ function resolveElectronBinaryForWorker() {
   return process.execPath;
 }
 
-function probeWorkerHealth(port = DEFAULT_WORKER_PORT, timeoutMs = 600) {
+function probeWorkerHealth(port = DEFAULT_WORKER_PORT, timeoutMs = 1500) {
   const now = Date.now();
   const cached = workerHealthyCacheByPort.get(port);
   if (cached && cached.ok && now - cached.checkedAt < 3000) {
@@ -101,61 +102,98 @@ function probeWorkerHealth(port = DEFAULT_WORKER_PORT, timeoutMs = 600) {
   });
 }
 
-async function ensureAgentWorkerDaemonRunning(port = DEFAULT_WORKER_PORT) {
+async function ensureAgentWorkerDaemonRunning(port = DEFAULT_WORKER_PORT, { maxWaitAttempts = 30 } = {}) {
   if (process.env.STEALTH_ENABLE_SPLIT_WORKER_6004 !== "1") return false;
-  if (await probeWorkerHealth(port, 500)) return true;
+  if (await probeWorkerHealth(port, 1200)) return true;
 
-  const now = Date.now();
-  if (now - lastSpawnAttemptAt < 5000) {
-    return false;
+  const existingInFlight = inFlightStartByPort.get(port);
+  if (existingInFlight) {
+    return existingInFlight;
   }
-  lastSpawnAttemptAt = now;
 
-  const scriptPath = resolveWorkerDaemonScriptPath();
-  if (!scriptPath) return false;
-
-  const exePath = resolveElectronBinaryForWorker();
-  const os = require("node:os");
-  const childEnv = {
-    ...process.env,
-    ELECTRON_RUN_AS_NODE: "1",
-    STEALTH_ENABLE_SPLIT_WORKER_6004: "1",
-    STEALTH_API_PORT: String(port),
-    STEALTH_AGENT_WORKER_PORT: String(port),
-    STEALTH_AGENT_WORKER: "1",
-    STEALTH_AGENT_SMOKE: "1",
-    STEALTH_HEADLESS_SMOKE: "1",
-  };
-  try {
-    const winShellCandidate = "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs";
-    if (fs.existsSync(winShellCandidate)) {
-      const { startHiddenDetachedProcess } = require(winShellCandidate);
-      startHiddenDetachedProcess({
-        command: exePath,
-        args: [scriptPath],
-        cwd: path.dirname(scriptPath),
-        pidFile: path.join(os.tmpdir(), `stealth-agent-worker-${port}.pid`),
-        logFile: path.join(os.tmpdir(), `stealth-agent-worker-${port}.log`),
-        env: childEnv,
-      });
-    } else {
-      const child = spawn(exePath, [scriptPath], {
-        detached: true,
-        stdio: "ignore",
-        windowsHide: true,
-        env: childEnv,
-      });
-      child.unref();
+  const startPromise = (async () => {
+    const rounds = Number.isInteger(maxWaitAttempts) && maxWaitAttempts >= 0 ? maxWaitAttempts : 30;
+    if (rounds > 1) {
+      await new Promise((r) => setTimeout(r, 200));
+      if (await probeWorkerHealth(port, 1200)) return true;
     }
-  } catch {
-    return false;
-  }
 
-  for (let i = 0; i < 30; i++) {
-    await new Promise((r) => setTimeout(r, 250));
-    if (await probeWorkerHealth(port, 500)) return true;
+    const now = Date.now();
+    if (now - lastSpawnAttemptAt < 5000) {
+      for (let i = 0; i < Math.min(rounds, 10); i++) {
+        await new Promise((r) => setTimeout(r, 250));
+        if (await probeWorkerHealth(port, 1000)) return true;
+      }
+      return false;
+    }
+    lastSpawnAttemptAt = now;
+
+    const scriptPath = resolveWorkerDaemonScriptPath();
+    if (!scriptPath) return false;
+
+    const exePath = resolveElectronBinaryForWorker();
+    const os = require("node:os");
+    const childEnv = {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      STEALTH_ENABLE_SPLIT_WORKER_6004: "1",
+      STEALTH_API_PORT: String(port),
+      STEALTH_AGENT_WORKER_PORT: String(port),
+      STEALTH_AGENT_WORKER: "1",
+      STEALTH_AGENT_SMOKE: "1",
+      STEALTH_HEADLESS_SMOKE: "1",
+    };
+    try {
+      const winShellCandidate = path.resolve(__dirname, "..", "..", "..", "scripts", "lib", "win-shell-env.cjs");
+      const fallbackWinShell = "E:\\Dev\\Tool\\scripts\\lib\\win-shell-env.cjs";
+      const winShellPath = fs.existsSync(winShellCandidate)
+        ? winShellCandidate
+        : fs.existsSync(fallbackWinShell)
+          ? fallbackWinShell
+          : "";
+      if (winShellPath) {
+        const winShell = require(winShellPath);
+        const launchOpts = {
+          command: exePath,
+          args: [scriptPath],
+          cwd: path.dirname(scriptPath),
+          pidFile: path.join(os.tmpdir(), `stealth-agent-worker-${port}.pid`),
+          logFile: path.join(os.tmpdir(), `stealth-agent-worker-${port}.log`),
+          env: childEnv,
+        };
+        if (typeof winShell.startHiddenDetachedProcessAsync === "function") {
+          await winShell.startHiddenDetachedProcessAsync(launchOpts);
+        } else if (typeof winShell.startHiddenDetachedProcess === "function") {
+          winShell.startHiddenDetachedProcess(launchOpts);
+        }
+      } else {
+        const child = spawn(exePath, [scriptPath], {
+          detached: process.platform !== "win32",
+          stdio: "ignore",
+          windowsHide: true,
+          env: childEnv,
+        });
+        child.unref();
+      }
+    } catch {
+      return false;
+    }
+
+    for (let i = 0; i < rounds; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      if (await probeWorkerHealth(port, 1000)) return true;
+    }
+    return false;
+  })();
+
+  inFlightStartByPort.set(port, startPromise);
+  try {
+    return await startPromise;
+  } finally {
+    if (inFlightStartByPort.get(port) === startPromise) {
+      inFlightStartByPort.delete(port);
+    }
   }
-  return false;
 }
 
 function extractTargetProfileId({ urlPath, params, body }) {
@@ -193,9 +231,11 @@ function shouldOffloadAgentRequestToWorker({
   if (process.env.STEALTH_AGENT_WORKER === "1") return false;
   if (Number(apiPort) !== 6003) return false;
 
+  // Read-only /api/profiles list queries are served directly by :6003 local SQLite WAL so UI/agent
+  // catalog lookups never stall behind :6004 worker startup or browser launches.
   const isGetOffloadRoute =
     method === "GET" &&
-    (urlPath === "/api/profiles" || /^\/api\/profiles\/[^/]+(\/cdp)?$/.test(urlPath));
+    /^\/api\/profiles\/[^/]+\/cdp$/.test(urlPath);
   if (method !== "POST" && !isGetOffloadRoute) return false;
 
   const isOffloadRoute =
@@ -240,6 +280,11 @@ function proxyRequestToWorker({ req, res, urlPath, query, body, port = DEFAULT_W
     };
     if (req.headers.authorization) headers.Authorization = req.headers.authorization;
     if (req.headers["x-api-token"]) headers["X-Api-Token"] = req.headers["x-api-token"];
+    const forwardedCaller =
+      req.headers["x-stealth-caller-id"] ||
+      req.headers["x-agent-caller"] ||
+      req.headers["x-daemon-id"];
+    if (forwardedCaller) headers["X-Stealth-Caller-Id"] = String(forwardedCaller);
 
     const proxyReq = http.request(
       {

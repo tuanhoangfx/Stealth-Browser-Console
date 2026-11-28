@@ -376,3 +376,85 @@ test("buildP0020RowSnapshotAndPatch clears stale mail_checking = ❌ Skipped on 
   });
   assert.equal(servicePatch.mail_checking, null);
 });
+
+test("preserves and saves canonical .google.com stealth_cookies for Google rows while rejecting regional ccTLD duplicates", () => {
+  const { resolveServiceMatcher } = require("./service-cookie-matchers.cjs");
+  const gmailMatcher = resolveServiceMatcher("Gmail");
+  assert.equal(gmailMatcher.match(".google.com", "SID"), true);
+  assert.equal(gmailMatcher.match("accounts.google.com", "__Secure-1PSID"), true);
+  assert.equal(gmailMatcher.match(".google.com.vn", "SID"), false);
+  assert.equal(gmailMatcher.match(".google.ar", "SAPISID"), false);
+
+  const canonicalCookies = [
+    { domain: ".google.com", name: "SID", value: "canon-sid-value-123456" },
+    { domain: ".google.com", name: "SAPISID", value: "canon-sapisid-value-123456" },
+  ];
+  const mixedPairs = [
+    ...canonicalCookies,
+    { domain: ".google.com.vn", name: "SID", value: "vn-sid-value-999" },
+    { domain: ".google.com.hk", name: "HSID", value: "hk-hsid-value-999" },
+  ];
+
+  // 1) Never wipes existing Google stealth_cookies to null when closing with empty pairs
+  const { patchBody: preservePatch } = buildP0020RowSnapshotAndPatch({
+    svc: "Google One",
+    svcLower: "google one",
+    match: { loggedIn: true, resultCode: "google_cookies", matchedNames: ["SID", "SAPISID"] },
+    row: {
+      id: "row-g1-0852",
+      service: "Google One",
+      account: "chino884@gmail.com",
+      status: "active",
+      stealth_snapshot: { status: "logged_in" },
+      stealth_cookies: canonicalCookies,
+    },
+    curSnap: { status: "logged_in" },
+    targetStatus: "logged_in",
+    rowStatusLower: "active",
+    pairs: [],
+    vaultEntryCookies: [],
+    code: "0852",
+    profileId: "prof-0852",
+    source: "p0003_live_nav:google",
+    nowIso: "2026-11-27T09:00:00.000Z",
+    needsRowStatusPromotion: false,
+    hasStaleChallengeNoteWhenLoggedIn: false,
+    existingRowNote: "",
+    hasFreshDecryptedPairs: false,
+    needsBrowserAssignmentUpdate: false,
+  });
+  assert.equal("stealth_cookies" in preservePatch, false);
+
+  // 2) Writes canonical .google.com cookies & cookie_telemetry when fresh pairs arrive (stripping .google.com.vn/.hk)
+  const { nextSnap: freshSnap, patchBody: freshPatch } = buildP0020RowSnapshotAndPatch({
+    svc: "Gmail",
+    svcLower: "gmail",
+    match: { loggedIn: true, resultCode: "google_cookies", matchedNames: ["SID", "SAPISID"] },
+    row: {
+      id: "row-gm-0004",
+      service: "Gmail",
+      account: "nguyenluongthaimkt@gmail.com",
+      status: "active",
+      stealth_snapshot: { status: "logged_in" },
+      stealth_cookies: [{ domain: ".google.com.vn", name: "SID", value: "old-cctld-123" }],
+    },
+    curSnap: { status: "logged_in" },
+    targetStatus: "logged_in",
+    rowStatusLower: "active",
+    pairs: mixedPairs,
+    vaultEntryCookies: [],
+    code: "0004",
+    profileId: "prof-0004",
+    source: "p0003_live_nav:google",
+    nowIso: "2026-11-27T09:05:00.000Z",
+    needsRowStatusPromotion: false,
+    hasStaleChallengeNoteWhenLoggedIn: false,
+    existingRowNote: "",
+    hasFreshDecryptedPairs: true,
+    needsBrowserAssignmentUpdate: false,
+  });
+  assert.ok(Array.isArray(freshPatch.stealth_cookies));
+  assert.equal(freshPatch.stealth_cookies.length, 2);
+  assert.equal(freshPatch.stealth_cookies.every((c) => c.domain === ".google.com"), true);
+  assert.equal(freshSnap.cookie_telemetry?.cookie_count, 2);
+});

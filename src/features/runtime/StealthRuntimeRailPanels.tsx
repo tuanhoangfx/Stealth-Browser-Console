@@ -7,14 +7,18 @@ import {
   HubChangeLogActorFilterBar,
   HubChangeLogFieldFilterBar,
   HubDirectoryLogLabel,
+  HubLogActorBadge,
   HubPanel,
   HubTwofaCopyControl,
   formatHubRelativeTime,
   formatHubTimestampFull,
   isDirectoryEmptyLabel,
+  resolveHubEntityLogActorKind,
   useHubAccountDetailSearchOptional,
   type HubChangeLogFieldOption,
+  type HubEntityLogActor,
   type HubEntityLogActorFilter,
+  type HubEntityLogActorKind,
 } from "@tool-workspace/hub-ui";
 import { useWorkflowEditor } from "../../context/workflow-editor-context";
 import { resolveWorkflowRunLabel } from "../workflows/resolve-workflow-run-label";
@@ -180,6 +184,30 @@ function formatActorCaption(cat: Exclude<HubEntityLogActorFilter, "all">): strin
   if (cat === "agent") return "by Agent";
   if (cat === "user") return "by User";
   return "by System";
+}
+
+function buildStealthLogEntityActor(
+  cat: Exclude<HubEntityLogActorFilter, "all">,
+  hint = "",
+): HubEntityLogActor {
+  if (cat === "system") {
+    return { id: "system:watchdog", label: "System", source: "system" };
+  }
+  if (cat === "agent") {
+    const lower = hint.toLowerCase();
+    if (
+      lower.includes("headless") ||
+      lower.includes("p0003") ||
+      lower.includes("p0002") ||
+      lower.includes("worker") ||
+      lower.includes("127.0.0.1") ||
+      /\b9\d{3}\b/.test(lower)
+    ) {
+      return { id: "daemon:p0003", label: "P0003", source: "hub" };
+    }
+    return { id: "agent:workflow", label: "Agent · Workflow", source: "hub" };
+  }
+  return { id: "user:czp", label: "CzP", source: "hub" };
 }
 
 function flattenConsoleLogsToRows(logs: readonly ConsoleLog[]): StealthFlattenedLogRow[] {
@@ -576,23 +604,37 @@ export function StealthConsoleContent({
   hasMoreExternal?: boolean;
   onLoadMoreExternal?: () => void;
 }) {
-  const [selectedActors, setSelectedActors] = useState<Exclude<HubEntityLogActorFilter, "all">[]>([]);
+  const [selectedActors, setSelectedActors] = useState<HubEntityLogActorKind[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [visibleLimit, setVisibleLimit] = useState(STEALTH_CONSOLE_INITIAL_VISIBLE);
   const modalSearch = useHubAccountDetailSearchOptional();
   const { rootRef, slot: railHeadTarget } = useRailHeaderActionsSlot(logs.length);
 
-  const allRows = useMemo(() => flattenConsoleLogsToRows(logs), [logs]);
+  const allRows = useMemo(
+    () =>
+      flattenConsoleLogsToRows(logs).map((row) => {
+        const entityActor = buildStealthLogEntityActor(
+          row.actor,
+          `${row.source} ${row.fieldLabel} ${row.after}`,
+        );
+        return {
+          ...row,
+          entityActor,
+          actorKind: resolveHubEntityLogActorKind(entityActor),
+        };
+      }),
+    [logs],
+  );
 
-  const actorCounts = useMemo<Partial<Record<HubEntityLogActorFilter, number>>>(() => {
-    const counts: Record<HubEntityLogActorFilter, number> = {
-      all: allRows.length,
+  const actorKindCounts = useMemo<Partial<Record<HubEntityLogActorKind, number>>>(() => {
+    const counts: Partial<Record<HubEntityLogActorKind, number>> = {
       user: 0,
       agent: 0,
+      daemon: 0,
       system: 0,
     };
     for (const row of allRows) {
-      counts[row.actor] = (counts[row.actor] ?? 0) + 1;
+      counts[row.actorKind] = (counts[row.actorKind] ?? 0) + 1;
     }
     return counts;
   }, [allRows]);
@@ -600,7 +642,7 @@ export function StealthConsoleContent({
   const actorFilteredRows = useMemo(() => {
     if (selectedActors.length === 0) return allRows;
     const set = new Set(selectedActors);
-    return allRows.filter((row) => set.has(row.actor));
+    return allRows.filter((row) => set.has(row.actorKind));
   }, [allRows, selectedActors]);
 
   const fieldOptions = useMemo<HubChangeLogFieldOption[]>(() => {
@@ -652,8 +694,8 @@ export function StealthConsoleContent({
       />
       <HubChangeLogActorFilterBar
         selected={selectedActors}
-        onSelectedChange={setSelectedActors}
-        counts={actorCounts}
+        onSelectedChange={(next) => setSelectedActors(next as unknown as HubEntityLogActorKind[])}
+        kindCounts={actorKindCounts}
         className="hub-adm-log-actor-filter flex items-center"
       />
     </div>
@@ -743,12 +785,7 @@ export function StealthConsoleContent({
                       </span>
                     }
                   />
-                  <span
-                    className="twofa-adm-log-row__actor hub-users-cell-muted"
-                    title={actorCaption}
-                  >
-                    <HubAdmSearchHighlightText text={actorCaption} />
-                  </span>
+                  <HubLogActorBadge actor={row.entityActor} />
                 </div>
                 <div className="twofa-adm-log-row__values">
                   {row.before !== undefined ? (
@@ -826,7 +863,7 @@ export function StealthRunHistoryContent({
   backupJobLabel?: string | null;
 }) {
   const { workflowConfigs } = useWorkflowEditor();
-  const [selectedActors, setSelectedActors] = useState<Exclude<HubEntityLogActorFilter, "all">[]>([]);
+  const [selectedActors, setSelectedActors] = useState<HubEntityLogActorKind[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [visibleLimit, setVisibleLimit] = useState(STEALTH_CONSOLE_INITIAL_VISIBLE);
   const modalSearch = useHubAccountDetailSearchOptional();
@@ -835,19 +872,34 @@ export function StealthRunHistoryContent({
   const enrichedEntries = useMemo(() => {
     const map = new Map<
       string,
-      { entry: RunHistoryItem; taskLabel: string; field: StealthHistoryFieldKey; actor: Exclude<HubEntityLogActorFilter, "all">; sessionCount: number }
+      {
+        entry: RunHistoryItem;
+        taskLabel: string;
+        field: StealthHistoryFieldKey;
+        actor: Exclude<HubEntityLogActorFilter, "all">;
+        entityActor: HubEntityLogActor;
+        actorKind: HubEntityLogActorKind;
+        sessionCount: number;
+      }
     >();
     const out: Array<{
       entry: RunHistoryItem;
       taskLabel: string;
       field: StealthHistoryFieldKey;
       actor: Exclude<HubEntityLogActorFilter, "all">;
+      entityActor: HubEntityLogActor;
+      actorKind: HubEntityLogActorKind;
       sessionCount: number;
     }> = [];
     for (const entry of entries) {
       const taskLabel = resolveWorkflowRunLabel(entry.workflow, workflowConfigs);
       const field = classifyHistoryField(entry, taskLabel);
       const actor = classifyHistoryActor(entry, field);
+      const entityActor = buildStealthLogEntityActor(
+        actor,
+        `${entry.profileName} ${entry.profileId} ${entry.workflow} ${taskLabel}`,
+      );
+      const actorKind = resolveHubEntityLogActorKind(entityActor);
       const sessionKey = `${(entry.profileId || entry.profileName || "").trim()}::${entry.workflow.trim().toLowerCase()}`;
       const existing = map.get(sessionKey);
       const countDelta = Math.max(1, Number(entry.sessionCount) || 1);
@@ -855,22 +907,22 @@ export function StealthRunHistoryContent({
         existing.sessionCount += countDelta;
         continue;
       }
-      const item = { entry, taskLabel, field, actor, sessionCount: countDelta };
+      const item = { entry, taskLabel, field, actor, entityActor, actorKind, sessionCount: countDelta };
       map.set(sessionKey, item);
       out.push(item);
     }
     return out;
   }, [entries, workflowConfigs]);
 
-  const actorCounts = useMemo<Partial<Record<HubEntityLogActorFilter, number>>>(() => {
-    const counts: Record<HubEntityLogActorFilter, number> = {
-      all: enrichedEntries.length,
+  const actorKindCounts = useMemo<Partial<Record<HubEntityLogActorKind, number>>>(() => {
+    const counts: Partial<Record<HubEntityLogActorKind, number>> = {
       user: 0,
       agent: 0,
+      daemon: 0,
       system: 0,
     };
     for (const item of enrichedEntries) {
-      counts[item.actor] = (counts[item.actor] ?? 0) + 1;
+      counts[item.actorKind] = (counts[item.actorKind] ?? 0) + 1;
     }
     return counts;
   }, [enrichedEntries]);
@@ -878,7 +930,7 @@ export function StealthRunHistoryContent({
   const actorFiltered = useMemo(() => {
     if (selectedActors.length === 0) return enrichedEntries;
     const set = new Set(selectedActors);
-    return enrichedEntries.filter((item) => set.has(item.actor));
+    return enrichedEntries.filter((item) => set.has(item.actorKind));
   }, [enrichedEntries, selectedActors]);
 
   const fieldOptions = useMemo<HubChangeLogFieldOption[]>(() => {
@@ -923,8 +975,8 @@ export function StealthRunHistoryContent({
       />
       <HubChangeLogActorFilterBar
         selected={selectedActors}
-        onSelectedChange={setSelectedActors}
-        counts={actorCounts}
+        onSelectedChange={(next) => setSelectedActors(next as unknown as HubEntityLogActorKind[])}
+        kindCounts={actorKindCounts}
         className="hub-adm-log-actor-filter flex items-center"
       />
     </div>
@@ -951,7 +1003,7 @@ export function StealthRunHistoryContent({
         <p className={HUB_ADM_LOG_MUTED_CLASS}>{effectiveEmptyLabel}</p>
       ) : (
         <ol className="twofa-adm-log-list shrink-0">
-          {visibleHistoryItems.map(({ entry, taskLabel, field, actor, sessionCount }, idx) => {
+          {visibleHistoryItems.map(({ entry, taskLabel, field, actor, entityActor, sessionCount }, idx) => {
             const stamp = (entry.finishedAt ?? entry.startedAt) || "";
             const duration = formatDurationMs(entry.durationMs);
             const profileLabel =
@@ -1043,12 +1095,7 @@ export function StealthRunHistoryContent({
                       </span>
                     }
                   />
-                  <span
-                    className="twofa-adm-log-row__actor hub-users-cell-muted"
-                    title={actorCaption}
-                  >
-                    <HubAdmSearchHighlightText text={actorCaption} />
-                  </span>
+                  <HubLogActorBadge actor={entityActor} />
                 </div>
                 <div className="twofa-adm-log-row__values">
                   <StealthLogInlineValue

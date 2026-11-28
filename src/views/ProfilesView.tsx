@@ -86,16 +86,32 @@ export const ProfilesView = memo(function ProfilesView({
     const api = window.stealthApi;
     if (!api?.onProfileSession) return undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let dirtyWhileHidden = false;
+    const flushRefresh = () => {
+      dirtyWhileHidden = false;
+      setDirectoryRefreshKey((key) => key + 1);
+    };
     const off = api.onProfileSession(() => {
       if (!needsSessionPageRequeryRef.current) return;
+      if (typeof document !== "undefined" && document.hidden) {
+        dirtyWhileHidden = true;
+        return;
+      }
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = undefined;
-        setDirectoryRefreshKey((key) => key + 1);
+        flushRefresh();
       }, 600);
     });
+    const onVisibilityChange = () => {
+      if (!document.hidden && dirtyWhileHidden && needsSessionPageRequeryRef.current) {
+        flushRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       off?.();
     };
   }, []);

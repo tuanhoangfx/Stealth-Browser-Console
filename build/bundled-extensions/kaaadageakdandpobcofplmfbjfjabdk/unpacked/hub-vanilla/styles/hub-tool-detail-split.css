@@ -72,16 +72,41 @@
   flex-shrink: 0;
 }
 
+.hub-tool-detail-rail__head-trailing:empty {
+  display: none;
+}
+
+/* Actor & Field Filter dropdown triggers in `.hub-tool-detail-rail__head` (📋 Log header row) —
+ * Negative vertical margin keeps the rail header height identical to 📝 Note / 💡 Remark
+ * (~31px) while presenting standard Hub Filter chrome. */
+.hub-tool-detail-rail__head .hub-adm-log-actor-filter__trigger {
+  height: 1.35rem;
+  min-height: 1.35rem;
+  margin-top: -0.25rem;
+  margin-bottom: -0.25rem;
+  padding: 0 0.42rem;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: 0.375rem;
+}
+
+.hub-tool-detail-rail__head .hub-adm-log-field-filter__trigger {
+  max-width: 7.5rem;
+}
+
 .hub-tool-detail-panel__body,
 .hub-tool-detail-rail__body {
   flex: 1;
   min-height: 0;
   padding: 0.45rem;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .hub-tool-detail-rail__body--scroll {
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .hub-tool-detail-split__body {

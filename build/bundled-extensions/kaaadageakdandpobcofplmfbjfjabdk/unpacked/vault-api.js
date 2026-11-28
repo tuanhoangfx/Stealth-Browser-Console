@@ -1,6 +1,13 @@
 import { parseApiErrorBody, rpcHeaders, userHeaders } from "./auth-session.js";
 import { canUseVault, decryptVault, decryptVaultPayload, encryptVault, vaultPassphrase } from "./vault-crypto.js";
-import { extraSetHostsForCookieHost, isFacebookDomain, isGoogleDomain, summarizeGoogleCookieNames } from "./domain-routes.js";
+import {
+  extraSetHostsForCookieHost,
+  isFacebookDomain,
+  isGoogleDomain,
+  isGoogleOsidAppDomain,
+  summarizeGoogleCookieNames,
+} from "./domain-routes.js";
+import { hasNonEmptyAuthStorage } from "./site-auth-storage.js";
 
 const STORAGE_BROWSER_ID = "e0001-browser-id-v1";
 const STORAGE_VAULT_WATERMARKS = "e0001-vault-watermarks-v1";
@@ -257,9 +264,13 @@ export function prepareCookiesForApply(cookies) {
 export async function applyCookieEditorJson(jsonText) {
   const parsed = JSON.parse(jsonText);
   const list = Array.isArray(parsed) ? parsed : parsed?.cookies;
+  const storage = !Array.isArray(parsed) && parsed?.storage && typeof parsed.storage === "object" ? parsed.storage : null;
   const cookies = prepareCookiesForApply(list);
-  if (!cookies.length) throw new Error("No cookies in JSON");
-  return applyCookiesToBrowser(cookies);
+  if (!cookies.length && !hasNonEmptyAuthStorage(storage)) throw new Error("No cookies in JSON");
+  const appliedRes = cookies.length
+    ? await applyCookiesToBrowser(cookies)
+    : { applied: 0, failed: 0, total: 0, appliedNames: [], failedNames: [], failedDetails: [] };
+  return { ...appliedRes, storage };
 }
 
 /** Cookie-Editor compatible export (https://github.com/moustachauve/cookie-editor) */
@@ -279,8 +290,12 @@ export function toCookieEditorFormat(cookies) {
   }));
 }
 
-export function formatCookiesJson(cookies) {
-  return JSON.stringify(toCookieEditorFormat(cookies), null, 2);
+export function formatCookiesJson(cookies, storage = null) {
+  const formatted = toCookieEditorFormat(cookies);
+  if (hasNonEmptyAuthStorage(storage)) {
+    return JSON.stringify({ cookies: formatted, storage }, null, 2);
+  }
+  return JSON.stringify(formatted, null, 2);
 }
 
 const FACEBOOK_LOGIN_COOKIE_NAMES = ["c_user", "xs", "fr", "datr", "sb", "wd", "presence"];
@@ -318,9 +333,22 @@ export function summarizeCookieNames(cookies) {
 
 function urlsForSet(c) {
   const host = (c.domain ?? "").replace(/^\./, "").toLowerCase() || "localhost";
-  const path = c.path?.startsWith("/") ? c.path : `/${c.path ?? "/"}`;
-  const secure = Boolean(c.secure) || String(c.name).startsWith("__Secure-") || String(c.name).startsWith("__Host-");
-  const scheme = secure || isFacebookDomain(host) || isGoogleDomain(host) ? "https" : "http";
+  const name = String(c.name ?? "");
+  const path = name.startsWith("__Host-") ? "/" : c.path?.startsWith("/") ? c.path : `/${c.path ?? "/"}`;
+  const sameSite = normalizeSameSite(c.sameSite);
+  const secure =
+    Boolean(c.secure) ||
+    sameSite === "no_restriction" ||
+    name.startsWith("__Secure-") ||
+    name.startsWith("__Host-");
+  const scheme =
+    secure || isFacebookDomain(host) || isGoogleDomain(host) || isGoogleOsidAppDomain(host)
+      ? "https"
+      : "http";
+  const isStrictHostOnly = Boolean(c.hostOnly) || name.startsWith("__Host-");
+  if (isStrictHostOnly) {
+    return [`${scheme}://${host}${path}`];
+  }
   const urls = new Set();
   const hosts = new Set([host]);
   if (!host.startsWith("www.")) hosts.add(`www.${host}`);
@@ -335,7 +363,12 @@ function urlsForSet(c) {
 
 function buildSetDetails(c, url) {
   const name = c.name;
-  const secure = Boolean(c.secure) || name.startsWith("__Secure-") || name.startsWith("__Host-");
+  const sameSite = normalizeSameSite(c.sameSite);
+  const secure =
+    Boolean(c.secure) ||
+    sameSite === "no_restriction" ||
+    name.startsWith("__Secure-") ||
+    name.startsWith("__Host-");
   const path = name.startsWith("__Host-") ? "/" : (c.path ?? "/");
   const details = {
     url,
@@ -344,7 +377,7 @@ function buildSetDetails(c, url) {
     path,
     secure,
     httpOnly: Boolean(c.httpOnly),
-    sameSite: normalizeSameSite(c.sameSite),
+    sameSite,
   };
   if (c.expirationDate) details.expirationDate = c.expirationDate;
   if (!name.startsWith("__Host-") && c.domain && !c.hostOnly) {
@@ -457,14 +490,19 @@ export async function applyCookiesToBrowser(cookies, opts = {}) {
 export async function exportVaultCookiesJson(auth, binding) {
   const row = await rpcVaultFetch(auth, binding);
   if (!row.ok) throw new Error("Chưa có vault — Sync now trên browser đã login.");
-  const cookies = await decryptVault(
+  const payload = await decryptVaultPayload(
     vaultPassphrase(binding),
     binding.noteId,
     binding.domain,
     row.ciphertext,
     row.iv,
   );
-  return { json: formatCookiesJson(cookies), count: cookies.length };
+  const cookies = payload.cookies ?? [];
+  return {
+    json: formatCookiesJson(cookies, payload.storage),
+    count: cookies.length,
+    storage: payload.storage ?? null,
+  };
 }
 
 /** Decrypted vault size on server (probe / diagnostics). */
@@ -516,6 +554,7 @@ export async function fetchExistingVaultSummary(auth, binding, opts = {}) {
       vaultNames: summarizeCookieNames(cookies),
       vaultVersion: row.vault_version ?? row.updated_at ?? null,
       hasFacebookLogin: row.has_facebook_login ?? null,
+      storage: payload.storage ?? null,
     };
   } catch (err) {
     return { exists: false, count: 0, decryptError: String(err?.message || err?.name || err) };
@@ -529,13 +568,20 @@ export async function uploadVaultForBinding(auth, binding, cookies, browserId, u
   const prepared = prepareCookiesForApply(cookies);
   const passphrase =
     Object.prototype.hasOwnProperty.call(opts, "passphrase") ? opts.passphrase : vaultPassphrase(binding);
+  const storage = hasNonEmptyAuthStorage(opts.storage) ? opts.storage : null;
   const vaultNames = summarizeCookieNames(prepared);
-  const encrypted = await encryptVault(passphrase, binding.noteId, binding.domain, prepared);
+  const encrypted = await encryptVault(passphrase, binding.noteId, binding.domain, prepared, storage);
   const data = await rpcVaultUpsert(auth, binding, encrypted, browserId, updatedBy, {
     hasFacebookLogin: vaultNames.hasFacebookLogin,
     keyNames: vaultNames.keyNames,
   });
-  return { ok: true, ...data, storedCount: prepared.length, vaultNames };
+  return {
+    ok: true,
+    ...data,
+    storedCount: prepared.length,
+    vaultNames,
+    hasStorage: Boolean(storage),
+  };
 }
 
 export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
@@ -550,6 +596,7 @@ export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
   if (!row.ok) return { skipped: true, reason: row.reason ?? "not_found" };
 
   let decryptedRaw = [];
+  let decryptedStorage = null;
   const passphrase =
     Object.prototype.hasOwnProperty.call(opts, "passphrase") ? opts.passphrase : vaultPassphrase(binding);
   try {
@@ -561,6 +608,7 @@ export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
       row.iv,
     );
     decryptedRaw = payload.cookies;
+    decryptedStorage = payload.storage ?? null;
   } catch (err) {
     const error = String(err?.message || err?.name || err || "Vault decrypt failed.");
     return {
@@ -573,9 +621,13 @@ export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
     };
   }
   const cookies = prepareCookiesForApply(decryptedRaw);
+  const hasStorage = hasNonEmptyAuthStorage(decryptedStorage);
   const vaultNames = summarizeCookieNames(cookies);
-  const googleVaultNames = isGoogleDomain(binding.domain) ? summarizeGoogleCookieNames(cookies) : null;
-  if (!cookies.length) {
+  const googleVaultNames =
+    isGoogleDomain(binding.domain) || isGoogleOsidAppDomain(binding.domain)
+      ? summarizeGoogleCookieNames(cookies)
+      : null;
+  if (!cookies.length && !hasStorage) {
     return { ok: false, reason: "empty_vault", decrypted: 0, serverCount: row.cookie_count ?? 0, vaultNames };
   }
   if (opts.requireFacebookLogin === true && vaultNames.hasFacebookLogin !== true) {
@@ -591,18 +643,24 @@ export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
     };
   }
 
-  const { applied, failed, total, failedNames, appliedNames, failedDetails } = await applyCookiesToBrowser(cookies, {
-    rounds: opts.rounds ?? 1,
-    retryDelayMs: opts.retryDelayMs ?? 0,
-  });
-  if (applied > 0) {
+  if (typeof opts.beforeWrite === "function") {
+    await opts.beforeWrite(cookies);
+  }
+
+  const { applied, failed, total, failedNames, appliedNames, failedDetails } = cookies.length
+    ? await applyCookiesToBrowser(cookies, {
+        rounds: opts.rounds ?? 1,
+        retryDelayMs: opts.retryDelayMs ?? 0,
+      })
+    : { applied: 0, failed: 0, total: 0, failedNames: [], appliedNames: [], failedDetails: [] };
+  if (applied > 0 || hasStorage) {
     await setWatermark(binding.noteId, binding.domain, row.updated_at);
   }
 
   const decrypted = cookies.length;
   const serverCount = row.cookie_count ?? 0;
   return {
-    ok: applied > 0,
+    ok: applied > 0 || hasStorage,
     applied,
     failed,
     total,
@@ -614,12 +672,14 @@ export async function loadVaultIntoBrowser(auth, binding, opts = {}) {
     cookieCount: decrypted,
     vaultNames,
     googleVaultNames,
+    storage: decryptedStorage,
+    hasStorage,
     vaultVersion: row.vault_version ?? row.updated_at ?? null,
-    vaultStale: serverCount > 0 && applied < serverCount,
+    vaultStale: serverCount > 0 && applied < serverCount && !hasStorage,
     partial: applied > 0 && applied < decrypted,
     updatedBy: row.updated_by ?? row.source_browser ?? null,
     sourceBrowser: row.source_browser ?? null,
-    reason: applied > 0 ? undefined : "zero_applied",
+    reason: applied > 0 || hasStorage ? undefined : "zero_applied",
   };
 }
 

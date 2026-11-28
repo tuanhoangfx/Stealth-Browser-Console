@@ -15,6 +15,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
   theaterCard,
   adbOnline,
   localGesture,
+  switchingUserState,
   onClose,
   handleScreenPointerDown,
   handleScreenPointerUp,
@@ -26,6 +27,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
   theaterCard: FarmPhoneCardItem | null;
   adbOnline: boolean;
   localGesture?: (FarmTouchVector & { ts: number }) | undefined;
+  switchingUserState?: { userId: number; label: string } | null;
   onClose: () => void;
   handleScreenPointerDown: (card: FarmPhoneCardItem, e: PointerEvent<HTMLButtonElement>) => void;
   handleScreenPointerUp: (card: FarmPhoneCardItem, e: PointerEvent<HTMLButtonElement>) => void;
@@ -39,13 +41,16 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
 
   // Proposal 2 (ok 2): Adaptive Bitrate H.264 Stream Quality (850Kbps @ 20fps Grid vs 2.6Mbps @ 30fps Focus Modal)
   const theaterDisplayId = theaterCard ? theaterCard.displayId : null;
+  const theaterSerial = theaterCard?.deviceSerial || "";
+  const isIosTheater = theaterSerial.startsWith("ios:");
   useEffect(() => {
-    if (theaterDisplayId === null || !adbOnline) return;
+    if (theaterDisplayId === null || !adbOnline || isIosTheater) return;
     void fetchFarmApi("/api/mobile-stealth/live-control", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "set-stream-quality",
+        serial: theaterSerial,
         displayId: theaterDisplayId,
         text: "high",
       }),
@@ -56,12 +61,13 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "set-stream-quality",
+          serial: theaterSerial,
           displayId: theaterDisplayId,
           text: "grid",
         }),
       }).catch(() => undefined);
     };
-  }, [adbOnline, theaterDisplayId]);
+  }, [adbOnline, isIosTheater, theaterDisplayId, theaterSerial]);
 
   useEffect(() => {
     if (!theaterCard) return;
@@ -84,6 +90,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               void dispatchControl(
                 {
                   action: "text",
+                  serial: theaterCard.deviceSerial,
                   displayId: theaterCard.displayId,
                   userId: theaterCard.userId,
                   profileCode: theaterCard.code,
@@ -112,6 +119,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
         e.preventDefault();
         void dispatchControl({
           action: "keyevent",
+          serial: theaterCard.deviceSerial,
           displayId: theaterCard.displayId,
           userId: theaterCard.userId,
           profileCode: theaterCard.code,
@@ -123,6 +131,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
         e.preventDefault();
         void dispatchControl({
           action: "text",
+          serial: theaterCard.deviceSerial,
           displayId: theaterCard.displayId,
           userId: theaterCard.userId,
           profileCode: theaterCard.code,
@@ -160,7 +169,8 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               <span className="text-white tabular-nums">{theaterCard.titleCode}</span>
             </div>
             <span className="text-xs text-sky-300 tabular-nums">
-              {theaterCard.coordWidth}×{theaterCard.coordHeight} · HQ 2.6Mbps · 30fps H.264
+              {theaterCard.coordWidth}×{theaterCard.coordHeight} ·{" "}
+              {isIosTheater ? "MCP Live Viewport" : "HQ 2.6Mbps · 30fps H.264"}
             </span>
           </div>
 
@@ -168,7 +178,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
             className="relative overflow-hidden rounded-xl border border-white/20 bg-black shadow-lg"
             style={{
               height: "min(76vh, 660px)",
-              aspectRatio: "9 / 19.5",
+              aspectRatio: isIosTheater ? "9 / 16" : "9 / 19.5",
             }}
           >
             <button
@@ -178,11 +188,26 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               className="relative h-full w-full border-0 bg-black p-0 cursor-crosshair focus:outline-none touch-none"
               title="Click to Tap or Drag to Swipe directly on live screen"
             >
-              <H264PhoneStreamCanvas
-                displayId={theaterCard.displayId}
-                enabled={adbOnline}
-                fallbackImgUrl={theaterCard.screenDataUrl}
-              />
+              {isIosTheater ? (
+                theaterCard.screenDataUrl ? (
+                  <img
+                    src={theaterCard.screenDataUrl}
+                    alt={`${theaterCard.titleCode} live screen`}
+                    className="h-full w-full object-cover pointer-events-none select-none"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center p-4 text-xs text-sky-200">
+                    Waiting for iOS MCP frame…
+                  </div>
+                )
+              ) : (
+                <H264PhoneStreamCanvas
+                  displayId={theaterCard.displayId}
+                  serial={theaterCard.deviceSerial}
+                  enabled={adbOnline}
+                  fallbackImgUrl={theaterCard.screenDataUrl}
+                />
+              )}
               {tTouch ? (
                 <svg
                   viewBox={`0 0 ${theaterCard.coordWidth} ${theaterCard.coordHeight}`}
@@ -197,6 +222,14 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                     strokeWidth="5"
                   />
                 </svg>
+              ) : null}
+              {switchingUserState ? (
+                <div className="mf-user-switch-veil" data-slot={String(switchingUserState.userId)}>
+                  <span className="mf-user-switch-pill">
+                    <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                    <span>Switching → {switchingUserState.label}</span>
+                  </span>
+                </div>
               ) : null}
             </button>
           </div>
@@ -257,6 +290,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                       void dispatchControl(
                         {
                           action: "text",
+                          serial: theaterCard.deviceSerial,
                           displayId: theaterCard.displayId,
                           userId: theaterCard.userId,
                           profileCode: theaterCard.code,
@@ -282,6 +316,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                     void dispatchControl(
                       {
                         action: "text",
+                        serial: theaterCard.deviceSerial,
                         displayId: theaterCard.displayId,
                         userId: theaterCard.userId,
                         profileCode: theaterCard.code,
@@ -307,6 +342,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                         void dispatchControl(
                           {
                             action: "text",
+                            serial: theaterCard.deviceSerial,
                             displayId: theaterCard.displayId,
                             userId: theaterCard.userId,
                             profileCode: theaterCard.code,
@@ -342,6 +378,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "keyevent",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       keyCode: "4",
                     })
@@ -356,6 +393,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "keyevent",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       keyCode: "3",
                     })
@@ -370,6 +408,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "keyevent",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       keyCode: "187",
                     })
@@ -385,6 +424,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                     void dispatchControl(
                       {
                         action: "keyevent",
+                        serial: theaterCard.deviceSerial,
                         displayId: theaterCard.displayId,
                         keyCode: "224",
                       },
@@ -401,6 +441,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "swipe",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       x: Math.round(theaterCard.coordWidth * 0.5),
                       y: Math.round(theaterCard.coordHeight * 0.75),
@@ -419,6 +460,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "swipe",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       x: Math.round(theaterCard.coordWidth * 0.5),
                       y: Math.round(theaterCard.coordHeight * 0.25),
@@ -437,6 +479,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "keyevent",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       keyCode: "67",
                     })
@@ -451,6 +494,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                   onClick={() =>
                     void dispatchControl({
                       action: "keyevent",
+                      serial: theaterCard.deviceSerial,
                       displayId: theaterCard.displayId,
                       keyCode: "66",
                     })
@@ -468,6 +512,12 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               <div className="flex flex-wrap gap-1.5">
                 {(
                   [
+                    {
+                      label: "Zalo",
+                      pkg: "com.zing.zalo",
+                      tone: "sky" as const,
+                      icon: <span className="inline-flex text-[13px] leading-none" aria-hidden>💬</span>,
+                    },
                     {
                       label: "Facebook",
                       pkg: "com.facebook.katana",
@@ -522,6 +572,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
                       void dispatchControl(
                         {
                           action: "launch-app",
+                          serial: theaterCard.deviceSerial,
                           userId: theaterCard.userId,
                           displayId: theaterCard.displayId,
                           packageName: app.pkg,
@@ -556,7 +607,7 @@ export const MobileFarmTheaterOverlay = memo(function MobileFarmTheaterOverlay({
               title="Open native 60fps Scrcpy window for this display"
               onClick={() =>
                 void dispatchControl(
-                  { action: "open-scrcpy", displayId: theaterCard.displayId },
+                  { action: "open-scrcpy", serial: theaterCard.deviceSerial, displayId: theaterCard.displayId },
                   `Opened 60fps Scrcpy for D${theaterCard.displayId}`,
                 )
               }

@@ -20,6 +20,16 @@ async function defaultLoadSimBridgeModule() {
   return import(pathToFileURL(filePath).href);
 }
 
+async function defaultLoadPhysicalSimSlice() {
+  const candidates = [
+    path.resolve(__dirname, "../../../P0002-Social-Hub/server/android-stealth-bridge-slices/03-physical-sim-and-otp.mjs"),
+    "E:/Dev/Tool/P0002-Social-Hub/server/android-stealth-bridge-slices/03-physical-sim-and-otp.mjs",
+  ];
+  const filePath = candidates.find((p) => fs.existsSync(p));
+  if (!filePath) return null;
+  return import(pathToFileURL(filePath).href);
+}
+
 function normalizePhoneFilter(raw) {
   const digits = String(raw || "").replace(/\D/g, "");
   if (!digits) return "";
@@ -28,8 +38,9 @@ function normalizePhoneFilter(raw) {
 }
 
 function buildMobileSimRoutes(deps) {
-  const { send, simBridgeLoader } = deps;
+  const { send, simBridgeLoader, physicalSimLoader } = deps;
   const loadSimBridge = typeof simBridgeLoader === "function" ? simBridgeLoader : defaultLoadSimBridgeModule;
+  const loadPhysicalSim = typeof physicalSimLoader === "function" ? physicalSimLoader : defaultLoadPhysicalSimSlice;
 
   return [
     {
@@ -201,6 +212,31 @@ function buildMobileSimRoutes(deps) {
             syncToDb: body.syncToDb !== false,
           });
           return send.json(ctx.res, res?.ok ? 200 : 408, res);
+        } catch (err) {
+          return send.json(ctx.res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
+    },
+    {
+      id: "mobileSim.switchEsim",
+      method: "POST",
+      pattern: /^\/api\/mobile-sim\/switch-esim$/,
+      async handler(ctx) {
+        try {
+          const physMod = await loadPhysicalSim();
+          if (!physMod || typeof physMod.switchAndSweepPixelEsimOtp !== "function") {
+            return send.json(ctx.res, 503, { ok: false, error: "Pixel eSIM switcher unavailable" });
+          }
+          const body = ctx.body || {};
+          const res = await physMod.switchAndSweepPixelEsimOtp({
+            serial: String(body.serial || "192.168.0.208:5555").trim(),
+            targetCarrier: String(body.targetCarrier || body.carrier || "Viettel").trim(),
+            targetPhone: normalizePhoneFilter(body.targetPhone || body.phone || "0395430900") || "0395430900",
+            restoreCarrier: String(body.restoreCarrier || "FPT").trim(),
+            restoreAfter: body.restoreAfter !== false,
+            waitMs: body.waitMs != null ? Number(body.waitMs) : 4000,
+          });
+          return send.json(ctx.res, res?.ok ? 200 : 500, res);
         } catch (err) {
           return send.json(ctx.res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
         }

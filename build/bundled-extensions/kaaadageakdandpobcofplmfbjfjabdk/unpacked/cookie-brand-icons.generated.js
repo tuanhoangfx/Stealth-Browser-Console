@@ -254,11 +254,56 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
   },
   {
     "label": "Google Flow",
-    "match": "(^|\\.)labs\\.google$",
+    "match": "(^|\\.)flow\\.google\\.com$|(^|\\.)labs\\.google$",
     "source": {
       "type": "local",
       "webSrc": "/assets/brand-icons/google-one.png",
       "extensionSrc": "assets/brand-icons/google-one.png"
+    }
+  },
+  {
+    "label": "Google AI Studio",
+    "match": "(^|\\.)aistudio\\.google\\.com$|(^|\\.)ai\\.google\\.dev$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/google-one.png",
+      "extensionSrc": "assets/brand-icons/google-one.png"
+    }
+  },
+  {
+    "label": "NotebookLM",
+    "match": "(^|\\.)notebooklm\\.google\\.com$|(^|\\.)notebook\\.google\\.com$|(^|\\.)notebooklm\\.google$|(^|\\.)notebook\\.google$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/google-docs.png",
+      "extensionSrc": "assets/brand-icons/google-docs.png"
+    }
+  },
+  {
+    "label": "Firebase Studio",
+    "match": "(^|\\.)studio\\.firebase\\.google\\.com$|(^|\\.)idx\\.google\\.com$|(^|\\.)firebase\\.studio$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/firebase.png",
+      "extensionSrc": "assets/brand-icons/firebase.png"
+    }
+  },
+  {
+    "label": "Google Gemini",
+    "match": "(^|\\.)gemini\\.google\\.com$|(^|\\.)bard\\.google\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/google-one.png",
+      "extensionSrc": "assets/brand-icons/google-one.png"
+    }
+  },
+  {
+    "label": "Google Colab",
+    "match": "(^|\\.)colab\\.research\\.google\\.com$|(^|\\.)colab\\.google$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/google-cloud.png",
+      "extensionSrc": "assets/brand-icons/google-cloud.png"
     }
   },
   {
@@ -1990,7 +2035,7 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
     }
   },
   {
-    "label": "dreamfaceapp",
+    "label": "DreamFace",
     "match": "(^|\\.)dreamfaceapp\\.com$",
     "source": {
       "type": "local",
@@ -2791,6 +2836,15 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
     }
   },
   {
+    "label": "Infi Mail",
+    "match": "(^|\\.)infi28\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/icons/mailbox.svg",
+      "extensionSrc": "icons/mailbox.svg"
+    }
+  },
+  {
     "label": "Insomnia",
     "match": "(^|\\.)insomnia\\.rest$",
     "source": {
@@ -3097,7 +3151,7 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
     }
   },
   {
-    "label": "letsenhance",
+    "label": "Let's Enhance",
     "match": "(^|\\.)letsenhance\\.io$",
     "source": {
       "type": "local",
@@ -3562,6 +3616,105 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
       "type": "local",
       "webSrc": "/assets/brand-icons/onedrive.png",
       "extensionSrc": "assets/brand-icons/onedrive.png"
+    }
+  },
+  {
+    "label": "Motion Array",
+    "match": "(^|\\.)motionarray\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/motion-array.png",
+      "extensionSrc": "assets/brand-icons/motion-array.png"
+    }
+  },
+  {
+    "label": "Mohican Market",
+    "match": "(^|\\.)mohicanmarket\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/mohican-market.png",
+      "extensionSrc": "assets/brand-icons/mohican-market.png"
+    }
+  },
+  {
+    "label": "KONE Learning Space",
+    "match": "(^|\\.)kone\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/kone-learning-space.png",
+      "extensionSrc": "assets/brand-icons/kone-learning-space.png"
+    }
+  },
+  {
+    "label": "Ting Ting",
+    "match": "(^|\\.)tingting\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/ting-ting.png",
+      "extensionSrc": "assets/brand-icons/ting-ting.png"
+    }
+  },
+  {
+    "label": "SMProxy",
+    "match": "(^|\\.)smproxy\\.net$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/smproxy.png",
+      "extensionSrc": "assets/brand-icons/smproxy.png"
+    }
+  },
+  {
+    "label": "Webmail",
+    "match": "(^|\\.)roundcube\\.net$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/outlook.png",
+      "extensionSrc": "assets/brand-icons/outlook.png"
+    }
+  },
+  {
+    "label": "Lowendviet",
+    "match": "(^|\\.)lowendviet\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/lowendviet.png",
+      "extensionSrc": "assets/brand-icons/lowendviet.png"
+    }
+  },
+  {
+    "label": "Shopaccmmo",
+    "match": "(^|\\.)shopaccmmo\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/shopaccmmo.png",
+      "extensionSrc": "assets/brand-icons/shopaccmmo.png"
+    }
+  },
+  {
+    "label": "Fastsim",
+    "match": "(^|\\.)fastsim\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/fastsim.png",
+      "extensionSrc": "assets/brand-icons/fastsim.png"
+    }
+  },
+  {
+    "label": "Proxyv6",
+    "match": "(^|\\.)proxyv6\\.net$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/proxyv6.png",
+      "extensionSrc": "assets/brand-icons/proxyv6.png"
+    }
+  },
+  {
+    "label": "VTC ID",
+    "match": "(^|\\.)vtcgame\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/vtc-id.png",
+      "extensionSrc": "assets/brand-icons/vtc-id.png"
     }
   },
   {
@@ -5878,6 +6031,438 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
     }
   },
   {
+    "label": "2Captcha",
+    "match": "(^|\\.)2captcha\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/2captcha.png",
+      "extensionSrc": "assets/brand-icons/2captcha.png"
+    }
+  },
+  {
+    "label": "CapSolver",
+    "match": "(^|\\.)capsolver\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/capsolver.png",
+      "extensionSrc": "assets/brand-icons/capsolver.png"
+    }
+  },
+  {
+    "label": "DeskIn",
+    "match": "(^|\\.)deskin\\.io$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/deskin.png",
+      "extensionSrc": "assets/brand-icons/deskin.png"
+    }
+  },
+  {
+    "label": "GoLogin",
+    "match": "(^|\\.)gologin\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/gologin.png",
+      "extensionSrc": "assets/brand-icons/gologin.png"
+    }
+  },
+  {
+    "label": "HeroUI",
+    "match": "(^|\\.)heroui\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/heroui.png",
+      "extensionSrc": "assets/brand-icons/heroui.png"
+    }
+  },
+  {
+    "label": "Hulu",
+    "match": "(^|\\.)hulu\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/hulu.png",
+      "extensionSrc": "assets/brand-icons/hulu.png"
+    }
+  },
+  {
+    "label": "IC Markets",
+    "match": "(^|\\.)icmarkets\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/icmarkets.png",
+      "extensionSrc": "assets/brand-icons/icmarkets.png"
+    }
+  },
+  {
+    "label": "Iconduck",
+    "match": "(^|\\.)iconduck\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/iconduck.png",
+      "extensionSrc": "assets/brand-icons/iconduck.png"
+    }
+  },
+  {
+    "label": "IPVanish",
+    "match": "(^|\\.)ipvanish\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/ipvanish.png",
+      "extensionSrc": "assets/brand-icons/ipvanish.png"
+    }
+  },
+  {
+    "label": "iStock",
+    "match": "(^|\\.)istockphoto\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/istockphoto.png",
+      "extensionSrc": "assets/brand-icons/istockphoto.png"
+    }
+  },
+  {
+    "label": "Kahoot!",
+    "match": "(^|\\.)kahoot\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/kahoot.png",
+      "extensionSrc": "assets/brand-icons/kahoot.png"
+    }
+  },
+  {
+    "label": "Kiro",
+    "match": "(^|\\.)kiro\\.dev$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/kiro.png",
+      "extensionSrc": "assets/brand-icons/kiro.png"
+    }
+  },
+  {
+    "label": "Lilys AI",
+    "match": "(^|\\.)lilys\\.ai$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/lilys.png",
+      "extensionSrc": "assets/brand-icons/lilys.png"
+    }
+  },
+  {
+    "label": "LiteFinance",
+    "match": "(^|\\.)litefinance\\.org$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/litefinance.png",
+      "extensionSrc": "assets/brand-icons/litefinance.png"
+    }
+  },
+  {
+    "label": "MagicLight AI",
+    "match": "(^|\\.)magiclight\\.ai$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/magiclight-ai.png",
+      "extensionSrc": "assets/brand-icons/magiclight-ai.png"
+    }
+  },
+  {
+    "label": "Min Software",
+    "match": "(^|\\.)minsoftware\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/minsoftware.png",
+      "extensionSrc": "assets/brand-icons/minsoftware.png"
+    }
+  },
+  {
+    "label": "MQL5",
+    "match": "(^|\\.)mql5\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/mql5.png",
+      "extensionSrc": "assets/brand-icons/mql5.png"
+    }
+  },
+  {
+    "label": "Neteller",
+    "match": "(^|\\.)neteller\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/neteller.png",
+      "extensionSrc": "assets/brand-icons/neteller.png"
+    }
+  },
+  {
+    "label": "Nhanh.vn",
+    "match": "(^|\\.)nhanh\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/nhanh-vn.png",
+      "extensionSrc": "assets/brand-icons/nhanh-vn.png"
+    }
+  },
+  {
+    "label": "Notion",
+    "match": "(^|\\.)notion\\.so$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/notion.png",
+      "extensionSrc": "assets/brand-icons/notion.png"
+    }
+  },
+  {
+    "label": "NVIDIA",
+    "match": "(^|\\.)nvidia\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/nvidia.png",
+      "extensionSrc": "assets/brand-icons/nvidia.png"
+    }
+  },
+  {
+    "label": "OCB",
+    "match": "(^|\\.)ocb\\.com\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/ocb.png",
+      "extensionSrc": "assets/brand-icons/ocb.png"
+    }
+  },
+  {
+    "label": "Parsec",
+    "match": "(^|\\.)parsec\\.app$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/parsec.png",
+      "extensionSrc": "assets/brand-icons/parsec.png"
+    }
+  },
+  {
+    "label": "Quizlet",
+    "match": "(^|\\.)quizlet\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/quizlet.png",
+      "extensionSrc": "assets/brand-icons/quizlet.png"
+    }
+  },
+  {
+    "label": "Remitano",
+    "match": "(^|\\.)remitano\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/remitano.png",
+      "extensionSrc": "assets/brand-icons/remitano.png"
+    }
+  },
+  {
+    "label": "Renderforest",
+    "match": "(^|\\.)renderforest\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/renderforest.png",
+      "extensionSrc": "assets/brand-icons/renderforest.png"
+    }
+  },
+  {
+    "label": "RoboForex",
+    "match": "(^|\\.)roboforex\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/roboforex.png",
+      "extensionSrc": "assets/brand-icons/roboforex.png"
+    }
+  },
+  {
+    "label": "Skype",
+    "match": "(^|\\.)skype\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/skype.png",
+      "extensionSrc": "assets/brand-icons/skype.png"
+    }
+  },
+  {
+    "label": "SMSPool",
+    "match": "(^|\\.)smspool\\.net$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/smspool.png",
+      "extensionSrc": "assets/brand-icons/smspool.png"
+    }
+  },
+  {
+    "label": "Soundraw",
+    "match": "(^|\\.)soundraw\\.io$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/soundraw.png",
+      "extensionSrc": "assets/brand-icons/soundraw.png"
+    }
+  },
+  {
+    "label": "StarTrader",
+    "match": "(^|\\.)startrader\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/startrader.png",
+      "extensionSrc": "assets/brand-icons/startrader.png"
+    }
+  },
+  {
+    "label": "Storyblocks",
+    "match": "(^|\\.)storyblocks\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/storyblocks.png",
+      "extensionSrc": "assets/brand-icons/storyblocks.png"
+    }
+  },
+  {
+    "label": "StoryboardHero",
+    "match": "(^|\\.)storyboardhero\\.ai$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/storyboardhero.png",
+      "extensionSrc": "assets/brand-icons/storyboardhero.png"
+    }
+  },
+  {
+    "label": "Tenten",
+    "match": "(^|\\.)tenten\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/tenten.png",
+      "extensionSrc": "assets/brand-icons/tenten.png"
+    }
+  },
+  {
+    "label": "Text Blaze",
+    "match": "(^|\\.)blaze\\.today$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/text-blaze.png",
+      "extensionSrc": "assets/brand-icons/text-blaze.png"
+    }
+  },
+  {
+    "label": "ThemeForest",
+    "match": "(^|\\.)themeforest\\.net$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/themeforest.png",
+      "extensionSrc": "assets/brand-icons/themeforest.png"
+    }
+  },
+  {
+    "label": "Tinder",
+    "match": "(^|\\.)tinder\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/tinder.png",
+      "extensionSrc": "assets/brand-icons/tinder.png"
+    }
+  },
+  {
+    "label": "TinoHost",
+    "match": "(^|\\.)tino\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/tino-vn.png",
+      "extensionSrc": "assets/brand-icons/tino-vn.png"
+    }
+  },
+  {
+    "label": "TP-Link",
+    "match": "(^|\\.)tp-link\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/tplink.png",
+      "extensionSrc": "assets/brand-icons/tplink.png"
+    }
+  },
+  {
+    "label": "Truecaller",
+    "match": "(^|\\.)truecaller\\.com$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/truecaller.png",
+      "extensionSrc": "assets/brand-icons/truecaller.png"
+    }
+  },
+  {
+    "label": "UltraViewer",
+    "match": "(^|\\.)ultraviewer\\.net$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/ultraviewer.png",
+      "extensionSrc": "assets/brand-icons/ultraviewer.png"
+    }
+  },
+  {
+    "label": "U-NEXT",
+    "match": "(^|\\.)video\\.unext\\.jp$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/unext.png",
+      "extensionSrc": "assets/brand-icons/unext.png"
+    }
+  },
+  {
+    "label": "Vbee",
+    "match": "(^|\\.)vbee\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/vbee.png",
+      "extensionSrc": "assets/brand-icons/vbee.png"
+    }
+  },
+  {
+    "label": "VideoScribe",
+    "match": "(^|\\.)videoscribe\\.co$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/videoscribe.png",
+      "extensionSrc": "assets/brand-icons/videoscribe.png"
+    }
+  },
+  {
+    "label": "VNeID",
+    "match": "(^|\\.)vneid\\.gov\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/vneid.png",
+      "extensionSrc": "assets/brand-icons/vneid.png"
+    }
+  },
+  {
+    "label": "VNPAY",
+    "match": "(^|\\.)vnpay\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/vnpay.png",
+      "extensionSrc": "assets/brand-icons/vnpay.png"
+    }
+  },
+  {
+    "label": "VTV Go",
+    "match": "(^|\\.)vtvgo\\.vn$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/vtvgo.png",
+      "extensionSrc": "assets/brand-icons/vtvgo.png"
+    }
+  },
+  {
+    "label": "Xmind",
+    "match": "(^|\\.)xmind\\.app$",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/xmind.png",
+      "extensionSrc": "assets/brand-icons/xmind.png"
+    }
+  },
+  {
     "label": "Docker",
     "match": "docker",
     "source": {
@@ -5929,6 +6514,15 @@ export const COOKIE_BRAND_ICON_REGISTRY = Object.freeze([
       "type": "local",
       "webSrc": "/icons/youtube.svg",
       "extensionSrc": "icons/youtube.svg"
+    }
+  },
+  {
+    "label": "Borlabs Badge",
+    "match": "borlabs-badge",
+    "source": {
+      "type": "local",
+      "webSrc": "/assets/brand-icons/borlabs-badge.png",
+      "extensionSrc": "assets/brand-icons/borlabs-badge.png"
     }
   }
 ]);

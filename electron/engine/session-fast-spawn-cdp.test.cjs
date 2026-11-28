@@ -181,7 +181,8 @@ function loadSessionManagerWithMocks(rootDir) {
   });
 
   const { SessionManager } = require("./session-manager.cjs");
-  const sm = new SessionManager({ userDataRoot: rootDir });
+  const sm = new SessionManager();
+  sm.setUserDataRoot(rootDir);
   return { sm, state, fakeCtx };
 }
 

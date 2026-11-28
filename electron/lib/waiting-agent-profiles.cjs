@@ -10,6 +10,7 @@ const path = require("node:path");
 const { getDb, isDatabaseReady } = require("../db/init.cjs");
 const { extractProfileCode } = require("./profile-code.cjs");
 const { readDeferredQueue } = require("./deferred-headed-queue-ssot.cjs");
+const { getCachedWorkerSessions, mergeLocalAndWorkerSessions } = require("./worker-sessions-bridge.cjs");
 
 const P0002_ROOT = "E:\\Dev\\Tool\\P0002-Social-Hub";
 const P0002_DATA_DIR = path.join(P0002_ROOT, "data");
@@ -216,15 +217,15 @@ let _waitingStateCache = { at: 0, value: null };
 function healStaleFailedProfiles(aliveIdSet = new Set()) {
   if (!isDatabaseReady()) return 0;
   const nowCheck = Date.now();
-  if (nowCheck - _lastHealFailedAt < 15_000) return 0;
+  if (nowCheck - _lastHealFailedAt < 10_000) return 0;
   _lastHealFailedAt = nowCheck;
   let healed = 0;
   try {
     const db = getDb();
-    const failedRows = db
-      .prepare("SELECT id, name, updated_at FROM profiles WHERE status = 'failed'")
+    const staleRows = db
+      .prepare("SELECT id, name, status, updated_at FROM profiles WHERE status IN ('failed', 'opening')")
       .all();
-    if (!failedRows.length) return 0;
+    if (!staleRows.length) return 0;
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const updateStmt = db.prepare(
@@ -234,11 +235,12 @@ function healStaleFailedProfiles(aliveIdSet = new Set()) {
               updated_at = ?
         WHERE id = ?`,
     );
-    for (const row of failedRows) {
+    for (const row of staleRows) {
       const id = String(row.id || "");
       if (!id || aliveIdSet.has(id)) continue;
       const updatedMs = row.updated_at ? Date.parse(row.updated_at) : 0;
-      if (updatedMs && now - updatedMs < 60_000) continue;
+      const maxAgeMs = row.status === "opening" ? 30_000 : 60_000;
+      if (updatedMs && now - updatedMs < maxAgeMs) continue;
       const sidecarFp = path.join("D:\\StealthBrowser\\profiles", id, "stealth-pid.json");
       if (fs.existsSync(sidecarFp)) {
         const sc = readJsonSafe(sidecarFp);
@@ -281,12 +283,18 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
   const runningHeadlessIdSet = new Set();
   const runningHeadlessCodeSet = new Set();
   const runningHeadlessLaunchedAt = new Map();
+  const runningHeadlessCallerByKey = new Map();
   const headedRunningIdSet = new Set();
   const headedRunningCodeSet = new Set();
   const allAliveIdSet = new Set();
 
   try {
-    const sessions = sessionManager?.listRunning?.() || [];
+    const localSessions = sessionManager?.listRunning?.() || [];
+    const workerSessions =
+      !ctx?.skipWorkerBridge && process.env.STEALTH_AGENT_WORKER !== "1"
+        ? getCachedWorkerSessions({ triggerRefresh: true })
+        : [];
+    const sessions = mergeLocalAndWorkerSessions(localSessions, workerSessions);
     for (const row of Array.isArray(sessions) ? sessions : []) {
       const id = String(row?.id || row?.profileId || "").trim();
       if (!id) continue;
@@ -307,6 +315,11 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
         if (Number(row?.launchedAt) > 0) {
           runningHeadlessLaunchedAt.set(id, Number(row.launchedAt));
           if (code) runningHeadlessLaunchedAt.set(code, Number(row.launchedAt));
+        }
+        const caller = String(row?.callerId || "").trim();
+        if (caller && caller !== "agent:inline" && caller !== "agent:smoke-client") {
+          runningHeadlessCallerByKey.set(id, caller);
+          if (code) runningHeadlessCallerByKey.set(code, caller);
         }
       }
     }
@@ -349,14 +362,34 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
   };
 
   // 1. In-flight headless launches waiting in `sessionManager._waitingHeadlessIds`
+  // Guarded by `_waitingHeadlessSince` (max 25s launch slot wait) so leaked IDs from past crashes/hot-reloads never stick.
+  const now = Date.now();
   try {
+    const sinceMap = sessionManager?._waitingHeadlessSince instanceof Map ? sessionManager._waitingHeadlessSince : null;
     if (sessionManager?._waitingHeadlessIds instanceof Set) {
-      for (const id of sessionManager._waitingHeadlessIds) {
+      for (const id of [...sessionManager._waitingHeadlessIds]) {
+        if (runningHeadlessIdSet.has(id) || headedRunningIdSet.has(id)) {
+          sessionManager._waitingHeadlessIds.delete(id);
+          sinceMap?.delete(id);
+          continue;
+        }
+        if (sinceMap) {
+          const sinceMs = Number(sinceMap.get(id) || 0);
+          if (!sinceMs || now - sinceMs > 25_000) {
+            sessionManager._waitingHeadlessIds.delete(id);
+            sinceMap.delete(id);
+            continue;
+          }
+        }
         addCandidate(id, "Launching Headless (Waiting for browser slot)");
       }
     }
     if (sessionManager?._waitingHeadlessCodes instanceof Set) {
-      for (const c of sessionManager._waitingHeadlessCodes) {
+      for (const c of [...sessionManager._waitingHeadlessCodes]) {
+        if (runningHeadlessCodeSet.has(c) || headedRunningCodeSet.has(c)) {
+          sessionManager._waitingHeadlessCodes.delete(c);
+          continue;
+        }
         addCandidate(c, "Launching Headless (Waiting for browser slot)");
       }
     }
@@ -365,12 +398,20 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
   }
 
   // 2. Deferred tasks waiting for User Headed window to close
+  const headedDeferredReasons = {};
   try {
+    const pendingTasksByKey = new Map();
+    const recordPendingHeadedTask = (key, taskDesc) => {
+      if (!key) return;
+      const list = pendingTasksByKey.get(key) || [];
+      if (taskDesc && !list.includes(taskDesc)) list.push(taskDesc);
+      pendingTasksByKey.set(key, list);
+    };
     if (sessionManager?._deferredAgentTasksMap instanceof Map) {
       for (const entry of sessionManager._deferredAgentTasksMap.values()) {
-        const label = "Deferred: Waiting for User Headed window to close";
-        if (entry?.profileId) addCandidate(entry.profileId, label);
-        if (entry?.code) addCandidate(entry.code, label);
+        const tType = String(entry?.taskType || entry?.taskReason || "agent_task").trim();
+        if (entry?.profileId) recordPendingHeadedTask(String(entry.profileId), tType);
+        if (entry?.code) recordPendingHeadedTask(normalizeCode(entry.code) || String(entry.code), tType);
       }
     }
     const defParsed = readDeferredQueue({ runningHeadedCodes: headedRunningCodeSet, runningHeadedIds: headedRunningIdSet });
@@ -379,15 +420,23 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
       const ready = Array.isArray(defParsed.readyForRetry) ? defParsed.readyForRetry : [];
       const cutoff = Date.now() - 2 * 60 * 60 * 1000;
       for (const item of pending) {
-        const label = "Deferred: Waiting for User Headed window to close";
-        if (item?.profileId) addCandidate(item.profileId, label);
-        if (item?.code) addCandidate(item.code, label);
+        const tType = String(item?.taskType || item?.taskReason || "agent_task").trim();
+        const codeNorm = normalizeCode(item?.code || item?.profileCode);
+        if (item?.profileId) recordPendingHeadedTask(String(item.profileId), tType);
+        if (codeNorm) recordPendingHeadedTask(codeNorm, tType);
+      }
+      for (const [key, tasks] of pendingTasksByKey.entries()) {
+        const count = Math.max(1, tasks.length);
+        const summary = tasks.slice(0, 2).join(", ");
+        const label = `Deferred: ${count} task${count > 1 ? "s" : ""} waiting for User Headed close${summary ? ` (${summary})` : ""}`;
+        addCandidate(key, label);
+        headedDeferredReasons[key] = label;
       }
       for (const item of ready) {
         if (Number(item?.windowClosedAt || 0) > cutoff) {
           const label = "Deferred: Ready for Headless retry after window close";
           if (item?.profileId) addCandidate(item.profileId, label);
-          if (item?.code) addCandidate(item.code, label);
+          if (item?.code || item?.profileCode) addCandidate(item.code || item.profileCode, label);
         }
       }
     }
@@ -413,26 +462,83 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
   }
 
   // 4. Active cross-process AI Agent locks (`active-agent-locks.json` & `priority-agent-locks.json`)
-  const now = Date.now();
-  for (const fileName of ["priority-agent-locks.json", "active-agent-locks.json"]) {
-    const parsed = readJsonSafe(path.join(P0002_DATA_DIR, fileName));
-    if (!parsed || typeof parsed !== "object") continue;
-    const locks = parsed.locks && typeof parsed.locks === "object" ? parsed.locks : parsed;
-    const isPriority = fileName.startsWith("priority");
-    for (const [k, raw] of Object.entries(locks)) {
-      if (!/^\d{4}$/.test(k)) continue;
-      const exp = typeof raw === "object" && raw ? Number(raw.expiresAt || 0) : Number(raw || 0);
-      const ownerPid = typeof raw === "object" && raw ? Number(raw.ownerPid || raw.pid || 0) : 0;
-      if (exp > now && (ownerPid <= 0 || isPidAlive(ownerPid))) {
+  // Anti-eviction locks protect running browsers and provide worker descriptions (`activeWorkerByCode`).
+  // - If `isolatedHeadlessActive === true` with a live `ownerPid`, the profile is actively running an
+  //   isolated reaper-exempt Headless browser (`👻 HEADLESS`) -> add to `runningHeadlessCodeSet`.
+  // - Dead/expired or idle (>45s non-running) lock entries are auto-pruned from disk so they never accumulate.
+  // - Anti-eviction locks do NOT by themselves put closed/finished profiles into `⏳ WAITING`.
+  const IN_FLIGHT_LAUNCH_WINDOW_MS = 45_000;
+  const lockLabelsByCode = new Map();
+  const lockDirs = [
+    P0002_DATA_DIR,
+    "C:\\Users\\CzP\\AppData\\Local\\Programs\\stealth-browser-console\\resources\\P0002-Social-Hub\\data",
+  ];
+  for (const dir of lockDirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const fileName of ["priority-agent-locks.json", "active-agent-locks.json"]) {
+      const filePath = path.join(dir, fileName);
+      const parsed = readJsonSafe(filePath);
+      if (!parsed || typeof parsed !== "object") continue;
+      const hasLocksObject = Boolean(parsed.locks && typeof parsed.locks === "object");
+      const locks = hasLocksObject ? parsed.locks : parsed;
+      const isPriority = fileName.startsWith("priority");
+      let prunedCount = 0;
+      for (const [k, raw] of Object.entries(locks)) {
+        if (!/^\d{4}$/.test(k)) continue;
+        const exp = typeof raw === "object" && raw ? Number(raw.expiresAt || 0) : Number(raw || 0);
+        const ownerPid = typeof raw === "object" && raw ? Number(raw.ownerPid || raw.pid || 0) : 0;
+        const rawUpdated = typeof raw === "object" && raw ? raw.updatedAt || raw.acquiredAt : 0;
+        const updatedMs =
+          typeof rawUpdated === "number"
+            ? rawUpdated
+            : typeof rawUpdated === "string" && rawUpdated
+              ? Date.parse(rawUpdated) || 0
+              : 0;
+        const pidValidAndAlive = ownerPid > 0 && isPidAlive(ownerPid);
+        const isIsolatedHeadless =
+          Boolean(typeof raw === "object" && raw?.isolatedHeadlessActive === true) &&
+          pidValidAndAlive &&
+          exp > now;
+        if (isIsolatedHeadless && !headedRunningCodeSet.has(k)) {
+          runningHeadlessCodeSet.add(k);
+          const launchedAt = Number(raw?.launchedAt || updatedMs || now);
+          if (launchedAt > 0 && !runningHeadlessLaunchedAt.has(k)) {
+            runningHeadlessLaunchedAt.set(k, launchedAt);
+          }
+          if (raw?.callerId && !runningHeadlessCallerByKey.has(k)) {
+            runningHeadlessCallerByKey.set(k, String(raw.callerId));
+          }
+        }
+        const isRunningNow = runningHeadlessCodeSet.has(k);
+        const isFreshInFlightLaunch = updatedMs > 0 && now - updatedMs <= IN_FLIGHT_LAUNCH_WINDOW_MS;
+
+        if (exp <= now || !pidValidAndAlive || (!isRunningNow && !isFreshInFlightLaunch)) {
+          if (!isRunningNow) {
+            delete locks[k];
+            prunedCount++;
+          }
+          continue;
+        }
+
         const reasonTag =
           typeof raw === "object" && raw?.reason
             ? `Priority Lock (${raw.reason})`
             : isPriority
               ? "Priority Agent Lock"
-              : ownerPid > 0
-                ? `Active Agent Lock (PID ${ownerPid})`
-                : "Active Agent Lock";
-        addCandidate(k, reasonTag);
+              : `Active Agent Lock (PID ${ownerPid})`;
+        if (!lockLabelsByCode.has(k)) {
+          lockLabelsByCode.set(k, reasonTag);
+        }
+      }
+      if (prunedCount > 0) {
+        try {
+          if (hasLocksObject) parsed.updatedAt = new Date(now).toISOString();
+          const tmpPath = `${filePath}.${process.pid}.tmp`;
+          fs.writeFileSync(tmpPath, JSON.stringify(parsed, null, 2), "utf8");
+          fs.renameSync(tmpPath, filePath);
+        } catch {
+          /* ignore prune write race */
+        }
       }
     }
   }
@@ -446,6 +552,9 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
     if (!prev) activeWorkerByCode.set(c, label);
     else if (!prev.includes(label)) activeWorkerByCode.set(c, `${prev} · ${label}`);
   };
+  for (const [k, lockLabel] of lockLabelsByCode.entries()) {
+    addActiveWorkerReason(k, lockLabel);
+  }
 
   const mailState = readJsonSafe(path.join(P0002_ROOT, ".continuous-check-mail-worker.state.json"));
   if (mailState && typeof mailState === "object") {
@@ -609,11 +718,15 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
         for (const hr of hRows) {
           const hid = String(hr.id || "");
           const hname = String(hr.name || "");
+          if (hid) runningHeadlessIdSet.add(hid);
+          if (hname) runningHeadlessCodeSet.add(hname);
           const numCode = Number(hname);
+          const callerLabel = runningHeadlessCallerByKey.get(hname) || runningHeadlessCallerByKey.get(hid) || "";
           const workerDesc =
             activeWorkerByCode.get(hname) ||
             rawReasons.get(hname) ||
             rawReasons.get(hid) ||
+            (callerLabel ? `Worker (${callerLabel.replace(/^agent:/, "")})` : "") ||
             (Number.isInteger(numCode) && numCode >= 9000 && numCode <= 9999
               ? "Agent Smoke / Ephemeral Pool (9000–9999)"
               : "AI Agent Headless Session");
@@ -630,11 +743,13 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
       }
 
       const openingRows = db
-        .prepare("SELECT id, name FROM profiles WHERE status = 'opening'")
+        .prepare("SELECT id, name, updated_at FROM profiles WHERE status = 'opening'")
         .all();
       for (const r of openingRows) {
         const rid = String(r.id || "");
         if (!rid || runningHeadlessIdSet.has(rid) || headedRunningIdSet.has(rid)) continue;
+        const upMs = r.updated_at ? Date.parse(r.updated_at) : 0;
+        if (upMs && now - upMs > 30_000) continue;
         addCandidate(rid, "Opening Headless Browser");
       }
 
@@ -722,6 +837,9 @@ function collectWaitingAgentHeadlessState(ctx = {}) {
     if (!headlessReasons[k]) {
       upsertPiggyback(k, `⏳ ${wr}`, "waiting", "state-piggyback");
     }
+  }
+  for (const [k, hdr] of Object.entries(headedDeferredReasons)) {
+    upsertPiggyback(k, `⏳ ${hdr}`, "headed_deferred", "state-piggyback");
   }
   for (const [code, wDesc] of activeWorkerByCode.entries()) {
     if (!headlessReasons[code] && !waitingReasons[code]) {

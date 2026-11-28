@@ -15,6 +15,7 @@ import {
 import {
   fetchFarmApi,
   resolveAndroidPowerBadgeState,
+  resolvePowerPathSummary,
   type AvailableAdbDevice,
   type ExtendedLiveScreenState,
   type FarmEngineMode,
@@ -453,6 +454,26 @@ export const MobileFarmControlRail = memo(function MobileFarmControlRail({
                     {liveState.hardwareHealth.runningUserCount ?? 1} run / {liveState.hardwareHealth.totalUserCount ?? 10}
                   </span>
                 </div>
+                {(() => {
+                  const powerPath = resolvePowerPathSummary(liveState.hardwareHealth);
+                  if (!powerPath) return null;
+                  return (
+                    <div className="col-span-2 border-t border-white/10 pt-1" title={powerPath.title}>
+                      <span className="text-hub-muted">Power Path:</span>{" "}
+                      <span
+                        className={
+                          powerPath.isWeak
+                            ? "text-rose-300"
+                            : powerPath.isHealthyCharge
+                              ? "text-emerald-300"
+                              : "text-sky-200"
+                        }
+                      >
+                        {powerPath.text}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             ) : null}
 

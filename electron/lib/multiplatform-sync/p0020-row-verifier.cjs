@@ -18,6 +18,7 @@ const {
   verifyGoogleCookiesLiveViaHttp,
   verifyTwitterCookiesLiveViaHttp,
   verifyInstagramCookiesLiveViaHttp,
+  verifyThreadsCookiesLiveViaHttp,
   verifyClaudeCookiesLiveViaHttp,
   verifyAdobeCookiesLiveViaHttp,
 } = require("./http-cookie-verifiers.cjs");
@@ -294,6 +295,101 @@ async function discoverAndAutoBindUnassignedP0020Rows({
     }
   }
 
+  let cachedThreadsHttpVerify = null;
+  let hasVerifiedThreadsAuth = false;
+  const hasPlaintextThreadsCookiesInPairs =
+    Array.isArray(pairs) &&
+    pairs.some(
+      (c) =>
+        c &&
+        (String(c.domain || c.host_key || "").toLowerCase().includes("threads.com") ||
+          String(c.domain || c.host_key || "").toLowerCase().includes("threads.net") ||
+          String(c.domain || c.host_key || "").toLowerCase().includes("instagram.com")) &&
+        c.name === "sessionid" &&
+        String(c.value || "").trim().length > 0 &&
+        String(c.value || "").trim() !== "disk_verified_sqlite",
+    );
+  const profileHasThreadsRow = rows.some((r) => String(r?.service || "").trim().toLowerCase() === "threads");
+  if (
+    hasPlaintextThreadsCookiesInPairs &&
+    (profileHasThreadsRow
+      ? isLiveWindow ||
+        rows.some(
+          (r) =>
+            String(r?.service || "").trim().toLowerCase() === "threads" &&
+            String(r?.stealth_snapshot?.status || "") !== "logged_in",
+        )
+      : pairs.some((c) => /threads\.(com|net)/i.test(String(c?.domain || c?.host_key || ""))))
+  ) {
+    cachedThreadsHttpVerify = await verifyThreadsCookiesLiveViaHttp(pairs);
+    if (cachedThreadsHttpVerify.ok && cachedThreadsHttpVerify.loggedIn) {
+      hasVerifiedThreadsAuth = true;
+      const thUser = String(cachedThreadsHttpVerify.threadsUsername || cachedInstagramHttpVerify?.instagramUsername || "")
+        .trim()
+        .replace(/^@/, "")
+        .toLowerCase();
+      const thUid = String(cachedThreadsHttpVerify.threadsUserId || "").trim();
+      const thCandidates = [...new Set([thUser, thUser ? `@${thUser}` : ""].filter(Boolean))];
+      if (
+        (thCandidates.length > 0 || thUid) &&
+        !rows.some((r) => {
+          if (String(r?.service || "").trim().toLowerCase() !== "threads") return false;
+          const accNorm = String(r?.account || "").trim().replace(/^@/, "").toLowerCase();
+          return (
+            (thUser && accNorm === thUser) ||
+            (thUid &&
+              (String(r?.service_uid || "").trim() === thUid ||
+                String(r?.stealth_snapshot?.threads_user_id || "") === thUid ||
+                String(r?.stealth_snapshot?.ds_user_id || "") === thUid))
+          );
+        })
+      ) {
+        try {
+          const existingIds = new Set(rows.map((r) => r.id));
+          if (thCandidates.length > 0) {
+            const thInClause = thCandidates.map((v) => `"${v}"`).join(",");
+            const thMatchUrl = `${cfg.url}/rest/v1/twofa_accounts?select=${selectCols}&user_id=eq.${encodeURIComponent(userId)}&deleted_at=is.null&service=ilike.threads&account=in.(${encodeURIComponent(thInClause)})&limit=10`;
+            const thRes = await fetch(thMatchUrl, { headers, signal: AbortSignal.timeout(6000) });
+            if (thRes.ok) {
+              const thRows = await thRes.json();
+              if (Array.isArray(thRows)) {
+                for (const tr of thRows) {
+                  if (!tr || !tr.id || existingIds.has(tr.id)) continue;
+                  const curBrowser = String(tr.browser || "").trim();
+                  if (!curBrowser || curBrowser.padStart(4, "0") === code) {
+                    rows.push(tr);
+                    existingIds.add(tr.id);
+                  }
+                }
+              }
+            }
+          }
+          if (thUid && !rows.some((r) => String(r?.service || "").trim().toLowerCase() === "threads")) {
+            const thUidUrl = `${cfg.url}/rest/v1/twofa_accounts?select=${selectCols}&user_id=eq.${encodeURIComponent(userId)}&deleted_at=is.null&service=ilike.threads&or=(browser.is.null,browser.eq.)&limit=25`;
+            const thUidRes = await fetch(thUidUrl, { headers, signal: AbortSignal.timeout(6000) });
+            if (thUidRes.ok) {
+              const thUidRows = await thUidRes.json();
+              if (Array.isArray(thUidRows)) {
+                for (const tr of thUidRows) {
+                  if (!tr || !tr.id || existingIds.has(tr.id)) continue;
+                  const snapThUid = String(
+                    tr.service_uid || tr.stealth_snapshot?.threads_user_id || tr.stealth_snapshot?.ds_user_id || "",
+                  ).trim();
+                  if (snapThUid && snapThUid === thUid) {
+                    rows.push(tr);
+                    existingIds.add(tr.id);
+                  }
+                }
+              }
+            }
+          }
+        } catch {
+          /* ignore transient fetch error */
+        }
+      }
+    }
+  }
+
   // Auto-match unassigned (`browser` empty/null) standalone AI service rows (`ChatGPT`, `Claude`, `Cursor`, `Grok`, `CapCut`, `ElevenLabs`)
   // ONLY when server API verification returns an explicit verified UID and/or unmasked email (`ok 1`).
   // Strictly never overwrite or move a row that already has a non-empty `browser` assigned to another profile.
@@ -497,6 +593,8 @@ async function discoverAndAutoBindUnassignedP0020Rows({
     hasVerifiedTwitterAuth,
     cachedInstagramHttpVerify,
     hasVerifiedInstagramAuth,
+    cachedThreadsHttpVerify,
+    hasVerifiedThreadsAuth,
     cachedAiHttpVerify,
   };
 }
@@ -542,6 +640,8 @@ async function verifyRowPlatformAndAiSession({
     hasVerifiedTwitterAuth,
     cachedInstagramHttpVerify,
     hasVerifiedInstagramAuth,
+    cachedThreadsHttpVerify,
+    hasVerifiedThreadsAuth,
     cachedAiHttpVerify,
   } = probeState;
 
@@ -844,6 +944,50 @@ async function verifyRowPlatformAndAiSession({
           } else if (igVerify.ok && igVerify.loggedIn && igVerify.resultCode !== "offline_proxy_safe") {
             hasVerifiedInstagramAuth = true;
             cachedInstagramHttpVerify = igVerify;
+          }
+        }
+      }
+    } else if (svcLower === "threads" && match.loggedIn) {
+      const hasPlaintextThreadsAuth = (list) =>
+        Array.isArray(list) &&
+        list.some(
+          (c) =>
+            c &&
+            c.name === "sessionid" &&
+            String(c.value || "").trim().length > 0 &&
+            /threads\.(com|net)|instagram\.com/i.test(String(c.domain || c.host_key || ".threads.com")),
+        );
+      const thPlaintextCookies = hasPlaintextThreadsAuth(pairs)
+        ? pairs
+        : !userDataDir && hasPlaintextThreadsAuth(vaultEntryCookies)
+          ? vaultEntryCookies
+          : !userDataDir && hasPlaintextThreadsAuth(row.stealth_cookies)
+            ? row.stealth_cookies
+            : null;
+      if (!thPlaintextCookies) {
+        match.loggedIn = false;
+        match.resultCode = "login_page";
+      } else {
+        const curSnapCheck = row.stealth_snapshot && typeof row.stealth_snapshot === "object" ? row.stealth_snapshot : null;
+        if (
+          String(curSnapCheck?.status || "") !== "logged_in" ||
+          !String(row.browser || "").trim() ||
+          !curSnapCheck?.login_verified_at ||
+          isLiveWindow
+        ) {
+          const thVerify =
+            thPlaintextCookies === pairs && cachedThreadsHttpVerify
+              ? cachedThreadsHttpVerify
+              : await verifyThreadsCookiesLiveViaHttp(thPlaintextCookies, 4500, fetch, {
+                  allowDirectHostHttp: true,
+                });
+          if (thVerify.ok && !thVerify.loggedIn) {
+            fbForcedOverride = thVerify;
+            match.loggedIn = false;
+            match.resultCode = thVerify.resultCode || "login_page";
+          } else if (thVerify.ok && thVerify.loggedIn && thVerify.resultCode !== "offline_proxy_safe") {
+            hasVerifiedThreadsAuth = true;
+            cachedThreadsHttpVerify = thVerify;
           }
         }
       }
@@ -1467,6 +1611,8 @@ async function verifyRowPlatformAndAiSession({
     hasVerifiedTwitterAuth,
     cachedInstagramHttpVerify,
     hasVerifiedInstagramAuth,
+    cachedThreadsHttpVerify,
+    hasVerifiedThreadsAuth,
     cachedAiHttpVerify,
   });
 

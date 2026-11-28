@@ -57,10 +57,11 @@ describe("buildProfileKpiItems", () => {
           "0027": "💬 G1 Support (member@gmail.com) · Elapsed: 1m 05s",
           "9016": "Agent Smoke / Ephemeral Pool (9000–9999) · Elapsed: 18s",
         },
-        waitingCodes: ["0001", "0003"],
+        waitingCodes: ["0001", "0003", "0050"],
         waitingReasons: {
           "0001": "Waiting for User Window to Close (agent:deferred-order-drain)",
           "0003": "Waiting for User Window to Close (agent:deferred-order-drain)",
+          "0050": "Launching Headless (Waiting for browser slot)",
         },
       },
     );
@@ -85,10 +86,17 @@ describe("buildProfileKpiItems", () => {
     expect(waitingTile?.labelHint?.lines).toEqual([
       {
         emoji: "🔒",
-        label: "Waiting for User Window to Close (agent:deferred-order-drain) (2)",
+        label: "[Waiting for User Headed Close] Waiting for User Window to Close (agent:deferred-order-drain) (2)",
         detail: "#0001, #0003",
         actionKey: "0001 0003",
         actionLabel: "Filter directory to Waiting for User Window to Close (agent:deferred-order-drain) (2 profiles)",
+      },
+      {
+        emoji: "⏳",
+        label: "[Launching Headless Queue] Launching Headless (Waiting for browser slot) (1)",
+        detail: "#0050",
+        actionKey: "0050",
+        actionLabel: "Filter directory to Launching Headless (Waiting for browser slot) (1 profiles)",
       },
     ]);
   });

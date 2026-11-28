@@ -1,184 +1,184 @@
 {
-  "generatedAt": "2026-11-22T06:59:23.408Z",
+  "generatedAt": "2026-11-28T11:09:23.693Z",
   "entries": [
     {
-      "version": "9.2.535",
-      "date": "2026-11-22",
-      "at": "2026-11-22T13:39:00+07:00",
-      "title": "Fix delayed Stripe billing address country detection and scroll-into-view fallback",
+      "version": "9.2.586",
+      "date": "2026-11-28",
+      "at": "2026-11-28T18:05:00+07:00",
+      "title": "Optimize Mobile Farm live-screen with parallel SWR iOS/Android polling and Prod hot-patch",
       "bullets": [
-        "Auto-detect US vs VN country in fillDelayedStripeBillingAddressIfPresent, scroll Billing address into center view, and add loc.fill fallback in mouseClickAndTypeLocator."
+        "Parallelize Android live-screen + iOS device discovery with 12s/45s SWR device list caching and 1.45s background frame poller for sub-100ms warm allDevices responses"
+      ],
+      "kind": "improve",
+      "userTitle": "Optimize Mobile Farm live-screen with parallel SWR i OS Android polli…",
+      "userSummary": "",
+      "userHighlights": [
+        "Parallelize Android live-screen + i OS device discovery with 12s 45s SWR device list caching and…"
+      ]
+    },
+    {
+      "version": "9.2.585",
+      "date": "2026-11-28",
+      "at": "2026-11-28T17:56:00+07:00",
+      "title": "S9+ Dual U95 launchers & Aurora gradient user switch veil",
+      "bullets": [
+        "Add Zalo U95 / FB U95 / Mess U95 quick buttons with auto-switch to U0, animated Aurora gradient user switch veil in Wall & Theater, and updated warm-slot tooltips."
+      ],
+      "kind": "improve",
+      "userTitle": "S9+ Dual U95 launchers & Aurora gradient user switch veil",
+      "userSummary": "",
+      "userHighlights": [
+        "Add Zalo U95 FB U95 Mess U95 quick buttons with auto-switch to U0, animated Aurora gradient user…"
+      ]
+    },
+    {
+      "version": "9.2.584",
+      "date": "2026-11-28",
+      "at": "2026-11-28T17:44:00+07:00",
+      "title": "Fix Prod exe startup crash loop on corrupt hot-patch after reboot",
+      "bullets": [
+        "Quarantine null-byte/corrupt hot-patch/package.json in hot-patch-loader & desktop-host-kit, fsync atomic hot-patch writes, release SingleInstanceLock on pre-boot uncaughtException, and heal offline resources in KeepAlive"
       ],
       "kind": "fix",
-      "userTitle": "Fix delayed Stripe billing address country detection and scroll-into-…",
+      "userTitle": "Fix Prod exe startup crash loop on corrupt hot-patch after reboot",
       "userSummary": "",
       "userHighlights": [
-        "Auto-detect US vs VN country in fill Delayed Stripe Billing Address If Present, scroll Billing ad…"
+        "Quarantine null-byte corrupt hot-patch package.json in hot-patch-loader & desktop-host-kit, fsync…"
       ]
     },
     {
-      "version": "9.2.534",
-      "date": "2026-11-22",
-      "at": "2026-11-22T13:32:00+07:00",
-      "title": "Auto-evict non-interactive S4U background session and relaunch on interactive desktop",
+      "version": "9.2.583",
+      "date": "2026-11-28",
+      "at": "2026-11-28T17:20:00+07:00",
+      "title": "Ship async iOS background frame poller and Mobile Farm multi-device theater isolation to Prod",
       "bullets": [
-        "Self-exit P0003 when trapped in S4U non-interactive Window Station on showWindow, relaunch on second-instance/desktop-open, and switch KeepAlive to Interactive desktop breakaway"
+        "Serve cached Wi-Fi iOS frames in <50ms via 1.45s demand-driven background poller (cutting allDevices live-screen from ~8.9s to <350ms), skip dead USB WDA/DVT fallbacks on Wi-Fi iPhones, and sync per-device Theater serial isolation + 7-bit H.264 mux"
       ],
       "kind": "improve",
-      "userTitle": "Auto-evict non-interactive S4 U background session and relaunch on in…",
+      "userTitle": "Ship async i OS background frame poller and Mobile Farm multi-device…",
       "userSummary": "",
       "userHighlights": [
-        "Self-exit P0003 when trapped in S4 U non-interactive Window Station on show Window, relaunch on s…"
+        "Serve cached Wi-Fi i OS frames in <50ms via 1.45s demand-driven background poller , skip dead USB…"
       ]
     },
     {
-      "version": "9.2.533",
-      "date": "2026-11-22",
-      "at": "2026-11-22T13:30:00+07:00",
-      "title": "Expose 24/7 Master Orchestrator Dispatch Matrix in Mobile Farm V1 UI",
+      "version": "9.2.582",
+      "date": "2026-11-28",
+      "at": "2026-11-28T15:38:00+07:00",
+      "title": "Dynamic 01-05 S9+ labels and warm secondary user switching",
       "bullets": [
-        "Show per-device dispatch/leased/thermal states, self-generated backlog goals, and Group comment progress"
+        "Sync live user names onto S9+ slot pills and keep 1 recent secondary user warm for fast switching"
       ],
       "kind": "improve",
-      "userTitle": "Expose 24 7 Master Orchestrator Dispatch Matrix in Mobile Farm V1 UI",
+      "userTitle": "Dynamic 01-05 S9+ labels and warm secondary user switching",
       "userSummary": "",
       "userHighlights": [
-        "Show per-device dispatch leased thermal states, self-generated backlog goals, and Group comment p…"
+        "Sync live user names onto S9+ slot pills and keep 1 recent secondary user warm for fast switching"
       ]
     },
     {
-      "version": "9.2.532",
-      "date": "2026-11-22",
-      "at": "2026-11-22T07:59:00+07:00",
-      "title": "Add ChatGPT Bearer entitlement, confirm-block abort, delayed Stripe billing address, and auto-renew cancel helpers",
+      "version": "9.2.581",
+      "date": "2026-11-28",
+      "at": "2026-11-28T15:33:00+07:00",
+      "title": "Enable concurrent 24fps H.264 on 5-Device Wall & per-device Theater serial routing",
       "bullets": [
-        "Export fetchChatGptEntitlementWithBearer, classifyOpenAiCheckoutConfirmPayload, fillDelayedStripeBillingAddressIfPresent, and cancelChatGptPlusAutoRenew in billing-autofill-bridge.cjs with unit tests and sweeper/bridge parity."
+        "Decode 7-bit multi-device H.264 mux channels on 5-Device Wall so Pixel 6a and Pixel 7 stream 24fps concurrently, and pass explicit deviceSerial across all MobileFarmTheaterOverlay controls and iOS/Android viewports"
       ],
       "kind": "improve",
-      "userTitle": "Add Chat GPT Bearer entitlement, confirm-block abort, delayed Stripe…",
+      "userTitle": "Enable concurrent 24fps H.264 on 5-Device Wall & per-device Theater s…",
       "userSummary": "",
       "userHighlights": [
-        "Export fetch Chat Gpt Entitlement With Bearer, classify Open Ai Checkout Confirm Payload, fill De…"
+        "Decode 7-bit multi-device H.264 mux channels on 5-Device Wall so Pixel 6a and Pixel 7 stream 24fp…"
       ]
     },
     {
-      "version": "9.2.531",
-      "date": "2026-11-22",
-      "at": "2026-11-22T07:53:00+07:00",
-      "title": "Harden Android smoke checks, worker asarUnpack gate, and NSIS install lock",
+      "version": "9.2.580",
+      "date": "2026-11-28",
+      "at": "2026-11-28T15:09:00+07:00",
+      "title": "Add live-control api-routes test and align S9+ 01-05 user slots",
       "bullets": [
-        "Verify Android full-height + PROFILES > 0 in profiles-real smoke, enforce external worker asarUnpack gate in verify-desktop-exe-ssot, guard keepalive/resolvers with install lock, and declare P0003 work-board areas"
+        "Add idempotent readBody regression test in api-routes.test.cjs and label S9+ slots 01..05 (U0, U10..U13) in MobileFarmView.tsx"
       ],
       "kind": "improve",
-      "userTitle": "Harden Android smoke checks, worker asar Unpack gate, and NSIS instal…",
+      "userTitle": "Add live-control api-routes test and align S9+ 01-05 user slots",
       "userSummary": "",
       "userHighlights": [
-        "Verify Android full-height + PROFILES > 0 in profiles-real smoke, enforce external worker asar Un…"
+        "Add idempotent read Body regression test in and label S9+ slots 01..05 in"
       ]
     },
     {
-      "version": "9.2.530",
-      "date": "2026-11-22",
-      "at": "2026-11-22T04:15:00+07:00",
-      "title": "Unpack android-bridge-worker.mjs for packaged Android Profiles API",
+      "version": "9.2.579",
+      "date": "2026-11-28",
+      "at": "2026-11-28T15:06:00+07:00",
+      "title": "Upgrade HubTooltip SSOT across modal/table/pager controls",
       "bullets": [
-        "Add **/electron/lib/*.mjs to asarUnpack and resolve android-bridge-worker.mjs via resolveElectronLibScript so packaged Prod /api/android-vault/profiles loads cleanly outside app.asar"
+        "Pick up full HubTooltip SSOT from packages/hub-ui and repackage desktop NSIS + win-unpacked"
       ],
       "kind": "improve",
-      "userTitle": "Unpack for packaged Android Profiles API",
+      "userTitle": "Upgrade Hub Tooltip shared UI across modal table pager controls",
       "userSummary": "",
       "userHighlights": [
-        "Add ** electron lib *.mjs to asar Unpack and resolve via resolve Electron Lib Script so packaged…"
+        "Pick up full Hub Tooltip shared UI from packages hub-ui and repackage desktop NSIS + win-unpacked"
       ]
     },
     {
-      "version": "9.2.529",
-      "date": "2026-11-22",
-      "at": "2026-11-22T03:50:00+07:00",
-      "title": "Promote V1 Split-Dock 5-device live wall to Mobile Farm",
+      "version": "9.2.578",
+      "date": "2026-11-28",
+      "at": "2026-11-28T06:49:00+07:00",
+      "title": "Lock V1 sidebar collapse icon & HubTooltip SSOT chrome",
       "bullets": [
-        "Promote locked V1 Split-Dock Console to production MobileFarmView with live 5-device Wi-Fi screens, deduplicated Pixel 7 USB/Wi-Fi nodes, /api/mobile-farm/live-fleet, live 4G Carrier Kaizen lanes, Cooldown Burst telemetry, and cleanup of temporary design preview."
+        "Apply locked V1 Panel Dock Frame to HubSidebarCollapseGlyph, remove temporary preview, and upgrade Hub chrome tooltips to HubTooltip SSOT"
       ],
       "kind": "improve",
-      "userTitle": "Promote V1 Split-Dock 5-device live wall to Mobile Farm",
+      "userTitle": "Lock V1 sidebar collapse icon & Hub Tooltip shared UI chrome",
       "userSummary": "",
       "userHighlights": [
-        "Promote locked V1 Split-Dock Console to production Mobile Farm View with live 5-device Wi-Fi scre…"
+        "Apply locked V1 Panel Dock Frame to Hub Sidebar Collapse Glyph, remove temporary preview, and upg…"
       ]
     },
     {
-      "version": "9.2.528",
-      "date": "2026-11-22",
-      "at": "2026-11-22T03:48:00+07:00",
-      "title": "Record ChatGPT Plus trial win (vietcombank-5733) and 14 verified Stripe generic_decline cards",
+      "version": "9.2.577",
+      "date": "2026-11-28",
+      "at": "2026-11-28T06:34:00+07:00",
+      "title": "Fix double readBody hang on POST mobile-stealth live-control",
       "bullets": [
-        "Updated KNOWN_OPENAI_TRIAL_CLAIMED_MAP with vietcombank-5733 (#0092 iagomdseverino) and KNOWN_STRIPE_DECLINE_CODE_MAP with 14 newly verified 402 generic_decline cards across VN BINs"
+        "Make readBody idempotent and bypass duplicate POST body consumption in api-server.cjs for live-control/wifi-adb routes"
       ],
-      "kind": "improve",
-      "userTitle": "Record Chat GPT Plus trial win and 14 verified Stripe generic decline…",
+      "kind": "fix",
+      "userTitle": "Fix double read Body hang on POST mobile-stealth live-control",
       "userSummary": "",
       "userHighlights": [
-        "Updated KNOWN OPENAI TRIAL CLAIMED MAP with vietcombank-5733 and KNOWN STRIPE DECLINE CODE MAP wi…"
+        "Make read Body idempotent and bypass duplicate POST body consumption in for live-control wifi-adb…"
       ]
     },
     {
-      "version": "9.2.527",
-      "date": "2026-11-22",
-      "at": "2026-11-22T03:25:00+07:00",
-      "title": "Add Mobile Farm 5-device System Design V1-V5 previews",
+      "version": "9.2.576",
+      "date": "2026-11-28",
+      "at": "2026-11-28T06:33:00+07:00",
+      "title": "Expose Grok, ElevenLabs, and Threads warmup lanes on Execution Board",
       "bullets": [
-        "Mount 5 layout-direction variants (V1-V5) in System Design preview showcasing live screens for all 5 physical Wi-Fi phones, non-idle Cooldown Burst telemetry, and Hub-UI SSOT chrome."
+        "Updated Mobile Farm Execution Board fallback yield table with Grok, ElevenLabs, and Threads warmup lanes"
       ],
       "kind": "improve",
-      "userTitle": "Add Mobile Farm 5-device System Design V1-V5 previews",
+      "userTitle": "Expose Grok, Eleven Labs, and Threads warmup lanes on Execution Board",
       "userSummary": "",
       "userHighlights": [
-        "Mount 5 layout-direction variants in System Design preview showcasing live screens for all 5 phys…"
+        "Updated Mobile Farm Execution Board fallback yield table with Grok, Eleven Labs, and Threads warm…"
       ]
     },
     {
-      "version": "9.2.525",
-      "date": "2026-11-22",
-      "at": "2026-11-22T02:39:00+07:00",
-      "title": "Move Farm ticker to header, fix Android 53-profile load and P0003 backend guards",
+      "version": "9.2.575",
+      "date": "2026-11-28",
+      "at": "2026-11-28T06:31:00+07:00",
+      "title": "Isolate Mobile Farm per-device cached screens & bind H.264 serial",
       "bullets": [
-        "Move StealthGlobalFarmTicker into StealthTabHeaderActions pill (only when runningTasks > 0), unify Android API fetch onto fetchFarmApi (6003-first + base loop outer), add SWR cache for /api/android-vault/profiles, fix missing hasVerifiedGoogleLiveTab/headedRunningCodeSet in Electron libs, add StealthAppShell.layout.test.ts and smoke-android-ui.mjs."
+        "Key React cachedSlotScreens by device serial instead of shared disp:0 and pass explicit serial query to H264PhoneStreamCanvas mux stream"
       ],
       "kind": "improve",
-      "userTitle": "Move Farm ticker to header, fix Android 53-profile load and P0003 bac…",
+      "userTitle": "Isolate Mobile Farm per-device cached screens & bind H.264 serial",
       "userSummary": "",
       "userHighlights": [
-        "Move Stealth Global Farm Ticker into Stealth Tab Header Actions pill , unify Android API fetch on…"
-      ]
-    },
-    {
-      "version": "9.2.524",
-      "date": "2026-11-22",
-      "at": "2026-11-22T00:11:00+07:00",
-      "title": "Add 24/7 All-SIM Reader routes (/api/mobile-sim/*) and dynamic cellular status",
-      "bullets": [
-        "Expose 24/7 SIM fleet, inbox filtering, sweep, and wait-otp routes on P0003 API server alongside 24/7 daemon (:6016)"
-      ],
-      "kind": "improve",
-      "userTitle": "Add 24 7 All-SIM Reader routes and dynamic cellular status",
-      "userSummary": "",
-      "userHighlights": [
-        "Expose 24 7 SIM fleet, inbox filtering, sweep, and wait-otp routes on P0003 API server alongside…"
-      ]
-    },
-    {
-      "version": "9.2.523",
-      "date": "2026-11-21",
-      "at": "2026-11-21T23:06:00+07:00",
-      "title": "Update card billing hygiene and GPay rejection filtering",
-      "bullets": [
-        "Track mb-bank-7320 and vib-3641 trial claims plus 21 newly verified Stripe generic_decline cards and optional excludeGpayRejected filter in billing-autofill-bridge"
-      ],
-      "kind": "improve",
-      "userTitle": "Update card billing hygiene and GPay rejection filtering",
-      "userSummary": "",
-      "userHighlights": [
-        "Track mb-bank-7320 and vib-3641 trial claims plus 21 newly verified Stripe generic decline cards…"
+        "Key React cached Slot Screens by device serial instead of shared disp:0 and pass explicit serial…"
       ]
     }
   ]

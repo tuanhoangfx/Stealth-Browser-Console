@@ -68,6 +68,8 @@ type AndroidTelemetryPoint = {
   chargeDisable?: number;
   acPowered?: boolean;
   display0Off?: boolean;
+  batteryCurrentMa?: number | null;
+  usbInputCurrentLimit?: number | null;
 };
 
 type AndroidHardwareHealth = {
@@ -89,6 +91,10 @@ type AndroidHardwareHealth = {
   chargeStartLevel?: number;
   chargeStopLevel?: number;
   chargeDisable?: number;
+  batteryCurrentMa?: number | null;
+  usbInputCurrentLimit?: number | null;
+  usbVoltageMv?: number | null;
+  tcpmOnline?: boolean | null;
   runningUsers?: number[];
   runningUserCount?: number;
   totalUserCount?: number;
@@ -139,6 +145,52 @@ export function resolveAndroidPowerBadgeState(
   return { powerConnected, acOff, batCritical, isStoreHold, bypassOn, isThermalHold, attachedLabel, badgeLabel };
 }
 
+/**
+ * Summarizes live USB-PD, input current limit (ICL), and battery net current (mA) for device cards & rails.
+ */
+export function resolvePowerPathSummary(
+  hw:
+    | {
+        batteryCurrentMa?: number | null;
+        usbInputCurrentLimit?: number | null;
+        usbVoltageMv?: number | null;
+        tcpmOnline?: boolean | null;
+        chargeDisable?: number | null;
+        chargeMode?: string | null;
+      }
+    | null
+    | undefined,
+): { text: string; isWeak: boolean; isHealthyCharge: boolean; title: string } | null {
+  if (!hw) return null;
+  const parts: string[] = [];
+  if (typeof hw.tcpmOnline === "boolean") {
+    parts.push(`PD ${hw.tcpmOnline ? "ON" : "OFF"}`);
+  }
+  if (typeof hw.usbInputCurrentLimit === "number") {
+    parts.push(`ICL ${hw.usbInputCurrentLimit}mA`);
+  }
+  if (typeof hw.batteryCurrentMa === "number") {
+    parts.push(`${hw.batteryCurrentMa > 0 ? `+${hw.batteryCurrentMa}` : hw.batteryCurrentMa}mA`);
+  }
+  if (parts.length === 0) return null;
+  const isHold = hw.chargeDisable === 1 || String(hw.chargeMode || "").startsWith("hold_");
+  const isWeak =
+    !isHold &&
+    (hw.usbInputCurrentLimit === 0 ||
+      (typeof hw.batteryCurrentMa === "number" && hw.batteryCurrentMa <= -150 && hw.chargeMode !== "unplugged"));
+  const isHealthyCharge =
+    !isWeak &&
+    ((typeof hw.batteryCurrentMa === "number" && hw.batteryCurrentMa >= 200) ||
+      (hw.tcpmOnline === true && typeof hw.usbInputCurrentLimit === "number" && hw.usbInputCurrentLimit >= 1500));
+  const vbusPart = typeof hw.usbVoltageMv === "number" ? ` · VBUS ${(hw.usbVoltageMv / 1000).toFixed(2)}V` : "";
+  return {
+    text: parts.join(" · "),
+    isWeak,
+    isHealthyCharge,
+    title: `Power Path: ${parts.join(" · ")}${vbusPart}`,
+  };
+}
+
 export type MobileFarmBoardDevice = {
   serial: string;
   label: string;
@@ -148,11 +200,17 @@ export type MobileFarmBoardDevice = {
   batteryTempC: number | null;
   acPowered: boolean | null;
   cableAttached: boolean | null;
+  usbPresent?: boolean | null;
+  unpluggedElapsedMin?: number | null;
   attachedDev: string | null;
   chargeMode: string;
   storeMode: number | null;
   slateMode: number | null;
   chargeDisable: number | null;
+  batteryCurrentMa?: number | null;
+  usbInputCurrentLimit?: number | null;
+  usbVoltageMv?: number | null;
+  tcpmOnline?: boolean | null;
   chargeLimiterEnabled: boolean | null;
   storeModeRecoveryTriggered: boolean;
   unreachableReason: string | null;
@@ -243,6 +301,36 @@ export type MobileFarmOrchestratorGoal = {
   pendingCount?: number;
 };
 
+export type MobileFarmDeviceEvaluation = {
+  deviceKey?: string;
+  serial: string;
+  label: string;
+  ok: boolean;
+  productive: boolean;
+  state: string;
+  assignedTask: string;
+  taskLabel?: string;
+  efficiencyScore: number;
+  grade: "S" | "A" | "B" | "C" | string;
+  conversionPct?: number;
+  proxyIp?: string | null;
+  proxyCaptive?: boolean;
+  proxyOutcome?: string | null;
+  earlyVbusLossActive?: boolean;
+  weakPowerPathActive?: boolean;
+  autoAction: string;
+};
+
+export type MobileFarmFleetEvaluation = {
+  overallScore: number;
+  grade: "S" | "A" | "B" | "C" | string;
+  productiveDevices: number;
+  totalDevices: number;
+  verifiedHealthy4gProxies?: number;
+  captiveProxiesQuarantined?: number;
+  devices: MobileFarmDeviceEvaluation[];
+};
+
 export type MobileFarmOrchestratorSummary = {
   active: boolean;
   status: string;
@@ -265,6 +353,28 @@ export type MobileFarmOrchestratorSummary = {
     selfGeneratedGoalsCreated?: number;
     commentTasksExecuted?: number;
   } | null;
+  evaluation?: MobileFarmFleetEvaluation | null;
+};
+
+export type MobileFarmPlatformYieldRow = {
+  platform: string;
+  primaryChannel: string;
+  desktopLive: number;
+  mobileLive: number;
+  totalLive: number;
+  recent7dLive: number;
+  conversionPct: number;
+  activeLane: string;
+  routingRule: string;
+};
+
+export type MobileFarmStepBottleneckRow = {
+  source: string;
+  deviceOrChannel: string;
+  platform: string;
+  stage: string;
+  occurrences: number;
+  autoAdaptation: string;
 };
 
 export type MobileFarmExecutionBoardData = {
@@ -280,6 +390,8 @@ export type MobileFarmExecutionBoardData = {
   };
   devices: MobileFarmBoardDevice[];
   tasks: MobileFarmBoardTask[];
+  platformYield?: MobileFarmPlatformYieldRow[];
+  stepBottlenecks?: MobileFarmStepBottleneckRow[];
   experiments?: {
     updatedAt: string | null;
     totalRunsRecorded: number;
@@ -287,6 +399,7 @@ export type MobileFarmExecutionBoardData = {
     lanes: MobileFarmExperimentLane[];
   } | null;
   carrierKaizen?: MobileFarmCarrierKaizenRow[];
+  fleetEvaluation?: MobileFarmFleetEvaluation | null;
   orchestrator?: MobileFarmOrchestratorSummary | null;
 };
 
@@ -447,15 +560,42 @@ type MuxDecoderEntry = {
 
 const _muxSubscribersByDisplay = new Map<number, Set<MuxCanvasSubscriber>>();
 const _muxDecodersByDisplay = new Map<number, MuxDecoderEntry>();
+const _muxDynamicSerialSlots = new Map<string, number>();
 let _muxLoopRunning = false;
 let _muxAbortCtrl: AbortController | null = null;
+let _muxPreferredSerial = "";
 
-export function hasLiveMirrorFrame(displayId: number): boolean {
-  return Boolean(_muxDecodersByDisplay.get(displayId)?.hasMirrorFrame);
+export function resolveClientH264MuxChannel(displayId: number, serial?: string | null): number {
+  const disp = Math.max(0, Number(displayId) || 0) & 0x0f;
+  const low = String(serial || "").trim().toLowerCase();
+  if (!low || low.startsWith("ios:")) return disp;
+  let slot = 0;
+  if (low.includes("192.168.0.208") || low.includes("bluejay") || low.includes("2a221jegr")) {
+    slot = 0;
+  } else if (low.includes("192.168.0.253") || low.includes("33241fdh2004b9") || low.includes("panther")) {
+    slot = 1;
+  } else if (low.includes("192.168.0.120") || low.includes("1a60ec340b027ece") || low.includes("star2lte")) {
+    slot = 2;
+  } else {
+    const existing = _muxDynamicSerialSlots.get(low);
+    if (typeof existing === "number") {
+      slot = existing;
+    } else {
+      slot = 3 + (_muxDynamicSerialSlots.size % 5);
+      _muxDynamicSerialSlots.set(low, slot);
+    }
+  }
+  return ((slot & 0x07) << 4) | disp;
 }
 
-export function getMirrorCanvasForDisplay(displayId: number): HTMLCanvasElement | null {
-  const entry = _muxDecodersByDisplay.get(displayId);
+export function hasLiveMirrorFrame(displayId: number, serial?: string | null): boolean {
+  const chan = resolveClientH264MuxChannel(displayId, serial);
+  return Boolean(_muxDecodersByDisplay.get(chan)?.hasMirrorFrame);
+}
+
+export function getMirrorCanvasForDisplay(displayId: number, serial?: string | null): HTMLCanvasElement | null {
+  const chan = resolveClientH264MuxChannel(displayId, serial);
+  const entry = _muxDecodersByDisplay.get(chan);
   if (
     entry &&
     entry.hasMirrorFrame &&
@@ -544,9 +684,10 @@ function startSharedMuxStreamLoop(): void {
   void (async () => {
     while (_muxLoopRunning && totalMuxSubscribers() > 0 && !abortCtrl.signal.aborted) {
       let streamRes: Response | null = null;
+      const serialQuery = _muxPreferredSerial ? `&serial=${encodeURIComponent(_muxPreferredSerial)}` : "";
       for (const base of getOrderedApiBases()) {
         try {
-          const r = await fetch(`${base}/api/android-vault/h264-stream?displayId=all`, {
+          const r = await fetch(`${base}/api/android-vault/h264-stream?displayId=all&allDevices=1${serialQuery}`, {
             signal: abortCtrl.signal,
           });
           if (r.ok && r.body) {
@@ -634,15 +775,20 @@ function startSharedMuxStreamLoop(): void {
   })();
 }
 
-function subscribeMuxDisplayCanvas(dispId: number, sub: MuxCanvasSubscriber): () => void {
-  let set = _muxSubscribersByDisplay.get(dispId);
+function subscribeMuxDisplayCanvas(dispId: number, sub: MuxCanvasSubscriber, serial?: string): () => void {
+  const cleanSerial = String(serial || "").trim();
+  if (cleanSerial && !cleanSerial.startsWith("ios:")) {
+    _muxPreferredSerial = cleanSerial;
+  }
+  const muxChan = resolveClientH264MuxChannel(dispId, cleanSerial);
+  let set = _muxSubscribersByDisplay.get(muxChan);
   if (!set) {
     set = new Set();
-    _muxSubscribersByDisplay.set(dispId, set);
+    _muxSubscribersByDisplay.set(muxChan, set);
   }
   set.add(sub);
 
-  const existing = _muxDecodersByDisplay.get(dispId);
+  const existing = _muxDecodersByDisplay.get(muxChan);
   if (existing && existing.hasMirrorFrame && existing.mirrorCanvas.width > 0) {
     sub.canvas.width = existing.mirrorCanvas.width;
     sub.canvas.height = existing.mirrorCanvas.height;
@@ -656,10 +802,10 @@ function subscribeMuxDisplayCanvas(dispId: number, sub: MuxCanvasSubscriber): ()
   startSharedMuxStreamLoop();
 
   return () => {
-    const s = _muxSubscribersByDisplay.get(dispId);
+    const s = _muxSubscribersByDisplay.get(muxChan);
     if (s) {
       s.delete(sub);
-      if (s.size === 0) _muxSubscribersByDisplay.delete(dispId);
+      if (s.size === 0) _muxSubscribersByDisplay.delete(muxChan);
     }
     if (totalMuxSubscribers() === 0 && _muxAbortCtrl) {
       _muxAbortCtrl.abort();
@@ -690,35 +836,75 @@ export function isNonBlackScreenUrl(url: string | null | undefined, minLength = 
 
 export const H264PhoneStreamCanvas = memo(function H264PhoneStreamCanvas({
   displayId,
+  serial,
   enabled,
   fallbackImgUrl,
 }: {
   displayId: number;
+  serial?: string;
   enabled: boolean;
   fallbackImgUrl: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hasFrame, setHasFrame] = useState<boolean>(false);
   const hasFrameRef = useRef<boolean>(false);
+  const [surfaceActive, setSurfaceActive] = useState<boolean>(() =>
+    typeof document === "undefined" ? true : document.visibilityState !== "hidden",
+  );
+
+  useEffect(() => {
+    if (!enabled || typeof document === "undefined") {
+      setSurfaceActive(false);
+      return;
+    }
+    let pageVisible = document.visibilityState !== "hidden";
+    let inViewport = true;
+    const sync = () => setSurfaceActive(pageVisible && inViewport);
+    const onVis = () => {
+      pageVisible = document.visibilityState !== "hidden";
+      sync();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined" && canvasRef.current) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          inViewport = entries.some((entry) => entry.isIntersecting);
+          sync();
+        },
+        { threshold: 0 },
+      );
+      observer.observe(canvasRef.current);
+    }
+    sync();
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      observer?.disconnect();
+    };
+  }, [enabled]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!enabled || !canvas || typeof window === "undefined" || !("VideoDecoder" in window)) {
+    if (!enabled || !surfaceActive || !canvas || typeof window === "undefined" || !("VideoDecoder" in window)) {
       hasFrameRef.current = false;
       setHasFrame(false);
       return;
     }
     hasFrameRef.current = false;
-    return subscribeMuxDisplayCanvas(displayId, {
-      canvas,
-      onFrame: () => {
-        if (!hasFrameRef.current) {
-          hasFrameRef.current = true;
-          setHasFrame(true);
-        }
+    return subscribeMuxDisplayCanvas(
+      displayId,
+      {
+        canvas,
+        onFrame: () => {
+          if (!hasFrameRef.current) {
+            hasFrameRef.current = true;
+            setHasFrame(true);
+          }
+        },
       },
-    });
-  }, [displayId, enabled]);
+      serial,
+    );
+  }, [displayId, enabled, serial, surfaceActive]);
 
   const validFallback = isNonBlackScreenUrl(fallbackImgUrl) ? fallbackImgUrl : null;
 

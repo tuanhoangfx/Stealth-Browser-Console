@@ -387,8 +387,9 @@ function buildAndroidVaultRoutes(deps) {
           const bridge = await loadAndroidStealthBridge(electronDir);
           if (!bridge) return send.json(ctx.res, 404, { ok: false, error: "android_bridge_not_found" });
           const limit = Number(ctx.query.get("limit")) || 48;
-          const history24h = await bridge.getAndroidTelemetryHistory24h({ limit });
-          return send.json(ctx.res, 200, { ok: true, history24h });
+          const serial = String(ctx.query.get("serial") || "").trim();
+          const history24h = await bridge.getAndroidTelemetryHistory24h({ limit, serial });
+          return send.json(ctx.res, 200, { ok: true, serial: serial || null, history24h });
         } catch (error) {
           return send.json(ctx.res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
         }
@@ -487,12 +488,15 @@ function buildAndroidVaultRoutes(deps) {
           const includeScreenshot = ctx.query.get("screenshot") !== "0";
           const serial = ctx.query.get("serial") || "";
           const allDevices = ctx.query.get("allDevices") === "1" || ctx.query.get("allDevices") === "true";
-          const out = await bridge.getAndroidLiveScreenAndFarmState({
-            serial: iosBridge.isIosSerial(serial) ? "" : serial,
-            displayId,
-            includeScreenshot,
-            allDevices,
-          });
+          const [out] = await Promise.all([
+            bridge.getAndroidLiveScreenAndFarmState({
+              serial: iosBridge.isIosSerial(serial) ? "" : serial,
+              displayId,
+              includeScreenshot,
+              allDevices,
+            }),
+            iosBridge.listConnectedIosDevices().catch(() => []),
+          ]);
           const augmented = await iosBridge
             .augmentLiveScreenResponse(out, { serial, includeScreenshot, allDevices })
             .catch(() => out);
@@ -512,7 +516,9 @@ function buildAndroidVaultRoutes(deps) {
           const bridge = await loadAndroidStealthBridge(electronDir);
           if (!bridge) return send.json(ctx.res, 404, { ok: false, error: "android_bridge_not_found" });
           const displayId = ctx.query.get("displayId") || ctx.query.get("display") || "0";
-          await bridge.subscribeAndroidH264Stream(ctx.req, ctx.res, { displayId });
+          const serial = ctx.query.get("serial") || "";
+          const allDevices = ctx.query.get("allDevices") === "1" || ctx.query.get("allDevices") === "true";
+          await bridge.subscribeAndroidH264Stream(ctx.req, ctx.res, { displayId, serial, allDevices });
         } catch (error) {
           if (!ctx.res.headersSent) {
             return send.json(ctx.res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });

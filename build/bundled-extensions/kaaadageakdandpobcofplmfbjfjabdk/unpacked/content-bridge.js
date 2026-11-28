@@ -1,7 +1,11 @@
 /** Relays Tool Manager session + bindings into extension storage (same-origin postMessage). */
 const ORIGINS = new Set([
+  "http://127.0.0.1:3022",
+  "http://localhost:3022",
   "http://127.0.0.1:5176",
   "http://127.0.0.1:5177",
+  "https://infi28.com",
+  "https://databox.infi28.com",
   "https://infi.io.vn",
   "https://databox.infi.io.vn",
   "https://tool-manager-zeta.vercel.app",
@@ -11,8 +15,40 @@ const ORIGINS = new Set([
 function isAllowedOrigin(origin) {
   if (ORIGINS.has(origin)) return true;
   if (origin.endsWith(".vercel.app")) return true;
+  if (origin.endsWith(".infi28.com")) return true;
   if (origin.endsWith(".infi.io.vn")) return true;
   return false;
+}
+
+function resolveBridgeManifestVersion() {
+  try {
+    return String(chrome.runtime?.getManifest?.()?.version || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function announceBridgePresence() {
+  const version = resolveBridgeManifestVersion() || "installed";
+  try {
+    if (document.documentElement) {
+      document.documentElement.dataset.e0001CookieBridgeVersion = version;
+    }
+    window.postMessage(
+      {
+        type: "E0001_COOKIE_BRIDGE_PONG",
+        installed: true,
+        version,
+      },
+      window.location.origin,
+    );
+  } catch {
+    // ignore
+  }
+}
+
+if (isAllowedOrigin(window.location.origin)) {
+  announceBridgePresence();
 }
 
 function relayIdentityAuth(detail) {
@@ -64,14 +100,37 @@ function relayPrefs(prefs) {
   });
 }
 
+function relayTotpClockOffset(rawOffset) {
+  const n = Number(rawOffset);
+  if (!Number.isFinite(n)) return;
+  chrome.runtime.sendMessage({
+    type: "STORE_TOTP_CLOCK_OFFSET",
+    offsetMs: Math.trunc(n),
+  });
+}
+
+try {
+  const cachedOffset = window.localStorage?.getItem("p0020_totp_clock_offset_ms_v1");
+  if (cachedOffset != null && cachedOffset !== "") {
+    relayTotpClockOffset(cachedOffset);
+  }
+} catch {
+  // ignore
+}
+
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (!isAllowedOrigin(event.origin)) return;
   const t = event.data?.type;
+  if (t === "E0001_COOKIE_BRIDGE_PING") {
+    announceBridgePresence();
+    return;
+  }
   if (t === "E0001_HUB_IDENTITY_AUTH") relayIdentityAuth(event.data);
   if (t === "E0001_COOKIE_BRIDGE_AUTH") relayAuth(event.data);
   if (t === "E0001_COOKIE_BRIDGE_BINDINGS") relayBindings(event.data.bindings);
   if (t === "E0001_COOKIE_BRIDGE_PREFS") relayPrefs(event.data);
+  if (t === "E0001_TOTP_CLOCK_OFFSET") relayTotpClockOffset(event.data?.offsetMs);
   // Manual-only: no web → SYNC_NOW relay (use extension Sync button per route).
   if (t === "E0001_COOKIE_BRIDGE_SELECT") {
     chrome.runtime.sendMessage({

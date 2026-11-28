@@ -458,6 +458,29 @@ class SessionManager {
 
   setUserDataRoot(root) {
     this.#userDataRoot = root;
+    if (!(globalThis.__STEALTH_SESSION_MANAGERS__ instanceof Set)) {
+      globalThis.__STEALTH_SESSION_MANAGERS__ = new Set();
+    }
+    globalThis.__STEALTH_SESSION_MANAGERS__.add(this);
+  }
+
+  getTrackedHeadlessSweepTargets() {
+    const trackedDirs = [];
+    const trackedIds = [...this.#launchingIds, ...this.#agentLaunchingIds];
+    const trackedPorts = [];
+    for (const [id, s] of this.#sessions.entries()) {
+      if (!s?.alive) continue;
+      trackedIds.push(id);
+      if (s.userDataDir) trackedDirs.push(s.userDataDir);
+      if (Number(s.debugPort) > 0) trackedPorts.push(Number(s.debugPort));
+    }
+    for (const [id, s] of this.#agentSessions.entries()) {
+      if (!s?.alive) continue;
+      trackedIds.push(id);
+      if (s.userDataDir) trackedDirs.push(s.userDataDir);
+      if (Number(s.debugPort) > 0) trackedPorts.push(Number(s.debugPort));
+    }
+    return { trackedDirs, trackedIds, trackedPorts };
   }
 
   setOnSessionChange(handler) {
@@ -602,15 +625,18 @@ class SessionManager {
               source: `p0003_window_${ev || "change"}`,
             }),
           ).catch(() => undefined);
-          if (isCloseEvent && this.#deferredAgentTasks.has(id)) {
-            const deferredEntry = this.#deferredAgentTasks.get(id);
-            this.#deferredAgentTasks.delete(id);
-            this.#persistDeferredQueueFile({
-              ...deferredEntry,
-              windowClosedAt: Date.now(),
-              readyForAgentRetry: true,
-            });
+          if (isCloseEvent) {
+            if (this.#deferredAgentTasks.has(id)) {
+              const deferredEntry = this.#deferredAgentTasks.get(id);
+              this.#deferredAgentTasks.delete(id);
+              this.#persistDeferredQueueFile({
+                ...deferredEntry,
+                windowClosedAt: Date.now(),
+                readyForAgentRetry: true,
+              });
+            }
             const closeDir = userDataDir;
+            const normCloseCode = String(code || "").replace(/^#/, "").trim().padStart(4, "0");
             const t = setTimeout(() => {
               try {
                 if (this.isRunning(id) || (closeDir && profileDirHasLock(closeDir))) return;
@@ -622,13 +648,13 @@ class SessionManager {
                     source: "p0003_deferred_post_close",
                   }),
                 ).catch(() => undefined);
-                if (code && !/^8\d{3}$/.test(String(code).replace(/^#/, "").trim().padStart(4, "0"))) {
+                if (normCloseCode && /^\d{4}$/.test(normCloseCode) && !/^8\d{3}$/.test(normCloseCode)) {
                   try {
                     const { drainReadyDeferredQueue } = require("../lib/deferred-queue-drainer.cjs");
                     drainReadyDeferredQueue({
                       sessionManager: this,
                       profileService,
-                      targetCodes: [String(code).replace(/^#/, "").trim().padStart(4, "0")],
+                      targetCodes: [normCloseCode],
                     });
                   } catch {
                     /* ignore */
@@ -790,8 +816,29 @@ class SessionManager {
     return { cleaned };
   }
 
+  #attachSafeContextDialogGuard(context) {
+    if (!context || context.__stealthDialogGuardBound) return;
+    context.__stealthDialogGuardBound = true;
+    const bindPage = (page) => {
+      if (!page || page.__stealthDialogGuardPageBound || typeof page.on !== "function") return;
+      page.__stealthDialogGuardPageBound = true;
+      page.on("dialog", (dialog) => {
+        // Prevent Playwright DialogManager's internal uncaught close() rejection if a remote CDP
+        // client or teardown race closes the session before Page.handleJavaScriptDialog resolves.
+        void dialog.dismiss().catch(() => undefined);
+      });
+    };
+    try {
+      for (const p of typeof context.pages === "function" ? context.pages() : []) bindPage(p);
+      if (typeof context.on === "function") context.on("page", bindPage);
+    } catch {
+      /* ignore */
+    }
+  }
+
   #registerPlaywrightSession(id, profile, opened, { skipStartupUrl = false, shadowLane = false } = {}) {
     bindOmniboxSearchGuard(opened.context);
+    this.#attachSafeContextDialogGuard(opened.context);
     const profileCode = extractProfileCode(profile.name, profile.id);
     const primaryUserDataDir = opened.primaryUserDataDir || profileDataDir(this.#userDataRoot, id) || opened.userDataDir;
 
@@ -1210,8 +1257,15 @@ class SessionManager {
       }
     }
 
-    // Periodic 60s native sweep for untracked zombie chrome-headless.exe trees (>3m old)
+    // Periodic 60s native sweep for untracked zombie chrome-headless.exe trees (>3m old).
+    // Skip when superseded by UnifiedSessionManager runtime bridge, and aggregate tracked sets
+    // across all registered SessionManager instances so hot-patched headless lanes are never reaped.
+    if (!(globalThis.__STEALTH_SESSION_MANAGERS__ instanceof Set)) {
+      globalThis.__STEALTH_SESSION_MANAGERS__ = new Set();
+    }
+    globalThis.__STEALTH_SESSION_MANAGERS__.add(this);
     if (
+      !this._untrackedSweepSuperseded &&
       process.env.STEALTH_DEV_ISOLATED !== "1" &&
       this.#launchingIds.size === 0 &&
       this.#agentLaunchingIds.size === 0 &&
@@ -1219,22 +1273,38 @@ class SessionManager {
     ) {
       this._lastUntrackedHeadlessSweepAt = nowMs;
       try {
-        const trackedDirs = [];
-        const trackedIds = [...this.#launchingIds, ...this.#agentLaunchingIds];
-        const trackedPorts = [];
-        for (const [id, s] of this.#sessions.entries()) {
-          if (!s.alive) continue;
-          trackedIds.push(id);
-          if (s.userDataDir) trackedDirs.push(s.userDataDir);
-          if (Number(s.debugPort) > 0) trackedPorts.push(Number(s.debugPort));
+        const trackedDirsSet = new Set();
+        const trackedIdsSet = new Set();
+        const trackedPortsSet = new Set();
+        const managers = [
+          ...globalThis.__STEALTH_SESSION_MANAGERS__,
+          this,
+          this._unifiedSmV14,
+          this._unifiedSmV13,
+          this._unifiedSmV12,
+        ].filter(Boolean);
+        for (const mgr of new Set(managers)) {
+          if (typeof mgr.getTrackedHeadlessSweepTargets !== "function") continue;
+          const t = mgr.getTrackedHeadlessSweepTargets();
+          for (const d of t?.trackedDirs || []) trackedDirsSet.add(d);
+          for (const id of t?.trackedIds || []) trackedIdsSet.add(id);
+          for (const p of t?.trackedPorts || []) trackedPortsSet.add(p);
         }
-        for (const [id, s] of this.#agentSessions.entries()) {
-          if (!s.alive) continue;
-          trackedIds.push(id);
-          if (s.userDataDir) trackedDirs.push(s.userDataDir);
-          if (Number(s.debugPort) > 0) trackedPorts.push(Number(s.debugPort));
-        }
-        reapUntrackedHeadlessBrowsersNative({ trackedDirs, trackedIds, trackedPorts, minAgeMs: 180_000 });
+        const dirsSnapshot = [...trackedDirsSet];
+        const idsSnapshot = [...trackedIdsSet];
+        const portsSnapshot = [...trackedPortsSet];
+        setImmediate(() => {
+          try {
+            reapUntrackedHeadlessBrowsersNative({
+              trackedDirs: dirsSnapshot,
+              trackedIds: idsSnapshot,
+              trackedPorts: portsSnapshot,
+              minAgeMs: 180_000,
+            });
+          } catch {
+            /* best-effort native zombie sweep */
+          }
+        });
       } catch {
         /* best-effort native zombie sweep */
       }

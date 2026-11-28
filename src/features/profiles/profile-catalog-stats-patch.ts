@@ -99,10 +99,14 @@ export function reconcileCatalogStats(stats: ProfileCatalogStats): ProfileCatalo
 export function catalogStatsToKpiNumbers(stats: ProfileCatalogStats, runningHeadlessCount = 0) {
   const reconciled = reconcileCatalogStats(stats);
   const activeTotal = reconciled.running + reconciled.opening;
+  const effectiveHeadless =
+    reconciled.headlessRunning !== undefined
+      ? Math.max(0, reconciled.headlessRunning)
+      : Math.max(0, runningHeadlessCount);
   const headedRunning =
     reconciled.headedRunning !== undefined
       ? Math.max(0, reconciled.headedRunning)
-      : Math.max(0, activeTotal - runningHeadlessCount);
+      : Math.max(0, activeTotal - effectiveHeadless);
   const ready = Math.max(0, reconciled.deferred ?? 0);
   return {
     total: reconciled.total,
@@ -111,7 +115,7 @@ export function catalogStatsToKpiNumbers(stats: ProfileCatalogStats, runningHead
     updateToday: reconciled.updatedToday ?? 0,
     ready,
     running: headedRunning,
-    headless: runningHeadlessCount,
+    headless: effectiveHeadless,
     failed: reconciled.failed,
   };
 }

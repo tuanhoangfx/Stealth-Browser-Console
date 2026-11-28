@@ -515,11 +515,14 @@ function refreshCoreRouteModuleCaches({ profileService, userDataRoot }) {
     const freshOrphan = require("../lib/profile-browser-orphan.cjs");
     propagate(freshOrphan, oldOrphanEntries);
     if (typeof freshOrphan.reapOrphanAdbScrcpyProcessesNative === "function") {
-      try {
-        freshOrphan.reapOrphanAdbScrcpyProcessesNative({ maxIdleMs: 90_000, viteMaxIdleMs: 30 * 60_000 });
-      } catch {
-        /* ignore */
-      }
+      const deferReapTimer = setTimeout(() => {
+        try {
+          freshOrphan.reapOrphanAdbScrcpyProcessesNative({ maxIdleMs: 90_000, viteMaxIdleMs: 30 * 60_000 });
+        } catch {
+          /* ignore */
+        }
+      }, 4000);
+      if (typeof deferReapTimer.unref === "function") deferReapTimer.unref();
     }
     propagate(require("../lib/profile-chrome-cleanup.cjs"), oldCleanupEntries);
     propagate(require("../lib/agent-shadow-profile.cjs"), oldShadowEntries);
@@ -728,9 +731,17 @@ function createRouteRuntimeHelpers({ sessionManager, profileService, userDataRoo
   function patchProfileHandler(ctx) {
     const profileId = ctx.params[1];
     const body = ctx.body && typeof ctx.body === "object" ? ctx.body : {};
+    const forceAgentHeader = Boolean(
+      parseAgentSmokeFlag(ctx.req, body) ||
+        isAgentSmokeLaunch() ||
+        body.agent_smoke ||
+        body.agentSmoke ||
+        body.agent_task ||
+        body.agentTask,
+    );
     const isAgentRequest = Boolean(
-      body.allowStaticIpPin !== true &&
-        (parseAgentSmokeFlag(ctx.req, body) || isAgentSmokeLaunch() || body.staticIp === true || body.staticIp === 1),
+      forceAgentHeader ||
+        (body.allowStaticIpPin !== true && (body.staticIp === true || body.staticIp === 1 || body.proxy !== undefined)),
     );
     return patchProfileOp(
       { profileService },
@@ -739,9 +750,21 @@ function createRouteRuntimeHelpers({ sessionManager, profileService, userDataRoo
       {
         userDataRoot: (typeof userDataRoot === "function" ? userDataRoot() : userDataRoot) || path.join(os.tmpdir(), "stealth-browser-api"),
         isAgentRequest,
+        forceAgentHeader,
       },
     )
-      .then((profile) => send.json(ctx.res, 200, { ok: true, profile }))
+      .then((profile) =>
+        send.json(ctx.res, 200, {
+          ok: true,
+          profile,
+          ...(profile?.skippedProxyPersist
+            ? {
+                skippedProxyPersist: true,
+                hint: "Pass ephemeralProxy on POST /api/profiles/:id/launch instead of persisting proxy via PATCH.",
+              }
+            : {}),
+        }),
+      )
       .catch((error) => {
         const message = error instanceof Error ? error.message : String(error);
         if (message === "Profile not found.") {

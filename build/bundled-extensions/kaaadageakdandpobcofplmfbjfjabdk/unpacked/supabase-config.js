@@ -8,12 +8,12 @@
  */
 
 /** Tool Hub identity — Lenovo `hub-api` (sync with P0004 / `.env.shared` HUB_SUPABASE_*). */
-export const E0001_IDENTITY_SUPABASE_URL = "https://hub-api.infi.io.vn";
+export const E0001_IDENTITY_SUPABASE_URL = "https://hub-api.infi28.com";
 export const E0001_IDENTITY_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4MzYxOTY3NiwiZXhwIjoyMDk4OTc5Njc2LCJyb2xlIjoiYW5vbiJ9.RFnTkDdTay00QnuIgHwv334Br8BtbQliQJEl89OLgwg";
 
 /** Data Box — cookie vault + note_sync RPC. */
-export const E0001_DATA_SUPABASE_URL = "https://sb-api.infi.io.vn";
+export const E0001_DATA_SUPABASE_URL = "https://sb-api.infi28.com";
 export const E0001_DATA_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4MzYxOTY3NiwiZXhwIjoyMDk4OTc5Njc2LCJyb2xlIjoiYW5vbiJ9.RFnTkDdTay00QnuIgHwv334Br8BtbQliQJEl89OLgwg";
 

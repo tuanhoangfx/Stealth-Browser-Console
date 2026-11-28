@@ -1,7 +1,7 @@
 const STORAGE_BINDINGS = "e0001-sync-bindings-v1";
 const STORAGE_AUTH = "e0001-bridge-auth-v1";
 const TOOL_COOKIE_URL = "http://127.0.0.1:5177/cookie";
-const TOOL_PROD_URL = "https://databox.infi.io.vn/cookie";
+const TOOL_PROD_URL = "https://databox.infi28.com/cookie";
 
 const root = document.getElementById("bindings");
 const msg = document.getElementById("msg");

@@ -369,6 +369,8 @@ function enrichProfilesWithActivityLog(profiles) {
   const activityLogs = waitingState?.activityLogs || {};
   const headlessReasons = waitingState?.headlessReasons || {};
   const waitingReasons = waitingState?.waitingReasons || {};
+  const runningHeadlessSet = new Set(Array.isArray(waitingState?.runningHeadlessIds) ? waitingState.runningHeadlessIds.map(String) : []);
+  const headedRunningSet = new Set(Array.isArray(waitingState?.headedRunningIds) ? waitingState.headedRunningIds.map(String) : []);
   const nowMs = Date.now();
   const eventsByProfileId = new Map();
   const profileIds = profiles.map((p) => (p && p.id ? String(p.id) : "")).filter(Boolean);
@@ -412,6 +414,9 @@ function enrichProfilesWithActivityLog(profiles) {
   for (const p of profiles) {
     if (!p || !p.id) continue;
     const pid = String(p.id);
+    if (runningHeadlessSet.has(pid) && !headedRunningSet.has(pid) && p.status !== "running") {
+      p.status = "running";
+    }
     const code = String(p.name || "").trim();
     const customEntry = (code && activityLogs[code]) || activityLogs[pid] || null;
     const hReason = headlessReasons[pid] || (code && headlessReasons[code]) || "";
@@ -2332,6 +2337,8 @@ function getCatalogStats() {
   let waitingCodes = [];
   let waitingReasons = {};
   let headlessReasons = {};
+  let runningHeadlessIds = [];
+  let runningHeadlessCodes = [];
   let activityLogs = {};
   let headedRunning = undefined;
   let headlessRunning = undefined;
@@ -2342,6 +2349,8 @@ function getCatalogStats() {
     waitingCodes = waitingState.waitingCodes;
     waitingReasons = waitingState.waitingReasons || {};
     headlessReasons = waitingState.headlessReasons || {};
+    runningHeadlessIds = waitingState.runningHeadlessIds || [];
+    runningHeadlessCodes = waitingState.runningHeadlessCodes || [];
     activityLogs = waitingState.activityLogs || {};
     headedRunning = waitingState.headedRunningIds.length;
     headlessRunning = waitingState.runningHeadlessIds.length;
@@ -2406,6 +2415,8 @@ function getCatalogStats() {
     failed: 0,
     headedRunning,
     headlessRunning,
+    runningHeadlessIds,
+    runningHeadlessCodes,
     deferred: deferredCount,
     waitingCodes,
     waitingReasons,

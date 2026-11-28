@@ -15,7 +15,8 @@
   overflow: hidden;
 }
 
-.hub-tab-content-zone:has([data-overview-adm]) {
+.hub-tab-content-zone:has(> [data-overview-adm]),
+.hub-tab-content-zone:has(> div:not(.hidden):not([hidden]) [data-overview-adm]) {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -23,7 +24,7 @@
   overflow: hidden;
 }
 
-.hub-tab-content-zone:has([data-overview-adm]) > div:not(.hidden) {
+.hub-tab-content-zone:has(> div:not(.hidden):not([hidden]) [data-overview-adm]) > div:not(.hidden):not([hidden]) {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;

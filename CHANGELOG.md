@@ -1,5 +1,821 @@
 # Changelog
 
+## 2026-11-28 - Optimize Mobile Farm live-screen with parallel SWR iOS/Android polling and Prod hot-patch
+
+- Version: `9.2.586`
+- Timestamp: 2026-11-28 18:05 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Parallelize Android live-screen + iOS device discovery with 12s/45s SWR device list caching and 1.45s background frame poller for sub-100ms warm allDevices responses
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/ios-stealth-bridge.test.cjs (6/6 pass)
+
+---
+## 2026-11-28 - S9+ Dual U95 launchers & Aurora gradient user switch veil
+
+- Version: `9.2.585`
+- Timestamp: 2026-11-28 17:56 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add Zalo U95 / FB U95 / Mess U95 quick buttons with auto-switch to U0, animated Aurora gradient user switch veil in Wall & Theater, and updated warm-slot tooltips.
+
+### Verification
+
+- tsc --noEmit, lint, api-routes & mobile-farm-execution-board 12/12, s9plus-known-good 4/4 & 34/34
+
+---
+## 2026-11-28 - Fix Prod exe startup crash loop on corrupt hot-patch after reboot
+
+- Version: `9.2.584`
+- Timestamp: 2026-11-28 17:44 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Quarantine null-byte/corrupt hot-patch/package.json in hot-patch-loader & desktop-host-kit, fsync atomic hot-patch writes, release SingleInstanceLock on pre-boot uncaughtException, and heal offline resources in KeepAlive
+
+### Verification
+
+- node --test Tool/scripts/desktop-hot-patch.test.mjs Tool/scripts/ensure-stealth-p0003-keepalive.test.mjs + live :6003/api/health
+
+---
+## 2026-11-28 - Ship async iOS background frame poller and Mobile Farm multi-device theater isolation to Prod
+
+- Version: `9.2.583`
+- Timestamp: 2026-11-28 17:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Serve cached Wi-Fi iOS frames in <50ms via 1.45s demand-driven background poller (cutting allDevices live-screen from ~8.9s to <350ms), skip dead USB WDA/DVT fallbacks on Wi-Fi iPhones, and sync per-device Theater serial isolation + 7-bit H.264 mux
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/ios-stealth-bridge.test.cjs (6/6 pass)
+
+---
+## 2026-11-28 - Dynamic 01-05 S9+ labels and warm secondary user switching
+
+- Version: `9.2.582`
+- Timestamp: 2026-11-28 15:38 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Sync live user names onto S9+ slot pills and keep 1 recent secondary user warm for fast switching
+
+### Verification
+
+- pnpm run typecheck && pnpm run lint && node --test electron/api-routes.test.cjs electron/lib/mobile-farm-execution-board.test.cjs
+
+---
+## 2026-11-28 - Enable concurrent 24fps H.264 on 5-Device Wall & per-device Theater serial routing
+
+- Version: `9.2.581`
+- Timestamp: 2026-11-28 15:33 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Decode 7-bit multi-device H.264 mux channels on 5-Device Wall so Pixel 6a and Pixel 7 stream 24fps concurrently, and pass explicit deviceSerial across all MobileFarmTheaterOverlay controls and iOS/Android viewports
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console build + live :6003 Theater HQ muxChannel=16 & dual H.264 verification
+
+---
+## 2026-11-28 - Add live-control api-routes test and align S9+ 01-05 user slots
+
+- Version: `9.2.580`
+- Timestamp: 2026-11-28 15:09 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add idempotent readBody regression test in api-routes.test.cjs and label S9+ slots 01..05 (U0, U10..U13) in MobileFarmView.tsx
+
+### Verification
+
+- pnpm run typecheck && pnpm run lint && node --test electron/api-routes.test.cjs
+
+---
+## 2026-11-28 - Upgrade HubTooltip SSOT across modal/table/pager controls
+
+- Version: `9.2.579`
+- Timestamp: 2026-11-28 15:06 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Pick up full HubTooltip SSOT from packages/hub-ui and repackage desktop NSIS + win-unpacked
+
+### Verification
+
+- packages/hub-ui vitest + P0003 dist + hot-patch
+
+---
+## 2026-11-28 - Lock V1 sidebar collapse icon & HubTooltip SSOT chrome
+
+- Version: `9.2.578`
+- Timestamp: 2026-11-28 06:49 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Apply locked V1 Panel Dock Frame to HubSidebarCollapseGlyph, remove temporary preview, and upgrade Hub chrome tooltips to HubTooltip SSOT
+
+### Verification
+
+- packages/hub-ui vitest (1084 tests) + P0003 tsc/lint/vitest (227 tests) + P0001/P0010 build & hot-patch
+
+---
+## 2026-11-28 - Fix double readBody hang on POST mobile-stealth live-control
+
+- Version: `9.2.577`
+- Timestamp: 2026-11-28 06:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Make readBody idempotent and bypass duplicate POST body consumption in api-server.cjs for live-control/wifi-adb routes
+
+### Verification
+
+- pnpm run typecheck && pnpm run lint && node --test electron/api-routes.test.cjs
+
+---
+## 2026-11-28 - Expose Grok, ElevenLabs, and Threads warmup lanes on Execution Board
+
+- Version: `9.2.576`
+- Timestamp: 2026-11-28 06:33 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated Mobile Farm Execution Board fallback yield table with Grok, ElevenLabs, and Threads warmup lanes
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/mobile-farm-execution-board.test.cjs
+
+---
+## 2026-11-28 - Isolate Mobile Farm per-device cached screens & bind H.264 serial
+
+- Version: `9.2.575`
+- Timestamp: 2026-11-28 06:31 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Key React cachedSlotScreens by device serial instead of shared disp:0 and pass explicit serial query to H264PhoneStreamCanvas mux stream
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console build + live :6003/:5175 multi-device verification
+
+---
+## 2026-11-28 - Clarify Device Mobile FB Gmail-pool labels & task titles
+
+- Version: `9.2.574`
+- Timestamp: 2026-11-28 06:23 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Format FB Gmail-pool method labels and mobile task titles in mobile-farm-execution-board and MobileFarmExecutionBoard
+
+### Verification
+
+- node --test mobile-farm-execution-board.test.cjs + tsc --noEmit
+
+---
+## 2026-11-28 - HubTooltip SSOT, split header spacing, and 5 sidebar collapse icon previews
+
+- Version: `9.2.573`
+- Timestamp: 2026-11-28 06:17 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Replace native sidebar collapse browser tooltip with portal HubTooltip SSOT, restore 0.4375rem header bottom spacing on P0003 split screens, and add 5 sidebar collapse icon mockups in System Design
+
+### Verification
+
+- packages/hub-ui vitest + P0003 tsc + lint + unit tests + build + desktop smoke
+
+---
+## 2026-11-28 - Align S9+ FHD+ Touch Coords 1080x2220
+
+- Version: `9.2.572`
+- Timestamp: 2026-11-28 06:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Match S9+ Samsung FHD+ 1080x2220 scale coordinates in MobileFarmView
+
+### Verification
+
+- pnpm run typecheck && pnpm run lint && pnpm run build
+
+---
+## 2026-11-28 - Add Threads sync, P0020 detail backfill, and GET /api/profiles/:id
+
+- Version: `9.2.571`
+- Timestamp: 2026-11-28 05:51 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Threads cookie matcher/HTTP verifier/auto-bind, non-destructive service_uid/name/tt_username/mail_create_date backfill in multiplatform-sync, and GET /api/profiles/:id + rich list fields in profile-routes.
+
+### Verification
+
+- node --check; node --test google-session-detect.test.cjs & profile-cookie-guard.test.cjs (40/40 pass); verifyThreadsCookiesLiveViaHttp & 220-profile API sync verified
+
+---
+## 2026-11-28 - S9+ Full-Frame Calibration, Auto-Stop BG User & Hot-Patch Fallback
+
+- Version: `9.2.570`
+- Timestamp: 2026-11-28 05:39 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-stop old secondary Android user on S9+ switch, add Zalo/FB U-slot launch buttons, sync 1440x2960 coords, and fix hot-patch ERR_INVALID_PACKAGE_CONFIG fallback
+
+### Verification
+
+- pnpm run typecheck && pnpm run lint && hot-patch-loader.test.cjs + mobile-farm-execution-board.test.cjs (11/11)
+
+---
+## 2026-11-28 - Execution Board Threads OIDC Yield & Shared DOM Kaizen Metrics
+
+- Version: `9.2.569`
+- Timestamp: 2026-11-28 05:16 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added Threads 1-Click OIDC yield row and shared cross-device DOM rule metrics to mobile-farm-execution-board.cjs
+
+### Verification
+
+- node --test electron/lib/mobile-farm-execution-board.test.cjs
+
+---
+## 2026-11-28 - S9+ Manual Scrcpy & Multi-User Switcher
+
+- Version: `9.2.568`
+- Timestamp: 2026-11-28 05:14 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Keep S9+ visible in Mobile Farm physical wall with Scrcpy and U0/U10/U11/U12 partition switchers
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console run build && pnpm run lint && mobile-farm-execution-board.test.cjs
+
+---
+## 2026-11-28 - Fix live hot-reload menu removal and add dark titleBarOverlay
+
+- Version: `9.2.567`
+- Timestamp: 2026-11-28 05:13 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Re-run installDesktopAppMenu in system.hotReload + healWindowPreloadIfBroken and spread getDesktopWindowChromeOptions (#0b1020)
+
+### Verification
+
+- desktop-app-menu.test + live :6003 desktopMenuSynced=true + smoke-desktop-ui profiles-real 44/44
+
+---
+## 2026-11-28 - 4-Device Mobile Farm Wall & Step Bottleneck Kaizen Board
+
+- Version: `9.2.566`
+- Timestamp: 2026-11-28 04:58 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Adapted Execution Board, 5-Device Wall grid, and Carrier Kaizen lanes automatically to 4-device fleet (S9+ retired -> 4/4 online Grade S 96/100) and added Cross-Device Step & DOM Behavior Kaizen panel + Cursor yield row
+
+### Verification
+
+- node --test electron/lib/mobile-farm-execution-board.test.cjs + tsc --noEmit
+
+---
+## 2026-11-28 - Remove File/Edit/View/Window/Help menu bar
+
+- Version: `9.2.565`
+- Timestamp: 2026-11-28 04:58 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Switch desktop-app-menu SSOT to menu-less chrome (Menu.setApplicationMenu(null) + autoHideMenuBar: true) before createWindow while keeping keyboard shortcuts
+
+### Verification
+
+- desktop-app-menu.test + live Electron probe + verify-desktop-exe-ssot
+
+---
+## 2026-11-28 - Surface 24/7 Kaizen coordinator control and Profile vs 5-Mobile platform yield on Execution Board
+
+- Version: `9.2.564`
+- Timestamp: 2026-11-28 04:19 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Register kaizen-coordinator in mobile-farm-execution-board.cjs using CUI node.exe and render Priority Platform Output & Channel Yield strip in MobileFarmExecutionBoard.tsx.
+
+### Verification
+
+- tsc --noEmit (0 errors) + live GET :6003/api/mobile-stealth/execution-board verified
+
+---
+## 2026-11-28 - Accurately sync Headless and Waiting KPI counts, split Waiting popover tiers, and expire stale slot waits
+
+- Version: `9.2.563`
+- Timestamp: 2026-11-28 03:15 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Sync runningHeadlessIds/headlessRunning in getCatalogStats and catalogStatsToKpiNumbers, split buildWaitingKpiHintK1 into [Waiting for User Headed Close] and [Launching Headless Queue] tiers, expire stale _waitingHeadlessIds (>25s) and opening rows (>30s), recognize isolated reaper-exempt browsers in HEADLESS, and prevent anti-eviction locks from inflating WAITING
+
+### Verification
+
+- vitest run src/features/profiles/profile-kpi-items.test.ts + live /api/catalog/stats after hot-reload
+
+---
+## 2026-11-28 - Fix Google multi-SID cookie corruption, stale backup refresh, and hot-patch atomic sync
+
+- Version: `9.2.562`
+- Timestamp: 2026-11-28 03:11 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-heal structural SQLite cookie corruption while keeping clean DBs zero-write, refresh stale .last-good.bak and slot-latest backups on close, prevent transient ERR_INVALID_PACKAGE_CONFIG during hot-patch sync, and suppress false google_one_logged_out overrides when ListAccounts verifies live auth.
+
+### Verification
+
+- run-unit-tests.mjs --fast
+
+---
+## 2026-11-28 - Eliminate zombie WAITING locks, auto-trigger deferred G1 tasks <3s on Headed close, and surface Headed waiting badges
+
+- Version: `9.2.561`
+- Timestamp: 2026-11-28 02:48 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Auto-prune dead/zero-PID or finished (>45s non-running) priority-agent-locks.json and active-agent-locks.json entries in waiting-agent-profiles.cjs, trigger drainReadyDeferredQueue 1.8s after any non-8xxx Headed window closes in session-manager.cjs, wire g1_family_12m_appeal into deferred-queue-drainer.cjs, and surface pending task count badges on open Headed profiles
+
+### Verification
+
+- node --test Tool/P0020-Data-Box/scripts/appeal-g1-family-12m-limit.test.mjs + live /api/profiles/stats check
+
+---
+## 2026-11-28 - Upgrade Runtime Log & Run History to HubLogActorBadge SSOT
+
+- Version: `9.2.560`
+- Timestamp: 2026-11-28 02:40 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Switched Stealth Console and Run History actor columns/filters to HubLogActorBadge and shared HubEntityLogActorKind counts.
+
+### Verification
+
+- pnpm --dir Tool/P0003-Stealth-Browser-Console exec vitest run runtime-console-ssot.test.ts (5/5); tsc --noEmit (0); gate light SSOT checks passed
+
+---
+## 2026-11-28 - Set userDataRoot in session-fast-spawn-cdp test
+
+- Version: `9.2.559`
+- Timestamp: 2026-11-28 02:33 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Call sm.setUserDataRoot(rootDir) in session-fast-spawn-cdp.test.cjs so tests write profiles inside os.tmpdir() instead of E:\\Dev\\profiles
+
+### Verification
+
+- node --test electron/engine/session-fast-spawn-cdp.test.cjs
+
+---
+## 2026-11-28 - Prevent superseded legacy SessionManager from reaping UnifiedSessionManager headless browsers at 180s
+
+- Version: `9.2.558`
+- Timestamp: 2026-11-28 01:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Mark superseded SessionManager instances in session-runtime-bridge.cjs and aggregate tracked dirs/ids/ports across globalThis.__STEALTH_SESSION_MANAGERS__ before reapUntrackedHeadlessBrowsersNative; add unit test in session-dead-sidecar-prune.test.cjs.
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/engine/session-dead-sidecar-prune.test.cjs (3/3 pass)
+
+---
+## 2026-11-28 - Fix P0003 isRunning/listRunning and /cdp worker fallback parity
+
+- Version: `9.2.557`
+- Timestamp: 2026-11-28 01:12 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Ensure hotPatchedIsRunning, hotPatchedGetCdpInfo, profiles.status, and profiles.cdp consistently resolve local/legacy/worker (:6004) headless CDP sessions while guarding user-headed sessions
+
+### Verification
+
+- node api-routes.test.cjs + 5/5 node --test session/worker/operator tests pass
+
+---
+## 2026-11-27 - Preserve & sync canonical .google.com stealth_cookies and reject ccTLD duplicates
+
+- Version: `9.2.556`
+- Timestamp: 2026-11-27 16:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Stop p0020-snapshot-builder from wiping Google-family stealth_cookies to null on Stealth close/sync, save canonical .google.com cookies alongside cookie_telemetry, and tighten isGoogleAuthSaveCookie in service-cookie-matchers.cjs against regional ccTLD pollution.
+
+### Verification
+
+- p0020-snapshot-builder.test.cjs (11/11) + google-session-detect & stealth-multiplatform-sync (23/23) + verify-no-unscoped-cookie-wipe-ssot
+
+---
+## 2026-11-27 - Eliminate Background Stealth Console IPC & Stream Burn
+
+- Version: `9.2.555`
+- Timestamp: 2026-11-27 16:07 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Gate profile:session IPC to visible non-minimized windows, pause hidden/occluded H264 mux stream & live screen polling when inactive
+
+### Verification
+
+- tsc + vite build + hub-vite-alias-check
+
+---
+## 2026-11-27 - Execution Board Outlook Graph Progress Indicator
+
+- Version: `9.2.554`
+- Timestamp: 2026-11-27 15:10 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated outlook-forward-sync Execution Board card to report live Graph API token coverage (graphReadyCount/totalUsableCount) and missing OAuth pending count.
+
+### Verification
+
+- mobile-farm-execution-board.test.cjs (97/97), tsc --noEmit, P0003 lint chain
+
+---
+## 2026-11-27 - Add shared optimizeDeps SSOT to P0003 vite.config.ts
+
+- Version: `9.2.553`
+- Timestamp: 2026-11-27 15:04 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Wire createHubViteOptimizeDeps in P0003 vite.config.ts to complement hubUiVendorWatchPlugin multi-package pre-bundling.
+
+### Verification
+
+- hub-vite-alias-check pass; Vite resolveConfig ok
+
+---
+## 2026-11-27 - Execution Board Mail Forward Daemons & Mobile Farm Telemetry
+
+- Version: `9.2.552`
+- Timestamp: 2026-11-27 14:46 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Registered gmail-forward-worker & outlook-forward-sync in CONTROLLED_DAEMONS with Execution Board progress/control cards.
+
+### Verification
+
+- mobile-farm-execution-board.test.cjs (passed inside 96/96), tsc --noEmit, P0003 lint chain
+
+---
+## 2026-11-27 - Scale :6004 headless worker RAM guard ceiling on high-RAM workstations
+
+- Version: `9.2.551`
+- Timestamp: 2026-11-27 06:20 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Scale default STEALTH_WORKER_MAX_RAM_MB to 12288 MB on >=96GB RAM workstations in stealth-agent-worker-daemon.cjs to stop 20s RAM-eviction and cold-relaunch thrashing across concurrent headless sessions.
+
+### Verification
+
+- GET http://127.0.0.1:6004/api/system/worker-guard maxRamMb=12288
+
+---
+## 2026-11-27 - Mobile Farm early VBUS power-loss board badge and FB 200 daemon control
+
+- Version: `9.2.550`
+- Timestamp: 2026-11-27 04:53 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Surfaced usbPresent, unpluggedElapsedMin, earlyVbusLossActive (<=85% battery >=20m continuous VBUS loss) and alert_check_usb_vbus_cable on P0003 Execution Board, and registered fb-multi-method-100 in CONTROLLED_DAEMONS.
+
+### Verification
+
+- tsc --noEmit + node --test electron/lib/mobile-farm-execution-board.test.cjs
+
+---
+## 2026-11-27 - SSOT parity: sync Action & Backup Profile widths with column-meta
+
+- Version: `9.2.549`
+- Timestamp: 2026-11-27 03:43 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Align stealth-profile-layout.css .hub-users-col--tools (7rem) and STEALTH_BACKUP_COLUMN_META.profile (HUB_DIRECTORY_PROFILE_COL_WIDTH) with Hub-UI SSOT.
+
+### Verification
+
+- tsc + directory-table-col-parity + fixed-col-css-parity
+
+---
+## 2026-11-27 - Execution Board offline reason & form-step stall score parity
+
+- Version: `9.2.548`
+- Timestamp: 2026-11-27 03:22 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Populate adb_device_offline/ios_wifi_offline fallback unreachableReason and penalize form_step stalls in P0003 Mobile Farm execution board
+
+### Verification
+
+- node --test electron/lib/mobile-farm-execution-board.test.cjs + live GET :6003/api/mobile-stealth/execution-board (5/5 online)
+
+---
+## 2026-11-27 - Tailscale proxy non-admin auto-reload
+
+- Version: `9.2.547`
+- Timestamp: 2026-11-27 02:56 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Upgrade p0003-stealth-tailscale-proxy.mjs with POST /_proxy/reload, sha256 script watch + syntax check, EADDRINUSE retry, and api-server.cjs proxyVersion v2 auto-reload handshake.
+
+### Verification
+
+- node --test Tool/scripts/p0003-stealth-tailscale-proxy.test.mjs (1/1); api-routes + agent-worker-proxy (3/3)
+
+---
+## 2026-11-27 - Add /api/mobile-sim/switch-esim route for Pixel 6a eSIM sweep
+
+- Version: `9.2.546`
+- Timestamp: 2026-11-27 01:19 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Expose POST /api/mobile-sim/switch-esim in P0003 mobile-sim-routes delegating to switchAndSweepPixelEsimOtp.
+
+### Verification
+
+- node --test Tool/scripts/lib/android-adb-sim-bridge.test.mjs (mocked switch-esim route ok)
+
+---
+## 2026-11-26 - Harden :6003/:6004 singleflight, delta catalog sync, keepalive hung_wait & Playwright dialog guards
+
+- Version: `9.2.545`
+- Timestamp: 2026-11-26 21:18 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added singleflight mutex, EADDRINUSE fast-exit, delta known-good catalog upsert, keepalive 60-119s hung_wait guard, safe Playwright dialog/route guards, and fixed curResCode in p0020-snapshot-builder.cjs
+
+### Verification
+
+- test:fast, api-routes, agent-worker-proxy, desktop-exe-ssot 18/18, gate --stage post
+
+---
+## 2026-11-26 - Auto-ensure Tailscale Peer Gateway on :6003 API boot
+
+- Version: `9.2.544`
+- Timestamp: 2026-11-26 21:09 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Start and periodically health-check p0003-stealth-tailscale-proxy.mjs cleanly via startHiddenDetachedProcess when P0003 :6003 starts listening
+
+### Verification
+
+- P0003 test:fast (57 Vitest / 227 tests + Electron suites + UI build/smoke + zero-popup-spawn) PASS
+
+---
+## 2026-11-26 - Harden iPhone USB discovery, battery thermal fallback & SSH key path
+
+- Version: `9.2.543`
+- Timestamp: 2026-11-26 16:35 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Add resolvePymobiledevice3BinaryPath, C:\Users\CzP\.ssh fallback, 192.168.0.183 USB UDID host entry, 3.5s usbmux list timeout, and battery temperature diagnostics fallback.
+
+### Verification
+
+- gate P0003 21/21 OK + ios-stealth-bridge.test.cjs pass
+
+---
+## 2026-11-26 - Guard PATCH /api/profiles/:id against agent proxy persistence
+
+- Version: `9.2.542`
+- Timestamp: 2026-11-26 14:36 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Strip non-empty proxy and block staticIp=true on agent HTTP PATCHes, staging one-shot ephemeralProxy for non-protected profiles while preserving Local IP reset.
+
+### Verification
+
+- profile-ops.test.cjs, profile-service.test.cjs, api-routes.test.cjs pass; devWorker6004 hot-patched
+
+---
+## 2026-11-25 - Preserve check_phone over Outlook Abuse error demotion
+
+- Version: `9.2.541`
+- Timestamp: 2026-11-25 17:17 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Prevent stealth-multiplatform-sync and p0020-snapshot-builder from flipping check_phone Outlook rows to error on Abuse probes.
+
+### Verification
+
+- 33/33 google-session-detect & p0020-snapshot-builder tests PASS + gate-preflight PASS
+
+---
+## 2026-11-24 - iOS 15 multi-page domain-sorted and checksummed Cookies.binarycookies
+
+- Version: `9.2.540`
+- Timestamp: 2026-11-24 03:45 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Updated serializeBinaryCookies in ios-stealth-bridge.cjs to group 1 page per domain sorted ascending and compute 4-byte UInt32BE page checksum.
+
+### Verification
+
+- node --check ios-stealth-bridge.cjs + node --test ios-stealth-bridge.test.cjs (5/5 pass)
+
+---
+## 2026-11-24 - Forward X-Stealth-Caller-Id through :6003->:6004 proxy
+
+- Version: `9.2.539`
+- Timestamp: 2026-11-24 00:34 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Preserved X-Stealth-Caller-Id in agent-worker-proxy.cjs so P0003 Headless KPI groups sessions by real caller/script.
+
+### Verification
+
+- hot-patch + live :6003/:6004 session callerId check
+
+---
+## 2026-11-24 - Merge :6004 headless worker sessions into :6003 runtime & UI
+
+- Version: `9.2.538`
+- Timestamp: 2026-11-24 00:16 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Added worker-sessions-bridge to merge :6004 headless agent sessions into :6003 catalog stats, running sessions, filters, and Profiles directory badges.
+
+### Verification
+
+- tsc --noEmit + test:fast + worker-sessions-bridge.test.cjs + stealth-profile-directory-cells.test.tsx
+
+---
+## 2026-11-23 - Display Fleet Evaluation Grade (S/A/B/C) and Auto-Action badges on Mobile Farm UI
+
+- Version: `9.2.537`
+- Timestamp: 2026-11-23 16:44 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Show fleetEvaluation grade, efficiency score, and autonomous autoAction badges on MobileFarmFiveDeviceWall device cards and MobileFarmExecutionBoard summary strip
+
+### Verification
+
+- tsc --noEmit and mobile-farm-execution-board.test.cjs
+
+---
+## 2026-11-22 - Mobile Farm 5-device Fleet Evaluation Matrix, per-serial telemetry history & live-fleet SWR cache
+
+- Version: `9.2.536`
+- Timestamp: 2026-11-22 19:36 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Forward serial parameter in /api/android-vault/telemetry-history, separate local 127.0.0.1 emulator from the 5 physical phones on execution-board, expose fleetEvaluation & orchestrator.evaluation scores, and add SWR cache to /api/mobile-farm/live-fleet
+
+### Verification
+
+- node --test Tool/P0003-Stealth-Browser-Console/electron/lib/mobile-farm-execution-board.test.cjs
+
+---
 ## 2026-11-22 - Fix delayed Stripe billing address country detection and scroll-into-view fallback
 
 - Version: `9.2.535`

@@ -970,4 +970,93 @@ describe("profile-cookie-guard", () => {
     assert.equal(expiredRes.loggedIn, false);
     assert.equal(expiredRes.resultCode, "login_page");
   });
+
+  it("detects and auto-heals dirty SQLite hygiene issues on non-empty DBs while keeping clean DBs zero-write and refreshing stale native slots for priority profiles", () => {
+    const {
+      hasDirtySqliteCookieHygieneIssue,
+      autoHealWipedProfileCookies: autoHealFn,
+      snapshotProfileCookiesIfHealthy: snapFn,
+    } = require("./profile-cookie-guard.cjs");
+    const { resolveProfileBackupRoot, getProfileNativeBackupSlots } = require("./native-session-backup.cjs");
+
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "p0003-hygiene-heal-"));
+    try {
+      const pDir = path.join(tmpRoot, "profiles", "p-0010-test");
+      const ckPath = path.join(pDir, "Default", "Network", "Cookies");
+      fs.mkdirSync(path.dirname(ckPath), { recursive: true });
+      fs.writeFileSync(path.join(pDir, "Local State"), JSON.stringify({ os_crypt: { encrypted_key: "RFBBUEk=" } }), "utf8");
+
+      const { DatabaseSync } = require("node:sqlite");
+      const db = new DatabaseSync(ckPath);
+      db.exec(`
+        CREATE TABLE cookies(
+          creation_utc INTEGER NOT NULL,
+          host_key TEXT NOT NULL,
+          top_frame_site_key TEXT NOT NULL DEFAULT '',
+          name TEXT NOT NULL,
+          value TEXT NOT NULL,
+          encrypted_value BLOB NOT NULL DEFAULT X'',
+          path TEXT NOT NULL,
+          expires_utc INTEGER NOT NULL,
+          is_secure INTEGER NOT NULL DEFAULT 1,
+          is_httponly INTEGER NOT NULL DEFAULT 1,
+          last_access_utc INTEGER NOT NULL DEFAULT 0,
+          has_expires INTEGER NOT NULL DEFAULT 1,
+          is_persistent INTEGER NOT NULL DEFAULT 1,
+          priority INTEGER NOT NULL DEFAULT 1,
+          samesite INTEGER NOT NULL DEFAULT -1,
+          source_scheme INTEGER NOT NULL DEFAULT 2,
+          source_port INTEGER NOT NULL DEFAULT 443,
+          last_update_utc INTEGER NOT NULL DEFAULT 0,
+          source_type INTEGER NOT NULL DEFAULT 1,
+          has_cross_site_ancestor INTEGER NOT NULL DEFAULT 1
+        );
+      `);
+      // Insert >20KB worth of rows including one broken unpartitioned cross-site ancestor=0 row
+      const ins = db.prepare(`
+        INSERT INTO cookies (creation_utc, host_key, top_frame_site_key, name, value, path, expires_utc, last_update_utc, has_cross_site_ancestor)
+        VALUES (?, ?, '', ?, ?, '/', ?, ?, ?)
+      `);
+      ins.run(13438105528959001n, ".google.com", "SID", "g.a000TEST_SID_0010", 13469578665000000n, 13438105528959001n, 0);
+      for (let i = 0; i < 220; i += 1) {
+        ins.run(BigInt(13438105528960000 + i), `.example${i}.com`, "pref", "v".repeat(80), 13469578665000000n, BigInt(13438105528960000 + i), 1);
+      }
+      db.close();
+      assert.ok(fs.statSync(ckPath).size > 20480);
+
+      assert.equal(hasDirtySqliteCookieHygieneIssue(ckPath), true);
+      const healed = autoHealFn(pDir);
+      assert.equal(healed.sqliteSanitized, true);
+      assert.equal(healed.cookiesRestored, false);
+      assert.equal(hasDirtySqliteCookieHygieneIssue(ckPath), false);
+
+      // Clean non-empty DB stays strict zero-write
+      const second = autoHealFn(pDir);
+      assert.equal(second.healed, false);
+      assert.equal(Boolean(second.sqliteSanitized), false);
+
+      // Priority profile 0010 gets initial slot-latest automatically and refreshes when >24h stale
+      const snap1 = snapFn(pDir, { profileCode: "0010", force: false });
+      assert.equal(snap1.snapshotted, true);
+      assert.equal(snap1.nativeSlotSnapshotted, true);
+      const bRoot = resolveProfileBackupRoot(pDir);
+      const manifestPath = path.join(bRoot, "slot-latest", "manifest.json");
+      assert.equal(fs.existsSync(manifestPath), true);
+
+      const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      m.createdAt = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+      fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2), "utf8");
+      const db2 = new DatabaseSync(ckPath);
+      db2
+        .prepare("INSERT INTO cookies (creation_utc, host_key, top_frame_site_key, name, value, path, expires_utc, last_update_utc, has_cross_site_ancestor) VALUES (?, ?, '', ?, ?, '/', ?, ?, 1)")
+        .run(13438105529999001n, ".google.com", "SAPISID", "SAPISID_0010_FRESH", 13469578665000000n, 13438105529999001n);
+      db2.close();
+      const snap2 = snapFn(pDir, { profileCode: "0010", force: false });
+      assert.equal(snap2.snapshotted, true);
+      assert.equal(snap2.nativeSlotSnapshotted, true);
+      assert.ok(getProfileNativeBackupSlots(pDir).slotPrevious);
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
 });
