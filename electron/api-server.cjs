@@ -359,6 +359,21 @@ function startApiServer({ sessionManager, profileService, userDataRoot = "", por
           const out = controlMobileFarmDaemon({ daemonId: body?.daemonId, action: body?.action || "start" });
           return sendJson(res, out?.ok ? 200 : 400, out);
         }
+        if (urlPath === "/api/mobile-stealth/slot-labels") {
+          const labelsModPath = require.resolve("./lib/s9-slot-labels.cjs");
+          delete require.cache[labelsModPath];
+          const { getS9SlotLabels, updateS9SlotLabel } = require(labelsModPath);
+          if (req.method === "GET") {
+            const enrichVault = query.get("enrichVault") !== "0";
+            const out = await getS9SlotLabels({ enrichVault });
+            return sendJson(res, 200, out);
+          }
+          if (req.method === "POST") {
+            const body = await readBody(req);
+            const out = await updateS9SlotLabel(body || {});
+            return sendJson(res, 200, out);
+          }
+        }
         const { loadAndroidStealthBridge } = require("./lib/android-bridge-loader.cjs");
         const iosBridge = require("./lib/ios-stealth-bridge.cjs");
         const bridge = await loadAndroidStealthBridge(__dirname);

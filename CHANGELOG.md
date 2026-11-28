@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-11-28 - S9+ dynamic slots 01-16 & P0020-synced slot identity tags
+
+- Version: `9.2.588`
+- Timestamp: 2026-11-28 18:16 (UTC+7)
+- Type: Patch
+- Status: Committed
+
+### Changes
+
+- Add /api/mobile-stealth/slot-labels synced with P0020 Cloud Notes & read-only Vault lookup, inline Tag editor on S9+ card, and dynamic multi-user slot discovery for 06-16.
+
+### Verification
+
+- tsc --noEmit, lint, 19/19 unit tests, live S9+ provision-slot 38/38 & session backup
+
+---
+## 2026-11-28 - Optimize P0003 UI/IPC smoothness & compact 515MB ASAR to match P0010
+
+- Version: `9.2.587`
+- Timestamp: 2026-11-28 18:09 (UTC+7)
+- Type: Patch
+- Status: Verified
+
+### Changes
+
+- Make profile:listPage/catalogStats/bootstrap/listRunning non-blocking via cached worker bridge & deferred reconcile, useHubVisitedTabsLru(maxMounted:4) without pre-mounting Workflow, relax 4s poll to 15s, and compact stageAsarFromHotPatch
+
+### Verification
+
+- tsc --noEmit + desktop-hot-patch.test.mjs + live :6003
+
+---
 ## 2026-11-28 - Optimize Mobile Farm live-screen with parallel SWR iOS/Android polling and Prod hot-patch
 
 - Version: `9.2.586`

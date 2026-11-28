@@ -1,4 +1,4 @@
-import { memo, type PointerEvent } from "react";
+import { memo, useState, type PointerEvent } from "react";
 import {
   BatteryCharging,
   Camera,
@@ -11,6 +11,7 @@ import {
   PlugZap,
   RotateCw,
   Smartphone,
+  Tag,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -56,7 +57,25 @@ export type PhysicalWallDevice = {
   interactiveCard: FarmPhoneCardItem;
   isManualNode?: boolean;
   activeManualUserId?: number;
-  manualUserSlots?: Array<{ userId: number; label: string }>;
+  manualUserSlots?: ManualSlotDescriptor[];
+  dualSlotNote?: {
+    tag?: string;
+    zalo?: string;
+    fb?: string;
+    browserCode?: string;
+    vaultSummary?: string;
+  } | null;
+};
+
+export type ManualSlotDescriptor = {
+  userId: number;
+  shortCode: string;
+  label: string;
+  tag?: string;
+  zalo?: string;
+  fb?: string;
+  browserCode?: string;
+  vaultSummary?: string;
 };
 
 export type CarrierKaizenItem = {
@@ -97,6 +116,7 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
   onOpenScrcpy,
   onSwitchUser,
   onLaunchManualApp,
+  onSaveSlotNote,
   switchingUserState,
   onPressHome,
   onRotateProxy,
@@ -114,12 +134,38 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
   onOpenScrcpy?: (dev: PhysicalWallDevice) => void;
   onSwitchUser?: (dev: PhysicalWallDevice, userId: number) => void;
   onLaunchManualApp?: (dev: PhysicalWallDevice, packageName: string, appLabel: string, userIdOverride?: number) => void;
+  onSaveSlotNote?: (payload: {
+    userId: number;
+    tag: string;
+    zalo: string;
+    fb: string;
+    browserCode: string;
+    clear?: boolean;
+  }) => Promise<void> | void;
   switchingUserState?: { deviceId: string; userId: number; label: string } | null;
   onPressHome: (dev: PhysicalWallDevice) => void;
   onRotateProxy: (dev: PhysicalWallDevice) => void;
   onCopyScreen: (dev: PhysicalWallDevice) => void;
   onCopyOtp: (otp: string) => void;
 }) {
+  const [editingSlotDevice, setEditingSlotDevice] = useState<string | null>(null);
+  const [editingSlotUid, setEditingSlotUid] = useState<number>(0);
+  const [draftTag, setDraftTag] = useState<string>("");
+  const [draftZalo, setDraftZalo] = useState<string>("");
+  const [draftFb, setDraftFb] = useState<string>("");
+  const [draftBrowser, setDraftBrowser] = useState<string>("");
+
+  const populateEditorDraft = (dev: PhysicalWallDevice, uid: number) => {
+    setEditingSlotUid(uid);
+    const meta =
+      uid === 95
+        ? dev.dualSlotNote || {}
+        : dev.manualUserSlots?.find((s) => s.userId === uid) || {};
+    setDraftTag(meta.tag || "");
+    setDraftZalo(meta.zalo || "");
+    setDraftFb(meta.fb || "");
+    setDraftBrowser(meta.browserCode || "");
+  };
   const gridColsClass =
     devices.length <= 4
       ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-4"
@@ -408,6 +454,14 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
                   <div className="flex flex-wrap items-center gap-1">
                     {dev.manualUserSlots.map((slot) => {
                       const isActiveSlot = (dev.activeManualUserId ?? 0) === slot.userId;
+                      const detailParts = [
+                        `Switch ${dev.name} to User U${slot.userId} (${slot.shortCode}) — keeps 1 warm background slot`,
+                        slot.tag ? `Tag: ${slot.tag}` : "",
+                        slot.zalo ? `Zalo: ${slot.zalo}` : "",
+                        slot.fb ? `FB: ${slot.fb}` : "",
+                        slot.browserCode ? `P0020: #${slot.browserCode}` : "",
+                        slot.vaultSummary ? `Vault: ${slot.vaultSummary}` : "",
+                      ].filter(Boolean);
                       return (
                         <button
                           key={slot.userId}
@@ -415,19 +469,141 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
                           onClick={(e) => {
                             e.stopPropagation();
                             onSwitchUser(dev, slot.userId);
+                            if (editingSlotDevice === dev.id) {
+                              populateEditorDraft(dev, slot.userId);
+                            }
                           }}
-                          title={`Switch ${dev.name} to User U${slot.userId} (${slot.label}) — keeps 1 warm background slot`}
-                          className={`rounded border px-1.5 py-0.5 font-mono text-[9.5px] transition-colors ${
+                          title={detailParts.join(" · ")}
+                          className={`max-w-[96px] truncate rounded border px-1.5 py-0.5 font-mono text-[9.5px] transition-colors ${
                             isActiveSlot
                               ? "border-emerald-400/60 bg-emerald-500/25 font-semibold text-emerald-100"
-                              : "border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                              : slot.tag
+                                ? "border-amber-400/35 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20"
+                                : "border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                           }`}
                         >
                           {slot.label}
                         </button>
                       );
                     })}
+                    {onSaveSlotNote ? (
+                      <button
+                        type="button"
+                        data-testid="s9-slot-tag-toggle"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (editingSlotDevice === dev.id) {
+                            setEditingSlotDevice(null);
+                          } else {
+                            setEditingSlotDevice(dev.id);
+                            populateEditorDraft(dev, dev.activeManualUserId ?? 0);
+                          }
+                        }}
+                        title="Assign account tag / Zalo / Facebook / P0020 Vault code to S9+ user slots"
+                        className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                          editingSlotDevice === dev.id
+                            ? "border-amber-400/60 bg-amber-500/25 text-amber-100"
+                            : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+                        }`}
+                      >
+                        <Tag className="h-2.5 w-2.5" />
+                        <span>Tag</span>
+                      </button>
+                    ) : null}
                   </div>
+                  {editingSlotDevice === dev.id && onSaveSlotNote ? (
+                    <div
+                      data-testid="s9-slot-tag-editor"
+                      onClick={(e) => e.stopPropagation()}
+                      className="space-y-1 rounded-lg border border-amber-400/30 bg-slate-950/90 p-1.5 text-[9.5px]"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-semibold text-amber-200">Slot Identity (P0020 Sync)</span>
+                        <select
+                          aria-label="Select S9+ slot to tag"
+                          value={editingSlotUid}
+                          onChange={(ev) => populateEditorDraft(dev, Number(ev.target.value))}
+                          className="rounded border border-white/15 bg-slate-900 px-1 py-0.5 font-mono text-[9px] text-slate-100 focus:outline-none"
+                        >
+                          {dev.manualUserSlots.map((s) => (
+                            <option key={s.userId} value={s.userId}>
+                              {s.shortCode} (U{s.userId})
+                            </option>
+                          ))}
+                          <option value={95}>Dual (U95)</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        <input
+                          type="text"
+                          placeholder="Short Tag (e.g. CSKH)"
+                          value={draftTag}
+                          onChange={(ev) => setDraftTag(ev.target.value)}
+                          className="rounded border border-white/15 bg-black/50 px-1.5 py-0.5 text-[9.5px] text-white placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="P0020 Code (0049)"
+                          value={draftBrowser}
+                          onChange={(ev) => setDraftBrowser(ev.target.value)}
+                          className="rounded border border-white/15 bg-black/50 px-1.5 py-0.5 font-mono text-[9.5px] text-white placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Zalo / Phone"
+                          value={draftZalo}
+                          onChange={(ev) => setDraftZalo(ev.target.value)}
+                          className="rounded border border-white/15 bg-black/50 px-1.5 py-0.5 text-[9.5px] text-white placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Facebook handle"
+                          value={draftFb}
+                          onChange={(ev) => setDraftFb(ev.target.value)}
+                          className="rounded border border-white/15 bg-black/50 px-1.5 py-0.5 text-[9.5px] text-white placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-1 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void onSaveSlotNote({
+                              userId: editingSlotUid,
+                              tag: "",
+                              zalo: "",
+                              fb: "",
+                              browserCode: "",
+                              clear: true,
+                            });
+                            setDraftTag("");
+                            setDraftZalo("");
+                            setDraftFb("");
+                            setDraftBrowser("");
+                          }}
+                          className="rounded border border-rose-400/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] text-rose-200 hover:bg-rose-500/20"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="s9-slot-tag-save"
+                          onClick={() => {
+                            void onSaveSlotNote({
+                              userId: editingSlotUid,
+                              tag: draftTag,
+                              zalo: draftZalo,
+                              fb: draftFb,
+                              browserCode: draftBrowser,
+                            });
+                            setEditingSlotDevice(null);
+                          }}
+                          className="rounded border border-emerald-400/45 bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold text-emerald-100 hover:bg-emerald-500/30"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   {onLaunchManualApp ? (
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
@@ -466,40 +642,58 @@ export const MobileFarmFiveDeviceWall = memo(function MobileFarmFiveDeviceWall({
                         </button>
                       </div>
                       {dev.id === "s9plus" ? (
-                        <div className="flex items-center gap-1" data-testid="s9-dual-u95-row">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onLaunchManualApp(dev, "com.zing.zalo", "Zalo Dual", 95);
-                            }}
-                            title="Switch to 01 (U0) if needed, unlock DUAL_APP (U95), and launch Dual Zalo"
-                            className="flex-1 whitespace-nowrap rounded border border-amber-400/35 bg-amber-500/10 px-1 py-0.5 text-[8.5px] font-medium text-amber-200 hover:bg-amber-500/20"
-                          >
-                            Zalo U95
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onLaunchManualApp(dev, "com.facebook.katana", "FB Dual", 95);
-                            }}
-                            title="Switch to 01 (U0) if needed, unlock DUAL_APP (U95), and launch Dual Facebook"
-                            className="flex-1 whitespace-nowrap rounded border border-fuchsia-400/35 bg-fuchsia-500/10 px-1 py-0.5 text-[8.5px] font-medium text-fuchsia-200 hover:bg-fuchsia-500/20"
-                          >
-                            FB U95
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onLaunchManualApp(dev, "com.facebook.orca", "Mess Dual", 95);
-                            }}
-                            title="Switch to 01 (U0) if needed, unlock DUAL_APP (U95), and launch Dual Messenger"
-                            className="flex-1 whitespace-nowrap rounded border border-emerald-400/35 bg-emerald-500/10 px-1 py-0.5 text-[8.5px] font-medium text-emerald-200 hover:bg-emerald-500/20"
-                          >
-                            Mess U95
-                          </button>
+                        <div className="space-y-0.5">
+                          {dev.dualSlotNote?.tag || dev.dualSlotNote?.zalo || dev.dualSlotNote?.fb ? (
+                            <div
+                              data-testid="s9-dual-u95-tag-badge"
+                              className="truncate font-mono text-[8.5px] text-amber-200/90"
+                              title={[
+                                dev.dualSlotNote.tag ? `Dual U95: ${dev.dualSlotNote.tag}` : "",
+                                dev.dualSlotNote.zalo ? `Zalo: ${dev.dualSlotNote.zalo}` : "",
+                                dev.dualSlotNote.fb ? `FB: ${dev.dualSlotNote.fb}` : "",
+                                dev.dualSlotNote.vaultSummary ? `Vault: ${dev.dualSlotNote.vaultSummary}` : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            >
+                              U95 · {dev.dualSlotNote.tag || dev.dualSlotNote.zalo || dev.dualSlotNote.fb}
+                            </div>
+                          ) : null}
+                          <div className="flex items-center gap-1" data-testid="s9-dual-u95-row">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLaunchManualApp(dev, "com.zing.zalo", "Zalo Dual", 95);
+                              }}
+                              title={`Switch to 01 (U0) if needed, unlock DUAL_APP (U95), and launch Dual Zalo${dev.dualSlotNote?.zalo ? ` (${dev.dualSlotNote.zalo})` : ""}`}
+                              className="flex-1 whitespace-nowrap rounded border border-amber-400/35 bg-amber-500/10 px-1 py-0.5 text-[8.5px] font-medium text-amber-200 hover:bg-amber-500/20"
+                            >
+                              Zalo U95
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLaunchManualApp(dev, "com.facebook.katana", "FB Dual", 95);
+                              }}
+                              title={`Switch to 01 (U0) if needed, unlock DUAL_APP (U95), and launch Dual Facebook${dev.dualSlotNote?.fb ? ` (${dev.dualSlotNote.fb})` : ""}`}
+                              className="flex-1 whitespace-nowrap rounded border border-fuchsia-400/35 bg-fuchsia-500/10 px-1 py-0.5 text-[8.5px] font-medium text-fuchsia-200 hover:bg-fuchsia-500/20"
+                            >
+                              FB U95
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLaunchManualApp(dev, "com.facebook.orca", "Mess Dual", 95);
+                              }}
+                              title="Switch to 01 (U0) if needed, unlock DUAL_APP (U95), and launch Dual Messenger"
+                              className="flex-1 whitespace-nowrap rounded border border-emerald-400/35 bg-emerald-500/10 px-1 py-0.5 text-[8.5px] font-medium text-emerald-200 hover:bg-emerald-500/20"
+                            >
+                              Mess U95
+                            </button>
+                          </div>
                         </div>
                       ) : null}
                     </div>

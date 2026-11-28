@@ -114,6 +114,60 @@ export const MobileFarmView = memo(function MobileFarmView({
       switchVeilTimerRef.current = null;
     }, 1550);
   }, []);
+  const [s9SlotLabels, setS9SlotLabels] = useState<{
+    slots: Record<string, { tag?: string; zalo?: string; fb?: string; browserCode?: string }>;
+    vaultMatches: Record<string, Array<{ service: string; account: string; status: string }>>;
+  }>({ slots: {}, vaultMatches: {} });
+
+  const pullS9SlotLabels = useCallback(async () => {
+    try {
+      const res = await fetchFarmApi("/api/mobile-stealth/slot-labels");
+      if (res?.ok && res.slots) {
+        setS9SlotLabels({
+          slots: res.slots || {},
+          vaultMatches: res.vaultMatches || {},
+        });
+      }
+    } catch {
+      /* ignore transient offline */
+    }
+  }, []);
+
+  const handleSaveS9SlotNote = useCallback(
+    async (payload: {
+      userId: number;
+      tag: string;
+      zalo: string;
+      fb: string;
+      browserCode: string;
+      clear?: boolean;
+    }) => {
+      try {
+        const res = await fetchFarmApi("/api/mobile-stealth/slot-labels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res?.ok) {
+          setS9SlotLabels({
+            slots: res.slots || {},
+            vaultMatches: res.vaultMatches || {},
+          });
+          pushToast(
+            payload.clear
+              ? `Cleared S9+ U${payload.userId} slot tag`
+              : `Saved S9+ U${payload.userId} tag (${res.cloudSynced ? "Synced P0020" : "Saved local"})`,
+            "success",
+          );
+        } else {
+          pushToast(`Slot tag error: ${res?.error || "save_failed"}`, "error");
+        }
+      } catch (err) {
+        pushToast(`Slot tag error: ${err instanceof Error ? err.message : "save_failed"}`, "error");
+      }
+    },
+    [pushToast],
+  );
   const [showDetailedBoard, setShowDetailedBoard] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [actionBusy, setActionBusy] = useState<string>("");
@@ -306,7 +360,8 @@ export const MobileFarmView = memo(function MobileFarmView({
     void loadProfilesAndTelemetry();
     void pullFarmLiveState(wallSegment !== "virtual_pc" || engineMode !== "pc_emulation");
     void pullExecutionBoard();
-  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullExecutionBoard, pullFarmLiveState, wallSegment]);
+    void pullS9SlotLabels();
+  }, [dualWall, engineMode, loadProfilesAndTelemetry, pullExecutionBoard, pullFarmLiveState, pullS9SlotLabels, wallSegment]);
 
   useEffect(() => {
     const boardTimer = window.setInterval(() => {
@@ -1041,24 +1096,57 @@ export const MobileFarmView = memo(function MobileFarmView({
           sp.id === "s9plus"
             ? (typeof snap?.currentUserId === "number" ? snap.currentUserId : manualS9UserId)
             : undefined,
-        manualUserSlots: isS9Manual
-          ? (
-              [
-                { userId: 0, fallback: "01 · U0" },
-                { userId: 10, fallback: "02 · U10" },
-                { userId: 11, fallback: "03 · U11" },
-                { userId: 12, fallback: "04 · U12" },
-                { userId: 13, fallback: "05 · U13" },
-              ] as const
-            ).map(({ userId, fallback }) => {
-              const liveSlot = (snap?.multiUserSlots || []).find((s) => s.userId === userId);
-              const liveName = String(liveSlot?.name || "").trim();
-              return {
-                userId,
-                label: liveName && liveName !== `U${userId}` ? `${liveName} · U${userId}` : fallback,
-              };
-            })
+        manualUserSlots: sp.id === "s9plus"
+          ? (() => {
+              const baseMap = new Map<number, string>([
+                [0, "01"],
+                [10, "02"],
+                [11, "03"],
+                [12, "04"],
+                [13, "05"],
+              ]);
+              for (const liveSlot of snap?.multiUserSlots || []) {
+                if (liveSlot.userId === 0 || (liveSlot.userId >= 10 && liveSlot.userId < 90)) {
+                  const trimmed = String(liveSlot.name || "").trim();
+                  if (trimmed && trimmed !== `U${liveSlot.userId}`) {
+                    baseMap.set(liveSlot.userId, trimmed);
+                  } else if (!baseMap.has(liveSlot.userId)) {
+                    baseMap.set(liveSlot.userId, `U${liveSlot.userId}`);
+                  }
+                }
+              }
+              return [...baseMap.entries()]
+                .sort((a, b) => a[0] - b[0])
+                .map(([userId, shortCode]) => {
+                  const note = s9SlotLabels.slots[String(userId)];
+                  const vRows = s9SlotLabels.vaultMatches[String(userId)] || [];
+                  const vaultSummary = vRows.map((r) => `${r.service}:${r.account}`).join(", ");
+                  const displayTag = note?.tag?.trim();
+                  return {
+                    userId,
+                    shortCode,
+                    label: displayTag ? `${shortCode} · ${displayTag}` : `${shortCode} · U${userId}`,
+                    tag: note?.tag,
+                    zalo: note?.zalo,
+                    fb: note?.fb,
+                    browserCode: note?.browserCode,
+                    vaultSummary: vaultSummary || undefined,
+                  };
+                });
+            })()
           : undefined,
+        dualSlotNote:
+          sp.id === "s9plus"
+            ? (() => {
+                const note = s9SlotLabels.slots["95"];
+                const vRows = s9SlotLabels.vaultMatches["95"] || [];
+                if (!note && vRows.length === 0) return null;
+                return {
+                  ...note,
+                  vaultSummary: vRows.map((r) => `${r.service}:${r.account}`).join(", ") || undefined,
+                };
+              })()
+            : null,
         boardDevice:
           bDev || snapHw
             ? {
@@ -1090,7 +1178,7 @@ export const MobileFarmView = memo(function MobileFarmView({
         interactiveCard,
       };
     });
-  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.fleetEvaluation, executionBoard?.orchestrator, executionBoard?.tasks, liveState, simFleet]);
+  }, [cachedSlotScreens, carrierKaizenLanes, dedupBoardDevices, executionBoard?.fleetEvaluation, executionBoard?.orchestrator, executionBoard?.tasks, liveState, manualS9UserId, s9SlotLabels, simFleet]);
 
   const visiblePhysicalDevices = useMemo(() => {
     const q = searchQuery.trim();
@@ -2028,6 +2116,7 @@ export const MobileFarmView = memo(function MobileFarmView({
                 )
               }
               switchingUserState={switchingManualUser}
+              onSaveSlotNote={handleSaveS9SlotNote}
               onSwitchUser={(dev, userId) => {
                 const slotLabel =
                   dev.manualUserSlots?.find((s) => s.userId === userId)?.label || `U${userId}`;
